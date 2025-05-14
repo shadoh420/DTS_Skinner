@@ -14,7 +14,7 @@ Real-time texture previewer for Tribes 1 DTS models. Load models, apply skins, a
 
 ## Usage (Executable)
 
-1.  Run `DiscSkinnerApp.exe`.
+1.  Run `SkinnerApp.exe`.
 2.  If the program doesn't automatically open, use tray icon or browser at `http://localhost:5000/`.
 3.  Replace `.png` textures in `static/textures/`.
 4.  Use the mouse to control the view, use the buttons for upside-down models.
