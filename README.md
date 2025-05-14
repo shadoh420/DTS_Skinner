@@ -18,6 +18,7 @@ Real-time texture previewer for Tribes 1 DTS models. Load models, apply skins, a
 2.  If the program doesn't automatically open, use tray icon or browser at `http://localhost:5000/`.
 3.  Replace `.png` textures in `static/textures/`.
 4.  Use the mouse to control the view, use the buttons for upside-down models.
+5.  Right click the system tray icon to fully close the program when you're done (save your skins first).
 
 
 ## Usage (Developer)
