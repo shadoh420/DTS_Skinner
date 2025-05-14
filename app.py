@@ -62,8 +62,31 @@ def index():
 
 @app.route("/list_models")
 def list_models():
-    if not model_json_dir.exists(): return jsonify([])
-    models = [{"model_name": f.stem, "texture_name": f.stem + ".png"} for f in model_json_dir.glob("*.json")]
+    effective_model_json_dir = model_json_dir 
+    if not effective_model_json_dir.exists():
+        print(f"Model JSON directory not found: {effective_model_json_dir}")
+        return jsonify([])
+    
+    models = []
+    for f_path in effective_model_json_dir.glob("*.json"):
+        model_name_stem = f_path.stem # Get filename without .json extension (e.g., "chaingun")
+        
+        # Check for hardcoded mapping first
+        if model_name_stem in TEXTURE_MAPPINGS:
+            guessed_texture_name = TEXTURE_MAPPINGS[model_name_stem]
+        else:
+            # Default guessing logic
+            guessed_texture_name = model_name_stem + ".png"
+        
+        # Optional: Could add a check here to see if guessed_texture_name actually exists
+        # in textures_dir and provide a fallback or flag if it doesn't.
+        # For simplicity, we'll let the client try to load it.
+        # if not (textures_dir / guessed_texture_name).exists():
+        #     print(f"Warning: Guessed/mapped texture '{guessed_texture_name}' not found for model '{model_name_stem}'.")
+            # Could set guessed_texture_name to None or a placeholder here if desired.
+
+        models.append({"model_name": model_name_stem, "texture_name": guessed_texture_name})
+    
     models.sort(key=lambda x: x["model_name"])
     return jsonify(models)
 
@@ -205,7 +228,17 @@ def setup_tray_icon():
         import traceback
         traceback.print_exc()
 
-# --- Main Application Logic (mostly unchanged, just how tray is run) ---
+# --- Hardcoded DTS to PNG Mappings ---
+# Keys are the DTS file stems (without .dts)
+# Values are the corresponding PNG filenames
+TEXTURE_MAPPINGS = {
+    "ammo1": "ammo.png",
+    "grenadel": "grenade.png",
+    "mine": "r_mine1.png"
+    # Add any other known mappings here
+}
+
+# --- Main Application Logic  ---
 if __name__ == "__main__":
     if run_exporter is None:
          print("CRITICAL WARNING: Exporter function could not be imported. On-demand export WILL FAIL.")
