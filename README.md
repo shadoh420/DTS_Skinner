@@ -1,6 +1,6 @@
 # DTS_Skinner - Tribes 1 Model Skin Previewer
 
-Real-time texture previewer for Tribes 1 DTS models. Load models, apply skins, and see live updates. (Only weapons supported for now.)
+Real-time texture previewer for Tribes 1 DTS models. Load models, apply skins, and see live updates. (Only simple models supported for now.)
 
 ![image](https://github.com/user-attachments/assets/58498de5-e4c6-4abe-ac2b-2330734eef9f)
 
