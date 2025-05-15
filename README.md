@@ -30,4 +30,4 @@ Real-time texture previewer for Tribes 1 DTS models. Load models, apply skins, a
 
 ## Tech
 
-Python, Flask, Socket.IO, Watchdog, Three.js, pystray, PyInstaller, Bov's DTS parser.
+Python, Flask, Socket.IO, Watchdog, Three.js, pystray, PyInstaller, Bov's DTS parser, Krogoth/Kaitai TribesToBlender.
