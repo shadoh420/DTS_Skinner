@@ -24,8 +24,8 @@
       <select id="modelSelect"></select>
     </div>
     <div>
-      <label for="textureName">Texture File:</label>
-      <input type="text" id="textureName" value="disc.png">
+      <label for="textureName">Texture File (Fallback):</label>
+      <input type="text" id="textureName" value="">
     </div>
     <button id="loadModelBtn">Load/Refresh Model</button>
     <hr>
@@ -37,14 +37,20 @@
         <button id="resetRot">Reset Rotation</button>
     </div>
     <div id="status" style="margin-top:10px;"></div>
+    <div id="textureListContainer" style="margin-top:10px;">
+        <strong>Textures Used (Unique Files):</strong>
+        <ul id="loadedTexturesList" style="list-style-type: none; padding-left: 10px; max-height: 100px; overflow-y: auto; border: 1px solid #555; background-color: rgba(0,0,0,0.3); margin-top: 5px;">
+            {/* Texture items will be added here by JavaScript */}
+        </ul>
+    </div>
   </div>
   <canvas id="c"></canvas>
   <script>
-  window.addEventListener('DOMContentLoaded', async () => { // Made async for initial model list fetch
+  window.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('c');
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
-    camera.position.set(0, 0.7, 2.5); // Adjusted default camera
+    camera.position.set(0, 0.7, 2.5);
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(innerWidth, innerHeight);
     renderer.setClearColor(0x101010);
@@ -52,18 +58,19 @@
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.12;
-    controls.target.set(0, 0.3, 0); // Adjusted default target
+    controls.target.set(0, 0.3, 0);
 
     const socket = io();
     const statusDiv = document.getElementById('status');
     const modelSelect = document.getElementById('modelSelect');
     const textureNameInput = document.getElementById('textureName');
     const loadModelBtn = document.getElementById('loadModelBtn');
+    const loadedTexturesListEl = document.getElementById('loadedTexturesList');
+
 
     let currentModelGroup, currentMaterial, currentTextureName, currentModelName;
     const DEG_TO_RAD = Math.PI / 180;
 
-    // --- Populate Model Dropdown ---
     try {
         const response = await fetch('/list_models');
         if (!response.ok) throw new Error('Failed to fetch model list');
@@ -76,17 +83,15 @@
                 const option = document.createElement('option');
                 option.value = m.model_name;
                 option.textContent = m.model_name;
-                option.dataset.texture = m.texture_name; // Store guessed texture
+                option.dataset.texture = m.texture_name;
                 modelSelect.appendChild(option);
             });
-            // Auto-select first model and set its texture
             if (modelSelect.options.length > 0) {
                 modelSelect.selectedIndex = 0;
                 textureNameInput.value = modelSelect.options[modelSelect.selectedIndex].dataset.texture || '';
-                currentModelName = modelSelect.value; // Set for initial load
-                currentTextureName = textureNameInput.value;
-                if (currentModelName && currentTextureName) {
-                    loadModel(currentModelName, currentTextureName);
+                currentModelName = modelSelect.value;
+                if (currentModelName) {
+                    loadModel(currentModelName, textureNameInput.value.trim());
                 }
             }
         }
@@ -101,11 +106,20 @@
         const selectedOption = modelSelect.options[modelSelect.selectedIndex];
         if (selectedOption && selectedOption.dataset.texture) {
             textureNameInput.value = selectedOption.dataset.texture;
+        } else {
+            textureNameInput.value = '';
         }
-        // Automatically load on change, or require button press
-        // For now, let's require button press to avoid too many loads
     });
 
+    loadModelBtn.addEventListener('click', () => {
+      const modelName = modelSelect.value;
+      const fallbackTextureName = textureNameInput.value.trim();
+      if (modelName) {
+        loadModel(modelName, fallbackTextureName);
+      } else {
+        statusDiv.textContent = "Please select a model.";
+      }
+    });
 
     async function fetchTex(url) {
       const r = await fetch(url);
@@ -114,99 +128,253 @@
       return await createImageBitmap(blob);
     }
 
-    async function loadModel(modelName, textureFilename) {
-      statusDiv.textContent = `Loading ${modelName}...`;
-      currentModelName = modelName; // Store for reload reference
-      currentTextureName = textureFilename;
+    async function loadModel(modelName, fallbackTextureFilename) {
+        statusDiv.textContent = `Loading ${modelName}...`;
+        console.log(`Attempting to load model: ${modelName} with fallback texture: ${fallbackTextureFilename}`);
+        currentModelName = modelName;
+        currentTextureName = fallbackTextureFilename;
 
-      try {
-        if (currentModelGroup) { // Use a group to handle model and its rotations
-          scene.remove(currentModelGroup);
-          if(currentModelGroup.children.length > 0 && currentModelGroup.children[0].geometry) {
-            currentModelGroup.children[0].geometry.dispose();
-          }
-          if (currentMaterial && currentMaterial.map) currentMaterial.map.dispose();
-          if (currentMaterial) currentMaterial.dispose();
-        }
-        currentModelGroup = new THREE.Group(); // Create a group for easier rotation
-        scene.add(currentModelGroup);
+        loadedTexturesListEl.innerHTML = '<li><em>Loading textures...</em></li>';
+        let threeMaterials = []; 
+        let textureDisplayInfo = {}; // Key: filename or placeholder, Value: { status, originalSlotNameIfPlaceholder }
 
-        const modelJsonUrl = `/model_json/${modelName}`;
-        const modelResponse = await fetch(modelJsonUrl);
-        if (!modelResponse.ok) {
-            const errorText = await modelResponse.text();
-            throw new Error(`Failed to load model JSON ${modelJsonUrl}: ${modelResponse.statusText}. Server: ${errorText}`);
-        }
-        const d = await modelResponse.json();
+        try {
+            if (currentModelGroup) {
+                scene.remove(currentModelGroup);
+                if (currentModelGroup.children.length > 0 && currentModelGroup.children[0].geometry) {
+                    currentModelGroup.children[0].geometry.dispose();
+                }
+                if (Array.isArray(currentMaterial)) {
+                    currentMaterial.forEach(mat => {
+                        if (mat.map) mat.map.dispose();
+                        mat.dispose();
+                    });
+                } else if (currentMaterial) {
+                    if (currentMaterial.map) currentMaterial.map.dispose();
+                    currentMaterial.dispose();
+                }
+                currentModelGroup = null; currentMaterial = null;
+            }
+            currentModelGroup = new THREE.Group();
+            scene.add(currentModelGroup);
 
-        const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(d.v), 3));
-        g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(d.uv), 2));
-        g.setIndex(d.tri);
-        g.computeVertexNormals();
-        g.computeBoundingSphere();
-        
-        if (g.boundingSphere) {
-            console.log(`Model: ${modelName}, BoundingSphere Radius: ${g.boundingSphere.radius}`);
-            const center = g.boundingSphere.center;
-            const radius = g.boundingSphere.radius;
+            const modelJsonUrl = `/model_json/${modelName}`;
+            const modelResponse = await fetch(modelJsonUrl);
+            if (!modelResponse.ok) {
+                const errorText = await modelResponse.text();
+                loadedTexturesListEl.innerHTML = '<li><em>Error loading model data.</em></li>';
+                throw new Error(`Failed to load model JSON ${modelJsonUrl}: ${modelResponse.statusText}. Server: ${errorText}`);
+            }
+            const d = await modelResponse.json();
+
+            if (!d.vertices || d.vertices.length === 0) {
+                statusDiv.textContent = `${modelName} loaded, but contains no geometry.`;
+                loadedTexturesListEl.innerHTML = '<li><em>No geometry in model.</em></li>';
+                console.warn(`${modelName} JSON contains no vertex data.`);
+                return;
+            }
+
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(d.vertices), 3));
+            g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(d.uvs), 2));
+            if (d.indices && d.indices.length > 0) { g.setIndex(d.indices); }
+
+            if (d.material_textures && d.material_textures.length > 0) {
+                console.log(`Model ${modelName} defines ${d.material_textures.length} material slots:`, d.material_textures);
+                
+                for (const texNameInJsonSlot of d.material_textures) {
+                    const isDtsEmptySlotPlaceholder = texNameInJsonSlot.startsWith("[Slot") && texNameInJsonSlot.endsWith("No Texture Specified]");
+                    const isDtsInvalidFilenamePlaceholder = texNameInJsonSlot.startsWith("[Slot") && texNameInJsonSlot.includes("Invalid Filename");
+                    
+                    if (isDtsEmptySlotPlaceholder) {
+                        console.warn(`Material slot is an intentional empty placeholder: ${texNameInJsonSlot}. Using default grey material.`);
+                        threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0x777777, side: THREE.DoubleSide, name: texNameInJsonSlot }));
+                        // Not added to textureDisplayInfo as it's not a file.
+                    } else if (isDtsInvalidFilenamePlaceholder) {
+                        console.error(`Material slot has an invalid filename placeholder from DTS: ${texNameInJsonSlot}. Using error material.`);
+                        threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide, name: texNameInJsonSlot }));
+                        textureDisplayInfo[texNameInJsonSlot] = { status: 'error_slot_invalid_name' };
+                    } else { // Assumed to be a regular texture filename
+                        let filenameToLoad = texNameInJsonSlot; 
+                        try {
+                            // This check is a safeguard if export_model.py somehow still outputs ".png" for an empty original.
+                            // With the refined export_model.py, this should ideally not be hit for empty DTS slots.
+                            if (!filenameToLoad || filenameToLoad.trim() === "" || filenameToLoad.trim() === ".png") {
+                                console.error(`Malformed/empty texture name in JSON slot: '${filenameToLoad}'. This should have been a placeholder. Treating as error.`);
+                                throw new Error(`Malformed texture name from JSON: '${filenameToLoad}'`);
+                            }
+
+                            const textureUrl = `/texture/${filenameToLoad}?t=${Date.now()}`;
+                            console.log(`Fetching texture: ${textureUrl}`);
+                            const img = await fetchTex(textureUrl);
+                            const tex = new THREE.Texture(img);
+                            tex.needsUpdate = true; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.flipY = false;
+                            threeMaterials.push(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, name: filenameToLoad }));
+                            if (!textureDisplayInfo[filenameToLoad] || textureDisplayInfo[filenameToLoad].status !== 'loaded') {
+                                textureDisplayInfo[filenameToLoad] = { status: 'loaded' };
+                            }
+                        } catch (texError) {
+                            console.warn(`Failed to load texture '${filenameToLoad}': ${texError}. Using placeholder material.`);
+                            threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0xcc00cc, side: THREE.DoubleSide, name: `placeholder_for_${filenameToLoad}` }));
+                            textureDisplayInfo[filenameToLoad] = { status: 'error_file_not_found_or_bad', originalAttempt: filenameToLoad };
+                        }
+                    }
+                }
+            } else if (fallbackTextureFilename) {
+                console.warn(`Model ${modelName} JSON has no material_textures. Falling back to: ${fallbackTextureFilename}`);
+                try {
+                    const textureUrl = `/texture/${fallbackTextureFilename}?t=${Date.now()}`;
+                    const img = await fetchTex(textureUrl);
+                    const tex = new THREE.Texture(img);
+                    tex.needsUpdate = true; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.flipY = false;
+                    threeMaterials.push(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, name: fallbackTextureFilename }));
+                    textureDisplayInfo[fallbackTextureFilename] = { status: 'fallback' };
+                } catch (e) {
+                    console.error("Error loading fallback texture:", e);
+                    threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide, name: "error_fallback_texture" }));
+                    textureDisplayInfo[fallbackTextureFilename] = { status: 'fallback_error' };
+                }
+            } else {
+                console.warn(`Model ${modelName} has no defined textures and no fallback. Using default grey material.`);
+                threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0xcccccc, side: THREE.DoubleSide, name: "default_grey" }));
+                textureDisplayInfo['Default Material'] = { status: 'default' };
+            }
             
-            // Offset the geometry so its center is at the group's origin
-            g.translate(-center.x, -center.y, -center.z); 
-            
-            controls.target.set(0, 0, 0); // Target the group's origin
-            const camDist = Math.max(radius * 2.0, 1.0); // Ensure a minimum distance
-            camera.position.set(0, radius * 0.3 , camDist);
-            camera.lookAt(0,0,0);
-            controls.update(); // Important after manual camera changes
+            loadedTexturesListEl.innerHTML = '';
+            if (Object.keys(textureDisplayInfo).length > 0) {
+                for (const [keyForDisplay, info] of Object.entries(textureDisplayInfo)) {
+                    const listItem = document.createElement('li');
+                    let displayText = keyForDisplay; 
+                    
+                    if (info.status === 'error_file_not_found_or_bad') {
+                        listItem.style.color = 'orange';
+                        // 'keyForDisplay' here IS the filename that was attempted and failed (e.g., "actual_name.png" or possibly ".png")
+                        displayText = `${keyForDisplay} (Error - File Not Found/Load Failed)`;
+                    } else if (info.status === 'error_slot_invalid_name') {
+                        listItem.style.color = 'magenta';
+                        // 'keyForDisplay' here IS the placeholder like "[Slot X: Invalid Filename '.bmp']"
+                        displayText = `${keyForDisplay} (Error - Invalid Name in DTS Slot)`;
+                    } else if (info.status === 'fallback') {
+                        displayText += ' (Fallback)';
+                    } else if (info.status === 'fallback_error') {
+                        listItem.style.color = 'red';
+                        displayText = `${keyForDisplay} (Fallback Error - File Not Found/Load Failed)`;
+                    } else if (info.status === 'default') { /* displayText is already 'Default Material' */ }
+                    listItem.textContent = displayText;
+                    loadedTexturesListEl.appendChild(listItem);
+                }
+            } else {
+                 const listItem = document.createElement('li');
+                 if (d.material_textures && d.material_textures.length > 0) {
+                     listItem.textContent = 'Model uses no actual texture files (all slots empty/placeholder).';
+                 } else { listItem.textContent = 'No textures specified.'; }
+                 loadedTexturesListEl.appendChild(listItem);
+            }
+
+            if (threeMaterials.length === 0) {
+                const li = document.createElement('li'); li.textContent = 'No materials created!'; loadedTexturesListEl.appendChild(li);
+                threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide, name: "empty_material_fallback" }));
+            }
+
+            currentMaterial = threeMaterials.length === 1 ? threeMaterials[0] : threeMaterials;
+
+            if (d.groups && d.groups.length > 0) {
+                d.groups.forEach(group => {
+                    const matIdx = Math.min(Math.max(0, group.materialIndex), threeMaterials.length - 1);
+                    if (group.materialIndex !== matIdx) {
+                        console.warn(`Group materialIndex ${group.materialIndex} for group starting at ${group.start} was out of bounds for ${threeMaterials.length} materials. Clamped to index ${matIdx}.`);
+                    }
+                    g.addGroup(group.start, group.count, matIdx);
+                });
+            } else if (d.indices && d.indices.length > 0 && threeMaterials.length > 0) {
+                g.addGroup(0, d.indices.length, 0);
+            }
+
+            g.computeVertexNormals(); g.computeBoundingSphere();
+            if (g.boundingSphere) {
+                const center = g.boundingSphere.center; const radius = g.boundingSphere.radius;
+                g.translate(-center.x, -center.y, -center.z);
+                controls.target.set(0, 0, 0);
+                const camDist = Math.max(radius * 2.5, 1.5);
+                camera.position.set(0, radius * 0.5, camDist); camera.lookAt(0,0,0); controls.update();
+            }
+
+            const mesh = new THREE.Mesh(g, currentMaterial);
+            currentModelGroup.add(mesh);
+
+            statusDiv.textContent = `${modelName} loaded.`;
+            if (d.material_textures && d.material_textures.length > 0) {
+                statusDiv.textContent += ` Using ${d.material_textures.length} material slots.`;
+            } else if (fallbackTextureFilename) {
+                statusDiv.textContent += ` Using fallback texture ${fallbackTextureFilename}.`;
+            } else { statusDiv.textContent += ` Using default material.`; }
+            console.log("Model loaded successfully:", modelName);
+
+        } catch (error) {
+            console.error("Error in loadModel function:", error);
+            statusDiv.textContent = `Error loading ${modelName}: ${error.message}`;
+            loadedTexturesListEl.innerHTML = '<li><em>Error during model load.</em></li>';
         }
-
-        const textureUrl = `/texture/${textureFilename}`;
-        const img = await fetchTex(`${textureUrl}?t=${Date.now()}`);
-        const tex = new THREE.Texture(img);
-        tex.needsUpdate = true;
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
-
-        currentMaterial = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
-        const mesh = new THREE.Mesh(g, currentMaterial);
-        currentModelGroup.add(mesh); // Add mesh to the group
-
-        statusDiv.textContent = `${modelName} loaded with ${textureFilename}.`;
-
-      } catch (error) {
-        console.error("Error loading model:", error);
-        statusDiv.textContent = `Error: ${error.message}`;
-      }
     }
 
-    loadModelBtn.addEventListener('click', () => {
-      const modelName = modelSelect.value;
-      const textureName = textureNameInput.value.trim();
-      if (modelName && textureName) {
-        loadModel(modelName, textureName);
-      } else {
-        statusDiv.textContent = "Please select a model and ensure texture filename is entered.";
-      }
-    });
-
     socket.on('texture_updated', async (data) => {
-      if (!currentMaterial || !currentModelGroup || !data.filename) return;
-      if (data.filename === currentTextureName) { // Check against stored currentTextureName
-        statusDiv.textContent = `Reloading texture ${data.filename}...`;
-        try {
-          const img = await fetchTex(`/texture/${data.filename}?t=${Date.now()}`);
-          currentMaterial.map.image = img;
-          currentMaterial.map.needsUpdate = true;
-          statusDiv.textContent = `Texture ${data.filename} reloaded.`;
-        } catch (error) {
-          console.error("Error reloading texture:", error);
-          statusDiv.textContent = `Error reloading texture: ${error.message}`;
+        if (!currentModelGroup || !data.filename || !currentModelName) return;
+        console.log(`Texture updated event for: ${data.filename}. Current model: ${currentModelName}`);
+        let textureToReload = data.filename;
+        let specificMaterialUpdated = false;
+
+        if (Array.isArray(currentMaterial)) {
+            for (let i = 0; i < currentMaterial.length; i++) {
+                const mat = currentMaterial[i];
+                if (mat.name === textureToReload) { // Material name was set to original texNameFromSlot or fallback
+                    statusDiv.textContent = `Reloading texture ${textureToReload} for current model...`;
+                    try {
+                        const img = await fetchTex(`/texture/${textureToReload}?t=${Date.now()}`);
+                        if (mat.map) mat.map.dispose();
+                        const newTex = new THREE.Texture(img);
+                        newTex.needsUpdate = true; newTex.magFilter = THREE.NearestFilter; newTex.minFilter = THREE.NearestFilter; newTex.flipY = false;
+                        mat.map = newTex;
+                        mat.needsUpdate = true;
+                        statusDiv.textContent = `Texture ${textureToReload} reloaded for material slot.`;
+                        console.log(`Texture ${textureToReload} reloaded for material named '${mat.name}'.`);
+                        specificMaterialUpdated = true; 
+                        // Don't break; update all materials that use this texture file.
+                    } catch (error) {
+                        console.error(`Error reloading texture ${textureToReload} for material named '${mat.name}':`, error);
+                        statusDiv.textContent = `Error reloading texture: ${error.message}`;
+                    }
+                }
+            }
+        } else if (currentMaterial && currentMaterial.name === textureToReload) { // Single material case
+            statusDiv.textContent = `Reloading texture ${textureToReload}...`;
+            try {
+                const img = await fetchTex(`/texture/${textureToReload}?t=${Date.now()}`);
+                if (currentMaterial.map) currentMaterial.map.dispose();
+                const newTex = new THREE.Texture(img);
+                newTex.needsUpdate = true; newTex.magFilter = THREE.NearestFilter; newTex.minFilter = THREE.NearestFilter; newTex.flipY = false;
+                currentMaterial.map = newTex;
+                currentMaterial.needsUpdate = true;
+                statusDiv.textContent = `Texture ${textureToReload} reloaded.`;
+                console.log(`Single material texture ${textureToReload} reloaded.`);
+                specificMaterialUpdated = true;
+            } catch (error) {
+                console.error("Error reloading single texture:", error);
+                statusDiv.textContent = `Error reloading texture: ${error.message}`;
+            }
         }
-      }
+        
+        if (!specificMaterialUpdated) {
+            // If no specific material was updated, the texture might still be relevant if the model
+            // was loaded with a fallback that matches, or if it's a texture for a different model.
+            // A full reload of the current model is a safe bet if the texture *might* be for it.
+            // To be more precise, one would check if `data.filename` is in the *original JSON's* `d.material_textures`.
+            // For now, if it didn't match any `mat.name`, we assume it might be relevant and reload.
+            console.log(`Texture ${data.filename} updated. It didn't directly match a loaded material's name. Performing full reload for model ${currentModelName} to be safe.`);
+            statusDiv.textContent = `Texture ${data.filename} updated. Reloading current model ${currentModelName}...`;
+            loadModel(currentModelName, textureNameInput.value.trim()); // Reload current model
+        }
     });
     
-    // --- Rotation Button Logic ---
     function rotateObject(axis, angleDeg) {
         if (!currentModelGroup) return;
         const angleRad = angleDeg * DEG_TO_RAD;
@@ -214,7 +382,7 @@
         if (axis === 'x') q.setFromAxisAngle(new THREE.Vector3(1,0,0), angleRad);
         if (axis === 'y') q.setFromAxisAngle(new THREE.Vector3(0,1,0), angleRad);
         if (axis === 'z') q.setFromAxisAngle(new THREE.Vector3(0,0,1), angleRad);
-        currentModelGroup.quaternion.premultiply(q); // Apply rotation relative to current orientation
+        currentModelGroup.quaternion.premultiply(q);
     }
 
     document.getElementById('rotX90').addEventListener('click', () => rotateObject('x', 90));
@@ -226,7 +394,6 @@
     document.getElementById('resetRot').addEventListener('click', () => {
         if (currentModelGroup) currentModelGroup.rotation.set(0,0,0);
     });
-
 
     (function animate() {
       requestAnimationFrame(animate);
