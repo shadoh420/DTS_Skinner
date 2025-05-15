@@ -234,6 +234,7 @@ def setup_tray_icon():
 TEXTURE_MAPPINGS = {
     "ammo1": "ammo.png",
     "grenadel": "grenade.png",
+    "sensor_small": "sensor_rmt.png",
     "mine": "r_mine1.png"
     # Add any other known mappings here
 }
