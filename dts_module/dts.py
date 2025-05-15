@@ -3,6 +3,42 @@ import struct
 from dts_module import dts_mesh
 import numpy as np
 
+class dts_material_param:
+    def __init__(self, data, curr_data_index, material_block_version):
+        self.flags = helper.get_int(data, curr_data_index)
+        self.alpha = helper.get_float(data, curr_data_index)
+        self.internal_index = helper.get_int(data, curr_data_index) # Kaitai calls this 'index'
+        
+        self.rgb_r = helper.get_int8(data, curr_data_index)
+        self.rgb_g = helper.get_int8(data, curr_data_index)
+        self.rgb_b = helper.get_int8(data, curr_data_index)
+        self.rgb_flags_byte = helper.get_int8(data, curr_data_index) # Often unused padding
+
+        map_file_bytes = b''
+        # Note: material_block_version is the version from the TS::MaterialList PERS block
+        if material_block_version == 1: # map_file_old (16 bytes)
+            map_file_bytes = data[curr_data_index[0]:curr_data_index[0] + 16]
+            curr_data_index[0] += 16
+        elif material_block_version >= 2: # map_file (32 bytes)
+            map_file_bytes = data[curr_data_index[0]:curr_data_index[0] + 32]
+            curr_data_index[0] += 32
+        
+        self.map_file = map_file_bytes.split(b'\x00')[0].decode('utf-8', 'ignore')
+
+        if material_block_version >= 3:
+            self.type = helper.get_int(data, curr_data_index)
+            self.elasticity = helper.get_float(data, curr_data_index)
+            self.friction = helper.get_float(data, curr_data_index)
+        else:
+            self.type = -1 
+            self.elasticity = 0.0
+            self.friction = 0.0
+
+        if material_block_version >= 4:
+            self.use_default_props = helper.get_int(data, curr_data_index)
+        else:
+            self.use_default_props = 0
+
 class dts:
     def __init__(self):
         self.meshes = None
@@ -34,6 +70,8 @@ class dts:
         self.num_seq = 0
         self.version = None
         self.num_nodes = 0
+        self.material_list = [] # To store parsed dts_material_param objects
+        self.dts_version_from_material_list_pers = -1 # Store version from TS::MaterialList
         return
 
     def load_binary(self, data):
@@ -261,10 +299,56 @@ class dts:
         for _ in range(0, self.num_meshes):
             self.meshes.append(dts_mesh.mesh(data, curr_data_index))
 
-        self.has_materials = helper.get_int(data, curr_data_index)
-        # Read in Materials...not going to implement this yet
+        # --- MODIFIED MATERIAL PARSING ---
+        # The material list is its own PERS block, usually following the mesh data.
+        # The `has_materials` flag (if it's just a 0/1 int) might indicate if this block exists.
+        
+        # Find the start of the material list by looking for its PERS block
+        # This is a simplified search; a more robust parser might track block offsets.
+        # For now, let's assume it follows meshes or is findable.
+        # The Kaitai structure implies `has_materials` (an int flag) is read,
+        # then if 1, the `materials` (a PERS section) is read.
 
-        self.print_stats()
+        # Let's assume curr_data_index is now at the `has_materials` flag (s4)
+        has_materials_flag_value = helper.get_int(data, curr_data_index)
+
+        if has_materials_flag_value == 1:
+            # Expect a "PERS" block for "TS::MaterialList"
+            if curr_data_index[0] + 4 <= len(data) and data[curr_data_index[0]:curr_data_index[0] + 4] == b"PERS":
+                curr_data_index[0] += 4 # Skip 'PERS'
+                _ = helper.get_int(data, curr_data_index) # block_size
+
+                classname_len = helper.get_int16(data, curr_data_index) # u2 in Kaitai
+                # Classname string is null-terminated and padded to an even boundary
+                actual_classname_len_to_read = (classname_len + 1) & (~1)
+                
+                classname_bytes = data[curr_data_index[0]:curr_data_index[0] + classname_len]
+                curr_data_index[0] += actual_classname_len_to_read
+                
+                if classname_bytes == b'TS::MaterialList':
+                    self.dts_version_from_material_list_pers = helper.get_int(data, curr_data_index) # Version of this material block
+                    
+                    # According to dts.ksy for ts_mat_list:
+                    # - num_details (u4)
+                    # - num_materials (u4)
+                    # The 'num_details' here is a bit unusual for a material list.
+                    # For sensor_small.DTS, hex dump suggests:
+                    # Version (e.g., 0F 00 00 00 = 15)
+                    # num_details (e.g., 01 00 00 00 = 1)
+                    # num_materials (e.g., 05 00 00 00 = 5)
+                    _num_details_in_matlist = helper.get_int(data, curr_data_index) # Read and potentially ignore
+                    num_actual_materials = helper.get_int(data, curr_data_index)
+
+                    for _ in range(num_actual_materials):
+                        mat_param = dts_material_param(data, curr_data_index, self.dts_version_from_material_list_pers)
+                        self.material_list.append(mat_param)
+                else:
+                    print(f"Warning: Expected 'TS::MaterialList' PERS block, but found '{classname_bytes.decode('utf-8','ignore')}'")
+            else:
+                print("Warning: has_materials_flag is 1, but no 'PERS' block found for materials where expected.")
+        # --- END OF MODIFIED MATERIAL PARSING ---
+        
+        self.print_stats() # You might want to update print_stats to show loaded materials
         return
 
     def load_file(self, file_name):
