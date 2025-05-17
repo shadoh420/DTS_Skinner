@@ -136,7 +136,7 @@
 
         loadedTexturesListEl.innerHTML = '<li><em>Loading textures...</em></li>';
         let threeMaterials = []; 
-        let textureDisplayInfo = {}; // Key: filename or placeholder, Value: { status, originalSlotNameIfPlaceholder }
+        let textureDisplayInfo = {};
 
         try {
             if (currentModelGroup) {
@@ -189,16 +189,13 @@
                     if (isDtsEmptySlotPlaceholder) {
                         console.warn(`Material slot is an intentional empty placeholder: ${texNameInJsonSlot}. Using default grey material.`);
                         threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0x777777, side: THREE.DoubleSide, name: texNameInJsonSlot }));
-                        // Not added to textureDisplayInfo as it's not a file.
                     } else if (isDtsInvalidFilenamePlaceholder) {
                         console.error(`Material slot has an invalid filename placeholder from DTS: ${texNameInJsonSlot}. Using error material.`);
                         threeMaterials.push(new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide, name: texNameInJsonSlot }));
                         textureDisplayInfo[texNameInJsonSlot] = { status: 'error_slot_invalid_name' };
-                    } else { // Assumed to be a regular texture filename
+                    } else { 
                         let filenameToLoad = texNameInJsonSlot; 
                         try {
-                            // This check is a safeguard if export_model.py somehow still outputs ".png" for an empty original.
-                            // With the refined export_model.py, this should ideally not be hit for empty DTS slots.
                             if (!filenameToLoad || filenameToLoad.trim() === "" || filenameToLoad.trim() === ".png") {
                                 console.error(`Malformed/empty texture name in JSON slot: '${filenameToLoad}'. This should have been a placeholder. Treating as error.`);
                                 throw new Error(`Malformed texture name from JSON: '${filenameToLoad}'`);
@@ -208,7 +205,14 @@
                             console.log(`Fetching texture: ${textureUrl}`);
                             const img = await fetchTex(textureUrl);
                             const tex = new THREE.Texture(img);
-                            tex.needsUpdate = true; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.flipY = false;
+                            tex.needsUpdate = true; 
+                            tex.magFilter = THREE.NearestFilter; 
+                            tex.minFilter = THREE.NearestFilter; 
+                            tex.flipY = false;
+                            // --- ADDING REPEAT WRAPPING ---
+                            tex.wrapS = THREE.RepeatWrapping;
+                            tex.wrapT = THREE.RepeatWrapping;
+                            // --- END OF REPEAT WRAPPING ---
                             threeMaterials.push(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, name: filenameToLoad }));
                             if (!textureDisplayInfo[filenameToLoad] || textureDisplayInfo[filenameToLoad].status !== 'loaded') {
                                 textureDisplayInfo[filenameToLoad] = { status: 'loaded' };
@@ -224,9 +228,17 @@
                 console.warn(`Model ${modelName} JSON has no material_textures. Falling back to: ${fallbackTextureFilename}`);
                 try {
                     const textureUrl = `/texture/${fallbackTextureFilename}?t=${Date.now()}`;
+                    console.log(`Fetching fallback texture: ${textureUrl}`);
                     const img = await fetchTex(textureUrl);
                     const tex = new THREE.Texture(img);
-                    tex.needsUpdate = true; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.flipY = false;
+                    tex.needsUpdate = true; 
+                    tex.magFilter = THREE.NearestFilter; 
+                    tex.minFilter = THREE.NearestFilter; 
+                    tex.flipY = false;
+                    // --- ADDING REPEAT WRAPPING FOR FALLBACK ---
+                    tex.wrapS = THREE.RepeatWrapping;
+                    tex.wrapT = THREE.RepeatWrapping;
+                    // --- END OF REPEAT WRAPPING ---
                     threeMaterials.push(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, name: fallbackTextureFilename }));
                     textureDisplayInfo[fallbackTextureFilename] = { status: 'fallback' };
                 } catch (e) {
@@ -242,23 +254,21 @@
             
             loadedTexturesListEl.innerHTML = '';
             if (Object.keys(textureDisplayInfo).length > 0) {
-                for (const [keyForDisplay, info] of Object.entries(textureDisplayInfo)) {
+                for (const [texFileToDisplay, info] of Object.entries(textureDisplayInfo)) {
                     const listItem = document.createElement('li');
-                    let displayText = keyForDisplay; 
+                    let displayText = texFileToDisplay; 
                     
                     if (info.status === 'error_file_not_found_or_bad') {
                         listItem.style.color = 'orange';
-                        // 'keyForDisplay' here IS the filename that was attempted and failed (e.g., "actual_name.png" or possibly ".png")
-                        displayText = `${keyForDisplay} (Error - File Not Found/Load Failed)`;
+                        displayText = `${texFileToDisplay} (Error - File Not Found/Load Failed)`;
                     } else if (info.status === 'error_slot_invalid_name') {
                         listItem.style.color = 'magenta';
-                        // 'keyForDisplay' here IS the placeholder like "[Slot X: Invalid Filename '.bmp']"
-                        displayText = `${keyForDisplay} (Error - Invalid Name in DTS Slot)`;
+                        displayText = `${keyForDisplay} (Error - Invalid Name in DTS Slot)`; // Corrected: keyForDisplay was not defined here, should be texFileToDisplay
                     } else if (info.status === 'fallback') {
                         displayText += ' (Fallback)';
                     } else if (info.status === 'fallback_error') {
                         listItem.style.color = 'red';
-                        displayText = `${keyForDisplay} (Fallback Error - File Not Found/Load Failed)`;
+                        displayText = `${texFileToDisplay} (Fallback Error - File Not Found/Load Failed)`;
                     } else if (info.status === 'default') { /* displayText is already 'Default Material' */ }
                     listItem.textContent = displayText;
                     loadedTexturesListEl.appendChild(listItem);
@@ -326,32 +336,45 @@
         if (Array.isArray(currentMaterial)) {
             for (let i = 0; i < currentMaterial.length; i++) {
                 const mat = currentMaterial[i];
-                if (mat.name === textureToReload) { // Material name was set to original texNameFromSlot or fallback
+                if (mat.name === textureToReload) {
                     statusDiv.textContent = `Reloading texture ${textureToReload} for current model...`;
                     try {
                         const img = await fetchTex(`/texture/${textureToReload}?t=${Date.now()}`);
                         if (mat.map) mat.map.dispose();
                         const newTex = new THREE.Texture(img);
-                        newTex.needsUpdate = true; newTex.magFilter = THREE.NearestFilter; newTex.minFilter = THREE.NearestFilter; newTex.flipY = false;
+                        newTex.needsUpdate = true; 
+                        newTex.magFilter = THREE.NearestFilter; 
+                        newTex.minFilter = THREE.NearestFilter; 
+                        newTex.flipY = false;
+                        // --- ADDING REPEAT WRAPPING ON UPDATE ---
+                        newTex.wrapS = THREE.RepeatWrapping;
+                        newTex.wrapT = THREE.RepeatWrapping;
+                        // --- END OF REPEAT WRAPPING ---
                         mat.map = newTex;
                         mat.needsUpdate = true;
                         statusDiv.textContent = `Texture ${textureToReload} reloaded for material slot.`;
                         console.log(`Texture ${textureToReload} reloaded for material named '${mat.name}'.`);
                         specificMaterialUpdated = true; 
-                        // Don't break; update all materials that use this texture file.
                     } catch (error) {
                         console.error(`Error reloading texture ${textureToReload} for material named '${mat.name}':`, error);
                         statusDiv.textContent = `Error reloading texture: ${error.message}`;
                     }
                 }
             }
-        } else if (currentMaterial && currentMaterial.name === textureToReload) { // Single material case
+        } else if (currentMaterial && currentMaterial.name === textureToReload) {
             statusDiv.textContent = `Reloading texture ${textureToReload}...`;
             try {
                 const img = await fetchTex(`/texture/${textureToReload}?t=${Date.now()}`);
                 if (currentMaterial.map) currentMaterial.map.dispose();
                 const newTex = new THREE.Texture(img);
-                newTex.needsUpdate = true; newTex.magFilter = THREE.NearestFilter; newTex.minFilter = THREE.NearestFilter; newTex.flipY = false;
+                newTex.needsUpdate = true; 
+                newTex.magFilter = THREE.NearestFilter; 
+                newTex.minFilter = THREE.NearestFilter; 
+                newTex.flipY = false;
+                // --- ADDING REPEAT WRAPPING ON UPDATE ---
+                newTex.wrapS = THREE.RepeatWrapping;
+                newTex.wrapT = THREE.RepeatWrapping;
+                // --- END OF REPEAT WRAPPING ---
                 currentMaterial.map = newTex;
                 currentMaterial.needsUpdate = true;
                 statusDiv.textContent = `Texture ${textureToReload} reloaded.`;
@@ -364,14 +387,9 @@
         }
         
         if (!specificMaterialUpdated) {
-            // If no specific material was updated, the texture might still be relevant if the model
-            // was loaded with a fallback that matches, or if it's a texture for a different model.
-            // A full reload of the current model is a safe bet if the texture *might* be for it.
-            // To be more precise, one would check if `data.filename` is in the *original JSON's* `d.material_textures`.
-            // For now, if it didn't match any `mat.name`, we assume it might be relevant and reload.
             console.log(`Texture ${data.filename} updated. It didn't directly match a loaded material's name. Performing full reload for model ${currentModelName} to be safe.`);
             statusDiv.textContent = `Texture ${data.filename} updated. Reloading current model ${currentModelName}...`;
-            loadModel(currentModelName, textureNameInput.value.trim()); // Reload current model
+            loadModel(currentModelName, textureNameInput.value.trim());
         }
     });
     

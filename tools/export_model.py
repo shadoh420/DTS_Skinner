@@ -293,12 +293,25 @@ def main(dts_file_path_str, output_json_dir_str):
         if current_obj.mesh_index < 0 or current_obj.mesh_index >= shape.num_meshes: continue
         
         OBJECT_IS_INITIALLY_INVISIBLE_FLAG = 0x1
-        if hasattr(current_obj, 'flags') and (current_obj.flags & OBJECT_IS_INITIALLY_INVISIBLE_FLAG): continue
+        # if hasattr(current_obj, 'flags') and (current_obj.flags & OBJECT_IS_INITIALLY_INVISIBLE_FLAG): continue
             
         mesh_to_process = shape.meshes[current_obj.mesh_index]
+        # --- ADD THIS CHECK ---
+        if not hasattr(mesh_to_process, 'faces') or \
+           not hasattr(mesh_to_process, 'verts') or \
+           not hasattr(mesh_to_process, 'text_verts') or \
+           not hasattr(mesh_to_process, 'frames'):
+            print(f"Warning: Mesh {current_obj.mesh_index} in object {obj_i} for {dts_file_path.name} is malformed or failed to parse fully (missing essential attributes). Skipping this mesh.")
+            # meshes_processed_in_lod was already incremented before this check if it was just a header issue.
+            # If you only want to count fully valid meshes, move the incrementer after this check.
+            continue # Skip to the next object/mesh
+
+        # Original check (can be kept or merged with above)
         if not (mesh_to_process.faces and mesh_to_process.verts and mesh_to_process.text_verts and \
                 mesh_to_process.frames and hasattr(mesh_to_process.frames[0], 'scale') and \
-                hasattr(mesh_to_process.frames[0], 'origin')): continue
+                hasattr(mesh_to_process.frames[0], 'origin')):
+            print(f"Warning: Mesh {current_obj.mesh_index} in object {obj_i} for {dts_file_path.name} has empty essential attributes. Skipping this mesh.")
+            continue
         
         meshes_processed_in_lod += 1
         mesh_frame = mesh_to_process.frames[0]
