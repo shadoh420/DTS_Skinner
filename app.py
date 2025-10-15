@@ -108,6 +108,66 @@ def get_texture(texture_filename):
     if ".." in texture_filename or "/" in texture_filename or "\\" in texture_filename: abort(400)
     return send_from_directory(str(textures_dir), texture_filename)
 
+@app.route("/export_obj/<model_name>")
+def export_obj(model_name):
+    """
+    Export a model as OBJ/MTL with textures bundled in a ZIP archive.
+    """
+    import re
+    import tempfile
+    
+    # Validate model name (security: prevent path traversal)
+    if ".." in model_name or "/" in model_name or "\\" in model_name:
+        abort(400, "Invalid model name")
+    
+    # Additional validation: only alphanumeric, underscore, hyphen
+    if not re.match(r'^[a-zA-Z0-9_-]+$', model_name):
+        abort(400, "Invalid model name characters")
+    
+    # Check if JSON file exists
+    json_path = model_json_dir / f"{model_name}.json"
+    if not json_path.exists():
+        abort(404, f"Model '{model_name}' not found. Ensure it has been pre-processed.")
+    
+    try:
+        # Import OBJ exporter module
+        tools_dir = root / "tools"
+        if str(tools_dir) not in sys.path:
+            sys.path.insert(0, str(tools_dir))
+        
+        from obj_exporter import json_to_obj_zip
+        
+        # Create temporary file for the ZIP
+        temp_fd, temp_zip_path = tempfile.mkstemp(suffix='.zip', prefix=f'{model_name}_')
+        os.close(temp_fd)  # Close file descriptor, we'll write via zipfile
+        
+        temp_zip_pathlib = pathlib.Path(temp_zip_path)
+        
+        # Generate the export
+        print(f"Exporting model '{model_name}' to OBJ...")
+        json_to_obj_zip(
+            json_path=json_path,
+            textures_dir=textures_dir,
+            output_zip_path=temp_zip_pathlib,
+            model_name=model_name,
+            scale_factor=1.0  # Keep original scale
+        )
+        
+        # Send file to client
+        return send_from_directory(
+            str(temp_zip_pathlib.parent),
+            temp_zip_pathlib.name,
+            as_attachment=True,
+            download_name=f"{model_name}_export.zip",
+            mimetype='application/zip'
+        )
+        
+    except Exception as e:
+        print(f"Error exporting model '{model_name}': {e}")
+        import traceback
+        traceback.print_exc()
+        abort(500, f"Export failed: {str(e)}")
+
 # --- File Watcher ---
 class TextureWatcher(FileSystemEventHandler):
     def on_modified(self, event):
