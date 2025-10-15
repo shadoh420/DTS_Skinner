@@ -9,6 +9,9 @@
     #controls label, #controls input, #controls button, #controls select { margin: 5px; display: block; margin-bottom: 8px; }
     #controls input[type="text"], #controls select { width: 150px; padding: 3px; }
     #controls button { padding: 5px 10px; }
+    #controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #exportObjBtn { background-color: #2a5; border: none; color: white; font-weight: bold; }
+    #exportObjBtn:hover:not(:disabled) { background-color: #3b6; }
     .rotation-controls button { margin-right: 5px; }
     canvas { display: block; }
   </style>
@@ -35,6 +38,11 @@
         Y: <button id="rotY90">+90</button> <button id="rotYN90">-90</button><br>
         Z: <button id="rotZ90">+90</button> <button id="rotZN90">-90</button><br>
         <button id="resetRot">Reset Rotation</button>
+    </div>
+    <hr>
+    <div>
+        <button id="exportObjBtn" disabled>Export to OBJ</button>
+        <div id="exportStatus" style="margin-top:5px; font-size:0.85em; color:#aaa;"></div>
     </div>
     <div id="status" style="margin-top:10px;"></div>
     <div id="textureListContainer" style="margin-top:10px;">
@@ -133,6 +141,7 @@
         console.log(`Attempting to load model: ${modelName} with fallback texture: ${fallbackTextureFilename}`);
         currentModelName = modelName;
         currentTextureName = fallbackTextureFilename;
+        document.getElementById('exportObjBtn').disabled = true;
 
         loadedTexturesListEl.innerHTML = '<li><em>Loading textures...</em></li>';
         let threeMaterials = []; 
@@ -182,6 +191,9 @@
             if (d.material_textures && d.material_textures.length > 0) {
                 console.log(`Model ${modelName} defines ${d.material_textures.length} material slots:`, d.material_textures);
                 
+                // Cache for loaded textures to avoid redundant fetches
+                const textureCache = new Map();
+                
                 for (const texNameInJsonSlot of d.material_textures) {
                     const isDtsEmptySlotPlaceholder = texNameInJsonSlot.startsWith("[Slot") && texNameInJsonSlot.endsWith("No Texture Specified]");
                     const isDtsInvalidFilenamePlaceholder = texNameInJsonSlot.startsWith("[Slot") && texNameInJsonSlot.includes("Invalid Filename");
@@ -201,18 +213,27 @@
                                 throw new Error(`Malformed texture name from JSON: '${filenameToLoad}'`);
                             }
 
-                            const textureUrl = `/texture/${filenameToLoad}?t=${Date.now()}`;
-                            console.log(`Fetching texture: ${textureUrl}`);
-                            const img = await fetchTex(textureUrl);
-                            const tex = new THREE.Texture(img);
-                            tex.needsUpdate = true; 
-                            tex.magFilter = THREE.NearestFilter; 
-                            tex.minFilter = THREE.NearestFilter; 
-                            tex.flipY = false;
-                            // --- ADDING REPEAT WRAPPING ---
-                            tex.wrapS = THREE.RepeatWrapping;
-                            tex.wrapT = THREE.RepeatWrapping;
-                            // --- END OF REPEAT WRAPPING ---
+                            // Check if this texture was already loaded
+                            let tex;
+                            if (textureCache.has(filenameToLoad)) {
+                                console.log(`Reusing cached texture: ${filenameToLoad}`);
+                                tex = textureCache.get(filenameToLoad);
+                            } else {
+                                const textureUrl = `/texture/${filenameToLoad}`;
+                                console.log(`Fetching texture: ${textureUrl}`);
+                                const img = await fetchTex(textureUrl);
+                                tex = new THREE.Texture(img);
+                                tex.needsUpdate = true; 
+                                tex.magFilter = THREE.NearestFilter; 
+                                tex.minFilter = THREE.NearestFilter; 
+                                tex.flipY = false;
+                                // --- ADDING REPEAT WRAPPING ---
+                                tex.wrapS = THREE.RepeatWrapping;
+                                tex.wrapT = THREE.RepeatWrapping;
+                                // --- END OF REPEAT WRAPPING ---
+                                textureCache.set(filenameToLoad, tex);
+                            }
+                            
                             threeMaterials.push(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, name: filenameToLoad }));
                             if (!textureDisplayInfo[filenameToLoad] || textureDisplayInfo[filenameToLoad].status !== 'loaded') {
                                 textureDisplayInfo[filenameToLoad] = { status: 'loaded' };
@@ -227,7 +248,7 @@
             } else if (fallbackTextureFilename) {
                 console.warn(`Model ${modelName} JSON has no material_textures. Falling back to: ${fallbackTextureFilename}`);
                 try {
-                    const textureUrl = `/texture/${fallbackTextureFilename}?t=${Date.now()}`;
+                    const textureUrl = `/texture/${fallbackTextureFilename}`;
                     console.log(`Fetching fallback texture: ${textureUrl}`);
                     const img = await fetchTex(textureUrl);
                     const tex = new THREE.Texture(img);
@@ -319,6 +340,7 @@
                 statusDiv.textContent += ` Using fallback texture ${fallbackTextureFilename}.`;
             } else { statusDiv.textContent += ` Using default material.`; }
             console.log("Model loaded successfully:", modelName);
+            document.getElementById('exportObjBtn').disabled = false;
 
         } catch (error) {
             console.error("Error in loadModel function:", error);
@@ -339,7 +361,7 @@
                 if (mat.name === textureToReload) {
                     statusDiv.textContent = `Reloading texture ${textureToReload} for current model...`;
                     try {
-                        const img = await fetchTex(`/texture/${textureToReload}?t=${Date.now()}`);
+                        const img = await fetchTex(`/texture/${textureToReload}`);
                         if (mat.map) mat.map.dispose();
                         const newTex = new THREE.Texture(img);
                         newTex.needsUpdate = true; 
@@ -364,7 +386,7 @@
         } else if (currentMaterial && currentMaterial.name === textureToReload) {
             statusDiv.textContent = `Reloading texture ${textureToReload}...`;
             try {
-                const img = await fetchTex(`/texture/${textureToReload}?t=${Date.now()}`);
+                const img = await fetchTex(`/texture/${textureToReload}`);
                 if (currentMaterial.map) currentMaterial.map.dispose();
                 const newTex = new THREE.Texture(img);
                 newTex.needsUpdate = true; 
@@ -411,6 +433,18 @@
     document.getElementById('rotZN90').addEventListener('click', () => rotateObject('z', -90));
     document.getElementById('resetRot').addEventListener('click', () => {
         if (currentModelGroup) currentModelGroup.rotation.set(0,0,0);
+    });
+
+    document.getElementById('exportObjBtn').addEventListener('click', () => {
+        if (!currentModelName) {
+            document.getElementById('exportStatus').textContent = 'No model loaded to export';
+            return;
+        }
+        document.getElementById('exportStatus').textContent = 'Exporting...';
+        window.location.href = `/export_obj/${currentModelName}`;
+        setTimeout(() => {
+            document.getElementById('exportStatus').textContent = 'Export complete';
+        }, 1000);
     });
 
     (function animate() {
