@@ -243,10 +243,15 @@ class dts:
         self.transforms = []
         for _ in range(self.num_transforms):
             # Quat16: x(s2), y(s2), z(s2), w(s2)
-            qx = helper.get_int16(data, curr_data_index)
-            qy = helper.get_int16(data, curr_data_index)
-            qz = helper.get_int16(data, curr_data_index)
-            qw = helper.get_int16(data, curr_data_index)
+            if self.version < 7:
+                # V6 stores QuatF (16 bytes), not V7's Quat16 (8 bytes).
+                # Keep the exporter's 32767-based component convention.
+                qx, qy, qz, qw = (v * 32767.0 for v in helper.get_float_array(data, 4, curr_data_index))
+            else:
+                qx = helper.get_int16(data, curr_data_index)
+                qy = helper.get_int16(data, curr_data_index)
+                qz = helper.get_int16(data, curr_data_index)
+                qw = helper.get_int16(data, curr_data_index)
             # Pass raw s2 values to dts_quat, or convert here.
             # For now, dts_quat expects floats, so let's pass them as floats (though they are s2 ranges)
             quat = dts_quat(float(qx), float(qy), float(qz), float(qw))
@@ -295,8 +300,8 @@ class dts:
                 mesh_idx = helper.get_int(data, curr_data_index)
                 node_idx = helper.get_int(data, curr_data_index) # Your original was s4
                 offset_rot_val = dts_mat3f().read(data, curr_data_index)
-                num_ss = helper.get_int16(data, curr_data_index) # Your original was s2
-                first_ss = helper.get_int16(data, curr_data_index) # Your original was s2
+                num_ss = helper.get_int(data, curr_data_index)
+                first_ss = helper.get_int(data, curr_data_index)
             self.objects.append(dts_object(name_idx, flags_val, mesh_idx, node_idx, 
                                            offset_flags_val, offset_rot_val, offset_val, 
                                            num_ss, first_ss))

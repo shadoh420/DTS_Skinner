@@ -16,6 +16,26 @@ from tools.obj_exporter import compute_smooth_normals, generate_obj_content
 
 
 class ModelTests(unittest.TestCase):
+    def test_catalog_is_complete_and_naturally_sorted(self):
+        names = [m['model_name'] for m in app.test_client().get('/list_models').json]
+        expected = (model_json_dir.parents[1] / 'model_catalog.txt').read_text().splitlines()
+        self.assertEqual(names, expected)
+        self.assertTrue({'larmor', 'lfemale', 'marmor', 'mfemale', 'harmor'}.issubset(names))
+        with tempfile.TemporaryDirectory() as directory:
+            for name in ['bunker10.json', 'bunker2.json', 'Base1.JSON', 'base10.json', 'base2.json', 'acommand.json']:
+                (pathlib.Path(directory) / name).write_text('{}')
+            with patch('app.model_json_dir', pathlib.Path(directory)):
+                names = [m['model_name'] for m in app.test_client().get('/list_models').json]
+        self.assertEqual(names, ['acommand', 'Base1', 'base2', 'base10', 'bunker2', 'bunker10'])
+
+    def test_microex_version6_has_geometry(self):
+        from tools.export_model import main as export_model
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
+            export_model(str(model_json_dir.parents[1] / 'tools/dts_files/microex.DTS'), directory)
+            generated = load_model_data(pathlib.Path(directory) / 'microex.json')
+        self.assertEqual(len(generated['indices']), 6)
+        self.assertEqual(generated['material_textures'][0], 'mic00.png')
+
     def test_larmor_snapshot_matches_corrected_dts_exporter(self):
         from tools.export_model import main as export_model
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
@@ -44,7 +64,7 @@ class ModelTests(unittest.TestCase):
     def test_every_bundled_model_previews_and_exports(self):
         client = app.test_client()
         models = client.get('/list_models').get_json()
-        self.assertEqual(len(models), 10)
+        self.assertEqual({m['model_name'] for m in models}, set((model_json_dir.parents[1] / 'model_catalog.txt').read_text().splitlines()))
         for model in models:
             name = model['model_name']
             with self.subTest(model=name), contextlib.redirect_stdout(io.StringIO()):
@@ -60,6 +80,8 @@ class ModelTests(unittest.TestCase):
                     self.assertEqual(sum(line.startswith('f ') for line in obj.splitlines()), len(data['indices']) // 3)
                     mtl = archive.read(name + '.mtl').decode()
                     for texture in data['material_textures']:
+                        if texture.startswith('[Slot'):
+                            continue
                         self.assertIn('map_Kd ' + texture, mtl)
                         if (textures_dir / texture).exists():
                             self.assertEqual(archive.read(texture), (textures_dir / texture).read_bytes())

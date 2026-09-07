@@ -3,6 +3,7 @@
 import json
 import math
 import pathlib
+import re
 
 TEXTURE_MAPPINGS = {
     "disc": "stock_disc.png",
@@ -16,6 +17,13 @@ TEXTURE_MAPPINGS = {
 
 def default_texture(model_name):
     return TEXTURE_MAPPINGS.get(model_name.lower(), model_name + ".png")
+
+
+def model_sort_key(name):
+    """Alphabetize without case jumps, with numbered variants in numeric order."""
+    parts = tuple(int(part) if part.isdecimal() else part.casefold()
+                  for part in re.split(r'(\d+)', name))
+    return parts, name.casefold(), name
 
 
 def load_model_data(json_path, fallback_texture=None):

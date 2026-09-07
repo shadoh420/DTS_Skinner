@@ -279,7 +279,7 @@
             
             loadedTexturesListEl.innerHTML = '';
             if (Object.keys(textureDisplayInfo).length > 0) {
-                for (const [texFileToDisplay, info] of Object.entries(textureDisplayInfo)) {
+                for (const [texFileToDisplay, info] of Object.entries(textureDisplayInfo).sort(([a], [b]) => a.localeCompare(b, 'en', {numeric: true, sensitivity: 'base'}))) {
                     const listItem = document.createElement('li');
                     let displayText = texFileToDisplay; 
                     
@@ -330,7 +330,12 @@
                 const center = g.boundingSphere.center; const radius = g.boundingSphere.radius;
                 g.translate(-center.x, -center.y, -center.z);
                 controls.target.set(0, 0, 0);
-                const camDist = Math.max(radius * 2.5, 1.5);
+                const verticalFov = camera.fov * DEG_TO_RAD;
+                const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+                const camDist = Math.max(radius, 0.001) / Math.sin(Math.min(verticalFov, horizontalFov) / 2) * 1.15;
+                camera.near = Math.max(radius / 100, 0.0001);
+                camera.far = Math.max(radius * 100, 10);
+                camera.updateProjectionMatrix();
                 camera.position.set(0, radius * 0.5, camDist); camera.lookAt(0,0,0); controls.update();
             }
 

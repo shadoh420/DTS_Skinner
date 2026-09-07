@@ -50,6 +50,9 @@ class mesh:
         self.frames = []
         for _ in range(0, self.num_frames):
             self.frames.append(dts_frame(version, data, data_index))
+            if version < 3:
+                self.frames[-1].scale = self.v2_scale
+                self.frames[-1].origin = self.v2_origin
 
 
 class dts_vert:

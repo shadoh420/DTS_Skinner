@@ -1,6 +1,8 @@
 # DTS_Skinner - Tribes 1 Model Skin Previewer
 
-Real-time texture previewer for Tribes 1 DTS models. Load models, apply skins, and see live updates. All Tribes models should work now.
+Real-time texture previewer for Tribes 1 models and interiors. The consolidated
+catalog contains 390 models from the GitHub and older local Skinner versions.
+Load models, apply skins, and see live updates. Known missing textures are listed below.
 
 ![image](https://github.com/user-attachments/assets/58498de5-e4c6-4abe-ac2b-2330734eef9f)
 
@@ -64,7 +66,8 @@ recognize atomic file replacement. Missing textures are listed in the exported
 README. Light armor uses its authored `base.larmor.png` material. Disc defaults
 to `stock_disc.png`; the previous custom `disc.png` is still available by entering
 that filename in the fallback field and loading the model again.
-`paintgun.json.nopng` remains excluded from the model list.
+Paintgun is included through its complete `paintgun.json`; the old `.nopng`
+duplicate is not another selectable model.
 
 Executable builds keep editable skins in `static/textures` beside `SkinnerApp.exe`.
 Bundled PNGs are copied only when absent, preserving edits across restarts.
@@ -96,13 +99,51 @@ The stock disc and base light-armor PNGs came from the local Tribes
 `Entities.zip` assets (256x256). The base light-armor texture was also compared
 with the older working Skinner's material. The custom texture is not overwritten.
 
-Validation: seven regression tests pass, all ten bundled models load in a headless
-Edge browser, and all ten export from the Windows executable. Browser download,
-export-error reporting, CDN-unavailable preview, and skin persistence across an
-executable restart were checked. Native tray interaction and user visual review
-remain unverified.
+Validation: nine regression tests pass, including preview data and OBJ/texture
+ZIP export for all 390 models. All 390 also load in a headless Edge browser
+without JavaScript errors. The complete-catalog Windows executable also passed
+all 390 catalog entries and OBJ ZIP exports. Representative female-armor and large-interior renders
+were inspected. Earlier download-error, CDN-unavailable preview, and executable
+skin-persistence checks remain applicable. Full visual acceptance and native tray
+interaction remain unverified.
 
 The light-armor snapshot is checked against fresh DTS conversion to prevent
 shipping obsolete geometry again. Fresh heavy-armor conversion exactly matched
 the older working Skinner snapshot. Disc/light-armor renders are review candidates;
 the user's visual acceptance remains open.
+
+## Consolidated catalog and sorting
+
+`model_catalog.txt` records every selectable model in the consolidated release.
+Catalog tests compare against this inventory instead of accepting whichever files
+happen to remain in the folder. All names from the older Skinner catalog are
+retained, including `lfemale`, `mfemale`, `marmor`, `harmor`, vehicles, props,
+effects, and interiors. Existing stock-disc and corrected light-armor assets are
+preserved. The older folder's PNGs and alternate skins are included without
+overwriting the repaired build's existing textures.
+
+Model names sort without case jumps and with numbers in numeric order:
+`Base1`, `base2`, `Base3`, ... `base10`; `bunker2` precedes `bunker10`.
+The displayed texture list is sorted independently of material slot assignments.
+Camera clipping/framing adapts to both small effects and very large interiors.
+
+The empty `microex` snapshot was regenerated after correcting V6 float quaternion
+and object-subsequence reads and pre-V3 mesh scale/origin handling, using the
+format layout documented in Jobo's toolkit. This is still a static effect snapshot,
+not animation playback. Three missing terrain textures were recovered from the
+local Tribes `mudDML.zip` assets.
+
+Six models still reference eight unavailable textures in their displayed geometry:
+
+| Model | Missing texture files |
+| --- | --- |
+| grenadetrail | gtrl00.png |
+| microex | mic00.png |
+| plant1 | plant@.png |
+| pulse | pulserifle.png |
+| shotsprk | shot00.png |
+| teleporter | telept1.png, telptlt1.png, telita1.png |
+
+These models remain selectable/exportable with visible missing-texture indicators;
+no unrelated replacement skins are assigned. Some models also reference absent
+textures in unused animation/material slots, which the ZIP README reports.

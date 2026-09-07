@@ -4,7 +4,7 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tools.model_data import load_model_data, default_texture
+from tools.model_data import load_model_data, default_texture, model_sort_key
 from tools.obj_exporter import json_to_obj_zip
 import io
 import shutil
@@ -87,7 +87,9 @@ def list_models():
     # List models based on existing .json files in static/model_json/
     models = []
     if model_json_dir.exists():
-        for f_path in model_json_dir.glob("*.json"):
+        for f_path in model_json_dir.iterdir():
+            if not f_path.is_file() or f_path.suffix.casefold() != '.json':
+                continue
             model_name_stem = f_path.stem
             # Guessing texture name for DTS models can still be useful for the dropdown's default
             # For DIS, the JSON itself will list all textures.
@@ -97,7 +99,7 @@ def list_models():
     else:
         print(f"Model JSON directory not found: {model_json_dir}")
         
-    models.sort(key=lambda x: x["model_name"])
+    models.sort(key=lambda x: model_sort_key(x["model_name"]))
     if not models:
         print(f"No pre-processed .json models found in {model_json_dir}. Please run batch export scripts.")
     return jsonify(models)
@@ -184,13 +186,13 @@ texture_observer = None # Global observer instance
 def start_watcher():
     global texture_observer
     if not textures_dir.exists():
-        print(f"❌ Texture directory {textures_dir} not found. Watcher not started.")
+        print(f"Texture directory {textures_dir} not found. Watcher not started.")
         return
     if texture_observer is None: # Start only if not already running
         texture_observer = Observer()
         texture_observer.schedule(TextureWatcher(), str(textures_dir))
         texture_observer.start()
-        print(f"✓ Watching for texture changes in {textures_dir}")
+        print(f"Watching for texture changes in {textures_dir}")
 
 def stop_watcher():
     global texture_observer
