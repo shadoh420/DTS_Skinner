@@ -48,7 +48,7 @@
     <div id="textureListContainer" style="margin-top:10px;">
         <strong>Textures Used (Unique Files):</strong>
         <ul id="loadedTexturesList" style="list-style-type: none; padding-left: 10px; max-height: 100px; overflow-y: auto; border: 1px solid #555; background-color: rgba(0,0,0,0.3); margin-top: 5px;">
-            {/* Texture items will be added here by JavaScript */}
+            <!-- Texture items are added by JavaScript. -->
         </ul>
     </div>
   </div>
@@ -68,7 +68,7 @@
     controls.dampingFactor = 0.12;
     controls.target.set(0, 0.3, 0);
 
-    const socket = io();
+    const socket = typeof io === "function" ? io() : null;
     const statusDiv = document.getElementById('status');
     const modelSelect = document.getElementById('modelSelect');
     const textureNameInput = document.getElementById('textureName');
@@ -76,6 +76,7 @@
     const loadedTexturesListEl = document.getElementById('loadedTexturesList');
 
 
+    let loadingModel = false;
     let currentModelGroup, currentMaterial, currentTextureName, currentModelName;
     const DEG_TO_RAD = Math.PI / 180;
 
@@ -130,13 +131,16 @@
     });
 
     async function fetchTex(url) {
-      const r = await fetch(url);
+      const r = await fetch(url, { cache: "no-store" });
       if (!r.ok) throw new Error(`Failed to fetch texture ${url}: ${r.statusText}`);
       const blob = await r.blob();
       return await createImageBitmap(blob);
     }
 
     async function loadModel(modelName, fallbackTextureFilename) {
+        if (loadingModel) return;
+        loadingModel = true;
+        loadModelBtn.disabled = true;
         statusDiv.textContent = `Loading ${modelName}...`;
         console.log(`Attempting to load model: ${modelName} with fallback texture: ${fallbackTextureFilename}`);
         currentModelName = modelName;
@@ -167,7 +171,7 @@
             currentModelGroup = new THREE.Group();
             scene.add(currentModelGroup);
 
-            const modelJsonUrl = `/model_json/${modelName}`;
+            const modelJsonUrl = `/model_json/${encodeURIComponent(modelName)}?texture=${encodeURIComponent(fallbackTextureFilename)}`;
             const modelResponse = await fetch(modelJsonUrl);
             if (!modelResponse.ok) {
                 const errorText = await modelResponse.text();
@@ -275,7 +279,7 @@
             
             loadedTexturesListEl.innerHTML = '';
             if (Object.keys(textureDisplayInfo).length > 0) {
-                for (const [texFileToDisplay, info] of Object.entries(textureDisplayInfo)) {
+                for (const [texFileToDisplay, info] of Object.entries(textureDisplayInfo).sort(([a], [b]) => a.localeCompare(b, 'en', {numeric: true, sensitivity: 'base'}))) {
                     const listItem = document.createElement('li');
                     let displayText = texFileToDisplay; 
                     
@@ -284,7 +288,7 @@
                         displayText = `${texFileToDisplay} (Error - File Not Found/Load Failed)`;
                     } else if (info.status === 'error_slot_invalid_name') {
                         listItem.style.color = 'magenta';
-                        displayText = `${keyForDisplay} (Error - Invalid Name in DTS Slot)`; // Corrected: keyForDisplay was not defined here, should be texFileToDisplay
+                        displayText = `${texFileToDisplay} (Error - Invalid Name in DTS Slot)`;
                     } else if (info.status === 'fallback') {
                         displayText += ' (Fallback)';
                     } else if (info.status === 'fallback_error') {
@@ -326,7 +330,12 @@
                 const center = g.boundingSphere.center; const radius = g.boundingSphere.radius;
                 g.translate(-center.x, -center.y, -center.z);
                 controls.target.set(0, 0, 0);
-                const camDist = Math.max(radius * 2.5, 1.5);
+                const verticalFov = camera.fov * DEG_TO_RAD;
+                const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+                const camDist = Math.max(radius, 0.001) / Math.sin(Math.min(verticalFov, horizontalFov) / 2) * 1.15;
+                camera.near = Math.max(radius / 100, 0.0001);
+                camera.far = Math.max(radius * 100, 10);
+                camera.updateProjectionMatrix();
                 camera.position.set(0, radius * 0.5, camDist); camera.lookAt(0,0,0); controls.update();
             }
 
@@ -346,10 +355,13 @@
             console.error("Error in loadModel function:", error);
             statusDiv.textContent = `Error loading ${modelName}: ${error.message}`;
             loadedTexturesListEl.innerHTML = '<li><em>Error during model load.</em></li>';
+        } finally {
+            loadingModel = false;
+            loadModelBtn.disabled = false;
         }
     }
 
-    socket.on('texture_updated', async (data) => {
+    if (socket) socket.on('texture_updated', async (data) => {
         if (!currentModelGroup || !data.filename || !currentModelName) return;
         console.log(`Texture updated event for: ${data.filename}. Current model: ${currentModelName}`);
         let textureToReload = data.filename;
@@ -411,7 +423,7 @@
         if (!specificMaterialUpdated) {
             console.log(`Texture ${data.filename} updated. It didn't directly match a loaded material's name. Performing full reload for model ${currentModelName} to be safe.`);
             statusDiv.textContent = `Texture ${data.filename} updated. Reloading current model ${currentModelName}...`;
-            loadModel(currentModelName, textureNameInput.value.trim());
+            loadModel(currentModelName, currentTextureName);
         }
     });
     
@@ -435,16 +447,30 @@
         if (currentModelGroup) currentModelGroup.rotation.set(0,0,0);
     });
 
-    document.getElementById('exportObjBtn').addEventListener('click', () => {
-        if (!currentModelName) {
-            document.getElementById('exportStatus').textContent = 'No model loaded to export';
-            return;
+    document.getElementById('exportObjBtn').addEventListener('click', async () => {
+        if (!currentModelName || loadingModel) return;
+        const button = document.getElementById('exportObjBtn');
+        const status = document.getElementById('exportStatus');
+        button.disabled = true;
+        status.textContent = 'Exporting...';
+        const modelName = currentModelName;
+        try {
+            const response = await fetch(`/export_obj/${encodeURIComponent(modelName)}?texture=${encodeURIComponent(currentTextureName || '')}`);
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            const url = URL.createObjectURL(await response.blob());
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${modelName}_export.zip`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            status.textContent = 'Export downloaded.';
+        } catch (error) {
+            status.textContent = `Export failed: ${error.message}`;
+        } finally {
+            button.disabled = loadingModel || !currentModelGroup || !currentModelGroup.children.length;
         }
-        document.getElementById('exportStatus').textContent = 'Exporting...';
-        window.location.href = `/export_obj/${currentModelName}`;
-        setTimeout(() => {
-            document.getElementById('exportStatus').textContent = 'Export complete';
-        }, 1000);
     });
 
     (function animate() {

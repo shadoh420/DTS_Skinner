@@ -1,9 +1,13 @@
 # app.py
 
-from flask import Flask, send_from_directory, render_template, abort, jsonify, request
+from flask import Flask, send_from_directory, render_template, abort, jsonify, request, send_file
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from tools.model_data import load_model_data, default_texture, model_sort_key
+from tools.obj_exporter import json_to_obj_zip
+import io
+import shutil
 import pathlib
 import threading
 import os
@@ -31,6 +35,14 @@ print(f"Application root determined as: {root}")
 static_dir = root / "static"
 templates_dir = root / "templates"
 textures_dir = static_dir / "textures" # For PNGs
+if getattr(sys, 'frozen', False):
+    # Skins edited by the user must survive PyInstaller's temporary extraction.
+    textures_dir = pathlib.Path(sys.executable).resolve().parent / "static" / "textures"
+    textures_dir.mkdir(parents=True, exist_ok=True)
+    for source in (static_dir / "textures").glob("*.png"):
+        destination = textures_dir / source.name
+        if not destination.exists():
+            shutil.copy2(source, destination)
 model_json_dir = static_dir / "model_json" # Where pre-processed JSONs are stored
 
 # Source directories (can be used by list_models for discovery if desired, but not for on-demand export)
@@ -62,6 +74,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- Global variable to control Flask server thread ---
 flask_server_thread = None
+server_port = 5000
 stop_event = threading.Event() # Used to signal the Flask server to shut down
 
 # --- Flask Routes ---
@@ -74,17 +87,19 @@ def list_models():
     # List models based on existing .json files in static/model_json/
     models = []
     if model_json_dir.exists():
-        for f_path in model_json_dir.glob("*.json"):
+        for f_path in model_json_dir.iterdir():
+            if not f_path.is_file() or f_path.suffix.casefold() != '.json':
+                continue
             model_name_stem = f_path.stem
             # Guessing texture name for DTS models can still be useful for the dropdown's default
             # For DIS, the JSON itself will list all textures.
-            guessed_texture_name = TEXTURE_MAPPINGS.get(model_name_stem, model_name_stem + ".png")
+            guessed_texture_name = default_texture(model_name_stem)
             # 'type' is not strictly needed if all are JSON, but can be kept if UI uses it.
             models.append({"model_name": model_name_stem, "texture_name": guessed_texture_name})
     else:
         print(f"Model JSON directory not found: {model_json_dir}")
         
-    models.sort(key=lambda x: x["model_name"])
+    models.sort(key=lambda x: model_sort_key(x["model_name"]))
     if not models:
         print(f"No pre-processed .json models found in {model_json_dir}. Please run batch export scripts.")
     return jsonify(models)
@@ -100,8 +115,10 @@ def get_model_json(model_name):
         # With pre-processing, if JSON doesn't exist, it's a 404.
         print(f"ERROR: Pre-processed JSON for '{model_name}' not found at {json_path}.")
         abort(404, f"Model data for '{model_name}' not found. Please ensure it has been pre-processed by running the appropriate batch export script (e.g., batch_export_dts.py or batch_export_interiors.py).")
-            
-    return send_from_directory(str(model_json_dir), json_filename)
+    try:
+        return jsonify(load_model_data(json_path, request.args.get("texture")))
+    except (ValueError, KeyError, TypeError) as exc:
+        abort(422, str(exc))
 
 @app.route("/texture/<texture_filename>")
 def get_texture(texture_filename):
@@ -114,8 +131,7 @@ def export_obj(model_name):
     Export a model as OBJ/MTL with textures bundled in a ZIP archive.
     """
     import re
-    import tempfile
-    
+
     # Validate model name (security: prevent path traversal)
     if ".." in model_name or "/" in model_name or "\\" in model_name:
         abort(400, "Invalid model name")
@@ -128,40 +144,19 @@ def export_obj(model_name):
     json_path = model_json_dir / f"{model_name}.json"
     if not json_path.exists():
         abort(404, f"Model '{model_name}' not found. Ensure it has been pre-processed.")
-    
+
     try:
-        # Import OBJ exporter module
-        tools_dir = root / "tools"
-        if str(tools_dir) not in sys.path:
-            sys.path.insert(0, str(tools_dir))
-        
-        from obj_exporter import json_to_obj_zip
-        
-        # Create temporary file for the ZIP
-        temp_fd, temp_zip_path = tempfile.mkstemp(suffix='.zip', prefix=f'{model_name}_')
-        os.close(temp_fd)  # Close file descriptor, we'll write via zipfile
-        
-        temp_zip_pathlib = pathlib.Path(temp_zip_path)
-        
-        # Generate the export
-        print(f"Exporting model '{model_name}' to OBJ...")
-        json_to_obj_zip(
-            json_path=json_path,
-            textures_dir=textures_dir,
-            output_zip_path=temp_zip_pathlib,
-            model_name=model_name,
-            scale_factor=1.0  # Keep original scale
-        )
-        
-        # Send file to client
-        return send_from_directory(
-            str(temp_zip_pathlib.parent),
-            temp_zip_pathlib.name,
-            as_attachment=True,
-            download_name=f"{model_name}_export.zip",
-            mimetype='application/zip'
-        )
-        
+        # Stream an in-memory archive; repeated exports leave no temporary ZIPs.
+        output = io.BytesIO()
+        json_to_obj_zip(json_path, textures_dir, output, model_name,
+                        fallback_texture=request.args.get("texture"))
+        output.seek(0)
+        return send_file(output, as_attachment=True,
+                         download_name=f"{model_name}_export.zip",
+                         mimetype="application/zip")
+
+    except (ValueError, KeyError, TypeError) as exc:
+        abort(422, str(exc))
     except Exception as e:
         print(f"Error exporting model '{model_name}': {e}")
         import traceback
@@ -170,9 +165,19 @@ def export_obj(model_name):
 
 # --- File Watcher ---
 class TextureWatcher(FileSystemEventHandler):
+    def on_created(self, event):
+        self.on_modified(event)
+
+    def on_moved(self, event):
+        if not event.is_directory:
+            self.notify_texture(event.dest_path)
+
     def on_modified(self, event):
         if event.is_directory: return
-        src_path = pathlib.Path(event.src_path)
+        self.notify_texture(event.src_path)
+
+    def notify_texture(self, path):
+        src_path = pathlib.Path(path)
         if src_path.parent == textures_dir and src_path.suffix.lower() == '.png':
             print(f"Texture modified: {src_path.name}")
             socketio.emit("texture_updated", {"filename": src_path.name})
@@ -181,13 +186,13 @@ texture_observer = None # Global observer instance
 def start_watcher():
     global texture_observer
     if not textures_dir.exists():
-        print(f"❌ Texture directory {textures_dir} not found. Watcher not started.")
+        print(f"Texture directory {textures_dir} not found. Watcher not started.")
         return
     if texture_observer is None: # Start only if not already running
         texture_observer = Observer()
         texture_observer.schedule(TextureWatcher(), str(textures_dir))
         texture_observer.start()
-        print(f"✓ Watching for texture changes in {textures_dir}")
+        print(f"Watching for texture changes in {textures_dir}")
 
 def stop_watcher():
     global texture_observer
@@ -201,7 +206,7 @@ def stop_watcher():
 def run_flask_app():
     print(f"Flask server thread started. PID: {os.getpid()}, Thread: {threading.get_ident()}")
     try:
-        socketio.run(app, host="0.0.0.0", port=5000, 
+        socketio.run(app, host="127.0.0.1", port=server_port,
                      use_reloader=False, debug=False, 
                      allow_unsafe_werkzeug=True) # allow_unsafe_werkzeug for programmatic shutdown
         print("Flask server has shut down.")
@@ -233,8 +238,7 @@ def open_textures_folder(icon=None, item=None):
         print(f"Error opening textures folder '{folder_path}': {e}")
 
 def open_browser(icon=None, item=None):
-    print("Opening browser to http://localhost:5000/")
-    webbrowser.open_new_tab("http://localhost:5000/")
+    webbrowser.open_new_tab(f"http://localhost:{server_port}/")
 
 # Add a shutdown route for programmatic server stop
 @app.route('/shutdown_server_please', methods=['GET','POST']) # Allow GET for easy browser call during dev
@@ -261,8 +265,9 @@ def quit_application(icon=None, item=None):
     print("Attempting to shut down Flask server via HTTP request...")
     try:
         # Make a request to the shutdown route
-        import requests
-        requests.get("http://localhost:5000/shutdown_server_please", timeout=2)
+        import urllib.request
+        with urllib.request.urlopen(f"http://localhost:{server_port}/shutdown_server_please", timeout=2):
+            pass
     except Exception as e:
         print(f"Could not reach shutdown route (server might be already down or unresponsive): {e}")
 
@@ -306,16 +311,17 @@ def setup_tray_icon():
         traceback.print_exc()
         tray_icon_instance = None # Ensure it's None if setup fails
 
-# --- Hardcoded DTS to PNG Mappings (for /list_models fallback texture guessing) ---
-TEXTURE_MAPPINGS = {
-    "ammo1": "ammo.png",
-    "grenadel": "grenade.png",
-    "sensor_small": "sensor_rmt.png",
-    "mine": "r_mine1.png"
-}
-
 # --- Main Application Logic  ---
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="DTS model skin previewer")
+    parser.add_argument('--no-browser', action='store_true')
+    parser.add_argument('--no-tray', action='store_true')
+    parser.add_argument('--port', type=int, default=5000)
+    args = parser.parse_args()
+    server_port = args.port
+    if args.no_tray:
+        HAS_PYSTRAY = False
     # No longer need to check for exporter imports here if using pre-processing
     # if run_dts_exporter is None or run_interior_exporter is None:
     #      print("CRITICAL WARNING: One or more exporter functions could not be imported. On-demand export WILL FAIL.")
@@ -337,7 +343,8 @@ if __name__ == "__main__":
         setup_tray_icon()
         if tray_icon_instance:
             print("Starting tray icon. Main thread will block here.")
-            threading.Timer(1.5, open_browser).start() # Slightly longer delay
+            if not args.no_browser:
+                threading.Timer(1.5, open_browser).start()
             try:
                 tray_icon_instance.run() # This is the blocking call for pystray
             except KeyboardInterrupt: # Allow Ctrl+C to quit if run from console
