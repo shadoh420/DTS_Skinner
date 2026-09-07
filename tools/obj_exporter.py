@@ -5,7 +5,10 @@ OBJ Exporter for DTS Skinner
 Converts JSON model data to Wavefront OBJ format with materials and textures.
 """
 
-import json
+if __package__:
+    from .model_data import load_model_data
+else:
+    from model_data import load_model_data
 import pathlib
 import zipfile
 import math
@@ -124,7 +127,8 @@ def generate_obj_content(
     # Normals
     lines.append(f"# Normals: {len(normals)}")
     for nx, ny, nz in normals:
-        lines.append(f"vn {nx:.6f} {ny:.6f} {nz:.6f}")
+        # Faces below reverse the JSON winding, so their normals must reverse too.
+        lines.append(f"vn {-nx:.6f} {-ny:.6f} {-nz:.6f}")
     lines.append("")
     
     # Faces grouped by material
@@ -267,7 +271,8 @@ def json_to_obj_zip(
     textures_dir: pathlib.Path,
     output_zip_path: pathlib.Path,
     model_name: str,
-    scale_factor: float = 1.0
+    scale_factor: float = 1.0,
+    fallback_texture: Optional[str] = None
 ) -> pathlib.Path:
     """
     Convert JSON model data to OBJ/MTL and bundle with textures in a ZIP archive.
@@ -293,38 +298,10 @@ def json_to_obj_zip(
     if not textures_dir.exists():
         print(f"Warning: Textures directory not found: {textures_dir}")
     
-    # Load JSON data
-    with open(json_path, 'r') as f:
-        data = json.load(f)
-    
-    # Support both old and new JSON formats
-    # Old format: {'v': [...], 'uv': [...], 'tri': [...]}
-    # New format: {'vertices': [...], 'uvs': [...], 'indices': [...], 'material_textures': [...], 'groups': [...]}
-    
-    if 'v' in data:
-        # Old format (from disc.json, chaingun.json, etc.)
-        vertices = data['v']
-        uvs = data['uv']
-        indices = data['tri']
-        material_textures = []
-        groups = []
-    elif 'vertices' in data:
-        # New format (from export_model.py, export_interior.py)
-        vertices = data['vertices']
-        uvs = data['uvs']
-        indices = data['indices']
-        material_textures = data.get('material_textures', [])
-        groups = data.get('groups', [])
-    else:
-        raise ValueError("JSON format not recognized. Expected 'v' or 'vertices' key.")
-    
-    # Validate we have data
-    if not vertices or not uvs or not indices:
-        raise ValueError("JSON contains empty geometry data")
-    
-    if len(vertices) == 0:
-        raise ValueError("No vertex data in model")
-    
+    data = load_model_data(json_path, fallback_texture)
+    vertices, uvs, indices = (data[key] for key in ("vertices", "uvs", "indices"))
+    material_textures, groups = data["material_textures"], data["groups"]
+
     # Compute normals
     print(f"Computing normals for {len(vertices)//3} vertices...")
     normals = compute_smooth_normals(vertices, indices)
@@ -360,6 +337,10 @@ def json_to_obj_zip(
         print(f"Created {mtl_file.name}")
         
         # Write README
+        missing = [name for name in dict.fromkeys(material_textures)
+                   if not name.startswith('[Slot') and not (textures_dir / name).is_file()]
+        if missing:
+            readme_content += '\nMissing textures (not included):\n' + '\n'.join(missing) + '\n'
         readme_file = temp_path / "README.txt"
         with open(readme_file, 'w') as f:
             f.write(readme_content)
@@ -368,7 +349,7 @@ def json_to_obj_zip(
         # Copy texture files
         textures_copied = []
         if material_textures:
-            for tex_name in material_textures:
+            for tex_name in dict.fromkeys(material_textures):
                 # Skip placeholder materials
                 if not tex_name or tex_name.startswith('[Slot'):
                     continue
@@ -384,7 +365,7 @@ def json_to_obj_zip(
         print(f"Copied {len(textures_copied)} texture(s)")
         
         # Create ZIP archive
-        print(f"Creating ZIP archive: {output_zip_path.name}")
+        print(f"Creating ZIP archive: {getattr(output_zip_path, 'name', 'download')}")
         with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Add OBJ file
             zipf.write(obj_file, obj_file.name)
