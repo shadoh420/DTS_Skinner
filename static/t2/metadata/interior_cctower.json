@@ -1,0 +1,111 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 75
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 16,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_iflo04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iflo04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iflo04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IFLO04",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_iflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iflo01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IFLO01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG02",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG04",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_alarm.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_alarm.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_alarm.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ALARM",
+      "original_slot": 9
+    }
+  ],
+  "source": {
+    "model_name": "interior_cctower",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/cctower.dif",
+    "source_path": "interiors/cctower.dif",
+    "source_sha256": "35aa25441bf8269f3a7620d60bffddf55b410846f1aee9bfabd8b43cf8abad7f",
+    "source_bytes": 16539,
+    "alternatives": [
+      "base/z_mappacks/TWL2-MapPack.vl2:interiors/cctower.dif"
+    ],
+    "materials": [
+      "lava/DS_GENWALL",
+      "lava/DS_IFLO04",
+      "lava/DS_IFLO01",
+      "lava/DS_ILIG02",
+      "lava/DS_ILIG04",
+      "lava/DS_ALARM"
+    ],
+    "version": 44,
+    "triangles": 192,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

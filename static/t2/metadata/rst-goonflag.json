@@ -1,0 +1,69 @@
+{
+  "source": {
+    "model_name": "rst-goonflag",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/rst-goonflag.dts",
+    "source_path": "shapes/rst-goonflag.dts",
+    "source_sha256": "810e0fe79065bbd08d2ab02eff823fd5ba9ecc4eb10d3aa38d2e58b5ea552efa",
+    "source_bytes": 1570,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "rst_goonflag.png"
+    ],
+    "triangles": 21,
+    "selected_detail": "detail1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "polySurface1",
+      "parent": -1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        -23169
+      ],
+      "translation": [
+        -3.311779022216797,
+        -0.008425445295870304,
+        1.8708246720389852e-18
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/rst_goonflag.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/rst_goonflag.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "58a2afeb65e26e6e1b35e0f64a591a7cac48530e3590b6415ae4d7b23d753713",
+      "name": "rst_goonflag.png",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

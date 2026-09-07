@@ -1,0 +1,69 @@
+{
+  "source": {
+    "model_name": "rst-tcmug",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/rst-TCmug.dts",
+    "source_path": "shapes/rst-tcmug.dts",
+    "source_sha256": "b2f6c2f8ebca1daeacfb44affaf2f2aeffb63a54d76f70fc969055ea33e8f7a4",
+    "source_bytes": 6547,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "rst_tribescastcof.png"
+    ],
+    "triangles": 144,
+    "selected_detail": "detail1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "mug:pCylinder1",
+      "parent": -1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        -23169
+      ],
+      "translation": [
+        0.09408397227525711,
+        -0.43757131695747375,
+        9.716035020034791e-17
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/rst_tribescastcof.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/rst_tribescastcof.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "bea6fe764fb7f2c4d9232f8875b0e83bb8c0bd32b9a783742628edcacd14607c",
+      "name": "rst_tribescastcof.png",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

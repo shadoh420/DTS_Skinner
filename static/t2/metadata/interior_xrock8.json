@@ -1,0 +1,72 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 64,
+      "surface_count": 62
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 32,
+      "surface_count": 42
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 16,
+      "surface_count": 32
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 5,
+      "surface_count": 12
+    }
+  ],
+  "null_surfaces_excluded": 221,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ecombo3b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ecombo3b.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ecombo3b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/bd_ecombo3b",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_xrock8",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/xrock8.dif",
+    "source_path": "interiors/xrock8.dif",
+    "source_sha256": "178ca92b00d19045ba7c9092d6e295f4196569774a55cf2e65458751f51fc299",
+    "source_bytes": 74568,
+    "alternatives": [],
+    "materials": [
+      "badlands/bd_ecombo3b"
+    ],
+    "version": 44,
+    "triangles": 62,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 16
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_eterrain2a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_eterrain2a.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_eterrain2a.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "52591fa4b59d3da1bdac73170b504f286ccb22496171781fab96b714c795140c",
+      "name": "badlands/BD_ETERRAIN2A",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_euro_slblocks",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/Euro_slblocks.dif",
+    "source_path": "interiors/euro_slblocks.dif",
+    "source_sha256": "a9df59994cb83d0e37ae2db6903bd0039af9fd8a133c220b9c63b56dab306220",
+    "source_bytes": 5958,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_ETERRAIN2A"
+    ],
+    "version": 44,
+    "triangles": 40,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

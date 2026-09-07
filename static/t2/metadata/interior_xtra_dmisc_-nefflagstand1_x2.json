@@ -1,0 +1,109 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 158
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 1,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_techwall_3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_3.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_3",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_iceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iceilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICEILIG01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL06",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwal01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWAL01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL05",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 9
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_dmisc_-nefflagstand1_x2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_dmisc_-nefflagstand1_x2.dif",
+    "source_path": "interiors/xtra_dmisc_-nefflagstand1_x2.dif",
+    "source_sha256": "12a25f8b0b9023a6666b645b1312c431605f5f9980380b778e7ab2ff175961a2",
+    "source_bytes": 30198,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_TECHWALL_3",
+      "lava/DS_ICEILIG01",
+      "lava/DS_EWALL06",
+      "lava/DS_IWAL01",
+      "lava/DS_EWALL05",
+      "lava/DS_GENWALL"
+    ],
+    "version": 44,
+    "triangles": 379,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

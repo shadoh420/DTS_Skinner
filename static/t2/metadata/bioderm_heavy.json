@@ -1,0 +1,1286 @@
+{
+  "source": {
+    "model_name": "bioderm_heavy",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/bioderm_heavy.dts",
+    "source_path": "shapes/bioderm_heavy.dts",
+    "source_sha256": "1f9700b5eca32696ea8e2124110446a2225ad958b145150ca9cd5c343594f857",
+    "source_bytes": 198113,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/bioderm_heavy.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 36,
+    "materials": [
+      "base.hbioderm"
+    ],
+    "triangles": 1500,
+    "selected_detail": "Detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Bip01 Pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        56,
+        22952,
+        -37,
+        23385
+      ],
+      "translation": [
+        0.0,
+        1.0913936421275139e-11,
+        1.4056795835494995
+      ]
+    },
+    {
+      "name": "Bip01 Spine",
+      "parent": 0,
+      "rotation_quat16": [
+        45,
+        255,
+        -3660,
+        32560
+      ],
+      "translation": [
+        0.11929654330015182,
+        0.0778203010559082,
+        0.001207862631417811
+      ]
+    },
+    {
+      "name": "Bip01 Spine1",
+      "parent": 1,
+      "rotation_quat16": [
+        -30,
+        15,
+        961,
+        32752
+      ],
+      "translation": [
+        0.33181115984916687,
+        -0.0002228839584859088,
+        -4.2466191985113255e-07
+      ]
+    },
+    {
+      "name": "Bip01 Neck",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -11206,
+        30790
+      ],
+      "translation": [
+        0.2804943919181824,
+        -5.7239540183218196e-05,
+        -4.339159032085149e-10
+      ]
+    },
+    {
+      "name": "Bip01 Head",
+      "parent": 3,
+      "rotation_quat16": [
+        143,
+        177,
+        7486,
+        31899
+      ],
+      "translation": [
+        0.0938417837023735,
+        -7.863040707434266e-08,
+        -4.929290049054957e-12
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 4,
+      "rotation_quat16": [
+        -19460,
+        -12799,
+        -12700,
+        19230
+      ],
+      "translation": [
+        0.0005681569455191493,
+        0.4546773135662079,
+        0.004642585292458534
+      ]
+    },
+    {
+      "name": "Bip01 L Clavicle",
+      "parent": 3,
+      "rotation_quat16": [
+        -20792,
+        7190,
+        -22700,
+        8622
+      ],
+      "translation": [
+        -0.032056014984846115,
+        -0.1729356348514557,
+        0.08802325278520584
+      ]
+    },
+    {
+      "name": "Bip01 L UpperArm",
+      "parent": 6,
+      "rotation_quat16": [
+        -1095,
+        -16612,
+        -2642,
+        28098
+      ],
+      "translation": [
+        0.35879969596862793,
+        -8.585077537759389e-09,
+        1.6902852451039507e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Forearm",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        0,
+        17421,
+        27751
+      ],
+      "translation": [
+        0.47671592235565186,
+        7.078365005241949e-09,
+        1.2901168133794272e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Hand",
+      "parent": 8,
+      "rotation_quat16": [
+        21411,
+        442,
+        601,
+        24792
+      ],
+      "translation": [
+        0.4654550552368164,
+        -5.799481783697047e-09,
+        -2.7325565810087937e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Clavicle",
+      "parent": 3,
+      "rotation_quat16": [
+        20968,
+        -6400,
+        -22499,
+        9315
+      ],
+      "translation": [
+        -0.032056018710136414,
+        -0.1729351431131363,
+        -0.088023841381073
+      ]
+    },
+    {
+      "name": "Bip01 R UpperArm",
+      "parent": 10,
+      "rotation_quat16": [
+        -704,
+        16983,
+        -3491,
+        27794
+      ],
+      "translation": [
+        0.35879969596862793,
+        -2.3629050716067468e-08,
+        1.4758016675386898e-07
+      ]
+    },
+    {
+      "name": "Bip01 R Forearm",
+      "parent": 11,
+      "rotation_quat16": [
+        0,
+        0,
+        24904,
+        21294
+      ],
+      "translation": [
+        0.476716011762619,
+        -2.3016264449893242e-09,
+        -2.3365775092543117e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Hand",
+      "parent": 12,
+      "rotation_quat16": [
+        -23514,
+        639,
+        25,
+        22810
+      ],
+      "translation": [
+        0.4654550552368164,
+        -8.394839312586555e-08,
+        2.684269517772009e-08
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 13,
+      "rotation_quat16": [
+        -5160,
+        -2826,
+        22907,
+        22678
+      ],
+      "translation": [
+        0.16631972789764404,
+        0.06594179570674896,
+        0.02292126603424549
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 2,
+      "rotation_quat16": [
+        -2561,
+        -23027,
+        2561,
+        23027
+      ],
+      "translation": [
+        0.055911365896463394,
+        -0.43531563878059387,
+        -0.0006892416859045625
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": 2,
+      "rotation_quat16": [
+        -2561,
+        -23027,
+        2561,
+        23027
+      ],
+      "translation": [
+        0.055911365896463394,
+        -0.43531563878059387,
+        -0.0006892416859045625
+      ]
+    },
+    {
+      "name": "Light0",
+      "parent": 2,
+      "rotation_quat16": [
+        -1951,
+        -23033,
+        2118,
+        23126
+      ],
+      "translation": [
+        0.10578057914972305,
+        0.32098695635795593,
+        0.34084829688072205
+      ]
+    },
+    {
+      "name": "Light1",
+      "parent": 2,
+      "rotation_quat16": [
+        -1951,
+        -23033,
+        2118,
+        23126
+      ],
+      "translation": [
+        0.1098136380314827,
+        0.3109402656555176,
+        -0.3454950153827667
+      ]
+    },
+    {
+      "name": "Bip01 L Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -14409,
+        -29227,
+        -2088,
+        -2729
+      ],
+      "translation": [
+        -0.12996889650821686,
+        -0.05046595633029938,
+        0.23970811069011688
+      ]
+    },
+    {
+      "name": "Bip01 L Calf",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        0,
+        17528,
+        27684
+      ],
+      "translation": [
+        0.7444777488708496,
+        8.502309967184374e-12,
+        2.142549959671669e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Foot",
+      "parent": 20,
+      "rotation_quat16": [
+        -1417,
+        1536,
+        -7000,
+        31942
+      ],
+      "translation": [
+        0.5857997536659241,
+        4.933893293923575e-08,
+        1.9764026859547812e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Toe0",
+      "parent": 21,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        0.31799831986427307,
+        0.31324565410614014,
+        1.2174522723285008e-08
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 21,
+      "rotation_quat16": [
+        -16426,
+        -16886,
+        -16288,
+        -15917
+      ],
+      "translation": [
+        0.31742459535598755,
+        0.20667670667171478,
+        0.0011460910318419337
+      ]
+    },
+    {
+      "name": "FlareL145",
+      "parent": 21,
+      "rotation_quat16": [
+        54,
+        23463,
+        -51,
+        22871
+      ],
+      "translation": [
+        0.32803505659103394,
+        0.21811483800411224,
+        0.02057703398168087
+      ]
+    },
+    {
+      "name": "JetfireL145",
+      "parent": 21,
+      "rotation_quat16": [
+        -23390,
+        958,
+        22906,
+        969
+      ],
+      "translation": [
+        0.45052051544189453,
+        0.17746169865131378,
+        0.0006671858136542141
+      ]
+    },
+    {
+      "name": "Ski0",
+      "parent": 20,
+      "rotation_quat16": [
+        13988,
+        17442,
+        -2028,
+        23867
+      ],
+      "translation": [
+        0.6952171325683594,
+        0.1297963708639145,
+        -0.12159360945224762
+      ]
+    },
+    {
+      "name": "Bip01 R Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -6534,
+        -31898,
+        1486,
+        3358
+      ],
+      "translation": [
+        -0.13723643124103546,
+        -0.04830876365303993,
+        -0.23850882053375244
+      ]
+    },
+    {
+      "name": "Bip01 R Calf",
+      "parent": 27,
+      "rotation_quat16": [
+        0,
+        0,
+        16747,
+        28163
+      ],
+      "translation": [
+        0.7444776296615601,
+        1.6365085286906833e-08,
+        2.050928493702031e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Foot",
+      "parent": 28,
+      "rotation_quat16": [
+        431,
+        -3606,
+        -13697,
+        29544
+      ],
+      "translation": [
+        0.5857998728752136,
+        1.214175782138227e-08,
+        6.508243721725648e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Toe0",
+      "parent": 29,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        0.31799837946891785,
+        0.3132456839084625,
+        -5.792321622344332e-10
+      ]
+    },
+    {
+      "name": "Jetnozzle1",
+      "parent": 29,
+      "rotation_quat16": [
+        16052,
+        16347,
+        16505,
+        16623
+      ],
+      "translation": [
+        0.3203294575214386,
+        0.1987011879682541,
+        1.0969010872940999e-05
+      ]
+    },
+    {
+      "name": "FlareR145",
+      "parent": 29,
+      "rotation_quat16": [
+        494,
+        23198,
+        -534,
+        23129
+      ],
+      "translation": [
+        0.32858383655548096,
+        0.221821591258049,
+        -0.03762827068567276
+      ]
+    },
+    {
+      "name": "JetfireR145",
+      "parent": 29,
+      "rotation_quat16": [
+        -23176,
+        493,
+        23146,
+        744
+      ],
+      "translation": [
+        0.4482015371322632,
+        0.17079930007457733,
+        -0.004015165846794844
+      ]
+    },
+    {
+      "name": "Ski1",
+      "parent": 28,
+      "rotation_quat16": [
+        -7882,
+        21125,
+        10215,
+        21468
+      ],
+      "translation": [
+        0.6622095704078674,
+        0.15913206338882446,
+        0.11626475304365158
+      ]
+    },
+    {
+      "name": "Unlink",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        4,
+        32767
+      ],
+      "translation": [
+        0.0009311094763688743,
+        -0.019877620041370392,
+        0.23020799458026886
+      ]
+    },
+    {
+      "name": "Cam",
+      "parent": 35,
+      "rotation_quat16": [
+        22,
+        0,
+        -23190,
+        23149
+      ],
+      "translation": [
+        -0.00398379098623991,
+        0.1889309138059616,
+        2.108255624771118
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 1935
+    },
+    {
+      "name": "detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 1722
+    },
+    {
+      "name": "detail112",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 112.0,
+      "polyCount": 1551
+    },
+    {
+      "name": "detail96",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 96.0,
+      "polyCount": 1347
+    },
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 80.0,
+      "polyCount": 1145
+    },
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 60.0,
+      "polyCount": 989
+    },
+    {
+      "name": "Detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 40.0,
+      "polyCount": 791
+    },
+    {
+      "name": "Detail24",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 24.0,
+      "polyCount": 608
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": 16.0,
+      "polyCount": 416
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": 10.0,
+      "polyCount": 226
+    },
+    {
+      "name": "Detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": 3.0,
+      "polyCount": 30
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 118,
+      "flags": 32,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 1,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 26,
+      "baseDecalState": 44,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        22,
+        23,
+        24,
+        25
+      ],
+      "frameMatters": [
+        24,
+        25
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "JetFlare"
+    },
+    {
+      "nameIndex": 119,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 1,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 70,
+      "baseDecalState": 44,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [
+    "shapes/bioderm_heavy_back.dsq",
+    "shapes/bioderm_heavy_celflex2.dsq",
+    "shapes/bioderm_heavy_celgora.dsq",
+    "shapes/bioderm_heavy_celjump.dsq",
+    "shapes/bioderm_heavy_celroar.dsq",
+    "shapes/bioderm_heavy_celsalute.dsq",
+    "shapes/bioderm_heavy_celyeah.dsq",
+    "shapes/bioderm_heavy_dieback.dsq",
+    "shapes/bioderm_heavy_diechest.dsq",
+    "shapes/bioderm_heavy_dieforward.dsq",
+    "shapes/bioderm_heavy_diehead.dsq",
+    "shapes/bioderm_heavy_dieknees.dsq",
+    "shapes/bioderm_heavy_dieleglft.dsq",
+    "shapes/bioderm_heavy_dielegrt.dsq",
+    "shapes/bioderm_heavy_diesidelft.dsq",
+    "shapes/bioderm_heavy_diesidert.dsq",
+    "shapes/bioderm_heavy_dieslump.dsq",
+    "shapes/bioderm_heavy_diespin.dsq",
+    "shapes/bioderm_heavy_fall.dsq",
+    "shapes/bioderm_heavy_forward.dsq",
+    "shapes/bioderm_heavy_head.dsq",
+    "shapes/bioderm_heavy_headside.dsq",
+    "shapes/bioderm_heavy_idlepda.dsq",
+    "shapes/bioderm_heavy_jet.dsq",
+    "shapes/bioderm_heavy_jump.dsq",
+    "shapes/bioderm_heavy_land.dsq",
+    "shapes/bioderm_heavy_lookde.dsq",
+    "shapes/bioderm_heavy_lookms.dsq",
+    "shapes/bioderm_heavy_looknw.dsq",
+    "shapes/bioderm_heavy_recoilde.dsq",
+    "shapes/bioderm_heavy_root.dsq",
+    "shapes/bioderm_heavy_side.dsq",
+    "shapes/bioderm_heavy_ski.dsq",
+    "shapes/bioderm_heavy_standjump.dsq",
+    "shapes/bioderm_heavy_tauntbest.dsq",
+    "shapes/bioderm_heavy_tauntbull.dsq"
+  ],
+  "script_sequence_bindings": [
+    {
+      "index": 0,
+      "path": "shapes/bioderm_heavy_root.dsq",
+      "alias": "root",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/bioderm_heavy_forward.dsq",
+      "alias": "run",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/bioderm_heavy_back.dsq",
+      "alias": "back",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/bioderm_heavy_side.dsq",
+      "alias": "side",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/bioderm_heavy_lookde.dsq",
+      "alias": "look",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/bioderm_heavy_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/bioderm_heavy_head.dsq",
+      "alias": "head",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/bioderm_heavy_headside.dsq",
+      "alias": "headside",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/bioderm_heavy_jet.dsq",
+      "alias": "jet",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/bioderm_heavy_land.dsq",
+      "alias": "land",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/bioderm_heavy_fall.dsq",
+      "alias": "fall",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/bioderm_heavy_jump.dsq",
+      "alias": "jump",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/bioderm_heavy_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/bioderm_heavy_idlepda.dsq",
+      "alias": "idlePDA",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/bioderm_heavy_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/bioderm_heavy_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/bioderm_heavy_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/bioderm_heavy_dieknees.dsq",
+      "alias": "death4",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/bioderm_heavy_diesidelft.dsq",
+      "alias": "death5",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/bioderm_heavy_diesidert.dsq",
+      "alias": "death6",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/bioderm_heavy_dieleglft.dsq",
+      "alias": "death7",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/bioderm_heavy_dielegrt.dsq",
+      "alias": "death8",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/bioderm_heavy_dieslump.dsq",
+      "alias": "death9",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/bioderm_heavy_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/bioderm_heavy_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/bioderm_heavy_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/bioderm_heavy_celyeah.dsq",
+      "alias": "cel2",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/bioderm_heavy_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/bioderm_heavy_celroar.dsq",
+      "alias": "cel4",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/bioderm_heavy_tauntbull.dsq",
+      "alias": "cel5",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/bioderm_heavy_celflex2.dsq",
+      "alias": "cel6",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/bioderm_heavy_celgora.dsq",
+      "alias": "cel7",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/bioderm_heavy_celjump.dsq",
+      "alias": "cel8",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/bioderm_heavy_ski.dsq",
+      "alias": "ski",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/bioderm_heavy_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/bioderm_heavy_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts/bioderm_heavy.cs",
+      "source": "base/scripts.vl2:scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 0,
+      "path": "shapes/bioderm_heavy_root.dsq",
+      "alias": "root",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/bioderm_heavy_forward.dsq",
+      "alias": "run",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/bioderm_heavy_back.dsq",
+      "alias": "back",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/bioderm_heavy_side.dsq",
+      "alias": "side",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/bioderm_heavy_lookde.dsq",
+      "alias": "look",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/bioderm_heavy_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/bioderm_heavy_head.dsq",
+      "alias": "head",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/bioderm_heavy_headside.dsq",
+      "alias": "headside",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/bioderm_heavy_jet.dsq",
+      "alias": "jet",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/bioderm_heavy_land.dsq",
+      "alias": "land",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/bioderm_heavy_fall.dsq",
+      "alias": "fall",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/bioderm_heavy_jump.dsq",
+      "alias": "jump",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/bioderm_heavy_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/bioderm_heavy_idlepda.dsq",
+      "alias": "idlePDA",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/bioderm_heavy_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/bioderm_heavy_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/bioderm_heavy_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/bioderm_heavy_dieknees.dsq",
+      "alias": "death4",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/bioderm_heavy_diesidelft.dsq",
+      "alias": "death5",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/bioderm_heavy_diesidert.dsq",
+      "alias": "death6",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/bioderm_heavy_dieleglft.dsq",
+      "alias": "death7",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/bioderm_heavy_dielegrt.dsq",
+      "alias": "death8",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/bioderm_heavy_dieslump.dsq",
+      "alias": "death9",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/bioderm_heavy_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/bioderm_heavy_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/bioderm_heavy_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/bioderm_heavy_celyeah.dsq",
+      "alias": "cel2",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/bioderm_heavy_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/bioderm_heavy_celroar.dsq",
+      "alias": "cel4",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/bioderm_heavy_tauntbull.dsq",
+      "alias": "cel5",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/bioderm_heavy_celflex2.dsq",
+      "alias": "cel6",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/bioderm_heavy_celgora.dsq",
+      "alias": "cel7",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/bioderm_heavy_celjump.dsq",
+      "alias": "cel8",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/bioderm_heavy_ski.dsq",
+      "alias": "ski",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/bioderm_heavy_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/bioderm_heavy_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts_extracted/scripts/bioderm_heavy.cs",
+      "source": "loose:base/scripts_extracted/scripts/bioderm_heavy.cs"
+    }
+  ],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.hbioderm.png",
+      "source": "base/skins.vl2:textures/skins/base.hbioderm.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "base.hbioderm",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "FlareL",
+    "FlareR",
+    "JetfireL",
+    "JetfireR"
+  ],
+  "empty_finer_details": []
+}

@@ -1,0 +1,98 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 418
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 76,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ewall06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL06",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihaceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihaceilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihaceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEILIG01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_genfloor.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genfloor.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genfloor.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENFLOOR",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/grid_1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/grid_1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/grid_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/GRID_1",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/grid_rusty_1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/grid_rusty_1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/grid_rusty_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/GRID_RUSTY_1",
+      "original_slot": 9
+    }
+  ],
+  "source": {
+    "model_name": "interior_epicrates_bridge",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/epicrates_bridge.dif",
+    "source_path": "interiors/epicrates_bridge.dif",
+    "source_sha256": "37c6e2cfaab023574bfe89a85a3c8712dde322c7d4a43b540a0333ce4b7c2bb5",
+    "source_bytes": 71881,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EWALL06",
+      "lava/DS_IHACEILIG01",
+      "lava/DS_GENFLOOR",
+      "lava/GRID_1",
+      "lava/GRID_RUSTY_1"
+    ],
+    "version": 44,
+    "triangles": 990,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

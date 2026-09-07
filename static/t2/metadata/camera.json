@@ -1,0 +1,485 @@
+{
+  "source": {
+    "model_name": "camera",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/camera.dts",
+    "source_path": "shapes/camera.dts",
+    "source_sha256": "47034656f24e95e636699cbbd864925cb36a96353382385319e6c89e7f6af35e",
+    "source_bytes": 34845,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/camera.dts"
+    ],
+    "sequences": 6,
+    "external_sequences": 0,
+    "materials": [
+      "camera"
+    ],
+    "triangles": 286,
+    "selected_detail": "Detail_30"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumDeployBall",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.11251051723957062
+      ]
+    },
+    {
+      "name": "DumTurn",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -1.7748623821137183e-16
+      ]
+    },
+    {
+      "name": "DumElevate",
+      "parent": 3,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        8.271913328137664e-17,
+        0.0,
+        4.278256213974084e-17
+      ]
+    },
+    {
+      "name": "Iris_30",
+      "parent": 4,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.293371350844172e-15,
+        -0.12220312654972076,
+        2.218503425410745e-08
+      ]
+    },
+    {
+      "name": "Ball_30",
+      "parent": 4,
+      "rotation_quat16": [
+        -22035,
+        7159,
+        7159,
+        22035
+      ],
+      "translation": [
+        -1.3056710067646396e-15,
+        -2.541393095967237e-09,
+        -7.450580596923828e-09
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -5.693163718234473e-09,
+        -0.15990722179412842,
+        2.4432374345906283e-08
+      ]
+    },
+    {
+      "name": "DumActFootL",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.20152157545089722,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "FootL_30",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.034409698098897934,
+        -6.298218299636573e-16,
+        4.101956108115701e-09
+      ]
+    },
+    {
+      "name": "DumActFootR",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.2015215903520584,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "FootR_30",
+      "parent": 10,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.03440968319773674,
+        9.056091930843163e-16,
+        4.101954331758861e-09
+      ]
+    },
+    {
+      "name": "BaseL_30",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "BaseR_30",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Ring_30",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.11251051723957062
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_30",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 30.0,
+      "polyCount": 298
+    },
+    {
+      "name": "Detail_18",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 18.0,
+      "polyCount": 298
+    },
+    {
+      "name": "Detail_9",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 9.0,
+      "polyCount": 237
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 237
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 161
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 33,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.13333432376384735,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 3,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Turn"
+    },
+    {
+      "nameIndex": 34,
+      "flags": 0,
+      "numKeyframes": 3,
+      "duration": 0.06666772067546844,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 5,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 3,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        4
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Elevate"
+    },
+    {
+      "nameIndex": 35,
+      "flags": 0,
+      "numKeyframes": 16,
+      "duration": 0.5000010132789612,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 8,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 3,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2,
+        8,
+        10
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 36,
+      "flags": 16,
+      "numKeyframes": 1,
+      "duration": 0.0666676014661789,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 56,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 3,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 37,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 56,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 3,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 38,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 56,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 3,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/camera.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/camera.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/camera.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "camera",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

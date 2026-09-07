@@ -1,0 +1,97 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 256,
+      "surface_count": 170
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 128,
+      "surface_count": 126
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 64,
+      "surface_count": 107
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 32,
+      "surface_count": 63
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 16,
+      "surface_count": 42
+    },
+    {
+      "version": 0,
+      "detail_level": 5,
+      "min_pixels": 8,
+      "surface_count": 29
+    }
+  ],
+  "null_surfaces_excluded": 658,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ecombo3d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ecombo3d.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ecombo3d.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6a5d47fc1a5f7c9e450d183f05d4b8e8ae6600979ab9eb38880bdc785fbd8533",
+      "name": "badlands/bd_ecombo3d",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_eterrain3a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_eterrain3a.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_eterrain3a.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "4befa1cc515cc8854086736cdbbb5dcf4b152be8cddab15a974970111cbaf362",
+      "name": "badlands/bd_eterrain3a",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_xrocka",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/xrocka.dif",
+    "source_path": "interiors/xrocka.dif",
+    "source_sha256": "089b8767e14266ea801d54d7884ce87177cde24ca997449d9b0abaa1380be8d6",
+    "source_bytes": 265036,
+    "alternatives": [],
+    "materials": [
+      "badlands/bd_ecombo3d",
+      "badlands/bd_eterrain3a"
+    ],
+    "version": 44,
+    "triangles": 170,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

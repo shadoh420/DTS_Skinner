@@ -1,0 +1,180 @@
+{
+  "source": {
+    "model_name": "teamlogo_ds",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/teamlogo_ds.dts",
+    "source_path": "shapes/teamlogo_ds.dts",
+    "source_sha256": "fde70fef17adad21a24f7f1f4cb15c5787f0efa979e7a5962fb00c63b3146425",
+    "source_bytes": 35309,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/teamlogo_ds.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "screenstatic1"
+    ],
+    "triangles": 302,
+    "selected_detail": "detail64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        141.00413513183594,
+        53.27435302734375,
+        21.415273666381836
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DummyRotate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -141.0032196044922,
+        -53.281307220458984,
+        0.4427032470703125
+      ]
+    },
+    {
+      "name": "logo64",
+      "parent": 2,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.011945206671953201,
+        -7.493729015095596e-08,
+        3.6232047080993652
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 350
+    },
+    {
+      "name": "detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 188
+    },
+    {
+      "name": "detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 164
+    },
+    {
+      "name": "detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 144
+    },
+    {
+      "name": "detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 1.0,
+      "polyCount": 34
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 11,
+      "flags": 16,
+      "numKeyframes": 121,
+      "duration": 4.033334255218506,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 1,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    10,
+    0,
+    1,
+    32,
+    20
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/screenstatic1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/screenstatic1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/screenstatic1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "screenstatic1",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

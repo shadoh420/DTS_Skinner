@@ -1,0 +1,309 @@
+{
+  "source": {
+    "model_name": "vehicle_grav_tank_debris",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_grav_tank_debris.dts",
+    "source_path": "shapes/vehicle_grav_tank_debris.dts",
+    "source_sha256": "34820b7859b93fe710464d109bee5c0cb0c656eb9466d8d5515539f6d84dff8e",
+    "source_bytes": 67930,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_grav_tank_debris.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Vehicle_grav_tank_bodyMain",
+      "vehicle_grav_tank_bodyside1",
+      "vehicle_grav_tank_bodyside2"
+    ],
+    "triangles": 688,
+    "selected_detail": "Detail_128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.7129851193640206e-08,
+        0.752837061882019,
+        -1.3302407264709473
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris09_",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -5.960464477539063e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris06_",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -5.960464477539063e-08,
+        -0.7528371810913086,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris07_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.960464477539063e-08,
+        -0.7528371810913086,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris08_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        12539,
+        0,
+        30272
+      ],
+      "translation": [
+        0.0,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris11_",
+      "parent": 1,
+      "rotation_quat16": [
+        -30272,
+        0,
+        12539,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris01_",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris02_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris03_",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris04_",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris05_",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.7528369426727295,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "debris10_",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.7528371810913086,
+        2.4872336387634277
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 736
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 560
+    },
+    {
+      "name": "Detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 40.0,
+      "polyCount": 390
+    },
+    {
+      "name": "Detail11",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 11.0,
+      "polyCount": 239
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 6.0,
+      "polyCount": 91
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 32
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodymain.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_tank_bodyMain.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_tank_bodyMain.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_tank_bodyMain",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside1",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside2",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

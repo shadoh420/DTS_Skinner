@@ -1,0 +1,563 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 768,
+      "surface_count": 5381
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 10,
+      "surface_count": 1126
+    }
+  ],
+  "null_surfaces_excluded": 970,
+  "degenerate_triangles_skipped": 690,
+  "lightmap_count": 17,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/gtext5.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext5.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "7c8c119c1d807c4c31332b7ae51df041d5152a99b1dc82d670751837657edcd2",
+      "name": "lava/GTEXT5",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/gtext2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "e228c4ac886989406eee70de232fb47f7ceb3f9f51e6ffa39a3a02ad7fdfafaa",
+      "name": "lava/GTEXT2",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/gtext1a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext1a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT1A",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/gtext3.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "2006b750bdb98ac8e7067849ab1bc8455c0240edce0a99a1fb52946b72f302fb",
+      "name": "lava/GTEXT3",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/gtext4.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext4.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "f1087cddaee59de8011c63b358724eaee1384d65806846a435e598ce835c5983",
+      "name": "lava/GTEXT4",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/greylite1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylite1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "386648ed1b19a61d29044d617b9a2d2fe69f9c32e62b1215aeb9f737df62f188",
+      "name": "lava/GREYLITE1",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_Neffloor1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR1",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lava/ds_etechbrdr2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_etechbrdr2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_etechbrdr2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ETECHBRDR2",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lava/ttrim2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ttrim2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/TTRIM2",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefwall1.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefWall1.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefWall1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFWALL1",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue1.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue1.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE1",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwaldeco01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwaldeco01a.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwaldeco01a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWALDECO01A",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/lava/gtextpipe1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtextpipe1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXTPIPE1",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/lava/greylitetrim.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylitetrim.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITETRIM",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue2.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue2.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE2",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/lava/tplate2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/tplate2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "788ae3e2cc34d60c21c4194150ee016feeb7be1ba61f10e4e0d0f6fc80600bd4",
+      "name": "lava/TPLATE2",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor6.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefFloor6.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefFloor6.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR6",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_Neffloor2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR2",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/lava/ds_ibor01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ibor01a.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ibor01a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IBOR01A",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/lava/greylitetrim2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylitetrim2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "dee0dbaf1e7502886e081b4730d3246f5454010e60306dfa19f90e6f548031ec",
+      "name": "lava/GREYLITETRIM2",
+      "original_slot": 25
+    },
+    {
+      "virtual_path": "textures/lava/radwarn.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/radwarn.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "32ad531f718391f59eea96b67bd59cdc1c276c8ed6aaa7da9eadfbd8ab2e3d6f",
+      "name": "lava/RADWARN",
+      "original_slot": 26
+    },
+    {
+      "virtual_path": "textures/lava/greylite2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylite2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITE2",
+      "original_slot": 27
+    },
+    {
+      "virtual_path": "textures/lava/gtext2a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext2a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT2A",
+      "original_slot": 28
+    },
+    {
+      "virtual_path": "textures/lava/gtext2b.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext2b.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT2B",
+      "original_slot": 29
+    },
+    {
+      "virtual_path": "textures/lava/grill1a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/grill1a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "92f01a8518edf9befacd396b541ff7a40fed1b6da871789ec2736da0e1cf7643",
+      "name": "lava/GRILL1A",
+      "original_slot": 30
+    },
+    {
+      "virtual_path": "textures/lava/ds_ichute02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ichute02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ichute02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICHUTE02",
+      "original_slot": 31
+    },
+    {
+      "virtual_path": "textures/lava/gtext1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT1",
+      "original_slot": 32
+    },
+    {
+      "virtual_path": "textures/lava/tcement1a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/tcement1a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "6b5674e66dd152e1b087a6c520c9524811da8be8383476134d58225489955b98",
+      "name": "lava/TCEMENT1A",
+      "original_slot": 33
+    },
+    {
+      "virtual_path": "textures/lava/stplate2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/Stplate2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/STPLATE2",
+      "original_slot": 34
+    },
+    {
+      "virtual_path": "textures/lava/stplate0021.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/stplate0021.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c844c2316d155df2529df2c8ea220ea9e73330791f764359c80e34a4a4b2682f",
+      "name": "lava/STPLATE0021",
+      "original_slot": 35
+    },
+    {
+      "virtual_path": "textures/lava/stplate12.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/STPLATE12.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "b11b5af9bc5f7760eeae4f67cad3f231cbc72f00cb7303a31edc91aadd2806c7",
+      "name": "lava/STPLATE12",
+      "original_slot": 36
+    },
+    {
+      "virtual_path": "textures/lava/ds_etechbor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_etechbor01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_etechbor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ETECHBOR01",
+      "original_slot": 37
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor3.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_Neffloor3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR3",
+      "original_slot": 38
+    },
+    {
+      "virtual_path": "textures/lava/stplate14.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/stplate14.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "e58211d766e9c7056a6b2c50ea130e61060f8e9c950194f1bfdf0e764bf4583b",
+      "name": "lava/STPLATE14",
+      "original_slot": 39
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG05",
+      "original_slot": 40
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihaceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihaceilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihaceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEILIG01",
+      "original_slot": 41
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihacei01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihacei01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihacei01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEI01",
+      "original_slot": 42
+    },
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 43
+    },
+    {
+      "virtual_path": "textures/lava/tplate1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/tplate1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "28673bb87e492df206204df48021523a145e7443e895e6e020408b0797dccd8e",
+      "name": "lava/TPLATE1",
+      "original_slot": 44
+    },
+    {
+      "virtual_path": "textures/lava/stplate5a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/STPLATE5a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c07fa18b937fd4761fe253db483a57cceb5cbe69ea1fa20ce08b7e6b90fdcbb3",
+      "name": "lava/STPLATE5A",
+      "original_slot": 45
+    },
+    {
+      "virtual_path": "textures/lava/stplate13.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/STPLATE13.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "86cee5218f30047ac416e1e4de752acb67f22dd6a322b39c7325e1b5cac765d9",
+      "name": "lava/STPLATE13",
+      "original_slot": 46
+    },
+    {
+      "virtual_path": "textures/lava/stplate10c.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/STPLATE10c.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "760fb8835637e9b4269aadc6e670ae9fcb08f07f93eed99077f7d3d2920f0c6c",
+      "name": "lava/STPLATE10C",
+      "original_slot": 47
+    },
+    {
+      "virtual_path": "textures/lava/displaymxscar.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/displaymxscar.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "1a70bcb41da09812463af57f403bc62e6c88dcb4b2f69999deb5de3762e50937",
+      "name": "lava/DISPLAYMXSCAR",
+      "original_slot": 48
+    },
+    {
+      "virtual_path": "textures/lava/tlite6.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/tlite6.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "964752dd49ed8bc04970b2b9bb5f67455b40bd161f3da5cd85a8266b5303482d",
+      "name": "lava/TLITE6",
+      "original_slot": 49
+    },
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 50
+    },
+    {
+      "virtual_path": "textures/lava/ds_mriveted2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_mriveted2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_mriveted2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_MRIVETED2",
+      "original_slot": 51
+    },
+    {
+      "virtual_path": "textures/lava/ds_jet02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_jet02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_jet02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_JET02",
+      "original_slot": 52
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewal01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWAL01",
+      "original_slot": 53
+    },
+    {
+      "virtual_path": "textures/lava/stplate10a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/STPLATE10a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/STPLATE10A",
+      "original_slot": 54
+    },
+    {
+      "virtual_path": "textures/lava/ds_inolite.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_inolite.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_INOLITE",
+      "original_slot": 55
+    }
+  ],
+  "source": {
+    "model_name": "interior_dbase_tokrz_scarabrae",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/dbase_tokrz_scarabrae.dif",
+    "source_path": "interiors/dbase_tokrz_scarabrae.dif",
+    "source_sha256": "b73ffcf80392c985efa665afe9a94e8d510b34e7a0e0f731498cf6239373465e",
+    "source_bytes": 2013798,
+    "alternatives": [],
+    "materials": [
+      "lava/GTEXT5",
+      "lava/GTEXT2",
+      "lava/GTEXT1A",
+      "lava/GTEXT3",
+      "lava/GTEXT4",
+      "lava/GREYLITE1",
+      "lava/DS_NEFBLUE",
+      "lava/DS_NEFFLOOR1",
+      "lava/DS_ETECHBRDR2",
+      "lava/TTRIM2",
+      "lava/DS_NEFWALL1",
+      "lava/DS_NEFBLUE1",
+      "lava/DS_IWALDECO01A",
+      "lava/GTEXTPIPE1",
+      "lava/GREYLITETRIM",
+      "lava/DS_NEFBLUE2",
+      "lava/TPLATE2",
+      "lava/DS_NEFFLOOR6",
+      "lava/DS_NEFFLOOR2",
+      "lava/DS_IBOR01A",
+      "lava/GREYLITETRIM2",
+      "lava/RADWARN",
+      "lava/GREYLITE2",
+      "lava/GTEXT2A",
+      "lava/GTEXT2B",
+      "lava/GRILL1A",
+      "lava/DS_ICHUTE02",
+      "lava/GTEXT1",
+      "lava/TCEMENT1A",
+      "lava/STPLATE2",
+      "lava/STPLATE0021",
+      "lava/STPLATE12",
+      "lava/DS_ETECHBOR01",
+      "lava/DS_NEFFLOOR3",
+      "lava/STPLATE14",
+      "lava/DS_ILIG05",
+      "lava/DS_IHACEILIG01",
+      "lava/DS_IHACEI01",
+      "lava/DS_EFLOOR1",
+      "lava/TPLATE1",
+      "lava/STPLATE5A",
+      "lava/STPLATE13",
+      "lava/STPLATE10C",
+      "lava/DISPLAYMXSCAR",
+      "lava/TLITE6",
+      "lava/DS_GENWALL",
+      "lava/DS_MRIVETED2",
+      "lava/DS_JET02",
+      "lava/DS_EWAL01",
+      "lava/STPLATE10A",
+      "lava/DS_INOLITE"
+    ],
+    "version": 44,
+    "triangles": 13120,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

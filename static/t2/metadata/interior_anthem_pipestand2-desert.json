@@ -1,0 +1,95 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 57
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/desert/iwal2020.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/desert/iwal2020.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "482df6b2af37458fa2a66266af23285a9abc49cd4005e9df2388a872cf1f14d3",
+      "name": "desert/IWAL2020",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/desert/iwal2021.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/desert/iwal2021.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "49682c4142f766a6a57df3e61ffc585090131db68e5213e68135c999e9f076c8",
+      "name": "desert/IWAL2021",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/desert/iwal2022.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/desert/iwal2022.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c9829736a74af5d066d5556322d8cecd8d713cf99b40ea5bd45b080c35812415",
+      "name": "desert/IWAL2022",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02B",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_anthem_pipestand2-desert",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/anthem_pipestand2-desert.dif",
+    "source_path": "interiors/anthem_pipestand2-desert.dif",
+    "source_sha256": "9e0e9bd01c68e380ceeb06131c22ba106266e433caab43d08ec12f511cc7d1d8",
+    "source_bytes": 19935,
+    "alternatives": [],
+    "materials": [
+      "desert/IWAL2020",
+      "lush/BE_ITEBOR02",
+      "desert/IWAL2021",
+      "desert/IWAL2022",
+      "lush/BE_ITEBOR02B"
+    ],
+    "version": 44,
+    "triangles": 118,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

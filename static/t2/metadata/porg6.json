@@ -1,0 +1,145 @@
+{
+  "source": {
+    "model_name": "porg6",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/porg6.dts",
+    "source_path": "shapes/porg6.dts",
+    "source_sha256": "cfc459c34cfaff79ffe1845c5d84427bb432732acd4506680b1df03526f143ae",
+    "source_bytes": 10142,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/porg6.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "cactus"
+    ],
+    "triangles": 112,
+    "selected_detail": "Detail50"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.979403495788574,
+        4.563266277313232,
+        -0.07508659362792969
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.2947713136672974,
+        -3.0730068683624268,
+        0.0
+      ]
+    },
+    {
+      "name": "Cactus50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.688125491142273,
+        -1.4912388324737549,
+        2.1183037757873535
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.3543537855148315,
+        -1.2528305053710938,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 50.0,
+      "polyCount": 131
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 68
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 52
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 14
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/cactus.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/cactus.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/cactus.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "cactus",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,54 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 68
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 3,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_techwall_2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_2",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_gravestone_tombstone3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_GraveStone_tombstone3.dif",
+    "source_path": "interiors/xtra_gravestone_tombstone3.dif",
+    "source_sha256": "dfbfa820794bf31f1059516003019ee48d1a1c956b7ff93e0a339a70a2bf4b68",
+    "source_bytes": 19217,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_TECHWALL_2"
+    ],
+    "version": 44,
+    "triangles": 141,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

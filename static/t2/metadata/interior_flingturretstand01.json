@@ -1,0 +1,88 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 13
+    }
+  ],
+  "null_surfaces_excluded": 11,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_iwal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwalcap02c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwalcap02c.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwalcap02c.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "62669adfe149241ba978e0d5c8d7f3d5a61bbf935a40d235ed6a267cce662f18",
+      "name": "ice/SW_IWALCAP02C",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL02",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_flingturretstand01",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S5maps.vl2:interiors/flingturretstand01.dif",
+    "source_path": "interiors/flingturretstand01.dif",
+    "source_sha256": "04a5977215197dc00b84d8252cae5c6f0d9aa90ca56d2f09d3cf47746f12b5f3",
+    "source_bytes": 8624,
+    "alternatives": [],
+    "materials": [
+      "ice/SW_IWAL03",
+      "ice/SW_IWAL01",
+      "ice/SW_IWALCAP02C",
+      "ice/SW_EWAL02"
+    ],
+    "version": 44,
+    "triangles": 21,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

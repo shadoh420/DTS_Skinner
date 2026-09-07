@@ -1,0 +1,698 @@
+{
+  "source": {
+    "model_name": "turret_base_mpb",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "2 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_base_mpb.dts",
+    "source_path": "shapes/turret_base_mpb.dts",
+    "source_sha256": "f2c1a19c6b1274e8a0e88eaf5967a2ee5a4aa98ac03125d6e6ea532d4dbae471",
+    "source_bytes": 64128,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_base_mpb.dts"
+    ],
+    "sequences": 6,
+    "external_sequences": 0,
+    "materials": [
+      "turret_base_large",
+      "vehicle_land_mpb1"
+    ],
+    "triangles": 442,
+    "selected_detail": "Detail64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumDeploy",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -1.5
+      ]
+    },
+    {
+      "name": "BaseMain64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.3491654843610377e-08,
+        0.1558278203010559,
+        0.9128367900848389
+      ]
+    },
+    {
+      "name": "BaseWingL64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.12155327945947647,
+        0.34527814388275146,
+        0.9128367900848389
+      ]
+    },
+    {
+      "name": "BaseWingR64",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.12155327945947647,
+        0.34527814388275146,
+        0.9128367900848389
+      ]
+    },
+    {
+      "name": "DumActivatePlatform",
+      "parent": 2,
+      "rotation_quat16": [
+        -11206,
+        0,
+        0,
+        30790
+      ],
+      "translation": [
+        0.0064292186871171,
+        0.47589313983917236,
+        1.265584945678711
+      ]
+    },
+    {
+      "name": "DumTurn",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.006429195404052734,
+        -0.7902400493621826,
+        0.002628454240038991
+      ]
+    },
+    {
+      "name": "Arms64",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.006429195404052734,
+        0.26177388429641724,
+        -0.0026284614577889442
+      ]
+    },
+    {
+      "name": "DumActivateElevate",
+      "parent": 7,
+      "rotation_quat16": [
+        11206,
+        0,
+        0,
+        30790
+      ],
+      "translation": [
+        0.006429184228181839,
+        0.02310142107307911,
+        1.36919105052948
+      ]
+    },
+    {
+      "name": "DumElevate",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        2.7152839976452015e-08,
+        -9.538197787151148e-08
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.006429200526326895,
+        -0.23673559725284576,
+        0.0019551082514226437
+      ]
+    },
+    {
+      "name": "Sleeve64",
+      "parent": 10,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.006429200526326895,
+        -0.19526542723178864,
+        0.0020116446539759636
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.006429200526326895,
+        -0.23673562705516815,
+        0.7719629406929016
+      ]
+    },
+    {
+      "name": "BasePlatform64",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.006429195404052734,
+        -0.7286959290504456,
+        0.002628440735861659
+      ]
+    },
+    {
+      "name": "PostBaseL64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6807265281677246,
+        -1.9570378065109253,
+        0.3140449523925781
+      ]
+    },
+    {
+      "name": "PostBaseR64",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.6807265281677246,
+        -1.9570378065109253,
+        0.3140449523925781
+      ]
+    },
+    {
+      "name": "PostCapL64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6807265281677246,
+        -1.9570378065109253,
+        1.6563185453414917
+      ]
+    },
+    {
+      "name": "PostCapR64",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.6807265281677246,
+        -1.9570378065109253,
+        1.6563185453414917
+      ]
+    },
+    {
+      "name": "PostLightL64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6807265281677246,
+        -1.9008756875991821,
+        1.3137686252593994
+      ]
+    },
+    {
+      "name": "PostLightLitL64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6807265281677246,
+        -1.9008756875991821,
+        1.3137686252593994
+      ]
+    },
+    {
+      "name": "PostLightLitR64",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.6807265281677246,
+        -1.9008756875991821,
+        1.3137686252593994
+      ]
+    },
+    {
+      "name": "PostLightR64",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.6807265281677246,
+        -1.9008756875991821,
+        1.3137686252593994
+      ]
+    },
+    {
+      "name": "PostTopL64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6807265281677246,
+        -1.9570378065109253,
+        1.5090659856796265
+      ]
+    },
+    {
+      "name": "PostTopR64",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.6807265281677246,
+        -1.9570378065109253,
+        1.5090659856796265
+      ]
+    },
+    {
+      "name": "Floor_64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.6048687712100218e-08,
+        -0.5912514328956604,
+        -2.4744670391082764
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.8300741910934448,
+        -0.0011043399572372437
+      ]
+    },
+    {
+      "name": "Col-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.8300742506980896,
+        1.3351329565048218
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 523
+    },
+    {
+      "name": "Detail28",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 28.0,
+      "polyCount": 363
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 12.0,
+      "polyCount": 250
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 166
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 60
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -2.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 81,
+      "flags": 0,
+      "numKeyframes": 21,
+      "duration": 0.6666675209999084,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 18,
+      "baseDecalState": 28,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        6,
+        9
+      ],
+      "translationMatters": [
+        2
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 82,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.1333342045545578,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 42,
+      "baseTranslation": 21,
+      "baseScale": 0,
+      "baseObjectState": 18,
+      "baseDecalState": 28,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        7
+      ],
+      "translationMatters": [
+        2
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Turn"
+    },
+    {
+      "nameIndex": 83,
+      "flags": 0,
+      "numKeyframes": 3,
+      "duration": 0.0666680783033371,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 47,
+      "baseTranslation": 26,
+      "baseScale": 0,
+      "baseObjectState": 18,
+      "baseDecalState": 28,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        10
+      ],
+      "translationMatters": [
+        2
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Elevate"
+    },
+    {
+      "nameIndex": 84,
+      "flags": 16,
+      "numKeyframes": 2,
+      "duration": 0.0666676014661789,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 50,
+      "baseTranslation": 29,
+      "baseScale": 0,
+      "baseObjectState": 18,
+      "baseDecalState": 28,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        16,
+        17
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    },
+    {
+      "nameIndex": 85,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333340287208557,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 50,
+      "baseTranslation": 29,
+      "baseScale": 0,
+      "baseObjectState": 22,
+      "baseDecalState": 28,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 86,
+      "flags": 0,
+      "numKeyframes": 132,
+      "duration": 4.366667747497559,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 50,
+      "baseTranslation": 29,
+      "baseScale": 0,
+      "baseObjectState": 22,
+      "baseDecalState": 336,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        2
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_base_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_base_large.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_base_large.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_base_large",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_land_mpb1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_land_mpb1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_land_mpb1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_land_mpb1",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "PostLightLitL",
+    "PostLightLitR"
+  ],
+  "empty_finer_details": []
+}

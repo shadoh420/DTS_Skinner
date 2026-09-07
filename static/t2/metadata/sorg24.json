@@ -1,0 +1,116 @@
+{
+  "source": {
+    "model_name": "sorg24",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/sorg24.dts",
+    "source_path": "shapes/sorg24.dts",
+    "source_sha256": "6ea8d7deb9021b67fa8375251523d072c860afe23d65a296051cf3f45f898729",
+    "source_bytes": 4436,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/sorg24.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "WinScotchArt"
+    ],
+    "triangles": 32,
+    "selected_detail": "Detail64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.06958544254302979,
+        -0.003116718027740717,
+        -0.003259994089603424
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ScBroom64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -28377,
+        16383
+      ],
+      "translation": [
+        0.00350990891456604,
+        -0.0028427541255950928,
+        0.8445000052452087
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 32
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/winscotchart.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/WinScotchArt.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/WinScotchArt.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "WinScotchArt",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

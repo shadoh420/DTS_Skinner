@@ -1,0 +1,398 @@
+{
+  "source": {
+    "model_name": "borg16-autumn",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/borg16-Autumn.dts",
+    "source_path": "shapes/borg16-autumn.dts",
+    "source_sha256": "87e9fb0a6e32fe84b043c5a1de2aae210f61848fcea5624dd3172569a2a5e395",
+    "source_bytes": 64331,
+    "version": 22,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Oldwood",
+      "Branch6",
+      "Branch7",
+      "OldwoodBran01"
+    ],
+    "triangles": 1489,
+    "selected_detail": "Detail75"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.3157918453216553,
+        0.8796390295028687,
+        0.31728029251098633
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605498313903809,
+        0.20435822010040283,
+        0.0009135901927947998
+      ]
+    },
+    {
+      "name": "Trunk75",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.3676731586456299,
+        -1.4155348539352417,
+        -0.6388106346130371
+      ]
+    },
+    {
+      "name": "BranchA75",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.3907753527164459,
+        0.2725433111190796,
+        10.040898323059082
+      ]
+    },
+    {
+      "name": "BranchB75",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.38913851976394653,
+        0.6710898280143738,
+        15.682324409484863
+      ]
+    },
+    {
+      "name": "leaf75",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.7790722846984863,
+        -2.1581289768218994,
+        14.532382011413574
+      ]
+    },
+    {
+      "name": "Base-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.3676731586456299,
+        -1.4155348539352417,
+        -0.6388106346130371
+      ]
+    },
+    {
+      "name": "Base-3",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.3676731586456299,
+        -1.4155348539352417,
+        -0.6388106346130371
+      ]
+    },
+    {
+      "name": "Base-5",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7584484815597534,
+        -1.142991542816162,
+        9.402088165283203
+      ]
+    },
+    {
+      "name": "Base-7",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.9785345196723938,
+        -0.7444449663162231,
+        15.043514251708984
+      ]
+    },
+    {
+      "name": "Base-8",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.714560031890869,
+        -2.411034107208252,
+        14.654218673706055
+      ]
+    },
+    {
+      "name": "Base-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.3676731586456299,
+        -1.4155348539352417,
+        -0.6388106346130371
+      ]
+    },
+    {
+      "name": "Base-4",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7584484815597534,
+        -1.142991542816162,
+        9.402088165283203
+      ]
+    },
+    {
+      "name": "Base-6",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.9785345196723938,
+        -0.7444449663162231,
+        15.043514251708984
+      ]
+    },
+    {
+      "name": "CanBigb75",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -8.38115119934082,
+        -1.3582175970077515,
+        29.879077911376953
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail75",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 75.0,
+      "polyCount": 1159
+    },
+    {
+      "name": "Detail45",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 45.0,
+      "polyCount": 762
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 504
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 20.0,
+      "polyCount": 217
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 16.0,
+      "polyCount": 103
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 12.0,
+      "polyCount": 9
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 18
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -2.0,
+      "polyCount": 14
+    },
+    {
+      "name": "Collision-3",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -3.0,
+      "polyCount": 10
+    },
+    {
+      "name": "Collision-4",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": -4.0,
+      "polyCount": 8
+    },
+    {
+      "name": "Collision-5",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": -5.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-6",
+      "subShapeNum": 0,
+      "objectDetailNum": 11,
+      "size": -6.0,
+      "polyCount": 6
+    },
+    {
+      "name": "Collision-7",
+      "subShapeNum": 0,
+      "objectDetailNum": 12,
+      "size": -7.0,
+      "polyCount": 6
+    },
+    {
+      "name": "Collision-8",
+      "subShapeNum": 0,
+      "objectDetailNum": 13,
+      "size": -8.0,
+      "polyCount": 4
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/oldwood.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Oldwood.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Oldwood.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Oldwood",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/branch6.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/skins/Branch6.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "Branch6",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/branch7.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/skins/Branch7.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "Branch7",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/oldwoodbran01.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/skins/OldwoodBran01.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "OldwoodBran01",
+      "original_slot": 3
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

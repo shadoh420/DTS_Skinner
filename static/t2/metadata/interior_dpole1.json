@@ -1,0 +1,71 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 40,
+      "surface_count": 38
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 4,
+      "surface_count": 6
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 2,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ewall04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL04",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL05",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_dpole1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/dpole1.dif",
+    "source_path": "interiors/dpole1.dif",
+    "source_sha256": "4494943aee3a2d691e0c61b863b868fd0f271e27460574109082680658fbe2d7",
+    "source_bytes": 13399,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EWALL04",
+      "lava/DS_EWALL05"
+    ],
+    "version": 44,
+    "triangles": 98,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

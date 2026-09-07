@@ -1,0 +1,82 @@
+{
+  "source": {
+    "model_name": "octahedron",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/octahedron.dts",
+    "source_path": "shapes/octahedron.dts",
+    "source_sha256": "3443488da0cab410fefdc255f4316e168227db3ee9479cb5a575092622e13d94",
+    "source_bytes": 536,
+    "version": 18,
+    "alternatives": [
+      "base/shapes.vl2:shapes/octahedron.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "[Untextured]"
+    ],
+    "triangles": 8,
+    "selected_detail": "Detail0"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Hedra0",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail0",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 0.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "reason": "Authored no-material primitive",
+      "name": "[Untextured]",
+      "original_slot": -1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

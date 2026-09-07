@@ -1,0 +1,212 @@
+{
+  "source": {
+    "model_name": "weapon_targeting",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_targeting.dts",
+    "source_path": "shapes/weapon_targeting.dts",
+    "source_sha256": "f1dd13c22caaaacaa0d73bff00ac6dafb5c7ddc1d4e39a0934a1766f748e5bf5",
+    "source_bytes": 19076,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_targeting.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_targeting"
+    ],
+    "triangles": 254,
+    "selected_detail": "Detail80"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0002571837976574898,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.974916896685386e-09,
+        -0.4182397425174713,
+        -0.1272793859243393
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.6915856493326942e-09,
+        0.485299676656723,
+        -0.009455056861042976
+      ]
+    },
+    {
+      "name": "TLbarrel80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        1.8419792358059794e-09,
+        0.046047892421483994,
+        -0.004649929702281952
+      ]
+    },
+    {
+      "name": "TLMiddle80",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -0.09735409915447235,
+        -0.010481125675141811
+      ]
+    },
+    {
+      "name": "TLhandle80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.9568154591430584e-09,
+        -0.22161878645420074,
+        -0.28844594955444336
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.6915856493326942e-09,
+        0.5731125473976135,
+        -0.009455056861042976
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 80.0,
+      "polyCount": 301
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 239
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 198
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 142
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 79
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 35
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_targeting.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_targeting.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_targeting.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_targeting",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

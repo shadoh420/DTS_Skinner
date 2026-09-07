@@ -1,0 +1,143 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 100,
+      "surface_count": 276
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 30,
+      "surface_count": 244
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 2,
+      "surface_count": 134
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 21,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal05.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal05.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL05",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_iteflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iteflo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iteflo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEFLO01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor04a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor04a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor04a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR04A",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_icei01c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei01c.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei01c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI01C",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_elig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG03",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_ihawal05a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihawal05a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihawal05a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHAWAL05A",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lush/be_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG02",
+      "original_slot": 11
+    }
+  ],
+  "source": {
+    "model_name": "interior_bmisc5",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/bmisc5.dif",
+    "source_path": "interiors/bmisc5.dif",
+    "source_sha256": "c8dce296550f1905e069db702d1a997c68df100617799169b9f520fc4bb89f89",
+    "source_bytes": 101613,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL01B",
+      "lush/BE_EWAL05",
+      "lush/BE_ITEFLO01",
+      "lush/BE_EBOR04A",
+      "lush/BE_ICEI01C",
+      "lush/BE_ELIG03",
+      "lush/BE_IHAWAL05A",
+      "lush/BE_ELIG02"
+    ],
+    "version": 44,
+    "triangles": 743,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

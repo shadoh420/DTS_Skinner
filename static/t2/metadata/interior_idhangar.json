@@ -1,0 +1,124 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 337
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 35,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/dox_textures/ds_ewall06.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_ewall06.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/DS_EWALL06",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/dox_textures/striplite2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/striplite2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/striplite2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/STRIPLITE2",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/dox_textures/rway_middle.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/rway_middle.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/rway_middle.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "4ac5818a10baec7e5fb13878e1644e170ead5245f67bd0cc62de4f0e0dceaea9",
+      "name": "dox_textures/RWAY_MIDDLE",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/dox_textures/roofbeam.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/roofbeam.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/roofbeam.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "4d5005ddcafb54b081269f92048ffd1898c8dababb9a1793736fff454205d10f",
+      "name": "dox_textures/ROOFBEAM",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/dox_textures/rock_wall_lite.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/rock_wall_lite.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/rock_wall_lite.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/ROCK_WALL_LITE",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/dox_textures/striplite3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/striplite3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/striplite3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "95d34e48888267fe487d7b3c4c31a7dd542828de4609b1f579cee6ca6028174f",
+      "name": "dox_textures/STRIPLITE3",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/dox_textures/rock_smalllite.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/rock_smalllite.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/rock_smalllite.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "2ac2fcd980b27ae319a29eb2edeaae6baf6057e59f440ef9c35758f211267587",
+      "name": "dox_textures/ROCK_SMALLLITE",
+      "original_slot": 10
+    }
+  ],
+  "source": {
+    "model_name": "interior_idhangar",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/idhangar.dif",
+    "source_path": "interiors/idhangar.dif",
+    "source_sha256": "22700871d78695daedead6cf7b05f8bb31b6fd5b0f508c30ef47b814f30b30bf",
+    "source_bytes": 82975,
+    "alternatives": [],
+    "materials": [
+      "dox_textures/DS_EWALL06",
+      "dox_textures/STRIPLITE2",
+      "dox_textures/RWAY_MIDDLE",
+      "dox_textures/ROOFBEAM",
+      "dox_textures/ROCK_WALL_LITE",
+      "dox_textures/STRIPLITE3",
+      "dox_textures/ROCK_SMALLLITE"
+    ],
+    "version": 44,
+    "triangles": 903,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

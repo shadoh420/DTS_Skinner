@@ -1,0 +1,175 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 1261
+    }
+  ],
+  "null_surfaces_excluded": 26,
+  "degenerate_triangles_skipped": 117,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_igeneric.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGeneric.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGeneric.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERIC",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_icei04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei04.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI04",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_icei03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI03B",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_icowal02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icowal02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icowal02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOWAL02A",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_igenericdark.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGenericDark.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGenericDark.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERICDARK",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_iprflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iprflo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iprflo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPRFLO01",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lush/be_icolbase01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iColBase01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iColBase01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLBASE01",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR03",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lush/be_ihaflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihaflo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihaflo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHAFLO01",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lush/be_icolig.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icolig.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icolig.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIG",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lush/be_iprwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iprwal01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iprwal01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPRWAL01",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL03",
+      "original_slot": 16
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_lighthouse",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_lighthouse.dif",
+    "source_path": "interiors/rst_lighthouse.dif",
+    "source_sha256": "69c080a0f26d3b4fe46feec09fc4d39a04a1e84ff181b70f4659fc2c4b86c296",
+    "source_bytes": 209608,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_IGENERIC",
+      "lush/BE_ICEI04",
+      "lush/BE_ICEI03B",
+      "lush/BE_ICOWAL02A",
+      "lush/BE_IGENERICDARK",
+      "lush/BE_IPRFLO01",
+      "lush/BE_ICOLBASE01",
+      "lush/BE_EBOR03",
+      "lush/BE_IHAFLO01",
+      "lush/BE_ICOLIG",
+      "lush/BE_IPRWAL01",
+      "lush/BE_ITEWAL03"
+    ],
+    "version": 44,
+    "triangles": 3232,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

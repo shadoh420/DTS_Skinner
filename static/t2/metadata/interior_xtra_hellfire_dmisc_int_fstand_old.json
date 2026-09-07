@@ -1,0 +1,98 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 136
+    }
+  ],
+  "null_surfaces_excluded": 86,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihacei01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihacei01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihacei01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEI01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihaceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihaceilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihaceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEILIG01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL05",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_iceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iceilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICEILIG01",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_hellfire_dmisc_int_fstand_old",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_Hellfire_dmisc_int_fstand_old.dif",
+    "source_path": "interiors/xtra_hellfire_dmisc_int_fstand_old.dif",
+    "source_sha256": "40ddd50b823d04efc99fd1668b22d9e70a3b2fd196e90bc655431abe12a2cb5c",
+    "source_bytes": 23806,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EFLOOR1",
+      "lava/DS_IHACEI01",
+      "lava/DS_IHACEILIG01",
+      "lava/DS_EWALL05",
+      "lava/DS_ICEILIG01"
+    ],
+    "version": 44,
+    "triangles": 136,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

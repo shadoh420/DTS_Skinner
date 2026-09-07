@@ -1,0 +1,393 @@
+{
+  "source": {
+    "model_name": "solarpanel",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/solarpanel.dts",
+    "source_path": "shapes/solarpanel.dts",
+    "source_sha256": "36bfccaa7088240c805e0522b8aed4a5bbc78e76b0ea240c0319b273ba0fdaf0",
+    "source_bytes": 48360,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/solarpanel.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "solarpanel",
+      "blue_blink0"
+    ],
+    "triangles": 113,
+    "selected_detail": "Detail64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.226902484893799,
+        0.2772352993488312,
+        -2.169473134472355e-08
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        1.4010884761810303,
+        0.0
+      ]
+    },
+    {
+      "name": "ArmUpper64",
+      "parent": 1,
+      "rotation_quat16": [
+        -11584,
+        20065,
+        11584,
+        20065
+      ],
+      "translation": [
+        -2.0964550971984863,
+        -1.1400761604309082,
+        1.0480690002441406
+      ]
+    },
+    {
+      "name": "ArmLower64",
+      "parent": 1,
+      "rotation_quat16": [
+        -14893,
+        17749,
+        14893,
+        17749
+      ],
+      "translation": [
+        -2.027419328689575,
+        -2.556635856628418,
+        0.6966716051101685
+      ]
+    },
+    {
+      "name": "LiteblueB64",
+      "parent": 3,
+      "rotation_quat16": [
+        -3116,
+        -32120,
+        -2217,
+        -5227
+      ],
+      "translation": [
+        -0.9938204288482666,
+        -0.43375444412231445,
+        -0.10332678258419037
+      ]
+    },
+    {
+      "name": "LiteblueA64",
+      "parent": 3,
+      "rotation_quat16": [
+        -32120,
+        3116,
+        -5227,
+        2217
+      ],
+      "translation": [
+        -0.9938204288482666,
+        -0.43375444412231445,
+        0.50858074426651
+      ]
+    },
+    {
+      "name": "PanelRight64",
+      "parent": 1,
+      "rotation_quat16": [
+        8480,
+        0,
+        0,
+        31650
+      ],
+      "translation": [
+        -1.6632163524627686,
+        -1.174363136291504,
+        0.9386366605758667
+      ]
+    },
+    {
+      "name": "PanelLeft64",
+      "parent": 1,
+      "rotation_quat16": [
+        8480,
+        0,
+        0,
+        31650
+      ],
+      "translation": [
+        -2.802192449569702,
+        -1.174363136291504,
+        0.9386366605758667
+      ]
+    },
+    {
+      "name": "Hulk_ArmLower64",
+      "parent": 1,
+      "rotation_quat16": [
+        -14893,
+        17749,
+        14893,
+        17749
+      ],
+      "translation": [
+        -2.027419328689575,
+        -2.556635856628418,
+        0.6966716051101685
+      ]
+    },
+    {
+      "name": "Hulk_PanelRight64",
+      "parent": 1,
+      "rotation_quat16": [
+        8462,
+        2070,
+        554,
+        31582
+      ],
+      "translation": [
+        -1.6740204095840454,
+        -1.0388872623443604,
+        0.5508993864059448
+      ]
+    },
+    {
+      "name": "Hulk_PanelLeft64",
+      "parent": 1,
+      "rotation_quat16": [
+        8480,
+        -276,
+        -74,
+        31649
+      ],
+      "translation": [
+        -2.749418020248413,
+        -0.8673485517501831,
+        0.4437420666217804
+      ]
+    },
+    {
+      "name": "Hulk_ArmUpper64",
+      "parent": 1,
+      "rotation_quat16": [
+        -7638,
+        21874,
+        7638,
+        21874
+      ],
+      "translation": [
+        -2.0964550971984863,
+        -1.0183552503585815,
+        0.5785679221153259
+      ]
+    },
+    {
+      "name": "Base-1",
+      "parent": 1,
+      "rotation_quat16": [
+        8480,
+        0,
+        0,
+        31650
+      ],
+      "translation": [
+        -2.802192449569702,
+        -1.174363136291504,
+        0.9386366605758667
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 244
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 210
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 189
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 141
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 111
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 85,
+      "flags": 16,
+      "numKeyframes": 16,
+      "duration": 0.5333343744277954,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 54,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    },
+    {
+      "nameIndex": 86,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 54,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 87,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 648,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    84,
+    1,
+    0,
+    0,
+    0
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/solarpanel.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/solarpanel.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/solarpanel.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "solarpanel",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/blue_blink0.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/blue_blink0.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/blue_blink0.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "blue_blink0",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Hulk_ArmLower",
+    "Hulk_ArmUpper",
+    "Hulk_PanelLeft",
+    "Hulk_PanelRight"
+  ],
+  "empty_finer_details": []
+}

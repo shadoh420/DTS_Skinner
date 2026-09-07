@@ -1,0 +1,67 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 72
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 4,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/bb_red.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lush/bb_red.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lush/bb_red.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6922b38fdafca38c0527dd97d8cf080642e983dd114f1ae2826e064928342494",
+      "name": "lush/BB_RED",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/bb_red2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lush/bb_red2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lush/bb_red2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "af3f7052a46f9c20ce1dc2d6de2844517f0ef7f3569c60265c1d0668a5f404df",
+      "name": "lush/BB_RED2",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_dox_bb_spade_x2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/dox_bb_spade_x2.dif",
+    "source_path": "interiors/dox_bb_spade_x2.dif",
+    "source_sha256": "3c942dd213ac0fde7d767d6f5074f361353d057ae6be5eb73a73e26423c5515f",
+    "source_bytes": 15991,
+    "alternatives": [],
+    "materials": [
+      "lush/BB_RED",
+      "lush/BB_RED2"
+    ],
+    "version": 44,
+    "triangles": 188,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "source": {
+    "model_name": "bomb",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/bomb.dts",
+    "source_path": "shapes/bomb.dts",
+    "source_sha256": "bec2362ac7811630697a1b76330e81986d554609122369cbf5e8fde23ee358c1",
+    "source_bytes": 5193,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/bomb.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "ammo_chaingun"
+    ],
+    "triangles": 144,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bomb32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 178
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 8.0,
+      "polyCount": 113
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 2.0,
+      "polyCount": 19
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/ammo_chaingun.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/ammo_chaingun.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/ammo_chaingun.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ammo_chaingun",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,517 @@
+{
+  "source": {
+    "model_name": "heavy_male_dead",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [
+      "2 empty finer LODs skipped"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/heavy_male_dead.dts",
+    "source_path": "shapes/heavy_male_dead.dts",
+    "source_sha256": "9a33c00b54fe45c28a0b9d37b97727caabb433b08a9927b23de33e2014d1867a",
+    "source_bytes": 140126,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/heavy_male_dead.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "base.hmale"
+    ],
+    "triangles": 1591,
+    "selected_detail": "Detail300"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Bip01 Pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        -22598,
+        -6672,
+        -9211,
+        20823
+      ],
+      "translation": [
+        -6.160915111408372e-10,
+        -6.842807488283142e-05,
+        0.2197437286376953
+      ]
+    },
+    {
+      "name": "Bip01 Spine",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        -13,
+        32766
+      ],
+      "translation": [
+        0.07456408441066742,
+        -0.00014330688281916082,
+        1.0847099218835865e-07
+      ]
+    },
+    {
+      "name": "Bip01 Spine1",
+      "parent": 1,
+      "rotation_quat16": [
+        -574,
+        246,
+        -1697,
+        32717
+      ],
+      "translation": [
+        0.1800163835287094,
+        -0.00019329439965076745,
+        -6.669382855761796e-06
+      ]
+    },
+    {
+      "name": "Bip01 Spine2",
+      "parent": 2,
+      "rotation_quat16": [
+        298,
+        1872,
+        1308,
+        32685
+      ],
+      "translation": [
+        0.2441527396440506,
+        -0.0002008755545830354,
+        2.7334644983056933e-06
+      ]
+    },
+    {
+      "name": "Bip01 Neck",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.2531198263168335,
+        -5.5490643717348576e-05,
+        1.9730705957954342e-08
+      ]
+    },
+    {
+      "name": "Bip01 Head",
+      "parent": 4,
+      "rotation_quat16": [
+        -1355,
+        6183,
+        -1674,
+        32106
+      ],
+      "translation": [
+        0.06974074989557266,
+        1.2267884486050207e-08,
+        1.5372801698276817e-08
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 5,
+      "rotation_quat16": [
+        -49,
+        -23231,
+        6,
+        23107
+      ],
+      "translation": [
+        0.12973135709762573,
+        0.2777765393257141,
+        0.0012513470137491822
+      ]
+    },
+    {
+      "name": "Bip01 L Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        -21794,
+        -1176,
+        -24416,
+        1067
+      ],
+      "translation": [
+        6.02298584340133e-08,
+        5.537340621231124e-05,
+        0.060057371854782104
+      ]
+    },
+    {
+      "name": "Bip01 L UpperArm",
+      "parent": 7,
+      "rotation_quat16": [
+        -14089,
+        -11939,
+        -2878,
+        26912
+      ],
+      "translation": [
+        0.4166980981826782,
+        2.526811826442099e-08,
+        -1.187809761660219e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Forearm",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        14118,
+        29569
+      ],
+      "translation": [
+        0.4457704722881317,
+        -6.418118658757521e-08,
+        -6.86879957356723e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Hand",
+      "parent": 9,
+      "rotation_quat16": [
+        26395,
+        -2022,
+        -5143,
+        18612
+      ],
+      "translation": [
+        0.4019332230091095,
+        -1.6092624122165944e-08,
+        -1.1914007558289086e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        22676,
+        -620,
+        -23637,
+        -576
+      ],
+      "translation": [
+        1.965687701499519e-08,
+        5.570395296672359e-05,
+        -0.06005735322833061
+      ]
+    },
+    {
+      "name": "Bip01 R UpperArm",
+      "parent": 11,
+      "rotation_quat16": [
+        12780,
+        16653,
+        13887,
+        20979
+      ],
+      "translation": [
+        0.41669806838035583,
+        1.1094271279432633e-08,
+        -4.0227163822237344e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Forearm",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        0,
+        21946,
+        24331
+      ],
+      "translation": [
+        0.4457704424858093,
+        -1.1873510175064439e-08,
+        1.941613092526495e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Hand",
+      "parent": 13,
+      "rotation_quat16": [
+        -22574,
+        771,
+        -4669,
+        23273
+      ],
+      "translation": [
+        0.4019331634044647,
+        3.178529794922724e-08,
+        1.6662207613649116e-08
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 14,
+      "rotation_quat16": [
+        56,
+        2116,
+        23196,
+        23045
+      ],
+      "translation": [
+        0.151442751288414,
+        0.08497098833322525,
+        0.015620586462318897
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": 3,
+      "rotation_quat16": [
+        -9,
+        -23169,
+        9,
+        23169
+      ],
+      "translation": [
+        0.10298498719930649,
+        -0.39382845163345337,
+        0.015832973644137383
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 3,
+      "rotation_quat16": [
+        -9,
+        -23169,
+        9,
+        23169
+      ],
+      "translation": [
+        0.10059324651956558,
+        -0.2622120976448059,
+        0.00682698143646121
+      ]
+    },
+    {
+      "name": "Bip01 L Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -7565,
+        -29970,
+        -9434,
+        -5403
+      ],
+      "translation": [
+        -0.07456395030021667,
+        0.00020215575932525098,
+        0.19076994061470032
+      ]
+    },
+    {
+      "name": "Bip01 L Calf",
+      "parent": 18,
+      "rotation_quat16": [
+        0,
+        0,
+        10364,
+        31084
+      ],
+      "translation": [
+        0.6983206272125244,
+        -4.835019851157085e-08,
+        5.5769042717201955e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Foot",
+      "parent": 19,
+      "rotation_quat16": [
+        -29,
+        3666,
+        -2286,
+        32480
+      ],
+      "translation": [
+        0.5864747166633606,
+        -1.0405750039410577e-08,
+        3.140067406093294e-08
+      ]
+    },
+    {
+      "name": "Jetnozzle1",
+      "parent": 20,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.2059435099363327,
+        -0.052328020334243774,
+        -0.005516145844012499
+      ]
+    },
+    {
+      "name": "Bip01 R Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -5546,
+        -28566,
+        -14871,
+        2381
+      ],
+      "translation": [
+        -0.07456397265195847,
+        0.00020322998170740902,
+        -0.19076992571353912
+      ]
+    },
+    {
+      "name": "Bip01 R Calf",
+      "parent": 22,
+      "rotation_quat16": [
+        0,
+        0,
+        14893,
+        29186
+      ],
+      "translation": [
+        0.6983208060264587,
+        2.4042712709615444e-08,
+        -2.3943545812699085e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Foot",
+      "parent": 23,
+      "rotation_quat16": [
+        3668,
+        -3617,
+        7047,
+        31582
+      ],
+      "translation": [
+        0.5864747166633606,
+        2.218378725160619e-08,
+        -2.2485640016611796e-08
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 24,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.20813462138175964,
+        -0.05769767984747887,
+        0.005071782972663641
+      ]
+    },
+    {
+      "name": "Unlink",
+      "parent": -1,
+      "rotation_quat16": [
+        8218,
+        21254,
+        11234,
+        20691
+      ],
+      "translation": [
+        -0.928727924823761,
+        -0.78261399269104,
+        0.06298006325960159
+      ]
+    },
+    {
+      "name": "Cam",
+      "parent": 26,
+      "rotation_quat16": [
+        -20833,
+        -9194,
+        -22594,
+        6676
+      ],
+      "translation": [
+        2.1131131649017334,
+        1.6374139785766602,
+        0.1779807209968567
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail1150",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1150.0,
+      "polyCount": 0
+    },
+    {
+      "name": "Detail1100",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 1100.0,
+      "polyCount": 0
+    },
+    {
+      "name": "Detail300",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 300.0,
+      "polyCount": 1930
+    },
+    {
+      "name": "Detail220",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 220.0,
+      "polyCount": 1306
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 32.0,
+      "polyCount": 339
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 4.0,
+      "polyCount": 127
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.hmale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/base.hmale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.hmale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.hmale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 2,
+  "hidden_by_default": [],
+  "empty_finer_details": [
+    0,
+    1
+  ]
+}

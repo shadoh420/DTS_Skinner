@@ -1,0 +1,144 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 345
+    }
+  ],
+  "null_surfaces_excluded": 73,
+  "degenerate_triangles_skipped": 59,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_ibor02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ibor02a.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ibor02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IBOR02A",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwaldeco04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwaldeco04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwaldeco04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWALDECO04",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL04",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG03",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwaldeco02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwaldeco02a.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwaldeco02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWALDECO02A",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwaldeco02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwaldeco02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwaldeco02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWALDECO02",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL06",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall07.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall07.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL07",
+      "original_slot": 12
+    }
+  ],
+  "source": {
+    "model_name": "interior_kif_cinereousfs",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/kif_cinereousfs.dif",
+    "source_path": "interiors/kif_cinereousfs.dif",
+    "source_sha256": "1e7db18fe935e63ac1d95331f8f41fdd3c8c7b9909dc66e6ef83e739e089c037",
+    "source_bytes": 68550,
+    "alternatives": [
+      "base/z_mappacks/TWL-MapPack.vl2:interiors/kif_cinereousfs.dif"
+    ],
+    "materials": [
+      "lava/DS_GENWALL",
+      "lava/DS_IBOR02A",
+      "lava/DS_IWALDECO04",
+      "lava/DS_EWALL04",
+      "lava/DS_ILIG03",
+      "lava/DS_IWALDECO02A",
+      "lava/DS_IWALDECO02",
+      "lava/DS_EWALL06",
+      "lava/DS_EWALL07"
+    ],
+    "version": 44,
+    "triangles": 803,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

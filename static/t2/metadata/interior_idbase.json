@@ -1,0 +1,235 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 335
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 48,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/dox_textures/ds_genfloor.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_genfloor.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_genfloor.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "19402cde3abd6fe161525c5b6b1d5e0ae91328dd9644ee673b7128f7aa18297a",
+      "name": "dox_textures/DS_GENFLOOR",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_ewall06.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_ewall06.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "38f5940d002987cfaf620f6e1b6a145de1dc4eb43e937f5aa8f4a94fcf688dfe",
+      "name": "dox_textures/DS_EWALL06",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/dox_textures/wall_2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/wall_2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/wall_2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "ad1a27edb02ea7ef717263fe5ac78cfcb90160bb30b83d6bf4fea1378cff3f8c",
+      "name": "dox_textures/WALL_2",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/dox_textures/carinternalwall.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/carinternalwall.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/carinternalwall.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "b08835485f89c0b1532ed43ed390e182c8dc849d9a4d300c89c9a4236b7de2f9",
+      "name": "dox_textures/CARINTERNALWALL",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/dox_textures/bluetrim2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/bluetrim2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/bluetrim2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6d096e35aeb6d8edeec5f394c3cdd80a8e960d34f851e612142653dbb430f111",
+      "name": "dox_textures/BLUETRIM2",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/dox_textures/rock_wall_lite.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/rock_wall_lite.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/rock_wall_lite.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "2b3752084806c141a4ed7d33fa1a607bc241f45fc8ba262521ae64e2c28d0be6",
+      "name": "dox_textures/ROCK_WALL_LITE",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/dox_textures/slabgrill.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/slabgrill.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/slabgrill.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "a82eb28f89d94720a3db2e09591421b09e13f48afd2f25a79bf2d18f4de69039",
+      "name": "dox_textures/SLABGRILL",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/dox_textures/grate1.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/grate1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/grate1.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "2c2921addb71a8981afb1380f2398e6cc330cf05a8034164f01b3246f01b8bf6",
+      "name": "dox_textures/GRATE1",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/dox_textures/striplite2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/striplite2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/striplite2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "279419ba7ab189d993ec097dc6ea57d4afb17ec2e2ab1a72f38d80a83a6f846e",
+      "name": "dox_textures/STRIPLITE2",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/dox_textures/light_cold3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/light_cold3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/light_cold3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "27ae45441b12372847f27154b0f9e6bbb4df561003d9c69ffa0a6b27d579e125",
+      "name": "dox_textures/LIGHT_COLD3",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/dox_textures/redstripe2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/redstripe2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/redstripe2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "51091efcac8a9997c9d8c094821cdcb3c2d86988d633fd3678ffe2640af2229e",
+      "name": "dox_textures/REDSTRIPE2",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/dox_textures/bluetrim1.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/bluetrim1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/bluetrim1.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "8e235727fcd96cefa7f39230fbc79f600fdaf91e2c715fb86eef8a89d46457d6",
+      "name": "dox_textures/BLUETRIM1",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/dox_textures/4circle_lite.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/4circle_lite.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/4circle_lite.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "b1e9f370be7281dd4561a01390dcc5e4d7a25a0eaab709db729cca83951891b0",
+      "name": "dox_textures/4CIRCLE_LITE",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/dox_textures/stripe2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/stripe2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/stripe2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "9ced1b7a1a8c7e54d75f8d2b254f4f001676c871807a2cf0a1ee7c6f5b4ff8a3",
+      "name": "dox_textures/STRIPE2",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_etechbor01.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_etechbor01.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_etechbor01.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "114237533bd813170bf5ef521f6dcf5cd14c6e7842375ad6a9fb2efa20354190",
+      "name": "dox_textures/DS_ETECHBOR01",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/dox_textures/white_striplite.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/white_striplite.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/white_striplite.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "64d318a89fe287bf07d7d454fd994e7da82ae7dd51c52a95724850dadd449261",
+      "name": "dox_textures/WHITE_STRIPLITE",
+      "original_slot": 19
+    }
+  ],
+  "source": {
+    "model_name": "interior_idbase",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/idbase.dif",
+    "source_path": "interiors/idbase.dif",
+    "source_sha256": "6eeed47d421785dfe146bf1c9b5dbcef5cc2f4d55c9f0d398076a2286a205f40",
+    "source_bytes": 82761,
+    "alternatives": [],
+    "materials": [
+      "dox_textures/DS_GENFLOOR",
+      "dox_textures/DS_EWALL06",
+      "dox_textures/WALL_2",
+      "dox_textures/CARINTERNALWALL",
+      "dox_textures/BLUETRIM2",
+      "dox_textures/ROCK_WALL_LITE",
+      "dox_textures/SLABGRILL",
+      "dox_textures/GRATE1",
+      "dox_textures/STRIPLITE2",
+      "dox_textures/LIGHT_COLD3",
+      "dox_textures/REDSTRIPE2",
+      "dox_textures/BLUETRIM1",
+      "dox_textures/4CIRCLE_LITE",
+      "dox_textures/STRIPE2",
+      "dox_textures/DS_ETECHBOR01",
+      "dox_textures/WHITE_STRIPLITE"
+    ],
+    "version": 44,
+    "triangles": 854,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

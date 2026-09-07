@@ -1,0 +1,140 @@
+{
+  "source": {
+    "model_name": "energy_explosion",
+    "game": "t2",
+    "category": "Effects",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/energy_explosion.dts",
+    "source_path": "shapes/energy_explosion.dts",
+    "source_sha256": "23ff30285e6e1599a89547b1d10a3779594273d9811b58c561bd147a1bb00a07",
+    "source_bytes": 1841,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/energy_explosion.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "energydis0000"
+    ],
+    "triangles": 20,
+    "selected_detail": "Detail5"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4011065363883972,
+        -0.1976543664932251,
+        -0.000824272632598877
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Cone5",
+      "parent": 1,
+      "rotation_quat16": [
+        -8866,
+        -21406,
+        -21406,
+        -8866
+      ],
+      "translation": [
+        -0.5390483736991882,
+        -0.009885210543870926,
+        -0.002201290335506201
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 5.0,
+      "polyCount": 35
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 2.0,
+      "polyCount": 7
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 7,
+      "flags": 0,
+      "numKeyframes": 10,
+      "duration": 0.30000102519989014,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 1,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    6,
+    0,
+    0,
+    1634616688,
+    6646882
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/energydis0000.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/energydis0000.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/energydis0000.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "energydis0000",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

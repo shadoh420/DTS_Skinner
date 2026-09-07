@@ -1,0 +1,145 @@
+{
+  "source": {
+    "model_name": "ammo_disc",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/ammo_disc.dts",
+    "source_path": "shapes/ammo_disc.dts",
+    "source_sha256": "4b7b5d99129f9ad0b0d022507d641cc8c4fe0a9005a735d6128e39b3dd969fa8",
+    "source_bytes": 12869,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/ammo_disc.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "ammo_disc"
+    ],
+    "triangles": 184,
+    "selected_detail": "Detail_32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.013032451272010803
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Body32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -6392,
+        32137
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.20436972379684448
+      ]
+    },
+    {
+      "name": "Supports32",
+      "parent": 1,
+      "rotation_quat16": [
+        5899,
+        -22406,
+        -22353,
+        6094
+      ],
+      "translation": [
+        -0.46227067708969116,
+        0.004034198354929686,
+        0.10949598997831345
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 193
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 158
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 121
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 45
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 20
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/ammo_disc.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/ammo_disc.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/ammo_disc.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ammo_disc",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

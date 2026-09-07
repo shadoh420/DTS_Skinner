@@ -1,0 +1,2 @@
+# Keep the imported image catalog out of ordinary Git object history.
+/static/textures/t2/*.png filter=lfs diff=lfs merge=lfs -text

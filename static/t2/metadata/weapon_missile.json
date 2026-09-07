@@ -1,0 +1,292 @@
+{
+  "source": {
+    "model_name": "weapon_missile",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_missile.dts",
+    "source_path": "shapes/weapon_missile.dts",
+    "source_sha256": "1400c0c8ccbc4016fe4dc0e6048c5344969594a1bab35444fb9c9e35f77714c9",
+    "source_bytes": 44662,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_missile.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_missile"
+    ],
+    "triangles": 595,
+    "selected_detail": "Detail_64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.10686618834733963,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Geo02_64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.11413390189409256,
+        0.015391282737255096,
+        0.17263996601104736
+      ]
+    },
+    {
+      "name": "Geo04_64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.01987665519118309,
+        0.2047155201435089,
+        0.26434534788131714
+      ]
+    },
+    {
+      "name": "Geo07_64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -0.008693999610841274,
+        0.20471550524234772,
+        0.2306327372789383
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.010329961776733398,
+        0.5118489265441895,
+        0.2643453776836395
+      ]
+    },
+    {
+      "name": "DumFire",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.10165846347808838,
+        -0.30184406042099,
+        0.26434534788131714
+      ]
+    },
+    {
+      "name": "Geo03_64",
+      "parent": 7,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        7.450580596923828e-09,
+        -0.1904028058052063,
+        -5.960464477539063e-08
+      ]
+    },
+    {
+      "name": "Muzzlepoint1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.010329954326152802,
+        -1.2419129610061646,
+        0.2643453776836395
+      ]
+    },
+    {
+      "name": "Geo01_64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.08582901954650879,
+        0.0
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.010329961776733398,
+        0.5713845491409302,
+        0.2643453776836395
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 734
+    },
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 517
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 332
+    },
+    {
+      "name": "Detail_7",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 7.0,
+      "polyCount": 172
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 15
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 22,
+      "flags": 0,
+      "numKeyframes": 6,
+      "duration": 0.16666767001152039,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 5,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        7
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Reload"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_missile.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_missile.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_missile.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_missile",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

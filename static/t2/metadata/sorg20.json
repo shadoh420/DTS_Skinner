@@ -1,0 +1,171 @@
+{
+  "source": {
+    "model_name": "sorg20",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/sorg20.dts",
+    "source_path": "shapes/sorg20.dts",
+    "source_sha256": "a14a2c7e9ba6a0b268143ad944f81bf9c31d9021a4240129112dbb6a486477b2",
+    "source_bytes": 21399,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/sorg20.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "MadroneBark",
+      "MadroneWinter"
+    ],
+    "triangles": 178,
+    "selected_detail": "Detail80"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -0.11077189445495605,
+        0.5760420560836792,
+        0.0
+      ]
+    },
+    {
+      "name": "Start01",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MadroneWinterA80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Branches80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "base-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.007725521456450224,
+        3.4504046841909997e-10,
+        -0.005788818467408419
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 80.0,
+      "polyCount": 296
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 150
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 70
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 22
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/madronebark.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/MadroneBark.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/MadroneBark.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "MadroneBark",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/madronewinter.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/MadroneWinter.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/MadroneWinter.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "MadroneWinter",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

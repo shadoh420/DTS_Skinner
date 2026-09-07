@@ -1,0 +1,72 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 6
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_neffloor2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_Neffloor2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR2",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefbltrim.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlTrim.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLTRIM",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_dmisc_nefplug1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/dmisc_nefplug1.dif",
+    "source_path": "interiors/dmisc_nefplug1.dif",
+    "source_sha256": "fe4cda950d7d838c025b319a89d789f4a2bdb4eb56831e3090a88f201321fede",
+    "source_bytes": 4540,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_NEFFLOOR2",
+      "lava/DS_NEFBLUE",
+      "lava/DS_NEFBLTRIM"
+    ],
+    "version": 44,
+    "triangles": 12,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

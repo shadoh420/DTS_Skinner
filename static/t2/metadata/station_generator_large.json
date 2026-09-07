@@ -1,0 +1,592 @@
+{
+  "source": {
+    "model_name": "station_generator_large",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "12 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/station_generator_large.dts",
+    "source_path": "shapes/station_generator_large.dts",
+    "source_sha256": "55095f341e3e9d1262a7f7c77986beadb63060df088ee0ebb169f3de6051811f",
+    "source_bytes": 103283,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/station_generator_large.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "generator"
+    ],
+    "triangles": 184,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.92893949702011e-08,
+        -0.8325642347335815,
+        -1.92893949702011e-08
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Central_CoreOFF_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.8201240301132202,
+        0.0
+      ]
+    },
+    {
+      "name": "ConduitPipe01_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5740633010864258,
+        -1.6381933689117432,
+        0.41916587948799133
+      ]
+    },
+    {
+      "name": "ConduitPipe02_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5740633010864258,
+        -2.3820183277130127,
+        0.0
+      ]
+    },
+    {
+      "name": "ConduitPipeFloorMount_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5740633010864258,
+        -2.010096549987793,
+        2.825747968948633e-11
+      ]
+    },
+    {
+      "name": "ConduitShield01_32",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        1.2500025033950806,
+        -1.6381911039352417,
+        0.999130368232727
+      ]
+    },
+    {
+      "name": "ConduitShield02_32",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        1.2500025033950806,
+        -2.3820159435272217,
+        0.999130368232727
+      ]
+    },
+    {
+      "name": "Dum_Panel_Slide01",
+      "parent": 1,
+      "rotation_quat16": [
+        -13721,
+        -18669,
+        -18669,
+        13721
+      ],
+      "translation": [
+        0.8063693642616272,
+        -0.9116162061691284,
+        0.775305449962616
+      ]
+    },
+    {
+      "name": "SlidePanel01_32",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.601435689086884e-08,
+        -2.1166009389617102e-08,
+        0.00035716689308173954
+      ]
+    },
+    {
+      "name": "Dum_Panel_Slide02",
+      "parent": 1,
+      "rotation_quat16": [
+        13466,
+        -18854,
+        -18854,
+        -13466
+      ],
+      "translation": [
+        -0.8063680529594421,
+        -0.9116162061691284,
+        2.1001553535461426
+      ]
+    },
+    {
+      "name": "SlidePanel02_32",
+      "parent": 10,
+      "rotation_quat16": [
+        -16,
+        0,
+        -32766,
+        0
+      ],
+      "translation": [
+        -0.005403915885835886,
+        -1.0846623155202906e-08,
+        0.0015588931273669004
+      ]
+    },
+    {
+      "name": "GeneratorHousing_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.8201240301132202,
+        0.0
+      ]
+    },
+    {
+      "name": "Central_CoreON_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.8201240301132202,
+        0.0
+      ]
+    },
+    {
+      "name": "RightPowerLight01_32",
+      "parent": 1,
+      "rotation_quat16": [
+        -13618,
+        -18744,
+        -18744,
+        13618
+      ],
+      "translation": [
+        1.064340353012085,
+        -0.5431118011474609,
+        3.281917095184326
+      ]
+    },
+    {
+      "name": "RightPowerLight02_32",
+      "parent": 1,
+      "rotation_quat16": [
+        -13618,
+        -18744,
+        -18744,
+        13618
+      ],
+      "translation": [
+        1.064340353012085,
+        -0.5431118011474609,
+        2.934347152709961
+      ]
+    },
+    {
+      "name": "RightPowerLight03_32",
+      "parent": 1,
+      "rotation_quat16": [
+        -13618,
+        -18744,
+        -18744,
+        13618
+      ],
+      "translation": [
+        1.0643402338027954,
+        -0.5431116819381714,
+        0.6566212773323059
+      ]
+    },
+    {
+      "name": "RightPowerLight04_32",
+      "parent": 1,
+      "rotation_quat16": [
+        -13618,
+        -18744,
+        -18744,
+        13618
+      ],
+      "translation": [
+        1.0643402338027954,
+        -0.5431116819381714,
+        0.30905136466026306
+      ]
+    },
+    {
+      "name": "LeftPowerLight01_32",
+      "parent": 1,
+      "rotation_quat16": [
+        13700,
+        -18685,
+        18685,
+        13700
+      ],
+      "translation": [
+        -1.0643402338027954,
+        -0.5431113243103027,
+        3.281917095184326
+      ]
+    },
+    {
+      "name": "LeftPowerLight02_32",
+      "parent": 1,
+      "rotation_quat16": [
+        13700,
+        -18685,
+        18685,
+        13700
+      ],
+      "translation": [
+        -1.0643402338027954,
+        -0.5431113243103027,
+        2.934347152709961
+      ]
+    },
+    {
+      "name": "LeftPowerLight03_32",
+      "parent": 1,
+      "rotation_quat16": [
+        13700,
+        -18685,
+        18685,
+        13700
+      ],
+      "translation": [
+        -1.0643402338027954,
+        -0.5431112051010132,
+        0.6566212773323059
+      ]
+    },
+    {
+      "name": "LeftPowerLight04_32",
+      "parent": 1,
+      "rotation_quat16": [
+        13700,
+        -18685,
+        18685,
+        13700
+      ],
+      "translation": [
+        -1.0643402338027954,
+        -0.543111264705658,
+        0.30905136466026306
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.003997908905148506,
+        -0.5757860541343689,
+        3.5914080142974854
+      ]
+    },
+    {
+      "name": "ConduitPipe01ON_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5740633010864258,
+        -1.6381933689117432,
+        0.41916587948799133
+      ]
+    },
+    {
+      "name": "ConduitPipe02ON_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5740633010864258,
+        -2.3820183277130127,
+        0.41916587948799133
+      ]
+    },
+    {
+      "name": "Hulk_Generator_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.8201240301132202,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 499
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 495
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 488
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 325
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 43
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 129,
+      "flags": 16,
+      "numKeyframes": 59,
+      "duration": 1.966667652130127,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 22,
+      "baseDecalState": 76,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        8,
+        10
+      ],
+      "translationMatters": [
+        8,
+        10
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    },
+    {
+      "nameIndex": 130,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333345055580139,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 118,
+      "baseTranslation": 118,
+      "baseScale": 0,
+      "baseObjectState": 671,
+      "baseDecalState": 76,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 131,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 118,
+      "baseTranslation": 118,
+      "baseScale": 0,
+      "baseObjectState": 671,
+      "baseDecalState": 494,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        10
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/generator.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/generator.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/generator.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "generator",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Central_CoreON_",
+    "ConduitPipe01ON_",
+    "ConduitPipe02ON_",
+    "Hulk_Generator_",
+    "LeftPowerLight01_",
+    "LeftPowerLight02_",
+    "LeftPowerLight03_",
+    "LeftPowerLight04_",
+    "RightPowerLight01_",
+    "RightPowerLight02_",
+    "RightPowerLight03_",
+    "RightPowerLight04_"
+  ],
+  "empty_finer_details": []
+}

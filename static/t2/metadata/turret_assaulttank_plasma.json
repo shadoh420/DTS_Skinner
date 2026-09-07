@@ -1,0 +1,495 @@
+{
+  "source": {
+    "model_name": "turret_assaulttank_plasma",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_assaulttank_plasma.dts",
+    "source_path": "shapes/turret_assaulttank_plasma.dts",
+    "source_sha256": "7f36186b642197b1f3b2e8312e9847d1083a7b2fed7f21db619b9224bd110a43",
+    "source_bytes": 50576,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_assaulttank_plasma.dts"
+    ],
+    "sequences": 5,
+    "external_sequences": 0,
+    "materials": [
+      "turret_assaultTank"
+    ],
+    "triangles": 283,
+    "selected_detail": "Detail_64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Base_64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.9802322387695312e-08,
+        1.4901161193847656e-08,
+        0.001972287893295288
+      ]
+    },
+    {
+      "name": "DumRotate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -1.4901161193847656e-08,
+        0.0
+      ]
+    },
+    {
+      "name": "DumActivateLift",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.992730890272107e-26,
+        1.657446624392378e-09,
+        -0.037917956709861755
+      ]
+    },
+    {
+      "name": "DumElevate",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.513913534706505e-16,
+        -7.22678006326305e-09,
+        0.6401399970054626
+      ]
+    },
+    {
+      "name": "DumActivateExtend",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.6074633401571897e-15,
+        0.3000744879245758,
+        3.577166296508949e-08
+      ]
+    },
+    {
+      "name": "DumRecoil",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.6074633401571897e-15,
+        -1.218580170103678e-08,
+        -2.3832981810301135e-08
+      ]
+    },
+    {
+      "name": "Barrel_Extend_64",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        9.327176808682225e-10,
+        1.7616521574836952e-08,
+        -2.3832978257587456e-08
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.145864538455783e-10,
+        0.8881124258041382,
+        -3.7171023592463825e-08
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.145557006677961e-10,
+        -0.47472068667411804,
+        0.4258485734462738
+      ]
+    },
+    {
+      "name": "DumActivateWingR",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.144066437790939e-15,
+        2.261343112763825e-09,
+        -2.220446049250313e-15
+      ]
+    },
+    {
+      "name": "WingR_64",
+      "parent": 11,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.21353240311145782,
+        -0.029620949178934097,
+        8.890917335691029e-09
+      ]
+    },
+    {
+      "name": "DumActivateWingL",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.144066437790939e-15,
+        2.261343112763825e-09,
+        -2.220446049250313e-15
+      ]
+    },
+    {
+      "name": "WingL_64",
+      "parent": 13,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.21353240311145782,
+        -0.029620952904224396,
+        4.3651539272104856e-08
+      ]
+    },
+    {
+      "name": "Barrel_Main_64",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.087261196161762e-09,
+        0.3176690936088562,
+        3.7869103408638694e-08
+      ]
+    },
+    {
+      "name": "Body_64",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.6068319866016237e-15,
+        -0.04520093649625778,
+        0.012680107727646828
+      ]
+    },
+    {
+      "name": "BasePost_64",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.992730890272107e-26,
+        -1.657446624392378e-09,
+        2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "BaseCyl_64",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.4901161193847656e-08,
+        0.0,
+        0.08741042017936707
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 295
+    },
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 216
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 123
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 68
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 58,
+      "flags": 0,
+      "numKeyframes": 27,
+      "duration": 0.8666676878929138,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 27,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        4,
+        6,
+        11,
+        13
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 59,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.13333438336849213,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 108,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 27,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Turn"
+    },
+    {
+      "nameIndex": 60,
+      "flags": 0,
+      "numKeyframes": 3,
+      "duration": 0.06666772067546844,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 5,
+      "baseTranslation": 108,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 27,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        5
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Elevate"
+    },
+    {
+      "nameIndex": 61,
+      "flags": 0,
+      "numKeyframes": 9,
+      "duration": 0.2666676640510559,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 8,
+      "baseTranslation": 108,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 27,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        7
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    },
+    {
+      "nameIndex": 62,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 8,
+      "baseTranslation": 117,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 27,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_assaulttank.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_assaultTank.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_assaultTank.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_assaultTank",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

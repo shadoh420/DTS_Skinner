@@ -1,0 +1,186 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 620
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 52,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ilavlight.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilavlight.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilavlight.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILAVLIGHT",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefwall1.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefWall1.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefWall1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFWALL1",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_ichute01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ichute01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ichute01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICHUTE01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue1.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue1.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE1",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG02",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor6.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefFloor6.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefFloor6.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR6",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG03",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lava/ds_floorgrate1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_floorgrate1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_floorgrate1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_FLOORGRATE1",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwal01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWAL01",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lava/ds_ibor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ibor03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ibor03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IBOR03",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lava/ds_mriveted2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_mriveted2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_mriveted2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_MRIVETED2",
+      "original_slot": 16
+    }
+  ],
+  "source": {
+    "model_name": "interior_dmisc_nefflagstand3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/dmisc_nefflagstand3.dif",
+    "source_path": "interiors/dmisc_nefflagstand3.dif",
+    "source_sha256": "1ba80805f6630e4cd1cb4062c1ffe985b651e5858a3cffedbd35d74c9d12603b",
+    "source_bytes": 112348,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_ILAVLIGHT",
+      "lava/DS_EFLOOR1",
+      "lava/DS_NEFWALL1",
+      "lava/DS_ICHUTE01",
+      "lava/DS_NEFBLUE1",
+      "lava/DS_ILIG02",
+      "lava/DS_NEFFLOOR6",
+      "lava/DS_ILIG03",
+      "lava/DS_NEFBLUE",
+      "lava/DS_FLOORGRATE1",
+      "lava/DS_IWAL01",
+      "lava/DS_IBOR03",
+      "lava/DS_MRIVETED2"
+    ],
+    "version": 44,
+    "triangles": 1472,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

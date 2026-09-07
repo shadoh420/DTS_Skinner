@@ -1,0 +1,98 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 156
+    }
+  ],
+  "null_surfaces_excluded": 22,
+  "degenerate_triangles_skipped": 9,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal07.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL07",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_icei03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI03B",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_icoligola.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icoligolA.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icoligolA.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIGOLA",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_padbottom2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_padbottom2.dif",
+    "source_path": "interiors/rst_padbottom2.dif",
+    "source_sha256": "085f36314d5a537007f309a41f435494ed1c02ed0adccc7d993896b0d0360c5a",
+    "source_bytes": 36189,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL07",
+      "lush/BE_ITEWAL02",
+      "lush/BE_ITEWAL01",
+      "lush/BE_ICEI03B",
+      "lush/BE_ICOLIGOLA"
+    ],
+    "version": 44,
+    "triangles": 393,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

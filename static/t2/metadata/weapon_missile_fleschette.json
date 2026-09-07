@@ -1,0 +1,102 @@
+{
+  "source": {
+    "model_name": "weapon_missile_fleschette",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_missile_fleschette.dts",
+    "source_path": "shapes/weapon_missile_fleschette.dts",
+    "source_sha256": "c773db92db4347693e4da5a20dfc50e216845128e8789e8329afb724269767f4",
+    "source_bytes": 1879,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_missile_fleschette.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_missile_casement"
+    ],
+    "triangles": 32,
+    "selected_detail": "Detail_1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Missile_Fleschette_1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1.0,
+      "polyCount": 34
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_missile_casement.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_missile_casement.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_missile_casement.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_missile_casement",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

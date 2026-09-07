@@ -1,0 +1,93 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 60,
+      "surface_count": 36
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 2,
+      "surface_count": 24
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ipipe01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ipipe01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ipipe01b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPIPE01B",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal03a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal03a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal03a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL03A",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_epipe01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_epipe01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_epipe01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EPIPE01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal12b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal12b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal12b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL12B",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_bbrdg9",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/bbrdg9.dif",
+    "source_path": "interiors/bbrdg9.dif",
+    "source_sha256": "4d53e6fa248eb82eff96ada5c716faeebe76fc5bd1f45ab68d7770df3e059ce2",
+    "source_bytes": 21670,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_IPIPE01B",
+      "lush/BE_EWAL03A",
+      "lush/BE_EPIPE01",
+      "lush/BE_EWAL12B"
+    ],
+    "version": 44,
+    "triangles": 92,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 576
+    }
+  ],
+  "null_surfaces_excluded": 1731,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/terraintiles/rockchipd01.png",
+      "source": "base/textures.vl2:textures/terrainTiles/rockchipd01.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/rockchipd01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/terraintiles/sandreg1.png",
+      "source": "base/textures.vl2:textures/terrainTiles/SANDREG1.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/SANDREG1",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_secave1_part2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_SEcave1_part2.dif",
+    "source_path": "interiors/rst_secave1_part2.dif",
+    "source_sha256": "6815bca025486c775534392b4d2d63dad2f9f2bc5e3c3dc7a83d555349f463c5",
+    "source_bytes": 344915,
+    "alternatives": [],
+    "materials": [
+      "terrainTiles/rockchipd01",
+      "terrainTiles/SANDREG1"
+    ],
+    "version": 44,
+    "triangles": 576,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

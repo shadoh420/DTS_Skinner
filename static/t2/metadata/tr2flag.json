@@ -1,0 +1,141 @@
+{
+  "source": {
+    "model_name": "tr2flag",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/TR2flag.dts",
+    "source_path": "shapes/tr2flag.dts",
+    "source_sha256": "da7d56f1839f3bd661a0d99ba6ac6b3181aaa4ffda4a95bcd147654f1f9818e6",
+    "source_bytes": 180664,
+    "version": 23,
+    "alternatives": [],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "tr2_flag"
+    ],
+    "triangles": 432,
+    "selected_detail": "detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        -0.3042151927947998,
+        -0.2465817928314209,
+        -5.41718350177689e-08
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.10132110118865967,
+        -0.3614879846572876,
+        0.0
+      ]
+    },
+    {
+      "name": "banner100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.33384859561920166,
+        0.0572727769613266,
+        2.26348614692688
+      ]
+    },
+    {
+      "name": "pole100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.33384859561920166,
+        0.0572727769613266,
+        2.26348614692688
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 453
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 7,
+      "flags": 16,
+      "numKeyframes": 25,
+      "duration": 1.7000008821487427,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 2,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        0,
+        1
+      ],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "flagwave"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/tr2_flag.png",
+      "source": "base/TR2final105-client.vl2:textures/skins/tr2_flag.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "tr2_flag",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

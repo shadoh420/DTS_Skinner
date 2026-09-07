@@ -1,0 +1,162 @@
+{
+  "source": {
+    "model_name": "borg12",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg12.dts",
+    "source_path": "shapes/borg12.dts",
+    "source_sha256": "d0d42f149af07657c46deae763962d4b259f8af0488c3c8c702e2e3650c09daa",
+    "source_bytes": 12119,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg12.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "Oldwood"
+    ],
+    "triangles": 170,
+    "selected_detail": "Detail256"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.14852505922317505,
+        -0.7877150774002075,
+        -0.0004203319549560547
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Arch256",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        7649,
+        0,
+        31861
+      ],
+      "translation": [
+        0.23770660161972046,
+        -0.37729355692863464,
+        2.481611967086792
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail256",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 256.0,
+      "polyCount": 203
+    },
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 152
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 64.0,
+      "polyCount": 128
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 49
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 1.0,
+      "polyCount": 30
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 10,
+      "flags": 16,
+      "numKeyframes": 11,
+      "duration": 0.3666676878929138,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 1,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/oldwood.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Oldwood.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Oldwood.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Oldwood",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

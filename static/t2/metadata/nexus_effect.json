@@ -1,0 +1,334 @@
+{
+  "source": {
+    "model_name": "nexus_effect",
+    "game": "t2",
+    "category": "Effects",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: nexgren",
+      "Animated texture uses frame zero: nexgren02",
+      "2 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/nexus_effect.dts",
+    "source_path": "shapes/nexus_effect.dts",
+    "source_sha256": "3e5e234ad5d7dba3c37b0252e6db4efcb7c4aa7969539401311d9268219fc6c3",
+    "source_bytes": 6375,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/nexus_effect.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "nexgren",
+      "nexgren02"
+    ],
+    "triangles": 8,
+    "selected_detail": "Detail1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DummySpin",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.4124671255795364e-24,
+        -1.8899065423738648e-07,
+        4.323602199554443
+      ]
+    },
+    {
+      "name": "Default1_1",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.4124671255795364e-24,
+        1.8899065423738648e-07,
+        -4.323602199554443
+      ]
+    },
+    {
+      "name": "Default2_1",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        1.0671098493730824e-07,
+        1.164811180842662e-08,
+        -4.323602199554443
+      ]
+    },
+    {
+      "name": "Hoard2_1",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        1.0671098493730824e-07,
+        1.164811180842662e-08,
+        -4.323602199554443
+      ]
+    },
+    {
+      "name": "Hoard1_1",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.4124671255795364e-24,
+        1.8899065423738648e-07,
+        -4.323602199554443
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1.0,
+      "polyCount": 16
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 16,
+      "flags": 16,
+      "numKeyframes": 120,
+      "duration": 4.000000953674316,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 17,
+      "flags": 0,
+      "numKeyframes": 31,
+      "duration": 1.0000009536743164,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 120,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Transition"
+    },
+    {
+      "nameIndex": 18,
+      "flags": 0,
+      "numKeyframes": 16,
+      "duration": 0.5000010132789612,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 120,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 128,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Flash"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    12,
+    0,
+    0,
+    0,
+    0,
+    13,
+    1,
+    512,
+    0,
+    0,
+    14,
+    2,
+    1065353216,
+    0,
+    0,
+    15,
+    3,
+    1342177280,
+    0,
+    0
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/nexgren.ifl",
+      "source": "base/skins.vl2:textures/skins/nexgren.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "nexg00.png 1",
+        "nexg01.png 2",
+        "nexg02.png 2",
+        "nexg03.png 2",
+        "nexg04.png 2",
+        "nexg05.png 2",
+        "nexg06.png 2",
+        "nexg07.png 2",
+        "nexg08.png 2",
+        "nexg09.png 2",
+        "nexg10.png 2",
+        "nexg11.png 2",
+        "nexg12.png 2",
+        "nexg13.png 2",
+        "nexg14.png 2",
+        "nexg15.png 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/nexg00.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/nexg00.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/nexg00.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "nexgren",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/nexgren02.ifl",
+      "source": "base/skins.vl2:textures/skins/nexgren02.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "nexg08.png 1",
+        "nexg09.png 2",
+        "nexg10.png 2",
+        "nexg11.png 2",
+        "nexg12.png 2",
+        "nexg13.png 2",
+        "nexg14.png 2",
+        "nexg15.png 2",
+        "nexg00.png 2",
+        "nexg01.png 2",
+        "nexg02.png 2",
+        "nexg03.png 2",
+        "nexg04.png 2",
+        "nexg05.png 2",
+        "nexg06.png 2",
+        "nexg07.png 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/nexg08.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/nexg08.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/nexg08.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "nexgren02",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Hoard1_",
+    "Hoard2_"
+  ],
+  "empty_finer_details": []
+}

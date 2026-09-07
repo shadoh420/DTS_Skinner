@@ -1,0 +1,165 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 397
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 24,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_igenericdark.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGenericDark.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGenericDark.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERICDARK",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal06.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal06.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL06",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG02",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_eflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eflo02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eflo02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EFLO02",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal07.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL07",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_edoo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_edoo02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_edoo02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EDOO02",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02A",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lush/be_icoligola.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icoligolA.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icoligolA.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIGOLA",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lush/be_iprflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iprflo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iprflo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPRFLO01",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lush/be_espec09.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec09.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec09.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC09",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lush/be_ihaflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihaflo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihaflo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "b75807229b08eeec42ab1f000790e816fa11cb19eebade76189a4dc225ba7d31",
+      "name": "lush/BE_IHAFLO01",
+      "original_slot": 15
+    }
+  ],
+  "source": {
+    "model_name": "interior_irisbase",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/irisbase.dif",
+    "source_path": "interiors/irisbase.dif",
+    "source_sha256": "35f63e1da6e78daabf58791cd7856a43edbf799e5cf96a77c7c22cf4cf72dc2e",
+    "source_bytes": 83210,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_IGENERICDARK",
+      "lush/BE_EWAL06",
+      "lush/BE_ELIG02",
+      "lush/BE_EFLO02",
+      "lush/BE_EWAL07",
+      "lush/BE_EDOO02",
+      "lush/BE_ITEBOR02A",
+      "lush/BE_ICOLIGOLA",
+      "lush/BE_IPRFLO01",
+      "lush/BE_ESPEC09",
+      "lush/BE_IHAFLO01"
+    ],
+    "version": 44,
+    "triangles": 868,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

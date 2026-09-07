@@ -1,0 +1,120 @@
+{
+  "source": {
+    "model_name": "goal_top",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/goal_top.dts",
+    "source_path": "shapes/goal_top.dts",
+    "source_sha256": "e9a97d2511c8f3b4b0fbe7a7ba5180550f02bc5025c2b0925bfa4caed125fff8",
+    "source_bytes": 8996,
+    "version": 23,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "goal_top"
+    ],
+    "triangles": 129,
+    "selected_detail": "detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.7047553062438965,
+        7.05836820602417,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1236062049865723,
+        -2.949465751647949,
+        0.0
+      ]
+    },
+    {
+      "name": "goal_top100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.581149101257324,
+        -4.1089019775390625,
+        2.474125385284424
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.581149101257324,
+        -4.108902454376221,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 144
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/goal_top.png",
+      "source": "base/TR2final105-client.vl2:textures/skins/goal_top.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "goal_top",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

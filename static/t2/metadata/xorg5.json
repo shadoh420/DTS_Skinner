@@ -1,0 +1,194 @@
+{
+  "source": {
+    "model_name": "xorg5",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/xorg5.dts",
+    "source_path": "shapes/xorg5.dts",
+    "source_sha256": "7bcca9366f40b74f82ffd686a693e3a57396f77b3016e75032205f2b8b64f4a4",
+    "source_bytes": 12564,
+    "version": 21,
+    "alternatives": [
+      "base/shapes.vl2:shapes/xorg5.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "A7trunk2",
+      "A7branch1"
+    ],
+    "triangles": 64,
+    "selected_detail": "Detail30"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.8084617853164673,
+        -0.1380530297756195,
+        0.04804433882236481
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Trunk-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4801691174507141,
+        0.0064595043659210205,
+        -0.3215303122997284
+      ]
+    },
+    {
+      "name": "Branch30",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        22658,
+        23669
+      ],
+      "translation": [
+        -0.46639782190322876,
+        -0.12390229105949402,
+        5.04978609085083
+      ]
+    },
+    {
+      "name": "DomeA30",
+      "parent": 1,
+      "rotation_quat16": [
+        -3702,
+        1987,
+        -226,
+        32495
+      ],
+      "translation": [
+        -1.1445791721343994,
+        1.3133891820907593,
+        10.157509803771973
+      ]
+    },
+    {
+      "name": "DomeC30",
+      "parent": 1,
+      "rotation_quat16": [
+        1679,
+        -1754,
+        22596,
+        23604
+      ],
+      "translation": [
+        6.404947280883789,
+        0.04151460528373718,
+        7.127641201019287
+      ]
+    },
+    {
+      "name": "Trunk30",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4801691174507141,
+        0.0064595043659210205,
+        -0.3215303122997284
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 30.0,
+      "polyCount": 68
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 8.0,
+      "polyCount": 54
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 1.0,
+      "polyCount": 36
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": -1.0,
+      "polyCount": 43
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/a7trunk2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/A7trunk2.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/A7trunk2.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "A7trunk2",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/a7branch1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/A7branch1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/A7branch1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "A7branch1",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

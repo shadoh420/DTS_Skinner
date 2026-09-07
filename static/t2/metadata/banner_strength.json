@@ -1,0 +1,170 @@
+{
+  "source": {
+    "model_name": "banner_strength",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/banner_strength.dts",
+    "source_path": "shapes/banner_strength.dts",
+    "source_sha256": "cf3fd6c61014a825146ca4ef6a1da74cc81bae2ce95b6fcadce77450ad2f3f6d",
+    "source_bytes": 45720,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/banner_strength.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "banner_strength",
+      "repair_kit"
+    ],
+    "triangles": 136,
+    "selected_detail": "Detail_2"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Banner_2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        2.8251125812530518
+      ]
+    },
+    {
+      "name": "MountR_2",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -1.2647672891616821,
+        0.06794201582670212,
+        5.459757328033447
+      ]
+    },
+    {
+      "name": "MountL_2",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        1.2420979738235474,
+        0.06794201582670212,
+        5.459757328033447
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 2.0,
+      "polyCount": 171
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 9,
+      "flags": 16,
+      "numKeyframes": 27,
+      "duration": 1.8000010251998901,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        0
+      ],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/banner_strength.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/banner_strength.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/banner_strength.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "banner_strength",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/repair_kit.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/repair_kit.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/repair_kit.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "repair_kit",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

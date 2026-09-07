@@ -1,0 +1,174 @@
+{
+  "source": {
+    "model_name": "xorg4",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/xorg4.dts",
+    "source_path": "shapes/xorg4.dts",
+    "source_sha256": "c7f3bca9a88d30fbd80c0213e99a915c593cabb31394dadb9fc11ca7aaeece70",
+    "source_bytes": 15199,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/xorg4.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "pod1",
+      "Humnskn3"
+    ],
+    "triangles": 84,
+    "selected_detail": "Detail50"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4243144392967224,
+        -0.2031131088733673,
+        0.5752150416374207
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Pod50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5470992922782898,
+        -0.012298911809921265,
+        0.01841083914041519
+      ]
+    },
+    {
+      "name": "Leaves50",
+      "parent": 2,
+      "rotation_quat16": [
+        -2758,
+        739,
+        8448,
+        31530
+      ],
+      "translation": [
+        -0.09755681455135345,
+        -0.03691697120666504,
+        -0.24518603086471558
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 50.0,
+      "polyCount": 88
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 52
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 24
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 10,
+      "flags": 16,
+      "numKeyframes": 11,
+      "duration": 0.3666676878929138,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 2,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pod1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pod1.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pod1.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "pod1",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/humnskn3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Humnskn3.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Humnskn3.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "Humnskn3",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

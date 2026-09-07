@@ -1,0 +1,117 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 80,
+      "surface_count": 135
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 64,
+      "surface_count": 111
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 50,
+      "surface_count": 70
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 30,
+      "surface_count": 51
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 10,
+      "surface_count": 39
+    },
+    {
+      "version": 0,
+      "detail_level": 5,
+      "min_pixels": 8,
+      "surface_count": 7
+    }
+  ],
+  "null_surfaces_excluded": 463,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/desert/cp_ewal01d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ewal01d.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ewal01d.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/cp_ewal01d",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/desert/cp_ecombo1b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ecombo1b.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ecombo1b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/cp_ecombo1b",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/desert/cp_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ewal01b.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/cp_ewal01b",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/desert/cp_ewal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ewal01.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ewal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/cp_ewal01",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_pspir3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/pspir3.dif",
+    "source_path": "interiors/pspir3.dif",
+    "source_sha256": "40a5feb7754dff47d2b753c639ffb6f4ff669e642a34a5a0aa288a725d63f62c",
+    "source_bytes": 201565,
+    "alternatives": [],
+    "materials": [
+      "desert/cp_ewal01d",
+      "desert/cp_ecombo1b",
+      "desert/cp_ewal01b",
+      "desert/cp_ewal01"
+    ],
+    "version": 44,
+    "triangles": 135,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

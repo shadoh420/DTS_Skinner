@@ -1,0 +1,339 @@
+{
+  "source": {
+    "model_name": "grenade_flare",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "2 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/grenade_flare.dts",
+    "source_path": "shapes/grenade_flare.dts",
+    "source_sha256": "a681e7665bf616b889d62ee948cfda53f8c0e2738a4dd9b9dfe5e7fe73562070",
+    "source_bytes": 23673,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/grenade_flare.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "grenade_flare",
+      "jetflare00"
+    ],
+    "triangles": 140,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DummyRoot32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.192826625308953e-07,
+        -0.00020957575179636478,
+        0.0
+      ]
+    },
+    {
+      "name": "Btm32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -7.404598547538273e-15,
+        -8.731478873258425e-10,
+        0.0
+      ]
+    },
+    {
+      "name": "Head32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -7.314459842390313e-15,
+        -3.296218549844743e-14,
+        0.0
+      ]
+    },
+    {
+      "name": "Piece_a32",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.396033131362414e-15,
+        -3.914422119777328e-09,
+        0.07945376634597778
+      ]
+    },
+    {
+      "name": "Piece_b32",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        -28377,
+        -16383
+      ],
+      "translation": [
+        -3.3854865577609417e-09,
+        1.9645511883936706e-09,
+        0.07945376634597778
+      ]
+    },
+    {
+      "name": "Piece_c32",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        -28377,
+        16383
+      ],
+      "translation": [
+        3.38646888309313e-09,
+        1.9500001613437234e-09,
+        0.07945376634597778
+      ]
+    },
+    {
+      "name": "Outerhalo32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.006237747147679329,
+        -0.004154208581894636,
+        0.16631896793842316
+      ]
+    },
+    {
+      "name": "Innerhalo32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -0.006237747147679329,
+        -0.004154208581894636,
+        0.16631896793842316
+      ]
+    },
+    {
+      "name": "flare32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        -0.023085037246346474,
+        0.0081353560090065,
+        0.16631902754306793
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 295
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 219
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 141
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 141
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 24,
+      "flags": 16,
+      "numKeyframes": 26,
+      "duration": 0.8666675686836243,
+      "priority": 0,
+      "firstGroundFrame": 167,
+      "numGroundFrames": 0,
+      "baseRotation": 11,
+      "baseTranslation": 11,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "translationMatters": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        5,
+        6
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 25,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 167,
+      "numGroundFrames": 0,
+      "baseRotation": 167,
+      "baseTranslation": 167,
+      "baseScale": 0,
+      "baseObjectState": 60,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Throw"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    23,
+    3,
+    -842150451,
+    -842150451,
+    -842150451
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/grenade_flare.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/grenade_flare.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/grenade_flare.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "grenade_flare",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/jetflare00.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/jetflare00.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/jetflare00.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "jetflare00",
+      "original_slot": 3
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Innerhalo",
+    "Outerhalo"
+  ],
+  "empty_finer_details": []
+}

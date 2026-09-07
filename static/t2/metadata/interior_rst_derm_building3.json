@@ -1,0 +1,88 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 510
+    }
+  ],
+  "null_surfaces_excluded": 8,
+  "degenerate_triangles_skipped": 88,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL03C",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_iceilig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iceilig02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iceilig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICEILIG02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/bd_eflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_eflo01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_eflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EFLO01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/bd_itewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_itewal01b.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_itewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6eccd03fcddd1e8d1b832e1abe8a2708e17597aa0ee32f56784537708a28886f",
+      "name": "badlands/BD_ITEWAL01B",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_derm_building3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_derm_building3.dif",
+    "source_path": "interiors/rst_derm_building3.dif",
+    "source_sha256": "207bb6aecad122a5a02464172e5f5108d1de661d36fc41d893dfdebca0e965f2",
+    "source_bytes": 113783,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_EWAL03C",
+      "badlands/BD_ICEILIG02",
+      "badlands/BD_EFLO01",
+      "badlands/BD_ITEWAL01B"
+    ],
+    "version": 44,
+    "triangles": 1296,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

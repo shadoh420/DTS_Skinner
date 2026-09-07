@@ -1,0 +1,272 @@
+{
+  "source": {
+    "model_name": "vehicle_air_scout_wreck",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_air_scout_wreck.dts",
+    "source_path": "shapes/vehicle_air_scout_wreck.dts",
+    "source_sha256": "d9b0d601c76aa08960a728ff0dc5db3cd51f4f3b1bdcf0463c5ec07e79ac573a",
+    "source_bytes": 68199,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_air_scout_wreck.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "vehicle_air_scout"
+    ],
+    "triangles": 983,
+    "selected_detail": "Detail64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MountL64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.1330699920654297,
+        -2.45863938331604,
+        1.8259265422821045
+      ]
+    },
+    {
+      "name": "MountR64",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        2.1330699920654297,
+        -2.45863938331604,
+        1.8259265422821045
+      ]
+    },
+    {
+      "name": "PipeL64",
+      "parent": 1,
+      "rotation_quat16": [
+        -12192,
+        12192,
+        19702,
+        19702
+      ],
+      "translation": [
+        -0.903711199760437,
+        0.9694163799285889,
+        2.5291337966918945
+      ]
+    },
+    {
+      "name": "PipeR64",
+      "parent": 1,
+      "rotation_quat16": [
+        -16454,
+        -16311,
+        16454,
+        -16311
+      ],
+      "translation": [
+        1.1492441892623901,
+        0.697693943977356,
+        2.430741548538208
+      ]
+    },
+    {
+      "name": "WingL64",
+      "parent": 1,
+      "rotation_quat16": [
+        -4636,
+        -5085,
+        -4868,
+        31664
+      ],
+      "translation": [
+        -2.0370266437530518,
+        -1.3430943489074707,
+        1.9218648672103882
+      ]
+    },
+    {
+      "name": "WingR64",
+      "parent": 1,
+      "rotation_quat16": [
+        -29042,
+        3565,
+        -14638,
+        1797
+      ],
+      "translation": [
+        1.939344048500061,
+        -1.3594380617141724,
+        1.9473824501037598
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.449279611407064e-09,
+        0.9053000807762146,
+        3.5767111778259277
+      ]
+    },
+    {
+      "name": "Hull-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Fuselage64",
+      "parent": 1,
+      "rotation_quat16": [
+        -17419,
+        15276,
+        17419,
+        15276
+      ],
+      "translation": [
+        3.383800617484667e-08,
+        -4.619439125061035,
+        3.10861873626709
+      ]
+    },
+    {
+      "name": "Mount10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        4.322000026702881,
+        2.8310000896453857
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 1093
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 357
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 155
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 63
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 14
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 23
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_air_scout.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_scout.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_scout.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_scout",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

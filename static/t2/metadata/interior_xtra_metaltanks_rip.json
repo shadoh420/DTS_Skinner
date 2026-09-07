@@ -1,0 +1,64 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 8
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal07.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL07",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/rip.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lush/rip.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c6e94082924fcb23ff04321f8b39176525b7a4ca73c96e6bf689dde534fb6ea5",
+      "name": "lush/RIP",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_metaltanks_rip",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_metaltanks_rip.dif",
+    "source_path": "interiors/xtra_metaltanks_rip.dif",
+    "source_sha256": "78fa4b7cc01ea7653e0e50b5de2a7b0774ca20a69614d3ba971216f4e8af8fe4",
+    "source_bytes": 5132,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL07",
+      "lush/RIP"
+    ],
+    "version": 44,
+    "triangles": 20,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "source": {
+    "model_name": "borg3",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "Missing texture: SeaWeed (No matching source image or frame list)"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg3.dts",
+    "source_path": "shapes/borg3.dts",
+    "source_sha256": "2a3722b897bdc2d2ba0c844edc80adefebaf0dc7fcb6af621058e4da571a7085",
+    "source_bytes": 218303,
+    "version": 16,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg3.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "LushMoss",
+      "SeaWeed"
+    ],
+    "triangles": 104,
+    "selected_detail": "detail 64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.45415550470352173,
+        -0.2429412305355072,
+        -0.007403850555419922
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "waterplant 64",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        23270,
+        23068
+      ],
+      "translation": [
+        -0.5876436233520508,
+        0.023584268987178802,
+        0.006490268744528294
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail 64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 9,
+      "_unknown0": 0,
+      "numKeyframes": 61,
+      "duration": 2.033334255218506,
+      "flags": 16,
+      "cyclic": true,
+      "_scalars": [
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        3,
+        1,
+        0,
+        1,
+        1,
+        1
+      ],
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 3,
+      "baseObjectState": 62,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "baseTranslation": 3,
+      "baseScale": 0,
+      "iflMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        0
+      ],
+      "matFrameMatters": [],
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "name": "ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/lushmoss.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/LushMoss.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/LushMoss.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "LushMoss",
+      "original_slot": 0
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "SeaWeed",
+      "name": "SeaWeed",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

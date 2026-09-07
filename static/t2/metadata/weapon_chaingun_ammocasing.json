@@ -1,0 +1,145 @@
+{
+  "source": {
+    "model_name": "weapon_chaingun_ammocasing",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_chaingun_ammocasing.dts",
+    "source_path": "shapes/weapon_chaingun_ammocasing.dts",
+    "source_sha256": "6994a674c56585a54b73cd5299d2b381c0a446d91358810b507879839cd36db5",
+    "source_bytes": 3034,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_chaingun_ammocasing.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_chaingun_ammocasing"
+    ],
+    "triangles": 16,
+    "selected_detail": "Detail_14"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.05978440120816231,
+        0.0008512372151017189,
+        -1.2969036955468027e-09
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.05978439748287201,
+        -0.0008512437343597412,
+        0.0
+      ]
+    },
+    {
+      "name": "Ammocasing_14",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.05978439748287201,
+        -0.0008512437343597412,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_14",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 14.0,
+      "polyCount": 17
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 5.0,
+      "polyCount": 9
+    },
+    {
+      "name": "Detail_3",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 3.0,
+      "polyCount": 7
+    },
+    {
+      "name": "Detail_1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 17
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_chaingun_ammocasing.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_chaingun_ammocasing.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_chaingun_ammocasing.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_chaingun_ammocasing",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

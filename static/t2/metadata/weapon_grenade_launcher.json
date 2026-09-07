@@ -1,0 +1,413 @@
+{
+  "source": {
+    "model_name": "weapon_grenade_launcher",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_grenade_launcher.dts",
+    "source_path": "shapes/weapon_grenade_launcher.dts",
+    "source_sha256": "11dd12320f6ed62028344c208b3c13914ef210b09e5fcc80112ed23ca0b67980",
+    "source_bytes": 76823,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_grenade_launcher.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_grenade_launcher"
+    ],
+    "triangles": 527,
+    "selected_detail": "Detail65"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Gn_main65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.013445928692817688,
+        -0.0752299353480339,
+        0.032529689371585846
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0015241507207974792,
+        -0.3921850323677063,
+        -0.09191577136516571
+      ]
+    },
+    {
+      "name": "DumReload",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.348732656784705e-08,
+        0.9297114610671997,
+        0.049013081938028336
+      ]
+    },
+    {
+      "name": "Gn_barrelCapBack65",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.276316642266465e-06,
+        -0.4410884380340576,
+        -6.169453263282776e-05
+      ]
+    },
+    {
+      "name": "DumFire",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        9.313225746154785e-10,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Gn_barrelCapFront65",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.007508179172873497,
+        -0.07522988319396973,
+        4.6938657760620117e-07
+      ]
+    },
+    {
+      "name": "Gn_pina65",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        12539,
+        0,
+        30272
+      ],
+      "translation": [
+        -0.09309011697769165,
+        -0.3267557621002197,
+        0.09324580430984497
+      ]
+    },
+    {
+      "name": "Gn_barrel65",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.005790598690509796,
+        -0.4313795566558838,
+        0.00012384727597236633
+      ]
+    },
+    {
+      "name": "Gn_pinb65",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        -12539,
+        0,
+        30272
+      ],
+      "translation": [
+        0.09324578940868378,
+        -0.3267557621002197,
+        0.09309011697769165
+      ]
+    },
+    {
+      "name": "Gn_pinc65",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        -30272,
+        0,
+        12539
+      ],
+      "translation": [
+        0.09309010207653046,
+        -0.3267557621002197,
+        -0.09324579685926437
+      ]
+    },
+    {
+      "name": "Gn_pind65",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        -30272,
+        0,
+        -12539
+      ],
+      "translation": [
+        -0.09324578940868378,
+        -0.3267557621002197,
+        -0.09309010952711105
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        6.612900449454173e-08,
+        0.9297114610671997,
+        0.049013081938028336
+      ]
+    },
+    {
+      "name": "Gn_handle65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0012301173992455006,
+        -0.3008809983730316,
+        -0.044651325792074203
+      ]
+    },
+    {
+      "name": "Gn_loader65",
+      "parent": 1,
+      "rotation_quat16": [
+        -23081,
+        -2019,
+        2019,
+        23081
+      ],
+      "translation": [
+        -0.03664098680019379,
+        0.20628488063812256,
+        0.047885242849588394
+      ]
+    },
+    {
+      "name": "Gn_midsection65",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.00021113920956850052,
+        0.384565144777298,
+        0.03255438432097435
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        6.612900449454173e-08,
+        1.0058077573776245,
+        0.04901307821273804
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail65",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 65.0,
+      "polyCount": 625
+    },
+    {
+      "name": "Detail35",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 35.0,
+      "polyCount": 489
+    },
+    {
+      "name": "Detail15",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 15.0,
+      "polyCount": 357
+    },
+    {
+      "name": "Detail7",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 7.0,
+      "polyCount": 119
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 16
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 34,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        6
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    },
+    {
+      "nameIndex": 35,
+      "flags": 0,
+      "numKeyframes": 13,
+      "duration": 0.40000098943710327,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 11,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        4,
+        15
+      ],
+      "translationMatters": [
+        15
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        9
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Reload"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_grenade_launcher.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_grenade_launcher.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_grenade_launcher.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_grenade_launcher",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,67 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 64,
+      "surface_count": 72
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 32,
+      "surface_count": 52
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 16,
+      "surface_count": 32
+    }
+  ],
+  "null_surfaces_excluded": 216,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": "unpack_from requires a buffer of at least 86478 bytes for unpacking 4 bytes at offset 86474 (actual buffer size is 86474)",
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ecombo3b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ecombo3b.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ecombo3b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/bd_ecombo3b",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_xrock7",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Unparsed resource tail: unpack_from requires a buffer of at least 86478 bytes for unpacking 4 bytes at offset 86474 (actual buffer size is 86474)",
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/xrock7.dif",
+    "source_path": "interiors/xrock7.dif",
+    "source_sha256": "4e3e4db901f6852e374b5c6722e1d6e71ae77117fd0f10a8c13ec4d86177b39e",
+    "source_bytes": 86474,
+    "alternatives": [],
+    "materials": [
+      "badlands/bd_ecombo3b"
+    ],
+    "version": 44,
+    "triangles": 72,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

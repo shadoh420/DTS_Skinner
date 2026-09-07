@@ -1,0 +1,69 @@
+{
+  "source": {
+    "model_name": "rst-samifin",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/rst-samifin.dts",
+    "source_path": "shapes/rst-samifin.dts",
+    "source_sha256": "de808f9a35bd9230490821bc34d26e9fafafe67819d6e3264ada6f65a9a9f6a3",
+    "source_bytes": 33100,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Sami_D"
+    ],
+    "triangles": 760,
+    "selected_detail": "Detail-1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Root",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 0.0,
+      "polyCount": 760
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/sami_d.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/Sami_D.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "d055eb168dd2348f26b0ad3805c713c91b83356011ba13a598a6d9577ebf79e9",
+      "name": "Sami_D",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

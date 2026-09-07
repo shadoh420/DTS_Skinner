@@ -1,0 +1,109 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 333
+    }
+  ],
+  "null_surfaces_excluded": 17,
+  "degenerate_triangles_skipped": 61,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ewall07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall07.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall07.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL07",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_etechbor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_etechbor01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_etechbor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ETECHBOR01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewaldeco01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewaldeco01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewaldeco01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALDECO01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_iceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iceilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICEILIG01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_2",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/ds_ibor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ibor01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ibor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IBOR01",
+      "original_slot": 10
+    }
+  ],
+  "source": {
+    "model_name": "interior_muddyswampstand",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/muddyswampstand.dif",
+    "source_path": "interiors/muddyswampstand.dif",
+    "source_sha256": "40f78ac78caf2668f5328eb1112cca30b522a11aae493254ff11a658988d0198",
+    "source_bytes": 58499,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EWALL07",
+      "lava/DS_ETECHBOR01",
+      "lava/DS_EWALDECO01",
+      "lava/DS_ICEILIG01",
+      "lava/DS_TECHWALL_2",
+      "lava/DS_IBOR01"
+    ],
+    "version": 44,
+    "triangles": 821,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,16 +1,34 @@
-# DTS_Skinner - Tribes 1 Model Skin Previewer
+# DTS_Skinner - Tribes 1 and Tribes 2 Model Workshop
 
-Real-time texture previewer for Tribes 1 models and interiors. The consolidated
-catalog contains 390 models from the GitHub and older local Skinner versions.
-Load models, apply skins, and see live updates. Known missing textures are listed below.
+Browse models and interiors, inspect materials, apply editable PNG skins, and export
+OBJ/MTL/texture ZIPs from one Windows application. T1 and T2 have separate model
+and texture namespaces. The entire existing T1 inventory and repaired armor pose
+are retained.
 
-![image](https://github.com/user-attachments/assets/58498de5-e4c6-4abe-ac2b-2330734eef9f)
+| Catalog | Entries | Static previews / exports |
+| --- | ---: | ---: |
+| Tribes 1 DTS / DIS | 390 | 390 |
+| Tribes 2 DTS | 257 | 255 |
+| Tribes 2 DIF interiors | 704 | 704 |
+
+All 961 T2 entries remain browsable, including two explicit unsupported shapes.
+The installed catalog includes Team Rabbit 2, Classic, community map packs and
+installed HD texture overrides. It includes 1,921 editable T2 PNGs, covering 1,102
+skin variants. See [T2 import coverage](T2_IMPORT.md) for exact source versions,
+archive policy, material gaps, animation dependencies and licensing/provenance.
+The executable needs neither the game installation nor the porting kit at runtime.
+
+Current Windows build: `dist/combined-workshop/SkinnerApp.exe`.
+Older builds, including `dist/complete-catalog`, are preserved.
+
+![Combined workshop with a T2 Blood Eagle skin](docs/workshop.png)
 
 ## Features
 
-*   Live texture reloading.
-*   Model selection via dropdown.
-*   Interactive 3D view with rotation controls.
+*   Game selection, searchable natural-sorted catalog, family filter, previous/next.
+*   Simultaneous 3D viewport and material inspector with per-slot skin selection.
+*   Offline texture reloading, editable PNG selection/reset and PNG download.
+*   Frame model, named camera views, lighting, wireframe, background and turntable.
 *   **Export to OBJ**: Export models as OBJ with textures.
 *   System tray icon: open app, access textures folder, quit.
 *   Standalone executable.
@@ -19,10 +37,10 @@ Load models, apply skins, and see live updates. Known missing textures are liste
 
 1.  Run `SkinnerApp.exe`.
 2.  If the program doesn't automatically open, use tray icon or browser at `http://localhost:5000/`.
-3.  Select a model from the dropdown and click "Load/Refresh Model".
-4.  Replace `.png` textures in `static/textures/` to test skins.
-5.  Click **"Export to OBJ"** to save model with custom textures.
-6.  Use the mouse to control the view, use the buttons for upside-down models.
+3.  Choose a game and select a model; search and family filters narrow the list.
+4.  Choose a material slot and an editable PNG, then **Apply to slot**. **Reset slot** restores its authored material.
+5.  Edit PNGs in `static/textures/` for T1 or `static/textures/t2/` for T2 beside the executable. Changes reload automatically; **Reload textures** also refreshes manually.
+6.  **Download OBJ + textures ZIP** exports the applied skin selections. **Save PNG** downloads the original texture including alpha. Orientation controls affect the preview only.
 7.  Right click the system tray icon to fully close the program when you're done (save your skins first).
 
 
@@ -33,6 +51,7 @@ The export feature creates a ZIP archive containing:
 - `.mtl` file (material definitions)
 - `.png` textures (all referenced textures)
 - `README.txt` (import instructions)
+- `metadata.json` for T2 (source, material flags, animation descriptors and import limitations)
 
 **Import Steps**:
 1. Extract the ZIP file
@@ -43,6 +62,7 @@ The export feature creates a ZIP archive containing:
 ## Usage (Developer)
 
 1.  Clone repo.
+    Run `git lfs pull` to retrieve the imported T2 texture catalog.
 2.  `pip install -r requirements.txt`.
 3.  Place assets as above.
 4.  Run `python app.py`.
@@ -50,6 +70,61 @@ The export feature creates a ZIP archive containing:
 ## Tech
 
 Python, Flask, Socket.IO, Watchdog, Three.js, pystray, PyInstaller, Bov's DTS parser, Krogoth/Kaitai TribesToBlender.
+
+## Combined workshop delivery
+
+The UI was informed by [exogen's T2 Model Skinner](https://github.com/exogen/t2-model-skinner)
+at `49680aa4b112bdfc042e7a3c9ab766bd7956b1a2` (MIT, copyright 2022 Brian Beck).
+Its live application and implementation were inspected: grouped browsing,
+simultaneous model/material inspection, and contextual skin/export actions were
+adapted into the existing Flask/Three.js application. No framework or editor code
+was copied. The reference's curated model subset is not used as our inventory.
+
+T2 preview and export retain authored static poses and the finest nonempty visible
+detail. Collision meshes are excluded. Native normals, UVs, material assignment,
+wrapping and transparency flags are carried through the adapter. The viewer handles
+T2 reflectivity stored in alpha without darkening opaque RGB; its inspector can show
+RGB while saved PNGs retain alpha. OBJ/MTL cannot reproduce all Torque rendering
+features, so flags and limitations accompany the export.
+
+Animation playback and rigged exports remain a separate tranche. Sequence and
+external DSQ descriptors are retained, with original samples in the read-only
+installation. DIF interiors currently use base textures; baked lightmaps, alarm
+states and resource movers are deferred. The two unavailable T2 shapes, ten models
+with missing materials and four partial DIF resource tails are detailed in
+[T2_IMPORT.md](T2_IMPORT.md). The six original T1 texture gaps below remain explicit.
+
+Validation commands:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --distpath dist\combined-workshop DiscSkinnerApp.spec
+# Start only the candidate build, on an unused port:
+.\dist\combined-workshop\SkinnerApp.exe --no-browser --no-tray --port 5068
+.\.venv\Scripts\python.exe tools\check_packaged.py http://127.0.0.1:5068
+```
+
+The optional `tools/check_browser.cjs` uses Playwright/Edge in headless mode to
+check offline browsing, normal-window layout, applied-skin downloads and rendered
+representatives. Playwright is a development check, not a runtime dependency.
+
+Validation on September 7, 2026: all 21 regression tests pass. Packaged checks
+covered all 390 T1 and 959 available T2 previews and OBJ ZIP exports, including
+geometry counts, material textures and explicit missing-file reports. Hidden Edge
+checks passed offline at 1280x800 and 1024x768; rendered armor, weapon, vehicle,
+effect and interior examples were inspected, including Blood Eagle skin selection.
+Both games' applied skins were checked in downloaded ZIPs, and unapplied fallback
+text cannot change an export. Final packaged checks also verified automatic atomic
+PNG replacement with unchanged timestamp/size and edit persistence across restart.
+Original packaged textures were restored after the checks. The final reload-only
+correction leaves all 5,310 bundled UI/model/texture assets byte-identical to the
+fully export-checked candidate. Native tray interaction and full-catalog visual
+acceptance remain unverified.
+
+Next step: direct review of the combined workshop, then animation playback and
+the explicit DIF rendering gaps. Automated inventory and export checks do not
+establish visual correctness across every model. ArenaPrototype integration is
+future work.
 
 ## September 2026 compatibility repair
 
@@ -78,8 +153,7 @@ Keep the executable in a writable folder. Source runs use the repository's
 - Build: `pip install PyInstaller`, then `pyinstaller DiscSkinnerApp.spec`
 - Without desktop UI: `python app.py --no-browser --no-tray --port 5057`
   (the executable accepts the same flags). The server binds to localhost.
-- If the Socket.IO CDN is unavailable, preview/export still work; automatic
-  texture updates require that script.
+- The combined workshop uses local texture-change polling and has no CDN dependency.
 
 ### Related tools
 

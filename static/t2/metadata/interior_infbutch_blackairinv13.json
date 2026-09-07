@@ -1,0 +1,156 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 627
+    }
+  ],
+  "null_surfaces_excluded": 28,
+  "degenerate_triangles_skipped": 142,
+  "lightmap_count": 8,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/be_ewal06.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/be_ewal06.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "55c6cbbddf040e37b5fc84b16a3cee48454a72ea87c545926ffc5f8c07589cfb",
+      "name": "badlands/BE_EWAL06",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ebor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor04.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EBOR04",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/ds_efloor1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/ds_efloor1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "badlands/DS_EFLOOR1",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/inf_butch_grey5.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/inf_butch_grey5.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "d60c02bb57e6ca74c8d33f449ccfb72c74b9aa5e252b29c15cf46c6e9946d5a0",
+      "name": "badlands/INF_BUTCH_GREY5",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/badlands/bd_eflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_eflo01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_eflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EFLO01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/badlands/cp_ibor03.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/cp_ibor03.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "3fce9b4532cb8c8495386ed4a75dfa43d869ec0df36fa14adb7fcff30e937da1",
+      "name": "badlands/CP_IBOR03",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL03C",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/badlands/ds_ilig03.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/ds_ilig03.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "fd241caf98816d857c9298895e5f8863d5b54537500fa4050536231a4a97f0c2",
+      "name": "badlands/DS_ILIG03",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/badlands/be_elig03.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/be_elig03.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "550aeb48bc7af6619eeb42af55eee02013898183d033787af25e5cca8be98c55",
+      "name": "badlands/BE_ELIG03",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ibor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ibor04.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ibor04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IBOR04",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/badlands/be_icei01a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/be_icei01a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "a3995bfe9e65d2ceadf124f9be2a596cb9ae47b835bfb3e2cad071556b88eb1b",
+      "name": "badlands/BE_ICEI01A",
+      "original_slot": 14
+    }
+  ],
+  "source": {
+    "model_name": "interior_infbutch_blackairinv13",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/infbutch_blackairinv13.dif",
+    "source_path": "interiors/infbutch_blackairinv13.dif",
+    "source_sha256": "8d12738cddf56f3bfc1137b61c970203f3274fc30de8b77664b46cf33fe22ad7",
+    "source_bytes": 144273,
+    "alternatives": [],
+    "materials": [
+      "badlands/BE_EWAL06",
+      "badlands/BD_EBOR04",
+      "badlands/DS_EFLOOR1",
+      "badlands/INF_BUTCH_GREY5",
+      "badlands/BD_EFLO01",
+      "badlands/CP_IBOR03",
+      "badlands/BD_EWAL03C",
+      "badlands/DS_ILIG03",
+      "badlands/BE_ELIG03",
+      "badlands/BD_IBOR04",
+      "badlands/BE_ICEI01A"
+    ],
+    "version": 44,
+    "triangles": 1504,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

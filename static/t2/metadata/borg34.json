@@ -1,0 +1,109 @@
+{
+  "source": {
+    "model_name": "borg34",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg34.dts",
+    "source_path": "shapes/borg34.dts",
+    "source_sha256": "dc1f3e4c8b070eaf9370a7879a6d06e4459c569d0f110e869d4c480d3d5186cb",
+    "source_bytes": 3130,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg34.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "SBerryFall"
+    ],
+    "triangles": 43,
+    "selected_detail": "Detail12"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Base01",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.09359312057495117,
+        0.11568614840507507,
+        0.0
+      ]
+    },
+    {
+      "name": "Start01",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SBerryFallC12",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.2712245583534241,
+        0.08690717071294785,
+        -6.74627685546875
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 12.0,
+      "polyCount": 32
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 4.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/sberryfall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/SBerryFall.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/SBerryFall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "SBerryFall",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

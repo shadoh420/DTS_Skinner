@@ -1,0 +1,220 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 350
+    }
+  ],
+  "null_surfaces_excluded": 28,
+  "degenerate_triangles_skipped": 64,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/desert/cp_screen.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_screen.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_screen.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_SCREEN",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/desert/cp_istrface01h.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_istrface01h.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_istrface01h.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ISTRFACE01H",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/desert/cp_iflo01d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_iflo01d.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_iflo01d.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_IFLO01D",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/desert/cp_istair01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_istair01.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_istair01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ISTAIR01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/desert/cp_ispec02cap.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ispec02CAP.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ispec02CAP.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ISPEC02CAP",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/desert/cp_sand.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_sand.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_sand.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_SAND",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/desert/cp_icoldeco01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_icoldeco01.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_icoldeco01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ICOLDECO01",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/desert/cp_ispec02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ispec02b.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ispec02b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ISPEC02B",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/desert/cp_ilig02c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ilig02c.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ilig02c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ILIG02C",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/desert/cp_ispec01cap.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ispec01CAP.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ispec01CAP.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ISPEC01CAP",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/desert/cp_iwal02f.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_iwal02f.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_iwal02f.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_IWAL02F",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/desert/cp_iwal02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_iwal02b.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_iwal02b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_IWAL02B",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/desert/cp_icoligola.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_icoligolA.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_icoligolA.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "34be643abad58b0b1ab7cc754a843a96e5f905b1333b4a25c7de7065e87b724b",
+      "name": "desert/CP_ICOLIGOLA",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/desert/cp_ibor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ibor01.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ibor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_IBOR01",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/desert/cp_ilig02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ilig02a.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ilig02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ILIG02A",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/desert/cp_ilig05a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ilig05a.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ilig05a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_ILIG05A",
+      "original_slot": 19
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_vestige_attackgate",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_Vestige_attackgate.dif",
+    "source_path": "interiors/xtra_vestige_attackgate.dif",
+    "source_sha256": "f49bf8a56b15c242abf8c0198297a72d17ee0210dbbcc5c8f898fae9aef1bef4",
+    "source_bytes": 76158,
+    "alternatives": [],
+    "materials": [
+      "desert/CP_SCREEN",
+      "desert/CP_ISTRFACE01H",
+      "desert/CP_IFLO01D",
+      "desert/CP_ISTAIR01",
+      "desert/CP_ISPEC02CAP",
+      "desert/CP_SAND",
+      "desert/CP_ICOLDECO01",
+      "desert/CP_ISPEC02B",
+      "desert/CP_ILIG02C",
+      "desert/CP_ISPEC01CAP",
+      "desert/CP_IWAL02F",
+      "desert/CP_IWAL02B",
+      "desert/CP_ICOLIGOLA",
+      "desert/CP_IBOR01",
+      "desert/CP_ILIG02A",
+      "desert/CP_ILIG05A"
+    ],
+    "version": 44,
+    "triangles": 816,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "source": {
+    "model_name": "huntersflag",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/huntersflag.dts",
+    "source_path": "shapes/huntersflag.dts",
+    "source_sha256": "8de9d8d07d9fb390d3994e152e665a1c2148b106778e0964422a2259d39f28e8",
+    "source_bytes": 5129,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/huntersflag.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "flag",
+      "base.hflag"
+    ],
+    "triangles": 36,
+    "selected_detail": "Detail_16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00093117356300354,
+        -0.002329394221305847,
+        0.0030568838119506836
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1410917011289712e-07,
+        0.030507156625390053,
+        0.7428760528564453
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bottom_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        1.1378118358607026e-07,
+        1.20543475645718e-07,
+        1.3498185873031616
+      ]
+    },
+    {
+      "name": "Pole_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Top_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.9241218751631095e-07,
+        2.0381415311021556e-07,
+        2.2826404571533203
+      ]
+    },
+    {
+      "name": "Flag_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        1.5326604341225902e-07,
+        1.6028458560413128e-07,
+        1.8182387351989746
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 37
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 2.0,
+      "polyCount": 37
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": -1.0,
+      "polyCount": 6
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/flag.png",
+      "source": "base/z_textures/zflags.vl2:textures/skins/flag.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/flag.png",
+        "base/yHDTextures2.0.vl2:textures/skins/flag.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "flag",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/base.hflag.png",
+      "source": "base/z_textures/zflags.vl2:textures/skins/base.hflag.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.hflag.png",
+        "base/yHDTextures2.0.vl2:textures/skins/base.hflag.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.hflag",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

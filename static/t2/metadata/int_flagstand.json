@@ -1,0 +1,236 @@
+{
+  "source": {
+    "model_name": "int_flagstand",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/int_flagstand.dts",
+    "source_path": "shapes/int_flagstand.dts",
+    "source_sha256": "b036c27334c73e5758e8d938f752f836f9919e88cc6cd711372e7a642508552c",
+    "source_bytes": 12738,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/int_flagstand.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "bd_ewal09",
+      "bd_elig02",
+      "bd_iflo02"
+    ],
+    "triangles": 128,
+    "selected_detail": "Detail80"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.40746137499809265,
+        -0.17501220107078552,
+        -0.01197759434580803
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0026292800903320312,
+        0.19982537627220154,
+        0.0
+      ]
+    },
+    {
+      "name": "BaseB80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.39996206760406494,
+        -0.8305521607398987,
+        0.07199275493621826
+      ]
+    },
+    {
+      "name": "Pad80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4023403227329254,
+        -0.0026021257508546114,
+        0.14050491154193878
+      ]
+    },
+    {
+      "name": "BaseA80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -0.39996206760406494,
+        0.8235964179039001,
+        0.07199275493621826
+      ]
+    },
+    {
+      "name": "BaseD80",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        23169,
+        0,
+        0
+      ],
+      "translation": [
+        -1.2270363569259644,
+        -0.0034778714179992676,
+        0.07199275493621826
+      ]
+    },
+    {
+      "name": "BaseC80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        0.4271122217178345,
+        -0.0034778714179992676,
+        0.07199275493621826
+      ]
+    },
+    {
+      "name": "ramp-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.3941103219985962,
+        -0.015186429023742676,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 80.0,
+      "polyCount": 180
+    },
+    {
+      "name": "Detail54",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 54.0,
+      "polyCount": 86
+    },
+    {
+      "name": "Detail18",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 18.0,
+      "polyCount": 42
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 20
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 6
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ewal09.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal09.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal09.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "bd477d0014bcc490d06f2278f6903c9c2914bc06e131ab831bbdf5b6c4e575c5",
+      "name": "bd_ewal09",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/badlands/bd_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_elig02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_elig02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "bd_elig02",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/badlands/bd_iflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iflo02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iflo02.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "5bdc9caf83b5b98e1b2b865d6f68bc623e8455b3dfb478a629bff5aab934a261",
+      "name": "bd_iflo02",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

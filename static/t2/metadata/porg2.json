@@ -1,0 +1,109 @@
+{
+  "source": {
+    "model_name": "porg2",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/porg2.dts",
+    "source_path": "shapes/porg2.dts",
+    "source_sha256": "ee0aaa40b1adc67b6934bdc69e1fc96d391232266d925a9e71c81d5534448876",
+    "source_bytes": 5561,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/porg2.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "porg2"
+    ],
+    "triangles": 95,
+    "selected_detail": "Detail16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.39747220277786255,
+        -0.19949012994766235,
+        -0.020929932594299316
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "porg16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5646414756774902,
+        -0.012023940682411194,
+        0.38804635405540466
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 126
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 8.0,
+      "polyCount": 25
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/porg2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/porg2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/porg2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "porg2",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

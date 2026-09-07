@@ -1,0 +1,146 @@
+{
+  "source": {
+    "model_name": "weapon_energy_vehicle",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_energy_vehicle.dts",
+    "source_path": "shapes/weapon_energy_vehicle.dts",
+    "source_sha256": "b960c30a8f387b832012bf1a79aec5140ad6ff62374933b7f44f1c23940cc16d",
+    "source_bytes": 8737,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_energy_vehicle.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_energy_vehicle"
+    ],
+    "triangles": 110,
+    "selected_detail": "Detail24"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Weapon24",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.11174699664115906
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.5326714886707578e-09,
+        0.018143510445952415,
+        0.22248636186122894
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.474654578094487e-08,
+        0.5657854676246643,
+        0.08555622398853302
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail24",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 24.0,
+      "polyCount": 123
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 12.0,
+      "polyCount": 76
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 2.0,
+      "polyCount": 33
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_energy_vehicle.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_energy_vehicle.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_energy_vehicle.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_energy_vehicle",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

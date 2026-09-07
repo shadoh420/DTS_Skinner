@@ -14,6 +14,7 @@ import zipfile
 import math
 import tempfile
 import shutil
+import json
 from typing import List, Tuple, Dict, Optional
 
 
@@ -80,7 +81,8 @@ def generate_obj_content(
     material_textures: List[str],
     groups: List[Dict],
     model_name: str,
-    scale_factor: float = 1.0
+    scale_factor: float = 1.0,
+    reverse_winding: bool = True
 ) -> str:
     """
     Generate OBJ file content from parsed JSON data.
@@ -127,8 +129,8 @@ def generate_obj_content(
     # Normals
     lines.append(f"# Normals: {len(normals)}")
     for nx, ny, nz in normals:
-        # Faces below reverse the JSON winding, so their normals must reverse too.
-        lines.append(f"vn {-nx:.6f} {-ny:.6f} {-nz:.6f}")
+        sign = -1 if reverse_winding else 1
+        lines.append(f"vn {sign * nx:.6f} {sign * ny:.6f} {sign * nz:.6f}")
     lines.append("")
     
     # Faces grouped by material
@@ -155,6 +157,8 @@ def generate_obj_content(
                 
                 # OBJ uses 1-based indexing
                 idx0, idx1, idx2 = indices[i] + 1, indices[i+1] + 1, indices[i+2] + 1
+                if not reverse_winding:
+                    idx1, idx2 = idx2, idx1
                 
                 # Format: f v/vt/vn v/vt/vn v/vt/vn
                 # Reverse winding order to fix inside-out faces
@@ -169,13 +173,15 @@ def generate_obj_content(
                 break
             
             idx0, idx1, idx2 = indices[i] + 1, indices[i+1] + 1, indices[i+2] + 1
+            if not reverse_winding:
+                idx1, idx2 = idx2, idx1
             # Reverse winding order to fix inside-out faces
             lines.append(f"f {idx0}/{idx0}/{idx0} {idx2}/{idx2}/{idx2} {idx1}/{idx1}/{idx1}")
     
     return '\n'.join(lines)
 
 
-def generate_mtl_content(material_textures: List[str], model_name: str) -> str:
+def generate_mtl_content(material_textures: List[str], model_name: str, material_flags=None) -> str:
     """
     Generate MTL (material library) file content.
     
@@ -206,6 +212,8 @@ def generate_mtl_content(material_textures: List[str], model_name: str) -> str:
         # Only add texture map if it's a valid texture (not a placeholder)
         if tex_name and not tex_name.startswith('[Slot'):
             lines.append(f"map_Kd {tex_name}")
+            if material_flags and material_flags[idx] & 4:
+                lines.append(f"map_d {tex_name}")
         
         lines.append("")
     
@@ -272,7 +280,8 @@ def json_to_obj_zip(
     output_zip_path: pathlib.Path,
     model_name: str,
     scale_factor: float = 1.0,
-    fallback_texture: Optional[str] = None
+    fallback_texture: Optional[str] = None,
+    material_overrides=None
 ) -> pathlib.Path:
     """
     Convert JSON model data to OBJ/MTL and bundle with textures in a ZIP archive.
@@ -298,27 +307,35 @@ def json_to_obj_zip(
     if not textures_dir.exists():
         print(f"Warning: Textures directory not found: {textures_dir}")
     
-    data = load_model_data(json_path, fallback_texture)
+    data = load_model_data(json_path, fallback_texture, material_overrides)
     vertices, uvs, indices = (data[key] for key in ("vertices", "uvs", "indices"))
     material_textures, groups = data["material_textures"], data["groups"]
 
     # Compute normals
     print(f"Computing normals for {len(vertices)//3} vertices...")
     normals = compute_smooth_normals(vertices, indices)
+    if data.get("normals"):
+        normals = list(zip(*[iter(data["normals"])] * 3))
     
     # Generate OBJ content
     print(f"Generating OBJ content (scale factor: {scale_factor})...")
     obj_content = generate_obj_content(
         vertices, uvs, indices, normals,
-        material_textures, groups, model_name, scale_factor
+        material_textures, groups, model_name, scale_factor,
+        reverse_winding=data.get("winding") != "ccw"
     )
     
     # Generate MTL content
     print(f"Generating MTL content for {len(material_textures)} materials...")
-    mtl_content = generate_mtl_content(material_textures, model_name)
+    mtl_content = generate_mtl_content(material_textures, model_name, data.get("material_flags"))
     
     # Generate README
     readme_content = generate_readme_content(model_name, scale_factor)
+    if data.get("game") == "t2" or data.get("winding") == "ccw":
+        readme_content = readme_content.replace("Tribes 1 DTS/DIS", "Tribes 2 DTS")
+        readme_content += ("\nStatic authored pose / visible detail only. Animation playback and rigged export are not implemented.\n"
+                           "Source, animation descriptors, import warnings and material flags are retained in metadata.json.\n"
+                           "OBJ/MTL cannot reproduce Torque additive/subtractive blending, environment/detail maps or IFL playback.\n")
     
     # Create temporary directory for staging files
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -375,6 +392,9 @@ def json_to_obj_zip(
             
             # Add README
             zipf.write(readme_file, readme_file.name)
+            if data.get("metadata"):
+                zipf.writestr("metadata.json", json.dumps(dict(data["metadata"],
+                    material_textures=material_textures, material_flags=data.get("material_flags", [])), indent=2))
             
             # Add textures
             for tex_name in textures_copied:

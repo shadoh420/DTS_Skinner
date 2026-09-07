@@ -1,0 +1,103 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 57
+    }
+  ],
+  "null_surfaces_excluded": 6,
+  "degenerate_triangles_skipped": 6,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/ir_relief.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_relief.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "b103c3807cb555470ccd83f963ae7a4cda087cac8097a1488ad3e5dbf2f138a9",
+      "name": "lush/IR_RELIEF",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/ir_trim1.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_trim1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "b4bcc69e2cddacfd80a2025422023e6d180636991c4bc523ee8b6c5e42522398",
+      "name": "lush/IR_TRIM1",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/ir_blocks.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_blocks.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "beb9ef103e2f96f7e2d48a3a80ca120de3b64c2f58b0cc1241dacdcfffffe714",
+      "name": "lush/IR_BLOCKS",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/ir_trim2.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_trim2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "7d26f3fd35a66eebf91cefbe8a3dcb494c451316ffba77cf16a8ef61593dcb49",
+      "name": "lush/IR_TRIM2",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/ir_wall.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_wall.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "3e1df11d560f7a1cb8e7bf9fac8fc19164de8aa896bb287359a3b443e3660d04",
+      "name": "lush/IR_WALL",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/ir_plain.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_plain.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "4034b1bd4d4afa6b7ce0e8db0be194254f55ebfc6e9a1177006a0779304f9c67",
+      "name": "lush/IR_PLAIN",
+      "original_slot": 10
+    }
+  ],
+  "source": {
+    "model_name": "interior_irismonu",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/irismonu.dif",
+    "source_path": "interiors/irismonu.dif",
+    "source_sha256": "57cabb9fa6ed8ea6a611bf8dd7723151933b908de08527cca0e4f003c433e733",
+    "source_bytes": 18220,
+    "alternatives": [],
+    "materials": [
+      "lush/IR_RELIEF",
+      "lush/IR_TRIM1",
+      "lush/IR_BLOCKS",
+      "lush/IR_TRIM2",
+      "lush/IR_WALL",
+      "lush/IR_PLAIN"
+    ],
+    "version": 44,
+    "triangles": 128,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

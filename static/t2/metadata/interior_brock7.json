@@ -1,0 +1,73 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 32,
+      "surface_count": 72
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 16,
+      "surface_count": 52
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 8,
+      "surface_count": 32
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 5,
+      "surface_count": 22
+    }
+  ],
+  "null_surfaces_excluded": 256,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_eterrain02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eterrain02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eterrain02a.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "3b7c65b82d06bbb099a07cec5748f75ecd97e01d924ce07f3aed0102e87b875b",
+      "name": "lush/be_eterrain02a",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_brock7",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/brock7.dif",
+    "source_path": "interiors/brock7.dif",
+    "source_sha256": "72bad069472d0525686e14ba623665b51004863c195ddf2d815c32f8ac2a84ce",
+    "source_bytes": 88729,
+    "alternatives": [],
+    "materials": [
+      "lush/be_eterrain02a"
+    ],
+    "version": 44,
+    "triangles": 72,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

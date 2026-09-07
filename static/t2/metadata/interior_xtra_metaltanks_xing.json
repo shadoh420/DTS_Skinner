@@ -1,0 +1,75 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 13
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_icei03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI03B",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/xing.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lush/xing.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "0b9d8f4afc291167522502fbcac385cf178236f2045413f61a4cebfedbb7f8a4",
+      "name": "lush/XING",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_igeneric.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGeneric.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGeneric.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERIC",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_metaltanks_xing",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_metaltanks_xing.dif",
+    "source_path": "interiors/xtra_metaltanks_xing.dif",
+    "source_sha256": "a95f65c8144edad62c07f14482e140a713cd071788994e82329b26ce42571949",
+    "source_bytes": 5414,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_ICEI03B",
+      "lush/XING",
+      "lush/BE_IGENERIC"
+    ],
+    "version": 44,
+    "triangles": 32,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

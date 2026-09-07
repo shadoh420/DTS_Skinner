@@ -1,0 +1,169 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 910
+    }
+  ],
+  "null_surfaces_excluded": 106,
+  "degenerate_triangles_skipped": 118,
+  "lightmap_count": 6,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/fling1/e8clangfloor.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/e8clangfloor.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/E8CLANGFLOOR",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/fling1/ds_nefblue1.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_NefBlue1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_NEFBLUE1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/fling1/crudewarn.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/crudewarn.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/CRUDEWARN",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/fling1/ds_nefblue.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_NefBlue.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_NEFBLUE",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/fling1/ds_neffloor1.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_Neffloor1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_NEFFLOOR1",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/fling1/be_icei01a.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/be_icei01a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/BE_ICEI01A",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/fling1/ds_ilig04.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_ilig04.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_ILIG04",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/fling1/dox_bluelite1.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/dox_bluelite1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DOX_BLUELITE1",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/fling1/e6strimlight.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/e6strimlight.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/E6STRIMLIGHT",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/fling1/nycto-computer.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/Nycto-computer.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/NYCTO-COMPUTER",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/fling1/be_edoo02.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/be_edoo02.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/BE_EDOO02",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/fling1/e8tinylight_000.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/e8tinylight_000.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/E8TINYLIGHT_000",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/fling1/bd_ispe07.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/bd_ispe07.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/BD_ISPE07",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/fling1/nycto-comp3.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/Nycto-comp3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/NYCTO-COMP3",
+      "original_slot": 17
+    }
+  ],
+  "source": {
+    "model_name": "interior_flingsilo03b",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S8maps.vl2:interiors/flingsilo03b.dif",
+    "source_path": "interiors/flingsilo03b.dif",
+    "source_sha256": "0ace7342fed44649233f90c241da9c08447c706822839abfd163ecfda23c1261",
+    "source_bytes": 278269,
+    "alternatives": [],
+    "materials": [
+      "fling1/E8CLANGFLOOR",
+      "fling1/DS_NEFBLUE1",
+      "fling1/CRUDEWARN",
+      "fling1/DS_NEFBLUE",
+      "fling1/DS_NEFFLOOR1",
+      "fling1/BE_ICEI01A",
+      "fling1/DS_ILIG04",
+      "fling1/DOX_BLUELITE1",
+      "fling1/E6STRIMLIGHT",
+      "fling1/NYCTO-COMPUTER",
+      "fling1/BE_EDOO02",
+      "fling1/E8TINYLIGHT_000",
+      "fling1/BD_ISPE07",
+      "fling1/NYCTO-COMP3"
+    ],
+    "version": 44,
+    "triangles": 2046,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

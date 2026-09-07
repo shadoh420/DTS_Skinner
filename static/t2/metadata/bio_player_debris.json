@@ -1,0 +1,406 @@
+{
+  "source": {
+    "model_name": "bio_player_debris",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/bio_player_debris.dts",
+    "source_path": "shapes/bio_player_debris.dts",
+    "source_sha256": "a4ad8919bc4ca01a139a1f2d6ef45d07fe8d3262c7b6f879224e9d9daa0ea5c3",
+    "source_bytes": 71409,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/bio_player_debris.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "base.lbioderm"
+    ],
+    "triangles": 1290,
+    "selected_detail": "Detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.080613902335273e-10,
+        -0.01216670498251915,
+        -3.543821591733831e-08
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_head145",
+      "parent": 1,
+      "rotation_quat16": [
+        3192,
+        192,
+        -187,
+        32610
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_larm145",
+      "parent": 1,
+      "rotation_quat16": [
+        -16293,
+        -1070,
+        7646,
+        27360
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_lbicep145",
+      "parent": 1,
+      "rotation_quat16": [
+        -31957,
+        -849,
+        2614,
+        6694
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_lfoot145",
+      "parent": 1,
+      "rotation_quat16": [
+        -32763,
+        -92,
+        435,
+        224
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_lgar145",
+      "parent": 1,
+      "rotation_quat16": [
+        -32763,
+        -92,
+        435,
+        224
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_lhand145",
+      "parent": 1,
+      "rotation_quat16": [
+        -16293,
+        -1070,
+        7646,
+        27360
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_lleg145",
+      "parent": 1,
+      "rotation_quat16": [
+        -32284,
+        -771,
+        1398,
+        5367
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_lthigh145",
+      "parent": 1,
+      "rotation_quat16": [
+        -31857,
+        930,
+        1515,
+        -7455
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_midsection145",
+      "parent": 1,
+      "rotation_quat16": [
+        -1711,
+        129,
+        71,
+        32721
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_pelvis145",
+      "parent": 1,
+      "rotation_quat16": [
+        -18,
+        -416,
+        96,
+        32764
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_rarm145",
+      "parent": 1,
+      "rotation_quat16": [
+        23331,
+        4004,
+        -783,
+        22642
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_rbicep145",
+      "parent": 1,
+      "rotation_quat16": [
+        52,
+        -2455,
+        1410,
+        32644
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_rfoot145",
+      "parent": 1,
+      "rotation_quat16": [
+        1978,
+        -569,
+        1929,
+        32645
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_rgar145",
+      "parent": 1,
+      "rotation_quat16": [
+        1978,
+        -569,
+        1929,
+        32645
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_rhand145",
+      "parent": 1,
+      "rotation_quat16": [
+        23331,
+        4004,
+        -783,
+        22642
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_rleg145",
+      "parent": 1,
+      "rotation_quat16": [
+        10240,
+        714,
+        2803,
+        30990
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_rthigh145",
+      "parent": 1,
+      "rotation_quat16": [
+        -1453,
+        1445,
+        1369,
+        32674
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bio_light_torso145",
+      "parent": 1,
+      "rotation_quat16": [
+        1153,
+        -71,
+        -114,
+        32746
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 1621
+    },
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 80.0,
+      "polyCount": 1261
+    },
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 60.0,
+      "polyCount": 979
+    },
+    {
+      "name": "Detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 30.0,
+      "polyCount": 642
+    },
+    {
+      "name": "Detail18",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 18.0,
+      "polyCount": 346
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 12.0,
+      "polyCount": 145
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 6.0,
+      "polyCount": 74
+    },
+    {
+      "name": "Detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 3.0,
+      "polyCount": 25
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.lbioderm.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/base.lbioderm.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.lbioderm.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.lbioderm",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

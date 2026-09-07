@@ -1,0 +1,120 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 60
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 1,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal06.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal06.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL06",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_icei01c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei01c.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei01c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI01C",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor01e.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor01e.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor01e.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR01E",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_icocei.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icocei.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icocei.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOCEI",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_icolig.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icolig.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icolig.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIG",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_espec01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC01",
+      "original_slot": 10
+    }
+  ],
+  "source": {
+    "model_name": "interior_ocular-flagstand",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/ocular-flagstand.dif",
+    "source_path": "interiors/ocular-flagstand.dif",
+    "source_sha256": "1f973d08cd5e680444dfb6a4b94784875eba9309e24a81c9483f09ba1ad4801c",
+    "source_bytes": 17678,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL06",
+      "lush/BE_EWAL01B",
+      "lush/BE_ICEI01C",
+      "lush/BE_EBOR01E",
+      "lush/BE_ICOCEI",
+      "lush/BE_ICOLIG",
+      "lush/BE_ESPEC01"
+    ],
+    "version": 44,
+    "triangles": 115,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

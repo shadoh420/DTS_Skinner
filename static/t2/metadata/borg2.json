@@ -1,0 +1,414 @@
+{
+  "source": {
+    "model_name": "borg2",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg2.dts",
+    "source_path": "shapes/borg2.dts",
+    "source_sha256": "a1d2162a0be1278631bec8bb3fe7f357586c74a9ae9a6215d4a75611f0d0a000",
+    "source_bytes": 19616,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg2.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "borg2"
+    ],
+    "triangles": 160,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.39380189776420593,
+        -0.20244766771793365,
+        0.002989053726196289
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "LeafA128",
+      "parent": 1,
+      "rotation_quat16": [
+        -2855,
+        0,
+        0,
+        32642
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafB128",
+      "parent": 1,
+      "rotation_quat16": [
+        -2019,
+        2019,
+        23081,
+        23081
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafC128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -2855,
+        -32642,
+        0
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafD128",
+      "parent": 1,
+      "rotation_quat16": [
+        -2019,
+        -2019,
+        -23081,
+        23081
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafE128",
+      "parent": 1,
+      "rotation_quat16": [
+        -3951,
+        -1636,
+        -12432,
+        30013
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafF128",
+      "parent": 1,
+      "rotation_quat16": [
+        -3951,
+        1636,
+        12432,
+        30013
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafG128",
+      "parent": 1,
+      "rotation_quat16": [
+        1636,
+        -3951,
+        -30013,
+        -12432
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafH128",
+      "parent": 1,
+      "rotation_quat16": [
+        -1636,
+        -3951,
+        -30013,
+        12432
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafI128",
+      "parent": 1,
+      "rotation_quat16": [
+        -6377,
+        -5575,
+        -25973,
+        18090
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafJ128",
+      "parent": 1,
+      "rotation_quat16": [
+        -8452,
+        567,
+        -5573,
+        31158
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafK128",
+      "parent": 1,
+      "rotation_quat16": [
+        -5575,
+        6377,
+        18090,
+        25973
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafL128",
+      "parent": 1,
+      "rotation_quat16": [
+        -567,
+        -8452,
+        -31158,
+        -5573
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafM128",
+      "parent": 1,
+      "rotation_quat16": [
+        -11802,
+        7188,
+        7462,
+        28758
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafN128",
+      "parent": 1,
+      "rotation_quat16": [
+        3262,
+        -13428,
+        -25611,
+        -15058
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafO128",
+      "parent": 1,
+      "rotation_quat16": [
+        -7188,
+        -11802,
+        -28758,
+        7462
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    },
+    {
+      "name": "LeafP128",
+      "parent": 1,
+      "rotation_quat16": [
+        -13428,
+        -3262,
+        -15058,
+        25611
+      ],
+      "translation": [
+        -0.5442534685134888,
+        -0.008014919236302376,
+        -0.003901238553225994
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 176
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 132
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 88
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 44
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 39,
+      "flags": 16,
+      "numKeyframes": 11,
+      "duration": 0.3666676878929138,
+      "priority": 0,
+      "firstGroundFrame": 194,
+      "numGroundFrames": 0,
+      "baseRotation": 18,
+      "baseTranslation": 18,
+      "baseScale": 0,
+      "baseObjectState": 16,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "translationMatters": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/borg2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/borg2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/borg2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "borg2",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

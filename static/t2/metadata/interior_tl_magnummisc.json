@@ -1,0 +1,98 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 67
+    }
+  ],
+  "null_surfaces_excluded": 5,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_icomp01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icomp01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icomp01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOMP01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ihaspe01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihaspe01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihaspe01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHASPE01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_ipipe01_iwal.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ipipe01_iwal.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ipipe01_iwal.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPIPE01_IWAL",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_igenericdark.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGenericDark.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGenericDark.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERICDARK",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor01d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor01d.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor01d.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR01D",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_tl_magnummisc",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/TL_magnummisc.dif",
+    "source_path": "interiors/tl_magnummisc.dif",
+    "source_sha256": "603bfd0e117c59b1d0ac50db0042adb129bbfd3b2e4ff0e56b2b45b65d47726b",
+    "source_bytes": 15302,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_ICOMP01",
+      "lush/BE_IHASPE01",
+      "lush/BE_IPIPE01_IWAL",
+      "lush/BE_IGENERICDARK",
+      "lush/BE_EBOR01D"
+    ],
+    "version": 44,
+    "triangles": 122,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

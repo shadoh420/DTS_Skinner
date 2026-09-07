@@ -1,0 +1,276 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 627
+    }
+  ],
+  "null_surfaces_excluded": 103,
+  "degenerate_triangles_skipped": 97,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/dox_textures/ds_genwall.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_genwall.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "ecaeb468d4718528b3146c9d214344b7656a1c7557859dfcad7569dc80a99e3b",
+      "name": "dox_textures/DS_GENWALL",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_genfloor.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_genfloor.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_genfloor.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/DS_GENFLOOR",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/dox_textures/wall_3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/wall_3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/wall_3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "c0b3caea132fe6dfcc80c8412f9e6345de6128a4072ce947da8ff4dcb14fc3c5",
+      "name": "dox_textures/WALL_3",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/dox_textures/hangar_indoor1.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/hangar_indoor1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/hangar_indoor1.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "5c5d853e1274af9a661a911d7aa4a1902c2efb8b01ff87a9cb791e640c76233c",
+      "name": "dox_textures/HANGAR_INDOOR1",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_etechbor01.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_etechbor01.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_etechbor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/DS_ETECHBOR01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/dox_textures/hangar_indoor3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/hangar_indoor3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/hangar_indoor3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "dd5ce66828525ed953b0152c2c3cfc50435335d2a1be9c382f02104795258de9",
+      "name": "dox_textures/HANGAR_INDOOR3",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/dox_textures/striplite3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/striplite3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/striplite3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/STRIPLITE3",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_ilig04.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_ilig04.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_ilig04.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "050130da662420cdcb74a8c460afdc832c9e0a4a9769ac938afb714e2dd48c2b",
+      "name": "dox_textures/DS_ILIG04",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/dox_textures/doorlogo2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/doorlogo2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/doorlogo2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "23a51a536d42b56ab619afcc13d518347119a6345df8fbd44bce981d1b1de4a4",
+      "name": "dox_textures/DOORLOGO2",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/dox_textures/sboxlogotop.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/sboxlogotop.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/sboxlogotop.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6ec35ad7422773a99931f0fd16e052ed6377b8d06cddf93dc4685be19f248230",
+      "name": "dox_textures/SBOXLOGOTOP",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/dox_textures/roofbeam.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/roofbeam.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/roofbeam.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/ROOFBEAM",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/dox_textures/grate2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/grate2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/grate2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "39e6c4297c9a52e7bf7ca5a8b854ea3ab8d6237ba5424ac86da3e0f444e6dec1",
+      "name": "dox_textures/GRATE2",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/dox_textures/bluetrim3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/bluetrim3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/bluetrim3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "e654a9080a8c638ca71a8ff4793dc1dae763720bf827e40a36099bb6e00b98b6",
+      "name": "dox_textures/BLUETRIM3",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/dox_textures/light_cold3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/light_cold3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/light_cold3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/LIGHT_COLD3",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_ewall06.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_ewall06.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/DS_EWALL06",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/dox_textures/light_small2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/light_small2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/light_small2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "d40e4c8bf13a4ce809f0660ea516aac654f0b36b041562995a9e3ab9efa7fd58",
+      "name": "dox_textures/LIGHT_SMALL2",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/dox_textures/rock_wall_lite4.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/rock_wall_lite4.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/rock_wall_lite4.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "c109982580b4d8ff61145db86acfe72eff8aa88c09e424f1322514d970f3a366",
+      "name": "dox_textures/ROCK_WALL_LITE4",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/dox_textures/carrierwall4.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/carrierwall4.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/carrierwall4.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "125767632af8f3ecf4cfb6c52ab73844c3ea3da3f1962f00b137dafcbe7801fa",
+      "name": "dox_textures/CARRIERWALL4",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/dox_textures/slabgrill.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/slabgrill.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/slabgrill.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/SLABGRILL",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/dox_textures/antigrav.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/antigrav.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/antigrav.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "416cabbf7723e901eacfaf64ccd912e8122c7a7f476403acde9d54e816892b24",
+      "name": "dox_textures/ANTIGRAV",
+      "original_slot": 23
+    }
+  ],
+  "source": {
+    "model_name": "interior_mmbase",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/mmbase.dif",
+    "source_path": "interiors/mmbase.dif",
+    "source_sha256": "c420ac837f05ce01488f24c60a25c52c14a2bd68cc68d12c7d9c0328fd78467d",
+    "source_bytes": 171476,
+    "alternatives": [],
+    "materials": [
+      "dox_textures/DS_GENWALL",
+      "dox_textures/DS_GENFLOOR",
+      "dox_textures/WALL_3",
+      "dox_textures/HANGAR_INDOOR1",
+      "dox_textures/DS_ETECHBOR01",
+      "dox_textures/HANGAR_INDOOR3",
+      "dox_textures/STRIPLITE3",
+      "dox_textures/DS_ILIG04",
+      "dox_textures/DOORLOGO2",
+      "dox_textures/SBOXLOGOTOP",
+      "dox_textures/ROOFBEAM",
+      "dox_textures/GRATE2",
+      "dox_textures/BLUETRIM3",
+      "dox_textures/LIGHT_COLD3",
+      "dox_textures/DS_EWALL06",
+      "dox_textures/LIGHT_SMALL2",
+      "dox_textures/ROCK_WALL_LITE4",
+      "dox_textures/CARRIERWALL4",
+      "dox_textures/SLABGRILL",
+      "dox_textures/ANTIGRAV"
+    ],
+    "version": 44,
+    "triangles": 1674,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

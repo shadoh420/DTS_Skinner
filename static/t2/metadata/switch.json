@@ -1,0 +1,565 @@
+{
+  "source": {
+    "model_name": "switch",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/switch.dts",
+    "source_path": "shapes/switch.dts",
+    "source_sha256": "67e3f8c305d487cea0344ad9a5338a36dcf7f92b07ee930a0a8e5b77265ba49f",
+    "source_bytes": 73634,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/switch.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "switch",
+      "base.switch",
+      "switchbeam",
+      "jetflare00",
+      "beampulse",
+      "screenstatic1"
+    ],
+    "triangles": 648,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.9998862147331238,
+        1.6646163203404285e-06,
+        -0.0027055740356445312
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.9999999403953552,
+        0.0
+      ]
+    },
+    {
+      "name": "BaseRotater128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.999411940574646,
+        0.9999912977218628,
+        0.13430780172348022
+      ]
+    },
+    {
+      "name": "Dummy_Rotater",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.9994396567344666,
+        0.9999913573265076,
+        0.5142879486083984
+      ]
+    },
+    {
+      "name": "PoleFramesB128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        0.29765862226486206,
+        0.0,
+        0.6799494028091431
+      ]
+    },
+    {
+      "name": "UFrame128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        -1.7881393432617188e-07,
+        0.4470832347869873
+      ]
+    },
+    {
+      "name": "BeamFrame128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        -5.960464477539063e-08,
+        0.5905870199203491
+      ]
+    },
+    {
+      "name": "PoleEndsTop128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        0.8622240424156189,
+        7.152557373046875e-07,
+        3.9159603118896484
+      ]
+    },
+    {
+      "name": "Base128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        -5.960464477539063e-08,
+        -0.3799801468849182
+      ]
+    },
+    {
+      "name": "PoleTop128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        2.7894973754882812e-05,
+        -5.960464477539063e-08,
+        3.924586296081543
+      ]
+    },
+    {
+      "name": "CenterPieceTop128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        -5.960464477539063e-08,
+        4.040107727050781
+      ]
+    },
+    {
+      "name": "Screen128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        0.00015789270401000977,
+        2.29079008102417
+      ]
+    },
+    {
+      "name": "Beam128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        -5.960464477539063e-08,
+        0.5905870199203491
+      ]
+    },
+    {
+      "name": "SupportA128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        0.8622241020202637,
+        8.344650268554688e-07,
+        3.861924171447754
+      ]
+    },
+    {
+      "name": "SupportB128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        -0.867235004901886,
+        -5.960464477539063e-08,
+        3.861924171447754
+      ]
+    },
+    {
+      "name": "PoleFrameB128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        -0.30004197359085083,
+        1.4126300811767578e-05,
+        0.67934250831604
+      ]
+    },
+    {
+      "name": "FlareA128",
+      "parent": 3,
+      "rotation_quat16": [
+        -20014,
+        11672,
+        20014,
+        -11672
+      ],
+      "translation": [
+        0.975739061832428,
+        0.5768359303474426,
+        0.6314914226531982
+      ]
+    },
+    {
+      "name": "FlareB128",
+      "parent": 3,
+      "rotation_quat16": [
+        11497,
+        -20115,
+        -11497,
+        20115
+      ],
+      "translation": [
+        -0.9835906624794006,
+        0.5701211094856262,
+        0.6169403791427612
+      ]
+    },
+    {
+      "name": "FlareC128",
+      "parent": 3,
+      "rotation_quat16": [
+        11497,
+        20115,
+        11497,
+        20115
+      ],
+      "translation": [
+        -0.9835906624794006,
+        -0.5771421790122986,
+        0.6169403791427612
+      ]
+    },
+    {
+      "name": "FlareD128",
+      "parent": 3,
+      "rotation_quat16": [
+        -20014,
+        -11672,
+        -20014,
+        -11672
+      ],
+      "translation": [
+        0.975739061832428,
+        -0.583856999874115,
+        0.6314914226531982
+      ]
+    },
+    {
+      "name": "BeamB128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        -5.960464477539063e-08,
+        0.5905870199203491
+      ]
+    },
+    {
+      "name": "PoleBot128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        2.7835369110107422e-05,
+        -5.960464477539063e-08,
+        0.6457242965698242
+      ]
+    },
+    {
+      "name": "PoleEndsBot128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        0.864757239818573,
+        2.980232238769531e-07,
+        0.6457244157791138
+      ]
+    },
+    {
+      "name": "Screenstatic128",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.771615982055664e-05,
+        0.00015789270401000977,
+        2.29079008102417
+      ]
+    },
+    {
+      "name": "Switch-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.9999999403953552,
+        0.9999999403953552,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 718
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 718
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 718
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 718
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 1.0,
+      "polyCount": 692
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 44
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 55,
+      "flags": 16,
+      "numKeyframes": 61,
+      "duration": 2.033334255218506,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 22,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        15,
+        20
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [
+        20
+      ],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    53,
+    3,
+    0,
+    0,
+    0,
+    54,
+    5,
+    0,
+    0,
+    0
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/switch.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/switch.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/switch.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "switch",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/base.switch.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/base.switch.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.switch.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.switch",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/switchbeam.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/switchbeam.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/switchbeam.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "switchbeam",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/jetflare00.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/jetflare00.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/jetflare00.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "jetflare00",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/beampulse.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/beampulse.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/beampulse.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "beampulse",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/skins/screenstatic1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/screenstatic1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/screenstatic1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "screenstatic1",
+      "original_slot": 5
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

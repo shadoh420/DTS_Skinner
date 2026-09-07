@@ -1,0 +1,87 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 49
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 1,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_techwall_3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_3.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_3",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/grid_1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/grid_1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/grid_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/GRID_1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilavlight.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilavlight.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilavlight.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILAVLIGHT",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/techwall_rusty.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/techwall_rusty.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/techwall_rusty.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/TECHWALL_RUSTY",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_epicrates_turret",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/epicrates_turret.dif",
+    "source_path": "interiors/epicrates_turret.dif",
+    "source_sha256": "9b051ee224ba3f4f331075ea87d99f7ec8f4dd09163bd2d22b4703351266593a",
+    "source_bytes": 15060,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_TECHWALL_3",
+      "lava/GRID_1",
+      "lava/DS_ILAVLIGHT",
+      "lava/TECHWALL_RUSTY"
+    ],
+    "version": 44,
+    "triangles": 141,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

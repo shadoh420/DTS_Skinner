@@ -1,0 +1,275 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 1867
+    }
+  ],
+  "null_surfaces_excluded": 183,
+  "degenerate_triangles_skipped": 267,
+  "lightmap_count": 6,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ewal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewal01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWAL01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewal01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewal01a.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewal01a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWAL01A",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_etrans01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_etrans01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_etrans01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ETRANS01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewal01base.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewal01BASE.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewal01BASE.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWAL01BASE",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewal02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWAL02",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilavlight.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilavlight.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilavlight.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILAVLIGHT",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwaldeco03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwaldeco03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwaldeco03.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "4116ff11f144ba91088be8978a31cd7e9f5a9d4a064f517b4ceb6a55b486b5c6",
+      "name": "lava/DS_IWALDECO03",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lava/ds_techborder2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techborder2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techborder2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHBORDER2",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lava/ds_techborder1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techborder1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techborder1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHBORDER1",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lava/ds_ichute02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ichute02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ichute02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICHUTE02",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG04",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihacei01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihacei01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihacei01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEI01",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/lava/ds_ichute01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ichute01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ichute01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICHUTE01",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/lava/ds_alarm.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_alarm.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_alarm.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ALARM",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG06",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewaldeco01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewaldeco01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewaldeco01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALDECO01",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/lava/ds_ibor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ibor03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ibor03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IBOR03",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/lava/ds_iflo03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iflo03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iflo03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IFLO03",
+      "original_slot": 24
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_ghostdance_proto",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_ghostdance_proto.dif",
+    "source_path": "interiors/xtra_ghostdance_proto.dif",
+    "source_sha256": "de7a36578e3d6a1ad3ed401416c3bffd2566da34216b019b14a2456439c60e37",
+    "source_bytes": 410592,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EWAL01",
+      "lava/DS_TECHWALL_1",
+      "lava/DS_EWAL01A",
+      "lava/DS_ETRANS01",
+      "lava/DS_EFLOOR1",
+      "lava/DS_EWAL01BASE",
+      "lava/DS_EWAL02",
+      "lava/DS_ILAVLIGHT",
+      "lava/DS_IWALDECO03",
+      "lava/DS_TECHBORDER2",
+      "lava/DS_TECHBORDER1",
+      "lava/DS_ICHUTE02",
+      "lava/DS_ILIG04",
+      "lava/DS_IHACEI01",
+      "lava/DS_ICHUTE01",
+      "lava/DS_ALARM",
+      "lava/DS_ILIG06",
+      "lava/DS_GENWALL",
+      "lava/DS_EWALDECO01",
+      "lava/DS_IBOR03",
+      "lava/DS_IFLO03"
+    ],
+    "version": 44,
+    "triangles": 4814,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

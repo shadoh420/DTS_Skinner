@@ -1,0 +1,598 @@
+{
+  "source": {
+    "model_name": "weapon_repair",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_repair.dts",
+    "source_path": "shapes/weapon_repair.dts",
+    "source_sha256": "b92dd96fc15f945fba4e2459c1aebc5d28d14610104f67b8d47779a86a15a572",
+    "source_bytes": 74157,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_repair.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_repair"
+    ],
+    "triangles": 728,
+    "selected_detail": "Detail65"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00013630696048494428,
+        -0.4929414391517639,
+        0.03883405029773712
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.059458449482917786
+      ]
+    },
+    {
+      "name": "RearHousing65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.9371814131736755e-09,
+        0.3159794807434082,
+        0.1017477810382843
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00013631023466587067,
+        0.8509457111358643,
+        0.10170303285121918
+      ]
+    },
+    {
+      "name": "FoldingStock65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00012260860239621252,
+        0.5252525210380554,
+        -0.15395839512348175
+      ]
+    },
+    {
+      "name": "FoldingStockLeft65",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -0.015966074541211128,
+        0.3173419237136841,
+        -0.14190292358398438
+      ]
+    },
+    {
+      "name": "FoldingStockRight65",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.01623869501054287,
+        0.3173419237136841,
+        -0.14190292358398438
+      ]
+    },
+    {
+      "name": "MainHousing65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.6201789043843746e-05,
+        0.6218242645263672,
+        0.10161450505256653
+      ]
+    },
+    {
+      "name": "BottomRib65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.951733328402042e-09,
+        0.5916443467140198,
+        0.01806819438934326
+      ]
+    },
+    {
+      "name": "LeftRib65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.08354628831148148,
+        0.5916444063186646,
+        0.10161449015140533
+      ]
+    },
+    {
+      "name": "RepairEmitter65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        7.377821020781994e-09,
+        0.7791179418563843,
+        0.10170303285121918
+      ]
+    },
+    {
+      "name": "RepairEmitterTube65",
+      "parent": 1,
+      "rotation_quat16": [
+        3024,
+        -22971,
+        -22971,
+        3024
+      ],
+      "translation": [
+        5.9371814131736755e-09,
+        0.7457636594772339,
+        0.10170739144086838
+      ]
+    },
+    {
+      "name": "RightRib65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.08354630321264267,
+        0.5916125774383545,
+        0.10161450505256653
+      ]
+    },
+    {
+      "name": "TopRib65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.9371814131736755e-09,
+        0.5916125774383545,
+        0.1851608008146286
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.02416047267615795,
+        -0.0024365782737731934,
+        -0.17577989399433136
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00013631023466587067,
+        1.0635406970977783,
+        0.10170303285121918
+      ]
+    },
+    {
+      "name": "dumSpin",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        3.6174431443214417e-05,
+        0.6218242645263672,
+        0.10161449760198593
+      ]
+    },
+    {
+      "name": "Cowling65",
+      "parent": 16,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        -3.0531133177191805e-16,
+        -2.735760062932968e-08,
+        9.159339953157541e-16
+      ]
+    },
+    {
+      "name": "Dummy01",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.615692887455225e-05,
+        0.1346101313829422,
+        -0.09990706294775009
+      ]
+    },
+    {
+      "name": "EmitterShieldBottom65",
+      "parent": 18,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        6.331397073289224e-10,
+        0.0478057861328125,
+        0.016183393076062202
+      ]
+    },
+    {
+      "name": "Dummy02",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0999070554971695,
+        0.134610116481781,
+        4.6149965783115476e-05
+      ]
+    },
+    {
+      "name": "EmitterShieldLeft65",
+      "parent": 20,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -5.699921090673854e-10,
+        0.047805801033973694,
+        0.016183385625481606
+      ]
+    },
+    {
+      "name": "Dummy03",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        4.614143108483404e-05,
+        0.13461008667945862,
+        0.0999070405960083
+      ]
+    },
+    {
+      "name": "EmitterShieldTop65",
+      "parent": 22,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        6.325999168943497e-10,
+        0.04780580475926399,
+        0.01618339493870735
+      ]
+    },
+    {
+      "name": "Dummy04",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0999070331454277,
+        0.134610116481781,
+        -4.613665078068152e-05
+      ]
+    },
+    {
+      "name": "EmitterShieldRight65",
+      "parent": 24,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        5.341906361699955e-10,
+        0.047805774956941605,
+        0.016183387488126755
+      ]
+    },
+    {
+      "name": "PanelAttachmenLeft65",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0837598666548729,
+        0.18241587281227112,
+        9.963353477360215e-06
+      ]
+    },
+    {
+      "name": "PanelAttachmentBottom65",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -4.617146623786539e-05,
+        0.18241587281227112,
+        -0.08372368663549423
+      ]
+    },
+    {
+      "name": "PanelAttachmentRight65",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.08368748426437378,
+        0.18241587281227112,
+        -9.978125490306411e-06
+      ]
+    },
+    {
+      "name": "PanelAttachmentTop65",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.621603198349476e-05,
+        0.18241585791110992,
+        0.08372370153665543
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail65",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 65.0,
+      "polyCount": 771
+    },
+    {
+      "name": "Detail35",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 35.0,
+      "polyCount": 547
+    },
+    {
+      "name": "Detail15",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 15.0,
+      "polyCount": 381
+    },
+    {
+      "name": "Detail7",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 7.0,
+      "polyCount": 208
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 78
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 55,
+      "flags": 0,
+      "numKeyframes": 16,
+      "duration": 1.0000009536743164,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 20,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        19,
+        21,
+        23,
+        25
+      ],
+      "translationMatters": [
+        10,
+        11,
+        19,
+        21,
+        23,
+        25
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 56,
+      "flags": 16,
+      "numKeyframes": 18,
+      "duration": 1.2000008821487427,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 64,
+      "baseTranslation": 96,
+      "baseScale": 0,
+      "baseObjectState": 20,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        16
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Spin"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_repair.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_repair.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_repair.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_repair",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

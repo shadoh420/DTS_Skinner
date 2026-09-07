@@ -1,0 +1,79 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 22
+    }
+  ],
+  "null_surfaces_excluded": 6,
+  "degenerate_triangles_skipped": 2,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/ir_blocks.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_blocks.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lush/IR_BLOCKS",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/ir_trim1.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_trim1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lush/IR_TRIM1",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/ir_trim2.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_trim2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lush/IR_TRIM2",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/ir_wall.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/lush/ir_wall.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lush/IR_WALL",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_irisruin2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/irisruin2.dif",
+    "source_path": "interiors/irisruin2.dif",
+    "source_sha256": "93b4a80ed002f6dacc41272c955dc05ae92bcfb46a65749045546a67089c4792",
+    "source_bytes": 10233,
+    "alternatives": [],
+    "materials": [
+      "lush/IR_BLOCKS",
+      "lush/IR_TRIM1",
+      "lush/IR_TRIM2",
+      "lush/IR_WALL"
+    ],
+    "version": 44,
+    "triangles": 58,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

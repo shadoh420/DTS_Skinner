@@ -1,0 +1,193 @@
+{
+  "source": {
+    "model_name": "pack_barrel_mortar",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_barrel_mortar.dts",
+    "source_path": "shapes/pack_barrel_mortar.dts",
+    "source_sha256": "a2778a7d36423ca05f5ea779e6c9356b55236cc09987ae4fafb271251e89ac5a",
+    "source_bytes": 34331,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_barrel_mortar.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "barrel_mortar_large",
+      "barrelMount"
+    ],
+    "triangles": 340,
+    "selected_detail": "Detail_45"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Col_-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Body_45",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0019344560569152236,
+        -0.8558472990989685,
+        0.2844265401363373
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        0.26307106018066406,
+        0.2408222258090973,
+        0.2778746783733368
+      ]
+    },
+    {
+      "name": "MountPad_45",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.16932779550552368,
+        0.2608889639377594,
+        0.2778746783733368
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_45",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 45.0,
+      "polyCount": 355
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 355
+    },
+    {
+      "name": "Detail_12",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 12.0,
+      "polyCount": 355
+    },
+    {
+      "name": "Detail_6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 345
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 345
+    },
+    {
+      "name": "Collision_-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/barrel_mortar_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrel_mortar_large.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrel_mortar_large.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrel_mortar_large",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/barrelmount.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrelMount.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrelMount.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrelMount",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

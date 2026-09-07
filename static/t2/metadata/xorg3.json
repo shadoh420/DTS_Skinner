@@ -1,0 +1,156 @@
+{
+  "source": {
+    "model_name": "xorg3",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/xorg3.dts",
+    "source_path": "shapes/xorg3.dts",
+    "source_sha256": "eb74265f0412e6bfe58e682c3ec8836d04a85bde668e096c4f7a06b09cb96aa0",
+    "source_bytes": 14805,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/xorg3.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "alienfirxbase2",
+      "Humnskn3"
+    ],
+    "triangles": 144,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.40330618619918823,
+        -0.2623266875743866,
+        0.3228713274002075
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Trunk32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5693184733390808,
+        0.04478844627737999,
+        -0.07739380747079849
+      ]
+    },
+    {
+      "name": "Leaves32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.23579657077789307,
+        -0.4202355146408081,
+        1.963045597076416
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 153
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 83
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 20
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 2
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 36
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/alienfirxbase2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/alienfirxbase2.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/alienfirxbase2.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "alienfirxbase2",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/humnskn3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Humnskn3.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Humnskn3.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "Humnskn3",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

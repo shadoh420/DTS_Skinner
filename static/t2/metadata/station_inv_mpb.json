@@ -1,0 +1,419 @@
+{
+  "source": {
+    "model_name": "station_inv_mpb",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "2 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/station_inv_mpb.dts",
+    "source_path": "shapes/station_inv_mpb.dts",
+    "source_sha256": "664089490a34a393a778f8915b09aad08b3e9724085e2f0e7f51793e20d78b01",
+    "source_bytes": 14047,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/station_inv_mpb.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "vehicle_land_mpb1",
+      "station_inventory"
+    ],
+    "triangles": 46,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.011764928698539734
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumExtendPlatform",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.0834284580596432e-07,
+        2.890378952026367,
+        0.0
+      ]
+    },
+    {
+      "name": "Ramp128",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1920928955078125e-07,
+        0.3127932548522949,
+        -0.011764824390411377
+      ]
+    },
+    {
+      "name": "PadInnerB128",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.226308357781818e-09,
+        0.0,
+        0.14624151587486267
+      ]
+    },
+    {
+      "name": "PadInner128",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.226308357781818e-09,
+        0.0,
+        0.14624151587486267
+      ]
+    },
+    {
+      "name": "Beam128",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.226308357781818e-09,
+        0.0,
+        0.2917206585407257
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.011764928698539734
+      ]
+    },
+    {
+      "name": "mount2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.4189045429229736,
+        -1.7766304016113281,
+        -0.011764958500862122
+      ]
+    },
+    {
+      "name": "mount1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.8509106636047363,
+        1.2751917839050293,
+        -0.011764958500862122
+      ]
+    },
+    {
+      "name": "mount4",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -1.7766304016113281,
+        -0.011764958500862122
+      ]
+    },
+    {
+      "name": "mount3",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        1.2751917839050293,
+        -0.011764958500862122
+      ]
+    },
+    {
+      "name": "mount6",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.4224607944488525,
+        -1.7766304016113281,
+        -0.011764958500862122
+      ]
+    },
+    {
+      "name": "mount5",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.861120343208313,
+        1.2751917839050293,
+        -0.011764958500862122
+      ]
+    },
+    {
+      "name": "mount0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 140
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 92
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 92
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 92
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 46
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 1.0,
+      "polyCount": 10
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 27,
+      "flags": 0,
+      "numKeyframes": 35,
+      "duration": 1.1333346366882324,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 5,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        2,
+        3,
+        4
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate1"
+    },
+    {
+      "nameIndex": 28,
+      "flags": 0,
+      "numKeyframes": 36,
+      "duration": 1.1666674613952637,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 110,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        2
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 29,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 36,
+      "baseScale": 0,
+      "baseObjectState": 110,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_land_mpb1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_land_mpb1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_land_mpb1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_land_mpb1",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/station_inventory.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/station_inventory.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/station_inventory.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "station_inventory",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Beam",
+    "PadInnerB"
+  ],
+  "empty_finer_details": []
+}

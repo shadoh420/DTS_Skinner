@@ -1,0 +1,110 @@
+{
+  "source": {
+    "model_name": "bmiscf",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/bmiscf.dts",
+    "source_path": "shapes/bmiscf.dts",
+    "source_sha256": "0428d9c683cf84bf9606083603a761ca4601918185e94c8c8d9597b49f6ef256",
+    "source_bytes": 2580,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/bmiscf.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "be_screen"
+    ],
+    "triangles": 12,
+    "selected_detail": "Detail2"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4009653627872467,
+        -0.19851073622703552,
+        0.31728029251098633
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135901927947998
+      ]
+    },
+    {
+      "name": "Grate2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.547020435333252,
+        -0.005847484339028597,
+        -0.31819388270378113
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 2.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_screen.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_screen.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_screen.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "3e26411bad72ef98786e9156c64f4341dd0d7781442e67e5ff691f2e4c83997c",
+      "name": "be_screen",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,116 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 437
+    }
+  ],
+  "null_surfaces_excluded": 36,
+  "degenerate_triangles_skipped": 64,
+  "lightmap_count": 6,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/fling1/ds_nefblue1.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_NefBlue1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_NEFBLUE1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/fling1/e8clangfloor.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/e8clangfloor.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/E8CLANGFLOOR",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/fling1/ds_nefblue.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_NefBlue.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_NEFBLUE",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/fling1/ds_ilig02.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_ilig02.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c95250a21eaee43710210253ea7d9735349f2546629073cf46216f3d3b238f3e",
+      "name": "fling1/DS_ILIG02",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/fling1/crudewarn.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/crudewarn.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/CRUDEWARN",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/fling1/e6strimlight.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/e6strimlight.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/E6STRIMLIGHT",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/fling1/ds_neffloor1.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_Neffloor1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_NEFFLOOR1",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/fling1/dox_bluelite1.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/dox_bluelite1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DOX_BLUELITE1",
+      "original_slot": 11
+    }
+  ],
+  "source": {
+    "model_name": "interior_flingvpad01",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S8maps.vl2:interiors/flingvpad01.dif",
+    "source_path": "interiors/flingvpad01.dif",
+    "source_sha256": "3c23d1d551cfa7e2c0461d5b2fd9eb2dcd51e5fcdd08f4b11e56e5d4aaf66fd4",
+    "source_bytes": 130937,
+    "alternatives": [],
+    "materials": [
+      "fling1/DS_NEFBLUE1",
+      "fling1/E8CLANGFLOOR",
+      "fling1/DS_NEFBLUE",
+      "fling1/DS_ILIG02",
+      "fling1/CRUDEWARN",
+      "fling1/E6STRIMLIGHT",
+      "fling1/DS_NEFFLOOR1",
+      "fling1/DOX_BLUELITE1"
+    ],
+    "version": 44,
+    "triangles": 994,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

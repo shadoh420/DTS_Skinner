@@ -1,0 +1,95 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 57
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/beach_wal1.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lush/beach_wal1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "49ea318ff00865a9bf37b4224c2b0ac7ce985da8096dfb3ce751bda0b6c11aaf",
+      "name": "lush/BEACH_WAL1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/beach_wal2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lush/beach_wal2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "6965eb6d7adabb1b975aafea424469f0f6577e0f9214696330d7860784c08209",
+      "name": "lush/BEACH_WAL2",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/beach_wal3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lush/beach_wal3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "d1c57e743feb6b355c70bdca16a2a17da96574a2801bd88056a6f1b6ca41c683",
+      "name": "lush/BEACH_WAL3",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02B",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_anthem_pipestand2-beach",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/anthem_pipestand2-beach.dif",
+    "source_path": "interiors/anthem_pipestand2-beach.dif",
+    "source_sha256": "faae9e93a36da9a4110e24c8582ff7224018f5285107da7854b86368831ca932",
+    "source_bytes": 19935,
+    "alternatives": [],
+    "materials": [
+      "lush/BEACH_WAL1",
+      "lush/BE_ITEBOR02",
+      "lush/BEACH_WAL2",
+      "lush/BEACH_WAL3",
+      "lush/BE_ITEBOR02B"
+    ],
+    "version": 44,
+    "triangles": 118,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

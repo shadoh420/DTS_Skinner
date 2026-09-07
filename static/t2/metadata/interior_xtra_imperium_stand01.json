@@ -1,0 +1,119 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 90
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 3,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_espec03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC03B",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_etec.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_etec.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_etec.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ETEC",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_itedoo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itedoo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itedoo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEDOO01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_elig033.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lush/be_elig033.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "1384f5dfac057054676234708cc6f9150f6f94fcc622c6e5b7774b2c835f5427",
+      "name": "lush/BE_ELIG033",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal02b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL02B",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_elig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG03",
+      "original_slot": 10
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_imperium_stand01",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_imperium_stand01.dif",
+    "source_path": "interiors/xtra_imperium_stand01.dif",
+    "source_sha256": "f41f9bea12b0dad631929d44970bf4887cb805565ba63610b84336ed8119ea51",
+    "source_bytes": 23034,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL01B",
+      "lush/BE_ESPEC03B",
+      "lush/BE_ETEC",
+      "lush/BE_ITEDOO01",
+      "lush/BE_ELIG033",
+      "lush/BE_EWAL02B",
+      "lush/BE_ELIG03"
+    ],
+    "version": 44,
+    "triangles": 201,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

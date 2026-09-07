@@ -1,0 +1,220 @@
+{
+  "source": {
+    "model_name": "pack_deploy_turreti",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_deploy_turreti.dts",
+    "source_path": "shapes/pack_deploy_turreti.dts",
+    "source_sha256": "da66ef1a57975661ddbef470dd07c9d53dc53bd00457d3565edb5537a2d4cb1b",
+    "source_bytes": 23339,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_deploy_turreti.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "turret_InOut_deploy"
+    ],
+    "triangles": 252,
+    "selected_detail": "Detail_28"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Body_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -1.6982737424323232e-15,
+        -1.1314445380605775e-08,
+        0.13641047477722168
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.113367258971266e-10,
+        0.15550196170806885,
+        0.2481459230184555
+      ]
+    },
+    {
+      "name": "Cap_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        1.047620212801803e-08,
+        -5.196567798293472e-08,
+        0.13615426421165466
+      ]
+    },
+    {
+      "name": "Foot1_28",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        -23169,
+        0
+      ],
+      "translation": [
+        -0.1410152167081833,
+        5.109503220523948e-08,
+        0.07944055646657944
+      ]
+    },
+    {
+      "name": "Foot2_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.1410152167081833,
+        -7.238774202278364e-08,
+        0.07944055646657944
+      ]
+    },
+    {
+      "name": "Foot3_28",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -7.371266264044607e-08,
+        -0.1410151869058609,
+        0.07944055646657944
+      ]
+    },
+    {
+      "name": "Foot4_28",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        8.702913589786476e-08,
+        0.1410152018070221,
+        0.07944055646657944
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_28",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 28.0,
+      "polyCount": 264
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 264
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 208
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 55
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 55
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_inout_deploy.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_InOut_deploy.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_InOut_deploy.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_InOut_deploy",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

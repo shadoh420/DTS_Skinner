@@ -1,0 +1,449 @@
+{
+  "source": {
+    "model_name": "sorg23",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/sorg23.dts",
+    "source_path": "shapes/sorg23.dts",
+    "source_sha256": "a915d5e92800b5857ff334b2dd2413cbc5bc89e74670ed153bbd5cbf0c36d7ba",
+    "source_bytes": 13295,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/sorg23.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "WinRhody",
+      "WinRhody"
+    ],
+    "triangles": 84,
+    "selected_detail": "Detail55"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.028818637132644653,
+        0.0043022893369197845,
+        0.0015245676040649414
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Rhody55",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0024701356887817383,
+        1.3526570796966553,
+        0.0014632019447162747
+      ]
+    },
+    {
+      "name": "LeafA55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.02991735190153122,
+        0.2678453326225281,
+        -0.7287901639938354
+      ]
+    },
+    {
+      "name": "LeafAA55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.0655260905623436,
+        0.23625968396663666,
+        -0.5512533783912659
+      ]
+    },
+    {
+      "name": "LeafBB55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.09824170917272568,
+        -0.14025093615055084,
+        0.9128727912902832
+      ]
+    },
+    {
+      "name": "LeafDD55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.05414817854762077,
+        0.20455415546894073,
+        0.5084277391433716
+      ]
+    },
+    {
+      "name": "LeafEE55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.15134337544441223,
+        0.09454265981912613,
+        0.4502687156200409
+      ]
+    },
+    {
+      "name": "LeafGG55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.19366604089736938,
+        -0.08512017875909805,
+        0.1619577407836914
+      ]
+    },
+    {
+      "name": "LeafHH55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.16406619548797607,
+        -0.015332983806729317,
+        -0.6576625108718872
+      ]
+    },
+    {
+      "name": "LeafII55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.11699947714805603,
+        -0.1853969842195511,
+        -0.11079701781272888
+      ]
+    },
+    {
+      "name": "LeafJJ55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.1514904499053955,
+        0.23692366480827332,
+        0.38838085532188416
+      ]
+    },
+    {
+      "name": "LeafKK55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.1189989224076271,
+        0.09338030219078064,
+        -0.7305462956428528
+      ]
+    },
+    {
+      "name": "LeafLL55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.001410605967976153,
+        -0.24390290677547455,
+        -0.7479854822158813
+      ]
+    },
+    {
+      "name": "LeafB55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.13789893686771393,
+        0.22076381742954254,
+        -0.04102291911840439
+      ]
+    },
+    {
+      "name": "LeafC55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.02502288669347763,
+        -0.12735046446323395,
+        1.4319641590118408
+      ]
+    },
+    {
+      "name": "LeafD55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.10422554612159729,
+        0.0009049559012055397,
+        1.084336519241333
+      ]
+    },
+    {
+      "name": "LeafF55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.09578149765729904,
+        0.0033729588612914085,
+        1.0482044219970703
+      ]
+    },
+    {
+      "name": "LeafG55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.10114967077970505,
+        -0.2039056122303009,
+        0.5246936082839966
+      ]
+    },
+    {
+      "name": "LeafH55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.19191020727157593,
+        0.056340835988521576,
+        0.3514775037765503
+      ]
+    },
+    {
+      "name": "LeafI55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.12405682355165482,
+        -0.23912988603115082,
+        0.20852413773536682
+      ]
+    },
+    {
+      "name": "LeafJ55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.16028647124767303,
+        0.12617896497249603,
+        -0.08340241760015488
+      ]
+    },
+    {
+      "name": "LeafK55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.12955397367477417,
+        -0.06320583820343018,
+        -0.37405699491500854
+      ]
+    },
+    {
+      "name": "LeafL55",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.27062445878982544,
+        -0.04381484538316727,
+        -0.6128008365631104
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail55",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 55.0,
+      "polyCount": 84
+    },
+    {
+      "name": "Detail25",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 25.0,
+      "polyCount": 61
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 28
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 8
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/winrhody.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/WinRhody.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/WinRhody.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "WinRhody",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/winrhody.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/WinRhody.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/WinRhody.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "WinRhody",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

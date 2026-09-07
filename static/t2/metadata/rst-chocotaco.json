@@ -1,0 +1,69 @@
+{
+  "source": {
+    "model_name": "rst-chocotaco",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/rst-chocotaco.dts",
+    "source_path": "shapes/rst-chocotaco.dts",
+    "source_sha256": "b69536744f44f82cf582ee397807e9beaaa9ae36d596bc2aca06dcf4b54f2da0",
+    "source_bytes": 4552,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Taco_D"
+    ],
+    "triangles": 90,
+    "selected_detail": "Detail-1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Root",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 0.0,
+      "polyCount": 90
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/taco_d.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/Taco_D.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c8a6869b3c589f7f4b3fce8025f9fd625a08ce0e3120b83b3bc4646cfd3bdb87",
+      "name": "Taco_D",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

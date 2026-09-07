@@ -1,0 +1,89 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 129
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 29,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_iflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iflo02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iflo02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IFLO02",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_eflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_eflo01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_eflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EFLO01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ibor6.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ibor6.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ibor6.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "97716bd25d94a9595eb9096c46351a7b50c75e9b852a22f123dfc0ed0cd94e78",
+      "name": "badlands/BD_IBOR6",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "a9a3f445812e66349b3564605581c3ef9337a7db1325c247f8f98e2e247fe6d0",
+      "name": "badlands/BD_EBOR01",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_euro_salturretsus1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/Euro_salturretsus1.dif",
+    "source_path": "interiors/euro_salturretsus1.dif",
+    "source_sha256": "46b8d75f724b04f185cac4a045125a543e5515fc9d0301fd5d76da28dedc1439",
+    "source_bytes": 23751,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_IFLO02",
+      "badlands/BD_EFLO01",
+      "badlands/BD_IBOR6",
+      "badlands/BD_EBOR01"
+    ],
+    "version": 44,
+    "triangles": 279,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,407 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 4591
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 80,
+      "surface_count": 3282
+    }
+  ],
+  "null_surfaces_excluded": 523,
+  "degenerate_triangles_skipped": 698,
+  "lightmap_count": 12,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "851f7c30d2d6ff83fcca987e3e96de45ba304c23078fd9a982174e14c3746a6e",
+      "name": "lava/TMA5T_COWBOY3",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy5.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy5.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy5.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "22421709d2aed929c616f1edd7c9ac4b4cdef3f9dcc602bd18ae0696ed5b4269",
+      "name": "lava/TMA5T_COWBOY5",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy1.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy1.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "b706802698638a821d6d56cc6e10416d1816d5db0a0598cef246464e17cecc16",
+      "name": "lava/TMA5T_COWBOY1",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboyb10.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboyb10.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboyb10.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "1757f2f3601999c2766fd046eb6fc6d244e1e4b1a3a8ce995f923a734a617f13",
+      "name": "lava/TMA5T_COWBOYB10",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6bff845527409d3a3524f2b2d279f11d089c10d413ac0915574a6bc729fe623b",
+      "name": "lava/TMA5T_COWBOY2",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy9.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy9.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy9.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "b076460e293f947a27f0d0d3f19c4dca5127dd35c331d3951feff697d9d0aac5",
+      "name": "lava/TMA5T_COWBOY9",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboyb11.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboyb11.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboyb11.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "031c954c7c1c2b0933913c9e323a20e246a1c89694c66f712e8bb9314c218cac",
+      "name": "lava/TMA5T_COWBOYB11",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy7.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy7.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy7.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "d6b7b38d48def1ea50ad3870094ca1dc8477d04f3fbb9f20c963566748a85188",
+      "name": "lava/TMA5T_COWBOY7",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboyb13.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboyb13.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboyb13.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "2a81109e1a27c1dce295f7fecdf4ea15a77320d18e6eefc147c0327310bf0c18",
+      "name": "lava/TMA5T_COWBOYB13",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy8.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy8.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy8.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "2ef8d6bd2e3d4dc24bcac7e5aa428eb2f5c4919e5ac76871fa9460a51de53771",
+      "name": "lava/TMA5T_COWBOY8",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lava/gtext2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT2",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboyb12.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboyb12.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboyb12.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "e84b60116b4dec386d7a9df74532be579891480002846b481812acd5875163bc",
+      "name": "lava/TMA5T_COWBOYB12",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG05",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/lava/ds_genfloor.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genfloor.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genfloor.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENFLOOR",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG02",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy6.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy6.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy6.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "f41eea78b8d41dcf3f4293fa817de44ea853a589c82ab5cf9f07ffcd60da06cf",
+      "name": "lava/TMA5T_COWBOY6",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboy4.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/Tma5t_Cowboy4.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboy4.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "b7fd725323cdc95e35c01ccbe7014a4221e98eeb65794d9090afd1d1a3c6c4c9",
+      "name": "lava/TMA5T_COWBOY4",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/lava/greylitetrim.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylitetrim.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITETRIM",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihacei01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihacei01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihacei01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEI01",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/lava/gtext1a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext1a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT1A",
+      "original_slot": 25
+    },
+    {
+      "virtual_path": "textures/lava/greylite2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylite2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITE2",
+      "original_slot": 26
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG01",
+      "original_slot": 27
+    },
+    {
+      "virtual_path": "textures/lava/gtextpipe1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtextpipe1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXTPIPE1",
+      "original_slot": 28
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboyb15.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboyb15.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "e64946f321ac27aebad289d553546d8a8511f5279b52f8ba10c1b0503662714f",
+      "name": "lava/TMA5T_COWBOYB15",
+      "original_slot": 29
+    },
+    {
+      "virtual_path": "textures/lava/tma5t_cowboyb14.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Tma5t_Cowboyb14.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "bf9468bdf90645a29d4bc962dd5ce55c45a381dd32a8d788af05dbe026a99d86",
+      "name": "lava/TMA5T_COWBOYB14",
+      "original_slot": 30
+    },
+    {
+      "virtual_path": "textures/lava/stplate10a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/STPLATE10a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/STPLATE10A",
+      "original_slot": 31
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_2",
+      "original_slot": 32
+    },
+    {
+      "virtual_path": "textures/lava/gtext4.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext4.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT4",
+      "original_slot": 33
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewal02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWAL02",
+      "original_slot": 34
+    },
+    {
+      "virtual_path": "textures/lava/ds_techborder1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techborder1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techborder1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHBORDER1",
+      "original_slot": 35
+    },
+    {
+      "virtual_path": "textures/lava/greylitetrim2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylitetrim2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITETRIM2",
+      "original_slot": 36
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_projectx_tribalma5ters_coyboybebop_basecom1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_ProjectX_tribalma5ters_coyboybebop_basecom1.dif",
+    "source_path": "interiors/xtra_projectx_tribalma5ters_coyboybebop_basecom1.dif",
+    "source_sha256": "993c5162a031f828751c119a1a254143e02ab1041576482b9fad6c196d621688",
+    "source_bytes": 1622109,
+    "alternatives": [],
+    "materials": [
+      "lava/TMA5T_COWBOY3",
+      "lava/TMA5T_COWBOY5",
+      "lava/TMA5T_COWBOY1",
+      "lava/TMA5T_COWBOYB10",
+      "lava/TMA5T_COWBOY2",
+      "lava/TMA5T_COWBOY9",
+      "lava/TMA5T_COWBOYB11",
+      "lava/TMA5T_COWBOY7",
+      "lava/TMA5T_COWBOYB13",
+      "lava/TMA5T_COWBOY8",
+      "lava/GTEXT2",
+      "lava/TMA5T_COWBOYB12",
+      "lava/DS_ILIG05",
+      "lava/DS_GENFLOOR",
+      "lava/DS_ILIG02",
+      "lava/TMA5T_COWBOY6",
+      "lava/DS_GENWALL",
+      "lava/TMA5T_COWBOY4",
+      "lava/GREYLITETRIM",
+      "lava/DS_IHACEI01",
+      "lava/DS_EFLOOR1",
+      "lava/GTEXT1A",
+      "lava/GREYLITE2",
+      "lava/DS_ILIG01",
+      "lava/GTEXTPIPE1",
+      "lava/TMA5T_COWBOYB15",
+      "lava/TMA5T_COWBOYB14",
+      "lava/STPLATE10A",
+      "lava/DS_TECHWALL_2",
+      "lava/GTEXT4",
+      "lava/DS_EWAL02",
+      "lava/DS_TECHBORDER1",
+      "lava/GREYLITETRIM2"
+    ],
+    "version": 44,
+    "triangles": 11426,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

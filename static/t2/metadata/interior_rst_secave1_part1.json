@@ -1,0 +1,63 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 432
+    }
+  ],
+  "null_surfaces_excluded": 1296,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/terraintiles/rockchipd01.png",
+      "source": "base/textures.vl2:textures/terrainTiles/rockchipd01.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "65bcb48344e2f0138ea46109b2bcd6a4fe8556eabe14d5757d1a61dc5cfdda03",
+      "name": "terrainTiles/rockchipd01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/terraintiles/sandreg1.png",
+      "source": "base/textures.vl2:textures/terrainTiles/SANDREG1.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c267e75390a17585a8919bf4d25adc74923f53095982f76492892faea225662c",
+      "name": "terrainTiles/SANDREG1",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_secave1_part1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_SEcave1_part1.dif",
+    "source_path": "interiors/rst_secave1_part1.dif",
+    "source_sha256": "7afe3b93ba813cebc0cd3a95d323bac23834597b913945f17576fac65c693f25",
+    "source_bytes": 259996,
+    "alternatives": [],
+    "materials": [
+      "terrainTiles/rockchipd01",
+      "terrainTiles/SANDREG1"
+    ],
+    "version": 44,
+    "triangles": 432,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

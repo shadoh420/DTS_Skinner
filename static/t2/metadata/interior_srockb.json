@@ -1,0 +1,78 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 256,
+      "surface_count": 177
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 128,
+      "surface_count": 145
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 16,
+      "surface_count": 12
+    }
+  ],
+  "null_surfaces_excluded": 649,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/xsnowrock3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/xsnowrock3.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/xsnowrock3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "a90ff75b51fc6d59c9b822e7bc5bce9bffea4b59acda9313f73ef6e4f1a43468",
+      "name": "ice/xsnowrock3",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/snowrock.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/snowrock.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/snowrock.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/snowrock",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_srockb",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/srockb.dif",
+    "source_path": "interiors/srockb.dif",
+    "source_sha256": "1c65c2213ebd433f468d826dede02546ed416ec44c58faabe935aaab8c022701",
+    "source_bytes": 163904,
+    "alternatives": [],
+    "materials": [
+      "ice/xsnowrock3",
+      "ice/snowrock"
+    ],
+    "version": 44,
+    "triangles": 177,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

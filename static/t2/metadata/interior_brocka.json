@@ -1,0 +1,66 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 32,
+      "surface_count": 262
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 16,
+      "surface_count": 116
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 8,
+      "surface_count": 12
+    }
+  ],
+  "null_surfaces_excluded": 854,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_eterrain02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eterrain02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eterrain02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/be_eterrain02a",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_brocka",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/brocka.dif",
+    "source_path": "interiors/brocka.dif",
+    "source_sha256": "48f6cc6b74a493ffbe6c86ea143a6560ae9f6123ccd4b39cab7d610e206084b6",
+    "source_bytes": 235762,
+    "alternatives": [],
+    "materials": [
+      "lush/be_eterrain02a"
+    ],
+    "version": 44,
+    "triangles": 269,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

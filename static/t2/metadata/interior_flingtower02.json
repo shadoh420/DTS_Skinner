@@ -1,0 +1,187 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 490
+    }
+  ],
+  "null_surfaces_excluded": 99,
+  "degenerate_triangles_skipped": 55,
+  "lightmap_count": 6,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_GRY_DIAMND",
+      "name": "roostnewyears/RST_GRY_DIAMND",
+      "original_slot": 4
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLK_TRIM6",
+      "name": "roostnewyears/RST_BLK_TRIM6",
+      "original_slot": 5
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_TRIM2",
+      "name": "roostnewyears/RST_BLU_TRIM2",
+      "original_slot": 6
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLK_BIGFLR",
+      "name": "roostnewyears/RST_BLK_BIGFLR",
+      "original_slot": 7
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLK_TRAPE",
+      "name": "roostnewyears/RST_BLK_TRAPE",
+      "original_slot": 8
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_PLN",
+      "name": "roostnewyears/RST_BLU_PLN",
+      "original_slot": 9
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLK_GRID",
+      "name": "roostnewyears/RST_BLK_GRID",
+      "original_slot": 10
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_PLT3",
+      "name": "roostnewyears/RST_BLU_PLT3",
+      "original_slot": 11
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_TRIM7",
+      "name": "roostnewyears/RST_BLU_TRIM7",
+      "original_slot": 12
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLK_RIB",
+      "name": "roostnewyears/RST_BLK_RIB",
+      "original_slot": 13
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_GRY_PLT1",
+      "name": "roostnewyears/RST_GRY_PLT1",
+      "original_slot": 14
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_RIB",
+      "name": "roostnewyears/RST_BLU_RIB",
+      "original_slot": 15
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_GRY_PLN",
+      "name": "roostnewyears/RST_GRY_PLN",
+      "original_slot": 16
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_GRY_LINES",
+      "name": "roostnewyears/RST_GRY_LINES",
+      "original_slot": 18
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_TALLCOL",
+      "name": "roostnewyears/RST_BLU_TALLCOL",
+      "original_slot": 19
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_DARKINS",
+      "name": "roostnewyears/RST_BLU_DARKINS",
+      "original_slot": 20
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_GRY_LITES",
+      "name": "roostnewyears/RST_GRY_LITES",
+      "original_slot": 21
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "roostnewyears/RST_BLU_COL",
+      "name": "roostnewyears/RST_BLU_COL",
+      "original_slot": 22
+    }
+  ],
+  "source": {
+    "model_name": "interior_flingtower02",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Missing texture: roostnewyears/RST_GRY_DIAMND (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLK_TRIM6 (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_TRIM2 (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLK_BIGFLR (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLK_TRAPE (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_PLN (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLK_GRID (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_PLT3 (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_TRIM7 (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLK_RIB (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_GRY_PLT1 (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_RIB (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_GRY_PLN (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_GRY_LINES (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_TALLCOL (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_DARKINS (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_GRY_LITES (No matching source image or frame list)",
+      "Missing texture: roostnewyears/RST_BLU_COL (No matching source image or frame list)",
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S5maps.vl2:interiors/flingtower02.dif",
+    "source_path": "interiors/flingtower02.dif",
+    "source_sha256": "eb594996a9d959466d78ae38c1e1e0904b4fdabe91e358bf138d7d4ae5e0833d",
+    "source_bytes": 126359,
+    "alternatives": [],
+    "materials": [
+      "roostnewyears/RST_GRY_DIAMND",
+      "roostnewyears/RST_BLK_TRIM6",
+      "roostnewyears/RST_BLU_TRIM2",
+      "roostnewyears/RST_BLK_BIGFLR",
+      "roostnewyears/RST_BLK_TRAPE",
+      "roostnewyears/RST_BLU_PLN",
+      "roostnewyears/RST_BLK_GRID",
+      "roostnewyears/RST_BLU_PLT3",
+      "roostnewyears/RST_BLU_TRIM7",
+      "roostnewyears/RST_BLK_RIB",
+      "roostnewyears/RST_GRY_PLT1",
+      "roostnewyears/RST_BLU_RIB",
+      "roostnewyears/RST_GRY_PLN",
+      "roostnewyears/RST_GRY_LINES",
+      "roostnewyears/RST_BLU_TALLCOL",
+      "roostnewyears/RST_BLU_DARKINS",
+      "roostnewyears/RST_GRY_LITES",
+      "roostnewyears/RST_BLU_COL"
+    ],
+    "version": 44,
+    "triangles": 1173,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

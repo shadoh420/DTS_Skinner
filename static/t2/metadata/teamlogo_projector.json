@@ -1,0 +1,224 @@
+{
+  "source": {
+    "model_name": "teamlogo_projector",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/teamlogo_projector.dts",
+    "source_path": "shapes/teamlogo_projector.dts",
+    "source_sha256": "67b392fab61f7022aae1bf86fd051a62ddc2a740c959b06846ce575f7487979a",
+    "source_bytes": 11035,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/teamlogo_projector.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "station_inventory",
+      "switchbeam",
+      "jetflare05"
+    ],
+    "triangles": 88,
+    "selected_detail": "Detail50"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.6150970458984375,
+        5.691281795501709,
+        0.16974329948425293
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.2048649787902832,
+        -2.9595584869384766,
+        0.0
+      ]
+    },
+    {
+      "name": "PadInner50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.399233818054199,
+        -2.7349531650543213,
+        -0.07374875247478485
+      ]
+    },
+    {
+      "name": "Beam50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.399233818054199,
+        -2.7349531650543213,
+        1.021965503692627
+      ]
+    },
+    {
+      "name": "Flare50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.399233818054199,
+        -2.7349531650543213,
+        0.018509894609451294
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 50.0,
+      "polyCount": 92
+    },
+    {
+      "name": "Detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 40.0,
+      "polyCount": 61
+    },
+    {
+      "name": "Detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 30.0,
+      "polyCount": 37
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 20.0,
+      "polyCount": 37
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 10.0,
+      "polyCount": 29
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 5.0,
+      "polyCount": 11
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 24
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 15,
+      "flags": 16,
+      "numKeyframes": 31,
+      "duration": 1.0333342552185059,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        1,
+        2
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/station_inventory.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/station_inventory.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/station_inventory.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "station_inventory",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/switchbeam.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/switchbeam.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/switchbeam.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "switchbeam",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/jetflare05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/jetflare05.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/jetflare05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "jetflare05",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

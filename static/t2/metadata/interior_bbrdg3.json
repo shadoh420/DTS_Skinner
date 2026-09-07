@@ -1,0 +1,204 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 100,
+      "surface_count": 386
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 60,
+      "surface_count": 350
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 12,
+      "surface_count": 267
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 2,
+      "surface_count": 198
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 33,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_eflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eflo02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eflo02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EFLO02",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal07.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL07",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_espec06a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec06a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec06a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC06A",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG02",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_espec03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC03B",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR03",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lush/be_igenericdark.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGenericDark.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGenericDark.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERICDARK",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lush/be_elig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG03",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal06.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal06.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL06",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lush/be_icolig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icolig01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icolig01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIG01",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lush/be_espec03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC03",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR01",
+      "original_slot": 16
+    }
+  ],
+  "source": {
+    "model_name": "interior_bbrdg3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/bbrdg3.dif",
+    "source_path": "interiors/bbrdg3.dif",
+    "source_sha256": "c1759cd1e313b88a8c64db7c9c21884551e0935cdfa11691345e1306eb27928a",
+    "source_bytes": 210039,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EFLO02",
+      "lush/BE_EWAL07",
+      "lush/BE_ESPEC06A",
+      "lush/BE_EWAL01B",
+      "lush/BE_ELIG02",
+      "lush/BE_ESPEC03B",
+      "lush/BE_EBOR03",
+      "lush/BE_IGENERICDARK",
+      "lush/BE_ELIG03",
+      "lush/BE_EWAL06",
+      "lush/BE_ICOLIG01",
+      "lush/BE_ESPEC03",
+      "lush/BE_ITEBOR01"
+    ],
+    "version": 44,
+    "triangles": 1046,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

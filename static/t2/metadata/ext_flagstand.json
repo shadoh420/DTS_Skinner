@@ -1,0 +1,378 @@
+{
+  "source": {
+    "model_name": "ext_flagstand",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "Multiple texture paths: bd_ebor03; selected textures/badlands/bd_ebor03.png"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/ext_flagstand.dts",
+    "source_path": "shapes/ext_flagstand.dts",
+    "source_sha256": "c3d33b0fe293507c57015a95c92eabf0e27a24226c756ff4763d33e276e5da63",
+    "source_bytes": 14626,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/ext_flagstand.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "bd_ebor03",
+      "bd_ewal07",
+      "bd_elig02",
+      "bd_ewal03c"
+    ],
+    "triangles": 88,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4221591651439667,
+        -0.17501220107078552,
+        0.04572155699133873
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0026292800903320312,
+        0.19982537627220154,
+        0.0
+      ]
+    },
+    {
+      "name": "Flagbase32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4051501154899597,
+        -0.004228830337524414,
+        -0.3179160952568054
+      ]
+    },
+    {
+      "name": "Pad32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0015554428100585938,
+        0.0029141902923583984,
+        0.19378980994224548
+      ]
+    },
+    {
+      "name": "Ramp-5",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4018264412879944,
+        -0.013861407525837421,
+        0.26979753375053406
+      ]
+    },
+    {
+      "name": "Ramp-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4018264412879944,
+        -0.013861407525837421,
+        0.26979753375053406
+      ]
+    },
+    {
+      "name": "Ramp-3",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4018264412879944,
+        -0.013861407525837421,
+        0.26979753375053406
+      ]
+    },
+    {
+      "name": "Ramp-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4018264412879944,
+        -0.013861407525837421,
+        0.26979753375053406
+      ]
+    },
+    {
+      "name": "Ramp-4",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4018264412879944,
+        -0.013861407525837421,
+        0.26979753375053406
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 110
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 25
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 11
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 35
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -2.0,
+      "polyCount": 9
+    },
+    {
+      "name": "Collision-3",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -3.0,
+      "polyCount": 9
+    },
+    {
+      "name": "Collision-4",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -4.0,
+      "polyCount": 10
+    },
+    {
+      "name": "Collision-5",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -5.0,
+      "polyCount": 8
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 21,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.033334359526634216,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "translationMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 22,
+      "flags": 0,
+      "numKeyframes": 17,
+      "duration": 0.5333343744277954,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 18,
+      "baseTranslation": 18,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "translationMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ebor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor03.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor03.PNG"
+      ],
+      "ambiguous_paths": [
+        "textures/ice/bd_ebor03.png"
+      ],
+      "sha256": "d11068e2093417852f203a60b155dea18e67a07020921857095b758891c03fd1",
+      "name": "bd_ebor03",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal07.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "0fca03ded2d42798faf76bc45b368b187e0ba4177f50bd2eabf37ef8b33b0816",
+      "name": "bd_ewal07",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/badlands/bd_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_elig02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_elig02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "e5a940495ab3a6cd255dafdbd8d2b9b1ade596e5c327819bc3a1c148f9b5f2ff",
+      "name": "bd_elig02",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "8686b8f7a12a5d9f9a840ce2cade1dc0b04251596229e2adc292ddcc617c4c4b",
+      "name": "bd_ewal03c",
+      "original_slot": 3
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

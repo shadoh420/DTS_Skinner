@@ -1,0 +1,971 @@
+{
+  "source": {
+    "model_name": "turret_elf_large",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "11 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_elf_large.dts",
+    "source_path": "shapes/turret_elf_large.dts",
+    "source_sha256": "8cd2d00a1cd2db3a0b8fee2b2db4c7219bf947472596e8cb02651b038803552f",
+    "source_bytes": 144190,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_elf_large.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "barrel_elf_large"
+    ],
+    "triangles": 702,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.1690942678165224e-15,
+        -2.7632915400310765e-10,
+        0.3499319553375244
+      ]
+    },
+    {
+      "name": "Body_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.2575598340447414e-09,
+        -0.713952362537384,
+        0.34993186593055725
+      ]
+    },
+    {
+      "name": "Col_-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumDeploySlide",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0007801651954650879,
+        0.04190252721309662,
+        0.3384634554386139
+      ]
+    },
+    {
+      "name": "DumMainB",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -28377,
+        0,
+        16383
+      ],
+      "translation": [
+        5.960464477539063e-08,
+        0.15484130382537842,
+        0.06877937912940979
+      ]
+    },
+    {
+      "name": "DumDeploy3A",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.6964728288826336e-08,
+        0.19028685986995697,
+        0.08511203527450562
+      ]
+    },
+    {
+      "name": "DumDeploy3B",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -9.135044720665064e-09,
+        0.25880786776542664,
+        -0.021647263318300247
+      ]
+    },
+    {
+      "name": "Bone07",
+      "parent": 7,
+      "rotation_quat16": [
+        -17854,
+        0,
+        0,
+        27475
+      ],
+      "translation": [
+        -1.758314382982462e-08,
+        -1.683947981057088e-10,
+        5.287487336858021e-09
+      ]
+    },
+    {
+      "name": "Bone08",
+      "parent": 9,
+      "rotation_quat16": [
+        -32553,
+        0,
+        0,
+        -3737
+      ],
+      "translation": [
+        7.800095680465802e-09,
+        -0.006683322601020336,
+        0.15017421543598175
+      ]
+    },
+    {
+      "name": "Bone09",
+      "parent": 10,
+      "rotation_quat16": [
+        -26841,
+        0,
+        0,
+        18794
+      ],
+      "translation": [
+        2.2342584671264376e-08,
+        1.729604264255613e-07,
+        0.4060298800468445
+      ]
+    },
+    {
+      "name": "Leaf3B_40",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1191529480925055e-08,
+        1.1007470135382391e-07,
+        8.412425245296618e-08
+      ]
+    },
+    {
+      "name": "HulkLeaf3B_40",
+      "parent": 10,
+      "rotation_quat16": [
+        -32269,
+        0,
+        0,
+        5689
+      ],
+      "translation": [
+        1.1191529480925055e-08,
+        1.1007470135382391e-07,
+        8.412425245296618e-08
+      ]
+    },
+    {
+      "name": "Leaf3A_40",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.9435708153991982e-08,
+        -4.0888743058076216e-08,
+        4.7257810109613274e-08
+      ]
+    },
+    {
+      "name": "HulkLeaf3A_40",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.9435708153991982e-08,
+        -4.0888743058076216e-08,
+        4.7257810109613274e-08
+      ]
+    },
+    {
+      "name": "DumMainA",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.960464477539063e-08,
+        0.15484130382537842,
+        0.06877937912940979
+      ]
+    },
+    {
+      "name": "DumDeploy1A",
+      "parent": 16,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.5029294192790985e-09,
+        0.19028688967227936,
+        0.08511203527450562
+      ]
+    },
+    {
+      "name": "DumDeploy1B",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.259143787128551e-09,
+        0.2588077783584595,
+        -0.021647393703460693
+      ]
+    },
+    {
+      "name": "Bone01",
+      "parent": 17,
+      "rotation_quat16": [
+        -17854,
+        0,
+        0,
+        27475
+      ],
+      "translation": [
+        -4.103702187091551e-12,
+        2.0568546865717963e-12,
+        -1.1664613719375438e-11
+      ]
+    },
+    {
+      "name": "Bone02",
+      "parent": 19,
+      "rotation_quat16": [
+        -32553,
+        0,
+        0,
+        -3737
+      ],
+      "translation": [
+        -3.2798952442902873e-10,
+        -0.006683388724923134,
+        0.15017418563365936
+      ]
+    },
+    {
+      "name": "Bone03",
+      "parent": 20,
+      "rotation_quat16": [
+        -26841,
+        0,
+        0,
+        18794
+      ],
+      "translation": [
+        -7.150951705781061e-12,
+        3.098249479194237e-08,
+        0.4060298502445221
+      ]
+    },
+    {
+      "name": "Leaf1B_40",
+      "parent": 20,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.0995171627099545e-12,
+        1.1131663057994956e-07,
+        9.124510569336053e-08
+      ]
+    },
+    {
+      "name": "Leaf1A_40",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.103201285687863e-12,
+        -5.2353428259266366e-08,
+        6.023110898922823e-08
+      ]
+    },
+    {
+      "name": "HulkLeaf1A_40",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.103201285687863e-12,
+        -5.2353428259266366e-08,
+        6.023110898922823e-08
+      ]
+    },
+    {
+      "name": "DumMainC",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        28377,
+        0,
+        16383
+      ],
+      "translation": [
+        5.960464477539063e-08,
+        0.15484130382537842,
+        0.06877937912940979
+      ]
+    },
+    {
+      "name": "DumDeploy2A",
+      "parent": 25,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.257013071409574e-08,
+        0.19028685986995697,
+        0.08511202037334442
+      ]
+    },
+    {
+      "name": "DumDeploy2B",
+      "parent": 26,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.6592606278418316e-08,
+        0.2588079273700714,
+        -0.021647324785590172
+      ]
+    },
+    {
+      "name": "Bone04",
+      "parent": 26,
+      "rotation_quat16": [
+        -17854,
+        0,
+        0,
+        27475
+      ],
+      "translation": [
+        1.5275160691885503e-08,
+        1.7225967319234314e-09,
+        9.07768793467767e-09
+      ]
+    },
+    {
+      "name": "Bone05",
+      "parent": 28,
+      "rotation_quat16": [
+        -32553,
+        0,
+        0,
+        -3737
+      ],
+      "translation": [
+        1.1564123880702937e-08,
+        -0.006683343090116978,
+        0.15017421543598175
+      ]
+    },
+    {
+      "name": "Bone06",
+      "parent": 29,
+      "rotation_quat16": [
+        -26841,
+        0,
+        0,
+        18794
+      ],
+      "translation": [
+        3.540499005083575e-09,
+        1.0630679980749846e-07,
+        0.40602996945381165
+      ]
+    },
+    {
+      "name": "Leaf2B_40",
+      "parent": 29,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.4252462260676566e-09,
+        1.292918199169435e-07,
+        7.255356848645533e-08
+      ]
+    },
+    {
+      "name": "Leaf2A_40",
+      "parent": 28,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.5421682415280884e-08,
+        -2.0796747435269936e-08,
+        6.567039179117273e-08
+      ]
+    },
+    {
+      "name": "HulkLeaf2A_40",
+      "parent": 28,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.5421682415280884e-08,
+        -2.0796747435269936e-08,
+        6.567039179117273e-08
+      ]
+    },
+    {
+      "name": "Mid_40",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0008346578106284142,
+        -0.42199045419692993,
+        0.014256507158279419
+      ]
+    },
+    {
+      "name": "Hub_40",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        5.960464477539063e-08,
+        0.15484130382537842,
+        0.06877937912940979
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        5.745096132159233e-08,
+        0.37512826919555664,
+        0.06877937912940979
+      ]
+    },
+    {
+      "name": "HulkHub_40",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        5.960464477539063e-08,
+        0.15484130382537842,
+        0.06877937912940979
+      ]
+    },
+    {
+      "name": "HulkMid_40",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0008346578106284142,
+        -0.42199045419692993,
+        0.014256507158279419
+      ]
+    },
+    {
+      "name": "DumDeployLidB",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00013685226440429688,
+        0.8197714686393738,
+        0.09152480959892273
+      ]
+    },
+    {
+      "name": "LidBottom_40",
+      "parent": 39,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.235965651692823e-05,
+        -0.30919933319091797,
+        0.2611951529979706
+      ]
+    },
+    {
+      "name": "HulkLidBottom_40",
+      "parent": 39,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.235965651692823e-05,
+        -0.30919933319091797,
+        0.2611951529979706
+      ]
+    },
+    {
+      "name": "DumDeployLidT",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00010792538523674011,
+        0.8197709321975708,
+        0.5831707119941711
+      ]
+    },
+    {
+      "name": "LidTop_40",
+      "parent": 42,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00016241800040006638,
+        -0.30919885635375977,
+        -0.23045073449611664
+      ]
+    },
+    {
+      "name": "HulkLidTop_40",
+      "parent": 42,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00016241800040006638,
+        -0.30919885635375977,
+        -0.23045073449611664
+      ]
+    },
+    {
+      "name": "Hose_40",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -2.094574291788831e-08,
+        -0.47918272018432617,
+        0.34993189573287964
+      ]
+    },
+    {
+      "name": "Mid2_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.449260788736865e-05,
+        0.5306678414344788,
+        0.3527199625968933
+      ]
+    },
+    {
+      "name": "HulkBody_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.2575598340447414e-09,
+        -0.713952362537384,
+        0.34993186593055725
+      ]
+    },
+    {
+      "name": "HulkHose_40",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -2.094574291788831e-08,
+        -0.47918272018432617,
+        0.34993189573287964
+      ]
+    },
+    {
+      "name": "HulkMid2_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.449260788736865e-05,
+        0.5306678414344788,
+        0.3527199625968933
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 1416
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 1144
+    },
+    {
+      "name": "Detail_15",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 15.0,
+      "polyCount": 905
+    },
+    {
+      "name": "Detail_6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 202
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 10
+    },
+    {
+      "name": "Collision_-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 21
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 137,
+      "flags": 0,
+      "numKeyframes": 30,
+      "duration": 0.966667652130127,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 25,
+      "baseDecalState": 56,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        9,
+        10,
+        19,
+        20,
+        28,
+        29,
+        39,
+        42
+      ],
+      "translationMatters": [
+        5,
+        7,
+        8,
+        17,
+        18,
+        26,
+        27
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 138,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 240,
+      "baseTranslation": 210,
+      "baseScale": 0,
+      "baseObjectState": 25,
+      "baseDecalState": 56,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 139,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 240,
+      "baseTranslation": 210,
+      "baseScale": 0,
+      "baseObjectState": 25,
+      "baseDecalState": 672,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/barrel_elf_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrel_elf_large.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrel_elf_large.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrel_elf_large",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "HulkBody_",
+    "HulkHose_",
+    "HulkHub_",
+    "HulkLeaf1A_",
+    "HulkLeaf2A_",
+    "HulkLeaf3A_",
+    "HulkLeaf3B_",
+    "HulkLidBottom_",
+    "HulkLidTop_",
+    "HulkMid2_",
+    "HulkMid_"
+  ],
+  "empty_finer_details": []
+}

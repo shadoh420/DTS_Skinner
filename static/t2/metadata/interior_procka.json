@@ -1,0 +1,95 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 128,
+      "surface_count": 182
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 80,
+      "surface_count": 132
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 64,
+      "surface_count": 120
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 32,
+      "surface_count": 103
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 16,
+      "surface_count": 82
+    },
+    {
+      "version": 0,
+      "detail_level": 5,
+      "min_pixels": 8,
+      "surface_count": 29
+    }
+  ],
+  "null_surfaces_excluded": 730,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/desert/cp_ecombo1b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ecombo1b.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ecombo1b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/cp_ecombo1b",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/desert/cp_ewal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ewal01.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ewal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/cp_ewal01",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_procka",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/procka.dif",
+    "source_path": "interiors/procka.dif",
+    "source_sha256": "7b6873ff1cf46e4dd49134dcda2e4827bd3f5ecd2d5ade7bb3be5f65f0b81428",
+    "source_bytes": 320080,
+    "alternatives": [],
+    "materials": [
+      "desert/cp_ecombo1b",
+      "desert/cp_ewal01"
+    ],
+    "version": 44,
+    "triangles": 182,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "source": {
+    "model_name": "borg25",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg25.dts",
+    "source_path": "shapes/borg25.dts",
+    "source_sha256": "0247972e2e0c14efece02822a45905cc1132090e56a256eeb238fb64ef011d5e",
+    "source_bytes": 32855,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg25.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "BBerryFall",
+      "SBerryFall"
+    ],
+    "triangles": 1096,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Base01",
+      "parent": -1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.3592400550842285,
+        0.18529385328292847,
+        0.0
+      ]
+    },
+    {
+      "name": "Start01",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "BBerryFallC32",
+      "parent": 1,
+      "rotation_quat16": [
+        21594,
+        8397,
+        8397,
+        21594
+      ],
+      "translation": [
+        0.04879225790500641,
+        3.043415297554475e-09,
+        -0.051060035824775696
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 770
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 632
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 354
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/bberryfall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/BBerryFall.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/BBerryFall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "BBerryFall",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/sberryfall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/SBerryFall.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/SBerryFall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "SBerryFall",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

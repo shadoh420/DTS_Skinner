@@ -1,0 +1,127 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 80,
+      "surface_count": 35
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 30,
+      "surface_count": 33
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 12,
+      "surface_count": 31
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 2,
+      "surface_count": 19
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 5,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_ebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ebor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ebor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EBOR01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/ice/sw_ecap01c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ecap01c.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ecap01c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ECAP01C",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/ice/sw_icoligola.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_icoligolA.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_icoligolA.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ICOLIGOLA",
+      "original_slot": 9
+    }
+  ],
+  "source": {
+    "model_name": "interior_smiscb",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/smiscb.dif",
+    "source_path": "interiors/smiscb.dif",
+    "source_sha256": "cce6596985d262e39924bcfa6314930f454f98054a3874a9e1a571ae59544ce0",
+    "source_bytes": 31214,
+    "alternatives": [],
+    "materials": [
+      "ice/SW_IWAL01",
+      "ice/SW_EWAL02",
+      "ice/SW_IWAL03",
+      "ice/SW_EBOR01",
+      "ice/SW_ECAP01C",
+      "ice/SW_ICOLIGOLA"
+    ],
+    "version": 44,
+    "triangles": 69,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

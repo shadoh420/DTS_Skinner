@@ -1,0 +1,218 @@
+{
+  "source": {
+    "model_name": "turret_belly_barrell",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_belly_barrell.dts",
+    "source_path": "shapes/turret_belly_barrell.dts",
+    "source_sha256": "959d3c5c49436796d97d4fd04046048e38dadc5b8acbfe8de51295e93e057261",
+    "source_bytes": 6347,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_belly_barrell.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "turret_belly"
+    ],
+    "triangles": 48,
+    "selected_detail": "Detail_24"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "mountPoint",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "BarrelR_24",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -2.262035891931191e-08,
+        -0.05254141241312027,
+        -0.002503823721781373
+      ]
+    },
+    {
+      "name": "muzzlePoint",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.395776629447937,
+        0.6848794221878052,
+        0.4541081488132477
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_24",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 24.0,
+      "polyCount": 49
+    },
+    {
+      "name": "Detail_14",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 14.0,
+      "polyCount": 36
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 21
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 15
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Detail_3",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 3.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 13,
+      "flags": 0,
+      "numKeyframes": 8,
+      "duration": 0.23333434760570526,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 1,
+      "baseDecalState": 1,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        2
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "fire"
+    },
+    {
+      "nameIndex": 14,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 8,
+      "baseScale": 0,
+      "baseObjectState": 1,
+      "baseDecalState": 1,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_belly.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_belly.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_belly.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_belly",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

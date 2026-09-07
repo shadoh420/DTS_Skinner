@@ -1,0 +1,120 @@
+{
+  "source": {
+    "model_name": "weapon_missile_projectile",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_missile_projectile.dts",
+    "source_path": "shapes/weapon_missile_projectile.dts",
+    "source_sha256": "3dd03d23b51371fbdb1cb12568ce17a9122a4177b12728002ad8b60b5c426db2",
+    "source_bytes": 2827,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_missile_projectile.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Weapon_missile_projectile",
+      "weapon_missile_casement"
+    ],
+    "triangles": 70,
+    "selected_detail": "Detail_5"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Missile_5",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.032339434052346e-09,
+        1.3985707880692644e-07,
+        1.2236920809982621e-08
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 5.0,
+      "polyCount": 82
+    },
+    {
+      "name": "Detail_1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_missile_projectile.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Weapon_missile_projectile.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Weapon_missile_projectile.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Weapon_missile_projectile",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/weapon_missile_casement.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_missile_casement.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_missile_casement.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_missile_casement",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

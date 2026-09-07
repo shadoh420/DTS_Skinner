@@ -1,0 +1,94 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 22
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 4,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ichute01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ichute01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ichute01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICHUTE01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue1.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue1.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefwall1.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefWall1.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefWall1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFWALL1",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor3.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_Neffloor3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR3",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_Neffloor2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR2",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_dmisc_nefobj2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/dmisc_nefobj2.dif",
+    "source_path": "interiors/dmisc_nefobj2.dif",
+    "source_sha256": "8a12adb4ca63d563a4ba84a0f5707112bf240a765460ca7be66553c4b1f2318c",
+    "source_bytes": 7902,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_ICHUTE01",
+      "lava/DS_NEFBLUE1",
+      "lava/DS_NEFWALL1",
+      "lava/DS_NEFFLOOR3",
+      "lava/DS_NEFFLOOR2"
+    ],
+    "version": 44,
+    "triangles": 56,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

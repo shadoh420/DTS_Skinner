@@ -1,0 +1,346 @@
+{
+  "source": {
+    "model_name": "repair_kit",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: light_red",
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/repair_kit.dts",
+    "source_path": "shapes/repair_kit.dts",
+    "source_sha256": "f92c62a042c472a90b1a8c98a2517b1771eef5013581c7cab27e8400e7004e94",
+    "source_bytes": 72603,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/repair_kit.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "light_red",
+      "repair_kit",
+      "light_red03"
+    ],
+    "triangles": 366,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1765011548995972,
+        1.6635894775390625,
+        0.01927235722541809
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Dummy01",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.1765011548995972,
+        -1.6635894775390625,
+        0.28586867451667786
+      ]
+    },
+    {
+      "name": "Dummy02",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -1.7763568394002505e-15
+      ]
+    },
+    {
+      "name": "Cross32",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.008375227451324463,
+        0.0,
+        1.372543884103905e-10
+      ]
+    },
+    {
+      "name": "Boxa32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1764919757843018,
+        -1.6635894775390625,
+        0.5287647247314453
+      ]
+    },
+    {
+      "name": "Boxb32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1764920949935913,
+        -1.6635894775390625,
+        0.47714388370513916
+      ]
+    },
+    {
+      "name": "Boxc32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1764919757843018,
+        -1.6635894775390625,
+        0.22618192434310913
+      ]
+    },
+    {
+      "name": "Boxe32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1764920949935913,
+        -1.6635894775390625,
+        0.1900869607925415
+      ]
+    },
+    {
+      "name": "redglow32",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -1.1767396926879883,
+        -1.6636056900024414,
+        0.2942439317703247
+      ]
+    },
+    {
+      "name": "Glass32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1764919757843018,
+        -1.6635894775390625,
+        0.4429778456687927
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 413
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 255
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 182
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 150
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 68
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 25,
+      "flags": 16,
+      "numKeyframes": 21,
+      "duration": 0.7000010013580322,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 7,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        6
+      ],
+      "frameMatters": [
+        0
+      ],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    24,
+    0,
+    1073741824,
+    1073741823,
+    -2147483648
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/light_red.ifl",
+      "source": "base/skins.vl2:textures/skins/light_red.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "light_red06.png 10",
+        "light_red05.png 2",
+        "light_red04.png 2",
+        "light_red03.png 2",
+        "light_red02.png 2",
+        "light_red01.png 2",
+        "light_red02.png 2",
+        "light_red03.png 2",
+        "light_red04.png 2",
+        "light_red05.png 2",
+        "light_red06.png 10",
+        "light_red05.png 1",
+        "light_red04.png 1",
+        "light_red03.png 1",
+        "light_red02.png 1",
+        "light_red01.png 1",
+        "light_red02.png 1",
+        "light_red03.png 1",
+        "light_red04.png 1",
+        "light_red05.png 1",
+        "light_red06.png 10"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/light_red06.png",
+        "source": "base/skins.vl2:textures/skins/light_red06.png",
+        "alternatives": [],
+        "ambiguous_paths": []
+      },
+      "name": "light_red",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/repair_kit.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/repair_kit.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/repair_kit.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "repair_kit",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/light_red03.png",
+      "source": "base/skins.vl2:textures/skins/light_red03.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "light_red03",
+      "original_slot": 3
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "redglow"
+  ],
+  "empty_finer_details": []
+}

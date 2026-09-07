@@ -1,0 +1,294 @@
+{
+  "source": {
+    "model_name": "vehicle_air_hapc_debris",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_air_hapc_debris.dts",
+    "source_path": "shapes/vehicle_air_hapc_debris.dts",
+    "source_sha256": "e4487f2e988596d7faa5b308fdec8fbe1ea7040eb2791e9a4c241eb1c08b81a1",
+    "source_bytes": 96791,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_air_hapc_debris.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "vehicle_air_hpc1",
+      "vehicle_air_hpc2",
+      "vehicle_air_bomber1",
+      "vehicle_air_hpc3",
+      "vehicle_air_hpc3"
+    ],
+    "triangles": 1184,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5913809647827293e-07,
+        3.640655517578125,
+        -3.5388853549957275
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ArmL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "ArmLB128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "ArmR128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "ArmRB128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "Carriage128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "EngineL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "EngineR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "WingL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -31250,
+        0,
+        9853
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    },
+    {
+      "name": "WingR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -9853,
+        0,
+        -31250,
+        0
+      ],
+      "translation": [
+        -1.5913809647827293e-07,
+        -3.640655517578125,
+        3.5388853549957275
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 1314
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 948
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 669
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 225
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 88
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_air_hpc1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_hpc1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_hpc1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_hpc1",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_hpc2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_hpc2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_hpc2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_hpc2",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_bomber1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_bomber1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_bomber1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_bomber1",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_hpc3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_hpc3.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_hpc3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_hpc3",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_hpc3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_hpc3.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_hpc3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_hpc3",
+      "original_slot": 4
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

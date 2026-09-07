@@ -1,0 +1,1266 @@
+{
+  "source": {
+    "model_name": "light_female",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/light_female.dts",
+    "source_path": "shapes/light_female.dts",
+    "source_sha256": "c40ee49aeec14a4ec2ba5f910e1ba4f0ba2f9af8f98fb3a1ead67d1f29f8b200",
+    "source_bytes": 194704,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/light_female.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 39,
+    "materials": [
+      "base.lfemale"
+    ],
+    "triangles": 1698,
+    "selected_detail": "Detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Bip01 Pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        -7,
+        23094,
+        57,
+        23244
+      ],
+      "translation": [
+        0.0,
+        -1.7216228442862302e-12,
+        1.3214831352233887
+      ]
+    },
+    {
+      "name": "Bip01 Spine",
+      "parent": 0,
+      "rotation_quat16": [
+        1902,
+        -9,
+        -137,
+        32711
+      ],
+      "translation": [
+        0.07015784084796906,
+        -0.0001183685235446319,
+        0.0006926184287294745
+      ]
+    },
+    {
+      "name": "Bip01 Spine1",
+      "parent": 1,
+      "rotation_quat16": [
+        913,
+        -377,
+        5195,
+        32337
+      ],
+      "translation": [
+        0.1495392918586731,
+        -0.00015318671648856252,
+        9.481854249315802e-06
+      ]
+    },
+    {
+      "name": "Bip01 Spine2",
+      "parent": 2,
+      "rotation_quat16": [
+        2717,
+        -1251,
+        -4418,
+        32329
+      ],
+      "translation": [
+        0.20296752452850342,
+        -0.00015911360969766974,
+        2.5698926037875935e-05
+      ]
+    },
+    {
+      "name": "Bip01 Neck",
+      "parent": 3,
+      "rotation_quat16": [
+        -5212,
+        2271,
+        -903,
+        32257
+      ],
+      "translation": [
+        0.21036486327648163,
+        -4.952399467583746e-05,
+        -1.61460047820583e-05
+      ]
+    },
+    {
+      "name": "Bip01 Head",
+      "parent": 4,
+      "rotation_quat16": [
+        58,
+        69,
+        1185,
+        32745
+      ],
+      "translation": [
+        0.06562178581953049,
+        -9.158221736527139e-09,
+        -1.0519911608497523e-09
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 5,
+      "rotation_quat16": [
+        680,
+        -23230,
+        -817,
+        23084
+      ],
+      "translation": [
+        0.17952600121498108,
+        0.19871662557125092,
+        0.0003922198957297951
+      ]
+    },
+    {
+      "name": "Bip01 L Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        -22616,
+        -2559,
+        -23316,
+        3453
+      ],
+      "translation": [
+        0.00628747558221221,
+        0.01344370562583208,
+        0.04067624360322952
+      ]
+    },
+    {
+      "name": "Bip01 L UpperArm",
+      "parent": 7,
+      "rotation_quat16": [
+        -5645,
+        -13062,
+        15453,
+        25146
+      ],
+      "translation": [
+        0.18104059994220734,
+        1.3554839917162553e-08,
+        1.0328989219487994e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Forearm",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        16431,
+        28349
+      ],
+      "translation": [
+        0.4194430112838745,
+        -1.3931361841912349e-08,
+        7.665482115726263e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Hand",
+      "parent": 9,
+      "rotation_quat16": [
+        -31514,
+        -7033,
+        -3508,
+        4327
+      ],
+      "translation": [
+        0.3781948685646057,
+        5.4514828207175015e-09,
+        -6.7932575120721594e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        21059,
+        -2337,
+        -24984,
+        -690
+      ],
+      "translation": [
+        -0.006287616211920977,
+        -0.013339206576347351,
+        -0.04067624732851982
+      ]
+    },
+    {
+      "name": "Bip01 R UpperArm",
+      "parent": 11,
+      "rotation_quat16": [
+        12478,
+        15362,
+        -1356,
+        26079
+      ],
+      "translation": [
+        0.18104062974452972,
+        4.073184456387935e-09,
+        3.121720482113233e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Forearm",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        0,
+        -28643,
+        -15913
+      ],
+      "translation": [
+        0.4194430112838745,
+        -2.422040523697433e-08,
+        -9.743589046706802e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Hand",
+      "parent": 13,
+      "rotation_quat16": [
+        -25211,
+        -7047,
+        6148,
+        18724
+      ],
+      "translation": [
+        0.37819477915763855,
+        5.2030681985115734e-08,
+        1.1820507239690414e-08
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 14,
+      "rotation_quat16": [
+        670,
+        1788,
+        21667,
+        24506
+      ],
+      "translation": [
+        0.10432220995426178,
+        0.07268021255731583,
+        -0.021153317764401436
+      ]
+    },
+    {
+      "name": "Righthand",
+      "parent": 15,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -2.7949514702640954e-08,
+        0.4199734330177307,
+        0.012121319770812988
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": 3,
+      "rotation_quat16": [
+        487,
+        -22756,
+        -504,
+        23565
+      ],
+      "translation": [
+        0.07148229330778122,
+        -0.11498703807592392,
+        0.008564300835132599
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 3,
+      "rotation_quat16": [
+        487,
+        -22756,
+        -504,
+        23565
+      ],
+      "translation": [
+        0.07148229330778122,
+        -0.11498703807592392,
+        0.008564314804971218
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 3,
+      "rotation_quat16": [
+        -28857,
+        15511,
+        -491,
+        -292
+      ],
+      "translation": [
+        -0.11610503494739532,
+        -0.11555454134941101,
+        -0.005107597913593054
+      ]
+    },
+    {
+      "name": "Jetfire145",
+      "parent": 3,
+      "rotation_quat16": [
+        2128,
+        -22580,
+        -4003,
+        23307
+      ],
+      "translation": [
+        -0.11991336941719055,
+        -0.11582818627357483,
+        -0.005301657132804394
+      ]
+    },
+    {
+      "name": "Light0",
+      "parent": 3,
+      "rotation_quat16": [
+        -73,
+        -21014,
+        -352,
+        25138
+      ],
+      "translation": [
+        0.16357502341270447,
+        0.1365051418542862,
+        0.1555531620979309
+      ]
+    },
+    {
+      "name": "Light1",
+      "parent": 3,
+      "rotation_quat16": [
+        -222,
+        -23325,
+        -577,
+        23004
+      ],
+      "translation": [
+        0.17569610476493835,
+        0.1364184021949768,
+        -0.14828504621982574
+      ]
+    },
+    {
+      "name": "Bip01 L Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -4254,
+        -31271,
+        -7831,
+        -4037
+      ],
+      "translation": [
+        -0.07031018286943436,
+        -0.016680849716067314,
+        0.14898693561553955
+      ]
+    },
+    {
+      "name": "Bip01 L Calf",
+      "parent": 23,
+      "rotation_quat16": [
+        0,
+        0,
+        7609,
+        31871
+      ],
+      "translation": [
+        0.5616047978401184,
+        -2.699501777669866e-08,
+        2.4667357934049505e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Foot",
+      "parent": 24,
+      "rotation_quat16": [
+        13,
+        2967,
+        -2377,
+        32545
+      ],
+      "translation": [
+        0.6401310563087463,
+        1.611277777868736e-09,
+        -6.008503028454015e-09
+      ]
+    },
+    {
+      "name": "Ski0",
+      "parent": 24,
+      "rotation_quat16": [
+        16765,
+        14128,
+        13172,
+        20480
+      ],
+      "translation": [
+        0.45297321677207947,
+        -0.011994465254247189,
+        -0.06737928837537766
+      ]
+    },
+    {
+      "name": "Bip01 R Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -2296,
+        -32657,
+        125,
+        1378
+      ],
+      "translation": [
+        -0.06999724358320236,
+        0.018255211412906647,
+        -0.15034431219100952
+      ]
+    },
+    {
+      "name": "Bip01 R Calf",
+      "parent": 27,
+      "rotation_quat16": [
+        0,
+        0,
+        7874,
+        31806
+      ],
+      "translation": [
+        0.5616046190261841,
+        -3.2102120961496894e-09,
+        -8.993114697375404e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Foot",
+      "parent": 28,
+      "rotation_quat16": [
+        456,
+        -498,
+        -5648,
+        32269
+      ],
+      "translation": [
+        0.6401309967041016,
+        1.3504901641425704e-09,
+        -5.4489399659019e-09
+      ]
+    },
+    {
+      "name": "Ski1",
+      "parent": 28,
+      "rotation_quat16": [
+        -13230,
+        -20068,
+        -16904,
+        -14495
+      ],
+      "translation": [
+        0.44975751638412476,
+        -0.014676586724817753,
+        0.06519406288862228
+      ]
+    },
+    {
+      "name": "Unlink",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.1273523220788348e-10,
+        -1.052497880515979e-10,
+        -1.1591398063615088e-08
+      ]
+    },
+    {
+      "name": "Cam",
+      "parent": 31,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.022297827526926994,
+        0.11000080406665802,
+        2.200000047683716
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 2130
+    },
+    {
+      "name": "detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 1894
+    },
+    {
+      "name": "detail112",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 112.0,
+      "polyCount": 1683
+    },
+    {
+      "name": "detail96",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 96.0,
+      "polyCount": 1492
+    },
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 80.0,
+      "polyCount": 1296
+    },
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 60.0,
+      "polyCount": 1078
+    },
+    {
+      "name": "Detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 30.0,
+      "polyCount": 871
+    },
+    {
+      "name": "Detail18",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 18.0,
+      "polyCount": 644
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": 12.0,
+      "polyCount": 414
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": 6.0,
+      "polyCount": 233
+    },
+    {
+      "name": "Detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": 3.0,
+      "polyCount": 24
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 92,
+      "flags": 32,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 1,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 19,
+      "baseDecalState": 43,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        18
+      ],
+      "frameMatters": [
+        18
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "JetFlare"
+    },
+    {
+      "nameIndex": 93,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 1,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 30,
+      "baseDecalState": 43,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [
+    "shapes/light_female_back.dsq",
+    "shapes/light_female_celbow.dsq",
+    "shapes/light_female_celdance.dsq",
+    "shapes/light_female_celsalute.dsq",
+    "shapes/light_female_celwave.dsq",
+    "shapes/light_female_dieback.dsq",
+    "shapes/light_female_diechest.dsq",
+    "shapes/light_female_dieforward.dsq",
+    "shapes/light_female_diehead.dsq",
+    "shapes/light_female_dieknees.dsq",
+    "shapes/light_female_dieleglf.dsq",
+    "shapes/light_female_dielegrt.dsq",
+    "shapes/light_female_diesidelf.dsq",
+    "shapes/light_female_diesidert.dsq",
+    "shapes/light_female_dieslump.dsq",
+    "shapes/light_female_diespin.dsq",
+    "shapes/light_female_fall.dsq",
+    "shapes/light_female_forward.dsq",
+    "shapes/light_female_head.dsq",
+    "shapes/light_female_headside.dsq",
+    "shapes/light_female_idlepda.dsq",
+    "shapes/light_female_jet.dsq",
+    "shapes/light_female_jump.dsq",
+    "shapes/light_female_land.dsq",
+    "shapes/light_female_lookde.dsq",
+    "shapes/light_female_lookms.dsq",
+    "shapes/light_female_looknw.dsq",
+    "shapes/light_female_looksn.dsq",
+    "shapes/light_female_recoilde.dsq",
+    "shapes/light_female_root.dsq",
+    "shapes/light_female_scoutroot.dsq",
+    "shapes/light_female_side.dsq",
+    "shapes/light_female_sitting.dsq",
+    "shapes/light_female_ski.dsq",
+    "shapes/light_female_standjump.dsq",
+    "shapes/light_female_tauntbest.dsq",
+    "shapes/light_female_tauntbutt.dsq",
+    "shapes/light_female_tauntimp.dsq",
+    "shapes/light_female_tauntkiss.dsq"
+  ],
+  "script_sequence_bindings": [
+    {
+      "index": 0,
+      "path": "shapes/light_female_root.dsq",
+      "alias": "root",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/light_female_forward.dsq",
+      "alias": "run",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/light_female_back.dsq",
+      "alias": "back",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/light_female_side.dsq",
+      "alias": "side",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/light_female_lookde.dsq",
+      "alias": "look",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/light_female_head.dsq",
+      "alias": "head",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/light_female_headside.dsq",
+      "alias": "headside",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/light_female_fall.dsq",
+      "alias": "fall",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/light_female_jet.dsq",
+      "alias": "jet",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/light_female_land.dsq",
+      "alias": "land",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/light_female_jump.dsq",
+      "alias": "jump",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/light_female_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/light_female_scoutroot.dsq",
+      "alias": "scoutroot",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/light_female_looksn.dsq",
+      "alias": "looksn",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/light_female_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/light_female_sitting.dsq",
+      "alias": "sitting",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/light_female_idlepda.dsq",
+      "alias": "pda",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/light_female_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/light_female_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/light_female_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/light_female_diesidelf.dsq",
+      "alias": "death4",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/light_female_diesidert.dsq",
+      "alias": "death5",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/light_female_dieleglf.dsq",
+      "alias": "death6",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/light_female_dielegrt.dsq",
+      "alias": "death7",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/light_female_dieslump.dsq",
+      "alias": "death8",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/light_female_dieknees.dsq",
+      "alias": "death9",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/light_female_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/light_female_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/light_female_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/light_female_celwave.dsq",
+      "alias": "cel2",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/light_female_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/light_female_tauntimp.dsq",
+      "alias": "cel4",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/light_female_celdance.dsq",
+      "alias": "cel5",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/light_female_tauntkiss.dsq",
+      "alias": "cel6",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/light_female_tauntbutt.dsq",
+      "alias": "cel7",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/light_female_celbow.dsq",
+      "alias": "cel8",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 36,
+      "path": "shapes/light_female_ski.dsq",
+      "alias": "ski",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 37,
+      "path": "shapes/light_female_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 38,
+      "path": "shapes/light_female_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts/light_female.cs",
+      "source": "base/scripts.vl2:scripts/light_female.cs"
+    },
+    {
+      "index": 0,
+      "path": "shapes/light_female_root.dsq",
+      "alias": "root",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/light_female_forward.dsq",
+      "alias": "run",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/light_female_back.dsq",
+      "alias": "back",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/light_female_side.dsq",
+      "alias": "side",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/light_female_lookde.dsq",
+      "alias": "look",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/light_female_head.dsq",
+      "alias": "head",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/light_female_headside.dsq",
+      "alias": "headside",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/light_female_fall.dsq",
+      "alias": "fall",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/light_female_jet.dsq",
+      "alias": "jet",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/light_female_land.dsq",
+      "alias": "land",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/light_female_jump.dsq",
+      "alias": "jump",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/light_female_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/light_female_scoutroot.dsq",
+      "alias": "scoutroot",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/light_female_looksn.dsq",
+      "alias": "looksn",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/light_female_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/light_female_sitting.dsq",
+      "alias": "sitting",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/light_female_idlepda.dsq",
+      "alias": "pda",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/light_female_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/light_female_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/light_female_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/light_female_diesidelf.dsq",
+      "alias": "death4",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/light_female_diesidert.dsq",
+      "alias": "death5",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/light_female_dieleglf.dsq",
+      "alias": "death6",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/light_female_dielegrt.dsq",
+      "alias": "death7",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/light_female_dieslump.dsq",
+      "alias": "death8",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/light_female_dieknees.dsq",
+      "alias": "death9",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/light_female_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/light_female_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/light_female_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/light_female_celwave.dsq",
+      "alias": "cel2",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/light_female_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/light_female_tauntimp.dsq",
+      "alias": "cel4",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/light_female_celdance.dsq",
+      "alias": "cel5",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/light_female_tauntkiss.dsq",
+      "alias": "cel6",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/light_female_tauntbutt.dsq",
+      "alias": "cel7",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/light_female_celbow.dsq",
+      "alias": "cel8",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 36,
+      "path": "shapes/light_female_ski.dsq",
+      "alias": "ski",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 37,
+      "path": "shapes/light_female_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    },
+    {
+      "index": 38,
+      "path": "shapes/light_female_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts_extracted/scripts/light_female.cs",
+      "source": "loose:base/scripts_extracted/scripts/light_female.cs"
+    }
+  ],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.lfemale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/base.lfemale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.lfemale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.lfemale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Jetfire"
+  ],
+  "empty_finer_details": []
+}

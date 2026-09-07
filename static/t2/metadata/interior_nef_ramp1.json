@@ -1,0 +1,142 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 198
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 6,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_thresh01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_thresh01a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_thresh01a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_THRESH01A",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_epipe01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_epipe01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_epipe01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EPIPE01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_ichute01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ichute01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ichute01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICHUTE01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal04.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL04",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_elig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG03",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lush/be_eport01e.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eport01e.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eport01e.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EPORT01E",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lush/be_espec01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC01",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lush/be_espec02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC02",
+      "original_slot": 13
+    }
+  ],
+  "source": {
+    "model_name": "interior_nef_ramp1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/TR2final105-client.vl2:interiors/nef_ramp1.dif",
+    "source_path": "interiors/nef_ramp1.dif",
+    "source_sha256": "65194319994617884dc855d90b194f8dc2a0205d0da742f88ff98487ee58317a",
+    "source_bytes": 51181,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_THRESH01A",
+      "lush/BE_EPIPE01",
+      "lush/BE_ICHUTE01",
+      "lush/BE_EWAL01B",
+      "lush/BE_ITEWAL04",
+      "lush/BE_ELIG03",
+      "lush/BE_EPORT01E",
+      "lush/BE_ESPEC01",
+      "lush/BE_ESPEC02"
+    ],
+    "version": 44,
+    "triangles": 406,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "source": {
+    "model_name": "borg8",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg8.dts",
+    "source_path": "shapes/borg8.dts",
+    "source_sha256": "093c9e53cc3b36af5b3bbec259729a5a5bec0cd0af7dd3702c9671b984660a4a",
+    "source_bytes": 13673,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg8.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "borg6"
+    ],
+    "triangles": 612,
+    "selected_detail": "Detail16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4009653925895691,
+        -0.19851073622703552,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "leaves16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -9031,
+        0,
+        31497
+      ],
+      "translation": [
+        -0.5539485216140747,
+        -0.001031249761581421,
+        -0.5927112698554993
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 460
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 8.0,
+      "polyCount": 181
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 4.0,
+      "polyCount": 181
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 91
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/borg6.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/borg6.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/borg6.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "borg6",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

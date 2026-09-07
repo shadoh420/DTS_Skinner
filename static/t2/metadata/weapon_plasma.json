@@ -1,0 +1,545 @@
+{
+  "source": {
+    "model_name": "weapon_plasma",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "5 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_plasma.dts",
+    "source_path": "shapes/weapon_plasma.dts",
+    "source_sha256": "0946d34c6f6293604e8f866af6098377d7051a10c602aba6fa6bbc0e2f3c59ad",
+    "source_bytes": 47672,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_plasma.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_plasma1",
+      "weapon_plasma2",
+      "weapon_plasma1",
+      "weapon_plasma2"
+    ],
+    "triangles": 314,
+    "selected_detail": "Detail80"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.320606426082122e-09,
+        -0.35524582862854004,
+        -0.1581503003835678
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.38354948326014e-05,
+        1.18313467502594,
+        0.29071977734565735
+      ]
+    },
+    {
+      "name": "PlasmaHandle80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0011491579934954643,
+        0.192536860704422,
+        0.11864778399467468
+      ]
+    },
+    {
+      "name": "AmbientCore80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.274942279560491e-05,
+        0.4965962767601013,
+        0.26772341132164
+      ]
+    },
+    {
+      "name": "BarrellHolder80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00047731195809319615,
+        0.5170287489891052,
+        0.2493373602628708
+      ]
+    },
+    {
+      "name": "Barrell80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -1.5525021808571182e-05,
+        0.58407062292099,
+        0.13632507622241974
+      ]
+    },
+    {
+      "name": "exhaustB80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.12571769952774048,
+        0.8813945651054382,
+        0.05324776470661163
+      ]
+    },
+    {
+      "name": "exhaust80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.11862847208976746,
+        0.8947943449020386,
+        0.054722122848033905
+      ]
+    },
+    {
+      "name": "fireEffect80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        6.97384457453154e-05,
+        1.3941015005111694,
+        0.24120010435581207
+      ]
+    },
+    {
+      "name": "CoolingTubeHolder80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -11,
+        0,
+        32766
+      ],
+      "translation": [
+        2.6006087864516303e-05,
+        0.49659499526023865,
+        0.26772671937942505
+      ]
+    },
+    {
+      "name": "Doorl80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.054102204740047455,
+        0.4261862635612488,
+        0.3133917450904846
+      ]
+    },
+    {
+      "name": "Doorr80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.054597508162260056,
+        0.4259568750858307,
+        0.3133917450904846
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0015996611909940839,
+        0.11840611696243286,
+        0.051347993314266205
+      ]
+    },
+    {
+      "name": "RechargeCore80",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.275138002820313e-05,
+        0.4965962767601013,
+        0.3133859634399414
+      ]
+    },
+    {
+      "name": "Vent80",
+      "parent": 1,
+      "rotation_quat16": [
+        -5996,
+        -22380,
+        -22380,
+        -5996
+      ],
+      "translation": [
+        -3.391454083612189e-05,
+        0.5434048175811768,
+        0.05494169890880585
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.38354948326014e-05,
+        1.2552754878997803,
+        0.29071977734565735
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 80.0,
+      "polyCount": 420
+    },
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 60.0,
+      "polyCount": 319
+    },
+    {
+      "name": "Detail36",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 36.0,
+      "polyCount": 237
+    },
+    {
+      "name": "Detail18",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 18.0,
+      "polyCount": 157
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 84
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 27
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 38,
+      "flags": 16,
+      "numKeyframes": 41,
+      "duration": 1.3666675090789795,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        11,
+        12
+      ],
+      "translationMatters": [
+        4,
+        5,
+        10,
+        11,
+        12
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        6
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 39,
+      "flags": 0,
+      "numKeyframes": 9,
+      "duration": 0.2666676938533783,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 82,
+      "baseTranslation": 205,
+      "baseScale": 0,
+      "baseObjectState": 53,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        11,
+        12
+      ],
+      "translationMatters": [
+        4,
+        5,
+        10,
+        11,
+        12
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activation"
+    },
+    {
+      "nameIndex": 40,
+      "flags": 0,
+      "numKeyframes": 25,
+      "duration": 0.8000009655952454,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 100,
+      "baseTranslation": 250,
+      "baseScale": 0,
+      "baseObjectState": 53,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        11,
+        12
+      ],
+      "translationMatters": [
+        4,
+        5,
+        10,
+        11,
+        12
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        8,
+        9,
+        10
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Reload"
+    },
+    {
+      "nameIndex": 41,
+      "flags": 0,
+      "numKeyframes": 8,
+      "duration": 0.23333434760570526,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 150,
+      "baseTranslation": 375,
+      "baseScale": 0,
+      "baseObjectState": 128,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        11,
+        12
+      ],
+      "translationMatters": [
+        4,
+        5,
+        10,
+        11,
+        12
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        11
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    35,
+    2,
+    3,
+    8,
+    1,
+    36,
+    5,
+    0,
+    32,
+    5,
+    37,
+    7,
+    8,
+    99867920,
+    2
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_plasma1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_plasma1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_plasma1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_plasma1",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/weapon_plasma2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_plasma2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_plasma2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_plasma2",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/weapon_plasma1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_plasma1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_plasma1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_plasma1",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/weapon_plasma2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_plasma2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_plasma2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_plasma2",
+      "original_slot": 4
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "AmbientCore",
+    "RechargeCore",
+    "exhaust",
+    "exhaustB",
+    "fireEffect"
+  ],
+  "empty_finer_details": []
+}

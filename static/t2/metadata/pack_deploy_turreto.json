@@ -1,0 +1,235 @@
+{
+  "source": {
+    "model_name": "pack_deploy_turreto",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_deploy_turreto.dts",
+    "source_path": "shapes/pack_deploy_turreto.dts",
+    "source_sha256": "78329d7fe7f45542e60ab0edb401174a84446b5729358ac84368981f961a2cde",
+    "source_bytes": 15923,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_deploy_turreto.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "turret_InOut_deploy"
+    ],
+    "triangles": 154,
+    "selected_detail": "Detail_28"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Body_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.0159988148747922e-17,
+        1.000417793051156e-08,
+        0.16638590395450592
+      ]
+    },
+    {
+      "name": "Cap_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -7.887488642636161e-15,
+        -1.7382856043468564e-08,
+        0.1661297231912613
+      ]
+    },
+    {
+      "name": "Collar_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -9.942756010789385e-26,
+        5.506538336419453e-09,
+        0.1332845538854599
+      ]
+    },
+    {
+      "name": "Wing1_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.8063817719864847e-25,
+        -0.001076122047379613,
+        0.1663859337568283
+      ]
+    },
+    {
+      "name": "Wing2_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.0008122026920318604,
+        1.0126817606703753e-08,
+        0.16638590395450592
+      ]
+    },
+    {
+      "name": "Wing3_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        1.6249049328287413e-10,
+        0.0010761420708149672,
+        0.1663859337568283
+      ]
+    },
+    {
+      "name": "Wing4_28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0008122026920318604,
+        1.000417793051156e-08,
+        0.16638590395450592
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.113367258971266e-10,
+        0.15550196170806885,
+        0.2481459230184555
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_28",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 28.0,
+      "polyCount": 158
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 158
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 97
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 55
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 55
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_inout_deploy.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_InOut_deploy.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_InOut_deploy.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_InOut_deploy",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

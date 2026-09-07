@@ -1,0 +1,76 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 150,
+      "surface_count": 670
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 100,
+      "surface_count": 448
+    }
+  ],
+  "null_surfaces_excluded": 2010,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 5,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/terraintiles/mossdirt2.png",
+      "source": "base/textures.vl2:textures/terrainTiles/mossDirt2.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/mossDirt2",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/terraintiles/grassmix5.png",
+      "source": "base/textures.vl2:textures/terrainTiles/grassMix5.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/grassMix5",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/terraintiles/mossrock3.png",
+      "source": "base/textures.vl2:textures/terrainTiles/mossRock3.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/mossRock3",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_lush_floatingisle8",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_lush_floatingisle8.dif",
+    "source_path": "interiors/rst_lush_floatingisle8.dif",
+    "source_sha256": "278945586f79e7b0fad25c21473179dc4fbb4fbf40ace1070b2f5f336b9a1a61",
+    "source_bytes": 643768,
+    "alternatives": [],
+    "materials": [
+      "terrainTiles/mossDirt2",
+      "terrainTiles/grassMix5",
+      "terrainTiles/mossRock3"
+    ],
+    "version": 44,
+    "triangles": 670,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

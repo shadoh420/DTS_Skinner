@@ -1,0 +1,113 @@
+{
+  "source": {
+    "model_name": "xorg20",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/xorg20.dts",
+    "source_path": "shapes/xorg20.dts",
+    "source_sha256": "2f821564e9715bdb44b6cc384feb4a5dbf895f82db5eec5ece62c1198acf40d3",
+    "source_bytes": 4037,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/xorg20.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "HorseNettleFall",
+      "Oldwood"
+    ],
+    "triangles": 138,
+    "selected_detail": "Detail10"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Base01",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.04155430197715759,
+        -0.14677363634109497,
+        0.0
+      ]
+    },
+    {
+      "name": "Start01",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "HorseNettleA10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.004302918910980225,
+        0.008010242134332657,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 10.0,
+      "polyCount": 99
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/horsenettlefall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/HorseNettleFall.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/HorseNettleFall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "HorseNettleFall",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/oldwood.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Oldwood.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Oldwood.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Oldwood",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

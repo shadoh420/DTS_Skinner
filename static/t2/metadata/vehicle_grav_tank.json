@@ -1,0 +1,1142 @@
+{
+  "source": {
+    "model_name": "vehicle_grav_tank",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "6 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_grav_tank.dts",
+    "source_path": "shapes/vehicle_grav_tank.dts",
+    "source_sha256": "350877ae01bc1c65b1924f5d97aae6e949ef72bd57f636ca55a807e25bc016b9",
+    "source_bytes": 142576,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_grav_tank.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "Vehicle_grav_tank_bodyMain",
+      "vehicle_grav_tank_bodyside1",
+      "vehicle_grav_tank_bodyside2",
+      "vehicle_grav_tank_bodyside2",
+      "vehicle_grav_tank_bodyside1"
+    ],
+    "triangles": 661,
+    "selected_detail": "Detail_128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.7129851193640206e-08,
+        0.752837061882019,
+        -1.3302407264709473
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "BodyMain_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0012252330780029297,
+        0.28372740745544434,
+        2.688930034637451
+      ]
+    },
+    {
+      "name": "Smoke_node01",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.0012252330780029297,
+        3.7040657997131348,
+        -1.4137048721313477
+      ]
+    },
+    {
+      "name": "TrimL_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        3.565694570541382,
+        -3.0301947593688965,
+        1.1417336463928223
+      ]
+    },
+    {
+      "name": "TrimR_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.565694570541382,
+        -3.0301947593688965,
+        1.1417336463928223
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.7001884579658508,
+        2.9174256324768066,
+        2.897859573364258
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6608161926269531,
+        -0.2852231562137604,
+        3.145570755004883
+      ]
+    },
+    {
+      "name": "Mass",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.7001884579658508,
+        2.8805489540100098,
+        4.104259967803955
+      ]
+    },
+    {
+      "name": "Mount10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1382874021137468e-07,
+        -2.253000020980835,
+        4.365314960479736
+      ]
+    },
+    {
+      "name": "LOScol-9",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "LOScol-10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "BodyL_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -2.2348740100860596,
+        -0.35893869400024414,
+        2.583467483520508
+      ]
+    },
+    {
+      "name": "BodyR_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.2348740100860596,
+        -0.35893869400024414,
+        2.583467483520508
+      ]
+    },
+    {
+      "name": "LOScol-12",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.7541069984436035,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "LOScol-11",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        4.7541069984436035,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "Headlight_node01",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.288918972015381,
+        5.013729095458984,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "Headlight_node02",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7220916748046875,
+        5.013729095458984,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "Headlight_node03",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.7358722686767578,
+        5.013728618621826,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "Headlight_node04",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.2978739738464355,
+        5.013728618621826,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "DumExtendL",
+      "parent": 1,
+      "rotation_quat16": [
+        3227,
+        0,
+        -32607,
+        -6
+      ],
+      "translation": [
+        -2.268824577331543,
+        -2.6623620986938477,
+        3.7573792934417725
+      ]
+    },
+    {
+      "name": "ExtendL128",
+      "parent": 22,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        0.1959361433982849,
+        -2.303410053253174,
+        -1.7876157760620117
+      ]
+    },
+    {
+      "name": "ExtendLglowA128",
+      "parent": 22,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        0.23240864276885986,
+        -0.1718333512544632,
+        -0.32056325674057007
+      ]
+    },
+    {
+      "name": "ExtendLGlowB128",
+      "parent": 22,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        0.002295524114742875,
+        -1.2118542194366455,
+        -0.2958097457885742
+      ]
+    },
+    {
+      "name": "ExtendLGlowC128",
+      "parent": 22,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        -0.20705384016036987,
+        -0.47422006726264954,
+        -0.2970822751522064
+      ]
+    },
+    {
+      "name": "DumExtendR",
+      "parent": 1,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        -3227
+      ],
+      "translation": [
+        2.2690000534057617,
+        -2.6623635292053223,
+        3.7572407722473145
+      ]
+    },
+    {
+      "name": "ExtendR128",
+      "parent": 27,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        -0.1959362030029297,
+        2.303410291671753,
+        1.787616491317749
+      ]
+    },
+    {
+      "name": "ExtendRglowA128",
+      "parent": 27,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        -0.23420850932598114,
+        0.1718338280916214,
+        0.3201676905155182
+      ]
+    },
+    {
+      "name": "ExtendRGlowB128",
+      "parent": 27,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        -0.005547268316149712,
+        1.211855411529541,
+        0.2951241135597229
+      ]
+    },
+    {
+      "name": "ExtendRGlowC128",
+      "parent": 27,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        0.21174713969230652,
+        0.47421807050704956,
+        0.2979847490787506
+      ]
+    },
+    {
+      "name": "DumWingL",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -3.3164587020874023,
+        -2.0560803413391113,
+        3.3270952701568604
+      ]
+    },
+    {
+      "name": "WingL128",
+      "parent": 32,
+      "rotation_quat16": [
+        -21406,
+        -21406,
+        -8866,
+        -8866
+      ],
+      "translation": [
+        -0.05687154456973076,
+        -1.9306708574295044,
+        1.2108546495437622
+      ]
+    },
+    {
+      "name": "WingLRearGlow128",
+      "parent": 32,
+      "rotation_quat16": [
+        -21406,
+        -8866,
+        -21406,
+        8866
+      ],
+      "translation": [
+        -1.383881688117981,
+        -1.358162522315979,
+        0.4962944984436035
+      ]
+    },
+    {
+      "name": "WingLFrontGLow128",
+      "parent": 32,
+      "rotation_quat16": [
+        8866,
+        -21406,
+        8866,
+        21406
+      ],
+      "translation": [
+        1.4377436637878418,
+        -1.5149247646331787,
+        0.5385817289352417
+      ]
+    },
+    {
+      "name": "WingLLight128",
+      "parent": 32,
+      "rotation_quat16": [
+        8866,
+        -21406,
+        8866,
+        21406
+      ],
+      "translation": [
+        3.9908108711242676,
+        -2.6374928951263428,
+        1.1289310455322266
+      ]
+    },
+    {
+      "name": "DumWingR",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        3.3164587020874023,
+        -2.0560803413391113,
+        3.3270952701568604
+      ]
+    },
+    {
+      "name": "WingR128",
+      "parent": 37,
+      "rotation_quat16": [
+        -21406,
+        -21406,
+        -8866,
+        -8866
+      ],
+      "translation": [
+        0.05687142536044121,
+        1.9306704998016357,
+        -1.2108548879623413
+      ]
+    },
+    {
+      "name": "WingRFrontGlow128",
+      "parent": 37,
+      "rotation_quat16": [
+        8913,
+        -21386,
+        8913,
+        21386
+      ],
+      "translation": [
+        -1.4377940893173218,
+        1.5150171518325806,
+        -0.5423752069473267
+      ]
+    },
+    {
+      "name": "WingRRearGlow128",
+      "parent": 37,
+      "rotation_quat16": [
+        -21463,
+        -8726,
+        -21463,
+        8726
+      ],
+      "translation": [
+        1.383881688117981,
+        1.3688567876815796,
+        -0.4915642738342285
+      ]
+    },
+    {
+      "name": "WingRLight128",
+      "parent": 37,
+      "rotation_quat16": [
+        8866,
+        -21406,
+        8866,
+        21406
+      ],
+      "translation": [
+        -3.9908108711242676,
+        2.6188151836395264,
+        -1.147608995437622
+      ]
+    },
+    {
+      "name": "Smoke_node02",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.484971523284912,
+        -5.242506980895996,
+        3.0869874954223633
+      ]
+    },
+    {
+      "name": "Smoke_node03",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5043537616729736,
+        -5.4460930824279785,
+        3.0119004249572754
+      ]
+    },
+    {
+      "name": "BodyRheadlight128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        2.0917224884033203,
+        5.0513153076171875,
+        2.6100943088531494
+      ]
+    },
+    {
+      "name": "BodyLheadlight128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -2.0805206298828125,
+        5.0513153076171875,
+        2.6100943088531494
+      ]
+    },
+    {
+      "name": "FlareLMB128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.026163578033447,
+        -5.705275535583496,
+        -0.8985893726348877
+      ]
+    },
+    {
+      "name": "JetTrail_R2_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        1.6767734289169312,
+        -7.405421733856201,
+        2.137880563735962
+      ]
+    },
+    {
+      "name": "JetTrail_R_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        1.6686195135116577,
+        -7.4018874168396,
+        2.1210219860076904
+      ]
+    },
+    {
+      "name": "JetTrail_L2_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7279406785964966,
+        -7.405421733856201,
+        2.137880563735962
+      ]
+    },
+    {
+      "name": "JetTrail_L_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.733678936958313,
+        -7.4018874168396,
+        2.1210219860076904
+      ]
+    },
+    {
+      "name": "FlareRMB128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        4.021353721618652,
+        -5.705275535583496,
+        -0.8985893726348877
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -1.6525726318359375,
+        -6.476015567779541,
+        2.136296510696411
+      ]
+    },
+    {
+      "name": "Jetnozzle1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        1.6477627754211426,
+        -6.476015567779541,
+        2.136296510696411
+      ]
+    },
+    {
+      "name": "burnerLitR",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        1.584662914276123,
+        -5.8451032638549805,
+        2.077641487121582
+      ]
+    },
+    {
+      "name": "burnerLitL",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        23169,
+        0
+      ],
+      "translation": [
+        -1.5846631526947021,
+        -5.8451032638549805,
+        2.077641487121582
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 855
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 685
+    },
+    {
+      "name": "Detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 40.0,
+      "polyCount": 472
+    },
+    {
+      "name": "Detail11",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 11.0,
+      "polyCount": 343
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 6.0,
+      "polyCount": 121
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 90
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 37
+    },
+    {
+      "name": "LOS-9",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -9.0,
+      "polyCount": 32
+    },
+    {
+      "name": "LOS-10",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -10.0,
+      "polyCount": 12
+    },
+    {
+      "name": "LOS-11",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": -11.0,
+      "polyCount": 12
+    },
+    {
+      "name": "LOS-12",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": -12.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 146,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 33,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 147,
+      "flags": 0,
+      "numKeyframes": 49,
+      "duration": 1.6000009775161743,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 33,
+      "baseDecalState": 576,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        32,
+        37
+      ],
+      "translationMatters": [
+        22,
+        27
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "activate"
+    },
+    {
+      "nameIndex": 148,
+      "flags": 16,
+      "numKeyframes": 6,
+      "duration": 0.2000010460615158,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 98,
+      "baseTranslation": 98,
+      "baseScale": 0,
+      "baseObjectState": 33,
+      "baseDecalState": 576,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        27,
+        28,
+        29,
+        30,
+        31,
+        32
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "MaintainBack"
+    },
+    {
+      "nameIndex": 149,
+      "flags": 8,
+      "numKeyframes": 22,
+      "duration": 0.700001060962677,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 98,
+      "baseTranslation": 98,
+      "baseScale": 0,
+      "baseObjectState": 69,
+      "baseDecalState": 576,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        27,
+        28,
+        29,
+        30,
+        31,
+        32
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "cyclic": false,
+      "name": "ActivateBack"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodymain.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_tank_bodyMain.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_tank_bodyMain.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_tank_bodyMain",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside1",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside2",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside2",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside1",
+      "original_slot": 4
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "FlareLMB",
+    "FlareRMB",
+    "JetTrail_L2_",
+    "JetTrail_L_",
+    "JetTrail_R2_",
+    "JetTrail_R_"
+  ],
+  "empty_finer_details": []
+}

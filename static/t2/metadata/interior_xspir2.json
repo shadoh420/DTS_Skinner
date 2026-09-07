@@ -1,0 +1,89 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 80,
+      "surface_count": 115
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 32,
+      "surface_count": 91
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 25,
+      "surface_count": 69
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 16,
+      "surface_count": 47
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 8,
+      "surface_count": 15
+    }
+  ],
+  "null_surfaces_excluded": 426,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ecombo3b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ecombo3b.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ecombo3b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/bd_ecombo3b",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ecombo3d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ecombo3d.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ecombo3d.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/bd_ecombo3d",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_xspir2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/xspir2.dif",
+    "source_path": "interiors/xspir2.dif",
+    "source_sha256": "459b2c38a2fb15dade843bf11bb26469f6f8f9f1df3c64c2eac6ff5a0256952e",
+    "source_bytes": 168212,
+    "alternatives": [],
+    "materials": [
+      "badlands/bd_ecombo3b",
+      "badlands/bd_ecombo3d"
+    ],
+    "version": 44,
+    "triangles": 115,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "source": {
+    "model_name": "golden_pole",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/golden_pole.dts",
+    "source_path": "shapes/golden_pole.dts",
+    "source_sha256": "37cbc268efe6577a4793dac3c0efc61767ae8948459269dd1f93b6779b75be52",
+    "source_bytes": 5700,
+    "version": 23,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "gold_post",
+      "goldcube"
+    ],
+    "triangles": 80,
+    "selected_detail": "detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.9930198192596436,
+        5.85515022277832,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.7957627773284912,
+        -2.471034049987793,
+        0.0
+      ]
+    },
+    {
+      "name": "goldpole100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7887825965881348,
+        -3.3841161727905273,
+        10.5
+      ]
+    },
+    {
+      "name": "cube100",
+      "parent": 2,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -4.7226008581719313e-26,
+        1.759571119919201e-07,
+        6.999729156494141
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7887825965881348,
+        -3.3841161727905273,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 87
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 50
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/gold_post.png",
+      "source": "base/TR2final105-client.vl2:textures/skins/gold_post.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "gold_post",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/goldcube.png",
+      "source": "base/TR2final105-client.vl2:textures/skins/goldcube.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "goldcube",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

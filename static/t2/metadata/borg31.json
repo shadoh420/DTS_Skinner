@@ -1,0 +1,116 @@
+{
+  "source": {
+    "model_name": "borg31",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg31.dts",
+    "source_path": "shapes/borg31.dts",
+    "source_sha256": "7a12c91c3793e9750f68c7c4f4b3c32c6279c7a3a3ce66a9f1efc6a3fb5ed63e",
+    "source_bytes": 4078,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg31.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "RabbitBush"
+    ],
+    "triangles": 36,
+    "selected_detail": "Detail16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Base01",
+      "parent": -1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.11102262139320374,
+        -0.4577174782752991,
+        0.027651075273752213
+      ]
+    },
+    {
+      "name": "Start01",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "RabbitBush16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        0.027115628123283386,
+        0.01944582723081112,
+        -0.0825774148106575
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 36
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 10.0,
+      "polyCount": 28
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 4.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/rabbitbush.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/RabbitBush.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/RabbitBush.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "RabbitBush",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

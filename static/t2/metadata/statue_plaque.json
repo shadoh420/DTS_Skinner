@@ -1,0 +1,156 @@
+{
+  "source": {
+    "model_name": "statue_plaque",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/statue_plaque.dts",
+    "source_path": "shapes/statue_plaque.dts",
+    "source_sha256": "d2b3b6dddfe8b57ec17ccb15696bd631a8da7beb7a1ba2c3114c821a790911b5",
+    "source_bytes": 2398,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/statue_plaque.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "artists.plaque"
+    ],
+    "triangles": 10,
+    "selected_detail": "Detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "plate",
+      "parent": 1,
+      "rotation_quat16": [
+        -21497,
+        0,
+        0,
+        24729
+      ],
+      "translation": [
+        0.00960440095514059,
+        -0.0027357018552720547,
+        1.0246450901031494
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 10
+    },
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 80.0,
+      "polyCount": 0
+    },
+    {
+      "name": "Detail45",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 45.0,
+      "polyCount": 0
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 20.0,
+      "polyCount": 0
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 12.0,
+      "polyCount": 6
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 6.0,
+      "polyCount": 2
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 4.0,
+      "polyCount": 1
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 2.0,
+      "polyCount": 0
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/artists.plaque.png",
+      "source": "base/skins.vl2:textures/skins/artists.plaque.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "artists.plaque",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

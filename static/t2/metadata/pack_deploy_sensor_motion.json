@@ -1,0 +1,357 @@
+{
+  "source": {
+    "model_name": "pack_deploy_sensor_motion",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_deploy_sensor_motion.dts",
+    "source_path": "shapes/pack_deploy_sensor_motion.dts",
+    "source_sha256": "7c13c5f980c7db67f50835806013ada77828f8ab536ad33f823d6ee1b2e908aa",
+    "source_bytes": 17524,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_deploy_sensor_motion.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "blue",
+      "motionsensor",
+      "blue_blink0"
+    ],
+    "triangles": 118,
+    "selected_detail": "Detail16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00038247182965278625,
+        9.476627815807603e-11,
+        -0.0007198154926300049
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MiddleLight_Blue16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -9.476627815807603e-11,
+        0.029227212071418762
+      ]
+    },
+    {
+      "name": "Dummy_Elevate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -9.476627815807603e-11,
+        0.12149254232645035
+      ]
+    },
+    {
+      "name": "LidA16",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.011986754834651947
+      ]
+    },
+    {
+      "name": "LiteBlueFront16",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.0018827489111572504,
+        -0.0018736289348453283,
+        0.129410982131958
+      ]
+    },
+    {
+      "name": "Dummy_Rotate_BLUE",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SpinnerA16",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        -31250,
+        9853
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.10888702422380447
+      ]
+    },
+    {
+      "name": "SpinnerB16",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        9853,
+        31250
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.10888702422380447
+      ]
+    },
+    {
+      "name": "Dummy_Rotate_OuterLights",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Wallmount16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -7.450580596923828e-09,
+        -9.476627815807603e-11,
+        0.07772080600261688
+      ]
+    },
+    {
+      "name": "MiddleLight_RED16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -9.476627815807603e-11,
+        0.029227212071418762
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00038247182965278625,
+        -9.476627815807603e-11,
+        0.0007198154926300049
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 178
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 8.0,
+      "polyCount": 106
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 4.0,
+      "polyCount": 62
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 27
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 1.0,
+      "polyCount": 0
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 33,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333345055580139,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 4,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    32,
+    2,
+    1073741824,
+    1073741823,
+    -2147483648
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/blue.png",
+      "source": "base/skins.vl2:textures/skins/blue.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "blue",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/motionsensor.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/MotionSensor.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/MotionSensor.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "motionsensor",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/blue_blink0.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/blue_blink0.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/blue_blink0.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "blue_blink0",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "MiddleLight_RED"
+  ],
+  "empty_finer_details": []
+}
