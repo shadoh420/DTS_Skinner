@@ -5,6 +5,8 @@ import math
 import pathlib
 
 TEXTURE_MAPPINGS = {
+    "disc": "stock_disc.png",
+    "larmor": "base.larmor.png",
     "ammo1": "ammo.png",
     "grenadel": "grenade.png",
     "sensor_small": "sensor_rmt.png",

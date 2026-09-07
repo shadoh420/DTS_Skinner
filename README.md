@@ -54,12 +54,16 @@ Python, Flask, Socket.IO, Watchdog, Three.js, pystray, PyInstaller, Bov's DTS pa
 Preview and OBJ export now share support for the bundled `v`/`uv`/`tri` JSON
 and newer `vertices`/`uvs`/`indices` files. Legacy models use the selected fallback
 PNG in both preview and export; modern JSON keeps its authored material groups.
-Existing geometry and poses are preserved, without regenerating model files.
+Weapon geometry is preserved. The stale light-armor snapshot was regenerated
+with the existing corrected DTS exporter; its node rotation convention now
+matches the working heavy-armor exporter, instead of the old twisted pose.
 
 Exported normals now agree with face winding, download errors are reported,
 temporary ZIPs no longer accumulate, and texture reloads bypass caching and
 recognize atomic file replacement. Missing textures are listed in the exported
-README. `larmor.png` is absent: supply an armor skin via the fallback field.
+README. Light armor uses its authored `base.larmor.png` material. Disc defaults
+to `stock_disc.png`; the previous custom `disc.png` is still available by entering
+that filename in the fallback field and loading the model again.
 `paintgun.json.nopng` remains excluded from the model list.
 
 Executable builds keep editable skins in `static/textures` beside `SkinnerApp.exe`.
@@ -88,8 +92,17 @@ Direct DTS loading, animation playback, multi-material regeneration, and
 ArenaPrototype integration remain separate work. Browser tests of bundled
 snapshots do not establish native-game pose or material parity.
 
-Validation: five regression tests pass, all ten bundled models load in a headless
+The stock disc and base light-armor PNGs came from the local Tribes
+`Entities.zip` assets (256x256). The base light-armor texture was also compared
+with the older working Skinner's material. The custom texture is not overwritten.
+
+Validation: seven regression tests pass, all ten bundled models load in a headless
 Edge browser, and all ten export from the Windows executable. Browser download,
 export-error reporting, CDN-unavailable preview, and skin persistence across an
 executable restart were checked. Native tray interaction and user visual review
 remain unverified.
+
+The light-armor snapshot is checked against fresh DTS conversion to prevent
+shipping obsolete geometry again. Fresh heavy-armor conversion exactly matched
+the older working Skinner snapshot. Disc/light-armor renders are review candidates;
+the user's visual acceptance remains open.

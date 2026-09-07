@@ -16,6 +16,23 @@ from tools.obj_exporter import compute_smooth_normals, generate_obj_content
 
 
 class ModelTests(unittest.TestCase):
+    def test_larmor_snapshot_matches_corrected_dts_exporter(self):
+        from tools.export_model import main as export_model
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
+            export_model(str(model_json_dir.parents[1] / 'tools/dts_files/larmor.dts'), directory)
+            generated = json.loads((pathlib.Path(directory) / 'larmor.json').read_text())
+        committed = json.loads((model_json_dir / 'larmor.json').read_text())
+        self.assertEqual(committed, generated)
+        self.assertEqual(set(committed['material_textures']), {'base.larmor.png'})
+        self.assertTrue((textures_dir / 'base.larmor.png').is_file())
+
+    def test_disc_defaults_to_stock_without_removing_custom_skin(self):
+        client = app.test_client()
+        self.assertEqual(client.get('/model_json/disc').json['material_textures'], ['stock_disc.png'])
+        self.assertEqual(client.get('/model_json/disc?texture=disc.png').json['material_textures'], ['disc.png'])
+        self.assertTrue((textures_dir / 'stock_disc.png').is_file())
+        self.assertTrue((textures_dir / 'disc.png').is_file())
+
     def test_atomic_texture_saves_notify_the_destination(self):
         watcher = TextureWatcher()
         with patch('app.socketio.emit') as emit:
