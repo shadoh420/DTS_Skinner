@@ -1,0 +1,309 @@
+{
+  "source": {
+    "model_name": "statue_lfemale",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/statue_lfemale.dts",
+    "source_path": "shapes/statue_lfemale.dts",
+    "source_sha256": "f9e4ab0f08397d897837c259b97385c8f21bf5a55fca82c67d0e8398ecbfdfc6",
+    "source_bytes": 30730,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/statue_lfemale.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "statue_LFemale"
+    ],
+    "triangles": 458,
+    "selected_detail": "detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "submeshlfoot",
+      "parent": -1,
+      "rotation_quat16": [
+        13499,
+        489,
+        -4369,
+        29531
+      ],
+      "translation": [
+        0.09636631608009338,
+        0.08776620030403137,
+        0.29147323966026306
+      ]
+    },
+    {
+      "name": "submeshlleg",
+      "parent": -1,
+      "rotation_quat16": [
+        7240,
+        4114,
+        877,
+        31678
+      ],
+      "translation": [
+        0.12368868291378021,
+        0.19944582879543304,
+        0.7099068760871887
+      ]
+    },
+    {
+      "name": "submeshlthigh",
+      "parent": -1,
+      "rotation_quat16": [
+        -9610,
+        4614,
+        2640,
+        30871
+      ],
+      "translation": [
+        0.14089152216911316,
+        0.7008054256439209,
+        1.2016017436981201
+      ]
+    },
+    {
+      "name": "submeshrfoot",
+      "parent": -1,
+      "rotation_quat16": [
+        -32187,
+        5965,
+        1405,
+        -260
+      ],
+      "translation": [
+        -0.1423642486333847,
+        -0.04008138179779053,
+        0.0683295801281929
+      ]
+    },
+    {
+      "name": "submeshrleg",
+      "parent": -1,
+      "rotation_quat16": [
+        -32333,
+        288,
+        5138,
+        1304
+      ],
+      "translation": [
+        -0.18692722916603088,
+        -0.19053111970424652,
+        0.4697297215461731
+      ]
+    },
+    {
+      "name": "submeshrthigh",
+      "parent": -1,
+      "rotation_quat16": [
+        -32285,
+        362,
+        5149,
+        2160
+      ],
+      "translation": [
+        -0.1375783234834671,
+        -0.13872908055782318,
+        0.9905551671981812
+      ]
+    },
+    {
+      "name": "submeshhead",
+      "parent": -1,
+      "rotation_quat16": [
+        4229,
+        211,
+        4838,
+        32129
+      ],
+      "translation": [
+        -0.08128415793180466,
+        -0.5307455658912659,
+        1.94303297996521
+      ]
+    },
+    {
+      "name": "submeshlarm",
+      "parent": -1,
+      "rotation_quat16": [
+        -84,
+        3453,
+        158,
+        32583
+      ],
+      "translation": [
+        -0.5649946928024292,
+        -0.7127776145935059,
+        1.1797504425048828
+      ]
+    },
+    {
+      "name": "submeshlbicep",
+      "parent": -1,
+      "rotation_quat16": [
+        6526,
+        3400,
+        -2418,
+        31838
+      ],
+      "translation": [
+        -0.43238964676856995,
+        -1.1810389757156372,
+        1.733180046081543
+      ]
+    },
+    {
+      "name": "submeshrarm",
+      "parent": -1,
+      "rotation_quat16": [
+        -27728,
+        -10992,
+        6246,
+        -12039
+      ],
+      "translation": [
+        0.0440763384103775,
+        0.7164375185966492,
+        1.7981904745101929
+      ]
+    },
+    {
+      "name": "submeshrbicep",
+      "parent": -1,
+      "rotation_quat16": [
+        -31017,
+        -3255,
+        1845,
+        9879
+      ],
+      "translation": [
+        0.7740439772605896,
+        -0.9703088402748108,
+        1.977951169013977
+      ]
+    },
+    {
+      "name": "submeshtorso",
+      "parent": -1,
+      "rotation_quat16": [
+        -1358,
+        797,
+        -8114,
+        31707
+      ],
+      "translation": [
+        -0.010613281279802322,
+        0.1622113436460495,
+        1.532870888710022
+      ]
+    },
+    {
+      "name": "submeshpelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0026061441749334335,
+        0.019264495000243187,
+        1.2091976404190063
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.9081860183910457e-11,
+        5.519011359034209e-10,
+        7.989973127564554e-10
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 569
+    },
+    {
+      "name": "detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 80.0,
+      "polyCount": 434
+    },
+    {
+      "name": "detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 50.0,
+      "polyCount": 354
+    },
+    {
+      "name": "detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 30.0,
+      "polyCount": 303
+    },
+    {
+      "name": "detail15",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 15.0,
+      "polyCount": 245
+    },
+    {
+      "name": "detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 3.0,
+      "polyCount": 110
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/statue_lfemale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/statue_LFemale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/statue_LFemale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "statue_LFemale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

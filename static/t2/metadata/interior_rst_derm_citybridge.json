@@ -1,0 +1,65 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 8
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_iflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iflo01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IFLO01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL03C",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_derm_citybridge",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_derm_citybridge.dif",
+    "source_path": "interiors/rst_derm_citybridge.dif",
+    "source_sha256": "f8e6da4dea3713f6f6ddd5cd6fd6d8e4068691c92b0e278205805df7e9510511",
+    "source_bytes": 5209,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_IFLO01",
+      "badlands/BD_EWAL03C"
+    ],
+    "version": 44,
+    "triangles": 20,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

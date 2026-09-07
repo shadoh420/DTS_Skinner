@@ -1,0 +1,155 @@
+{
+  "source": {
+    "model_name": "plasmabolt",
+    "game": "t2",
+    "category": "Effects",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: plasma"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/plasmabolt.dts",
+    "source_path": "shapes/plasmabolt.dts",
+    "source_sha256": "e19272f43bb3d938965f63ccfe23f01ece77cd7d1a7e0d0f2afc6239f2872f79",
+    "source_bytes": 696,
+    "version": 18,
+    "alternatives": [
+      "base/shapes.vl2:shapes/plasmabolt.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "plasma"
+    ],
+    "triangles": 2,
+    "selected_detail": "Detail1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.053890008479356766,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.220055555004265e-11,
+        6.752088888006824e-10,
+        0.0
+      ]
+    },
+    {
+      "name": "Plasmabolt_1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        4.220055555004265e-11,
+        -5.724036244991737e-10,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 6,
+      "numKeyframes": 21,
+      "duration": 0.700001060962677,
+      "flags": 16,
+      "cyclic": true,
+      "priority": 0,
+      "firstGroundFrame": 3,
+      "numGroundFrames": 0,
+      "baseRotation": 3,
+      "baseObjectState": 1,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "baseTranslation": 3,
+      "baseScale": 0,
+      "rotationMatters": [],
+      "iflMatters": [
+        0
+      ],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    [
+      5,
+      0
+    ]
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/plasma.ifl",
+      "source": "base/skins.vl2:textures/skins/plasma.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "plasma01.png 1",
+        "plasma02.png 1",
+        "plasma03.png 1",
+        "plasma04.png 1",
+        "plasma05.png 1",
+        "plasma06.png 1",
+        "plasma07.png 1",
+        "plasma08.png 1",
+        "plasma09.png 1",
+        "plasma10.png 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/plasma01.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/plasma01.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/plasma01.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "plasma",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

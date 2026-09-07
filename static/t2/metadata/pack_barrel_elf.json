@@ -1,0 +1,246 @@
+{
+  "source": {
+    "model_name": "pack_barrel_elf",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_barrel_elf.dts",
+    "source_path": "shapes/pack_barrel_elf.dts",
+    "source_sha256": "e180f964f3bd22e298073e5053d0bb59b2e150003dbcd4c0ef8db47edfeb78bf",
+    "source_bytes": 40804,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_barrel_elf.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "barrel_elf_large",
+      "barrelMount"
+    ],
+    "triangles": 430,
+    "selected_detail": "Detail_50"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Body_50",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.2575598340447414e-09,
+        -0.713952362537384,
+        0.34993186593055725
+      ]
+    },
+    {
+      "name": "Col_-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Hose_50",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -2.094574291788831e-08,
+        -0.47918272018432617,
+        0.34993189573287964
+      ]
+    },
+    {
+      "name": "Mid2_50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.449260788736865e-05,
+        0.5306678414344788,
+        0.3527199625968933
+      ]
+    },
+    {
+      "name": "LidBottom_50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.449260788736865e-05,
+        0.510572075843811,
+        0.35271990299224854
+      ]
+    },
+    {
+      "name": "LidTop_50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.4492615163326263e-05,
+        0.5105721354484558,
+        0.35271990299224854
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        0.26307106018066406,
+        0.2408222258090973,
+        0.2778746783733368
+      ]
+    },
+    {
+      "name": "MountPad_50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.16932779550552368,
+        0.2608889639377594,
+        0.2778746783733368
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_50",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 50.0,
+      "polyCount": 466
+    },
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 466
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 20.0,
+      "polyCount": 466
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 466
+    },
+    {
+      "name": "Collision_-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/barrel_elf_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrel_elf_large.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrel_elf_large.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrel_elf_large",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/barrelmount.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrelMount.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrelMount.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrelMount",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

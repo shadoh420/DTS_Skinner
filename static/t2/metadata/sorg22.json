@@ -1,0 +1,355 @@
+{
+  "source": {
+    "model_name": "sorg22",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/sorg22.dts",
+    "source_path": "shapes/sorg22.dts",
+    "source_sha256": "ba16f58ada6a89e1fccc5d8cbaa56fe260ee6269a96a630d877ed994a233e10f",
+    "source_bytes": 33165,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/sorg22.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "MesqBark",
+      "MesquiteBranch"
+    ],
+    "triangles": 137,
+    "selected_detail": "Detail50"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.17023468017578125,
+        -0.5843439102172852,
+        0.03940201178193092
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mesquite50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "Mesquite35",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "Mesquite20",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "Mesquite16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "Mesquite8",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "base-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "base-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "base-3",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "base-4",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "base-5",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "base-6",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    },
+    {
+      "name": "base-7",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4705410599708557,
+        -1.2160364389419556,
+        -0.010775634087622166
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 50.0,
+      "polyCount": 139
+    },
+    {
+      "name": "Detail35",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 35.0,
+      "polyCount": 123
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 20.0,
+      "polyCount": 103
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 53
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 17
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -2.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-3",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -3.0,
+      "polyCount": 8
+    },
+    {
+      "name": "Collision-4",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -4.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-5",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": -5.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-6",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": -6.0,
+      "polyCount": 8
+    },
+    {
+      "name": "Collision-7",
+      "subShapeNum": 0,
+      "objectDetailNum": 11,
+      "size": -7.0,
+      "polyCount": 4
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/mesqbark.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/MesqBark.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/MesqBark.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "MesqBark",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/mesquitebranch.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/MesquiteBranch.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/MesquiteBranch.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "MesquiteBranch",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

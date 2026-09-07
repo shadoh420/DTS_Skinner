@@ -7,6 +7,7 @@ from watchdog.events import FileSystemEventHandler
 from tools.model_data import load_model_data, default_texture, model_sort_key
 from tools.obj_exporter import json_to_obj_zip
 import io
+import json
 import shutil
 import pathlib
 import threading
@@ -39,8 +40,9 @@ if getattr(sys, 'frozen', False):
     # Skins edited by the user must survive PyInstaller's temporary extraction.
     textures_dir = pathlib.Path(sys.executable).resolve().parent / "static" / "textures"
     textures_dir.mkdir(parents=True, exist_ok=True)
-    for source in (static_dir / "textures").glob("*.png"):
-        destination = textures_dir / source.name
+    for source in (static_dir / "textures").rglob("*.png"):
+        destination = textures_dir / source.relative_to(static_dir / "textures")
+        destination.parent.mkdir(parents=True, exist_ok=True)
         if not destination.exists():
             shutil.copy2(source, destination)
 model_json_dir = static_dir / "model_json" # Where pre-processed JSONs are stored
@@ -82,8 +84,63 @@ stop_event = threading.Event() # Used to signal the Flask server to shut down
 def index():
     return render_template("index.html")
 
+
+def selected_game():
+    game = request.args.get("game", "t1")
+    if game not in ("t1", "t2"):
+        abort(400, "Unknown game")
+    return game
+
+
+def game_textures(game):
+    return textures_dir / "t2" if game == "t2" else textures_dir
+
+
+def model_path(name):
+    if name in (".", "..") or any(c in name for c in '/\\:\r\n'):
+        abort(400, "Invalid model name")
+    directory = static_dir / "t2" / "model_json" if selected_game() == "t2" else model_json_dir
+    path = directory / (name + ".json")
+    if not path.is_file():
+        abort(404, "Model has no supported preview geometry; see catalog coverage.")
+    return path
+
+
+def material_overrides():
+    try:
+        value = json.loads(request.args.get("materials", "{}"))
+        if not isinstance(value, dict) or len(value) > 4096:
+            raise ValueError("Material overrides must be a slot-to-filename object")
+        return value
+    except (ValueError, TypeError) as exc:
+        abort(422, str(exc))
+
+
+@app.route("/list_textures")
+def list_textures():
+    return jsonify(sorted((p.name for p in game_textures(selected_game()).glob("*.png")), key=model_sort_key))
+
+
+@app.route("/texture_versions")
+def texture_versions():
+    # Local polling keeps reloads available when offline, including atomic saves/deletes.
+    versions = {}
+    for path in game_textures(selected_game()).glob("*.png"):
+        try:
+            stat = path.stat()
+            versions[path.name] = [stat.st_mtime_ns, stat.st_size, str(stat.st_ino)]
+        except FileNotFoundError:
+            pass  # An editor can atomically replace a file while the directory is read.
+    return jsonify(versions)
+
 @app.route("/list_models")
 def list_models():
+    if selected_game() == "t2":
+        catalog = static_dir / "t2" / "catalog.json"
+        if not catalog.exists():
+            return jsonify([])
+        entries = json.loads(catalog.read_text(encoding="utf-8"))
+        return jsonify(sorted(entries, key=lambda x: model_sort_key(x["model_name"])))
     # List models based on existing .json files in static/model_json/
     models = []
     if model_json_dir.exists():
@@ -95,7 +152,8 @@ def list_models():
             # For DIS, the JSON itself will list all textures.
             guessed_texture_name = default_texture(model_name_stem)
             # 'type' is not strictly needed if all are JSON, but can be kept if UI uses it.
-            models.append({"model_name": model_name_stem, "texture_name": guessed_texture_name})
+            models.append({"model_name": model_name_stem, "texture_name": guessed_texture_name,
+                           "game": "t1", "category": "Complete T1 catalog", "status": "ready"})
     else:
         print(f"Model JSON directory not found: {model_json_dir}")
         
@@ -108,22 +166,37 @@ def list_models():
 def get_model_json(model_name):
     if ".." in model_name or "/" in model_name or "\\" in model_name: abort(400)
     
-    json_filename = model_name + ".json"
-    json_path = model_json_dir / json_filename
+    json_path = model_path(model_name)
     
     if not json_path.exists():
         # With pre-processing, if JSON doesn't exist, it's a 404.
         print(f"ERROR: Pre-processed JSON for '{model_name}' not found at {json_path}.")
         abort(404, f"Model data for '{model_name}' not found. Please ensure it has been pre-processed by running the appropriate batch export script (e.g., batch_export_dts.py or batch_export_interiors.py).")
     try:
-        return jsonify(load_model_data(json_path, request.args.get("texture")))
+        return jsonify(load_model_data(json_path, request.args.get("texture"), material_overrides()))
     except (ValueError, KeyError, TypeError) as exc:
         abort(422, str(exc))
 
 @app.route("/texture/<texture_filename>")
 def get_texture(texture_filename):
-    if ".." in texture_filename or "/" in texture_filename or "\\" in texture_filename: abort(400)
-    return send_from_directory(str(textures_dir), texture_filename)
+    if ".." in texture_filename or any(c in texture_filename for c in '/\\:\r\n\0'): abort(400)
+    directory = game_textures(selected_game())
+    if request.args.get("opaque") == "1":
+        # T2 opaque textures can store reflectivity in alpha. Show RGB in the
+        # material inspector while keeping the editable/exported PNG untouched.
+        path = directory / texture_filename
+        if not path.is_file():
+            abort(404)
+        from PIL import Image
+        try:
+            output = io.BytesIO()
+            with Image.open(path) as source:
+                source.convert("RGB").save(output, format="PNG")
+            output.seek(0)
+            return send_file(output, mimetype="image/png", max_age=0)
+        except (OSError, ValueError):
+            abort(422, "Cannot decode texture")
+    return send_from_directory(str(directory), texture_filename, max_age=0)
 
 @app.route("/export_obj/<model_name>")
 def export_obj(model_name):
@@ -137,19 +210,20 @@ def export_obj(model_name):
         abort(400, "Invalid model name")
     
     # Additional validation: only alphanumeric, underscore, hyphen
-    if not re.match(r'^[a-zA-Z0-9_-]+$', model_name):
+    if not re.fullmatch(r'[a-zA-Z0-9_.-]+', model_name):
         abort(400, "Invalid model name characters")
     
     # Check if JSON file exists
-    json_path = model_json_dir / f"{model_name}.json"
+    json_path = model_path(model_name)
     if not json_path.exists():
         abort(404, f"Model '{model_name}' not found. Ensure it has been pre-processed.")
 
+    overrides = material_overrides()
     try:
         # Stream an in-memory archive; repeated exports leave no temporary ZIPs.
         output = io.BytesIO()
-        json_to_obj_zip(json_path, textures_dir, output, model_name,
-                        fallback_texture=request.args.get("texture"))
+        json_to_obj_zip(json_path, game_textures(selected_game()), output, model_name,
+                        fallback_texture=request.args.get("texture"), material_overrides=overrides)
         output.seek(0)
         return send_file(output, as_attachment=True,
                          download_name=f"{model_name}_export.zip",
@@ -181,6 +255,8 @@ class TextureWatcher(FileSystemEventHandler):
         if src_path.parent == textures_dir and src_path.suffix.lower() == '.png':
             print(f"Texture modified: {src_path.name}")
             socketio.emit("texture_updated", {"filename": src_path.name})
+        elif src_path.parent == textures_dir / "t2" and src_path.suffix.lower() == '.png':
+            socketio.emit("texture_updated", {"filename": src_path.name, "game": "t2"})
 
 texture_observer = None # Global observer instance
 def start_watcher():
@@ -190,7 +266,7 @@ def start_watcher():
         return
     if texture_observer is None: # Start only if not already running
         texture_observer = Observer()
-        texture_observer.schedule(TextureWatcher(), str(textures_dir))
+        texture_observer.schedule(TextureWatcher(), str(textures_dir), recursive=True)
         texture_observer.start()
         print(f"Watching for texture changes in {textures_dir}")
 

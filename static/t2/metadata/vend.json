@@ -1,0 +1,84 @@
+{
+  "source": {
+    "model_name": "vend",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/vend.dts",
+    "source_path": "shapes/vend.dts",
+    "source_sha256": "8381a1cc2e4ddc5aaaf5328d39c795f28ba526d2495baf486391d006408fd4a1",
+    "source_bytes": 5789,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "vending01",
+      "vending02"
+    ],
+    "triangles": 114,
+    "selected_detail": "Detail-1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Root",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 0.0,
+      "polyCount": 115
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vending01.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/skins/vending01.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "vending01",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vending02.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/skins/vending02.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "vending02",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

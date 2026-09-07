@@ -1,0 +1,153 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 191
+    }
+  ],
+  "null_surfaces_excluded": 11,
+  "degenerate_triangles_skipped": 15,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_techwall_1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_3.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_3",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_etechbor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_etechbor01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_etechbor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ETECHBOR01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG06",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL03",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL06",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG02",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL04",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lava/ds_walldeco_07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_walldeco_07.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_walldeco_07.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_WALLDECO_07",
+      "original_slot": 13
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_hellfire_dwall_ccb1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_Hellfire_dwall_ccb1.dif",
+    "source_path": "interiors/xtra_hellfire_dwall_ccb1.dif",
+    "source_sha256": "fbb876e9b8e3d054e241e88f9550b4b609d1388f8c28dcec882d1deaa2d76464",
+    "source_bytes": 42010,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_TECHWALL_1",
+      "lava/DS_GENWALL",
+      "lava/DS_TECHWALL_3",
+      "lava/DS_ETECHBOR01",
+      "lava/DS_ILIG06",
+      "lava/DS_EWALL03",
+      "lava/DS_EWALL06",
+      "lava/DS_ILIG02",
+      "lava/DS_EWALL04",
+      "lava/DS_WALLDECO_07"
+    ],
+    "version": 44,
+    "triangles": 439,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

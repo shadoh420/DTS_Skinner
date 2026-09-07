@@ -1,0 +1,123 @@
+{
+  "source": {
+    "model_name": "ammo_chaingun",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/ammo_chaingun.dts",
+    "source_path": "shapes/ammo_chaingun.dts",
+    "source_sha256": "fe926074aaed316e7f8218d9f5b5c8e3fec46124f556e28508e6bf764dfdf704",
+    "source_bytes": 7501,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/ammo_chaingun.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "ammo_chaingun"
+    ],
+    "triangles": 76,
+    "selected_detail": "Detail_20"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.0007169544696807861
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Ammo20",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.023120805621147156
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 20.0,
+      "polyCount": 80
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 10.0,
+      "polyCount": 44
+    },
+    {
+      "name": "Detail_6",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 6.0,
+      "polyCount": 18
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 6
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/ammo_chaingun.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/ammo_chaingun.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/ammo_chaingun.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ammo_chaingun",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

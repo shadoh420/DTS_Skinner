@@ -1,0 +1,109 @@
+{
+  "source": {
+    "model_name": "borg20",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg20.dts",
+    "source_path": "shapes/borg20.dts",
+    "source_sha256": "76423de7dff0f1129c9b25f1e61febea67ab85f0833f8542635368293b987b36",
+    "source_bytes": 5087,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg20.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "AgaritaFall"
+    ],
+    "triangles": 88,
+    "selected_detail": "Detail36"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Base01",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.11543941497802734,
+        -0.2557011544704437,
+        0.0
+      ]
+    },
+    {
+      "name": "Start01",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "AgaritaA36",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0632098913192749,
+        -0.07001017779111862,
+        -7.179966449737549
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail36",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 36.0,
+      "polyCount": 66
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 10.0,
+      "polyCount": 40
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/agaritafall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/AgaritaFall.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/AgaritaFall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "AgaritaFall",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

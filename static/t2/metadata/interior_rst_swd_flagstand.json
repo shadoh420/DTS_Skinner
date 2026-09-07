@@ -1,0 +1,87 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 120
+    }
+  ],
+  "null_surfaces_excluded": 5,
+  "degenerate_triangles_skipped": 4,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ewall06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL06",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL05",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwaldeco01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwaldeco01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwaldeco01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWALDECO01",
+      "original_slot": 9
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_swd_flagstand",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S5maps.vl2:interiors/rst_swd_flagstand.dif",
+    "source_path": "interiors/rst_swd_flagstand.dif",
+    "source_sha256": "f83b7b257b714708e1c00f941b851c61c855dc77b9026f05d4002567b5fb83a6",
+    "source_bytes": 27091,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EWALL06",
+      "lava/DS_GENWALL",
+      "lava/DS_EWALL05",
+      "lava/DS_IWALDECO01"
+    ],
+    "version": 44,
+    "triangles": 280,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,475 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 3834
+    }
+  ],
+  "null_surfaces_excluded": 1802,
+  "degenerate_triangles_skipped": 599,
+  "lightmap_count": 10,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_espec03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_espec03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_espec03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_espec03",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal06b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal06b.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal06b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ewal06b",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/sw_floorgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_floorgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_floorgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_floorgrate",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_iwal03",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ewal02",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_iwal01",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/ice/sw_elig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_elig01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_elig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_elig01",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal04.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_iwal04",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/ice/sw_ecap01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ecap01a.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ecap01a.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "15427dde28a9552b0c753b1fa9ce9f0aa3cb4eaa39fd640399c42ea082107651",
+      "name": "ice/sw_ecap01a",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/ice/sw_ipipe02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ipipe02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ipipe02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ipipe02",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/terraintiles/rockchipd.png",
+      "source": "base/textures.vl2:textures/terrainTiles/rockchipd.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "77a415c3df50693a474a516a4c8c0e3fc5dc9e64eee97fafc47a441a4bf807b1",
+      "name": "terrainTiles/rockchipd",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/ice/sw_ifloor01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ifloor01b.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ifloor01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ifloor01b",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/terraintiles/crust4.png",
+      "source": "base/textures.vl2:textures/terrainTiles/crust4.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "0192f9f4f5847fbcf2a690298ba962a2eb721cc3bed86652586a71da4effd081",
+      "name": "terrainTiles/crust4",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal01_4bsb.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01_4BSb.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01_4BSb.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_iwal01_4BSb",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal06d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal06d.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal06d.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ewal06d",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/ice/sw_threshgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_threshgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_threshgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_threshgrate",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/ice/sw_icolbase.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_icolBASE.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_icolBASE.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_icolBASE",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_iwal02",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/ice/sw_ecap01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ecap01b.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ecap01b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "3f873469329a71224788eeb690d30b35aa86607044d9f2701edcf045d5f70331",
+      "name": "ice/sw_ecap01b",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/ice/sw_ebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ebor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ebor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ebor01",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/ice/sw_edoor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_edoor02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_edoor02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_edoor02",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/ice/sw_ecap01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ecap01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ecap01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ecap01",
+      "original_slot": 25
+    },
+    {
+      "virtual_path": "textures/ice/sw_ibor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ibor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ibor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ibor01",
+      "original_slot": 26
+    },
+    {
+      "virtual_path": "textures/ice/sw_edoor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_edoor03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_edoor03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_edoor03",
+      "original_slot": 27
+    },
+    {
+      "virtual_path": "textures/ice/sw_thresh01off.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_thresh01OFF.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_thresh01OFF.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_thresh01OFF",
+      "original_slot": 28
+    },
+    {
+      "virtual_path": "textures/ice/sw_ifloor01c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ifloor01c.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ifloor01c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ifloor01c",
+      "original_slot": 29
+    },
+    {
+      "virtual_path": "textures/ice/sw_ibor01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ibor01a.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ibor01a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ibor01a",
+      "original_slot": 30
+    },
+    {
+      "virtual_path": "textures/ice/sw_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_elig02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_elig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_elig02",
+      "original_slot": 31
+    },
+    {
+      "virtual_path": "textures/ice/sw_ipipe01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ipipe01a.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ipipe01a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ipipe01a",
+      "original_slot": 32
+    },
+    {
+      "virtual_path": "textures/ice/sw_icol01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_icol01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_icol01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_icol01",
+      "original_slot": 33
+    },
+    {
+      "virtual_path": "textures/ice/sw_edoor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_edoor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_edoor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_edoor01",
+      "original_slot": 34
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwalcap02c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwalcap02c.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwalcap02c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_iwalcap02c",
+      "original_slot": 35
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal05.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal05.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "4f5faa8db9f14dea1ce62daf441cab23810681546f16d9497bf41ce4d6972106",
+      "name": "ice/sw_iwal05",
+      "original_slot": 36
+    },
+    {
+      "virtual_path": "textures/ice/sw_threshside.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_threshSIDE.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_threshSIDE.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_threshSIDE",
+      "original_slot": 37
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal02a.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_ewal02a",
+      "original_slot": 39
+    },
+    {
+      "virtual_path": "textures/ice/sw_icoligola.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_icoligolA.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_icoligolA.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_icoligolA",
+      "original_slot": 40
+    },
+    {
+      "virtual_path": "textures/ice/sw_ispec02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ispec02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ispec02.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "81b0b39c3bd6cc7f03c5140e44f5c2d103f6462acb097dadc70d3047e0a4b856",
+      "name": "ice/sw_ispec02",
+      "original_slot": 41
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03gl.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03gl.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03gl.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "f0b281e5f3d4c19cf286a01d57bf26dfc996acee2b6e59e4c598a5fa902dbd9f",
+      "name": "ice/sw_iwal03gl",
+      "original_slot": 42
+    },
+    {
+      "virtual_path": "textures/ice/sw_iborlig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iborlig01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iborlig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/sw_iborlig01",
+      "original_slot": 43
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_pipedream",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_pipedream.dif",
+    "source_path": "interiors/rst_pipedream.dif",
+    "source_sha256": "aa078928fa34f1e681579a8ae3fc5c537d511d8cf3c3ef60b025eb5ccd0e1072",
+    "source_bytes": 1303978,
+    "alternatives": [],
+    "materials": [
+      "ice/sw_espec03",
+      "ice/sw_ewal06b",
+      "ice/sw_floorgrate",
+      "ice/sw_iwal03",
+      "ice/sw_ewal02",
+      "ice/sw_iwal01",
+      "ice/sw_elig01",
+      "ice/sw_iwal04",
+      "ice/sw_ecap01a",
+      "ice/sw_ipipe02",
+      "terrainTiles/rockchipd",
+      "ice/sw_ifloor01b",
+      "terrainTiles/crust4",
+      "ice/sw_iwal01_4BSb",
+      "ice/sw_ewal06d",
+      "ice/sw_threshgrate",
+      "ice/sw_icolBASE",
+      "ice/sw_iwal02",
+      "ice/sw_ecap01b",
+      "ice/sw_ebor01",
+      "ice/sw_edoor02",
+      "ice/sw_ecap01",
+      "ice/sw_ibor01",
+      "ice/sw_edoor03",
+      "ice/sw_thresh01OFF",
+      "ice/sw_ifloor01c",
+      "ice/sw_ibor01a",
+      "ice/sw_elig02",
+      "ice/sw_ipipe01a",
+      "ice/sw_icol01",
+      "ice/sw_edoor01",
+      "ice/sw_iwalcap02c",
+      "ice/sw_iwal05",
+      "ice/sw_threshSIDE",
+      "ice/sw_ewal02a",
+      "ice/sw_icoligolA",
+      "ice/sw_ispec02",
+      "ice/sw_iwal03gl",
+      "ice/sw_iborlig01"
+    ],
+    "version": 44,
+    "triangles": 8872,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 24,
+      "surface_count": 29
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 12,
+      "surface_count": 6
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 5,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/box_a.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lush/box_a.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lush/box_a.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6c61cf137318683507a7fde39e6ea2d285cd272f41d7e8fcb82501a13b0b7ce3",
+      "name": "lush/BOX_A",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/box_b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lush/box_b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lush/box_b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "50014e9c909f44cb52b8c6ba7ff8c2b5d7c0e61cdd0facc02e69e8b845add875",
+      "name": "lush/BOX_B",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_dox_bb_box_x2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/dox_bb_box_x2.dif",
+    "source_path": "interiors/dox_bb_box_x2.dif",
+    "source_sha256": "77b5f97d65c08a6de4dc3b85a7dc9741f2b1abded9058e701ea2ba28891b91bb",
+    "source_bytes": 11667,
+    "alternatives": [],
+    "materials": [
+      "lush/BOX_A",
+      "lush/BOX_B"
+    ],
+    "version": 44,
+    "triangles": 71,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

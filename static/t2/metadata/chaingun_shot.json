@@ -1,0 +1,187 @@
+{
+  "source": {
+    "model_name": "chaingun_shot",
+    "game": "t2",
+    "category": "Effects",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/chaingun_shot.dts",
+    "source_path": "shapes/chaingun_shot.dts",
+    "source_sha256": "329c10a83b18feedb4215e1ce3325a79740b3c03efdde0edf6e33628be61d031",
+    "source_bytes": 12961,
+    "version": 15,
+    "alternatives": [
+      "base/shapes.vl2:shapes/chaingun_shot.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "chaingun_shot_end",
+      "chaingun_shot_side"
+    ],
+    "triangles": 12,
+    "selected_detail": "detail0"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "root0",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.287046918219147e-25,
+        3.5155176033503676e-24,
+        -1.6410464363172825e-24
+      ]
+    },
+    {
+      "name": "Dummyspin",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -2.246373277924218e-30,
+        -2.442023472326582e-08,
+        3.3526588471893e-30
+      ]
+    },
+    {
+      "name": "end0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.982302925782278e-08,
+        -3.199734877057381e-08,
+        0.5045152902603149
+      ]
+    },
+    {
+      "name": "horz0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        7.076852489262819e-05,
+        0.00018660997739061713,
+        0.34420642256736755
+      ]
+    },
+    {
+      "name": "vert0",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        7.076852489262819e-05,
+        0.00018660997739061713,
+        0.34420642256736755
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail0",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 0.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 10,
+      "_unknown0": 0,
+      "numKeyframes": 12,
+      "duration": 0.40000104904174805,
+      "flags": 16,
+      "cyclic": true,
+      "_scalars": [
+        0,
+        29,
+        0,
+        0,
+        0,
+        1059760811,
+        5,
+        1,
+        18,
+        4,
+        1,
+        12
+      ],
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 5,
+      "baseObjectState": 28,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "baseTranslation": 5,
+      "baseScale": 0,
+      "iflMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        2,
+        3
+      ],
+      "matFrameMatters": [],
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "name": "activate"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/chaingun_shot_end.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/chaingun_shot_end.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/chaingun_shot_end.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "chaingun_shot_end",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/chaingun_shot_side.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/chaingun_shot_side.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/chaingun_shot_side.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "chaingun_shot_side",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,76 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 432
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 23,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_epipe01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_epipe01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_epipe01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EPIPE01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ipipe01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ipipe01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ipipe01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPIPE01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_hm_flagstand_mk2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_HM_Flagstand_mk2.dif",
+    "source_path": "interiors/xtra_hm_flagstand_mk2.dif",
+    "source_sha256": "d715ec64591cf5aecc2e4c04822609bedf18edcd551b880a992d2c0ef3764118",
+    "source_bytes": 74709,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EPIPE01",
+      "lush/BE_IPIPE01",
+      "lush/BE_EWAL01B"
+    ],
+    "version": 44,
+    "triangles": 969,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

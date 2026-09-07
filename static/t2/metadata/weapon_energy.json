@@ -1,0 +1,413 @@
+{
+  "source": {
+    "model_name": "weapon_energy",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_energy.dts",
+    "source_path": "shapes/weapon_energy.dts",
+    "source_sha256": "ca0d9058b1a9e3df0877462d3cc8decc52ad1f5ee13fa371fe41811b16f59260",
+    "source_bytes": 30982,
+    "version": 21,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_energy.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_energy",
+      "weapon_energy"
+    ],
+    "triangles": 378,
+    "selected_detail": "Detail63"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -9.918401803885336e-24,
+        -6.357588291168213,
+        -12.566634178161621
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.7337592694843806e-08,
+        6.357588291168213,
+        12.566634178161621
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00020235897682141513,
+        -0.3904067873954773,
+        -0.11283518373966217
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1003217892380235e-08,
+        0.509671688079834,
+        0.06947439163923264
+      ]
+    },
+    {
+      "name": "Energy63",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0020419934298843145,
+        -0.35566478967666626,
+        -0.08937592059373856
+      ]
+    },
+    {
+      "name": "Barrel63",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0004931850708089769,
+        0.49587729573249817,
+        0.06449997425079346
+      ]
+    },
+    {
+      "name": "Muzzle_Flash_Front_63",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -8.1449771371922e-09,
+        0.5772035717964172,
+        0.06000002473592758
+      ]
+    },
+    {
+      "name": "Endcap63",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.002421110635623336,
+        -0.21925392746925354,
+        0.06165498122572899
+      ]
+    },
+    {
+      "name": "Sensor63",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0161762572824955,
+        0.03296399116516113,
+        0.16486327350139618
+      ]
+    },
+    {
+      "name": "Muzzle_Flash_Horizontal_63",
+      "parent": 1,
+      "rotation_quat16": [
+        100,
+        -100,
+        23169,
+        23169
+      ],
+      "translation": [
+        1.8163570203455492e-08,
+        1.1530708074569702,
+        0.06000002473592758
+      ]
+    },
+    {
+      "name": "Muzzle_Flash_Left_Diagonal_63",
+      "parent": 1,
+      "rotation_quat16": [
+        19957,
+        -19957,
+        -11769,
+        -11769
+      ],
+      "translation": [
+        1.8163570203455492e-08,
+        1.1530708074569702,
+        0.06000002473592758
+      ]
+    },
+    {
+      "name": "Muzzle_Flash_Right_Diagonal_63",
+      "parent": 1,
+      "rotation_quat16": [
+        -11481,
+        11481,
+        20124,
+        20124
+      ],
+      "translation": [
+        1.8163570203455492e-08,
+        1.1530708074569702,
+        0.06000002473592758
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.575613108519065e-09,
+        0.5652088522911072,
+        0.06947439163923264
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail63",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 63.0,
+      "polyCount": 511
+    },
+    {
+      "name": "Detail31",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 31.0,
+      "polyCount": 341
+    },
+    {
+      "name": "Detail15",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 15.0,
+      "polyCount": 260
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 10.0,
+      "polyCount": 144
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 98
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 28,
+      "flags": 0,
+      "numKeyframes": 8,
+      "duration": 0.23333440721035004,
+      "priority": 0,
+      "firstGroundFrame": 13,
+      "numGroundFrames": 0,
+      "baseRotation": 13,
+      "baseTranslation": 13,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    },
+    {
+      "nameIndex": 29,
+      "flags": 16,
+      "numKeyframes": 16,
+      "duration": 0.5333343744277954,
+      "priority": 0,
+      "firstGroundFrame": 13,
+      "numGroundFrames": 0,
+      "baseRotation": 13,
+      "baseTranslation": 13,
+      "baseScale": 0,
+      "baseObjectState": 40,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [
+        3
+      ],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 30,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.033334359526634216,
+      "priority": 0,
+      "firstGroundFrame": 13,
+      "numGroundFrames": 0,
+      "baseRotation": 13,
+      "baseTranslation": 13,
+      "baseScale": 0,
+      "baseObjectState": 56,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activation"
+    },
+    {
+      "nameIndex": 31,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 13,
+      "numGroundFrames": 0,
+      "baseRotation": 13,
+      "baseTranslation": 13,
+      "baseScale": 0,
+      "baseObjectState": 56,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Reload"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    26,
+    2,
+    1,
+    1,
+    1,
+    27,
+    3,
+    1,
+    1,
+    1
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_energy.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_energy.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_energy.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_energy",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/weapon_energy.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_energy.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_energy.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_energy",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Muzzle_Flash_Front_",
+    "Muzzle_Flash_Horizontal_",
+    "Muzzle_Flash_Left_Diagonal_",
+    "Muzzle_Flash_Right_Diagonal_"
+  ],
+  "empty_finer_details": []
+}

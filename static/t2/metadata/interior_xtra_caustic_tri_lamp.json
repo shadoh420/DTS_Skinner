@@ -1,0 +1,87 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 22
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_iwal16.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iwal16.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iwal16.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IWAL16",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ichute02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ichute02a.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ichute02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICHUTE02A",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal14.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal14.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal14.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL14",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/bd_elig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_elig03.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_elig03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ELIG03",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_caustic_tri_lamp",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_Caustic_tri_lamp.dif",
+    "source_path": "interiors/xtra_caustic_tri_lamp.dif",
+    "source_sha256": "e29f34856566891cf8f063632407629b419fb39461d3947b3b909d205075d4bb",
+    "source_bytes": 8095,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_IWAL16",
+      "badlands/BD_ICHUTE02A",
+      "badlands/BD_EWAL14",
+      "badlands/BD_ELIG03"
+    ],
+    "version": 44,
+    "triangles": 46,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

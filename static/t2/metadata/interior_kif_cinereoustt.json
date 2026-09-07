@@ -1,0 +1,100 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 41
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 6,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_mriveted2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_mriveted2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_mriveted2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_MRIVETED2",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilavlight.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilavlight.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilavlight.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILAVLIGHT",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_jet01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_jet01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_jet01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_JET01",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_kif_cinereoustt",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/kif_cinereoustt.dif",
+    "source_path": "interiors/kif_cinereoustt.dif",
+    "source_sha256": "502c82fafc550b1c3f01f923ad82c214e52bbbee69a4b2adb4b187c32851b079",
+    "source_bytes": 11334,
+    "alternatives": [
+      "base/z_mappacks/TWL-MapPack.vl2:interiors/kif_cinereoustt.dif"
+    ],
+    "materials": [
+      "lava/DS_EFLOOR1",
+      "lava/DS_TECHWALL_1",
+      "lava/DS_MRIVETED2",
+      "lava/DS_ILAVLIGHT",
+      "lava/DS_JET01"
+    ],
+    "version": 44,
+    "triangles": 92,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

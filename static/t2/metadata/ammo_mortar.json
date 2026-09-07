@@ -1,0 +1,137 @@
+{
+  "source": {
+    "model_name": "ammo_mortar",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/ammo_mortar.dts",
+    "source_path": "shapes/ammo_mortar.dts",
+    "source_sha256": "f3e65a5a81db7792615f67d742d3ada50ae8aa429076ab8616987df2c28e5d2f",
+    "source_bytes": 24175,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/ammo_mortar.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "ammo_mortar"
+    ],
+    "triangles": 236,
+    "selected_detail": "Detail_32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -0.008609391748905182,
+        -5.131597924368236e-10
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mortar_32",
+      "parent": 1,
+      "rotation_quat16": [
+        -21406,
+        -8866,
+        21406,
+        -8866
+      ],
+      "translation": [
+        -0.006242670118808746,
+        2.7996854896628065e-06,
+        0.15773114562034607
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 239
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 239
+    },
+    {
+      "name": "Detail_12",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 12.0,
+      "polyCount": 239
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 239
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 239
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 239
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/ammo_mortar.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/ammo_mortar.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/ammo_mortar.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ammo_mortar",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

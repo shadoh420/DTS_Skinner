@@ -1,0 +1,377 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 911
+    }
+  ],
+  "null_surfaces_excluded": 65,
+  "degenerate_triangles_skipped": 85,
+  "lightmap_count": 6,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/evil8/e8crete03c.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8crete03c.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8crete03c.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "05432dda44ade837037d57e315b7e0d4b2d3863119de6794316ea63a33bc06b8",
+      "name": "evil8/E8CRETE03C",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/evil8/e8clangfloor.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8clangfloor.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "d1b5de1a2f9fd84c52e6b73b057fe268dd0b6a13fad357f798dcbdde6abf16fa",
+      "name": "evil8/E8CLANGFLOOR",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/evil8/e8crete03.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8crete03.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8crete03.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "0a931cebc288cd009bb9236d755691bde87cd09dc6b5dcc4d30fbb6143f4831f",
+      "name": "evil8/E8CRETE03",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/evil8/e8beam01b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8beam01b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8beam01b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "453bc483ce36a9c00542ba33f007d6605e97cbc96a0fad3ddb8b09ff0d21f5b7",
+      "name": "evil8/E8BEAM01B",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/evil8/e8wrntrim.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8wrntrim.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8wrntrim.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "fbfc970a72bb96b1fa0049fffdcee8819480b3fdf0453737c58069c6508ae687",
+      "name": "evil8/E8WRNTRIM",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/evil8/e8_mtlwall3.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_mtlwall3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "35b2ad337af33e11aaf368b1c1c0b42941b48dfb34e40c96e41fb3276c509c76",
+      "name": "evil8/E8_MTLWALL3",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/evil8/e8_mtlwall1b.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_mtlwall1b.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "f5cb7cc829968ee759b3f79c6725bb52868fd18e21ce8399ee1ece31a1844fdd",
+      "name": "evil8/E8_MTLWALL1B",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/evil8/e8cretefloor02.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8cretefloor02.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8cretefloor02.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "a0584b2b779de1174464ad87b6cdb5b7c27e8b51874122b1fa79ed1502761fee",
+      "name": "evil8/E8CRETEFLOOR02",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/evil8/e8crete03b.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8crete03b.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "dd6c2cb147e085165960fa060733b2f65ff987650bb6228e7e1bcd411f8b17f9",
+      "name": "evil8/E8CRETE03B",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/evil8/e8support02c.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8support02c.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "47c1c1fb57f942326d2c3c58fb88c6b7d42b1b32582b310e904289d2e1d92aab",
+      "name": "evil8/E8SUPPORT02C",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/evil8/e8tmtllight2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8tmtllight2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8tmtllight2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "c2e10da490ca392609abbaf50bcaf94449e30de40c9e9dfc97bdbcde6bbfd8e2",
+      "name": "evil8/E8TMTLLIGHT2",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/evil8/e8warning256.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8warning256.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8warning256.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "3e985047f2476ea1cdea54ea8e8bf97f145244c6ae4d480a126ca1baa1af7f22",
+      "name": "evil8/E8WARNING256",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/evil8/e8support02.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8support02.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "b388cb26696d9f9f67ae4cfb071885fcf8fd7fbf81f4a1245d628e8dafe2f9bc",
+      "name": "evil8/E8SUPPORT02",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/evil8/e8_mtlwall4.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_mtlwall4.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "aa5820ae4bba08d5606abe63d29a41c3fa568e93b52043376230318cb6a34da7",
+      "name": "evil8/E8_MTLWALL4",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/evil8/e8wrntrim2b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8wrntrim2b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8wrntrim2b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "6cd631ebb1ed35060966699c40d6583e4fbc00daf321e3d629170b6a43974e8d",
+      "name": "evil8/E8WRNTRIM2B",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/evil8/e8_base1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8_base1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_base1.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "3e56a9ad0fe4e7a1d9b2c67629695d127ce316102424c6559e3b3c37456e62e3",
+      "name": "evil8/E8_BASE1",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/evil8/e8lighttrim_b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8lighttrim_b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8lighttrim_b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "77b1e5a45871d8704807231ef940d6a2c604bb961b6ad9cbefad3260f97a0738",
+      "name": "evil8/E8LIGHTTRIM_B",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/evil8/e8mtltrim1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8mtltrim1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8mtltrim1.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "0ca9e42087ad5a227ed9ac76f58a3b389e89e8b00cdcc1874118d6ac59254555",
+      "name": "evil8/E8MTLTRIM1",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/evil8/e8tinylight_000.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8tinylight_000.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8tinylight_000.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "d1b1d84494ab60e2069ea3713e93789499347ce5f712c4c50c357a761198ed1c",
+      "name": "evil8/E8TINYLIGHT_000",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/evil8/e8clangfloor01.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8clangfloor01.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "339146d678d8a0b8dbdd2fb5aaf604b8cc4c45ecafd7ce472780726b5133651e",
+      "name": "evil8/E8CLANGFLOOR01",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/evil8/e8support04b_bl.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8support04b_bl.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "a5fb0a29cdf0ca80f2ea92b2f832b85828b1a9755352d00b1ff47f801fd5afd3",
+      "name": "evil8/E8SUPPORT04B_BL",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/evil8/e8mtltrim1b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8mtltrim1b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8mtltrim1b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "8c2953ecf8492f9ef621350b5478d3c9049a5d12ff622bc68ae4c9b3640950c9",
+      "name": "evil8/E8MTLTRIM1B",
+      "original_slot": 25
+    },
+    {
+      "virtual_path": "textures/evil8/e8crete03d.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8crete03d.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c2fb751d3d656be3d5d6972a9b8e47cbf755cfec6a2d4b285c6d2de98aa46a2c",
+      "name": "evil8/E8CRETE03D",
+      "original_slot": 27
+    },
+    {
+      "virtual_path": "textures/evil8/e8_rlightb_0000.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_rlightb_0000.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "94995168005a13d67436bd1f3275ed98f299d65f48480e5292c1f44526512cf2",
+      "name": "evil8/E8_RLIGHTB_0000",
+      "original_slot": 28
+    },
+    {
+      "virtual_path": "textures/evil8/e8metal03c_blue.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8metal03c_blue.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "ec3b507ddf729c6e79dbf5d0aa18feaa42b56424fa9825f1d5eb14f086460569",
+      "name": "evil8/E8METAL03C_BLUE",
+      "original_slot": 29
+    },
+    {
+      "virtual_path": "textures/evil8/e8bgrate01.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8bgrate01.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8bgrate01.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "d1d9edd4c4cb459e2c3e326f86c371cad23233ae51e99c5394c8d938241d6196",
+      "name": "evil8/E8BGRATE01",
+      "original_slot": 30
+    },
+    {
+      "virtual_path": "textures/evil8/e8spawn01b.png",
+      "source": "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8spawn01b.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "a4894060f35d49c1b372950bebfae9cb5b9c7846de94ec0fe102f633c2bc8c4f",
+      "name": "evil8/E8SPAWN01B",
+      "original_slot": 31
+    },
+    {
+      "virtual_path": "textures/evil8/e8warning2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8warning2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8warning2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "8337ffaeff511d83bc6e9e9cad57cbc92420da7363478517733f6beeef104d28",
+      "name": "evil8/E8WARNING2",
+      "original_slot": 32
+    },
+    {
+      "virtual_path": "textures/evil8/e8cretesmlltrim.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8cretesmlltrim.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8cretesmlltrim.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "bb1751fd9e828ea71e1e2581ed48636388319a68f64a60500008ae27d50dc7e5",
+      "name": "evil8/E8CRETESMLLTRIM",
+      "original_slot": 33
+    },
+    {
+      "virtual_path": "textures/evil8/e8_base1b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8_base1b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_base1b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "25ff1c8ce7a50c25bcb12b354d411100ca8d13ea72625a9649b040a8850948f0",
+      "name": "evil8/E8_BASE1B",
+      "original_slot": 34
+    }
+  ],
+  "source": {
+    "model_name": "interior_rilke_ctm1_flagstand1_x2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/rilke_ctm1_flagstand1_x2.dif",
+    "source_path": "interiors/rilke_ctm1_flagstand1_x2.dif",
+    "source_sha256": "902cf93a0a5a4ce3eb7a0c8ef41eabe3d2e4d35eb8b93a8c83c6531b818c3f02",
+    "source_bytes": 209997,
+    "alternatives": [],
+    "materials": [
+      "evil8/E8CRETE03C",
+      "evil8/E8CLANGFLOOR",
+      "evil8/E8CRETE03",
+      "evil8/E8BEAM01B",
+      "evil8/E8WRNTRIM",
+      "evil8/E8_MTLWALL3",
+      "evil8/E8_MTLWALL1B",
+      "evil8/E8CRETEFLOOR02",
+      "evil8/E8CRETE03B",
+      "evil8/E8SUPPORT02C",
+      "evil8/E8TMTLLIGHT2",
+      "evil8/E8WARNING256",
+      "evil8/E8SUPPORT02",
+      "evil8/E8_MTLWALL4",
+      "evil8/E8WRNTRIM2B",
+      "evil8/E8_BASE1",
+      "evil8/E8LIGHTTRIM_B",
+      "evil8/E8MTLTRIM1",
+      "evil8/E8TINYLIGHT_000",
+      "evil8/E8CLANGFLOOR01",
+      "evil8/E8SUPPORT04B_BL",
+      "evil8/E8MTLTRIM1B",
+      "evil8/E8CRETE03D",
+      "evil8/E8_RLIGHTB_0000",
+      "evil8/E8METAL03C_BLUE",
+      "evil8/E8BGRATE01",
+      "evil8/E8SPAWN01B",
+      "evil8/E8WARNING2",
+      "evil8/E8CRETESMLLTRIM",
+      "evil8/E8_BASE1B"
+    ],
+    "version": 44,
+    "triangles": 1997,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

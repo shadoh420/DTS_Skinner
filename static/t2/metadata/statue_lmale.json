@@ -1,0 +1,309 @@
+{
+  "source": {
+    "model_name": "statue_lmale",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/statue_lmale.dts",
+    "source_path": "shapes/statue_lmale.dts",
+    "source_sha256": "2d2a0fd9c15031464391e2abe0aa6cd04792094920fc604a3442aa13e9c84742",
+    "source_bytes": 28608,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/statue_lmale.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "statue_LMale"
+    ],
+    "triangles": 350,
+    "selected_detail": "detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "head",
+      "parent": -1,
+      "rotation_quat16": [
+        -2052,
+        -617,
+        -6937,
+        31952
+      ],
+      "translation": [
+        -0.13134321570396423,
+        0.022677676752209663,
+        2.0831425189971924
+      ]
+    },
+    {
+      "name": "larm",
+      "parent": -1,
+      "rotation_quat16": [
+        -10544,
+        4287,
+        10252,
+        28965
+      ],
+      "translation": [
+        0.2752718925476074,
+        0.7989007234573364,
+        1.790154218673706
+      ]
+    },
+    {
+      "name": "lbicep",
+      "parent": -1,
+      "rotation_quat16": [
+        108,
+        1753,
+        7979,
+        31732
+      ],
+      "translation": [
+        -0.24728089570999146,
+        -0.09298385679721832,
+        1.8118062019348145
+      ]
+    },
+    {
+      "name": "rarm",
+      "parent": -1,
+      "rotation_quat16": [
+        -8404,
+        3643,
+        6926,
+        30688
+      ],
+      "translation": [
+        0.7928301095962524,
+        0.10779239237308502,
+        1.6694040298461914
+      ]
+    },
+    {
+      "name": "rbicep",
+      "parent": -1,
+      "rotation_quat16": [
+        6532,
+        -1338,
+        12338,
+        29613
+      ],
+      "translation": [
+        -0.08449282497167587,
+        -0.98338782787323,
+        1.8950457572937012
+      ]
+    },
+    {
+      "name": "torso",
+      "parent": -1,
+      "rotation_quat16": [
+        -3936,
+        163,
+        7219,
+        31717
+      ],
+      "translation": [
+        0.10469719767570496,
+        0.22980685532093048,
+        1.806488275527954
+      ]
+    },
+    {
+      "name": "pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        2428,
+        32676
+      ],
+      "translation": [
+        -0.001587949926033616,
+        0.008852070197463036,
+        1.3605222702026367
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0015881520230323076,
+        -0.008852243423461914,
+        -1.3605222702026367
+      ]
+    },
+    {
+      "name": "lfoot",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -1714,
+        32722
+      ],
+      "translation": [
+        -0.12487480789422989,
+        0.16458436846733093,
+        0.09872765839099884
+      ]
+    },
+    {
+      "name": "lleg",
+      "parent": -1,
+      "rotation_quat16": [
+        -32582,
+        2424,
+        -1563,
+        1938
+      ],
+      "translation": [
+        -0.052073050290346146,
+        0.0854751467704773,
+        0.5116083025932312
+      ]
+    },
+    {
+      "name": "lthigh",
+      "parent": -1,
+      "rotation_quat16": [
+        -3199,
+        1884,
+        3044,
+        32413
+      ],
+      "translation": [
+        0.03309771791100502,
+        0.28096285462379456,
+        1.0452427864074707
+      ]
+    },
+    {
+      "name": "rfoot",
+      "parent": -1,
+      "rotation_quat16": [
+        5197,
+        -1948,
+        12119,
+        29932
+      ],
+      "translation": [
+        0.0998416393995285,
+        -0.6226918697357178,
+        0.2148159295320511
+      ]
+    },
+    {
+      "name": "rleg",
+      "parent": -1,
+      "rotation_quat16": [
+        6366,
+        -1129,
+        8098,
+        31085
+      ],
+      "translation": [
+        0.05662033334374428,
+        -0.5415776968002319,
+        0.5693950057029724
+      ]
+    },
+    {
+      "name": "rthigh",
+      "parent": -1,
+      "rotation_quat16": [
+        2504,
+        -199,
+        7492,
+        31799
+      ],
+      "translation": [
+        0.11112281680107117,
+        -0.20615480840206146,
+        1.014515995979309
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 450
+    },
+    {
+      "name": "detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 80.0,
+      "polyCount": 341
+    },
+    {
+      "name": "detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 50.0,
+      "polyCount": 275
+    },
+    {
+      "name": "detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 30.0,
+      "polyCount": 221
+    },
+    {
+      "name": "detail15",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 15.0,
+      "polyCount": 176
+    },
+    {
+      "name": "detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 3.0,
+      "polyCount": 60
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/statue_lmale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/statue_LMale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/statue_LMale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "statue_LMale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

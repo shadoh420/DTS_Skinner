@@ -1,0 +1,98 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 70
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 5,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewal02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWAL02",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_2",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_genwall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genwall.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genwall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENWALL",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG02",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_af_invowheel",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_AF_invowheel.dif",
+    "source_path": "interiors/xtra_af_invowheel.dif",
+    "source_sha256": "98649c84b9c0d2bbfdf03b6276909a159fd8e5c33d33822bbcfc24e492cfb21c",
+    "source_bytes": 16532,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EWAL02",
+      "lava/DS_EFLOOR1",
+      "lava/DS_TECHWALL_2",
+      "lava/DS_GENWALL",
+      "lava/DS_ILIG02"
+    ],
+    "version": 44,
+    "triangles": 175,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

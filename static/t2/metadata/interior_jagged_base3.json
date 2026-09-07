@@ -1,0 +1,293 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 829
+    }
+  ],
+  "null_surfaces_excluded": 238,
+  "degenerate_triangles_skipped": 141,
+  "lightmap_count": 7,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/jaggedclaw/ds_nefblue1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/ds_NefBlue1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c840d11c7a6497d585e2ddf2e92e9715324e9172d27d55b654fcfa1be681d44b",
+      "name": "jaggedclaw/DS_NEFBLUE1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/tcement1a.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/tcement1a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "6b5674e66dd152e1b087a6c520c9524811da8be8383476134d58225489955b98",
+      "name": "jaggedclaw/TCEMENT1A",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_itelig02.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_itelig02.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c56e16e94c287c4d8a9e7780ce31618fdc7ac51b46ce925f7b7be493aae0f455",
+      "name": "jaggedclaw/BE_ITELIG02",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_itelig01.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_itelig01.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "88fc5acd9d72c4390ef10b21b1440b582eae11193d732b4735698967d2bbaffc",
+      "name": "jaggedclaw/BE_ITELIG01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_elig03.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_elig03.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "550aeb48bc7af6619eeb42af55eee02013898183d033787af25e5cca8be98c55",
+      "name": "jaggedclaw/BE_ELIG03",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/ds_nefwall1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/ds_NefWall1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "7b07a6dcca28e7938abb5f1bbe57a7acbd30d1ea0e3b700029070f240e48bbfa",
+      "name": "jaggedclaw/DS_NEFWALL1",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_iprflo01.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_iprflo01.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "bc091c3d70505ee9f0282317d6041043ea0b50aeda8c41e97d3a81269cda5c0e",
+      "name": "jaggedclaw/BE_IPRFLO01",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_itedoo01.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_itedoo01.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "0ebf5d82da3352896eaa4630f0ecf58a135dc6e7115169dc774f622122d0f811",
+      "name": "jaggedclaw/BE_ITEDOO01",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_itebor04.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_itebor04.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "592993dee591c72392ec219c83870a24cb2b5034d4ebe1c8df12b38a7c34c4ca",
+      "name": "jaggedclaw/BE_ITEBOR04",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/ds_nefbltrim.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/ds_NefBlTrim.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "b5b7dfddc2ae16569041be67fd7d8f3814b1739b5583af425accfe1749c75d1c",
+      "name": "jaggedclaw/DS_NEFBLTRIM",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/greylite2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/greylite2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "e3f58f109f7b16cada64626f4c847f501d068660eda87896f39a1d74c0eb861b",
+      "name": "jaggedclaw/GREYLITE2",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_edoo02.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_edoo02.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "608a8b1880968eb0a03c12c6d0045b70e3b70f3d97cebb220b7a721931c30c5f",
+      "name": "jaggedclaw/BE_EDOO02",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_ewal06.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_ewal06.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "55c6cbbddf040e37b5fc84b16a3cee48454a72ea87c545926ffc5f8c07589cfb",
+      "name": "jaggedclaw/BE_EWAL06",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/ds_neffloor5.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/ds_Neffloor5.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "1b8306cf0811161db4b92b7d40614a7956626a98dc915b1c2eac524380028776",
+      "name": "jaggedclaw/DS_NEFFLOOR5",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/ds_neffloor1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/ds_Neffloor1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "461217c3da3efd99def932c6a9754a8db76cd770c546d2b79ef436078316d9e8",
+      "name": "jaggedclaw/DS_NEFFLOOR1",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_itewal01.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_itewal01.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "a1cf2f54abb78166ba650ff8c5fdbcdb5aadf311bd54a1870fef075604260e7a",
+      "name": "jaggedclaw/BE_ITEWAL01",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_itewal04.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_itewal04.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "2908ffbec7498b39a563699ef79ebd6da3328a94b59148bef1a5d1e18eca8577",
+      "name": "jaggedclaw/BE_ITEWAL04",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_ihalig.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_ihalig.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "17384a5ec4aba7a390acd5c4effae968be9edba041d8edcb85297a9198e2bd3d",
+      "name": "jaggedclaw/BE_IHALIG",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_icei01a.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_icei01a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "a3995bfe9e65d2ceadf124f9be2a596cb9ae47b835bfb3e2cad071556b88eb1b",
+      "name": "jaggedclaw/BE_ICEI01A",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/deck1+.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/deck1+.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c5c0716e59f1098289ef7feb44e51b99d19d9cd060759dd2062fe37540e8bbcf",
+      "name": "jaggedclaw/DECK1+",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_espec02.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_espec02.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "9ad2e90172c63ba2c0125792dabb77bf4e399adecb7be2b6fe6a9d1de8b77240",
+      "name": "jaggedclaw/BE_ESPEC02",
+      "original_slot": 25
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/slabgrill.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/slabgrill.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "4629580ce5c8de4b8f5deb523c1d459efd8b167ac9993553319adc2fe613e68b",
+      "name": "jaggedclaw/SLABGRILL",
+      "original_slot": 26
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/ds_ilig03.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/ds_ilig03.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "fd241caf98816d857c9298895e5f8863d5b54537500fa4050536231a4a97f0c2",
+      "name": "jaggedclaw/DS_ILIG03",
+      "original_slot": 27
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/be_elig02.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/be_elig02.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "1d45c32deddadf53ffaf111e99c624ce0dc25d08827cd09f2e7fb0f208e52b3d",
+      "name": "jaggedclaw/BE_ELIG02",
+      "original_slot": 28
+    },
+    {
+      "virtual_path": "textures/jaggedclaw/gtext2a.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/jaggedclaw/gtext2a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "6ebf7f38e86c2cdfe5fd2947075e7c40138148b8d230936c1ed49a4a0cb2e932",
+      "name": "jaggedclaw/GTEXT2A",
+      "original_slot": 29
+    }
+  ],
+  "source": {
+    "model_name": "interior_jagged_base3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/jagged_base3.dif",
+    "source_path": "interiors/jagged_base3.dif",
+    "source_sha256": "5b34bab17bd6c8b78520fc9bd5c2a57bd7acf12dcaf391d01aebd20317a9b434",
+    "source_bytes": 232280,
+    "alternatives": [],
+    "materials": [
+      "jaggedclaw/DS_NEFBLUE1",
+      "jaggedclaw/TCEMENT1A",
+      "jaggedclaw/BE_ITELIG02",
+      "jaggedclaw/BE_ITELIG01",
+      "jaggedclaw/BE_ELIG03",
+      "jaggedclaw/DS_NEFWALL1",
+      "jaggedclaw/BE_IPRFLO01",
+      "jaggedclaw/BE_ITEDOO01",
+      "jaggedclaw/BE_ITEBOR04",
+      "jaggedclaw/DS_NEFBLTRIM",
+      "jaggedclaw/GREYLITE2",
+      "jaggedclaw/BE_EDOO02",
+      "jaggedclaw/BE_EWAL06",
+      "jaggedclaw/DS_NEFFLOOR5",
+      "jaggedclaw/DS_NEFFLOOR1",
+      "jaggedclaw/BE_ITEWAL01",
+      "jaggedclaw/BE_ITEWAL04",
+      "jaggedclaw/BE_IHALIG",
+      "jaggedclaw/BE_ICEI01A",
+      "jaggedclaw/DECK1+",
+      "jaggedclaw/BE_ESPEC02",
+      "jaggedclaw/SLABGRILL",
+      "jaggedclaw/DS_ILIG03",
+      "jaggedclaw/BE_ELIG02",
+      "jaggedclaw/GTEXT2A"
+    ],
+    "version": 44,
+    "triangles": 2084,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

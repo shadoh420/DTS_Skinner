@@ -1,0 +1,202 @@
+{
+  "source": {
+    "model_name": "energy_bolt",
+    "game": "t2",
+    "category": "Effects",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/energy_bolt.dts",
+    "source_path": "shapes/energy_bolt.dts",
+    "source_sha256": "af8642296e0c051e9dc9fe29a60593e1003c5b90d7f71412d269a0bc7ca8c1c1",
+    "source_bytes": 35111,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/energy_bolt.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "energy_bolt_aura",
+      "energy_bolt_front",
+      "energy_blast"
+    ],
+    "triangles": 68,
+    "selected_detail": "Detail1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.39790078997612,
+        0.4421207010746002,
+        0.20381329953670502
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Body1",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.5478941798210144,
+        -1.427985429763794,
+        -0.024818673729896545
+      ]
+    },
+    {
+      "name": "Front1",
+      "parent": 2,
+      "rotation_quat16": [
+        23169,
+        -23169,
+        0,
+        0
+      ],
+      "translation": [
+        0.0072936066426336765,
+        0.030355418100953102,
+        -1.0695973634719849
+      ]
+    },
+    {
+      "name": "Midside1",
+      "parent": 2,
+      "rotation_quat16": [
+        8866,
+        -21406,
+        -8866,
+        21406
+      ],
+      "translation": [
+        -0.010629075579345226,
+        0.017740866169333458,
+        -0.7278814315795898
+      ]
+    },
+    {
+      "name": "Side1",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.01651419885456562,
+        0.028567735105752945,
+        -0.42616182565689087
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1.0,
+      "polyCount": 83
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 12,
+      "flags": 0,
+      "numKeyframes": 16,
+      "duration": 0.5000010132789612,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        3,
+        4
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        0,
+        2,
+        3
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/energy_bolt_aura.png",
+      "source": "base/skins.vl2:textures/skins/energy_bolt_aura.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "energy_bolt_aura",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/energy_bolt_front.png",
+      "source": "base/skins.vl2:textures/skins/energy_bolt_front.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "energy_bolt_front",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/energy_blast.png",
+      "source": "base/skins.vl2:textures/skins/energy_blast.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "energy_blast",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

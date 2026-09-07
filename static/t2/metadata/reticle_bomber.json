@@ -1,0 +1,101 @@
+{
+  "source": {
+    "model_name": "reticle_bomber",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/reticle_bomber.dts",
+    "source_path": "shapes/reticle_bomber.dts",
+    "source_sha256": "916e25c7416c12be21bf307c3212fc2a2aead91b12626024c784be1bcfaaaf76",
+    "source_bytes": 1448,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/reticle_bomber.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "hud_ret_bomber"
+    ],
+    "triangles": 20,
+    "selected_detail": "Detail1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        141.00413513183594,
+        53.27435302734375,
+        0.024941444396972656
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ObjectB1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -141.10877990722656,
+        -53.281307220458984,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 1.0,
+      "polyCount": 37
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/gui/hud_ret_bomber.png",
+      "source": "base/textures.vl2:textures/gui/hud_ret_bomber.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "1a9ee1948f44763a96b167c27016abff1c1edfd7751d145b7f8616f687b0ce8d",
+      "name": "hud_ret_bomber",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

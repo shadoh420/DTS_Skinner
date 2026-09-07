@@ -1,0 +1,72 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 64,
+      "surface_count": 72
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 32,
+      "surface_count": 52
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 16,
+      "surface_count": 32
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 5,
+      "surface_count": 6
+    }
+  ],
+  "null_surfaces_excluded": 256,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/rockblue5.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/rockblue5.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/rockblue5.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/rockblue5",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_srock7",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/srock7.dif",
+    "source_path": "interiors/srock7.dif",
+    "source_sha256": "ce03e592eabcba0dd44257710bdcf8fc782db595fde1cec7f10793ecab22ac6a",
+    "source_bytes": 82326,
+    "alternatives": [],
+    "materials": [
+      "ice/rockblue5"
+    ],
+    "version": 44,
+    "triangles": 72,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

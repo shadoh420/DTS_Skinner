@@ -1,0 +1,20 @@
+{
+  "source": {
+    "model_name": "xorg2",
+    "game": "t2",
+    "category": "World & props",
+    "status": "unsupported",
+    "warnings": [
+      "Empty source DTS (zero bytes in installation)"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/xorg2.dts",
+    "source_path": "shapes/xorg2.dts",
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source_bytes": 0,
+    "version": null,
+    "alternatives": [
+      "base/shapes.vl2:shapes/xorg2.dts"
+    ]
+  }
+}

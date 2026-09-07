@@ -1,0 +1,99 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 146
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 26,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/dox_textures/rock_wall_lite5.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/rock_wall_lite5.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/rock_wall_lite5.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "188ad839c2002dc6874bcb338b5d95331abeebdedef700b6548f20b64bd8c6b7",
+      "name": "dox_textures/ROCK_WALL_LITE5",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_ewall06.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_ewall06.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/DS_EWALL06",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/dox_textures/striplite3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/striplite3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/striplite3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/STRIPLITE3",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_genfloor.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_genfloor.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_genfloor.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/DS_GENFLOOR",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/dox_textures/roofbeam.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/roofbeam.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/roofbeam.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/ROOFBEAM",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_mmbridge",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/mmbridge.dif",
+    "source_path": "interiors/mmbridge.dif",
+    "source_sha256": "30f928425f4f9deaf42e10f337ef1a8c378c21408ba9b20c764b7b01f8fcbfa9",
+    "source_bytes": 27575,
+    "alternatives": [],
+    "materials": [
+      "dox_textures/ROCK_WALL_LITE5",
+      "dox_textures/DS_EWALL06",
+      "dox_textures/STRIPLITE3",
+      "dox_textures/DS_GENFLOOR",
+      "dox_textures/ROOFBEAM"
+    ],
+    "version": 44,
+    "triangles": 362,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 94
+    }
+  ],
+  "null_surfaces_excluded": 11,
+  "degenerate_triangles_skipped": 2,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/evil8/e8crete03cc.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8crete03cc.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8crete03cc.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "38fc64a3d4d44f523a63734df78c56ac15bf3bbbbcbcf3369c218ae36dfb0e2a",
+      "name": "evil8/E8CRETE03CC",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/evil8/e8_base1.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8_base1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_base1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "evil8/E8_BASE1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/evil8/e8_btrim01.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8_btrim01.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_btrim01.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "a486edc4e7c412580d57f99093a0401bff01f40162efbce525bbf20b723c7051",
+      "name": "evil8/E8_BTRIM01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/evil8/e8bgrate01.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8bgrate01.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8bgrate01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "evil8/E8BGRATE01",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/evil8/e8warning2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8warning2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8warning2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "evil8/E8WARNING2",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/evil8/e8_base1b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8_base1b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_base1b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "evil8/E8_BASE1B",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/evil8/e8_btrim05.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8_btrim05.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8_btrim05.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "4b39330e9f5e1273b0843dbe6f3bb3c2ccbe245514b6be081dadcea013883fd6",
+      "name": "evil8/E8_BTRIM05",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/evil8/e8mtltrim1b.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8mtltrim1b.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8mtltrim1b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "evil8/E8MTLTRIM1B",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/evil8/e8tinylight_000.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8tinylight_000.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8tinylight_000.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "evil8/E8TINYLIGHT_000",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/evil8/e8tmtllight2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/Evil8/e8tmtllight2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/Evil8/e8tmtllight2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "evil8/E8TMTLLIGHT2",
+      "original_slot": 13
+    }
+  ],
+  "source": {
+    "model_name": "interior_rilke_ctm1_platform1_x2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/rilke_ctm1_platform1_x2.dif",
+    "source_path": "interiors/rilke_ctm1_platform1_x2.dif",
+    "source_sha256": "4f3ed7b31ff7854f570999053cdcbdf8155669ef4616dfd3a1708db9c871c196",
+    "source_bytes": 23004,
+    "alternatives": [],
+    "materials": [
+      "evil8/E8CRETE03CC",
+      "evil8/E8_BASE1",
+      "evil8/E8_BTRIM01",
+      "evil8/E8BGRATE01",
+      "evil8/E8WARNING2",
+      "evil8/E8_BASE1B",
+      "evil8/E8_BTRIM05",
+      "evil8/E8MTLTRIM1B",
+      "evil8/E8TINYLIGHT_000",
+      "evil8/E8TMTLLIGHT2"
+    ],
+    "version": 44,
+    "triangles": 192,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,444 @@
+{
+  "source": {
+    "model_name": "pack_upgrade_repair",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: light_red",
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_upgrade_repair.dts",
+    "source_path": "shapes/pack_upgrade_repair.dts",
+    "source_sha256": "ab30d743ba1e99273731ee535689cc1f0d90b3dcbdd566ac2bd29e26513def26",
+    "source_bytes": 34014,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_upgrade_repair.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "pack_repair",
+      "light_red"
+    ],
+    "triangles": 226,
+    "selected_detail": "Detail_50"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.033821772783994675,
+        0.24791261553764343
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "BackattachmentA50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.842877388000488e-08,
+        0.10585609078407288,
+        -0.006219744682312012
+      ]
+    },
+    {
+      "name": "BackattachmentB50",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.842877388000488e-08,
+        0.10585609078407288,
+        -0.006219744682312012
+      ]
+    },
+    {
+      "name": "BottomlightL50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.14496929943561554,
+        -0.04448781535029411,
+        -0.19613781571388245
+      ]
+    },
+    {
+      "name": "BottomlightR50",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.1457221657037735,
+        -0.04448781535029411,
+        -0.19613781571388245
+      ]
+    },
+    {
+      "name": "Lowerbody50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.702278137207031e-05,
+        -0.016537755727767944,
+        -0.21912336349487305
+      ]
+    },
+    {
+      "name": "Upperbody50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.470348358154297e-08,
+        7.450580596923828e-09,
+        -2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "HousingL50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.1600927710533142,
+        0.017854545265436172,
+        -0.2239072024822235
+      ]
+    },
+    {
+      "name": "HousingR50",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.15931452810764313,
+        0.017854545265436172,
+        -0.2239072024822235
+      ]
+    },
+    {
+      "name": "Logo50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.08526743203401566,
+        0.09941813349723816
+      ]
+    },
+    {
+      "name": "TopliteL50",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -2.9735267162322998e-05,
+        0.006051003932952881,
+        -0.08265374600887299
+      ]
+    },
+    {
+      "name": "TopliteR50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0011381369549781084,
+        0.006051003932952881,
+        -0.08265374600887299
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.09524625111635e-09,
+        0.1750669628381729,
+        -0.025388196110725403
+      ]
+    },
+    {
+      "name": "TopliteLredglowa50",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.10208289325237274,
+        0.004008063115179539,
+        0.17886614799499512
+      ]
+    },
+    {
+      "name": "TopliteRredglowa50",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.10208288580179214,
+        0.004008063115179539,
+        0.17886614799499512
+      ]
+    },
+    {
+      "name": "BottomLightLredglow50",
+      "parent": 1,
+      "rotation_quat16": [
+        -11584,
+        20065,
+        -11584,
+        20065
+      ],
+      "translation": [
+        -0.1703527271747589,
+        -0.07786399871110916,
+        -0.17515885829925537
+      ]
+    },
+    {
+      "name": "BottomLightRredglow50",
+      "parent": 1,
+      "rotation_quat16": [
+        -20065,
+        11584,
+        20065,
+        -11584
+      ],
+      "translation": [
+        0.1703527271747589,
+        -0.07786399126052856,
+        -0.17515885829925537
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_50",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 50.0,
+      "polyCount": 249
+    },
+    {
+      "name": "Detail_35",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 35.0,
+      "polyCount": 194
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 20.0,
+      "polyCount": 127
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 10.0,
+      "polyCount": 49
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 5.0,
+      "polyCount": 49
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 30
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 40,
+      "flags": 16,
+      "numKeyframes": 20,
+      "duration": 0.666667640209198,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 15,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        11,
+        12,
+        13,
+        14
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "fire"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    39,
+    1,
+    8,
+    1,
+    81
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_repair.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_repair.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_repair.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_repair",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/light_red.ifl",
+      "source": "base/skins.vl2:textures/skins/light_red.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "light_red06.png 10",
+        "light_red05.png 2",
+        "light_red04.png 2",
+        "light_red03.png 2",
+        "light_red02.png 2",
+        "light_red01.png 2",
+        "light_red02.png 2",
+        "light_red03.png 2",
+        "light_red04.png 2",
+        "light_red05.png 2",
+        "light_red06.png 10",
+        "light_red05.png 1",
+        "light_red04.png 1",
+        "light_red03.png 1",
+        "light_red02.png 1",
+        "light_red01.png 1",
+        "light_red02.png 1",
+        "light_red03.png 1",
+        "light_red04.png 1",
+        "light_red05.png 1",
+        "light_red06.png 10"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/light_red06.png",
+        "source": "base/skins.vl2:textures/skins/light_red06.png",
+        "alternatives": [],
+        "ambiguous_paths": []
+      },
+      "name": "light_red",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "BottomLightLredglow",
+    "BottomLightRredglow",
+    "TopliteLredglowa",
+    "TopliteRredglowa"
+  ],
+  "empty_finer_details": []
+}

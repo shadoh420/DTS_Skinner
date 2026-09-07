@@ -1,0 +1,483 @@
+{
+  "source": {
+    "model_name": "pack_upgrade_cloaking",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: cloak_core",
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_upgrade_cloaking.dts",
+    "source_path": "shapes/pack_upgrade_cloaking.dts",
+    "source_sha256": "6865b13a793bf512f447eea3f2bcfb5ed58d0f98c4006b2e465d848433c8164c",
+    "source_bytes": 30539,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_upgrade_cloaking.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "pack_cloak",
+      "cloak_core"
+    ],
+    "triangles": 208,
+    "selected_detail": "Detail_32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.04451817274093628,
+        0.5259146690368652
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Arm_bottom32",
+      "parent": 1,
+      "rotation_quat16": [
+        -18,
+        -399,
+        -32763,
+        -199
+      ],
+      "translation": [
+        -0.0006799846887588501,
+        0.017432842403650284,
+        -0.3812851905822754
+      ]
+    },
+    {
+      "name": "Arm_left32",
+      "parent": 1,
+      "rotation_quat16": [
+        -252,
+        -29344,
+        125,
+        -14577
+      ],
+      "translation": [
+        0.14587807655334473,
+        0.01717131957411766,
+        -0.14870819449424744
+      ]
+    },
+    {
+      "name": "Arm_right32",
+      "parent": 1,
+      "rotation_quat16": [
+        14577,
+        -125,
+        -29344,
+        -252
+      ],
+      "translation": [
+        -0.14781710505485535,
+        0.01717131957411766,
+        -0.14870817959308624
+      ]
+    },
+    {
+      "name": "Hand_bottom32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.000915970653295517,
+        0.004599828273057938,
+        -0.44859787821769714
+      ]
+    },
+    {
+      "name": "Hand_right32",
+      "parent": 1,
+      "rotation_quat16": [
+        -16198,
+        11980,
+        -8308,
+        24468
+      ],
+      "translation": [
+        -0.19144627451896667,
+        0.012545626610517502,
+        -0.1206527054309845
+      ]
+    },
+    {
+      "name": "Light_left32",
+      "parent": 1,
+      "rotation_quat16": [
+        11584,
+        20065,
+        -20065,
+        -11584
+      ],
+      "translation": [
+        0.10852153599262238,
+        -0.006785799283534288,
+        -0.3292452096939087
+      ]
+    },
+    {
+      "name": "Light_right32",
+      "parent": 1,
+      "rotation_quat16": [
+        -20065,
+        -11584,
+        11584,
+        20065
+      ],
+      "translation": [
+        -0.10938319563865662,
+        -0.006785810459405184,
+        -0.3282053768634796
+      ]
+    },
+    {
+      "name": "Light_upper32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0009845495223999023,
+        -0.0067857918329536915,
+        -0.12789691984653473
+      ]
+    },
+    {
+      "name": "Main32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.00091596320271492,
+        0.002057984471321106,
+        -0.26236745715141296
+      ]
+    },
+    {
+      "name": "Mounts32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.06430328637361526,
+        0.0039269886910915375,
+        -0.2202996015548706
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0009159641922451556,
+        0.1406012922525406,
+        -0.2735905349254608
+      ]
+    },
+    {
+      "name": "Main_light32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00091596320271492,
+        -0.03975993022322655,
+        -0.2536851763725281
+      ]
+    },
+    {
+      "name": "Hand_bottom_light32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0009159720502793789,
+        0.04471250995993614,
+        -0.4787217378616333
+      ]
+    },
+    {
+      "name": "Hand_right_light32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -0.191331148147583,
+        0.12426304072141647,
+        -0.11988700926303864
+      ]
+    },
+    {
+      "name": "Hand_left_light32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.1913311630487442,
+        0.12426304072141647,
+        -0.11988700926303864
+      ]
+    },
+    {
+      "name": "Hand_left32",
+      "parent": 1,
+      "rotation_quat16": [
+        -24468,
+        8308,
+        11980,
+        -16198
+      ],
+      "translation": [
+        0.19144627451896667,
+        0.012545617297291756,
+        -0.12065272033214569
+      ]
+    },
+    {
+      "name": "Light_right_pulse32",
+      "parent": 1,
+      "rotation_quat16": [
+        -20065,
+        -11584,
+        11584,
+        20065
+      ],
+      "translation": [
+        -0.10938319563865662,
+        -0.006785810459405184,
+        -0.3282053768634796
+      ]
+    },
+    {
+      "name": "Light_upper_pulse32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        23169,
+        0
+      ],
+      "translation": [
+        -0.0009845495223999023,
+        -0.0067857918329536915,
+        -0.12789691984653473
+      ]
+    },
+    {
+      "name": "Light_left_pulse32",
+      "parent": 1,
+      "rotation_quat16": [
+        -20065,
+        11584,
+        -11584,
+        20065
+      ],
+      "translation": [
+        0.10852153599262238,
+        -0.006785799283534288,
+        -0.3292452096939087
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 232
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 220
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 118
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 50
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 45,
+      "flags": 16,
+      "numKeyframes": 40,
+      "duration": 1.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 18,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        14,
+        15,
+        16,
+        17
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    44,
+    2,
+    7,
+    5,
+    1
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_cloak.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_cloak.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_cloak.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_cloak",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/cloak_core.ifl",
+      "source": "base/skins.vl2:textures/skins/cloak_core.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "cloak_core0000.png 1",
+        "cloak_core0001.png 1",
+        "cloak_core0002.png 1",
+        "cloak_core0003.png 1",
+        "cloak_core0004.png 1",
+        "cloak_core0005.png 1",
+        "cloak_core0006.png 1",
+        "cloak_core0007.png 1",
+        "cloak_core0008.png 1",
+        "cloak_core0009.png 1",
+        "cloak_core0010.png 1",
+        "cloak_core0011.png 1",
+        "cloak_core0012.png 1",
+        "cloak_core0013.png 1",
+        "cloak_core0014.png 1",
+        "cloak_core0015.png 1",
+        "cloak_core0016.png 1",
+        "cloak_core0017.png 1",
+        "cloak_core0018.png 1",
+        "cloak_core0019.png 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/cloak_core0000.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/cloak_core0000.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/cloak_core0000.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "cloak_core",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Hand_bottom_light",
+    "Hand_left_light",
+    "Hand_right_light",
+    "Main_light"
+  ],
+  "empty_finer_details": []
+}

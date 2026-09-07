@@ -1,0 +1,73 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 64,
+      "surface_count": 62
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 32,
+      "surface_count": 42
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 16,
+      "surface_count": 32
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 5,
+      "surface_count": 8
+    }
+  ],
+  "null_surfaces_excluded": 221,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/snowrock2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/snowrock2.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/snowrock2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "085cfd2996462769a003b5a1c09efb24bfe67f6939ad6a122bf80488c827ab7d",
+      "name": "ice/snowrock2",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_srock8",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/srock8.dif",
+    "source_path": "interiors/srock8.dif",
+    "source_sha256": "ad49587c74c37d4e915b17c535cde00d19383e6fb538bd1edc97889fdc3aac90",
+    "source_bytes": 73211,
+    "alternatives": [],
+    "materials": [
+      "ice/snowrock2"
+    ],
+    "version": 44,
+    "triangles": 62,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

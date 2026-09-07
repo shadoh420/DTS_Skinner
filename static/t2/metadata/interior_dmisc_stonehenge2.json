@@ -1,0 +1,74 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 54
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 5,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_nefblue.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue2.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue2.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE2",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue3.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE3",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_dmisc_stonehenge2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/dmisc_stonehenge2.dif",
+    "source_path": "interiors/dmisc_stonehenge2.dif",
+    "source_sha256": "eb7d0759e4cbd03ceaea34c50f8d7370de554efabd583f824695464f3390567f",
+    "source_bytes": 12293,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_NEFBLUE",
+      "lava/DS_NEFBLUE2",
+      "lava/DS_NEFBLUE3"
+    ],
+    "version": 44,
+    "triangles": 123,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

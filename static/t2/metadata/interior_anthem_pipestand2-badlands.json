@@ -1,0 +1,96 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 57
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/iwal20.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/badlands/iwal20.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "5b38dc990f373faef94d953c0b793fe3574798a45b7789a314ac8a8aa2dd56e7",
+      "name": "badlands/IWAL20",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/iwal21.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/badlands/iwal21.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "c22217d2c5fe6315080ab0ea3283514b4c17a5872c5a327b6a56e0c0aeebc313",
+      "name": "badlands/IWAL21",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/iwal22.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/badlands/iwal22.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "687c8fcb3760bba5abc3fff3fb89577ece958f71f3bbbda37cfc4a87564a1f9e",
+      "name": "badlands/IWAL22",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "44e7d25aa3a97ec6832f22f2cd84de4793e91dbf49db34d4dec0dfcf3b306c9b",
+      "name": "lush/BE_ITEBOR02B",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_anthem_pipestand2-badlands",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/anthem_pipestand2-badlands.dif",
+    "source_path": "interiors/anthem_pipestand2-badlands.dif",
+    "source_sha256": "9e0e4ecc5c9e5a949aefe4fefcba74d0c9192d8d0ec0dfd17a7fc0ceee32bdd4",
+    "source_bytes": 19935,
+    "alternatives": [],
+    "materials": [
+      "badlands/IWAL20",
+      "lush/BE_ITEBOR02",
+      "badlands/IWAL21",
+      "badlands/IWAL22",
+      "lush/BE_ITEBOR02B"
+    ],
+    "version": 44,
+    "triangles": 118,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

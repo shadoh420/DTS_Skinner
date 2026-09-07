@@ -1,0 +1,528 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 200,
+      "surface_count": 2922
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 100,
+      "surface_count": 1227
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 1,
+      "surface_count": 1001
+    }
+  ],
+  "null_surfaces_excluded": 332,
+  "degenerate_triangles_skipped": 363,
+  "lightmap_count": 8,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_techwall_1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ttrim2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ttrim2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/TTRIM2",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/greylitetrim.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylitetrim.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITETRIM",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/nycto-bboard.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-bboard.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-bboard.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "b5e0b310208b30b6341e5f5dab3cc7e4f6b3b62b2d13b28661adbb9532c4a457",
+      "name": "lava/NYCTO-BBOARD",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/nycto-bboard2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-bboard2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-bboard2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "87e9417e813129b9164678c87c87be2b4e02f9820cb2a87087020e66084ba42d",
+      "name": "lava/NYCTO-BBOARD2",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/nycto-plates.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-Plates.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-Plates.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "5300cd4a367218bc364804ad7eda2074e95dde4c9d12178a52a33d77550656fb",
+      "name": "lava/NYCTO-PLATES",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/ds_ihacei01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ihacei01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ihacei01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IHACEI01",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lava/nycto-hitwall2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-hitwall2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-hitwall2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "5ba0096ed565156588aaecbf03679bd3f392432a45810d255056d2c47428b56b",
+      "name": "lava/NYCTO-HITWALL2",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lava/ds_iflo04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iflo04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iflo04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IFLO04",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lava/greylite2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylite2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITE2",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lava/ds_mriveted2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_mriveted2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_mriveted2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_MRIVETED2",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lava/gtext1a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext1a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT1A",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/lava/nycto-plasma.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-plasma.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-plasma.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "3e9b9364d85ef9c86f33b2f6feea2bf69ae51ef0d9f887eb65e38e12fd7bfcd1",
+      "name": "lava/NYCTO-PLASMA",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/lava/nycto-pipe.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-pipe.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-pipe.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "0d0e5bd3f44fccd00ef3d481cbac9b37f5a8150028716fbdc25e9b97c2cb32d2",
+      "name": "lava/NYCTO-PIPE",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/lava/stplate10a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/STPLATE10a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/STPLATE10A",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/lava/ds_obsidian.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_obsidian.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_obsidian.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_OBSIDIAN",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/lava/nycto-computer.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-computer.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-computer.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "3874736fa802df379f04b9a6ec4923ed98dcc0bd4b50c6811697f62ee6a78866",
+      "name": "lava/NYCTO-COMPUTER",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/lava/stplate0010.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/Stplate0010.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "ce469b6e201d92073e10cf29c103bcdd46b2fb6a8a82095f577b7c36321d5c34",
+      "name": "lava/STPLATE0010",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/lava/greylitetrim2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/greylitetrim2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GREYLITETRIM2",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_3.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_3",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG05",
+      "original_slot": 25
+    },
+    {
+      "virtual_path": "textures/lava/gtext1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT1",
+      "original_slot": 26
+    },
+    {
+      "virtual_path": "textures/lava/nycto-hitwall.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-hitwall.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-hitwall.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "8bd1b5bb8fc524234381346c39c383b0f632c4c41379f1b7ed8698828efe9249",
+      "name": "lava/NYCTO-HITWALL",
+      "original_slot": 27
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig06.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG06",
+      "original_slot": 28
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwaldeco01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwaldeco01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwaldeco01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWALDECO01",
+      "original_slot": 29
+    },
+    {
+      "virtual_path": "textures/lava/radwarn.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/radwarn.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/RADWARN",
+      "original_slot": 30
+    },
+    {
+      "virtual_path": "textures/lava/ds_techborder1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techborder1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techborder1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHBORDER1",
+      "original_slot": 31
+    },
+    {
+      "virtual_path": "textures/lava/ds_icei01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_icei01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_icei01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICEI01",
+      "original_slot": 32
+    },
+    {
+      "virtual_path": "textures/lava/ds_inolite.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_inolite.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_INOLITE",
+      "original_slot": 33
+    },
+    {
+      "virtual_path": "textures/lava/ds_techborder2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techborder2.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techborder2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHBORDER2",
+      "original_slot": 34
+    },
+    {
+      "virtual_path": "textures/lava/ds_etechbor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_etechbor01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_etechbor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ETECHBOR01",
+      "original_slot": 35
+    },
+    {
+      "virtual_path": "textures/lava/nycto-trim.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-Trim.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-Trim.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "ed76668ac428f4bbe78649888c8d381bf4cc6fe6f4ba2b733c72a30802691061",
+      "name": "lava/NYCTO-TRIM",
+      "original_slot": 36
+    },
+    {
+      "virtual_path": "textures/lava/nycto-mwall.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-mwall.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-mwall.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "5d2c38dcf1a75401d998809791ba697459e6e0e3238a21f740e1e5b65483d2c4",
+      "name": "lava/NYCTO-MWALL",
+      "original_slot": 37
+    },
+    {
+      "virtual_path": "textures/lava/nycto-mwall2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-mwall2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-mwall2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "d0de8e0ec6fe83f8c85b529e9dd10c93919dbe270efa8a9e3d4b1504948c8445",
+      "name": "lava/NYCTO-MWALL2",
+      "original_slot": 38
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig04.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG04",
+      "original_slot": 39
+    },
+    {
+      "virtual_path": "textures/lava/gtext2a.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext2a.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT2A",
+      "original_slot": 40
+    },
+    {
+      "virtual_path": "textures/lava/nycto-mwall3.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-mwall3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-mwall3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "9bff19150bd8264c881339d1db17b473a9a873c0ee00450583cee35dd20fc754",
+      "name": "lava/NYCTO-MWALL3",
+      "original_slot": 41
+    },
+    {
+      "virtual_path": "textures/lava/nycto-comp3.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-comp3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-comp3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "8be9d905eb2407a9c2c3add6b114f0a2e95ca4bae5d369ac478c1c74034cf542",
+      "name": "lava/NYCTO-COMP3",
+      "original_slot": 42
+    },
+    {
+      "virtual_path": "textures/lava/nycto-comp2.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lava/Nycto-comp2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lava/Nycto-comp2.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "584f02dbc6ab0c74aba9671ae8a00ee20b8b98580ea4457e71a7786184417d9c",
+      "name": "lava/NYCTO-COMP2",
+      "original_slot": 43
+    },
+    {
+      "virtual_path": "textures/lava/gtext2.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/gtext2.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/GTEXT2",
+      "original_slot": 44
+    },
+    {
+      "virtual_path": "textures/lava/ds_neffloor3.png",
+      "source": "base/Classic_maps_v1.vl2:textures/lava/ds_Neffloor3.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFFLOOR3",
+      "original_slot": 45
+    },
+    {
+      "virtual_path": "textures/lava/ds_iceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iceilig01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICEILIG01",
+      "original_slot": 46
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL05",
+      "original_slot": 47
+    }
+  ],
+  "source": {
+    "model_name": "interior_nycto-base1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/nycto-base1.dif",
+    "source_path": "interiors/nycto-base1.dif",
+    "source_sha256": "f8f27c7e4ed3ca326b953f4b90fc416a8e7aaffd02ad50761f2ece83512b28a7",
+    "source_bytes": 976111,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_TECHWALL_1",
+      "lava/TTRIM2",
+      "lava/GREYLITETRIM",
+      "lava/NYCTO-BBOARD",
+      "lava/NYCTO-BBOARD2",
+      "lava/DS_EFLOOR1",
+      "lava/NYCTO-PLATES",
+      "lava/DS_IHACEI01",
+      "lava/NYCTO-HITWALL2",
+      "lava/DS_IFLO04",
+      "lava/GREYLITE2",
+      "lava/DS_MRIVETED2",
+      "lava/GTEXT1A",
+      "lava/NYCTO-PLASMA",
+      "lava/NYCTO-PIPE",
+      "lava/STPLATE10A",
+      "lava/DS_OBSIDIAN",
+      "lava/NYCTO-COMPUTER",
+      "lava/STPLATE0010",
+      "lava/GREYLITETRIM2",
+      "lava/DS_TECHWALL_3",
+      "lava/DS_ILIG05",
+      "lava/GTEXT1",
+      "lava/NYCTO-HITWALL",
+      "lava/DS_ILIG06",
+      "lava/DS_IWALDECO01",
+      "lava/RADWARN",
+      "lava/DS_TECHBORDER1",
+      "lava/DS_ICEI01",
+      "lava/DS_INOLITE",
+      "lava/DS_TECHBORDER2",
+      "lava/DS_ETECHBOR01",
+      "lava/NYCTO-TRIM",
+      "lava/NYCTO-MWALL",
+      "lava/NYCTO-MWALL2",
+      "lava/DS_ILIG04",
+      "lava/GTEXT2A",
+      "lava/NYCTO-MWALL3",
+      "lava/NYCTO-COMP3",
+      "lava/NYCTO-COMP2",
+      "lava/GTEXT2",
+      "lava/DS_NEFFLOOR3",
+      "lava/DS_ICEILIG01",
+      "lava/DS_EWALL05"
+    ],
+    "version": 44,
+    "triangles": 6749,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

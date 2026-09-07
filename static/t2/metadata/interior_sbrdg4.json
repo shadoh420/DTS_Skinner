@@ -1,0 +1,165 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 100,
+      "surface_count": 116
+    }
+  ],
+  "null_surfaces_excluded": 12,
+  "degenerate_triangles_skipped": 2,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_iwal03snow.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03Snow.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03Snow.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03SNOW",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL02",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/ice/sw_edoor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_edoor03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_edoor03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EDOOR03",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/ice/sw_eflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_eflo01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_eflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EFLO01",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/ice/sw_espec03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_espec03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_espec03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ESPEC03",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal01c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal01c.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal01c.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "625d4090b507af3d9f25b8422db2387b54343ccdc2f89e30cfda2c687689dc33",
+      "name": "ice/SW_EWAL01C",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/ice/sw_iborlig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iborlig02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iborlig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IBORLIG02",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal04.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL04",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal06b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal06b.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal06b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL06B",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/ice/sw_threshgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_threshgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_threshgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_THRESHGRATE",
+      "original_slot": 15
+    }
+  ],
+  "source": {
+    "model_name": "interior_sbrdg4",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/sbrdg4.dif",
+    "source_path": "interiors/sbrdg4.dif",
+    "source_sha256": "f8d8e8f3924b99cefb1cd02db51b2dcb34935c6a61b386e675d5372653e8b9bf",
+    "source_bytes": 40571,
+    "alternatives": [],
+    "materials": [
+      "ice/SW_IWAL03SNOW",
+      "ice/SW_IWAL03",
+      "ice/SW_EWAL02",
+      "ice/SW_EDOOR03",
+      "ice/SW_EFLO01",
+      "ice/SW_ESPEC03",
+      "ice/SW_EWAL01C",
+      "ice/SW_IBORLIG02",
+      "ice/SW_IWAL04",
+      "ice/SW_EWAL06B",
+      "ice/SW_THRESHGRATE"
+    ],
+    "version": 44,
+    "triangles": 258,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

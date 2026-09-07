@@ -1,0 +1,87 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 112
+    }
+  ],
+  "null_surfaces_excluded": 57,
+  "degenerate_triangles_skipped": 14,
+  "lightmap_count": 5,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_floorgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_floorgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_floorgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_FLOORGRATE",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_icei01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_icei01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_icei01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ICEI01",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_flingbase02",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S5maps.vl2:interiors/flingbase02.dif",
+    "source_path": "interiors/flingbase02.dif",
+    "source_sha256": "dac07ee3b6b943aa89e4faddf6d9e83f7831dad650d988b61d9cff663574579c",
+    "source_bytes": 40899,
+    "alternatives": [],
+    "materials": [
+      "ice/SW_IWAL01",
+      "ice/SW_FLOORGRATE",
+      "ice/SW_IWAL03",
+      "ice/SW_ICEI01"
+    ],
+    "version": 44,
+    "triangles": 256,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

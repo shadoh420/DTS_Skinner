@@ -1,0 +1,219 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 100,
+      "surface_count": 338
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 45,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_iwal05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal05.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL05",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/sw_floorgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_floorgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_floorgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_FLOORGRATE",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_espec03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_espec03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_espec03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ESPEC03",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/ice/sw_iborlig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iborlig01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iborlig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IBORLIG01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal04.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL04",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL02",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/ice/sw_floorthresh.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_floorthresh.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_floorthresh.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_FLOORTHRESH",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/ice/sw_edoor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_edoor03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_edoor03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EDOOR03",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/ice/sw_ifloor01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ifloor01b.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ifloor01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IFLOOR01B",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL03",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL01",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03snow.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03Snow.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03Snow.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03SNOW",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/ice/sw_threshgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_threshgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_threshgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_THRESHGRATE",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal01_4bsb.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01_4BSb.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01_4BSb.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL01_4BSB",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/ice/sw_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_elig02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_elig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ELIG02",
+      "original_slot": 19
+    }
+  ],
+  "source": {
+    "model_name": "interior_sbrdg3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/sbrdg3.dif",
+    "source_path": "interiors/sbrdg3.dif",
+    "source_sha256": "465c6ed6ffd3283bc5a7febac3b0a463ddfe36241b77c5e1a3c34121e11df5aa",
+    "source_bytes": 84420,
+    "alternatives": [],
+    "materials": [
+      "ice/SW_IWAL05",
+      "ice/SW_IWAL03",
+      "ice/SW_FLOORGRATE",
+      "ice/SW_ESPEC03",
+      "ice/SW_IBORLIG01",
+      "ice/SW_IWAL04",
+      "ice/SW_EWAL02",
+      "ice/SW_FLOORTHRESH",
+      "ice/SW_EDOOR03",
+      "ice/SW_IFLOOR01B",
+      "ice/SW_EWAL03",
+      "ice/SW_EWAL01",
+      "ice/SW_IWAL03SNOW",
+      "ice/SW_THRESHGRATE",
+      "ice/SW_IWAL01_4BSB",
+      "ice/SW_ELIG02"
+    ],
+    "version": 44,
+    "triangles": 759,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

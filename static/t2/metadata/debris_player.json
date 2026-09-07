@@ -1,0 +1,510 @@
+{
+  "source": {
+    "model_name": "debris_player",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/debris_player.dts",
+    "source_path": "shapes/debris_player.dts",
+    "source_sha256": "db33bce920a66a0ac704b8a0acace21edc0223116cfe95730b105db024a8b2d2",
+    "source_bytes": 99766,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/debris_player.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "base.lmale"
+    ],
+    "triangles": 1616,
+    "selected_detail": "detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Submesh_A145",
+      "parent": 1,
+      "rotation_quat16": [
+        -9,
+        -23169,
+        9,
+        23169
+      ],
+      "translation": [
+        0.21795015037059784,
+        -0.0010204314021393657,
+        -0.2439383864402771
+      ]
+    },
+    {
+      "name": "Submesh_B145",
+      "parent": 1,
+      "rotation_quat16": [
+        -9,
+        -23169,
+        9,
+        23169
+      ],
+      "translation": [
+        0.21795016527175903,
+        -0.0010218099923804402,
+        0.2439383864402771
+      ]
+    },
+    {
+      "name": "Submesh_C145",
+      "parent": 1,
+      "rotation_quat16": [
+        -25416,
+        0,
+        20680,
+        0
+      ],
+      "translation": [
+        0.10781203210353851,
+        0.0016219575190916657,
+        -0.06589492410421371
+      ]
+    },
+    {
+      "name": "Submesh_D145",
+      "parent": 1,
+      "rotation_quat16": [
+        20680,
+        0,
+        -25416,
+        0
+      ],
+      "translation": [
+        0.10781214386224747,
+        0.0016220075776800513,
+        0.06589493155479431
+      ]
+    },
+    {
+      "name": "Submesh_E145",
+      "parent": 1,
+      "rotation_quat16": [
+        -1901,
+        21957,
+        -2432,
+        24124
+      ],
+      "translation": [
+        0.07009422034025192,
+        0.047816481441259384,
+        -0.0035567600280046463
+      ]
+    },
+    {
+      "name": "Submesh_Ears145",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        25995,
+        19947
+      ],
+      "translation": [
+        0.13649900257587433,
+        -0.02549556829035282,
+        -0.012863954529166222
+      ]
+    },
+    {
+      "name": "Submesh_F145",
+      "parent": 1,
+      "rotation_quat16": [
+        -2432,
+        24124,
+        -1901,
+        21957
+      ],
+      "translation": [
+        0.07009420543909073,
+        0.04781642183661461,
+        0.0035567593295127153
+      ]
+    },
+    {
+      "name": "Submesh_G145",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.006002580747008324,
+        0.009807094000279903,
+        0.0008934285724535584
+      ]
+    },
+    {
+      "name": "Submesh_H145",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.006002640817314386,
+        0.009807123802602291,
+        -0.0011685490608215332
+      ]
+    },
+    {
+      "name": "Submesh_head145",
+      "parent": 1,
+      "rotation_quat16": [
+        -3024,
+        -22971,
+        3024,
+        22971
+      ],
+      "translation": [
+        0.0878024771809578,
+        -0.006866592913866043,
+        -0.01310113538056612
+      ]
+    },
+    {
+      "name": "Submesh_larm145",
+      "parent": 1,
+      "rotation_quat16": [
+        21769,
+        87,
+        -24489,
+        -98
+      ],
+      "translation": [
+        0.1684657484292984,
+        -0.000703631725627929,
+        -0.023106204345822334
+      ]
+    },
+    {
+      "name": "Submesh_lbicep145",
+      "parent": 1,
+      "rotation_quat16": [
+        20680,
+        0,
+        -25416,
+        0
+      ],
+      "translation": [
+        0.167609304189682,
+        -0.00470963679254055,
+        -0.047060638666152954
+      ]
+    },
+    {
+      "name": "Submesh_lfoot145",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.05258319899439812,
+        0.14033153653144836,
+        -0.0015747698489576578
+      ]
+    },
+    {
+      "name": "Submesh_lhand145",
+      "parent": 1,
+      "rotation_quat16": [
+        -16501,
+        -16395,
+        16293,
+        -16342
+      ],
+      "translation": [
+        0.08293949067592621,
+        0.030116932466626167,
+        -0.02947092428803444
+      ]
+    },
+    {
+      "name": "Submesh_lleg145",
+      "parent": 1,
+      "rotation_quat16": [
+        -2432,
+        24124,
+        -1901,
+        21957
+      ],
+      "translation": [
+        0.23718616366386414,
+        -0.015886999666690826,
+        0.0025151707231998444
+      ]
+    },
+    {
+      "name": "Submesh_lthigh145",
+      "parent": 1,
+      "rotation_quat16": [
+        749,
+        24710,
+        956,
+        21484
+      ],
+      "translation": [
+        0.2341936230659485,
+        -0.007300499361008406,
+        0.011741312220692635
+      ]
+    },
+    {
+      "name": "Submesh_pelvis145",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.030324824154376984,
+        0.026106003671884537,
+        7.799135346431285e-05
+      ]
+    },
+    {
+      "name": "Submesh_rarm145",
+      "parent": 1,
+      "rotation_quat16": [
+        -24489,
+        -98,
+        21769,
+        87
+      ],
+      "translation": [
+        0.16870659589767456,
+        -0.0007017008028924465,
+        0.023155944421887398
+      ]
+    },
+    {
+      "name": "Submesh_rbicep145",
+      "parent": 1,
+      "rotation_quat16": [
+        -25416,
+        0,
+        20680,
+        0
+      ],
+      "translation": [
+        0.167609304189682,
+        -0.004709676839411259,
+        0.04706057161092758
+      ]
+    },
+    {
+      "name": "Submesh_rfoot145",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.05258321389555931,
+        0.14033152163028717,
+        0.001570831285789609
+      ]
+    },
+    {
+      "name": "Submesh_rhand145",
+      "parent": 1,
+      "rotation_quat16": [
+        -16293,
+        16342,
+        16501,
+        16395
+      ],
+      "translation": [
+        0.08345181494951248,
+        0.031291913241147995,
+        0.029434585943818092
+      ]
+    },
+    {
+      "name": "Submesh_rleg145",
+      "parent": 1,
+      "rotation_quat16": [
+        -1901,
+        21957,
+        -2432,
+        24124
+      ],
+      "translation": [
+        0.2371862232685089,
+        -0.015886954963207245,
+        -0.0025148680433630943
+      ]
+    },
+    {
+      "name": "Submesh_rthigh145",
+      "parent": 1,
+      "rotation_quat16": [
+        956,
+        21484,
+        749,
+        24710
+      ],
+      "translation": [
+        0.2345418632030487,
+        -0.007291701156646013,
+        -0.009278230369091034
+      ]
+    },
+    {
+      "name": "Submesh_torso145",
+      "parent": 1,
+      "rotation_quat16": [
+        -9,
+        -23169,
+        9,
+        23169
+      ],
+      "translation": [
+        0.06517656147480011,
+        0.02889590710401535,
+        -3.835081588476896e-05
+      ]
+    },
+    {
+      "name": "Submesh_Waist145",
+      "parent": 1,
+      "rotation_quat16": [
+        -9,
+        -23169,
+        9,
+        23169
+      ],
+      "translation": [
+        0.16875678300857544,
+        0.03765496611595154,
+        -0.00018861771968659014
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 2017
+    },
+    {
+      "name": "detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 80.0,
+      "polyCount": 1701
+    },
+    {
+      "name": "detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 60.0,
+      "polyCount": 1230
+    },
+    {
+      "name": "detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 30.0,
+      "polyCount": 644
+    },
+    {
+      "name": "detail18",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 18.0,
+      "polyCount": 393
+    },
+    {
+      "name": "detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 12.0,
+      "polyCount": 178
+    },
+    {
+      "name": "detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 6.0,
+      "polyCount": 72
+    },
+    {
+      "name": "detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 3.0,
+      "polyCount": 28
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/base.lmale.png",
+      "source": "base/TR2final105-client.vl2:textures/base.lmale.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "e2b242f0e49a58b923425e32d4cea6268deb70588cbd62c5e9135eb5c76e6392",
+      "name": "base.lmale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

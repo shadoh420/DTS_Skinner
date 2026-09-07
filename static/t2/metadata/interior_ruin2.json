@@ -1,0 +1,76 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 188
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 56,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/desert/cp_iwal02f.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_iwal02f.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_iwal02f.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_IWAL02F",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/desert/cp_iwal02g.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_iwal02g.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_iwal02g.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_IWAL02G",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/desert/cp_iwalbase02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_iwalbase02.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_iwalbase02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "desert/CP_IWALBASE02",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_ruin2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/ruin2.dif",
+    "source_path": "interiors/ruin2.dif",
+    "source_sha256": "553269c5f5af40994c92b4679cac03892cc1d95530caf97cf8a21df6db238576",
+    "source_bytes": 33198,
+    "alternatives": [],
+    "materials": [
+      "desert/CP_IWAL02F",
+      "desert/CP_IWAL02G",
+      "desert/CP_IWALBASE02"
+    ],
+    "version": 44,
+    "triangles": 494,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

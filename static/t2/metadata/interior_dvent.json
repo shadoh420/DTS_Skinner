@@ -1,0 +1,66 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 64,
+      "surface_count": 43
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 32,
+      "surface_count": 39
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 16,
+      "surface_count": 20
+    }
+  ],
+  "null_surfaces_excluded": 129,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/lavarock03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/lavarock03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/lavarock03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/lavarock03",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_dvent",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/dvent.dif",
+    "source_path": "interiors/dvent.dif",
+    "source_sha256": "d9482ad8b3994296d028e237a673b8cf4e5cf212ad106e667f2cbe9700bf092b",
+    "source_bytes": 56571,
+    "alternatives": [],
+    "materials": [
+      "lava/lavarock03"
+    ],
+    "version": 44,
+    "triangles": 43,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

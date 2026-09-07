@@ -1,0 +1,564 @@
+{
+  "source": {
+    "model_name": "mine",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/mine.dts",
+    "source_path": "shapes/mine.dts",
+    "source_sha256": "7c6755d122f28fba7a9aec4ecab2989f6a95e2a6b842ef68b12ea7f01dae4a7c",
+    "source_bytes": 17292,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/mine.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "mine"
+    ],
+    "triangles": 66,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumRaise",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Main_32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumClaw1_",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumClaw1A_",
+      "parent": 4,
+      "rotation_quat16": [
+        26424,
+        0,
+        0,
+        19375
+      ],
+      "translation": [
+        -7.450580596923828e-09,
+        0.09458655118942261,
+        0.12764543294906616
+      ]
+    },
+    {
+      "name": "Arm01_32",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.116860434308592e-10,
+        -0.007619259413331747,
+        -0.06560346484184265
+      ]
+    },
+    {
+      "name": "DumClaw1C_",
+      "parent": 5,
+      "rotation_quat16": [
+        -16998,
+        0,
+        0,
+        28012
+      ],
+      "translation": [
+        7.037121996233964e-09,
+        -0.049803100526332855,
+        0.11920672655105591
+      ]
+    },
+    {
+      "name": "Finger01_32",
+      "parent": 7,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -1.5048441381892985e-09,
+        -0.0007001964841037989,
+        0.00011757271568058059
+      ]
+    },
+    {
+      "name": "DumClaw1B_",
+      "parent": 5,
+      "rotation_quat16": [
+        -31894,
+        0,
+        0,
+        7510
+      ],
+      "translation": [
+        7.037121996233964e-09,
+        -0.049803100526332855,
+        0.11920672655105591
+      ]
+    },
+    {
+      "name": "Thumb01_32",
+      "parent": 9,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -1.5048441381892985e-09,
+        -0.0007001972408033907,
+        0.00011755246669054031
+      ]
+    },
+    {
+      "name": "DumClaw2_",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -28377,
+        16383
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumClaw2A_",
+      "parent": 11,
+      "rotation_quat16": [
+        26424,
+        0,
+        0,
+        19375
+      ],
+      "translation": [
+        -9.928951882898218e-09,
+        0.09458653628826141,
+        0.12764543294906616
+      ]
+    },
+    {
+      "name": "Arm02_32",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.255980485228349e-10,
+        -0.00761925894767046,
+        -0.06560345739126205
+      ]
+    },
+    {
+      "name": "DumClaw2C_",
+      "parent": 12,
+      "rotation_quat16": [
+        -16998,
+        0,
+        0,
+        28012
+      ],
+      "translation": [
+        7.572055871207795e-09,
+        -0.04980309307575226,
+        0.11920670419931412
+      ]
+    },
+    {
+      "name": "Finger02_32",
+      "parent": 14,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -1.0172549469444903e-09,
+        -0.0007001971243880689,
+        0.00011756504682125524
+      ]
+    },
+    {
+      "name": "DumClaw2B_",
+      "parent": 12,
+      "rotation_quat16": [
+        -31894,
+        0,
+        0,
+        7510
+      ],
+      "translation": [
+        7.572055871207795e-09,
+        -0.04980309307575226,
+        0.11920670419931412
+      ]
+    },
+    {
+      "name": "Thumb02_32",
+      "parent": 16,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -2.8023168230362216e-09,
+        -0.0007001896155998111,
+        0.00011755763262044638
+      ]
+    },
+    {
+      "name": "DumClaw3_",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        28377,
+        16383
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumClaw3A_",
+      "parent": 18,
+      "rotation_quat16": [
+        26424,
+        0,
+        0,
+        19375
+      ],
+      "translation": [
+        -8.049878985616488e-09,
+        0.09458655118942261,
+        0.12764543294906616
+      ]
+    },
+    {
+      "name": "Arm03_32",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.3795251607717773e-09,
+        -0.007619252894073725,
+        -0.06560345739126205
+      ]
+    },
+    {
+      "name": "DumClaw3C_",
+      "parent": 19,
+      "rotation_quat16": [
+        -16998,
+        0,
+        0,
+        28012
+      ],
+      "translation": [
+        1.6953979553591125e-08,
+        -0.04980308189988136,
+        0.11920671164989471
+      ]
+    },
+    {
+      "name": "Finger03_32",
+      "parent": 21,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        9.534553147005909e-10,
+        -0.0007001978810876608,
+        0.00011755114246625453
+      ]
+    },
+    {
+      "name": "DumClaw3B_",
+      "parent": 19,
+      "rotation_quat16": [
+        -31894,
+        0,
+        0,
+        7510
+      ],
+      "translation": [
+        1.6953979553591125e-08,
+        -0.04980308189988136,
+        0.11920671164989471
+      ]
+    },
+    {
+      "name": "Thumb03_32",
+      "parent": 23,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -3.747887333815925e-09,
+        -0.0007002045749686658,
+        0.00011755929153878242
+      ]
+    },
+    {
+      "name": "Light_32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.19756865501403809
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 79
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 52
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 38
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 6
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 6
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 45,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        11
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 46,
+      "flags": 0,
+      "numKeyframes": 36,
+      "duration": 1.1666676998138428,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 23,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2,
+        7,
+        9,
+        14,
+        16,
+        21,
+        23
+      ],
+      "translationMatters": [
+        2,
+        5,
+        12,
+        19
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    44,
+    1,
+    215,
+    242,
+    32768
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/mine.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/mine.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/mine.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "mine",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Light_"
+  ],
+  "empty_finer_details": []
+}

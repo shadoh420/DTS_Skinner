@@ -1,0 +1,144 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 102
+    }
+  ],
+  "null_surfaces_excluded": 26,
+  "degenerate_triangles_skipped": 5,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL01",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_floorgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_floorgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_floorgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_FLOORGRATE",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/sw_ifloor01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ifloor01b.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ifloor01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IFLOOR01B",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_ewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ewal02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ewal02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EWAL02",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/ice/sw_ichute02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ichute02.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ichute02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ICHUTE02",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/ice/sw_elig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_elig01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_elig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ELIG01",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/ice/sw_eflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_eflo01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_eflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EFLO01",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/ice/sw_edoor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_edoor04.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_edoor04.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "2d0cd901408f43f0d25636f4f37953a4425503b55a545d670b6b9214ee2668ad",
+      "name": "ice/SW_EDOOR04",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/ice/sw_ebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ebor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ebor01.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "2b9787cbd7e1c48a6157661a09af900225d9942f107ebc5723f95527a950fc63",
+      "name": "ice/SW_EBOR01",
+      "original_slot": 12
+    }
+  ],
+  "source": {
+    "model_name": "interior_rilke_domain2_bridge1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/rilke_domain2_bridge1.dif",
+    "source_path": "interiors/rilke_domain2_bridge1.dif",
+    "source_sha256": "8b5855bd2667104a1ef49915a198102e6b8f3e16578dc1cb4155e0d8d121f99f",
+    "source_bytes": 26660,
+    "alternatives": [],
+    "materials": [
+      "ice/SW_IWAL01",
+      "ice/SW_FLOORGRATE",
+      "ice/SW_IFLOOR01B",
+      "ice/SW_EWAL02",
+      "ice/SW_ICHUTE02",
+      "ice/SW_ELIG01",
+      "ice/SW_EFLO01",
+      "ice/SW_EDOOR04",
+      "ice/SW_EBOR01"
+    ],
+    "version": 44,
+    "triangles": 207,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,630 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 200,
+      "surface_count": 938
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 80,
+      "surface_count": 698
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 1,
+      "surface_count": 344
+    }
+  ],
+  "null_surfaces_excluded": 45,
+  "degenerate_triangles_skipped": 121,
+  "lightmap_count": 5,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal06.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal06.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL06",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor01e.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor01e.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor01e.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR01E",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal03a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal03a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal03a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL03A",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_icei03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI03B",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_iprwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iprwal01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iprwal01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPRWAL01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02B",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_ihalig.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihalig.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihalig.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHALIG",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lush/be_ifunctec01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ifunctec01a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ifunctec01a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IFUNCTEC01A",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lush/be_iflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iflo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iflo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IFLO01",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lush/be_iteflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iteflo02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iteflo02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEFLO02",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lush/be_icowal02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icowal02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icowal02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOWAL02A",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lush/be_iteflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iteflo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iteflo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEFLO01",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal12b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal12b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal12b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL12B",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/lush/be_ihawal04b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihawal04b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihawal04b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHAWAL04B",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/lush/be_espec05b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec05b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec05b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC05B",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/lush/be_eflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eflo02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eflo02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EFLO02",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/lush/be_icobor1a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icobor1a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icobor1a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOBOR1A",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/lush/be_icomp01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icomp01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icomp01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOMP01",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/lush/be_edoo03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_edoo03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_edoo03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EDOO03",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal09b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal09b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal09b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL09B",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/lush/be_etec.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_etec.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_etec.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ETEC",
+      "original_slot": 25
+    },
+    {
+      "virtual_path": "textures/lush/be_itedoo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itedoo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itedoo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEDOO01",
+      "original_slot": 26
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02",
+      "original_slot": 27
+    },
+    {
+      "virtual_path": "textures/lush/be_ichute01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ichute01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ichute01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICHUTE01",
+      "original_slot": 28
+    },
+    {
+      "virtual_path": "textures/lush/be_espec01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC01",
+      "original_slot": 29
+    },
+    {
+      "virtual_path": "textures/lush/be_elig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG03",
+      "original_slot": 30
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal07.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL07",
+      "original_slot": 31
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal04.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal04.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL04",
+      "original_slot": 32
+    },
+    {
+      "virtual_path": "textures/lush/be_edoo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_edoo02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_edoo02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EDOO02",
+      "original_slot": 33
+    },
+    {
+      "virtual_path": "textures/lush/be_icomp01a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icomp01a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icomp01a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOMP01A",
+      "original_slot": 34
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor04.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR04",
+      "original_slot": 35
+    },
+    {
+      "virtual_path": "textures/lush/be_ihawal04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihawal04.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihawal04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHAWAL04",
+      "original_slot": 36
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "0475781298d5e52a31fae003d5b03e94aa62650bcdfe43096b1f93f7009cf2b9",
+      "name": "lush/BE_ITEWAL02A",
+      "original_slot": 37
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL02",
+      "original_slot": 38
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL01",
+      "original_slot": 39
+    },
+    {
+      "virtual_path": "textures/lush/be_icolig.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icolig.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icolig.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIG",
+      "original_slot": 40
+    },
+    {
+      "virtual_path": "textures/lush/be_ihawal04a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihawal04a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihawal04a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHAWAL04A",
+      "original_slot": 41
+    },
+    {
+      "virtual_path": "textures/lush/be_elig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_elig02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_elig02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ELIG02",
+      "original_slot": 42
+    },
+    {
+      "virtual_path": "textures/lush/be_edoo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_Edoo01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_Edoo01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EDOO01",
+      "original_slot": 43
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02A",
+      "original_slot": 44
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR02",
+      "original_slot": 45
+    },
+    {
+      "virtual_path": "textures/lush/be_ifunctec01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ifunctec01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ifunctec01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IFUNCTEC01",
+      "original_slot": 46
+    },
+    {
+      "virtual_path": "textures/lush/be_igenericdark.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGenericDark.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGenericDark.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERICDARK",
+      "original_slot": 47
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02c.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02c.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "83a14a0ed25c44f4ef3687ba8173733397d8c7237b97634145970e64f413e3bc",
+      "name": "lush/BE_ITEBOR02C",
+      "original_slot": 48
+    },
+    {
+      "virtual_path": "textures/lush/be_itewal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itewal03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itewal03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEWAL03",
+      "original_slot": 49
+    },
+    {
+      "virtual_path": "textures/lush/be_ihadoo.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihadoo.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihadoo.PNG"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "eaf68056dc0346d398754efa75b6b722806675d85584e6ae81f27c70bebb90ca",
+      "name": "lush/BE_IHADOO",
+      "original_slot": 50
+    },
+    {
+      "virtual_path": "textures/lush/be_igeneric.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iGeneric.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iGeneric.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IGENERIC",
+      "original_slot": 52
+    },
+    {
+      "virtual_path": "textures/lush/be_espec08.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_espec08.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_espec08.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ESPEC08",
+      "original_slot": 53
+    },
+    {
+      "virtual_path": "textures/lush/be_itelig02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itelig02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itelig02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITELIG02",
+      "original_slot": 54
+    },
+    {
+      "virtual_path": "textures/lush/be_icolig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icolig01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icolig01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIG01",
+      "original_slot": 55
+    },
+    {
+      "virtual_path": "textures/lush/be_ihawal04d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihawal04d.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihawal04d.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHAWAL04D",
+      "original_slot": 56
+    }
+  ],
+  "source": {
+    "model_name": "interior_bbase_ccb5",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/bbase_ccb5.dif",
+    "source_path": "interiors/bbase_ccb5.dif",
+    "source_sha256": "cb46d93d8283eb754f5742d8f6b4b109204c5dd4282ff7684854bde9a545f6a8",
+    "source_bytes": 401268,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL06",
+      "lush/BE_EBOR01E",
+      "lush/BE_EWAL03A",
+      "lush/BE_ICEI03B",
+      "lush/BE_IPRWAL01",
+      "lush/BE_ITEBOR02B",
+      "lush/BE_IHALIG",
+      "lush/BE_EWAL01B",
+      "lush/BE_IFUNCTEC01A",
+      "lush/BE_IFLO01",
+      "lush/BE_ITEFLO02",
+      "lush/BE_ICOWAL02A",
+      "lush/BE_ITEFLO01",
+      "lush/BE_EWAL12B",
+      "lush/BE_IHAWAL04B",
+      "lush/BE_ESPEC05B",
+      "lush/BE_EFLO02",
+      "lush/BE_ICOBOR1A",
+      "lush/BE_ICOMP01",
+      "lush/BE_EDOO03",
+      "lush/BE_EWAL09B",
+      "lush/BE_ETEC",
+      "lush/BE_ITEDOO01",
+      "lush/BE_ITEBOR02",
+      "lush/BE_ICHUTE01",
+      "lush/BE_ESPEC01",
+      "lush/BE_ELIG03",
+      "lush/BE_EWAL07",
+      "lush/BE_ITEWAL04",
+      "lush/BE_EDOO02",
+      "lush/BE_ICOMP01A",
+      "lush/BE_ITEBOR04",
+      "lush/BE_IHAWAL04",
+      "lush/BE_ITEWAL02A",
+      "lush/BE_ITEWAL02",
+      "lush/BE_ITEWAL01",
+      "lush/BE_ICOLIG",
+      "lush/BE_IHAWAL04A",
+      "lush/BE_ELIG02",
+      "lush/BE_EDOO01",
+      "lush/BE_ITEBOR02A",
+      "lush/BE_EBOR02",
+      "lush/BE_IFUNCTEC01",
+      "lush/BE_IGENERICDARK",
+      "lush/BE_ITEBOR02C",
+      "lush/BE_ITEWAL03",
+      "lush/BE_IHADOO",
+      "lush/BE_IGENERIC",
+      "lush/BE_ESPEC08",
+      "lush/BE_ITELIG02",
+      "lush/BE_ICOLIG01",
+      "lush/BE_IHAWAL04D"
+    ],
+    "version": 44,
+    "triangles": 2329,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

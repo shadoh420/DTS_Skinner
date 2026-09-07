@@ -1,0 +1,240 @@
+{
+  "source": {
+    "model_name": "grenade_flash",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/grenade_flash.dts",
+    "source_path": "shapes/grenade_flash.dts",
+    "source_sha256": "4cc787bb67805b0de7ee387793086543108862b8e139c18ea50dc3c2f2c79fe4",
+    "source_bytes": 13172,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/grenade_flash.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "grenade_flash"
+    ],
+    "triangles": 120,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Btm32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Neck32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.454365944236829e-17,
+        1.1135909897508397e-17,
+        0.18746207654476166
+      ]
+    },
+    {
+      "name": "Top32",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.13848547782447e-23,
+        -8.407770479834653e-09,
+        -0.0076526254415512085
+      ]
+    },
+    {
+      "name": "Flip_a32",
+      "parent": 4,
+      "rotation_quat16": [
+        -5689,
+        0,
+        0,
+        32269
+      ],
+      "translation": [
+        2.308235380610313e-09,
+        0.0528063029050827,
+        -0.00858132541179657
+      ]
+    },
+    {
+      "name": "Flip_b32",
+      "parent": 4,
+      "rotation_quat16": [
+        2844,
+        -4927,
+        -27945,
+        -16134
+      ],
+      "translation": [
+        0.045731592923402786,
+        -0.026403140276670456,
+        -0.00858132541179657
+      ]
+    },
+    {
+      "name": "Flip_c32",
+      "parent": 4,
+      "rotation_quat16": [
+        -2844,
+        -4927,
+        -27945,
+        16134
+      ],
+      "translation": [
+        -0.04573158919811249,
+        -0.026403147727251053,
+        -0.00858132541179657
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 132
+    },
+    {
+      "name": "Detail15",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 15.0,
+      "polyCount": 84
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 38
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 22
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 10
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 19,
+      "flags": 0,
+      "numKeyframes": 12,
+      "duration": 0.36666765809059143,
+      "priority": 0,
+      "firstGroundFrame": 56,
+      "numGroundFrames": 0,
+      "baseRotation": 8,
+      "baseTranslation": 8,
+      "baseScale": 0,
+      "baseObjectState": 6,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3,
+        5,
+        6,
+        7
+      ],
+      "translationMatters": [
+        3,
+        5,
+        6,
+        7
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/grenade_flash.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/grenade_flash.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/grenade_flash.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "grenade_flash",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

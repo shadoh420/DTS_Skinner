@@ -1,0 +1,95 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 57
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/icewall2020.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/ice/icewall2020.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "f3285af0767f30d4ef09e3d16424705967748c60ddcfeb54206eb39010cf8435",
+      "name": "ice/ICEWALL2020",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/icewall2021.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/ice/icewall2021.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "2373094e60dabfdeb9d20b0d40246afae10b2138946d3bd0a6391f42ef3ac2b0",
+      "name": "ice/ICEWALL2021",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/icewall2022.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/ice/icewall2022.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "f19c240a8207cbd354a06020d3b66771d62c2b6b63993adfc8dc5211ce99ec40",
+      "name": "ice/ICEWALL2022",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02B",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_anthem_pipestand2-ice",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/anthem_pipestand2-ice.dif",
+    "source_path": "interiors/anthem_pipestand2-ice.dif",
+    "source_sha256": "dd48f0f03c0a0887baa60a5253cae556fcde24f871dcf823446329f5a4709e23",
+    "source_bytes": 19935,
+    "alternatives": [],
+    "materials": [
+      "ice/ICEWALL2020",
+      "lush/BE_ITEBOR02",
+      "ice/ICEWALL2021",
+      "ice/ICEWALL2022",
+      "lush/BE_ITEBOR02B"
+    ],
+    "version": 44,
+    "triangles": 118,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

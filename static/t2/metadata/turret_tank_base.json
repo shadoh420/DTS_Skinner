@@ -1,0 +1,346 @@
+{
+  "source": {
+    "model_name": "turret_tank_base",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_tank_base.dts",
+    "source_path": "shapes/turret_tank_base.dts",
+    "source_sha256": "bfd0e6f71cdb633b635648a313dac46c478a8dd4cbaef8c4968d7135089a9c41",
+    "source_bytes": 24134,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_tank_base.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "turret_assaultTank"
+    ],
+    "triangles": 122,
+    "selected_detail": "detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "dumTurn",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "dumActivate",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Base2",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.408659143948171e-07,
+        1.5743709802627563,
+        0.1088457703590393
+      ]
+    },
+    {
+      "name": "mount1",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6174450516700745,
+        0.8251311182975769,
+        0.444815456867218
+      ]
+    },
+    {
+      "name": "mount0",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4819220006465912,
+        0.6878403425216675,
+        0.4448833763599396
+      ]
+    },
+    {
+      "name": "eye",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4819217622280121,
+        -0.5135751962661743,
+        0.9576743841171265
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "baseCyl2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 130
+    },
+    {
+      "name": "detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 60.0,
+      "polyCount": 98
+    },
+    {
+      "name": "detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 30.0,
+      "polyCount": 70
+    },
+    {
+      "name": "detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 10.0,
+      "polyCount": 45
+    },
+    {
+      "name": "detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 18
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 20,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 14,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        5,
+        6
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "elevate"
+    },
+    {
+      "nameIndex": 21,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.13333432376384735,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 4,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 14,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "turn"
+    },
+    {
+      "nameIndex": 22,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 9,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 14,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "damage"
+    },
+    {
+      "nameIndex": 23,
+      "flags": 0,
+      "numKeyframes": 10,
+      "duration": 0.6333343386650085,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 9,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 168,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        3
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "activate"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_assaulttank.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_assaultTank.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_assaultTank.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_assaultTank",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

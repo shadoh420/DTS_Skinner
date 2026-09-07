@@ -1,0 +1,139 @@
+{
+  "source": {
+    "model_name": "statue_base",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/statue_base.dts",
+    "source_path": "shapes/statue_base.dts",
+    "source_sha256": "349bdbfb0d92db939b967dd0ab111f403b12ee289272465cf7471b8721e0a295",
+    "source_bytes": 5407,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/statue_base.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "statue_base"
+    ],
+    "triangles": 44,
+    "selected_detail": "Detail3"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "base",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.007686973423908e-13,
+        -1.6934729174522545e-09,
+        -1.1445067116255814e-11
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "plate",
+      "parent": 1,
+      "rotation_quat16": [
+        -21497,
+        0,
+        0,
+        24729
+      ],
+      "translation": [
+        0.00960440095514059,
+        -1.641905665397644,
+        1.757632851600647
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 3.0,
+      "polyCount": 46
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 22
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/statue_base.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/statue_base.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/statue_base.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "statue_base",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

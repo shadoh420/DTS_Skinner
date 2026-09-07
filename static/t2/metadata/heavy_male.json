@@ -1,0 +1,1273 @@
+{
+  "source": {
+    "model_name": "heavy_male",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/heavy_male.dts",
+    "source_path": "shapes/heavy_male.dts",
+    "source_sha256": "58ce5a1da03a34cd75a14f553a4879bc673bb87487eec9c395ded5021b096bb0",
+    "source_bytes": 247841,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/heavy_male.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 36,
+    "materials": [
+      "base.hmale"
+    ],
+    "triangles": 1591,
+    "selected_detail": "Detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Bip01 Pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        276,
+        23148,
+        139,
+        23189
+      ],
+      "translation": [
+        -4.0281982194301236e-09,
+        1.6040495438573998e-06,
+        1.4367008209228516
+      ]
+    },
+    {
+      "name": "Bip01 Spine",
+      "parent": 0,
+      "rotation_quat16": [
+        1123,
+        -584,
+        7,
+        32742
+      ],
+      "translation": [
+        0.07456415891647339,
+        -0.0001430559641448781,
+        9.929543011821806e-06
+      ]
+    },
+    {
+      "name": "Bip01 Spine1",
+      "parent": 1,
+      "rotation_quat16": [
+        -2117,
+        438,
+        4963,
+        32316
+      ],
+      "translation": [
+        0.17993852496147156,
+        -0.00018386350711807609,
+        -2.5575029212632217e-05
+      ]
+    },
+    {
+      "name": "Bip01 Spine2",
+      "parent": 2,
+      "rotation_quat16": [
+        1086,
+        -1492,
+        -3130,
+        32564
+      ],
+      "translation": [
+        0.24420775473117828,
+        -0.0001974625774892047,
+        1.1534123586898204e-05
+      ]
+    },
+    {
+      "name": "Bip01 Neck",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.25311997532844543,
+        -5.5519241868751124e-05,
+        8.930149064667603e-09
+      ]
+    },
+    {
+      "name": "Bip01 Head",
+      "parent": 4,
+      "rotation_quat16": [
+        -208,
+        1621,
+        -1779,
+        32677
+      ],
+      "translation": [
+        0.06974057108163834,
+        -5.031725702764334e-09,
+        -1.3665960807429656e-08
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 5,
+      "rotation_quat16": [
+        -49,
+        -23231,
+        6,
+        23107
+      ],
+      "translation": [
+        0.12973128259181976,
+        0.2777765095233917,
+        0.0012513687834143639
+      ]
+    },
+    {
+      "name": "Bip01 L Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        -20740,
+        8,
+        -25367,
+        10
+      ],
+      "translation": [
+        -3.4833951190194057e-07,
+        5.534125739359297e-05,
+        0.06005733087658882
+      ]
+    },
+    {
+      "name": "Bip01 L UpperArm",
+      "parent": 7,
+      "rotation_quat16": [
+        -1347,
+        -19261,
+        -1251,
+        26444
+      ],
+      "translation": [
+        0.4166980981826782,
+        -6.495761262215183e-09,
+        1.0896481938971192e-07
+      ]
+    },
+    {
+      "name": "Bip01 L Forearm",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        274,
+        32765
+      ],
+      "translation": [
+        0.4457705318927765,
+        -3.035553586272499e-09,
+        -3.148233673755385e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Hand",
+      "parent": 9,
+      "rotation_quat16": [
+        23053,
+        -2221,
+        -2219,
+        23072
+      ],
+      "translation": [
+        0.4019332230091095,
+        -4.258597474660064e-09,
+        -2.6968084654299673e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        20860,
+        1058,
+        -25230,
+        891
+      ],
+      "translation": [
+        -1.1730453053360179e-07,
+        5.5693253671051934e-05,
+        -0.060057368129491806
+      ]
+    },
+    {
+      "name": "Bip01 R UpperArm",
+      "parent": 11,
+      "rotation_quat16": [
+        5375,
+        15553,
+        -5899,
+        27713
+      ],
+      "translation": [
+        0.4166981279850006,
+        4.3513104230896715e-09,
+        -3.4368451196087335e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Forearm",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        0,
+        25615,
+        20432
+      ],
+      "translation": [
+        0.4457703232765198,
+        -9.425904501370042e-10,
+        -1.929265280864456e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Hand",
+      "parent": 13,
+      "rotation_quat16": [
+        -26953,
+        -378,
+        1882,
+        18533
+      ],
+      "translation": [
+        0.4019332528114319,
+        9.489838248555316e-09,
+        -2.355780992502332e-08
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 14,
+      "rotation_quat16": [
+        56,
+        2116,
+        23196,
+        23045
+      ],
+      "translation": [
+        0.1593228131532669,
+        0.08519990742206573,
+        0.018967093899846077
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": 3,
+      "rotation_quat16": [
+        1203,
+        -23138,
+        -1203,
+        23138
+      ],
+      "translation": [
+        0.1245114654302597,
+        -0.294100821018219,
+        0.0068269032053649426
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 3,
+      "rotation_quat16": [
+        1203,
+        -23138,
+        -1203,
+        23138
+      ],
+      "translation": [
+        0.1245114654302597,
+        -0.294100821018219,
+        0.00682690367102623
+      ]
+    },
+    {
+      "name": "Light0",
+      "parent": 3,
+      "rotation_quat16": [
+        -623,
+        -21005,
+        -1010,
+        25120
+      ],
+      "translation": [
+        -0.012244113720953465,
+        0.2831588685512543,
+        0.2989445626735687
+      ]
+    },
+    {
+      "name": "Light1",
+      "parent": 3,
+      "rotation_quat16": [
+        1608,
+        -23271,
+        1229,
+        22978
+      ],
+      "translation": [
+        -0.008284608833491802,
+        0.2855578064918518,
+        -0.2977859079837799
+      ]
+    },
+    {
+      "name": "Bip01 L Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -5172,
+        -32319,
+        38,
+        -1532
+      ],
+      "translation": [
+        -0.08131837099790573,
+        -0.012878632172942162,
+        0.1875385344028473
+      ]
+    },
+    {
+      "name": "Bip01 L Calf",
+      "parent": 20,
+      "rotation_quat16": [
+        0,
+        0,
+        8007,
+        31773
+      ],
+      "translation": [
+        0.6983208060264587,
+        4.1410856965740095e-09,
+        -1.6250760737079872e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Foot",
+      "parent": 21,
+      "rotation_quat16": [
+        -288,
+        1689,
+        -2988,
+        32585
+      ],
+      "translation": [
+        0.5864747166633606,
+        -3.761508438060446e-09,
+        -1.4018481486743894e-08
+      ]
+    },
+    {
+      "name": "Jetnozzle1",
+      "parent": 22,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.2059434950351715,
+        -0.052328020334243774,
+        -0.0055161877535283566
+      ]
+    },
+    {
+      "name": "FlareL145",
+      "parent": 22,
+      "rotation_quat16": [
+        54,
+        23463,
+        -51,
+        22871
+      ],
+      "translation": [
+        0.21035873889923096,
+        -0.05992317572236061,
+        -0.009467525407671928
+      ]
+    },
+    {
+      "name": "JetstreamL145",
+      "parent": 22,
+      "rotation_quat16": [
+        -23443,
+        975,
+        22852,
+        949
+      ],
+      "translation": [
+        0.21032892167568207,
+        -0.05200395733118057,
+        -0.008969929069280624
+      ]
+    },
+    {
+      "name": "Ski0",
+      "parent": 21,
+      "rotation_quat16": [
+        17270,
+        17270,
+        14056,
+        16720
+      ],
+      "translation": [
+        0.6376450061798096,
+        -0.019682280719280243,
+        -0.21358825266361237
+      ]
+    },
+    {
+      "name": "Bip01 R Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -345,
+        -31503,
+        8580,
+        2735
+      ],
+      "translation": [
+        -0.06771460920572281,
+        0.013277825899422169,
+        -0.19286052882671356
+      ]
+    },
+    {
+      "name": "Bip01 R Calf",
+      "parent": 27,
+      "rotation_quat16": [
+        0,
+        0,
+        7145,
+        31978
+      ],
+      "translation": [
+        0.6983208060264587,
+        -3.2684179807063174e-09,
+        -4.507138662290799e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Foot",
+      "parent": 28,
+      "rotation_quat16": [
+        560,
+        -2062,
+        -6471,
+        32050
+      ],
+      "translation": [
+        0.586474597454071,
+        3.653611635456855e-09,
+        -4.200311565227821e-08
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 29,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.20813459157943726,
+        -0.05769769102334976,
+        0.005071789491921663
+      ]
+    },
+    {
+      "name": "JetstreamR145",
+      "parent": 29,
+      "rotation_quat16": [
+        -22133,
+        6966,
+        22055,
+        6985
+      ],
+      "translation": [
+        0.21251048147678375,
+        -0.056617118418216705,
+        0.004879160318523645
+      ]
+    },
+    {
+      "name": "FlareR145",
+      "parent": 29,
+      "rotation_quat16": [
+        494,
+        23198,
+        -534,
+        23129
+      ],
+      "translation": [
+        0.21252071857452393,
+        -0.05502201244235039,
+        0.006445807870477438
+      ]
+    },
+    {
+      "name": "Ski1",
+      "parent": 28,
+      "rotation_quat16": [
+        -15120,
+        -18256,
+        -16115,
+        -15876
+      ],
+      "translation": [
+        0.6589395999908447,
+        -0.019711993634700775,
+        0.20017217099666595
+      ]
+    },
+    {
+      "name": "Unlink",
+      "parent": -1,
+      "rotation_quat16": [
+        -16523,
+        -16285,
+        -16160,
+        16559
+      ],
+      "translation": [
+        -0.003382038790732622,
+        -0.005991884972900152,
+        0.2121843695640564
+      ]
+    },
+    {
+      "name": "Cam",
+      "parent": 34,
+      "rotation_quat16": [
+        23211,
+        -196,
+        -287,
+        23125
+      ],
+      "translation": [
+        0.16803285479545593,
+        2.1617612838745117,
+        0.030152667313814163
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 2019
+    },
+    {
+      "name": "detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 1797
+    },
+    {
+      "name": "detail112",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 112.0,
+      "polyCount": 1601
+    },
+    {
+      "name": "detail96",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 96.0,
+      "polyCount": 1407
+    },
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 80.0,
+      "polyCount": 1197
+    },
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 60.0,
+      "polyCount": 1022
+    },
+    {
+      "name": "Detail35",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 35.0,
+      "polyCount": 836
+    },
+    {
+      "name": "Detail24",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 24.0,
+      "polyCount": 650
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": 16.0,
+      "polyCount": 423
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": 10.0,
+      "polyCount": 254
+    },
+    {
+      "name": "Detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": 3.0,
+      "polyCount": 24
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 126,
+      "flags": 32,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 1,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 24,
+      "baseDecalState": 55,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "frameMatters": [
+        22,
+        23
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "JetFlare"
+    },
+    {
+      "nameIndex": 127,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 1,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 68,
+      "baseDecalState": 55,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [
+    "shapes/heavy_male_back.dsq",
+    "shapes/heavy_male_celdance.dsq",
+    "shapes/heavy_male_celflex.dsq",
+    "shapes/heavy_male_celjump.dsq",
+    "shapes/heavy_male_celsalute.dsq",
+    "shapes/heavy_male_celtaunt.dsq",
+    "shapes/heavy_male_celwave.dsq",
+    "shapes/heavy_male_dieback.dsq",
+    "shapes/heavy_male_diechest.dsq",
+    "shapes/heavy_male_dieforward.dsq",
+    "shapes/heavy_male_diehead.dsq",
+    "shapes/heavy_male_dieknees.dsq",
+    "shapes/heavy_male_dieleglf.dsq",
+    "shapes/heavy_male_dielegrt.dsq",
+    "shapes/heavy_male_diesidelf.dsq",
+    "shapes/heavy_male_diesidert.dsq",
+    "shapes/heavy_male_dieslump.dsq",
+    "shapes/heavy_male_diespin.dsq",
+    "shapes/heavy_male_fall.dsq",
+    "shapes/heavy_male_forward.dsq",
+    "shapes/heavy_male_head.dsq",
+    "shapes/heavy_male_headside.dsq",
+    "shapes/heavy_male_idlepda.dsq",
+    "shapes/heavy_male_jet.dsq",
+    "shapes/heavy_male_jump.dsq",
+    "shapes/heavy_male_land.dsq",
+    "shapes/heavy_male_lookde.dsq",
+    "shapes/heavy_male_lookms.dsq",
+    "shapes/heavy_male_looknw.dsq",
+    "shapes/heavy_male_recoilde.dsq",
+    "shapes/heavy_male_root.dsq",
+    "shapes/heavy_male_side.dsq",
+    "shapes/heavy_male_ski.dsq",
+    "shapes/heavy_male_standjump.dsq",
+    "shapes/heavy_male_tauntbest.dsq",
+    "shapes/heavy_male_tauntimp.dsq"
+  ],
+  "script_sequence_bindings": [
+    {
+      "index": 0,
+      "path": "shapes/heavy_male_root.dsq",
+      "alias": "root",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/heavy_male_forward.dsq",
+      "alias": "run",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/heavy_male_back.dsq",
+      "alias": "back",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/heavy_male_side.dsq",
+      "alias": "side",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/heavy_male_lookde.dsq",
+      "alias": "look",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/heavy_male_head.dsq",
+      "alias": "head",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/heavy_male_fall.dsq",
+      "alias": "fall",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/heavy_male_jet.dsq",
+      "alias": "jet",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/heavy_male_land.dsq",
+      "alias": "land",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/heavy_male_jump.dsq",
+      "alias": "jump",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/heavy_male_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/heavy_male_idlepda.dsq",
+      "alias": "pda",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/heavy_male_headside.dsq",
+      "alias": "headside",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/heavy_male_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/heavy_male_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/heavy_male_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/heavy_male_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/heavy_male_diesidelf.dsq",
+      "alias": "death4",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/heavy_male_diesidert.dsq",
+      "alias": "death5",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/heavy_male_dieforward.dsq",
+      "alias": "death6",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/heavy_male_diechest.dsq",
+      "alias": "death7",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/heavy_male_dieslump.dsq",
+      "alias": "death8",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/heavy_male_dieforward.dsq",
+      "alias": "death9",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/heavy_male_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/heavy_male_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/heavy_male_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/heavy_male_celwave.dsq",
+      "alias": "cel2",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/heavy_male_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/heavy_male_tauntimp.dsq",
+      "alias": "cel4",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/heavy_male_celdance.dsq",
+      "alias": "cel5",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/heavy_male_celflex.dsq",
+      "alias": "cel6",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/heavy_male_celtaunt.dsq",
+      "alias": "cel7",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/heavy_male_celjump.dsq",
+      "alias": "cel8",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/heavy_male_ski.dsq",
+      "alias": "ski",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/heavy_male_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/heavy_male_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts/heavy_male.cs",
+      "source": "base/scripts.vl2:scripts/heavy_male.cs"
+    },
+    {
+      "index": 0,
+      "path": "shapes/heavy_male_root.dsq",
+      "alias": "root",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/heavy_male_forward.dsq",
+      "alias": "run",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/heavy_male_back.dsq",
+      "alias": "back",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/heavy_male_side.dsq",
+      "alias": "side",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/heavy_male_lookde.dsq",
+      "alias": "look",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/heavy_male_head.dsq",
+      "alias": "head",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/heavy_male_fall.dsq",
+      "alias": "fall",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/heavy_male_jet.dsq",
+      "alias": "jet",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/heavy_male_land.dsq",
+      "alias": "land",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/heavy_male_jump.dsq",
+      "alias": "jump",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/heavy_male_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/heavy_male_idlepda.dsq",
+      "alias": "pda",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/heavy_male_headside.dsq",
+      "alias": "headside",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/heavy_male_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/heavy_male_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/heavy_male_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/heavy_male_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/heavy_male_diesidelf.dsq",
+      "alias": "death4",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/heavy_male_diesidert.dsq",
+      "alias": "death5",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/heavy_male_dieforward.dsq",
+      "alias": "death6",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/heavy_male_diechest.dsq",
+      "alias": "death7",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/heavy_male_dieslump.dsq",
+      "alias": "death8",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/heavy_male_dieforward.dsq",
+      "alias": "death9",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/heavy_male_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/heavy_male_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/heavy_male_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/heavy_male_celwave.dsq",
+      "alias": "cel2",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/heavy_male_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/heavy_male_tauntimp.dsq",
+      "alias": "cel4",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/heavy_male_celdance.dsq",
+      "alias": "cel5",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/heavy_male_celflex.dsq",
+      "alias": "cel6",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/heavy_male_celtaunt.dsq",
+      "alias": "cel7",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/heavy_male_celjump.dsq",
+      "alias": "cel8",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/heavy_male_ski.dsq",
+      "alias": "ski",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/heavy_male_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/heavy_male_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts_extracted/scripts/heavy_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/heavy_male.cs"
+    }
+  ],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.hmale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/base.hmale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.hmale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.hmale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "FlareL",
+    "FlareR",
+    "JetstreamL",
+    "JetstreamR"
+  ],
+  "empty_finer_details": []
+}

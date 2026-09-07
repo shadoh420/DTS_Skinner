@@ -1,0 +1,275 @@
+{
+  "source": {
+    "model_name": "debris_generic_small",
+    "game": "t2",
+    "category": "Effects",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/debris_generic_small.dts",
+    "source_path": "shapes/debris_generic_small.dts",
+    "source_sha256": "16601193c84ef4c6fd620d6ba1333a3d9b1f00635a6e5cc81efe95b8b21d3a90",
+    "source_bytes": 18953,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/debris_generic_small.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "turret_belly",
+      "camera",
+      "turret_InOut_deploy",
+      "pack_repair",
+      "barrel_mortar_large",
+      "deploy_sensor_pulse"
+    ],
+    "triangles": 160,
+    "selected_detail": "detail40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris03_",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris04_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris11_",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris12_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris13_",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris05_",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "debris06_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 168
+    },
+    {
+      "name": "detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 122
+    },
+    {
+      "name": "detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 85
+    },
+    {
+      "name": "detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 44
+    },
+    {
+      "name": "detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 26
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_belly.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_belly.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_belly.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_belly",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/camera.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/camera.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/camera.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "camera",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/turret_inout_deploy.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_InOut_deploy.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_InOut_deploy.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_InOut_deploy",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/pack_repair.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_repair.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_repair.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_repair",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/barrel_mortar_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrel_mortar_large.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrel_mortar_large.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrel_mortar_large",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/skins/deploy_sensor_pulse.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/deploy_sensor_pulse.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/deploy_sensor_pulse.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "deploy_sensor_pulse",
+      "original_slot": 5
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

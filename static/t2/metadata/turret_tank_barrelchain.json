@@ -1,0 +1,366 @@
+{
+  "source": {
+    "model_name": "turret_tank_barrelchain",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "3 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_tank_barrelchain.dts",
+    "source_path": "shapes/turret_tank_barrelchain.dts",
+    "source_sha256": "bfffe137bc62d0e5f53478853864f3080b35ab46628a89c7da53a102c8e6615c",
+    "source_bytes": 14540,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_tank_barrelchain.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "turret_assaultTank"
+    ],
+    "triangles": 114,
+    "selected_detail": "detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "mountPoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "chaingunCyl2",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7881393432617188e-07,
+        -0.04188328981399536,
+        -0.04317912459373474
+      ]
+    },
+    {
+      "name": "chaingunBarrel2",
+      "parent": 2,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.37917450070381165,
+        2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "chaingunCollar2",
+      "parent": 2,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.37917450070381165,
+        2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "muzzlePoint",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.5387790597287676e-08,
+        1.7018910646438599,
+        4.421685417810295e-08
+      ]
+    },
+    {
+      "name": "DumMuzzleflashRotate",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.3977912664413452,
+        -0.0187341570854187
+      ]
+    },
+    {
+      "name": "MuzzleFlashDiagLeft2",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        9853,
+        0,
+        31250
+      ],
+      "translation": [
+        -1.30385160446167e-08,
+        0.0,
+        -7.450580596923828e-09
+      ]
+    },
+    {
+      "name": "MuzzleFlashHorizontal2",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.725290298461914e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MuzzleFlashFront2",
+      "parent": 7,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.210719347000122e-08,
+        -0.31312060356140137,
+        7.450580596923828e-09
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 208
+    },
+    {
+      "name": "detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 60.0,
+      "polyCount": 164
+    },
+    {
+      "name": "detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 30.0,
+      "polyCount": 135
+    },
+    {
+      "name": "detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 10.0,
+      "polyCount": 103
+    },
+    {
+      "name": "detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 80
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 23,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333433344960213,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 6,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "damage"
+    },
+    {
+      "nameIndex": 24,
+      "flags": 16,
+      "numKeyframes": 1,
+      "duration": 0.06666766852140427,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 6,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "visibility"
+    },
+    {
+      "nameIndex": 25,
+      "flags": 16,
+      "numKeyframes": 4,
+      "duration": 0.1333344429731369,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 6,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        7
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "fire"
+    },
+    {
+      "nameIndex": 26,
+      "flags": 0,
+      "numKeyframes": 4,
+      "duration": 0.10000090301036835,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 4,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 6,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        3,
+        4,
+        5
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire_Vis"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_assaulttank.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_assaultTank.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_assaultTank.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_assaultTank",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "MuzzleFlashDiagLeft",
+    "MuzzleFlashFront",
+    "MuzzleFlashHorizontal"
+  ],
+  "empty_finer_details": []
+}

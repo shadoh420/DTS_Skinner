@@ -1,0 +1,268 @@
+{
+  "source": {
+    "model_name": "pack_upgrade_ammo",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_upgrade_ammo.dts",
+    "source_path": "shapes/pack_upgrade_ammo.dts",
+    "source_sha256": "c18871354cf683cc86f4db3a8d19e6f5471033b55ea1d4354c3dc394e7281441",
+    "source_bytes": 34085,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_upgrade_ammo.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "pack_ammo",
+      "pack_ammo"
+    ],
+    "triangles": 362,
+    "selected_detail": "Detail_60"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.12293415516614914,
+        0.3673549294471741
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.6039425343450375e-09,
+        -0.002297552302479744,
+        -0.07129120826721191
+      ]
+    },
+    {
+      "name": "Base60",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.1561869978904724,
+        -0.10461616516113281
+      ]
+    },
+    {
+      "name": "MountL60",
+      "parent": 3,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.0010259069968014956,
+        0.14717262983322144,
+        0.02400827407836914
+      ]
+    },
+    {
+      "name": "MountR60",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0002617619466036558,
+        0.14717262983322144,
+        0.02400827407836914
+      ]
+    },
+    {
+      "name": "TubeUpper60",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.002305253641679883,
+        0.0011380165815353394,
+        0.2955462634563446
+      ]
+    },
+    {
+      "name": "Strap60",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.002305253641679883,
+        0.0011380165815353394,
+        0.12741613388061523
+      ]
+    },
+    {
+      "name": "TubeLower60",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.002305253641679883,
+        -0.008987709879875183,
+        0.12741613388061523
+      ]
+    },
+    {
+      "name": "BraceL60",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        -0.26227709650993347,
+        0.0006999969482421875,
+        0.06251277029514313
+      ]
+    },
+    {
+      "name": "BraceR60",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.2625196874141693,
+        0.0007001161575317383,
+        0.06251277029514313
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_60",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 60.0,
+      "polyCount": 420
+    },
+    {
+      "name": "Detail_45",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 45.0,
+      "polyCount": 310
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 20.0,
+      "polyCount": 178
+    },
+    {
+      "name": "Detail_7",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 7.0,
+      "polyCount": 52
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 18
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_ammo.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_ammo.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_ammo.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_ammo",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/pack_ammo.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_ammo.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_ammo.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_ammo",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

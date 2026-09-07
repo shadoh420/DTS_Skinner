@@ -1,0 +1,87 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 41
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 14,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_iceilig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iceilig03.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iceilig03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICEILIG03",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL03C",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ebor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor04.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EBOR04",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/bd_thresh02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_thresh02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_thresh02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_THRESH02",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_derm_podium",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S5maps.vl2:interiors/rst_derm_podium.dif",
+    "source_path": "interiors/rst_derm_podium.dif",
+    "source_sha256": "16f61f7f627eaf66408c107f293f7a6bdb9ec7cd95114cb7cbfd133dec1f9d64",
+    "source_bytes": 10936,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_ICEILIG03",
+      "badlands/BD_EWAL03C",
+      "badlands/BD_EBOR04",
+      "badlands/BD_THRESH02"
+    ],
+    "version": 44,
+    "triangles": 88,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

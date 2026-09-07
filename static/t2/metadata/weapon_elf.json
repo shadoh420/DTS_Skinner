@@ -1,0 +1,433 @@
+{
+  "source": {
+    "model_name": "weapon_elf",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_elf.dts",
+    "source_path": "shapes/weapon_elf.dts",
+    "source_sha256": "2bf640e228518bf48c9293a9e4ed812c78b52bea6d9c867ddba6dbffb2513c10",
+    "source_bytes": 76015,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_elf.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_elf",
+      "weapon_elf"
+    ],
+    "triangles": 756,
+    "selected_detail": "Detail_90"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00013631023466587067,
+        -0.493027925491333,
+        -0.11876963078975677
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.059458449482917786
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -0.0001107064017560333,
+        0.9168172478675842,
+        0.0481315478682518
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.02416047267615795,
+        -0.0024365782737731934,
+        -0.17577989399433136
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00013631329056806862,
+        1.3087162971496582,
+        -0.04410415142774582
+      ]
+    },
+    {
+      "name": "HydraulicHoseConnectorLeft_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.056433625519275665,
+        0.5485863089561462,
+        -0.08835864067077637
+      ]
+    },
+    {
+      "name": "HydraulicHoseConnectorRight_90",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.05670624226331711,
+        0.5485863089561462,
+        -0.08835864067077637
+      ]
+    },
+    {
+      "name": "HydraulicHoseConnectorUpperLeft_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0177029836922884,
+        0.7543214559555054,
+        -0.02975853532552719
+      ]
+    },
+    {
+      "name": "HydraulicHoseConnectorUpperRight_90",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.01797560416162014,
+        0.7543214559555054,
+        -0.02975853532552719
+      ]
+    },
+    {
+      "name": "HydraulicHoseLeft_90",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -0.05262777954339981,
+        0.7145121097564697,
+        -0.1040242463350296
+      ]
+    },
+    {
+      "name": "HydraulicHoseRight_90",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.05290040373802185,
+        0.7145121097564697,
+        -0.1040242463350296
+      ]
+    },
+    {
+      "name": "LeftConduit_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -3624,
+        -22884,
+        -22884,
+        -3624
+      ],
+      "translation": [
+        -0.013643233105540276,
+        0.5546605587005615,
+        0.014680951833724976
+      ]
+    },
+    {
+      "name": "LowerBarrel_90",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.00013631023466587067,
+        0.554124116897583,
+        -0.03022512048482895
+      ]
+    },
+    {
+      "name": "RightConduit_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -3624,
+        -22884,
+        22884,
+        3624
+      ],
+      "translation": [
+        0.013915855437517166,
+        0.5546605587005615,
+        0.014680951833724976
+      ]
+    },
+    {
+      "name": "EmitterLeft_90",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00013631023466587067,
+        0.8587812781333923,
+        0.0492049865424633
+      ]
+    },
+    {
+      "name": "EmitterModule_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.008126338943839073,
+        0.812351644039154,
+        0.0492049865424633
+      ]
+    },
+    {
+      "name": "EmitterModuleLens_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.008126338943839073,
+        0.8228774666786194,
+        0.049204982817173004
+      ]
+    },
+    {
+      "name": "EmitterRight_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.00013631023466587067,
+        0.8587812185287476,
+        0.049204982817173004
+      ]
+    },
+    {
+      "name": "Handle_90",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.9371814131736755e-09,
+        0.31597936153411865,
+        0.10174776613712311
+      ]
+    },
+    {
+      "name": "HydraulicChamber_90",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.9371814131736755e-09,
+        0.3159794211387634,
+        0.10174776613712311
+      ]
+    },
+    {
+      "name": "MainBarrel_90",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.00013632058107759804,
+        0.729742705821991,
+        0.0492049865424633
+      ]
+    },
+    {
+      "name": "UpperBarrel_90",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.00013631023466587067,
+        0.554124116897583,
+        0.060975007712841034
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_90",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 90.0,
+      "polyCount": 810
+    },
+    {
+      "name": "Detail_55",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 55.0,
+      "polyCount": 655
+    },
+    {
+      "name": "Detail_22",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 22.0,
+      "polyCount": 481
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 321
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 10.0,
+      "polyCount": 152
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 29
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_elf.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_elf.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_elf.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_elf",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/weapon_elf.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_elf.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_elf.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_elf",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

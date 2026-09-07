@@ -1,0 +1,85 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 128,
+      "surface_count": 177
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 80,
+      "surface_count": 145
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 64,
+      "surface_count": 76
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 32,
+      "surface_count": 56
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 16,
+      "surface_count": 32
+    },
+    {
+      "version": 0,
+      "detail_level": 5,
+      "min_pixels": 8,
+      "surface_count": 12
+    }
+  ],
+  "null_surfaces_excluded": 649,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/desert/cp_ewal01d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/desert/cp_ewal01d.png",
+      "alternatives": [
+        "base/desert.vl2:textures/desert/cp_ewal01d.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "eb2eff85aeb9a74238262d7c9ac3a0a0c96bc59a6f9c57fa5ef9a8027babb03f",
+      "name": "desert/cp_ewal01d",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_prockb",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/prockb.dif",
+    "source_path": "interiors/prockb.dif",
+    "source_sha256": "6040d670465cb7eb6c8851dd270e00f12fbf8bfb3bc2f1d7bc37afec875d9364",
+    "source_bytes": 242322,
+    "alternatives": [],
+    "materials": [
+      "desert/cp_ewal01d"
+    ],
+    "version": 44,
+    "triangles": 177,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

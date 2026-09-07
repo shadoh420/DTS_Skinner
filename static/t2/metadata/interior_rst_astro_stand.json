@@ -1,0 +1,120 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 102
+    }
+  ],
+  "null_surfaces_excluded": 34,
+  "degenerate_triangles_skipped": 17,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ewal15.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal15.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal15.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL15",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ebor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor04.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EBOR04",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ibor10.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ibor10.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ibor10.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IBOR10",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL03C",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/badlands/bd_iflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iflo01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IFLO01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/badlands/bd_icei02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_icei02a.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_icei02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICEI02A",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/badlands/bd_iceilig03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iceilig03.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iceilig03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICEILIG03",
+      "original_slot": 10
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_astro_stand",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_astro_stand.dif",
+    "source_path": "interiors/rst_astro_stand.dif",
+    "source_sha256": "455b929ba3a6d82088182a985319a749a9b2479a20ce77ad03daf526c5ed2e6d",
+    "source_bytes": 32639,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_EWAL15",
+      "badlands/BD_EBOR04",
+      "badlands/BD_IBOR10",
+      "badlands/BD_EWAL03C",
+      "badlands/BD_IFLO01",
+      "badlands/BD_ICEI02A",
+      "badlands/BD_ICEILIG03"
+    ],
+    "version": 44,
+    "triangles": 227,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

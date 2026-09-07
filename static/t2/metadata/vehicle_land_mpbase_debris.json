@@ -1,0 +1,447 @@
+{
+  "source": {
+    "model_name": "vehicle_land_mpbase_debris",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_land_mpbase_debris.dts",
+    "source_path": "shapes/vehicle_land_mpbase_debris.dts",
+    "source_sha256": "b50f306e0b657f227728befd9d626f3f456eb73785adf6b8ea0e46d0c300dae2",
+    "source_bytes": 113364,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_land_mpbase_debris.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Vehicle_Land_Assault_wheel",
+      "Vehicle_Land_Assault_bodySide2",
+      "Vehicle_Land_Assault_bodySide1",
+      "vehicle_land_mpb2",
+      "vehicle_land_mpb1",
+      "Vehicle_Land_Assault_bodyMain"
+    ],
+    "triangles": 1162,
+    "selected_detail": "Detail200"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.335261749588426e-08,
+        0.9917923808097839,
+        -2.1214699745178223
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "AxleFL_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        27378,
+        0,
+        18002
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "AxleFR_200",
+      "parent": 1,
+      "rotation_quat16": [
+        17993,
+        0,
+        -27384,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "AxleRL_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        27378,
+        0,
+        18002
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "AxleRR_200",
+      "parent": 1,
+      "rotation_quat16": [
+        17993,
+        0,
+        -27384,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "FenderA_200",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "FenderB_200",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "FenderC_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "FenderD_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "MountFL_200",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "MountFR_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "MountRL_200",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "MountRR_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "TrimL_200",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "TrimR_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "WheelFL_200",
+      "parent": 1,
+      "rotation_quat16": [
+        -31650,
+        8480,
+        0,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "WheelFR_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        8480,
+        31650
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "WheelRL_200",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    },
+    {
+      "name": "WheelRR_200",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.335261749588426e-08,
+        -0.9917923808097839,
+        2.1214699745178223
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail200",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 200.0,
+      "polyCount": 1367
+    },
+    {
+      "name": "Detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 100.0,
+      "polyCount": 1213
+    },
+    {
+      "name": "Detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 50.0,
+      "polyCount": 1104
+    },
+    {
+      "name": "Detail28",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 28.0,
+      "polyCount": 873
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 12.0,
+      "polyCount": 639
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 423
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_land_assault_wheel.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_Land_Assault_Wheel.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_Land_Assault_Wheel.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_Land_Assault_wheel",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_land_assault_bodyside2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_Land_Assault_bodySide2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_Land_Assault_bodySide2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_Land_Assault_bodySide2",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_land_assault_bodyside1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_Land_Assault_bodySide1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_Land_Assault_bodySide1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_Land_Assault_bodySide1",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_land_mpb2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_land_mpb2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_land_mpb2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_land_mpb2",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_land_mpb1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_land_mpb1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_land_mpb1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_land_mpb1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_land_assault_bodymain.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_Land_Assault_bodyMain.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_Land_Assault_bodyMain.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_Land_Assault_bodyMain",
+      "original_slot": 5
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

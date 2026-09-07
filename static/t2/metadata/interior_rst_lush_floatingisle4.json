@@ -1,0 +1,82 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 150,
+      "surface_count": 558
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 100,
+      "surface_count": 334
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 50,
+      "surface_count": 203
+    }
+  ],
+  "null_surfaces_excluded": 1674,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 8,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/terraintiles/grassmix5.png",
+      "source": "base/textures.vl2:textures/terrainTiles/grassMix5.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/grassMix5",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/terraintiles/mossdirt2.png",
+      "source": "base/textures.vl2:textures/terrainTiles/mossDirt2.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/mossDirt2",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/terraintiles/mossrock3.png",
+      "source": "base/textures.vl2:textures/terrainTiles/mossRock3.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/mossRock3",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_lush_floatingisle4",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_lush_floatingisle4.dif",
+    "source_path": "interiors/rst_lush_floatingisle4.dif",
+    "source_sha256": "e7f7c379764821033c8dc9af48842f3aa6bd05bac1378fad3cabdddbbb3cbcb0",
+    "source_bytes": 622977,
+    "alternatives": [],
+    "materials": [
+      "terrainTiles/grassMix5",
+      "terrainTiles/mossDirt2",
+      "terrainTiles/mossRock3"
+    ],
+    "version": 44,
+    "triangles": 558,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

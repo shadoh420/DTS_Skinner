@@ -1,0 +1,153 @@
+{
+  "source": {
+    "model_name": "porg20",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/porg20.dts",
+    "source_path": "shapes/porg20.dts",
+    "source_sha256": "9246b493608581dc7abf592b501b14883b979523ced6b89b0ce88a13268eb341",
+    "source_bytes": 2610,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/porg20.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "leafydome2"
+    ],
+    "triangles": 40,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4840378165245056,
+        -0.4536794126033783,
+        0.5657737255096436
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605510234832764,
+        0.20435822010040283,
+        0.0009135603904724121
+      ]
+    },
+    {
+      "name": "Topc128",
+      "parent": 1,
+      "rotation_quat16": [
+        -1454,
+        -485,
+        27442,
+        17839
+      ],
+      "translation": [
+        -0.7743254899978638,
+        0.10522206127643585,
+        0.07410299777984619
+      ]
+    },
+    {
+      "name": "Topa128",
+      "parent": 1,
+      "rotation_quat16": [
+        -910,
+        -2098,
+        23290,
+        22935
+      ],
+      "translation": [
+        -0.5828725695610046,
+        -0.04822269082069397,
+        -0.17893975973129272
+      ]
+    },
+    {
+      "name": "Dome128",
+      "parent": 1,
+      "rotation_quat16": [
+        929,
+        2243,
+        -30189,
+        -12504
+      ],
+      "translation": [
+        -0.6872968077659607,
+        0.3438766300678253,
+        0.06897395849227905
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 51
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 39
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/leafydome2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/leafydome2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/leafydome2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "leafydome2",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

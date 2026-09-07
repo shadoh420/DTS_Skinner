@@ -1,0 +1,186 @@
+{
+  "source": {
+    "model_name": "ammo_missile",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/ammo_missile.dts",
+    "source_path": "shapes/ammo_missile.dts",
+    "source_sha256": "d6914995c5617ec3277183581a4de10468cf509940830e6d480c1da51293078c",
+    "source_bytes": 9251,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/ammo_missile.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Weapon_missile_projectile",
+      "weapon_missile_casement"
+    ],
+    "triangles": 188,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.060830049216747284
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MissileA_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.04106881469488144,
+        1.3985707880692644e-07,
+        0.05787603184580803
+      ]
+    },
+    {
+      "name": "MissileC_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.03992781043052673,
+        1.3985707880692644e-07,
+        0.05787603184580803
+      ]
+    },
+    {
+      "name": "CylinderA_40",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.09798494726419449,
+        0.057876020669937134
+      ]
+    },
+    {
+      "name": "CylinderB_40",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -0.06410782784223557,
+        0.057876020669937134
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 228
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 182
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 111
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 31
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_missile_projectile.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Weapon_missile_projectile.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Weapon_missile_projectile.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Weapon_missile_projectile",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/weapon_missile_casement.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_missile_casement.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_missile_casement.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_missile_casement",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

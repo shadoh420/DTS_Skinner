@@ -1,0 +1,475 @@
+{
+  "source": {
+    "model_name": "tr2weapon_disc",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/TR2weapon_disc.dts",
+    "source_path": "shapes/tr2weapon_disc.dts",
+    "source_sha256": "b7fd5083cc46bb76f4beadc0dd9c930e8e093ac4fcb31d3e4a141a7a706b7fa5",
+    "source_bytes": 48393,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 5,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_disc",
+      "dcase00"
+    ],
+    "triangles": 523,
+    "selected_detail": "Detail110"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.960464477539063e-08,
+        -0.7873437404632568,
+        -0.23157179355621338
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Handle_disc110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.001972392201423645,
+        0.288947731256485,
+        0.15680034458637238
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.725290298461914e-08,
+        -0.0466914176940918,
+        0.018790394067764282
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.705522537231445e-08,
+        1.9376192092895508,
+        0.26118695735931396
+      ]
+    },
+    {
+      "name": "CaseLeft110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.004461504518985748,
+        0.6764464378356934,
+        0.25563618540763855
+      ]
+    },
+    {
+      "name": "CaseRight110",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.004461504518985748,
+        0.6764464378356934,
+        0.25563618540763855
+      ]
+    },
+    {
+      "name": "Disc110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.002753719687461853,
+        0.8590947985649109,
+        0.25701436400413513
+      ]
+    },
+    {
+      "name": "Generator110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0019723549485206604,
+        0.2262536883354187,
+        0.45367908477783203
+      ]
+    },
+    {
+      "name": "GuideLeft110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.004461541771888733,
+        1.4309388399124146,
+        0.25598201155662537
+      ]
+    },
+    {
+      "name": "GuideRight110",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.004461541771888733,
+        1.4309388399124146,
+        0.25598201155662537
+      ]
+    },
+    {
+      "name": "HousingLeft110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.004461519420146942,
+        1.021828293800354,
+        0.2552279233932495
+      ]
+    },
+    {
+      "name": "HousingRight110",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.004461519420146942,
+        1.021828293800354,
+        0.2552279233932495
+      ]
+    },
+    {
+      "name": "SecondHandHold110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00017436593770980835,
+        1.2698850631713867,
+        0.020555973052978516
+      ]
+    },
+    {
+      "name": "Sensor110",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0012138858437538147,
+        0.605674684047699,
+        0.47159501910209656
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.705522537231445e-08,
+        1.9960836172103882,
+        0.26118695735931396
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail110",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 110.0,
+      "polyCount": 648
+    },
+    {
+      "name": "Detail65",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 65.0,
+      "polyCount": 648
+    },
+    {
+      "name": "Detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 30.0,
+      "polyCount": 648
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 12.0,
+      "polyCount": 648
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 648
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 33,
+      "flags": 16,
+      "numKeyframes": 9,
+      "duration": 0.3000010550022125,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        1
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Activation"
+    },
+    {
+      "nameIndex": 34,
+      "flags": 16,
+      "numKeyframes": 4,
+      "duration": 0.2666677236557007,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 20,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        7
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        1
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "discSpin"
+    },
+    {
+      "nameIndex": 35,
+      "flags": 0,
+      "numKeyframes": 15,
+      "duration": 0.46666771173477173,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 4,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 24,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    },
+    {
+      "nameIndex": 36,
+      "flags": 16,
+      "numKeyframes": 8,
+      "duration": 0.2666676640510559,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 4,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 24,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "NoAmmo"
+    },
+    {
+      "nameIndex": 37,
+      "flags": 0,
+      "numKeyframes": 7,
+      "duration": 0.20000098645687103,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 4,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 24,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        7
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        1
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Reload"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    32,
+    1,
+    34800168,
+    458758,
+    589832
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_disc.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_disc.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_disc.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_disc",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/dcase00.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/dcase00.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/dcase00.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "dcase00",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Disc"
+  ],
+  "empty_finer_details": []
+}

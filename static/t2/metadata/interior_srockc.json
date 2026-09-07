@@ -1,0 +1,78 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 80,
+      "surface_count": 158
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 64,
+      "surface_count": 100
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 32,
+      "surface_count": 74
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 16,
+      "surface_count": 30
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 8,
+      "surface_count": 13
+    }
+  ],
+  "null_surfaces_excluded": 578,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/xsnowrock3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/xsnowrock3.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/xsnowrock3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/xsnowrock3",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_srockc",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/srockc.dif",
+    "source_path": "interiors/srockc.dif",
+    "source_sha256": "5f1e2725d999c731b514ae2d49e85e51c4553ce41ad4dcfd528a2fe0e6a15921",
+    "source_bytes": 182486,
+    "alternatives": [],
+    "materials": [
+      "ice/xsnowrock3"
+    ],
+    "version": 44,
+    "triangles": 158,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

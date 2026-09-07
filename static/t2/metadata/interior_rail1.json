@@ -1,0 +1,90 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 79
+    }
+  ],
+  "null_surfaces_excluded": 3,
+  "degenerate_triangles_skipped": 8,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ebor01e.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor01e.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor01e.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR01E",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_epipe01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_epipe01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_epipe01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EPIPE01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal07.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL07",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_rail1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rail1.dif",
+    "source_path": "interiors/rail1.dif",
+    "source_sha256": "24e7699ea55788825677550e1f1ed05b858c4c44f971b93882ff8994ccf054df",
+    "source_bytes": 18222,
+    "alternatives": [
+      "base/TR2final105-client.vl2:interiors/rail1.dif",
+      "base/z_mappacks/TWL-MapPack.vl2:interiors/rail1.dif"
+    ],
+    "materials": [
+      "lush/BE_EBOR01E",
+      "lush/BE_EWAL01B",
+      "lush/BE_EPIPE01",
+      "lush/BE_EWAL07"
+    ],
+    "version": 44,
+    "triangles": 158,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

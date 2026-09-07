@@ -1,0 +1,655 @@
+{
+  "source": {
+    "model_name": "weapon_mortar",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_mortar.dts",
+    "source_path": "shapes/weapon_mortar.dts",
+    "source_sha256": "5b3d50be770937318b6b0d9ef965d1765298a9d5824d172aed9b0d3b1acd546a",
+    "source_bytes": 73649,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_mortar.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_mortar"
+    ],
+    "triangles": 508,
+    "selected_detail": "Detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.00013631023466587067,
+        -0.5678859949111938,
+        -0.11876963078975677
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.059458449482917786
+      ]
+    },
+    {
+      "name": "M_Body_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0001362871116725728,
+        0.12252950668334961,
+        0.08551673591136932
+      ]
+    },
+    {
+      "name": "M_Hood_100",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.02620556578040123,
+        -0.1938304603099823
+      ]
+    },
+    {
+      "name": "DetachBarrl_100",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        1.8220585928929722e-08,
+        -0.14507687091827393
+      ]
+    },
+    {
+      "name": "Dummy20",
+      "parent": 2,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -2.5309640605541972e-08,
+        -0.03550540283322334,
+        -1.2847152948379517
+      ]
+    },
+    {
+      "name": "Dummy15",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.1629822552204132,
+        -0.3114701509475708,
+        -1.658525548009493e-07
+      ]
+    },
+    {
+      "name": "M_CollarF05_100",
+      "parent": 6,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.4605634862950865e-08,
+        0.13382965326309204,
+        0.007834034971892834
+      ]
+    },
+    {
+      "name": "Attachment05_100",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0008615251863375306,
+        -0.03322695568203926,
+        0.0654199942946434
+      ]
+    },
+    {
+      "name": "Dummy17",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -30272,
+        0,
+        12539
+      ],
+      "translation": [
+        0.11524606496095657,
+        -0.311470091342926,
+        -0.11524590104818344
+      ]
+    },
+    {
+      "name": "M_CollarF06_100",
+      "parent": 9,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.4384053887160917e-08,
+        0.13382965326309204,
+        0.007834037765860558
+      ]
+    },
+    {
+      "name": "Attachment06_100",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.000861530948895961,
+        -0.03322697803378105,
+        0.0654200091958046
+      ]
+    },
+    {
+      "name": "Dummy19",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -6.420923881478302e-08,
+        -0.3114701807498932,
+        -0.1629822552204132
+      ]
+    },
+    {
+      "name": "M_CollarF07_100",
+      "parent": 12,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.0842881198746e-08,
+        0.13382963836193085,
+        0.007834050804376602
+      ]
+    },
+    {
+      "name": "Attachment07_100",
+      "parent": 13,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0008615285041742027,
+        -0.033226966857910156,
+        0.06541994959115982
+      ]
+    },
+    {
+      "name": "Dummy21",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -30272,
+        0,
+        -12539
+      ],
+      "translation": [
+        -0.11524587869644165,
+        -0.3114701807498932,
+        -0.11524583399295807
+      ]
+    },
+    {
+      "name": "M_CollarF08_100",
+      "parent": 15,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.0986338000739124e-08,
+        0.13382963836193085,
+        0.007834049873054028
+      ]
+    },
+    {
+      "name": "Attachment08_100",
+      "parent": 16,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0008615225087851286,
+        -0.03322697430849075,
+        0.06541994959115982
+      ]
+    },
+    {
+      "name": "Dummy01",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.16298224031925201,
+        -0.3114701509475708,
+        8.447815957879357e-08
+      ]
+    },
+    {
+      "name": "M_CollarF01_100",
+      "parent": 18,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.4365068185261407e-08,
+        0.13382965326309204,
+        0.00783404242247343
+      ]
+    },
+    {
+      "name": "Attachment01_100",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0008615250699222088,
+        -0.033226970583200455,
+        0.06541994214057922
+      ]
+    },
+    {
+      "name": "Dummy09",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        12539,
+        0,
+        30272
+      ],
+      "translation": [
+        -0.11524578183889389,
+        -0.3114701509475708,
+        0.11524593830108643
+      ]
+    },
+    {
+      "name": "M_CollarF02_100",
+      "parent": 21,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.8010296304614712e-08,
+        0.13382962346076965,
+        0.00783404242247343
+      ]
+    },
+    {
+      "name": "Attachment02_100",
+      "parent": 22,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0008615223923698068,
+        -0.03322698175907135,
+        0.0654199868440628
+      ]
+    },
+    {
+      "name": "Dummy11",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1968563740083482e-07,
+        -0.3114701807498932,
+        0.1629822701215744
+      ]
+    },
+    {
+      "name": "M_CollarF03_100",
+      "parent": 24,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.69111932738042e-08,
+        0.13382963836193085,
+        0.007834034040570259
+      ]
+    },
+    {
+      "name": "Attachment03_100",
+      "parent": 25,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.000861524953506887,
+        -0.033226966857910156,
+        0.06541994214057922
+      ]
+    },
+    {
+      "name": "Dummy13",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -12539,
+        0,
+        30272
+      ],
+      "translation": [
+        0.11524594575166702,
+        -0.3114701807498932,
+        0.1152457669377327
+      ]
+    },
+    {
+      "name": "M_CollarF04_100",
+      "parent": 27,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.489934125549098e-08,
+        0.13382966816425323,
+        0.00783404428511858
+      ]
+    },
+    {
+      "name": "Attachment04_100",
+      "parent": 28,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0008615232072770596,
+        -0.033226966857910156,
+        0.06541997939348221
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.08033912628889084,
+        0.3789553642272949,
+        0.021114282310009003
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00013634032802656293,
+        1.4013084173202515,
+        0.05931120365858078
+      ]
+    },
+    {
+      "name": "Extension_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        -16383
+      ],
+      "translation": [
+        0.00013626180589199066,
+        0.9113147258758545,
+        0.05001116916537285
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00013634032802656293,
+        1.4995479583740234,
+        0.05931120365858078
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 532
+    },
+    {
+      "name": "Detail75",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 75.0,
+      "polyCount": 423
+    },
+    {
+      "name": "Detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 40.0,
+      "polyCount": 346
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 257
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 168
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 5.0,
+      "polyCount": 77
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 2.0,
+      "polyCount": 29
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 61,
+      "flags": 16,
+      "numKeyframes": 34,
+      "duration": 1.1333342790603638,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 20,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        5,
+        6,
+        9,
+        12,
+        15,
+        18,
+        21,
+        24,
+        27
+      ],
+      "translationMatters": [
+        3,
+        4,
+        6,
+        9,
+        12,
+        15,
+        18,
+        21,
+        24,
+        27
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Recoil"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_mortar.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_mortar.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_mortar.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_mortar",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

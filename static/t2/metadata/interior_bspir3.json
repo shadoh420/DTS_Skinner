@@ -1,0 +1,95 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 128,
+      "surface_count": 117
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 64,
+      "surface_count": 91
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 32,
+      "surface_count": 61
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 16,
+      "surface_count": 38
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 8,
+      "surface_count": 22
+    },
+    {
+      "version": 0,
+      "detail_level": 5,
+      "min_pixels": 1,
+      "surface_count": 3
+    }
+  ],
+  "null_surfaces_excluded": 409,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_eterrain02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eterrain02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eterrain02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/be_eterrain02",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ecombo02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ecombo02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ecombo02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/be_ecombo02a",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_bspir3",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/bspir3.dif",
+    "source_path": "interiors/bspir3.dif",
+    "source_sha256": "1b987481f346e6c26ddeb438243d9fd651c328a53518bfd14e34fa8116c93342",
+    "source_bytes": 161561,
+    "alternatives": [],
+    "materials": [
+      "lush/be_eterrain02",
+      "lush/be_ecombo02a"
+    ],
+    "version": 44,
+    "triangles": 117,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

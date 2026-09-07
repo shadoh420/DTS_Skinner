@@ -1,0 +1,131 @@
+{
+  "source": {
+    "model_name": "stackable2s",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/stackable2s.dts",
+    "source_path": "shapes/stackable2s.dts",
+    "source_sha256": "8545840f0a051feb4f774324d946663754da2b449743df4e243513deb066ba1c",
+    "source_bytes": 5319,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/stackable2s.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "stackable2S"
+    ],
+    "triangles": 44,
+    "selected_detail": "Detail_10"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "StackA_10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 10.0,
+      "polyCount": 44
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 2.0,
+      "polyCount": 10
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/stackable2s.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/stackable2S.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/stackable2S.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "stackable2S",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

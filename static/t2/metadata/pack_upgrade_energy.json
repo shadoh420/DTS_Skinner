@@ -1,0 +1,483 @@
+{
+  "source": {
+    "model_name": "pack_upgrade_energy",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: enrgpack_tubes",
+      "Animated texture uses frame zero: energy_blue_blink"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_upgrade_energy.dts",
+    "source_path": "shapes/pack_upgrade_energy.dts",
+    "source_sha256": "6f703a9da01d4eebeeba29e5d6d50fc124571e4dac34d15996e62a555f5aa261",
+    "source_bytes": 64790,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_upgrade_energy.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "pack_energy",
+      "energyb01",
+      "enrgpack_tubes",
+      "energy_blue_blink"
+    ],
+    "triangles": 661,
+    "selected_detail": "Detail_32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.0752134770154953,
+        0.24791261553764343
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.524708886397775e-09,
+        0.18498745560646057,
+        -0.016154905781149864
+      ]
+    },
+    {
+      "name": "BodyAndMount32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.276633262634277e-06,
+        0.10099869221448898,
+        -0.016501516103744507
+      ]
+    },
+    {
+      "name": "BottomL32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.114680215716362,
+        0.04658713936805725,
+        -0.20045530796051025
+      ]
+    },
+    {
+      "name": "BottomR32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.1138889491558075,
+        0.04658713936805725,
+        -0.20045530796051025
+      ]
+    },
+    {
+      "name": "Center32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -9.313225746154785e-09,
+        -0.030614880844950676,
+        0.0022034645080566406
+      ]
+    },
+    {
+      "name": "EnergyCore32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0002800300717353821,
+        0.05528274178504944,
+        -0.1966904252767563
+      ]
+    },
+    {
+      "name": "FacePlate32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.009015733376145363,
+        -0.06687217950820923
+      ]
+    },
+    {
+      "name": "FrameR32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        16383,
+        0,
+        28377
+      ],
+      "translation": [
+        -0.12484860420227051,
+        0.05623338371515274,
+        0.07389184832572937
+      ]
+    },
+    {
+      "name": "Top32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0010060225613415241,
+        0.04769590497016907,
+        0.0004813671112060547
+      ]
+    },
+    {
+      "name": "FrameL32",
+      "parent": 1,
+      "rotation_quat16": [
+        -28377,
+        0,
+        16383,
+        0
+      ],
+      "translation": [
+        0.12441037595272064,
+        0.05623338371515274,
+        0.07389184832572937
+      ]
+    },
+    {
+      "name": "Mounts32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.276633262634277e-06,
+        0.10099869221448898,
+        -0.016501516103744507
+      ]
+    },
+    {
+      "name": "TubingL32",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        4.904197603572413e-10,
+        0.016320975497364998,
+        -0.04323526471853256
+      ]
+    },
+    {
+      "name": "TubingR32",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -4.904197603572413e-10,
+        0.016320975497364998,
+        -0.04323526471853256
+      ]
+    },
+    {
+      "name": "glowB32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.24797534942626953,
+        0.046637166291475296,
+        -0.051998402923345566
+      ]
+    },
+    {
+      "name": "glowA32",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.24806207418441772,
+        0.046637166291475296,
+        -0.051998402923345566
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 691
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 422
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 182
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 37
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 8
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 39,
+      "flags": 16,
+      "numKeyframes": 20,
+      "duration": 0.6666676998138428,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    36,
+    1,
+    79,
+    86,
+    68,
+    37,
+    2,
+    77,
+    53,
+    67,
+    38,
+    3,
+    75,
+    93,
+    54
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_energy.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_energy.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_energy.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_energy",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/energyb01.png",
+      "source": "base/skins.vl2:textures/skins/energyb01.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "energyb01",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/enrgpack_tubes.ifl",
+      "source": "base/skins.vl2:textures/skins/enrgpack_tubes.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "enrgtubes0000.png 1",
+        "enrgtubes0001.png 1",
+        "enrgtubes0002.png 1",
+        "enrgtubes0003.png 1",
+        "enrgtubes0004.png 1",
+        "enrgtubes0005.png 1",
+        "enrgtubes0006.png 1",
+        "enrgtubes0007.png 1",
+        "enrgtubes0008.png 1",
+        "enrgtubes0009.png 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/enrgtubes0000.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/Enrgtubes0000.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/Enrgtubes0000.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "enrgpack_tubes",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/energy_blue_blink.ifl",
+      "source": "base/skins.vl2:textures/skins/energy_blue_blink.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "blue_blink4.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink2.PNG 2",
+        "blue_blink1.PNG 10",
+        "blue_blink2.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink4.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink2.PNG 2",
+        "blue_blink1.PNG 10",
+        "blue_blink2.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink4.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink2.PNG 2",
+        "blue_blink1.PNG 10",
+        "blue_blink2.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink4.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink2.PNG 2",
+        "blue_blink1.PNG 10",
+        "blue_blink2.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink4.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink2.PNG 2",
+        "blue_blink1.PNG 10",
+        "blue_blink2.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink4.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink2.PNG 2",
+        "blue_blink1.PNG 10",
+        "blue_blink2.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink4.PNG 2",
+        "blue_blink3.PNG 2",
+        "blue_blink2.PNG 2",
+        "blue_blink1.PNG 10",
+        "blue_blink2.PNG 2",
+        "blue_blink3.PNG 2"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/blue_blink4.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/blue_blink4.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/blue_blink4.PNG"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "energy_blue_blink",
+      "original_slot": 3
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,66 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 16,
+      "surface_count": 36
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 8,
+      "surface_count": 12
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 5,
+      "surface_count": 6
+    }
+  ],
+  "null_surfaces_excluded": 130,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/lavarock03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/lavarock03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/lavarock03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/lavarock03",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_drock8",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/drock8.dif",
+    "source_path": "interiors/drock8.dif",
+    "source_sha256": "0a60e55f29ec03f25abb8a9c4538af6d18257ef35f4cd7822ba50cd6b9e3d104",
+    "source_bytes": 32022,
+    "alternatives": [],
+    "materials": [
+      "lava/lavarock03"
+    ],
+    "version": 44,
+    "triangles": 36,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

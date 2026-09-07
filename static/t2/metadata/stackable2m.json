@@ -1,0 +1,197 @@
+{
+  "source": {
+    "model_name": "stackable2m",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/stackable2m.dts",
+    "source_path": "shapes/stackable2m.dts",
+    "source_sha256": "dbf44b96fa599c272cc5cd610b5a31efa3681a72c86326c84d73205e056e1439",
+    "source_bytes": 28639,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/stackable2m.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "stackable2m"
+    ],
+    "triangles": 576,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Object01_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.2514522671699524,
+        0.2523370385169983,
+        0.5204142928123474
+      ]
+    },
+    {
+      "name": "Object02_40",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.2514522671699524,
+        0.2523370385169983,
+        0.5204142928123474
+      ]
+    },
+    {
+      "name": "Object03_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.2514522671699524,
+        -0.2523370385169983,
+        0.5204142928123474
+      ]
+    },
+    {
+      "name": "Object04_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -0.2514522671699524,
+        -0.2523370385169983,
+        0.5204142928123474
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 684
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 326
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 230
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 31
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 11
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/stackable2m.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/stackable2m.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/stackable2m.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "stackable2m",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

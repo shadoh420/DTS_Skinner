@@ -1,0 +1,117 @@
+{
+  "source": {
+    "model_name": "porg1",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/porg1.dts",
+    "source_path": "shapes/porg1.dts",
+    "source_sha256": "8777aad3e266a812646c4d63e9e0757544b05e4863c72648ed571d7a10ccaafc",
+    "source_bytes": 1441,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/porg1.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "brush"
+    ],
+    "triangles": 24,
+    "selected_detail": "Detail8"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.46632176637649536,
+        -0.22070416808128357,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Conebig8",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5734503865242004,
+        -0.22503244876861572,
+        -0.045075975358486176
+      ]
+    },
+    {
+      "name": "Conesmall8",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.862645149230957e-09,
+        -1.4901161193847656e-08,
+        -7.450580596923828e-09
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 8.0,
+      "polyCount": 38
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/brush.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/brush.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/brush.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "brush",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

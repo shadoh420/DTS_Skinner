@@ -1,0 +1,109 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 47
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 9,
+  "lightmap_count": 3,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_thresh02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_thresh02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_thresh02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_THRESH02A",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_icei03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI03B",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ihalig.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihalig.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihalig.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHALIG",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal09b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal09b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal09b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL09B",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal06.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal06.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL06",
+      "original_slot": 9
+    }
+  ],
+  "source": {
+    "model_name": "interior_tri_wall6",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/DynamixFinalPack.vl2:interiors/tri_wall6.dif",
+    "source_path": "interiors/tri_wall6.dif",
+    "source_sha256": "d81f7f371029f5980388b87513d60564b0795da18e790b10e299b4f59ec1ecee",
+    "source_bytes": 12842,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL01B",
+      "lush/BE_THRESH02A",
+      "lush/BE_ICEI03B",
+      "lush/BE_IHALIG",
+      "lush/BE_EWAL09B",
+      "lush/BE_EWAL06"
+    ],
+    "version": 44,
+    "triangles": 119,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

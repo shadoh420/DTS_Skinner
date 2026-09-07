@@ -1,0 +1,69 @@
+{
+  "source": {
+    "model_name": "rst-turtle",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/rst-turtle.dts",
+    "source_path": "shapes/rst-turtle.dts",
+    "source_sha256": "2c84d8bf377cb69cef78893ea62cbd514e3111953fd5d86311dfe0eac76e77cc",
+    "source_bytes": 8092,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "rst_toitle.png"
+    ],
+    "triangles": 232,
+    "selected_detail": "detail10"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "polySurface10",
+      "parent": -1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        -23169
+      ],
+      "translation": [
+        0.0,
+        0.03432704880833626,
+        0.40375053882598877
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 10.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/rst_toitle.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/rst_toitle.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "8fb2a664497b48015d2828580c352012a8697432c5b1211e69a60c33f60e601d",
+      "name": "rst_toitle.png",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

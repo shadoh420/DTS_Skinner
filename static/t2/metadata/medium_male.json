@@ -1,0 +1,1237 @@
+{
+  "source": {
+    "model_name": "medium_male",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [
+      "Invalid external animation: shapes/medium_male_dieslump.dsq",
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/medium_male.dts",
+    "source_path": "shapes/medium_male.dts",
+    "source_sha256": "03db4cc5cb23d9edb550160d0ff57cde141b10988b46922309e75b4b686517f8",
+    "source_bytes": 202753,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/medium_male.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 38,
+    "materials": [
+      "base.mmale"
+    ],
+    "triangles": 1637,
+    "selected_detail": "Detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Bip01 Pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        33,
+        22433,
+        7,
+        23882
+      ],
+      "translation": [
+        -8.106465975288302e-05,
+        8.349187737621833e-06,
+        1.2811830043792725
+      ]
+    },
+    {
+      "name": "Bip01 Spine",
+      "parent": 0,
+      "rotation_quat16": [
+        2914,
+        0,
+        160,
+        32636
+      ],
+      "translation": [
+        0.1177375540137291,
+        -0.00011700473260134459,
+        0.006952217780053616
+      ]
+    },
+    {
+      "name": "Bip01 Spine1",
+      "parent": 1,
+      "rotation_quat16": [
+        738,
+        966,
+        4497,
+        32434
+      ],
+      "translation": [
+        0.14918829500675201,
+        -0.0001549309672554955,
+        5.8862378864432685e-06
+      ]
+    },
+    {
+      "name": "Bip01 Spine2",
+      "parent": 2,
+      "rotation_quat16": [
+        3002,
+        -1466,
+        -2379,
+        32509
+      ],
+      "translation": [
+        0.2024623304605484,
+        -0.00016251705528702587,
+        2.9304650524863973e-05
+      ]
+    },
+    {
+      "name": "Bip01 Neck",
+      "parent": 3,
+      "rotation_quat16": [
+        -6498,
+        1750,
+        -2561,
+        31965
+      ],
+      "translation": [
+        0.2098672240972519,
+        -4.8694739234633744e-05,
+        -2.028056769631803e-05
+      ]
+    },
+    {
+      "name": "Bip01 Head",
+      "parent": 4,
+      "rotation_quat16": [
+        -298,
+        193,
+        -426,
+        32762
+      ],
+      "translation": [
+        0.06726419925689697,
+        -2.2273665134520115e-09,
+        -3.184539021372501e-10
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 5,
+      "rotation_quat16": [
+        -325,
+        -23237,
+        715,
+        23088
+      ],
+      "translation": [
+        0.20343191921710968,
+        0.22634384036064148,
+        0.00036534544778987765
+      ]
+    },
+    {
+      "name": "Bip01 L Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        -20767,
+        -7358,
+        -22601,
+        8799
+      ],
+      "translation": [
+        0.01168882381170988,
+        0.032776813954114914,
+        0.07913493365049362
+      ]
+    },
+    {
+      "name": "Bip01 L UpperArm",
+      "parent": 7,
+      "rotation_quat16": [
+        1843,
+        -18671,
+        9388,
+        25169
+      ],
+      "translation": [
+        0.35889101028442383,
+        -9.191262861918403e-09,
+        2.5265386227601994e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Forearm",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        11169,
+        30804
+      ],
+      "translation": [
+        0.395474374294281,
+        -6.257350548821705e-08,
+        4.282422949586362e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Hand",
+      "parent": 9,
+      "rotation_quat16": [
+        -32238,
+        -2237,
+        4443,
+        -3101
+      ],
+      "translation": [
+        0.3635078966617584,
+        5.431887828422077e-08,
+        -2.6589550117250838e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        19808,
+        -3241,
+        -25883,
+        938
+      ],
+      "translation": [
+        -0.011689012870192528,
+        -0.032669685781002045,
+        -0.07913493365049362
+      ]
+    },
+    {
+      "name": "Bip01 R UpperArm",
+      "parent": 11,
+      "rotation_quat16": [
+        13084,
+        17693,
+        -383,
+        24274
+      ],
+      "translation": [
+        0.35889101028442383,
+        -2.1024849417017322e-08,
+        -9.897439667838626e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Forearm",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        0,
+        26483,
+        19294
+      ],
+      "translation": [
+        0.39547425508499146,
+        2.1408371964071193e-08,
+        -4.909134432296014e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Hand",
+      "parent": 13,
+      "rotation_quat16": [
+        -24143,
+        -2601,
+        4714,
+        21489
+      ],
+      "translation": [
+        0.36350780725479126,
+        -7.437230920004367e-08,
+        -8.283255858998473e-09
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 14,
+      "rotation_quat16": [
+        1558,
+        1860,
+        25150,
+        20861
+      ],
+      "translation": [
+        0.19238576292991638,
+        0.0479767769575119,
+        0.0008976885001175106
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": 3,
+      "rotation_quat16": [
+        1001,
+        -23148,
+        -1001,
+        23148
+      ],
+      "translation": [
+        0.1016031801700592,
+        -0.25550147891044617,
+        0.006827034987509251
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 3,
+      "rotation_quat16": [
+        1001,
+        -23148,
+        -1001,
+        23148
+      ],
+      "translation": [
+        0.10160329937934875,
+        -0.25550147891044617,
+        0.006827057804912329
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 3,
+      "rotation_quat16": [
+        -29933,
+        13329,
+        0,
+        0
+      ],
+      "translation": [
+        -0.058000367134809494,
+        -0.22340792417526245,
+        -0.00045199631131254137
+      ]
+    },
+    {
+      "name": "Jetfire145",
+      "parent": 3,
+      "rotation_quat16": [
+        1678,
+        -22964,
+        -3475,
+        23051
+      ],
+      "translation": [
+        -0.06160496920347214,
+        -0.21576841175556183,
+        -0.0005268779350444674
+      ]
+    },
+    {
+      "name": "Light0",
+      "parent": 3,
+      "rotation_quat16": [
+        -345,
+        -22817,
+        -664,
+        23505
+      ],
+      "translation": [
+        0.14650684595108032,
+        0.22472581267356873,
+        0.1904226839542389
+      ]
+    },
+    {
+      "name": "Light1",
+      "parent": 3,
+      "rotation_quat16": [
+        -202,
+        -24114,
+        -584,
+        22176
+      ],
+      "translation": [
+        0.14564001560211182,
+        0.22287577390670776,
+        -0.18844328820705414
+      ]
+    },
+    {
+      "name": "Bip01 L Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -7449,
+        -31579,
+        -3986,
+        -2239
+      ],
+      "translation": [
+        -0.11758126318454742,
+        -0.03429923951625824,
+        0.1847001314163208
+      ]
+    },
+    {
+      "name": "Bip01 L Calf",
+      "parent": 22,
+      "rotation_quat16": [
+        0,
+        0,
+        12529,
+        30276
+      ],
+      "translation": [
+        0.5677634477615356,
+        5.512559653197968e-08,
+        -5.698971072831682e-09
+      ]
+    },
+    {
+      "name": "Bip01 L Foot",
+      "parent": 23,
+      "rotation_quat16": [
+        -432,
+        2159,
+        -4942,
+        32317
+      ],
+      "translation": [
+        0.6592638492584229,
+        1.7092407489371908e-08,
+        -7.076481178813765e-09
+      ]
+    },
+    {
+      "name": "Ski0",
+      "parent": 23,
+      "rotation_quat16": [
+        20545,
+        15188,
+        9824,
+        18009
+      ],
+      "translation": [
+        0.587468683719635,
+        -0.04265119507908821,
+        -0.09904385358095169
+      ]
+    },
+    {
+      "name": "Bip01 R Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -4378,
+        -31958,
+        4247,
+        3885
+      ],
+      "translation": [
+        -0.11789608746767044,
+        0.0346999391913414,
+        -0.19856217503547668
+      ]
+    },
+    {
+      "name": "Bip01 R Calf",
+      "parent": 26,
+      "rotation_quat16": [
+        0,
+        0,
+        13311,
+        29941
+      ],
+      "translation": [
+        0.5677634477615356,
+        -2.0964895597330724e-08,
+        -2.372261054262026e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Foot",
+      "parent": 27,
+      "rotation_quat16": [
+        720,
+        -2215,
+        -8877,
+        31455
+      ],
+      "translation": [
+        0.6592637300491333,
+        -3.504026846457009e-09,
+        -3.121440528275343e-08
+      ]
+    },
+    {
+      "name": "Ski1",
+      "parent": 27,
+      "rotation_quat16": [
+        -10684,
+        -21168,
+        -18895,
+        -12424
+      ],
+      "translation": [
+        0.6008147597312927,
+        -0.036974888294935226,
+        0.09980786591768265
+      ]
+    },
+    {
+      "name": "Unlink",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.3143357235900766e-10,
+        -0.0009243425447493792,
+        9.057227146058722e-08
+      ]
+    },
+    {
+      "name": "Cam",
+      "parent": 30,
+      "rotation_quat16": [
+        22,
+        0,
+        -23186,
+        23152
+      ],
+      "translation": [
+        0.010000009089708328,
+        0.1499999761581421,
+        2.2100000381469727
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 2076
+    },
+    {
+      "name": "detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 1868
+    },
+    {
+      "name": "detail112",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 112.0,
+      "polyCount": 1650
+    },
+    {
+      "name": "detail96",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 96.0,
+      "polyCount": 1428
+    },
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 80.0,
+      "polyCount": 1216
+    },
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 60.0,
+      "polyCount": 1030
+    },
+    {
+      "name": "Detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 30.0,
+      "polyCount": 832
+    },
+    {
+      "name": "Detail18",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 18.0,
+      "polyCount": 639
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": 12.0,
+      "polyCount": 414
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": 6.0,
+      "polyCount": 236
+    },
+    {
+      "name": "Detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": 3.0,
+      "polyCount": 53
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 100,
+      "flags": 32,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 1,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 23,
+      "baseDecalState": 47,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        22
+      ],
+      "frameMatters": [
+        22
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Jetflare"
+    },
+    {
+      "nameIndex": 101,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 1,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 34,
+      "baseDecalState": 47,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [
+    "shapes/medium_male_back.dsq",
+    "shapes/medium_male_celdance.dsq",
+    "shapes/medium_male_celflex.dsq",
+    "shapes/medium_male_celrocky.dsq",
+    "shapes/medium_male_celsalute.dsq",
+    "shapes/medium_male_celtaunt.dsq",
+    "shapes/medium_male_celwave.dsq",
+    "shapes/medium_male_dieback.dsq",
+    "shapes/medium_male_diechest.dsq",
+    "shapes/medium_male_dieforward.dsq",
+    "shapes/medium_male_diehead.dsq",
+    "shapes/medium_male_dieknees.dsq",
+    "shapes/medium_male_dieleglf.dsq",
+    "shapes/medium_male_dielegrt.dsq",
+    "shapes/medium_male_diesidelf.dsq",
+    "shapes/medium_male_diesidert.dsq",
+    "shapes/medium_male_dieslump.dsq",
+    "shapes/medium_male_diespin.dsq",
+    "shapes/medium_male_fall.dsq",
+    "shapes/medium_male_forward.dsq",
+    "shapes/medium_male_head.dsq",
+    "shapes/medium_male_headside.dsq",
+    "shapes/medium_male_idlepda.dsq",
+    "shapes/medium_male_jet.dsq",
+    "shapes/medium_male_jump.dsq",
+    "shapes/medium_male_land.dsq",
+    "shapes/medium_male_lookde.dsq",
+    "shapes/medium_male_lookms.dsq",
+    "shapes/medium_male_looknw.dsq",
+    "shapes/medium_male_looksn.dsq",
+    "shapes/medium_male_recoilde.dsq",
+    "shapes/medium_male_root.dsq",
+    "shapes/medium_male_side.dsq",
+    "shapes/medium_male_sitting.dsq",
+    "shapes/medium_male_ski.dsq",
+    "shapes/medium_male_standjump.dsq",
+    "shapes/medium_male_tauntbest.dsq",
+    "shapes/medium_male_tauntimp.dsq"
+  ],
+  "script_sequence_bindings": [
+    {
+      "index": 0,
+      "path": "shapes/medium_male_root.dsq",
+      "alias": "root",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/medium_male_forward.dsq",
+      "alias": "run",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/medium_male_back.dsq",
+      "alias": "back",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/medium_male_side.dsq",
+      "alias": "side",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/medium_male_lookde.dsq",
+      "alias": "look",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/medium_male_head.dsq",
+      "alias": "head",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/medium_male_fall.dsq",
+      "alias": "fall",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/medium_male_jet.dsq",
+      "alias": "jet",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/medium_male_land.dsq",
+      "alias": "land",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/medium_male_jump.dsq",
+      "alias": "jump",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/medium_male_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/medium_male_headside.dsq",
+      "alias": "headside",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/medium_male_looksn.dsq",
+      "alias": "looksn",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/medium_male_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/medium_male_sitting.dsq",
+      "alias": "sitting",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/medium_male_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/medium_male_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/medium_male_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/medium_male_diesidelf.dsq",
+      "alias": "death4",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/medium_male_diesidert.dsq",
+      "alias": "death5",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/medium_male_dieleglf.dsq",
+      "alias": "death6",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/medium_male_diechest.dsq",
+      "alias": "death7",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/medium_male_dieback.dsq",
+      "alias": "death8",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/medium_male_dieknees.dsq",
+      "alias": "death9",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/medium_male_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/medium_male_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/medium_male_idlepda.dsq",
+      "alias": "pda",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/medium_male_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/medium_male_celwave.dsq",
+      "alias": "cel2",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/medium_male_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/medium_male_tauntimp.dsq",
+      "alias": "cel4",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/medium_male_celdance.dsq",
+      "alias": "cel5",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/medium_male_celflex.dsq",
+      "alias": "cel6",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/medium_male_celtaunt.dsq",
+      "alias": "cel7",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/medium_male_celrocky.dsq",
+      "alias": "cel8",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/medium_male_ski.dsq",
+      "alias": "ski",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 36,
+      "path": "shapes/medium_male_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 37,
+      "path": "shapes/medium_male_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts/medium_male.cs",
+      "source": "base/scripts.vl2:scripts/medium_male.cs"
+    },
+    {
+      "index": 0,
+      "path": "shapes/medium_male_root.dsq",
+      "alias": "root",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/medium_male_forward.dsq",
+      "alias": "run",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/medium_male_back.dsq",
+      "alias": "back",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/medium_male_side.dsq",
+      "alias": "side",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/medium_male_lookde.dsq",
+      "alias": "look",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/medium_male_head.dsq",
+      "alias": "head",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/medium_male_fall.dsq",
+      "alias": "fall",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/medium_male_jet.dsq",
+      "alias": "jet",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/medium_male_land.dsq",
+      "alias": "land",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/medium_male_jump.dsq",
+      "alias": "jump",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/medium_male_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/medium_male_headside.dsq",
+      "alias": "headside",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/medium_male_looksn.dsq",
+      "alias": "looksn",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/medium_male_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/medium_male_sitting.dsq",
+      "alias": "sitting",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/medium_male_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/medium_male_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/medium_male_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/medium_male_diesidelf.dsq",
+      "alias": "death4",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/medium_male_diesidert.dsq",
+      "alias": "death5",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/medium_male_dieleglf.dsq",
+      "alias": "death6",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/medium_male_diechest.dsq",
+      "alias": "death7",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/medium_male_dieback.dsq",
+      "alias": "death8",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/medium_male_dieknees.dsq",
+      "alias": "death9",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/medium_male_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/medium_male_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/medium_male_idlepda.dsq",
+      "alias": "pda",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/medium_male_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/medium_male_celwave.dsq",
+      "alias": "cel2",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/medium_male_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/medium_male_tauntimp.dsq",
+      "alias": "cel4",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/medium_male_celdance.dsq",
+      "alias": "cel5",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/medium_male_celflex.dsq",
+      "alias": "cel6",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/medium_male_celtaunt.dsq",
+      "alias": "cel7",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/medium_male_celrocky.dsq",
+      "alias": "cel8",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/medium_male_ski.dsq",
+      "alias": "ski",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 36,
+      "path": "shapes/medium_male_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    },
+    {
+      "index": 37,
+      "path": "shapes/medium_male_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts_extracted/scripts/medium_male.cs",
+      "source": "loose:base/scripts_extracted/scripts/medium_male.cs"
+    }
+  ],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.mmale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/base.mmale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.mmale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.mmale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Jetfire"
+  ],
+  "empty_finer_details": []
+}

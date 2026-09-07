@@ -1,0 +1,97 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 100,
+      "surface_count": 170
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 55,
+      "surface_count": 120
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 30,
+      "surface_count": 63
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 20,
+      "surface_count": 42
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 16,
+      "surface_count": 34
+    },
+    {
+      "version": 0,
+      "detail_level": 5,
+      "min_pixels": 8,
+      "surface_count": 29
+    }
+  ],
+  "null_surfaces_excluded": 658,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/snowrock.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/snowrock.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/snowrock.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "74b4552a5c3fe238b7c2ff0cbdca01dad3d038cf481be7a54b877eb1cb07ceeb",
+      "name": "ice/snowrock",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/xsnowrock4.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/xsnowrock4.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/xsnowrock4.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "21afe36e37b544cd49f9dfb19769ad81fa15aa87b02ef5b3f25f647d6694b1a1",
+      "name": "ice/xsnowrock4",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_srocka",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/srocka.dif",
+    "source_path": "interiors/srocka.dif",
+    "source_sha256": "872c297032a4b48f93f26ef1a501fc4d6267e0a8f58c9b15ae1664b20096c36b",
+    "source_bytes": 229563,
+    "alternatives": [],
+    "materials": [
+      "ice/snowrock",
+      "ice/xsnowrock4"
+    ],
+    "version": 44,
+    "triangles": 170,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 61
+    }
+  ],
+  "null_surfaces_excluded": 2,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL03C",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal15.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal15.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal15.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL15",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/bd_iflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iflo01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IFLO01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/bd_thresh02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_thresh02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_thresh02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_THRESH02",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_derm_plat2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S5maps.vl2:interiors/rst_derm_plat2.dif",
+    "source_path": "interiors/rst_derm_plat2.dif",
+    "source_sha256": "ef33e221d67b44205ea4ae5a48faeec6612398c285403cbdcf32acccb51ebab0",
+    "source_bytes": 20203,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_EWAL03C",
+      "badlands/BD_EWAL15",
+      "badlands/BD_IFLO01",
+      "badlands/BD_THRESH02"
+    ],
+    "version": 44,
+    "triangles": 126,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

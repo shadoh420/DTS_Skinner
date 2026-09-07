@@ -1,0 +1,73 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 32,
+      "surface_count": 86
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 16,
+      "surface_count": 66
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 8,
+      "surface_count": 34
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 5,
+      "surface_count": 24
+    }
+  ],
+  "null_surfaces_excluded": 294,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_eterrain02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eterrain02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eterrain02b.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "67999b1cfbd403289da95d90f0fb45d3181831088fef9c67d18408f3c4528715",
+      "name": "lush/be_eterrain02b",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_brock6",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/brock6.dif",
+    "source_path": "interiors/brock6.dif",
+    "source_sha256": "b1d63521721e526166b57acdb0b96d353010deb1b2a695b0daeb37b8a18832b8",
+    "source_bytes": 102619,
+    "alternatives": [],
+    "materials": [
+      "lush/be_eterrain02b"
+    ],
+    "version": 44,
+    "triangles": 86,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

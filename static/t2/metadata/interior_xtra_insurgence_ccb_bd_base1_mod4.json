@@ -1,0 +1,65 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 5
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_ebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EBOR02",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ispe01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ispe01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ispe01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ISPE01",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_insurgence_ccb_bd_base1_mod4",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_Insurgence_ccb_bd_base1_mod4.dif",
+    "source_path": "interiors/xtra_insurgence_ccb_bd_base1_mod4.dif",
+    "source_sha256": "ac4f3ddad34cb45afa87891ce74869ac0092e5aff298943fbde761a8a14f28d3",
+    "source_bytes": 4502,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_EBOR02",
+      "badlands/BD_ISPE01"
+    ],
+    "version": 44,
+    "triangles": 10,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

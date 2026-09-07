@@ -1,0 +1,285 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 521
+    }
+  ],
+  "null_surfaces_excluded": 143,
+  "degenerate_triangles_skipped": 78,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal07.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal07.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL07",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_eflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_eflo02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_eflo02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EFLO02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal04a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal04a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal04a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL04A",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal03a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal03a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal03a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL03A",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_iprwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_iprwal01.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_iprwal01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPRWAL01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor01b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR01B",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lush/be_icowal02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icowal02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icowal02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOWAL02A",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor01e.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor01e.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor01e.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR01E",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02A",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/lush/be_ichute02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ichute02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ichute02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICHUTE02",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal09b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal09b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal09b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL09B",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/lush/be_itec01c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itec01c.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itec01c.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEC01C",
+      "original_slot": 16
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal05a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal05a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal05a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL05A",
+      "original_slot": 17
+    },
+    {
+      "virtual_path": "textures/lush/be_icolig.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icolig.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icolig.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICOLIG",
+      "original_slot": 18
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor03.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR03",
+      "original_slot": 19
+    },
+    {
+      "virtual_path": "textures/lush/be_ipipe01_iwal.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ipipe01_iwal.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ipipe01_iwal.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IPIPE01_IWAL",
+      "original_slot": 20
+    },
+    {
+      "virtual_path": "textures/lush/be_ihawal04a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ihawal04a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ihawal04a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_IHAWAL04A",
+      "original_slot": 21
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02",
+      "original_slot": 22
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal06.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal06.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal06.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL06",
+      "original_slot": 23
+    },
+    {
+      "virtual_path": "textures/lush/be_ebor01d.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ebor01d.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ebor01d.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EBOR01D",
+      "original_slot": 24
+    },
+    {
+      "virtual_path": "textures/lush/be_icei03b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_icei03b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_icei03b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ICEI03B",
+      "original_slot": 25
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_metaltanks_bridge_tunnel",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_metaltanks_bridge_tunnel.dif",
+    "source_path": "interiors/xtra_metaltanks_bridge_tunnel.dif",
+    "source_sha256": "a50a02368b0e0dbb995d08fca8493a73c552e80814c8b369af614ce65aea7f4a",
+    "source_bytes": 120485,
+    "alternatives": [],
+    "materials": [
+      "lush/BE_EWAL07",
+      "lush/BE_EFLO02",
+      "lush/BE_EWAL04A",
+      "lush/BE_EWAL03A",
+      "lush/BE_IPRWAL01",
+      "lush/BE_EBOR01B",
+      "lush/BE_ICOWAL02A",
+      "lush/BE_EWAL01B",
+      "lush/BE_EBOR01E",
+      "lush/BE_ITEBOR02A",
+      "lush/BE_ICHUTE02",
+      "lush/BE_EWAL09B",
+      "lush/BE_ITEC01C",
+      "lush/BE_EWAL05A",
+      "lush/BE_ICOLIG",
+      "lush/BE_EBOR03",
+      "lush/BE_IPIPE01_IWAL",
+      "lush/BE_IHAWAL04A",
+      "lush/BE_ITEBOR02",
+      "lush/BE_EWAL06",
+      "lush/BE_EBOR01D",
+      "lush/BE_ICEI03B"
+    ],
+    "version": 44,
+    "triangles": 1252,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

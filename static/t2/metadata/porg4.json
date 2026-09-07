@@ -1,0 +1,102 @@
+{
+  "source": {
+    "model_name": "porg4",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/porg4.dts",
+    "source_path": "shapes/porg4.dts",
+    "source_sha256": "148592b8ac9cf0493b58d266f74c3398a69ec3b7de980a56f1c57f2de54e2361",
+    "source_bytes": 10341,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/porg4.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "porg4"
+    ],
+    "triangles": 852,
+    "selected_detail": "Detail8"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4009653925895691,
+        -0.19851073622703552,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "leaves8",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5539485216140747,
+        -0.001031249761581421,
+        -0.11771310865879059
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 8.0,
+      "polyCount": 640
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/porg4.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/porg4.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/porg4.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "porg4",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

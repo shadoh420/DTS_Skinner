@@ -1,0 +1,831 @@
+{
+  "source": {
+    "model_name": "vehicle_land_assault_wreck",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_land_assault_wreck.dts",
+    "source_path": "shapes/vehicle_land_assault_wreck.dts",
+    "source_sha256": "948fd8e8d3efe763f0e189f3537cdbd1529f737b44c41c65b2685553f38d871e",
+    "source_bytes": 148229,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_land_assault_wreck.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "Vehicle_grav_tank_bodyMain",
+      "vehicle_grav_tank_bodyside1",
+      "vehicle_grav_tank_bodyside2",
+      "turret_assaultTank"
+    ],
+    "triangles": 953,
+    "selected_detail": "Detail_128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.7129851193640206e-08,
+        0.752837061882019,
+        -1.3302407264709473
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "BodyMain_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0012252330780029297,
+        0.28372740745544434,
+        2.688930034637451
+      ]
+    },
+    {
+      "name": "Smoke_node01",
+      "parent": 2,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.0012252330780029297,
+        3.7040657997131348,
+        -1.4137048721313477
+      ]
+    },
+    {
+      "name": "TrimL_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        3.565694570541382,
+        -3.0301947593688965,
+        1.1417336463928223
+      ]
+    },
+    {
+      "name": "TrimR_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.565694570541382,
+        -3.0301947593688965,
+        1.1417336463928223
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.7001884579658508,
+        2.9174256324768066,
+        2.897859573364258
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6608161926269531,
+        -0.2852231562137604,
+        3.145570755004883
+      ]
+    },
+    {
+      "name": "Mass",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.7001884579658508,
+        2.8805489540100098,
+        4.104259967803955
+      ]
+    },
+    {
+      "name": "Mount10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1382874021137468e-07,
+        -2.253000020980835,
+        4.365314960479736
+      ]
+    },
+    {
+      "name": "LOScol-9",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "LOScol-10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.7129851193640206e-08,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "BodyL_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -2.2348740100860596,
+        -0.35893869400024414,
+        2.583467483520508
+      ]
+    },
+    {
+      "name": "BodyR_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.2348740100860596,
+        -0.35893869400024414,
+        2.583467483520508
+      ]
+    },
+    {
+      "name": "LOScol-12",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.7541069984436035,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "LOScol-11",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        4.7541069984436035,
+        -0.752837061882019,
+        1.3302407264709473
+      ]
+    },
+    {
+      "name": "Headlight_node01",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.288918972015381,
+        5.013729095458984,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "Headlight_node02",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7220916748046875,
+        5.013729095458984,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "Headlight_node03",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.7358722686767578,
+        5.013728618621826,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "Headlight_node04",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.2978739738464355,
+        5.013728618621826,
+        2.6221694946289062
+      ]
+    },
+    {
+      "name": "DumExtendL",
+      "parent": 1,
+      "rotation_quat16": [
+        3227,
+        0,
+        -32607,
+        -6
+      ],
+      "translation": [
+        -2.3922555446624756,
+        -2.6624107360839844,
+        4.374809265136719
+      ]
+    },
+    {
+      "name": "ExtendL128",
+      "parent": 22,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        0.19593606889247894,
+        -2.303410053253174,
+        -1.7876158952713013
+      ]
+    },
+    {
+      "name": "DumExtendR",
+      "parent": 1,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        -3227
+      ],
+      "translation": [
+        2.3922555446624756,
+        -2.6624107360839844,
+        4.374809265136719
+      ]
+    },
+    {
+      "name": "ExtendR128",
+      "parent": 24,
+      "rotation_quat16": [
+        -6,
+        -32607,
+        0,
+        3227
+      ],
+      "translation": [
+        -0.19593623280525208,
+        2.303410291671753,
+        1.7876163721084595
+      ]
+    },
+    {
+      "name": "DumWingL",
+      "parent": 1,
+      "rotation_quat16": [
+        -21125,
+        -21125,
+        -9516,
+        9516
+      ],
+      "translation": [
+        -3.3164587020874023,
+        -2.0560803413391113,
+        3.3270952701568604
+      ]
+    },
+    {
+      "name": "WingL128",
+      "parent": 26,
+      "rotation_quat16": [
+        -21406,
+        -21406,
+        -8866,
+        -8866
+      ],
+      "translation": [
+        -0.05687156319618225,
+        -1.9306707382202148,
+        1.2108545303344727
+      ]
+    },
+    {
+      "name": "DumWingR",
+      "parent": 1,
+      "rotation_quat16": [
+        8866,
+        -8866,
+        21406,
+        21406
+      ],
+      "translation": [
+        3.3164587020874023,
+        -2.0560803413391113,
+        3.3270952701568604
+      ]
+    },
+    {
+      "name": "WingR128",
+      "parent": 28,
+      "rotation_quat16": [
+        -21406,
+        -21406,
+        -8866,
+        -8866
+      ],
+      "translation": [
+        0.056871455162763596,
+        1.9306702613830566,
+        -1.2108546495437622
+      ]
+    },
+    {
+      "name": "Smoke_node02",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.484971523284912,
+        -5.242506980895996,
+        3.0869874954223633
+      ]
+    },
+    {
+      "name": "Smoke_node03",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.5043537616729736,
+        -5.4460930824279785,
+        3.0119004249572754
+      ]
+    },
+    {
+      "name": "Base128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -5125,
+        32363
+      ],
+      "translation": [
+        -2.2615689942995232e-07,
+        -2.7131543159484863,
+        4.862057685852051
+      ]
+    },
+    {
+      "name": "chaingunBarrel128",
+      "parent": 32,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.6174454689025879,
+        1.6059956550598145,
+        -0.06926751136779785
+      ]
+    },
+    {
+      "name": "chaingunCollar128",
+      "parent": 32,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.6174454689025879,
+        1.6059956550598145,
+        -0.06926751136779785
+      ]
+    },
+    {
+      "name": "chaingunCyl128",
+      "parent": 32,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6174456477165222,
+        1.1849379539489746,
+        -0.11244654655456543
+      ]
+    },
+    {
+      "name": "mortarBarrel128",
+      "parent": 32,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.481921911239624,
+        1.3977415561676025,
+        -0.02467203140258789
+      ]
+    },
+    {
+      "name": "mortarCollarA128",
+      "parent": 32,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.481921911239624,
+        1.3977415561676025,
+        -0.02467203140258789
+      ]
+    },
+    {
+      "name": "mortarCollarB128",
+      "parent": 32,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.481921911239624,
+        1.3977415561676025,
+        -0.02467203140258789
+      ]
+    },
+    {
+      "name": "mortarCyl128",
+      "parent": 32,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4819217920303345,
+        1.0895309448242188,
+        -0.0691995620727539
+      ]
+    },
+    {
+      "name": "Col-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -4701,
+        32427
+      ],
+      "translation": [
+        -0.41263991594314575,
+        -1.3200759887695312,
+        3.942815065383911
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 1074
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 844
+    },
+    {
+      "name": "Detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 40.0,
+      "polyCount": 714
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 32.0,
+      "polyCount": 499
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 12.0,
+      "polyCount": 386
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 8.0,
+      "polyCount": 277
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 37
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -2.0,
+      "polyCount": 12
+    },
+    {
+      "name": "LOS-9",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -9.0,
+      "polyCount": 32
+    },
+    {
+      "name": "LOS-10",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": -10.0,
+      "polyCount": 12
+    },
+    {
+      "name": "LOS-11",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": -11.0,
+      "polyCount": 12
+    },
+    {
+      "name": "LOS-12",
+      "subShapeNum": 0,
+      "objectDetailNum": 11,
+      "size": -12.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 120,
+      "flags": 0,
+      "numKeyframes": 10,
+      "duration": 0.3000010848045349,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 19,
+      "baseDecalState": 53,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 121,
+      "flags": 0,
+      "numKeyframes": 49,
+      "duration": 1.6000009775161743,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 19,
+      "baseDecalState": 583,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "activate"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodymain.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_tank_bodyMain.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_tank_bodyMain.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_tank_bodyMain",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside1",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_tank_bodyside2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_grav_tank_bodyside2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_grav_tank_bodyside2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_grav_tank_bodyside2",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/turret_assaulttank.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_assaultTank.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_assaultTank.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_assaultTank",
+      "original_slot": 3
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

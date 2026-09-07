@@ -1,0 +1,201 @@
+{
+  "source": {
+    "model_name": "borg11",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/Classic_maps_v1.vl2:shapes/borg11.dts",
+    "source_path": "shapes/borg11.dts",
+    "source_sha256": "b17aba6cf295decd3141a962f940a1541d035cda5268d48b37f28db310054f7f",
+    "source_bytes": 48097,
+    "version": 16,
+    "alternatives": [],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "Oldwood",
+      "LushMoss"
+    ],
+    "triangles": 325,
+    "selected_detail": "detail 256"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Trunk-1",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -31335,
+        -9580
+      ],
+      "translation": [
+        -0.4300205111503601,
+        1.8871397972106934,
+        1.8714163303375244
+      ]
+    },
+    {
+      "name": "moss 256",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -31335,
+        -9580
+      ],
+      "translation": [
+        -0.430020272731781,
+        1.8871397972106934,
+        1.8714163303375244
+      ]
+    },
+    {
+      "name": "trunk 256",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -31335,
+        -9580
+      ],
+      "translation": [
+        -0.430020272731781,
+        1.8871397972106934,
+        1.8714163303375244
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail 256",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 256.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 64",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 64.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 32",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 32.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 16",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 16.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 8",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 8.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 1.0,
+      "polyCount": 0
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 13,
+      "_unknown0": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333433344960213,
+      "flags": 0,
+      "cyclic": false,
+      "_scalars": [
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        3,
+        1,
+        0,
+        2,
+        1,
+        0
+      ],
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 3,
+      "baseObjectState": 2,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "baseTranslation": 3,
+      "baseScale": 0,
+      "iflMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "name": "ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/oldwood.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Oldwood.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Oldwood.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Oldwood",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/lushmoss.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/LushMoss.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/LushMoss.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "LushMoss",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,1143 @@
+{
+  "source": {
+    "model_name": "vehicle_air_bomber",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "12 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_air_bomber.dts",
+    "source_path": "shapes/vehicle_air_bomber.dts",
+    "source_sha256": "d68b3e8a2e8baf60b7928c46e91f0b1e4dbe7216cbfaa9c6eb2b57a007478561",
+    "source_bytes": 238522,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_air_bomber.dts"
+    ],
+    "sequences": 6,
+    "external_sequences": 0,
+    "materials": [
+      "vehicle_air_bomber1",
+      "vehicle_air_bomber2",
+      "vehicle_air_bomber3",
+      "vehicle_air_bomber1",
+      "vehicle_air_bomber3"
+    ],
+    "triangles": 1193,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.330548338373445e-24,
+        1.2907138113860128e-07,
+        -2.9528090953826904
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Fuselage128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Carriage128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "EngineL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ShoulderL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ThrusterBL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ThrusterMainL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "EngineR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ShoulderR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ThrusterMainR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ThrusterBR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Hull-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        2.9528090953826904
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.103832343891554e-07,
+        4.637939453125,
+        3.5360591411590576
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.0205963835451257e-07,
+        4.622584819793701,
+        4.501942157745361
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1769885333023922e-07,
+        2.5712890625,
+        3.4920895099639893
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.4613468124480278e-07,
+        -3.4645185470581055,
+        5.198493003845215
+      ]
+    },
+    {
+      "name": "Contrail0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -5.041042327880859,
+        -2.6790549755096436,
+        2.611729621887207
+      ]
+    },
+    {
+      "name": "Contrail2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        5.0375189781188965,
+        -2.6790552139282227,
+        2.612856388092041
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -3.6903281211853027,
+        -6.351128578186035,
+        3.1282052993774414
+      ]
+    },
+    {
+      "name": "Jetnozzle1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        3.6936793327331543,
+        -6.351128578186035,
+        3.1282052993774414
+      ]
+    },
+    {
+      "name": "Jetnozzle2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        21062,
+        -25100,
+        0
+      ],
+      "translation": [
+        -3.5393009185791016,
+        -3.096160411834717,
+        0.8264131546020508
+      ]
+    },
+    {
+      "name": "Jetnozzle3",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        21062,
+        -25100,
+        0
+      ],
+      "translation": [
+        3.543149471282959,
+        -3.096160411834717,
+        0.8264131546020508
+      ]
+    },
+    {
+      "name": "Jetnozzle4",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.8914711475372314,
+        3.920468807220459,
+        2.324389934539795
+      ]
+    },
+    {
+      "name": "Jetnozzle5",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        -0.8925952315330505,
+        3.920468807220459,
+        2.324389934539795
+      ]
+    },
+    {
+      "name": "Jetnozzle6",
+      "parent": 1,
+      "rotation_quat16": [
+        3024,
+        3024,
+        -22971,
+        22971
+      ],
+      "translation": [
+        -4.781554698944092,
+        -4.263544082641602,
+        1.918772578239441
+      ]
+    },
+    {
+      "name": "Jetnozzle7",
+      "parent": 1,
+      "rotation_quat16": [
+        -22971,
+        22971,
+        3024,
+        3024
+      ],
+      "translation": [
+        4.781554222106934,
+        -4.263544082641602,
+        1.918772578239441
+      ]
+    },
+    {
+      "name": "BurnerL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "BurnerR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mount10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.009561657905578613,
+        1.6337779760360718,
+        2.3057336807250977
+      ]
+    },
+    {
+      "name": "Mount9",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.009561657905578613,
+        -2.848179817199707,
+        2.3057336807250977
+      ]
+    },
+    {
+      "name": "LowerBurnerL128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.5450820922851562,
+        -3.205772876739502,
+        1.0924997329711914
+      ]
+    },
+    {
+      "name": "LowerBurnerR128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        3.5450820922851562,
+        -3.205772876739502,
+        1.0924997329711914
+      ]
+    },
+    {
+      "name": "JetTrail_L_Bot_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Flare_L_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -7.62939453125e-06,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "FlareLMB128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.926849842071533,
+        -6.3663225173950195,
+        0.0
+      ]
+    },
+    {
+      "name": "FlareLBB128",
+      "parent": 1,
+      "rotation_quat16": [
+        -18085,
+        0,
+        0,
+        27323
+      ],
+      "translation": [
+        -5.947979927062988,
+        -0.34639835357666016,
+        -0.37491774559020996
+      ]
+    },
+    {
+      "name": "Smoke_node01",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7402458190917969,
+        -5.04782772064209,
+        3.2497684955596924
+      ]
+    },
+    {
+      "name": "Smoke_node02",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        1.7402458190917969,
+        -4.7023234367370605,
+        3.619332790374756
+      ]
+    },
+    {
+      "name": "Smoke_node03",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        3.418530225753784,
+        -3.2395567893981934,
+        5.0531415939331055
+      ]
+    },
+    {
+      "name": "Smoke_node04",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.418530225753784,
+        -2.1832611560821533,
+        4.81085729598999
+      ]
+    },
+    {
+      "name": "JetTrail_R2_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.018352031707763672,
+        -1.9073486328125e-06,
+        -4.76837158203125e-07
+      ]
+    },
+    {
+      "name": "JetTrail_R_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.004459857940673828,
+        -1.9073486328125e-06,
+        -4.76837158203125e-07
+      ]
+    },
+    {
+      "name": "JetTrail_R_Bot_128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.0178835391998291,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "FlareRMB128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.275477647781372,
+        -6.3663225173950195,
+        0.0
+      ]
+    },
+    {
+      "name": "Flare_R_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.077145099639893,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "FlareRBB128",
+      "parent": 1,
+      "rotation_quat16": [
+        -18085,
+        0,
+        0,
+        27323
+      ],
+      "translation": [
+        1.1363043785095215,
+        -0.34639835357666016,
+        -0.37491774559020996
+      ]
+    },
+    {
+      "name": "JetTrail_L2_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.003422260284423828,
+        -1.9073486328125e-06,
+        -4.76837158203125e-07
+      ]
+    },
+    {
+      "name": "JetTrail_L_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.003422260284423828,
+        -1.9073486328125e-06,
+        -4.76837158203125e-07
+      ]
+    },
+    {
+      "name": "Mass",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.330548338373445e-24,
+        -1.2907138113860128e-07,
+        2.9528090953826904
+      ]
+    },
+    {
+      "name": "LOScol-10",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        2.9528090953826904
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 1683
+    },
+    {
+      "name": "detail112",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 112.0,
+      "polyCount": 1467
+    },
+    {
+      "name": "detail96",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 96.0,
+      "polyCount": 1179
+    },
+    {
+      "name": "detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 80.0,
+      "polyCount": 965
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 64.0,
+      "polyCount": 542
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 32.0,
+      "polyCount": 362
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 8.0,
+      "polyCount": 179
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 2.0,
+      "polyCount": 72
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -1.0,
+      "polyCount": 32
+    },
+    {
+      "name": "LOS-9",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": -9.0,
+      "polyCount": 12
+    },
+    {
+      "name": "LOS-10",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": -10.0,
+      "polyCount": 25
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 145,
+      "flags": 16,
+      "numKeyframes": 5,
+      "duration": 0.16666750609874725,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 28,
+      "baseDecalState": 54,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 146,
+      "flags": 16,
+      "numKeyframes": 6,
+      "duration": 0.2000010460615158,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 28,
+      "baseDecalState": 54,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        20,
+        21,
+        24,
+        25,
+        26,
+        27
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "MaintainBack"
+    },
+    {
+      "nameIndex": 147,
+      "flags": 8,
+      "numKeyframes": 22,
+      "duration": 0.7000010013580322,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 64,
+      "baseDecalState": 54,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        20,
+        21,
+        24,
+        25,
+        26,
+        27
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [
+        16,
+        18,
+        24,
+        25,
+        26,
+        27
+      ],
+      "cyclic": false,
+      "name": "ActivateBack"
+    },
+    {
+      "nameIndex": 148,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333345055580139,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 240,
+      "baseDecalState": 54,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 149,
+      "flags": 8,
+      "numKeyframes": 22,
+      "duration": 0.700001060962677,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 240,
+      "baseDecalState": 648,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        16,
+        17,
+        18,
+        19,
+        22,
+        23
+      ],
+      "frameMatters": [
+        17,
+        19
+      ],
+      "matFrameMatters": [
+        16,
+        18
+      ],
+      "cyclic": false,
+      "name": "ActivateBot"
+    },
+    {
+      "nameIndex": 150,
+      "flags": 16,
+      "numKeyframes": 6,
+      "duration": 0.2000008076429367,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 372,
+      "baseDecalState": 648,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        16,
+        17,
+        18,
+        19,
+        22,
+        23
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "MaintainBot"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    144,
+    5,
+    8,
+    8,
+    1
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_air_bomber1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_bomber1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_bomber1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_bomber1",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_bomber2.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_bomber2.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_bomber2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_bomber2",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_bomber3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_bomber3.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_bomber3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_bomber3",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_bomber1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_bomber1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_bomber1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_bomber1",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_air_bomber3.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vehicle_air_bomber3.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vehicle_air_bomber3.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vehicle_air_bomber3",
+      "original_slot": 4
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "FlareLBB",
+    "FlareLMB",
+    "FlareRBB",
+    "FlareRMB",
+    "Flare_L_",
+    "Flare_R_",
+    "JetTrail_L2_",
+    "JetTrail_L_",
+    "JetTrail_L_Bot_",
+    "JetTrail_R2_",
+    "JetTrail_R_",
+    "JetTrail_R_Bot_"
+  ],
+  "empty_finer_details": []
+}

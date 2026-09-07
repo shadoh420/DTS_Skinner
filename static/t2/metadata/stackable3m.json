@@ -1,0 +1,152 @@
+{
+  "source": {
+    "model_name": "stackable3m",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/stackable3m.dts",
+    "source_path": "shapes/stackable3m.dts",
+    "source_sha256": "a126c64572f4229036c6bce2879c78a8de60e51d160338817d5802ce01d0e7ba",
+    "source_bytes": 7607,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/stackable3m.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "stackable3m"
+    ],
+    "triangles": 48,
+    "selected_detail": "Detail_60"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "StackA_60",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_60",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 60.0,
+      "polyCount": 48
+    },
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 40.0,
+      "polyCount": 48
+    },
+    {
+      "name": "Detail_30",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 30.0,
+      "polyCount": 48
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 48
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 32
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/stackable3m.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/stackable3m.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/stackable3m.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "stackable3m",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

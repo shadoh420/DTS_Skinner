@@ -1,0 +1,156 @@
+{
+  "source": {
+    "model_name": "ammo_grenade",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/ammo_grenade.dts",
+    "source_path": "shapes/ammo_grenade.dts",
+    "source_sha256": "a3c8299c24481a8160df3626c83ec74276f37960da062b9f9b6ef184b774bf63",
+    "source_bytes": 26913,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/ammo_grenade.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "ammo_grenade",
+      "grenade_projectile"
+    ],
+    "triangles": 354,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.05215699225664139
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Case40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.11246838420629501
+      ]
+    },
+    {
+      "name": "Grenade40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        12539,
+        30272
+      ],
+      "translation": [
+        -0.0012427085312083364,
+        0.036371853202581406,
+        0.11844868212938309
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 405
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 405
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 405
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 405
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 34
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/ammo_grenade.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/ammo_grenade.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/ammo_grenade.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ammo_grenade",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/grenade_projectile.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/grenade_projectile.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/grenade_projectile.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "grenade_projectile",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

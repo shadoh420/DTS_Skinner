@@ -1,0 +1,84 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 128,
+      "surface_count": 669
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 64,
+      "surface_count": 621
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 32,
+      "surface_count": 491
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 16,
+      "surface_count": 211
+    },
+    {
+      "version": 0,
+      "detail_level": 4,
+      "min_pixels": 13,
+      "surface_count": 101
+    },
+    {
+      "version": 0,
+      "detail_level": 5,
+      "min_pixels": 8,
+      "surface_count": 18
+    }
+  ],
+  "null_surfaces_excluded": 1498,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/lavarock03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/lavarock03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/lavarock03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/lavarock03",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_dspir4",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/dspir4.dif",
+    "source_path": "interiors/dspir4.dif",
+    "source_sha256": "d6643833917139f8830a371d3b6a79f11bc132e92b9d868adcca4a8b9f6b5429",
+    "source_bytes": 632019,
+    "alternatives": [],
+    "materials": [
+      "lava/lavarock03"
+    ],
+    "version": 44,
+    "triangles": 1411,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

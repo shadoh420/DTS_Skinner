@@ -1,0 +1,294 @@
+{
+  "source": {
+    "model_name": "statue_hmale",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/statue_hmale.dts",
+    "source_path": "shapes/statue_hmale.dts",
+    "source_sha256": "b8fbe43fe59ac18e61577d0c320ff8db48aa19c11805610b8510eaa6ef81fabf",
+    "source_bytes": 30212,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/statue_hmale.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "statue_HMale"
+    ],
+    "triangles": 359,
+    "selected_detail": "detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "lfoot",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -1572,
+        32729
+      ],
+      "translation": [
+        -0.22292277216911316,
+        -0.06368827819824219,
+        0.12107627093791962
+      ]
+    },
+    {
+      "name": "lleg",
+      "parent": -1,
+      "rotation_quat16": [
+        2412,
+        671,
+        -4157,
+        32405
+      ],
+      "translation": [
+        -0.24786530435085297,
+        -0.24138805270195007,
+        0.4643336236476898
+      ]
+    },
+    {
+      "name": "lthigh",
+      "parent": -1,
+      "rotation_quat16": [
+        -3829,
+        1918,
+        -3601,
+        32285
+      ],
+      "translation": [
+        -0.17213174700737,
+        -0.18287916481494904,
+        1.19711434841156
+      ]
+    },
+    {
+      "name": "rfoot",
+      "parent": -1,
+      "rotation_quat16": [
+        -29718,
+        11304,
+        1204,
+        7827
+      ],
+      "translation": [
+        0.5964342951774597,
+        -1.1404814720153809,
+        0.37221577763557434
+      ]
+    },
+    {
+      "name": "rleg",
+      "parent": -1,
+      "rotation_quat16": [
+        -29932,
+        8397,
+        -2445,
+        10059
+      ],
+      "translation": [
+        0.5307680368423462,
+        -1.2222731113433838,
+        0.7209727168083191
+      ]
+    },
+    {
+      "name": "rthigh",
+      "parent": -1,
+      "rotation_quat16": [
+        -31880,
+        7080,
+        -2313,
+        1356
+      ],
+      "translation": [
+        0.45094555616378784,
+        -0.7598477602005005,
+        1.25871741771698
+      ]
+    },
+    {
+      "name": "head",
+      "parent": -1,
+      "rotation_quat16": [
+        -424,
+        -1199,
+        -4399,
+        32445
+      ],
+      "translation": [
+        0.008870268240571022,
+        -0.061354395002126694,
+        2.474903106689453
+      ]
+    },
+    {
+      "name": "larm",
+      "parent": -1,
+      "rotation_quat16": [
+        -16107,
+        -77,
+        8133,
+        27350
+      ],
+      "translation": [
+        -0.1512630581855774,
+        0.8265668749809265,
+        2.050610065460205
+      ]
+    },
+    {
+      "name": "lshoulder",
+      "parent": -1,
+      "rotation_quat16": [
+        3270,
+        2594,
+        56,
+        32499
+      ],
+      "translation": [
+        -0.25136125087738037,
+        -0.6999655961990356,
+        2.355635166168213
+      ]
+    },
+    {
+      "name": "rarm",
+      "parent": -1,
+      "rotation_quat16": [
+        -32457,
+        -1797,
+        -3756,
+        -1684
+      ],
+      "translation": [
+        0.7615110874176025,
+        -1.8316890001296997,
+        1.6764183044433594
+      ]
+    },
+    {
+      "name": "rshoulder",
+      "parent": -1,
+      "rotation_quat16": [
+        -31755,
+        5398,
+        -981,
+        5928
+      ],
+      "translation": [
+        0.4094720780849457,
+        -1.9141390323638916,
+        2.350083351135254
+      ]
+    },
+    {
+      "name": "torso",
+      "parent": -1,
+      "rotation_quat16": [
+        -4111,
+        703,
+        7852,
+        31537
+      ],
+      "translation": [
+        0.21335482597351074,
+        0.21333497762680054,
+        2.2432467937469482
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.001588151790201664,
+        -0.008852183818817139,
+        -1.3605222702026367
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 451
+    },
+    {
+      "name": "detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 80.0,
+      "polyCount": 373
+    },
+    {
+      "name": "detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 50.0,
+      "polyCount": 331
+    },
+    {
+      "name": "detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 30.0,
+      "polyCount": 228
+    },
+    {
+      "name": "detail15",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 15.0,
+      "polyCount": 116
+    },
+    {
+      "name": "detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 3.0,
+      "polyCount": 25
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/statue_hmale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/statue_HMale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/statue_HMale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "statue_HMale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

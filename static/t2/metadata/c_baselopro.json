@@ -1,0 +1,150 @@
+{
+  "source": {
+    "model_name": "c_baselopro",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "Missing texture: C_BaseLoPro (No matching source image or frame list)"
+    ],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/C_BaseLoPro.dts",
+    "source_path": "shapes/c_baselopro.dts",
+    "source_sha256": "3b4616f4d361cf9f5751876617e6cdf4e0724a486a1617e8b4744e723cb61614",
+    "source_bytes": 96893,
+    "version": 24,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "C_BaseLoPro"
+    ],
+    "triangles": 1018,
+    "selected_detail": "Detail-1"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Exp-Catch-Root",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "JetNozzle1",
+      "parent": -1,
+      "rotation_quat16": [
+        32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        1.5745333433151245,
+        -6.291391849517822,
+        2.2541396617889404
+      ]
+    },
+    {
+      "name": "JetNozzle0",
+      "parent": -1,
+      "rotation_quat16": [
+        32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -1.5338002443313599,
+        -6.291391849517822,
+        2.2541396617889404
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7439943552017212,
+        2.267616033554077,
+        1.718796730041504
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.05544652044773102,
+        -1.8075841665267944,
+        3.6819512844085693
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.7560641765594482,
+        2.2676150798797607,
+        1.718796730041504
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 1018
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 40
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "reason": "No matching source image or frame list",
+      "material": "C_BaseLoPro",
+      "name": "C_BaseLoPro",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

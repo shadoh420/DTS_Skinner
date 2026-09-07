@@ -1,0 +1,345 @@
+{
+  "source": {
+    "model_name": "pack_upgrade_sensorjammer",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "3 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_upgrade_sensorjammer.dts",
+    "source_path": "shapes/pack_upgrade_sensorjammer.dts",
+    "source_sha256": "6d3f296243740bbc393242e757a3ef2558cdc07ed40f6b8bb630eea2bfe9d792",
+    "source_bytes": 31673,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_upgrade_sensorjammer.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "pack_senjam"
+    ],
+    "triangles": 204,
+    "selected_detail": "Detail_32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.033821772783994675,
+        0.24791261553764343
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.469249414995602e-10,
+        0.17818967998027802,
+        -0.027455881237983704
+      ]
+    },
+    {
+      "name": "Mounts32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.276633262634277e-06,
+        0.10099869221448898,
+        -0.016501516103744507
+      ]
+    },
+    {
+      "name": "Antenna32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.12574392557144165,
+        0.02785208635032177,
+        0.17496168613433838
+      ]
+    },
+    {
+      "name": "AntennaInbetween32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.12574392557144165,
+        0.02785208635032177,
+        0.13811376690864563
+      ]
+    },
+    {
+      "name": "Antenna_mount32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.12574392557144165,
+        0.02785208635032177,
+        0.1671420931816101
+      ]
+    },
+    {
+      "name": "Body32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.010806865990161896,
+        0.02785208635032177,
+        -0.20659594237804413
+      ]
+    },
+    {
+      "name": "Light_mountA32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.037074726074934006,
+        -0.016918661072850227,
+        0.102541983127594
+      ]
+    },
+    {
+      "name": "Light_mountB32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.13013842701911926,
+        -0.016918661072850227,
+        0.102541983127594
+      ]
+    },
+    {
+      "name": "LightA32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.03741562366485596,
+        -0.030359039083123207,
+        0.11713603138923645
+      ]
+    },
+    {
+      "name": "LightB32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.1304793357849121,
+        -0.030359039083123207,
+        0.11713603138923645
+      ]
+    },
+    {
+      "name": "LightAON32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.03741562366485596,
+        -0.030359039083123207,
+        0.11713603138923645
+      ]
+    },
+    {
+      "name": "AntennaON32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.12574392557144165,
+        0.02785208635032177,
+        0.17496168613433838
+      ]
+    },
+    {
+      "name": "LightBON32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.1304793357849121,
+        -0.030359039083123207,
+        0.11713603138923645
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 253
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 189
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 113
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 42
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 8
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 32,
+      "flags": 16,
+      "numKeyframes": 40,
+      "duration": 1.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        9,
+        10,
+        11
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "fire"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_senjam.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_senjam.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_senjam.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_senjam",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "AntennaON",
+    "LightAON",
+    "LightBON"
+  ],
+  "empty_finer_details": []
+}

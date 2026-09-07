@@ -1,0 +1,142 @@
+{
+  "source": {
+    "model_name": "effect_plasma_explosion",
+    "game": "t2",
+    "category": "Effects",
+    "status": "unsupported",
+    "warnings": [
+      "No visible geometry in nonnegative-size authored details; collision/utility details excluded"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/effect_plasma_explosion.dts",
+    "source_path": "shapes/effect_plasma_explosion.dts",
+    "source_sha256": "c163e90e13ac2e21f026540aa3061b5f87638c33e7e2ce7f037ec68eb462c436",
+    "source_bytes": 36643,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/effect_plasma_explosion.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Fiery_large",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        2.5952500148918034e-09
+      ]
+    },
+    {
+      "name": "HideBlastWave",
+      "parent": 2,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.8267982006072998,
+        6.590796947479248,
+        0.08329027146100998
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": -1.0,
+      "polyCount": 63
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 7,
+      "flags": 0,
+      "numKeyframes": 35,
+      "duration": 1.1333342790603638,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 2,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1
+      ],
+      "frameMatters": [
+        0,
+        1
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    5,
+    0,
+    5,
+    5,
+    21,
+    6,
+    1,
+    7,
+    21,
+    7
+  ],
+  "material_resolution": []
+}

@@ -1,0 +1,560 @@
+{
+  "source": {
+    "model_name": "turret_fusion_large",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: plasmaTurret",
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_fusion_large.dts",
+    "source_path": "shapes/turret_fusion_large.dts",
+    "source_sha256": "76753ef7c50051221e5a710b6f7154dbd0e1a6de430f8758016e4f8d4cab10ad",
+    "source_bytes": 81923,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_fusion_large.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "barrel_fusion_large",
+      "plasmaTurret"
+    ],
+    "triangles": 358,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumActLidHinge",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.87844665965531e-05,
+        0.8208742141723633,
+        0.4246841073036194
+      ]
+    },
+    {
+      "name": "DumFireLid",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.5048342768756744e-13,
+        -4.400543929250489e-08,
+        -2.3860375009121526e-08
+      ]
+    },
+    {
+      "name": "Lid_40",
+      "parent": 3,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -4.4569427700480446e-05,
+        -0.34322383999824524,
+        0.13692805171012878
+      ]
+    },
+    {
+      "name": "HulkLid_40",
+      "parent": 3,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -4.4569427700480446e-05,
+        -0.34322383999824524,
+        0.13692805171012878
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.1690942678165224e-15,
+        -2.7632915400310765e-10,
+        0.3499319553375244
+      ]
+    },
+    {
+      "name": "Body_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.2575598340447414e-09,
+        -0.713952362537384,
+        0.34993186593055725
+      ]
+    },
+    {
+      "name": "DumActCollarExtend",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.7388620007259306e-06,
+        0.5988510847091675,
+        0.3661423623561859
+      ]
+    },
+    {
+      "name": "DumFireCollar",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.7005353288718217e-13,
+        0.11280091851949692,
+        -2.9657337918820303e-08
+      ]
+    },
+    {
+      "name": "Collar_40",
+      "parent": 9,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        5.740307642554399e-06,
+        -1.5348254442214966,
+        -0.01620444655418396
+      ]
+    },
+    {
+      "name": "HulkCollar_40",
+      "parent": 9,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        5.740307642554399e-06,
+        -1.5348254442214966,
+        -0.01620444655418396
+      ]
+    },
+    {
+      "name": "DumActBarrelExtend",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.739791049563792e-06,
+        -0.6402496099472046,
+        2.473590711815632e-06
+      ]
+    },
+    {
+      "name": "DumFireBarrel",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -5.734722435590811e-06,
+        -2.2350409523141934e-08,
+        -2.5973667661105537e-13
+      ]
+    },
+    {
+      "name": "DumActBarrelSpin",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -5.734722435590811e-06,
+        -4.470215131391342e-08,
+        -2.9802581735793865e-08
+      ]
+    },
+    {
+      "name": "Barrel_40",
+      "parent": 14,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -5.0911193483216266e-08,
+        2.067038451514236e-08,
+        5.774139566483427e-08
+      ]
+    },
+    {
+      "name": "HulkBarrel_40",
+      "parent": 14,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -5.0911193483216266e-08,
+        2.067038451514236e-08,
+        5.774139566483427e-08
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "HulkBody_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.2575598340447414e-09,
+        -0.713952362537384,
+        0.34993186593055725
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -5.843099188496126e-06,
+        1.757188081741333,
+        0.3661388158798218
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 789
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 679
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 575
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 469
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 21
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 55,
+      "flags": 0,
+      "numKeyframes": 41,
+      "duration": 1.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 9,
+      "baseDecalState": 40,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2,
+        14
+      ],
+      "translationMatters": [
+        8,
+        12
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 56,
+      "flags": 0,
+      "numKeyframes": 24,
+      "duration": 0.7666677832603455,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 82,
+      "baseTranslation": 82,
+      "baseScale": 0,
+      "baseObjectState": 9,
+      "baseDecalState": 40,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3
+      ],
+      "translationMatters": [
+        8,
+        9,
+        13
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    },
+    {
+      "nameIndex": 57,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 106,
+      "baseTranslation": 154,
+      "baseScale": 0,
+      "baseObjectState": 9,
+      "baseDecalState": 40,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 58,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 106,
+      "baseTranslation": 154,
+      "baseScale": 0,
+      "baseObjectState": 9,
+      "baseDecalState": 480,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    54,
+    1,
+    327684,
+    458758,
+    589832
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/barrel_fusion_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrel_fusion_large.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrel_fusion_large.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrel_fusion_large",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/plasmaturret.ifl",
+      "source": "base/skins.vl2:textures/skins/plasmaTurret.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "plsre22.PNG 50",
+        "plsre00.PNG 1",
+        "plsre01.PNG 1",
+        "plsre02.PNG 1",
+        "plsre03.PNG 1",
+        "plsre04.PNG 1",
+        "plsre05.PNG 1",
+        "plsre06.PNG 1",
+        "plsre07.PNG 1",
+        "plsre08.PNG 1",
+        "plsre09.PNG 1",
+        "plsre10.PNG 1",
+        "plsre11.PNG 1",
+        "plsre12.PNG 1",
+        "plsre13.PNG 1",
+        "plsre14.PNG 1",
+        "plsre15.PNG 1",
+        "plsre16.PNG 1",
+        "plsre17.PNG 1",
+        "plsre18.PNG 1",
+        "plsre19.PNG 1",
+        "plsre20.PNG 1",
+        "plsre21.PNG 1",
+        "plsre22.PNG 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/plsre22.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/Plsre22.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/Plsre22.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "plasmaTurret",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "HulkBarrel_",
+    "HulkBody_",
+    "HulkCollar_",
+    "HulkLid_"
+  ],
+  "empty_finer_details": []
+}

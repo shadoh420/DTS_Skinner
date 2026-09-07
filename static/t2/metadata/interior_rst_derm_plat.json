@@ -1,0 +1,186 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 506
+    }
+  ],
+  "null_surfaces_excluded": 41,
+  "degenerate_triangles_skipped": 61,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_icei03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_icei03.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_icei03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICEI03",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_thresh02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_thresh02.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_thresh02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_THRESH02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal03c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal03c.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal03c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL03C",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ebor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor04.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EBOR04",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/badlands/bd_eflo01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_eflo01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_eflo01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EFLO01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ibor10.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ibor10.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ibor10.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IBOR10",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/badlands/bd_itebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_itebor01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_itebor01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ITEBOR01",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/badlands/bd_iceilig01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_iceilig01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_iceilig01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICEILIG01",
+      "original_slot": 11
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ibor04.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ibor04.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ibor04.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_IBOR04",
+      "original_slot": 12
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ewal13.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ewal13.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ewal13.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EWAL13",
+      "original_slot": 13
+    },
+    {
+      "virtual_path": "textures/badlands/bd_thresh02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_thresh02a.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_thresh02a.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_THRESH02A",
+      "original_slot": 14
+    },
+    {
+      "virtual_path": "textures/badlands/bd_ebor03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_ebor03.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_ebor03.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_EBOR03",
+      "original_slot": 15
+    },
+    {
+      "virtual_path": "textures/badlands/bd_elig02a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_elig02a.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_elig02a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ELIG02A",
+      "original_slot": 16
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_derm_plat",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S5maps.vl2:interiors/rst_derm_plat.dif",
+    "source_path": "interiors/rst_derm_plat.dif",
+    "source_sha256": "9aee717d19ce44629c3914c78604556982e6a931886709f535ef09885b44e604",
+    "source_bytes": 95275,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_ICEI03",
+      "badlands/BD_THRESH02",
+      "badlands/BD_EWAL03C",
+      "badlands/BD_EBOR04",
+      "badlands/BD_EFLO01",
+      "badlands/BD_IBOR10",
+      "badlands/BD_ITEBOR01",
+      "badlands/BD_ICEILIG01",
+      "badlands/BD_IBOR04",
+      "badlands/BD_EWAL13",
+      "badlands/BD_THRESH02A",
+      "badlands/BD_EBOR03",
+      "badlands/BD_ELIG02A"
+    ],
+    "version": 44,
+    "triangles": 1231,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

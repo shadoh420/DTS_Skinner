@@ -1,0 +1,152 @@
+{
+  "source": {
+    "model_name": "stackable5l",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/stackable5l.dts",
+    "source_path": "shapes/stackable5l.dts",
+    "source_sha256": "502f92b488273a1d2d84cb5a2e0f996cdbfabff4cd537f8f12777920d9206362",
+    "source_bytes": 15419,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/stackable5l.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "stackable5L"
+    ],
+    "triangles": 132,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Stack_40",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 134
+    },
+    {
+      "name": "Detail_15",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 15.0,
+      "polyCount": 64
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 48
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 25
+    },
+    {
+      "name": "Detail_3",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 3.0,
+      "polyCount": 4
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/stackable5l.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/stackable5L.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/stackable5L.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "stackable5L",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,723 @@
+{
+  "source": {
+    "model_name": "station_inv_human",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "7 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/station_inv_human.dts",
+    "source_path": "shapes/station_inv_human.dts",
+    "source_sha256": "fd4557eebbba60134ceca73cda766ffb5931d79c839346360b171077ff3a00a9",
+    "source_bytes": 117923,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/station_inv_human.dts"
+    ],
+    "sequences": 5,
+    "external_sequences": 0,
+    "materials": [
+      "station_inventory",
+      "blue_blink0"
+    ],
+    "triangles": 302,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0013346672058105469,
+        -0.0323411226272583,
+        0.012513875961303711
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "PadOuter128",
+      "parent": 1,
+      "rotation_quat16": [
+        8342,
+        -31687,
+        0,
+        0
+      ],
+      "translation": [
+        0.03655529022216797,
+        0.13301897048950195,
+        0.25011804699897766
+      ]
+    },
+    {
+      "name": "DummyLarmRotate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        5689,
+        32269
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.06323505938053131
+      ]
+    },
+    {
+      "name": "DummyArmLeft",
+      "parent": 3,
+      "rotation_quat16": [
+        -30790,
+        -11206,
+        0,
+        0
+      ],
+      "translation": [
+        -1.2365937232971191,
+        1.1067016124725342,
+        1.6704171895980835
+      ]
+    },
+    {
+      "name": "Larm128",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.006910059135407209,
+        -0.007457240018993616,
+        -0.034098971635103226
+      ]
+    },
+    {
+      "name": "FX1",
+      "parent": 5,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.5177010893821716,
+        -0.12000004947185516,
+        0.3367827236652374
+      ]
+    },
+    {
+      "name": "LiteblueB128",
+      "parent": 4,
+      "rotation_quat16": [
+        -23047,
+        -2582,
+        -2866,
+        22969
+      ],
+      "translation": [
+        0.42915892601013184,
+        0.09201758354902267,
+        0.24793720245361328
+      ]
+    },
+    {
+      "name": "Lmount128",
+      "parent": 3,
+      "rotation_quat16": [
+        -30790,
+        -11206,
+        0,
+        0
+      ],
+      "translation": [
+        -0.07303130626678467,
+        0.21914350986480713,
+        -0.05225872993469238
+      ]
+    },
+    {
+      "name": "DummyArmLeft",
+      "parent": 3,
+      "rotation_quat16": [
+        -30790,
+        -11206,
+        0,
+        0
+      ],
+      "translation": [
+        -1.2365937232971191,
+        1.1067016124725342,
+        1.6704171895980835
+      ]
+    },
+    {
+      "name": "DummyRarmRotate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -5689,
+        32269
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.06323505938053131
+      ]
+    },
+    {
+      "name": "DummyArmRight",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        0,
+        11206,
+        30790
+      ],
+      "translation": [
+        1.1635624170303345,
+        0.8875584602355957,
+        1.7226758003234863
+      ]
+    },
+    {
+      "name": "Rarm128",
+      "parent": 11,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.006909990217536688,
+        0.00745742442086339,
+        0.03409886360168457
+      ]
+    },
+    {
+      "name": "FX2",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -0.5175206661224365,
+        0.05170045793056488,
+        -0.33399057388305664
+      ]
+    },
+    {
+      "name": "LiteblueA128",
+      "parent": 11,
+      "rotation_quat16": [
+        23028,
+        2575,
+        -2671,
+        23013
+      ],
+      "translation": [
+        -0.4279559254646301,
+        -0.09228761494159698,
+        -0.2579829692840576
+      ]
+    },
+    {
+      "name": "Rmount128",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        0,
+        11206,
+        30790
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        1.4901161193847656e-08
+      ]
+    },
+    {
+      "name": "Pad-1",
+      "parent": 1,
+      "rotation_quat16": [
+        8342,
+        -31687,
+        0,
+        0
+      ],
+      "translation": [
+        0.03655529022216797,
+        0.13301897048950195,
+        0.25011804699897766
+      ]
+    },
+    {
+      "name": "Beam128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.1337141990661621
+      ]
+    },
+    {
+      "name": "Arm-2",
+      "parent": 1,
+      "rotation_quat16": [
+        -32269,
+        -5689,
+        0,
+        0
+      ],
+      "translation": [
+        -0.6142644882202148,
+        1.5542856454849243,
+        3.0520358085632324
+      ]
+    },
+    {
+      "name": "Arm-3",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        5689,
+        32269
+      ],
+      "translation": [
+        0.6032052040100098,
+        1.3357157707214355,
+        0.15340794622898102
+      ]
+    },
+    {
+      "name": "Hulk_Rmount128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        5689,
+        32269
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0632350742816925
+      ]
+    },
+    {
+      "name": "Hulk_Lmount128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32269,
+        -5689,
+        0,
+        0
+      ],
+      "translation": [
+        0.00632476806640625,
+        0.23090577125549316,
+        0.010976329445838928
+      ]
+    },
+    {
+      "name": "Hulk_Larm128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32269,
+        -5689,
+        0,
+        0
+      ],
+      "translation": [
+        -0.7795605659484863,
+        1.4722703695297241,
+        1.7677512168884277
+      ]
+    },
+    {
+      "name": "Hulkpad_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0005688667297363281,
+        -0.000209808349609375,
+        -0.015816450119018555
+      ]
+    },
+    {
+      "name": "Hulk_Rarm128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        5689,
+        32269
+      ],
+      "translation": [
+        0.7858853340148926,
+        1.2413650751113892,
+        1.820009708404541
+      ]
+    },
+    {
+      "name": "DumPadInner",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.11718340218067169
+      ]
+    },
+    {
+      "name": "PadInner128",
+      "parent": 25,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.12894833087921143
+      ]
+    },
+    {
+      "name": "PadInnerB128",
+      "parent": 25,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.12894833087921143
+      ]
+    },
+    {
+      "name": "AIRepairNode",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.11718340218067169
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 729
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 615
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 558
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 502
+    },
+    {
+      "name": "Detail13",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 13.0,
+      "polyCount": 452
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 10.0,
+      "polyCount": 404
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 2.0,
+      "polyCount": 23
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -1.0,
+      "polyCount": 59
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -2.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Collision-3",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": -3.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 87,
+      "flags": 0,
+      "numKeyframes": 36,
+      "duration": 1.1666676998138428,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 17,
+      "baseDecalState": 62,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3,
+        10
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        11,
+        13,
+        16
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate1"
+    },
+    {
+      "nameIndex": 88,
+      "flags": 16,
+      "numKeyframes": 14,
+      "duration": 0.46666768193244934,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 72,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 125,
+      "baseDecalState": 62,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    },
+    {
+      "nameIndex": 89,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333441913127899,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 72,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 125,
+      "baseDecalState": 62,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 90,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 72,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 125,
+      "baseDecalState": 62,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        7,
+        8,
+        9,
+        10,
+        12,
+        14,
+        15
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    },
+    {
+      "nameIndex": 91,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 72,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 149,
+      "baseDecalState": 124,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    86,
+    1,
+    2,
+    3,
+    0
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/station_inventory.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/station_inventory.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/station_inventory.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "station_inventory",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/blue_blink0.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/blue_blink0.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/blue_blink0.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "blue_blink0",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Beam",
+    "Hulk_Larm",
+    "Hulk_Lmount",
+    "Hulk_Rarm",
+    "Hulk_Rmount",
+    "Hulkpad_",
+    "PadInnerB"
+  ],
+  "empty_finer_details": []
+}

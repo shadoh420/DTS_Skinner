@@ -1,0 +1,87 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 28
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 2,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue2.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue2.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE2",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefwall1.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefWall1.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefWall1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFWALL1",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_ewall07.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ewall07.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ewall07.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EWALL07",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_dmisc_nefobj1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/Classic_maps_v1.vl2:interiors/dmisc_nefobj1.dif",
+    "source_path": "interiors/dmisc_nefobj1.dif",
+    "source_sha256": "43254ef9addfd0a54dcfffb8e7d1a350f5aaeec5afabc4e80cb5e435afad97db",
+    "source_bytes": 7862,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_EFLOOR1",
+      "lava/DS_NEFBLUE2",
+      "lava/DS_NEFWALL1",
+      "lava/DS_EWALL07"
+    ],
+    "version": 44,
+    "triangles": 66,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

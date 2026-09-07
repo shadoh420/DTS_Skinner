@@ -1,0 +1,254 @@
+{
+  "source": {
+    "model_name": "ammo_plasma",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/ammo_plasma.dts",
+    "source_path": "shapes/ammo_plasma.dts",
+    "source_sha256": "673f2c92a79415c56f535d1e21a6d782b22ce1cd4a57cac6c11180f0921fbd6a",
+    "source_bytes": 19577,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/ammo_plasma.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "ammo_plasma",
+      "plsam00"
+    ],
+    "triangles": 170,
+    "selected_detail": "Detail_36"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.14007806777954102
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Caps36",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -6392,
+        32137
+      ],
+      "translation": [
+        9.636814013447292e-08,
+        3.9916994154509666e-08,
+        1.091674566268921
+      ]
+    },
+    {
+      "name": "Handles36",
+      "parent": 2,
+      "rotation_quat16": [
+        -6392,
+        -32137,
+        0,
+        0
+      ],
+      "translation": [
+        -0.30250754952430725,
+        0.12530271708965302,
+        -0.7080882787704468
+      ]
+    },
+    {
+      "name": "HandlesB36",
+      "parent": 2,
+      "rotation_quat16": [
+        -32137,
+        6392,
+        0,
+        0
+      ],
+      "translation": [
+        0.30250734090805054,
+        -0.12530268728733063,
+        -0.7080882787704468
+      ]
+    },
+    {
+      "name": "Chamber36",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32137,
+        -6392
+      ],
+      "translation": [
+        5.506750966333129e-08,
+        2.2809707900250942e-08,
+        0.4006355404853821
+      ]
+    },
+    {
+      "name": "Handlebase36",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.017225518822669983,
+        0.0,
+        -0.0885961651802063
+      ]
+    },
+    {
+      "name": "Panel36",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        23169,
+        0,
+        0
+      ],
+      "translation": [
+        -1.591797804678663e-08,
+        0.0030032694339752197,
+        0.40888720750808716
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_36",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 36.0,
+      "polyCount": 182
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 154
+    },
+    {
+      "name": "Detail_12",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 12.0,
+      "polyCount": 90
+    },
+    {
+      "name": "Detail_6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 60
+    },
+    {
+      "name": "Detail_3",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 3.0,
+      "polyCount": 20
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 8
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 21,
+      "flags": 16,
+      "numKeyframes": 42,
+      "duration": 1.400001049041748,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 6,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    20,
+    1,
+    17,
+    5,
+    12
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/ammo_plasma.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/ammo_plasma.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/ammo_plasma.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ammo_plasma",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/plsam00.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/plsam00.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/plsam00.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "plsam00",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

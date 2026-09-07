@@ -1,0 +1,528 @@
+{
+  "source": {
+    "model_name": "tr2weapon_shocklance",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/TR2weapon_shocklance.dts",
+    "source_path": "shapes/tr2weapon_shocklance.dts",
+    "source_sha256": "106d30ab8135cc9e98de81391a2840ca0b7f2d46953436fa1d317bea810b4e3c",
+    "source_bytes": 64375,
+    "version": 23,
+    "alternatives": [],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_shocklance",
+      "weapon_shocklance_glow "
+    ],
+    "triangles": 654,
+    "selected_detail": "Detail_65"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shocklance_Handle_65",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        9.313225746154785e-10,
+        -0.9885205030441284,
+        -0.0611477792263031
+      ]
+    },
+    {
+      "name": "Main_Housing_65",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        1.5824787169549381e-07,
+        -1.2448208332061768,
+        0.36349350214004517
+      ]
+    },
+    {
+      "name": "Transformer_Feed_65",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        1.6950583159314192e-08,
+        -0.3959140479564667,
+        7.450580596923828e-08
+      ]
+    },
+    {
+      "name": "Transformer_65",
+      "parent": 2,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        7.831483905818004e-09,
+        -0.0001628193713258952,
+        -0.941912829875946
+      ]
+    },
+    {
+      "name": "Shock_Emitter_Left_65",
+      "parent": 3,
+      "rotation_quat16": [
+        16383,
+        16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -0.13873343169689178,
+        0.07353627681732178,
+        0.00016293559747282416
+      ]
+    },
+    {
+      "name": "Charge_Enhancer_Left_65",
+      "parent": 3,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        16383,
+        -16383
+      ],
+      "translation": [
+        -0.16052404046058655,
+        0.07377338409423828,
+        0.0001629306934773922
+      ]
+    },
+    {
+      "name": "Charge_Enhancer_Strut_Left_65",
+      "parent": 5,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.5579661726951599,
+        -0.0001924875396071002,
+        -0.106193408370018
+      ]
+    },
+    {
+      "name": "Charge_Enhancer_Right_65",
+      "parent": 3,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        0.16052408516407013,
+        0.07377328723669052,
+        0.0001628924219403416
+      ]
+    },
+    {
+      "name": "Charge_Enhancer_Strut_Right_65",
+      "parent": 7,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.5576874017715454,
+        0.00019247634918428957,
+        0.10626634210348129
+      ]
+    },
+    {
+      "name": "Central_Shell_Lower_65",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -6.700447841012647e-08,
+        -0.01573791168630123,
+        -0.18624038994312286
+      ]
+    },
+    {
+      "name": "Central_Shell_Lower_Strut__65",
+      "parent": 9,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -6.067305946544366e-08,
+        0.46845489740371704,
+        0.2071688026189804
+      ]
+    },
+    {
+      "name": "Central_Shell_Upper_65",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.1209684675227436e-08,
+        -0.01573784463107586,
+        0.18656615912914276
+      ]
+    },
+    {
+      "name": "Central_Shell_Upper_Strut__65",
+      "parent": 11,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        2.391965914227967e-08,
+        -0.4684549570083618,
+        -0.20716877281665802
+      ]
+    },
+    {
+      "name": "Shock_Emitter_Right_65",
+      "parent": 3,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        0.13873346149921417,
+        0.07353629916906357,
+        0.00016289507038891315
+      ]
+    },
+    {
+      "name": "Energizer_65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.0239741826966196e-10,
+        3.9325109835175454e-10,
+        7.4505792646561986e-09
+      ]
+    },
+    {
+      "name": "Secondary_Handle_65",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -4.237805217854884e-09,
+        -0.6675860285758972,
+        -0.22221964597702026
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": -1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.43219929933547974,
+        0.29905059933662415
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        9.313225746154785e-10,
+        -0.7527299523353577,
+        0.10065886378288269
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": -1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.8370300531387329,
+        0.29905059933662415
+      ]
+    },
+    {
+      "name": "Emitter_Glow_65",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.0005428344011306763,
+        0.43454140424728394,
+        0.3018266260623932
+      ]
+    },
+    {
+      "name": "Shock_Emitter_Left_Glow_65",
+      "parent": -1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -0.13908642530441284,
+        0.8833856582641602,
+        0.30234619975090027
+      ]
+    },
+    {
+      "name": "Transformer_Feed_Glow_65",
+      "parent": -1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        1.5342608094215393e-05,
+        -0.148188054561615,
+        0.3023504614830017
+      ]
+    },
+    {
+      "name": "Shock_Emitter_Right_Glow_65",
+      "parent": -1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        0.13908641040325165,
+        0.8833856582641602,
+        0.30234619975090027
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_65",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 65.0,
+      "polyCount": 812
+    },
+    {
+      "name": "Detail_35",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 35.0,
+      "polyCount": 812
+    },
+    {
+      "name": "Detail_17",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 17.0,
+      "polyCount": 812
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 812
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 812
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 48,
+      "flags": 16,
+      "numKeyframes": 30,
+      "duration": 2.0000009536743164,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 20,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        14
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Spin"
+    },
+    {
+      "nameIndex": 49,
+      "flags": 16,
+      "numKeyframes": 31,
+      "duration": 1.0333342552185059,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 30,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 20,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        16,
+        17,
+        18,
+        19
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    },
+    {
+      "nameIndex": 50,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.30000099539756775,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 30,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 144,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        5,
+        7,
+        9,
+        11
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_shocklance.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_shocklance.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_shocklance.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_shocklance",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/weapon_shocklance_glow .png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_shocklance_glow .png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_shocklance_glow .png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_shocklance_glow ",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Transformer_Feed_Glow_"
+  ],
+  "empty_finer_details": []
+}

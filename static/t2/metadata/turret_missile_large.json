@@ -1,0 +1,541 @@
+{
+  "source": {
+    "model_name": "turret_missile_large",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "5 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_missile_large.dts",
+    "source_path": "shapes/turret_missile_large.dts",
+    "source_sha256": "811f933a20c1c870a4720dc69209e7503ed55dd17a4b0a8d49c4ea037a830e42",
+    "source_bytes": 129523,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_missile_large.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "barrel_missile_large"
+    ],
+    "triangles": 604,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.1690942678165224e-15,
+        -2.7632915400310765e-10,
+        0.3499319553375244
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Geo01_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -5.540374748164458e-25,
+        -0.7025648355484009,
+        0.35098326206207275
+      ]
+    },
+    {
+      "name": "DumDeployBarrelExtend",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.4901161193847656e-08,
+        0.8497591614723206,
+        0.35962700843811035
+      ]
+    },
+    {
+      "name": "DumFireBarrelRecoil",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Geo05_40",
+      "parent": 6,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -1.1920928955078125e-07,
+        0.0
+      ]
+    },
+    {
+      "name": "HulkGeo05_40",
+      "parent": 6,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -1.1920928955078125e-07,
+        0.0
+      ]
+    },
+    {
+      "name": "DumDeployExhaust1_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        3.3527612686157227e-08,
+        -0.2702872157096863,
+        0.3932669460773468
+      ]
+    },
+    {
+      "name": "Geo04_40",
+      "parent": 9,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.04352539777755737
+      ]
+    },
+    {
+      "name": "DumDeployExhaust2_",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.725290298461914e-09,
+        0.05590425431728363,
+        0.0
+      ]
+    },
+    {
+      "name": "Geo03_40",
+      "parent": 11,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -2.9802322387695312e-08,
+        0.0
+      ]
+    },
+    {
+      "name": "Muzzlepoint_alt",
+      "parent": 11,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -3.724380803760141e-10,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "HulkGeo03_40",
+      "parent": 11,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -2.9802322387695312e-08,
+        0.0
+      ]
+    },
+    {
+      "name": "HulkGeo04_40",
+      "parent": 9,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.04352539777755737
+      ]
+    },
+    {
+      "name": "DumDeploySpin",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.5331926345825195,
+        0.5041148066520691
+      ]
+    },
+    {
+      "name": "DumFireSpin",
+      "parent": 16,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        5.407014490007092e-15,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Geo02_40",
+      "parent": 17,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        7.652789513201697e-09,
+        -0.14217373728752136,
+        -5.9604641222676946e-08
+      ]
+    },
+    {
+      "name": "HulkGeo02_40",
+      "parent": 17,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        7.652789513201697e-09,
+        -0.14217373728752136,
+        -5.9604641222676946e-08
+      ]
+    },
+    {
+      "name": "HulkGeo01_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -5.540374748164458e-25,
+        -0.7025648355484009,
+        0.35098326206207275
+      ]
+    },
+    {
+      "name": "muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        1.1047210693359375,
+        0.6025331616401672
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 1436
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 1151
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 1016
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 861
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 84,
+      "flags": 0,
+      "numKeyframes": 39,
+      "duration": 1.2666676044464111,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        16
+      ],
+      "translationMatters": [
+        5,
+        9,
+        11
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 85,
+      "flags": 0,
+      "numKeyframes": 25,
+      "duration": 0.8000010848045349,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 39,
+      "baseTranslation": 117,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        17
+      ],
+      "translationMatters": [
+        6
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    },
+    {
+      "nameIndex": 86,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 64,
+      "baseTranslation": 142,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 87,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 64,
+      "baseTranslation": 142,
+      "baseScale": 0,
+      "baseObjectState": 11,
+      "baseDecalState": 576,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/barrel_missile_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrel_missile_large.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrel_missile_large.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrel_missile_large",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "HulkGeo01_",
+    "HulkGeo02_",
+    "HulkGeo03_",
+    "HulkGeo04_",
+    "HulkGeo05_"
+  ],
+  "empty_finer_details": []
+}

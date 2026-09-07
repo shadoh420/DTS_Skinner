@@ -1,0 +1,331 @@
+{
+  "source": {
+    "model_name": "sensor_pulse_medium",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "3 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/sensor_pulse_medium.dts",
+    "source_path": "shapes/sensor_pulse_medium.dts",
+    "source_sha256": "8a2e8b5afb93282754edfb027db384feb35d234c71a09a7a91d35abb267bc5cb",
+    "source_bytes": 62421,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/sensor_pulse_medium.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "sensor_pulse_large"
+    ],
+    "triangles": 204,
+    "selected_detail": "Detail32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Root32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Base32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Plates32",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.7015323638916016
+      ]
+    },
+    {
+      "name": "MiddleDishes32",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.013000000268220901,
+        0.6082967519760132,
+        3.6059603691101074
+      ]
+    },
+    {
+      "name": "HulkBase_32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "HulkPlates_32",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.7015323638916016
+      ]
+    },
+    {
+      "name": "HulkMiddleDishes_32",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.013000000268220901,
+        0.6082967519760132,
+        3.6059603691101074
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 428
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 377
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 335
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 238
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 224
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 33
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 44,
+      "flags": 16,
+      "numKeyframes": 200,
+      "duration": 6.666667461395264,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 40,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        4,
+        7
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 45,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333345055580139,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 400,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 40,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 46,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.033334776759147644,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 400,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 8,
+      "baseDecalState": 480,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/sensor_pulse_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/sensor_pulse_large.PNG",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/sensor_pulse_large.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "sensor_pulse_large",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "HulkBase_",
+    "HulkMiddleDishes_",
+    "HulkPlates_"
+  ],
+  "empty_finer_details": []
+}

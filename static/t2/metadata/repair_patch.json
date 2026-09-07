@@ -1,0 +1,268 @@
+{
+  "source": {
+    "model_name": "repair_patch",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: light_red",
+      "2 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/repair_patch.dts",
+    "source_path": "shapes/repair_patch.dts",
+    "source_sha256": "571721644ea0ac7aca49220734dc3e8c1ef2887af7f2252e455069c4da1127d9",
+    "source_bytes": 14271,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/repair_patch.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "repair_patch",
+      "light_red"
+    ],
+    "triangles": 148,
+    "selected_detail": "Detail60"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1765011548995972,
+        1.6635894775390625,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "RedGlowc60",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -1.1765011548995972,
+        -1.6635894775390625,
+        0.1993117481470108
+      ]
+    },
+    {
+      "name": "RedGlowd60",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -1.1765011548995972,
+        -1.6635894775390625,
+        0.1993117481470108
+      ]
+    },
+    {
+      "name": "Inner60",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1765011548995972,
+        -1.6635894775390625,
+        0.18691366910934448
+      ]
+    },
+    {
+      "name": "Cross60",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1765011548995972,
+        -1.6635894775390625,
+        0.1993117481470108
+      ]
+    },
+    {
+      "name": "Girdle60",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.016785696148872375
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 60.0,
+      "polyCount": 195
+    },
+    {
+      "name": "Detail28",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 28.0,
+      "polyCount": 153
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 12.0,
+      "polyCount": 131
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 131
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 56
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 18,
+      "flags": 16,
+      "numKeyframes": 19,
+      "duration": 0.6333343386650085,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 5,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        3,
+        4
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    17,
+    2,
+    9,
+    13,
+    8
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/repair_patch.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/repair_patch.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/repair_patch.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "repair_patch",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/light_red.ifl",
+      "source": "base/skins.vl2:textures/skins/light_red.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "light_red06.png 10",
+        "light_red05.png 2",
+        "light_red04.png 2",
+        "light_red03.png 2",
+        "light_red02.png 2",
+        "light_red01.png 2",
+        "light_red02.png 2",
+        "light_red03.png 2",
+        "light_red04.png 2",
+        "light_red05.png 2",
+        "light_red06.png 10",
+        "light_red05.png 1",
+        "light_red04.png 1",
+        "light_red03.png 1",
+        "light_red02.png 1",
+        "light_red01.png 1",
+        "light_red02.png 1",
+        "light_red03.png 1",
+        "light_red04.png 1",
+        "light_red05.png 1",
+        "light_red06.png 10"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/light_red06.png",
+        "source": "base/skins.vl2:textures/skins/light_red06.png",
+        "alternatives": [],
+        "ambiguous_paths": []
+      },
+      "name": "light_red",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "RedGlowc",
+    "RedGlowd"
+  ],
+  "empty_finer_details": []
+}

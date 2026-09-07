@@ -1,0 +1,89 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 24
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 2,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/be_ewal01b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal01b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal01b.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL01B",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal03a.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal03a.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal03a.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL03A",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lush/be_ewal05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewal05.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewal05.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWAL05",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lush/be_ewall10.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_ewall10.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_ewall10.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_EWALL10",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_bmiscpan_ruinh",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/bmiscpan_ruinh.dif",
+    "source_path": "interiors/bmiscpan_ruinh.dif",
+    "source_sha256": "127a52b891e8ca46b720c6dbedf07eec5a11e2667b5b8585c017a8efb5b58ea0",
+    "source_bytes": 8192,
+    "alternatives": [
+      "base/z_mappacks/DynamixFinalPack.vl2:interiors/bmiscpan_ruinh.dif"
+    ],
+    "materials": [
+      "lush/BE_EWAL01B",
+      "lush/BE_EWAL03A",
+      "lush/BE_EWAL05",
+      "lush/BE_EWALL10"
+    ],
+    "version": 44,
+    "triangles": 62,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

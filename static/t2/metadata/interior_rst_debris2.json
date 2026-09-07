@@ -1,0 +1,54 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 360
+    }
+  ],
+  "null_surfaces_excluded": 1080,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_icei03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_icei03.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_icei03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/bd_icei03",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_debris2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_debris2.dif",
+    "source_path": "interiors/rst_debris2.dif",
+    "source_sha256": "7fe42f60f1f9729b101fc1089ea68e3cb0ae84db826697f81dfa3f179317c997",
+    "source_bytes": 215653,
+    "alternatives": [],
+    "materials": [
+      "badlands/bd_icei03"
+    ],
+    "version": 44,
+    "triangles": 360,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

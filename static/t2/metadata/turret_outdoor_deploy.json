@@ -1,0 +1,1013 @@
+{
+  "source": {
+    "model_name": "turret_outdoor_deploy",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: turret_light_red",
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_outdoor_deploy.dts",
+    "source_path": "shapes/turret_outdoor_deploy.dts",
+    "source_sha256": "288da479a53999363750d1b98457273f38bee03909cbc93a7da30659593d58f4",
+    "source_bytes": 84242,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_outdoor_deploy.dts"
+    ],
+    "sequences": 7,
+    "external_sequences": 0,
+    "materials": [
+      "turret_InOut_deploy",
+      "turret_light_red"
+    ],
+    "triangles": 549,
+    "selected_detail": "Detail_64"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumActDrillIn",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.2592594623565674
+      ]
+    },
+    {
+      "name": "Body_64",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.0159988148747922e-17,
+        -3.8096034721701204e-18,
+        0.13599535822868347
+      ]
+    },
+    {
+      "name": "DumActDropCollar",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.121061709075462e-26,
+        -4.4976395940921066e-09,
+        0.10289400815963745
+      ]
+    },
+    {
+      "name": "DumActDrillRot",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Collar_64",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumActDropAuger",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.0584524368084658e-08,
+        -1.6657226709071438e-09,
+        0.09404182434082031
+      ]
+    },
+    {
+      "name": "Auger_64",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -5.32190647106745e-09,
+        0.006106168031692505
+      ]
+    },
+    {
+      "name": "DumActDropWing1",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.16065430641174316,
+        0.3043942451477051
+      ]
+    },
+    {
+      "name": "Wing1_64",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.15957817435264587,
+        -0.16839885711669922
+      ]
+    },
+    {
+      "name": "DumActDropWing2",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.16529317200183868,
+        0.0,
+        0.3043942451477051
+      ]
+    },
+    {
+      "name": "Wing4_64",
+      "parent": 11,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.16448096930980682,
+        -3.8096034721701204e-18,
+        -0.1683988869190216
+      ]
+    },
+    {
+      "name": "DumActDropWing3",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        2.4258124398102154e-08,
+        0.16065430641174316,
+        0.3043942451477051
+      ]
+    },
+    {
+      "name": "Wing3_64",
+      "parent": 13,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.4750657595192005e-19,
+        0.15957817435264587,
+        -0.16839885711669922
+      ]
+    },
+    {
+      "name": "DumActDropWing4",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -0.16529317200183868,
+        2.4958575650657622e-08,
+        0.3043942451477051
+      ]
+    },
+    {
+      "name": "Wing2_64",
+      "parent": 15,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.16448096930980682,
+        1.2933557829862725e-17,
+        -0.1683988869190216
+      ]
+    },
+    {
+      "name": "DumActRaiseMain",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.3576762295240573e-25,
+        1.305737917789429e-08,
+        0.0662001371383667
+      ]
+    },
+    {
+      "name": "Platform_64",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.0784931782666507e-26,
+        1.1511200881386685e-09,
+        0.0
+      ]
+    },
+    {
+      "name": "DumTurn",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.0784931782666507e-26,
+        1.1511200881386685e-09,
+        0.0
+      ]
+    },
+    {
+      "name": "DumActYSpreadR",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.0,
+        4.3711398944878965e-09,
+        0.0
+      ]
+    },
+    {
+      "name": "YL_64",
+      "parent": 20,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.4093341804517105e-22,
+        -1.4899322664518877e-08,
+        0.0
+      ]
+    },
+    {
+      "name": "HingePinL_64",
+      "parent": 20,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.08408039808273315,
+        -5.860850915695437e-09,
+        0.40209007263183594
+      ]
+    },
+    {
+      "name": "DumActYSpreadL",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -4.371139006309477e-09,
+        0.0
+      ]
+    },
+    {
+      "name": "YR_64",
+      "parent": 23,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -2.2497356015334195e-15,
+        1.4899325329054136e-08,
+        0.0
+      ]
+    },
+    {
+      "name": "HingePinR_64",
+      "parent": 23,
+      "rotation_quat16": [
+        16383,
+        16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.08408040553331375,
+        1.85566388921643e-08,
+        0.40209007263183594
+      ]
+    },
+    {
+      "name": "DumActRaiseHinge",
+      "parent": 19,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        1.2870817834761803e-16,
+        -1.286142747858321e-09,
+        0.3092067241668701
+      ]
+    },
+    {
+      "name": "DumElevate",
+      "parent": 26,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        1.4901161193847656e-08,
+        1.7491901260768827e-08,
+        0.0
+      ]
+    },
+    {
+      "name": "BarrelMain_64",
+      "parent": 27,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.4901161193847656e-08,
+        -0.035132765769958496,
+        -2.573985291576264e-08
+      ]
+    },
+    {
+      "name": "BarrelRest_64",
+      "parent": 27,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.4901161193847656e-08,
+        -0.37598946690559387,
+        -8.668978068726574e-08
+      ]
+    },
+    {
+      "name": "DumActRaiseAntennae",
+      "parent": 27,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.06657231599092484,
+        -0.03472966328263283,
+        0.0465378537774086
+      ]
+    },
+    {
+      "name": "DumActAntennae",
+      "parent": 30,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.3821050404725383e-09,
+        -5.547744041933811e-09,
+        -1.625829249007893e-08
+      ]
+    },
+    {
+      "name": "Antennae_64",
+      "parent": 31,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.0538617978284037e-08,
+        1.9227206493610538e-08,
+        -3.0460678424049092e-09
+      ]
+    },
+    {
+      "name": "Antennaelight_64",
+      "parent": 31,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -1.4609312870561553e-08,
+        2.051530501034904e-08,
+        0.20911073684692383
+      ]
+    },
+    {
+      "name": "redglow_64",
+      "parent": 31,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.0001599046227056533,
+        1.508903295643904e-07,
+        0.20870620012283325
+      ]
+    },
+    {
+      "name": "DumActRaiseCap",
+      "parent": 27,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.4901161193847656e-08,
+        4.107825191113079e-15,
+        -2.9608994367436026e-08
+      ]
+    },
+    {
+      "name": "Cap_64",
+      "parent": 35,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -9.156926741414488e-22,
+        -2.1076813183640297e-08,
+        -0.23966768383979797
+      ]
+    },
+    {
+      "name": "DumActTwistBarrel",
+      "parent": 27,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.4901161193847656e-08,
+        -0.1827349066734314,
+        -4.050084356777006e-08
+      ]
+    },
+    {
+      "name": "DumActExtendBarrel",
+      "parent": 37,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.560720907519108e-16,
+        0.1204255223274231,
+        -2.2198403115680776e-09
+      ]
+    },
+    {
+      "name": "DumFire",
+      "parent": 38,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        3.861214513135305e-15,
+        -5.960463766996327e-08,
+        2.111948127492269e-08
+      ]
+    },
+    {
+      "name": "BarrelTip_64",
+      "parent": 39,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        3.508166310280266e-15,
+        -5.072846676057452e-08,
+        -4.440892098500626e-15
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 39,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        2.0566020839827496e-16,
+        -6.16262738617479e-08,
+        0.25535693764686584
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 27,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -2.177852209683806e-08,
+        -0.001688379910774529,
+        0.15733566880226135
+      ]
+    },
+    {
+      "name": "Body-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.458947831064037e-25,
+        8.080005109434296e-09,
+        -0.18484896421432495
+      ]
+    },
+    {
+      "name": "Barrel-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.9153185486793518
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_64",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 64.0,
+      "polyCount": 564
+    },
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 32.0,
+      "polyCount": 426
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 248
+    },
+    {
+      "name": "Detail_1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 121
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -2.0,
+      "polyCount": 10
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 98,
+      "flags": 0,
+      "numKeyframes": 55,
+      "duration": 1.8000009059906006,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 21,
+      "baseDecalState": 25,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        5,
+        9,
+        11,
+        13,
+        15,
+        26,
+        31,
+        37
+      ],
+      "translationMatters": [
+        2,
+        4,
+        7,
+        17,
+        20,
+        23,
+        26,
+        30,
+        35,
+        38
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 99,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.1333344429731369,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 440,
+      "baseTranslation": 550,
+      "baseScale": 0,
+      "baseObjectState": 21,
+      "baseDecalState": 25,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        19
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Turn"
+    },
+    {
+      "nameIndex": 100,
+      "flags": 0,
+      "numKeyframes": 3,
+      "duration": 0.066667839884758,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 445,
+      "baseTranslation": 550,
+      "baseScale": 0,
+      "baseObjectState": 21,
+      "baseDecalState": 25,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        27
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Elevate"
+    },
+    {
+      "nameIndex": 101,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.1333342045545578,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 448,
+      "baseTranslation": 550,
+      "baseScale": 0,
+      "baseObjectState": 21,
+      "baseDecalState": 25,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        39
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire"
+    },
+    {
+      "nameIndex": 102,
+      "flags": 0,
+      "numKeyframes": 1,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 448,
+      "baseTranslation": 555,
+      "baseScale": 0,
+      "baseObjectState": 21,
+      "baseDecalState": 25,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 103,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 448,
+      "baseTranslation": 555,
+      "baseScale": 0,
+      "baseObjectState": 21,
+      "baseDecalState": 25,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 104,
+      "flags": 16,
+      "numKeyframes": 21,
+      "duration": 0.700001060962677,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 448,
+      "baseTranslation": 555,
+      "baseScale": 0,
+      "baseObjectState": 21,
+      "baseDecalState": 300,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        20
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    97,
+    1,
+    1,
+    1,
+    1
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_inout_deploy.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_InOut_deploy.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_InOut_deploy.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_InOut_deploy",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/turret_light_red.ifl",
+      "source": "base/skins.vl2:textures/skins/turret_light_red.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "light_red06.png 110",
+        "light_red05.png 2",
+        "light_red04.png 2",
+        "light_red03.png 2",
+        "light_red02.png 2",
+        "light_red01.png 2",
+        "light_red02.png 2",
+        "light_red03.png 2",
+        "light_red04.png 2",
+        "light_red05.png 2",
+        "light_red06.png 10",
+        "light_red05.png 1",
+        "light_red04.png 1",
+        "light_red03.png 1",
+        "light_red02.png 1",
+        "light_red01.png 1",
+        "light_red02.png 1",
+        "light_red03.png 1",
+        "light_red04.png 1",
+        "light_red05.png 1",
+        "light_red06.png 10"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/light_red06.png",
+        "source": "base/skins.vl2:textures/skins/light_red06.png",
+        "alternatives": [],
+        "ambiguous_paths": []
+      },
+      "name": "turret_light_red",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "redglow_"
+  ],
+  "empty_finer_details": []
+}

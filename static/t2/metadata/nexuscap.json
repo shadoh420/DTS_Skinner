@@ -1,0 +1,426 @@
+{
+  "source": {
+    "model_name": "nexuscap",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/nexuscap.dts",
+    "source_path": "shapes/nexuscap.dts",
+    "source_sha256": "c27b73f680e149349faed615836093d729345bc4bfb3192d46de00f30ed584cd",
+    "source_bytes": 31461,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/nexuscap.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "NexusGenerator",
+      "NexDefaultFloor",
+      "NexusPowerLightsON"
+    ],
+    "triangles": 150,
+    "selected_detail": "Detail20"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "NexusCap_20",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.4428265956492306e-26,
+        3.4510182445046667e-07,
+        0.018280744552612305
+      ]
+    },
+    {
+      "name": "DummySpin",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.4124671255795364e-24,
+        -1.8899065423738648e-07,
+        4.323602199554443
+      ]
+    },
+    {
+      "name": "NexusDefaultCapEffect_20",
+      "parent": 3,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        3.3998966270548396e-24,
+        2.1936772043318342e-07,
+        -4.307675361633301
+      ]
+    },
+    {
+      "name": "NexusHoardCapEffect_20",
+      "parent": 3,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        3.402088871510449e-24,
+        2.194891379758701e-07,
+        -4.310452461242676
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight01_20",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        6.231253311107844e-24,
+        1.1138056516647339,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight02_20",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -9.120507727690668e-16,
+        -1.1138049364089966,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight03_20",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        1.1138052940368652,
+        3.4510182445046667e-07,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight04_20",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        -23169,
+        0,
+        0
+      ],
+      "translation": [
+        -1.1138052940368652,
+        3.4510182445046667e-07,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight05_20",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -30272,
+        12539
+      ],
+      "translation": [
+        0.7875792384147644,
+        0.7875797152519226,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight06_20",
+      "parent": 1,
+      "rotation_quat16": [
+        -30272,
+        12539,
+        0,
+        0
+      ],
+      "translation": [
+        -0.7875792980194092,
+        -0.7875790596008301,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight07_20",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -12539,
+        30272
+      ],
+      "translation": [
+        0.787579357624054,
+        -0.7875788807868958,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "NexusCapPowerlight08_20",
+      "parent": 1,
+      "rotation_quat16": [
+        12539,
+        -30272,
+        0,
+        0
+      ],
+      "translation": [
+        -0.787579357624054,
+        0.7875795960426331,
+        0.013099431991577148
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        6.231253311107844e-24,
+        3.4510182445046667e-07,
+        0.012897729873657227
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 20.0,
+      "polyCount": 184
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 12.0,
+      "polyCount": 100
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 4.0,
+      "polyCount": 58
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 40
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 44
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 32,
+      "flags": 16,
+      "numKeyframes": 120,
+      "duration": 4.000000953674316,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 33,
+      "flags": 0,
+      "numKeyframes": 31,
+      "duration": 1.0000009536743164,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 120,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 972,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        2,
+        3
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Transition"
+    },
+    {
+      "nameIndex": 34,
+      "flags": 0,
+      "numKeyframes": 16,
+      "duration": 0.5000010132789612,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 120,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 1034,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        2,
+        3
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Flash"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/nexusgenerator.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/NexusGenerator.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/NexusGenerator.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "NexusGenerator",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/nexdefaultfloor.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/NexDefaultFloor.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/NexDefaultFloor.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "NexDefaultFloor",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/nexuspowerlightson.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/NexusPowerLightsON.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/NexusPowerLightsON.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "NexusPowerLightsON",
+      "original_slot": 3
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "NexusHoardCapEffect_"
+  ],
+  "empty_finer_details": []
+}

@@ -1,0 +1,248 @@
+{
+  "source": {
+    "model_name": "borg13",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/borg13.dts",
+    "source_path": "shapes/borg13.dts",
+    "source_sha256": "c3faac70d126443f7ba7774623aa4a0ef894f2a956543e62ac60983071de3d9f",
+    "source_bytes": 40062,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/borg13.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "Oldwood",
+      "LushMoss"
+    ],
+    "triangles": 489,
+    "selected_detail": "Detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.5767492651939392,
+        -0.7001529932022095,
+        -0.22091960906982422
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "TRUNK100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -31335,
+        -9580
+      ],
+      "translation": [
+        -0.9865157604217529,
+        0.18851684033870697,
+        0.07961249351501465
+      ]
+    },
+    {
+      "name": "BranchA100",
+      "parent": 1,
+      "rotation_quat16": [
+        10271,
+        -14521,
+        18728,
+        20162
+      ],
+      "translation": [
+        -1.8295620679855347,
+        0.8600455522537231,
+        6.90108585357666
+      ]
+    },
+    {
+      "name": "MOSS100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -31335,
+        -9580
+      ],
+      "translation": [
+        -0.9865157604217529,
+        0.18851684033870697,
+        0.07961249351501465
+      ]
+    },
+    {
+      "name": "BranchA-1",
+      "parent": 1,
+      "rotation_quat16": [
+        10271,
+        -14521,
+        18728,
+        20162
+      ],
+      "translation": [
+        -1.8295620679855347,
+        0.8600455522537231,
+        6.899935245513916
+      ]
+    },
+    {
+      "name": "MOSS-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -31335,
+        -9580
+      ],
+      "translation": [
+        -0.9865157604217529,
+        0.18851684033870697,
+        0.08981851488351822
+      ]
+    },
+    {
+      "name": "TRUNK-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -31335,
+        -9580
+      ],
+      "translation": [
+        -0.9865157604217529,
+        0.18851684033870697,
+        0.08345277607440948
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 509
+    },
+    {
+      "name": "Detail55",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 55.0,
+      "polyCount": 386
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 226
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 99
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 26
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 225
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 17,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333433344960213,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 3,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/oldwood.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Oldwood.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Oldwood.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Oldwood",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/lushmoss.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/LushMoss.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/LushMoss.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "LushMoss",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

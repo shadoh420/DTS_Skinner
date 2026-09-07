@@ -1,0 +1,95 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 57
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/lavawall20.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/lavawall20.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "79758b3e494db32e1a528541db146c8065423816c8253c3dd1db00b0d5924509",
+      "name": "lava/LAVAWALL20",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/lavawall21.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/lavawall21.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "5bf65e6b033d169c0393c0a1a56ddbbc70000b36b9ad3431f53c99beb0ef03d9",
+      "name": "lava/LAVAWALL21",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/lavawall22.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/lava/lavawall22.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "57e4b413ce124f75dbfd7a87bc9de6e8b2c8b313b1b07868d2762b3cb24c05f9",
+      "name": "lava/LAVAWALL22",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lush/be_itebor02b.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lush/be_itebor02b.png",
+      "alternatives": [
+        "base/lush.vl2:textures/lush/be_itebor02b.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "lush/BE_ITEBOR02B",
+      "original_slot": 8
+    }
+  ],
+  "source": {
+    "model_name": "interior_anthem_pipestand2-lava",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/anthem_pipestand2-lava.dif",
+    "source_path": "interiors/anthem_pipestand2-lava.dif",
+    "source_sha256": "079d3694078bf2dc6cbe160aae62f954b19944cc4f66c23e14b0cf8f207143f1",
+    "source_bytes": 19935,
+    "alternatives": [],
+    "materials": [
+      "lava/LAVAWALL20",
+      "lush/BE_ITEBOR02",
+      "lava/LAVAWALL21",
+      "lava/LAVAWALL22",
+      "lush/BE_ITEBOR02B"
+    ],
+    "version": 44,
+    "triangles": 118,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

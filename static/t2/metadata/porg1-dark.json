@@ -1,0 +1,113 @@
+{
+  "source": {
+    "model_name": "porg1-dark",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:shapes/porg1-dark.dts",
+    "source_path": "shapes/porg1-dark.dts",
+    "source_sha256": "724e6a520f3da927d4d51428a28bee96c1473fcc04848eb24be26cb30e35fdc2",
+    "source_bytes": 1441,
+    "version": 22,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "brsh5"
+    ],
+    "triangles": 24,
+    "selected_detail": "Detail8"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.46632176637649536,
+        -0.22070416808128357,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.14605504274368286,
+        0.20435822010040283,
+        0.0009135820437222719
+      ]
+    },
+    {
+      "name": "Conebig8",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5734503865242004,
+        -0.22503244876861572,
+        -0.045075975358486176
+      ]
+    },
+    {
+      "name": "Conesmall8",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.862645149230957e-09,
+        -1.4901161193847656e-08,
+        -7.450580596923828e-09
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 8.0,
+      "polyCount": 38
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/brsh5.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/skins/brsh5.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "brsh5",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

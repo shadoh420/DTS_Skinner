@@ -26,7 +26,7 @@ def model_sort_key(name):
     return parts, name.casefold(), name
 
 
-def load_model_data(json_path, fallback_texture=None):
+def load_model_data(json_path, fallback_texture=None, material_overrides=None):
     path = pathlib.Path(json_path)
     with path.open(encoding="utf-8") as stream:
         data = json.load(stream)
@@ -45,6 +45,10 @@ def load_model_data(json_path, fallback_texture=None):
         raise ValueError("Triangle index outside vertex array")
     if not data.get("material_textures"):
         data["material_textures"] = [fallback_texture or default_texture(path.stem)]
+    for slot, filename in (material_overrides or {}).items():
+        if not isinstance(slot, str) or not slot.isdecimal() or not 0 <= int(slot) < len(data["material_textures"]):
+            raise ValueError("Material slot outside model material array")
+        data["material_textures"][int(slot)] = filename
     for name in data["material_textures"]:
         if not isinstance(name, str) or not name:
             raise ValueError("Invalid texture name")
@@ -62,4 +66,7 @@ def load_model_data(json_path, fallback_texture=None):
         expected_start += count
     if expected_start != len(indices):
         raise ValueError("Material groups must cover all triangles exactly once")
+    if "normals" in data:
+        if len(data["normals"]) != len(vertices) or any(not isinstance(x, (int, float)) or not math.isfinite(x) for x in data["normals"]):
+            raise ValueError("Model must have one finite normal per vertex")
     return data

@@ -1,0 +1,98 @@
+{
+  "source": {
+    "model_name": "billboard_1",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/billboard_1.dts",
+    "source_path": "shapes/billboard_1.dts",
+    "source_sha256": "ddc1b1e3bd39d664252f0f5604a4e9706e49c65d8b1be8befa8b3177067e3e9b",
+    "source_bytes": 2735,
+    "version": 23,
+    "alternatives": [],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "billboard_1"
+    ],
+    "triangles": 30,
+    "selected_detail": "detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.368316650390625,
+        7.038177490234375,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.29366976022720337,
+        -5.139220714569092,
+        0.0
+      ]
+    },
+    {
+      "name": "billboard100",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.6619864106178284,
+        -1.8993747234344482,
+        23.33302879333496
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 30
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/billboard_1.png",
+      "source": "base/TR2final105-client.vl2:textures/skins/billboard_1.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "billboard_1",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

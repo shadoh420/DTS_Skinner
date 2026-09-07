@@ -1,0 +1,302 @@
+{
+  "source": {
+    "model_name": "turret_tank_barrelmortar",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_tank_barrelmortar.dts",
+    "source_path": "shapes/turret_tank_barrelmortar.dts",
+    "source_sha256": "16be74177df7380184ea28bdb1a5931a3626b52c3db8adb37446bb17a1cf6f0b",
+    "source_bytes": 14138,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_tank_barrelmortar.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "turret_assaultTank"
+    ],
+    "triangles": 178,
+    "selected_detail": "detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "mountPoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "mortarCollarA2",
+      "parent": 2,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        2.384185791015625e-07,
+        0.30821067094802856,
+        0.044527649879455566
+      ]
+    },
+    {
+      "name": "mortarCyl2",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1920928955078125e-07,
+        -5.960464477539063e-08,
+        -2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "Dummy01",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.368866701857769e-07,
+        0.8269617557525635,
+        0.044527798891067505
+      ]
+    },
+    {
+      "name": "mortarBarrel2",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -8.384391776417033e-07,
+        -0.5187510848045349,
+        -1.4901161193847656e-07
+      ]
+    },
+    {
+      "name": "mortarCollarB2",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -8.425813575740904e-07,
+        -0.5187510848045349,
+        -1.4901161193847656e-07
+      ]
+    },
+    {
+      "name": "muzzlePoint",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.384185791015625e-07,
+        3.442046642303467,
+        0.044527918100357056
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 225
+    },
+    {
+      "name": "detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 60.0,
+      "polyCount": 154
+    },
+    {
+      "name": "detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 30.0,
+      "polyCount": 117
+    },
+    {
+      "name": "detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 10.0,
+      "polyCount": 64
+    },
+    {
+      "name": "detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 27
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 19,
+      "flags": 0,
+      "numKeyframes": 9,
+      "duration": 0.2666676640510559,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        5
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "fire"
+    },
+    {
+      "nameIndex": 20,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333433344960213,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 9,
+      "baseScale": 0,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "damage"
+    },
+    {
+      "nameIndex": 21,
+      "flags": 16,
+      "numKeyframes": 1,
+      "duration": 0.06666766852140427,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 9,
+      "baseScale": 0,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_assaulttank.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_assaultTank.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_assaultTank.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_assaultTank",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

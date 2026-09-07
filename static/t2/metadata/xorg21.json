@@ -1,0 +1,123 @@
+{
+  "source": {
+    "model_name": "xorg21",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/xorg21.dts",
+    "source_path": "shapes/xorg21.dts",
+    "source_sha256": "79724fd3b281a4219720596eea809e31ce05adf1e2d226644a7caa2249c204d5",
+    "source_bytes": 5564,
+    "version": 21,
+    "alternatives": [
+      "base/shapes.vl2:shapes/xorg21.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "BarrenSticksFall"
+    ],
+    "triangles": 162,
+    "selected_detail": "Detail16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.407665491104126,
+        7.330746650695801,
+        1.8953012228012085
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -1.898874044418335
+      ]
+    },
+    {
+      "name": "grassE16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        24729,
+        21497
+      ],
+      "translation": [
+        3.3938705921173096,
+        -7.344929218292236,
+        2.066852331161499
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 126
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 8.0,
+      "polyCount": 50
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 4.0,
+      "polyCount": 42
+    },
+    {
+      "name": "Detail1",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 1.0,
+      "polyCount": 4
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/barrensticksfall.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/BarrenSticksFall.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/BarrenSticksFall.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "BarrenSticksFall",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

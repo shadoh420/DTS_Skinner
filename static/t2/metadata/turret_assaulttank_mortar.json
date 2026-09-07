@@ -1,0 +1,655 @@
+{
+  "source": {
+    "model_name": "turret_assaulttank_mortar",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "4 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_assaulttank_mortar.dts",
+    "source_path": "shapes/turret_assaulttank_mortar.dts",
+    "source_sha256": "3344063be789e05d0132b8e0f99e05aa1d7b9fc2857362600d21ec74030dfae4",
+    "source_bytes": 28596,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_assaulttank_mortar.dts"
+    ],
+    "sequences": 8,
+    "external_sequences": 0,
+    "materials": [
+      "turret_assaultTank"
+    ],
+    "triangles": 414,
+    "selected_detail": "detail2"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "dumTurn",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "dumActivate",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Base2",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.408659143948171e-07,
+        1.5743709802627563,
+        0.1088457703590393
+      ]
+    },
+    {
+      "name": "dumChaingunElevate",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.6174450516700745,
+        0.8251311182975769,
+        0.444815456867218
+      ]
+    },
+    {
+      "name": "chaingunCyl2",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.7881393432617188e-07,
+        -0.04188328981399536,
+        -0.04317912459373474
+      ]
+    },
+    {
+      "name": "chaingunBarrel2",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.37917447090148926,
+        2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "chaingunCollar2",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.37917447090148926,
+        2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "mount0",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        2.053922653198242,
+        5.960464477539063e-08
+      ]
+    },
+    {
+      "name": "DumMuzzleflashRotate",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.39779114723205566,
+        -0.0187341570854187
+      ]
+    },
+    {
+      "name": "MuzzleFlashDiagLeft_60",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        9853,
+        0,
+        31250
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MuzzleFlashDiagRight_60",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        -31250,
+        0,
+        -9853
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "MuzzleFlashHorizontal_60",
+      "parent": 10,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MuzzleFlashFront_60",
+      "parent": 10,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -0.31312060356140137,
+        0.0
+      ]
+    },
+    {
+      "name": "dumMortarElevate",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4819220006465912,
+        0.6878403425216675,
+        0.4448833763599396
+      ]
+    },
+    {
+      "name": "mortarCollarA2",
+      "parent": 15,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        2.384185791015625e-07,
+        0.30821067094802856,
+        0.044527649879455566
+      ]
+    },
+    {
+      "name": "mortarCyl2",
+      "parent": 15,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1920928955078125e-07,
+        -5.960464477539063e-08,
+        -2.9802322387695312e-08
+      ]
+    },
+    {
+      "name": "Dummy01",
+      "parent": 15,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.344650268554688e-07,
+        0.8269617557525635,
+        0.044527798891067505
+      ]
+    },
+    {
+      "name": "mortarBarrel2",
+      "parent": 18,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -8.425813575740904e-07,
+        -0.5187510848045349,
+        -1.4901161193847656e-07
+      ]
+    },
+    {
+      "name": "mortarCollarB2",
+      "parent": 18,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -8.425813575740904e-07,
+        -0.5187510848045349,
+        -1.4901161193847656e-07
+      ]
+    },
+    {
+      "name": "eye",
+      "parent": 15,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.4819217622280121,
+        -0.5135751962661743,
+        0.9576743841171265
+      ]
+    },
+    {
+      "name": "mount1",
+      "parent": 15,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.384185791015625e-07,
+        3.442046642303467,
+        0.044527918100357056
+      ]
+    },
+    {
+      "name": "col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "baseCyl2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 2.0,
+      "polyCount": 514
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 41,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        5,
+        15
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "elevate"
+    },
+    {
+      "nameIndex": 42,
+      "flags": 0,
+      "numKeyframes": 5,
+      "duration": 0.13333432376384735,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 4,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        2
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "turn"
+    },
+    {
+      "nameIndex": 43,
+      "flags": 0,
+      "numKeyframes": 9,
+      "duration": 0.2666676640510559,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 9,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        18
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "fire2"
+    },
+    {
+      "nameIndex": 44,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333433344960213,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 9,
+      "baseTranslation": 9,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "damage"
+    },
+    {
+      "nameIndex": 45,
+      "flags": 16,
+      "numKeyframes": 1,
+      "duration": 0.06666766852140427,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 9,
+      "baseTranslation": 9,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "visibility"
+    },
+    {
+      "nameIndex": 46,
+      "flags": 0,
+      "numKeyframes": 10,
+      "duration": 0.6333343386650085,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 9,
+      "baseTranslation": 9,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        3
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "activate"
+    },
+    {
+      "nameIndex": 47,
+      "flags": 16,
+      "numKeyframes": 4,
+      "duration": 0.1333344429731369,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 9,
+      "baseTranslation": 19,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        10
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "fire1"
+    },
+    {
+      "nameIndex": 48,
+      "flags": 0,
+      "numKeyframes": 4,
+      "duration": 0.10000090301036835,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 13,
+      "baseTranslation": 19,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        10,
+        11,
+        12,
+        13
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire_Vis"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/turret_assaulttank.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/turret_assaultTank.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/turret_assaultTank.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "turret_assaultTank",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "MuzzleFlashDiagLeft_",
+    "MuzzleFlashDiagRight_",
+    "MuzzleFlashFront_",
+    "MuzzleFlashHorizontal_"
+  ],
+  "empty_finer_details": []
+}

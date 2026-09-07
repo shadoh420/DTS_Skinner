@@ -1,0 +1,532 @@
+{
+  "source": {
+    "model_name": "deploy_sensor_pulse",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: blue_blink"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/deploy_sensor_pulse.dts",
+    "source_path": "shapes/deploy_sensor_pulse.dts",
+    "source_sha256": "0c5200e04d972d311612f89638c54739c313c7867e9ed078f715cfe0152e64ac",
+    "source_bytes": 31846,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/deploy_sensor_pulse.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "deploy_sensor_pulse",
+      "blue_blink"
+    ],
+    "triangles": 208,
+    "selected_detail": "Detail28"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumDeployFloor",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.002225336153060198,
+        -0.0001039654016494751,
+        0.006092105992138386
+      ]
+    },
+    {
+      "name": "Floor28",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        5.0008296966552734e-05
+      ]
+    },
+    {
+      "name": "DumPower",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1638769059629794e-08,
+        -0.001332893967628479,
+        0.31452006101608276
+      ]
+    },
+    {
+      "name": "DumDeployElevate",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.010368287563323975,
+        0.0014364123344421387
+      ]
+    },
+    {
+      "name": "DumDeployBottom",
+      "parent": 5,
+      "rotation_quat16": [
+        -15130,
+        0,
+        0,
+        29064
+      ],
+      "translation": [
+        -1.1638769059629794e-08,
+        0.09240199625492096,
+        -0.0360274612903595
+      ]
+    },
+    {
+      "name": "ArmBottom28",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -2.3405998916814497e-08,
+        0.03360992670059204,
+        0.00010529981227591634
+      ]
+    },
+    {
+      "name": "DishBottom28",
+      "parent": 6,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        6.343403136099823e-09,
+        0.05370786041021347,
+        0.00010532403393881395
+      ]
+    },
+    {
+      "name": "DumDeployTop",
+      "parent": 5,
+      "rotation_quat16": [
+        -29064,
+        0,
+        0,
+        -15130
+      ],
+      "translation": [
+        -1.1638769059629794e-08,
+        0.09240199625492096,
+        -0.0360274612903595
+      ]
+    },
+    {
+      "name": "ArmTop28",
+      "parent": 9,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        2.743014260175869e-09,
+        -0.11461780220270157,
+        -0.00010531990847084671
+      ]
+    },
+    {
+      "name": "DishTop28",
+      "parent": 9,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        3.8069378760496875e-09,
+        -0.09516246616840363,
+        -0.00010532324813539162
+      ]
+    },
+    {
+      "name": "LightB28",
+      "parent": 5,
+      "rotation_quat16": [
+        -21497,
+        0,
+        0,
+        24729
+      ],
+      "translation": [
+        0.004222898278385401,
+        -0.0681595578789711,
+        -0.23209452629089355
+      ]
+    },
+    {
+      "name": "LightF28",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -24350,
+        21925,
+        0
+      ],
+      "translation": [
+        -0.005676375702023506,
+        0.04884473979473114,
+        -0.22655971348285675
+      ]
+    },
+    {
+      "name": "Post28",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.010368287563323975,
+        -0.5854806303977966
+      ]
+    },
+    {
+      "name": "WingL28",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.09330230951309204,
+        -0.010101690888404846,
+        -0.03226238489151001
+      ]
+    },
+    {
+      "name": "WingR28",
+      "parent": 5,
+      "rotation_quat16": [
+        -23169,
+        0,
+        23169,
+        0
+      ],
+      "translation": [
+        0.09330227226018906,
+        -0.010101690888404846,
+        -0.03226238489151001
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -5.802885727490548e-09,
+        0.10711106657981873,
+        -1.843439512150269e-09
+      ]
+    },
+    {
+      "name": "Base28",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1638769059629794e-08,
+        0.26626402139663696,
+        1.1638769059629794e-08
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail28",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 28.0,
+      "polyCount": 234
+    },
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 234
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 234
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 234
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 100
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 51,
+      "flags": 0,
+      "numKeyframes": 16,
+      "duration": 0.5000010132789612,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 12,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        6,
+        9
+      ],
+      "translationMatters": [
+        2,
+        5
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 52,
+      "flags": 16,
+      "numKeyframes": 30,
+      "duration": 3.033334255218506,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 32,
+      "baseTranslation": 32,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 12,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        4
+      ],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 53,
+      "flags": 16,
+      "numKeyframes": 9,
+      "duration": 0.30000120401382446,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 62,
+      "baseTranslation": 32,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 12,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    },
+    {
+      "nameIndex": 54,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333340287208557,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 62,
+      "baseTranslation": 32,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 12,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    50,
+    1,
+    327684,
+    458758,
+    589832
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/deploy_sensor_pulse.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/deploy_sensor_pulse.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/deploy_sensor_pulse.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "deploy_sensor_pulse",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/blue_blink.ifl",
+      "source": "base/skins.vl2:textures/skins/blue_blink.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "blue_blink0.PNG 120",
+        "blue_blink1.PNG 1",
+        "blue_blink2.PNG 1",
+        "blue_blink3.PNG 1",
+        "blue_blink4.PNG 1",
+        "blue_blink3.PNG 1",
+        "blue_blink2.PNG 1",
+        "blue_blink1.PNG 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/blue_blink0.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/blue_blink0.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/blue_blink0.PNG"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "blue_blink",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

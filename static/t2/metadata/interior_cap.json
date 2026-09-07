@@ -1,0 +1,65 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 30
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_genfloor.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_genfloor.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_genfloor.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_GENFLOOR",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_nefblue.png",
+      "source": "base/TR2final105-client.vl2:textures/lava/ds_NefBlue.png",
+      "alternatives": [
+        "base/Classic_maps_v1.vl2:textures/lava/ds_NefBlue.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_NEFBLUE",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_cap",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/TR2final105-client.vl2:interiors/cap.dif",
+    "source_path": "interiors/cap.dif",
+    "source_sha256": "a03c20e9dc47e20ebcd2db6162e16879b0d28d80d77eb9b25dfc685010d6335a",
+    "source_bytes": 9977,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_GENFLOOR",
+      "lava/DS_NEFBLUE"
+    ],
+    "version": 44,
+    "triangles": 40,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

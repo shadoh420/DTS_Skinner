@@ -1,0 +1,65 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 31
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 4,
+  "lightmap_count": 2,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/badlands/bd_icoligola.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_icoligolA.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_icoligolA.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ICOLIGOLA",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/bd_itebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/badlands/bd_itebor01.png",
+      "alternatives": [
+        "base/badlands.vl2:textures/badlands/bd_itebor01.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "badlands/BD_ITEBOR01",
+      "original_slot": 5
+    }
+  ],
+  "source": {
+    "model_name": "interior_euro_salproj1",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/Euro_salproj1.dif",
+    "source_path": "interiors/euro_salproj1.dif",
+    "source_sha256": "9571d68434e460a3aa3c5aaa250c266ed5b7a5467d00d4f7ddca23d4aea9efbe",
+    "source_bytes": 10993,
+    "alternatives": [],
+    "materials": [
+      "badlands/BD_ICOLIGOLA",
+      "badlands/BD_ITEBOR01"
+    ],
+    "version": 44,
+    "triangles": 62,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

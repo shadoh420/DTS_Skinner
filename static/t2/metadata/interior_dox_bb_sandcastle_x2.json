@@ -1,0 +1,61 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 15,
+      "surface_count": 234
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 5,
+      "surface_count": 161
+    }
+  ],
+  "null_surfaces_excluded": 1,
+  "degenerate_triangles_skipped": 31,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lush/bb_sand.png",
+      "source": "base/z_mappacks/TWL2-MapPack.vl2:textures/lush/bb_sand.png",
+      "alternatives": [
+        "base/z_mappacks/TWL-MapPack.vl2:textures/lush/bb_sand.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "97be0b3b6c039539c7ec888cb3a9d035a38ef9d5fcbaf4f9617e7a6ed5113765",
+      "name": "lush/BB_SAND",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_dox_bb_sandcastle_x2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL-MapPack.vl2:interiors/dox_bb_sandcastle_x2.dif",
+    "source_path": "interiors/dox_bb_sandcastle_x2.dif",
+    "source_sha256": "e515b9903ca1073f5d962080ac6fd6f6ebc1fe694cfa8fd298d4e6b7b81ca4a2",
+    "source_bytes": 64242,
+    "alternatives": [],
+    "materials": [
+      "lush/BB_SAND"
+    ],
+    "version": 44,
+    "triangles": 602,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

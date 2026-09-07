@@ -1,0 +1,71 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 40
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/fling1/ds_jet03.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_jet03.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "fd141be34d3cb2abc03be6f4bd0dd029ff656ebbf094f5e61c0864c5ae96c1a5",
+      "name": "fling1/DS_JET03",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/fling1/ds_nefblue.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/ds_NefBlue.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/DS_NEFBLUE",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/fling1/e6strimlight.png",
+      "source": "base/z_mappacks/S8maps.vl2:textures/fling1/e6strimlight.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "fling1/E6STRIMLIGHT",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_flingstand02",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S8maps.vl2:interiors/flingstand02.dif",
+    "source_path": "interiors/flingstand02.dif",
+    "source_sha256": "76ada7fb8eca637562b95272dfdef073fb43ed1caf56a182421391f8741c933f",
+    "source_bytes": 12386,
+    "alternatives": [],
+    "materials": [
+      "fling1/DS_JET03",
+      "fling1/DS_NEFBLUE",
+      "fling1/E6STRIMLIGHT"
+    ],
+    "version": 44,
+    "triangles": 64,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

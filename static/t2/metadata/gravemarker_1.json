@@ -1,0 +1,395 @@
+{
+  "source": {
+    "model_name": "gravemarker_1",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "Missing texture: gravemarker_ground (No matching source image or frame list)"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/gravemarker_1.dts",
+    "source_path": "shapes/gravemarker_1.dts",
+    "source_sha256": "e330b0c8d69383180598ea20847ea1c494d80d7a2f8e9514c50798f7655d044a",
+    "source_bytes": 33743,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/gravemarker_1.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "flag",
+      "marker",
+      "Badlands.RockBrown",
+      "gravemarker_ground",
+      "rusty.mmale"
+    ],
+    "triangles": 555,
+    "selected_detail": "Detail_16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.606104564263246e-12,
+        -0.0009243427775800228,
+        -1.0256284753776268e-12
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Collision-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.09164316207170486,
+        0.2135504186153412,
+        -2.6817833287395842e-08
+      ]
+    },
+    {
+      "name": "Collision-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.004377126693725586,
+        0.0032203197479248047,
+        8.10451705746118e-11
+      ]
+    },
+    {
+      "name": "bracket1_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -707,
+        707,
+        23158,
+        23158
+      ],
+      "translation": [
+        0.06255710870027542,
+        0.11220619082450867,
+        4.352245807647705
+      ]
+    },
+    {
+      "name": "bracket2_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -15875,
+        -16876,
+        -16876,
+        -15875
+      ],
+      "translation": [
+        0.06255713105201721,
+        0.22227360308170319,
+        4.482946872711182
+      ]
+    },
+    {
+      "name": "bracket3_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -707,
+        707,
+        23158,
+        23158
+      ],
+      "translation": [
+        0.06255712360143661,
+        0.11220621317625046,
+        4.544145584106445
+      ]
+    },
+    {
+      "name": "Flag_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.06040268391370773,
+        0.21832309663295746,
+        3.4199581146240234
+      ]
+    },
+    {
+      "name": "Pole_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.04846251383423805,
+        0.0063825612887740135,
+        1.4078803062438965
+      ]
+    },
+    {
+      "name": "rock16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.39738979935646057,
+        -0.5149551630020142,
+        0.5532734990119934
+      ]
+    },
+    {
+      "name": "rock_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -25811,
+        -15817,
+        6551,
+        -10691
+      ],
+      "translation": [
+        0.2722373902797699,
+        -0.5369426608085632,
+        0.3776452839374542
+      ]
+    },
+    {
+      "name": "rockbase_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0020660758018493652,
+        -0.0004694610834121704,
+        2.1613023870603598e-10
+      ]
+    },
+    {
+      "name": "Submesh_head_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -12736,
+        -168,
+        16445,
+        25317
+      ],
+      "translation": [
+        0.47129276394844055,
+        0.192580446600914,
+        0.5932581424713135
+      ]
+    },
+    {
+      "name": "Submesh_lbicep_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -3585,
+        -8525,
+        319,
+        31433
+      ],
+      "translation": [
+        -0.6975992321968079,
+        0.24351046979427338,
+        0.16885583102703094
+      ]
+    },
+    {
+      "name": "Submesh_lshoulder_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -3583,
+        -8387,
+        335,
+        31470
+      ],
+      "translation": [
+        -0.7502057552337646,
+        0.21389858424663544,
+        0.3631400167942047
+      ]
+    },
+    {
+      "name": "Submesh_torso_16",
+      "parent": 1,
+      "rotation_quat16": [
+        -13165,
+        293,
+        -4062,
+        29728
+      ],
+      "translation": [
+        -0.17018935084342957,
+        0.5989776253700256,
+        0.43819013237953186
+      ]
+    },
+    {
+      "name": "Top_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        1000,
+        0,
+        32751
+      ],
+      "translation": [
+        0.06346786767244339,
+        0.217899352312088,
+        4.337681770324707
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 652
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": -1.0,
+      "polyCount": 12
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": -2.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 32,
+      "flags": 16,
+      "numKeyframes": 21,
+      "duration": 0.700209379196167,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 13,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        6
+      ],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/flag.png",
+      "source": "base/z_textures/zflags.vl2:textures/skins/flag.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/flag.png",
+        "base/yHDTextures2.0.vl2:textures/skins/flag.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "flag",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/marker.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/marker.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/marker.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "marker",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/terrain/badlands.rockbrown.png",
+      "source": "base/textures.vl2:textures/terrain/Badlands.RockBrown.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "sha256": "2822db9273c5e23cf9adbdd606b750be65a165be5c51692e3f44ab7146eb03c5",
+      "name": "Badlands.RockBrown",
+      "original_slot": 2
+    },
+    {
+      "reason": "No matching source image or frame list",
+      "material": "gravemarker_ground",
+      "name": "gravemarker_ground",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/rusty.mmale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/rusty.mmale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/rusty.mmale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "rusty.mmale",
+      "original_slot": 4
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

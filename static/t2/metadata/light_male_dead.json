@@ -1,0 +1,420 @@
+{
+  "source": {
+    "model_name": "light_male_dead",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/light_male_dead.dts",
+    "source_path": "shapes/light_male_dead.dts",
+    "source_sha256": "afcb7796a8d877fba036cd48b8ce8fa44d716a94adf8fcee96519d817c121114",
+    "source_bytes": 95190,
+    "version": 19,
+    "alternatives": [
+      "base/shapes.vl2:shapes/light_male_dead.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "base.lmale"
+    ],
+    "triangles": 1616,
+    "selected_detail": "Detail300"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Bip01 Pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        11817,
+        19006,
+        -19583,
+        13758
+      ],
+      "translation": [
+        1.0015557272424758e-09,
+        0.004140149801969528,
+        0.17290060222148895
+      ]
+    },
+    {
+      "name": "Bip01 Spine",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        -13,
+        32766
+      ],
+      "translation": [
+        0.06666446477174759,
+        -0.00011850325972773135,
+        9.308849513445239e-08
+      ]
+    },
+    {
+      "name": "Bip01 Spine1",
+      "parent": 1,
+      "rotation_quat16": [
+        -837,
+        1195,
+        1422,
+        32703
+      ],
+      "translation": [
+        0.14880762994289398,
+        -0.00017686279898043722,
+        -9.62027843343094e-06
+      ]
+    },
+    {
+      "name": "Bip01 Spine2",
+      "parent": 2,
+      "rotation_quat16": [
+        8,
+        -854,
+        -1327,
+        32728
+      ],
+      "translation": [
+        0.22324854135513306,
+        -0.00017718180606607348,
+        -2.8571415100486774e-07
+      ]
+    },
+    {
+      "name": "Bip01 Neck",
+      "parent": 3,
+      "rotation_quat16": [
+        -1229,
+        1579,
+        -5733,
+        32199
+      ],
+      "translation": [
+        0.22325144708156586,
+        -4.647563036996871e-05,
+        -2.849565817086841e-06
+      ]
+    },
+    {
+      "name": "Bip01 Head",
+      "parent": 4,
+      "rotation_quat16": [
+        -11199,
+        3329,
+        3652,
+        30394
+      ],
+      "translation": [
+        0.062352173030376434,
+        -4.909958661869496e-09,
+        -7.761105536019386e-09
+      ]
+    },
+    {
+      "name": "Bip01 L Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        -25815,
+        3265,
+        -19271,
+        5018
+      ],
+      "translation": [
+        0.008420711383223534,
+        0.004489600658416748,
+        0.07745834439992905
+      ]
+    },
+    {
+      "name": "Bip01 L UpperArm",
+      "parent": 6,
+      "rotation_quat16": [
+        19813,
+        -4028,
+        6987,
+        24820
+      ],
+      "translation": [
+        0.27747321128845215,
+        1.894511214572958e-10,
+        -9.950761103993955e-09
+      ]
+    },
+    {
+      "name": "Bip01 L Forearm",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        0,
+        21696,
+        24554
+      ],
+      "translation": [
+        0.3665938973426819,
+        2.022578371452255e-08,
+        -1.4453288343929671e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Hand",
+      "parent": 8,
+      "rotation_quat16": [
+        22842,
+        919,
+        2475,
+        23343
+      ],
+      "translation": [
+        0.3856528699398041,
+        3.818474425543172e-09,
+        3.544692006585137e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        -23079,
+        4945,
+        22514,
+        -3103
+      ],
+      "translation": [
+        -0.008420640602707863,
+        -0.004390310496091843,
+        -0.07745831459760666
+      ]
+    },
+    {
+      "name": "Bip01 R UpperArm",
+      "parent": 10,
+      "rotation_quat16": [
+        -21060,
+        7830,
+        -4116,
+        23492
+      ],
+      "translation": [
+        0.2774731516838074,
+        -9.200409323284475e-09,
+        3.451702568213477e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Forearm",
+      "parent": 11,
+      "rotation_quat16": [
+        0,
+        0,
+        -28692,
+        -15823
+      ],
+      "translation": [
+        0.3665939271450043,
+        4.162239619631691e-08,
+        7.459100004325592e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Hand",
+      "parent": 12,
+      "rotation_quat16": [
+        -23550,
+        -4177,
+        -1715,
+        22330
+      ],
+      "translation": [
+        0.38565289974212646,
+        4.351311133632407e-08,
+        1.576828090321669e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -5612,
+        -23301,
+        -21576,
+        -5800
+      ],
+      "translation": [
+        -0.06666437536478043,
+        0.0001711941440589726,
+        0.14319346845149994
+      ]
+    },
+    {
+      "name": "Bip01 L Calf",
+      "parent": 14,
+      "rotation_quat16": [
+        0,
+        0,
+        5380,
+        32322
+      ],
+      "translation": [
+        0.546295702457428,
+        1.3926971575983771e-08,
+        1.069558486221922e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Foot",
+      "parent": 15,
+      "rotation_quat16": [
+        -3,
+        2324,
+        721,
+        32676
+      ],
+      "translation": [
+        0.604221522808075,
+        1.7913148298021042e-08,
+        -7.276203639605683e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -4961,
+        -23199,
+        21667,
+        6432
+      ],
+      "translation": [
+        -0.06666433811187744,
+        0.00017196928092744201,
+        -0.14319348335266113
+      ]
+    },
+    {
+      "name": "Bip01 R Calf",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        0,
+        4721,
+        32424
+      ],
+      "translation": [
+        0.546295702457428,
+        2.9592204242590014e-08,
+        -5.241480582895974e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Foot",
+      "parent": 18,
+      "rotation_quat16": [
+        -193,
+        -1895,
+        2088,
+        32644
+      ],
+      "translation": [
+        0.6042215824127197,
+        1.1423295198653705e-08,
+        2.1600532917886994e-08
+      ]
+    },
+    {
+      "name": "Unlink",
+      "parent": -1,
+      "rotation_quat16": [
+        4092,
+        -23564,
+        -5085,
+        21812
+      ],
+      "translation": [
+        0.4730169177055359,
+        -1.1231951713562012,
+        0.1031985729932785
+      ]
+    },
+    {
+      "name": "Cam",
+      "parent": 20,
+      "rotation_quat16": [
+        13797,
+        19542,
+        -11825,
+        19013
+      ],
+      "translation": [
+        -1.9369348287582397,
+        1.492225170135498,
+        -0.06468057632446289
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail300",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 300.0,
+      "polyCount": 2017
+    },
+    {
+      "name": "Detail220",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 220.0,
+      "polyCount": 1701
+    },
+    {
+      "name": "Detail150",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 150.0,
+      "polyCount": 1230
+    },
+    {
+      "name": "Detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 100.0,
+      "polyCount": 644
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 32.0,
+      "polyCount": 393
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 4.0,
+      "polyCount": 178
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/base.lmale.png",
+      "source": "base/TR2final105-client.vl2:textures/base.lmale.png",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "base.lmale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

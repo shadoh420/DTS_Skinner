@@ -1,0 +1,185 @@
+{
+  "source": {
+    "model_name": "mortar_projectile",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/mortar_projectile.dts",
+    "source_path": "shapes/mortar_projectile.dts",
+    "source_sha256": "cc2e813854ceeff94a58a1b9bf2b942167f30d15403d7fed9380d97fd32edb63",
+    "source_bytes": 9205,
+    "version": 18,
+    "alternatives": [
+      "base/shapes.vl2:shapes/mortar_projectile.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "Mortar_Projectile"
+    ],
+    "triangles": 112,
+    "selected_detail": "detail 16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.3994855284690857,
+        -0.19927962124347687,
+        0.002538119675591588
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.40046411752700806,
+        0.1596422791481018,
+        0.0
+      ]
+    },
+    {
+      "name": "WOBBLE",
+      "parent": 1,
+      "rotation_quat16": [
+        3282,
+        0,
+        0,
+        32602
+      ],
+      "translation": [
+        -0.00024957454297691584,
+        0.038868457078933716,
+        0.00024405866861343384
+      ]
+    },
+    {
+      "name": "SPIN",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        2.160615002883004e-12,
+        1.1018929909137332e-12
+      ]
+    },
+    {
+      "name": "mortar 16",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.4924596548080444e-10,
+        -3.886013039133829e-12,
+        6.118478119987447e-13
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail 16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 8",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 8.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 5",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 5.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 10,
+      "numKeyframes": 21,
+      "duration": 0.700001060962677,
+      "flags": 16,
+      "cyclic": true,
+      "priority": 0,
+      "firstGroundFrame": 47,
+      "numGroundFrames": 0,
+      "baseRotation": 5,
+      "baseObjectState": 1,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "baseTranslation": 5,
+      "baseScale": 0,
+      "rotationMatters": [
+        2,
+        3
+      ],
+      "iflMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "translationMatters": [
+        2,
+        3
+      ],
+      "scaleMatters": [],
+      "name": "ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/mortar_projectile.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Mortar_Projectile.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Mortar_Projectile.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Mortar_Projectile",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,131 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 312
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 96,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/ds_iflo02.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iflo02.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iflo02.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IFLO02",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/lava/ds_efloor1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_efloor1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_efloor1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_EFLOOR1",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/lava/ds_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_iwal01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_IWAL01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/lava/ds_techwall_1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_techwall_1.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_techwall_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_TECHWALL_1",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/lava/ds_screen.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_screen.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_screen.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_SCREEN",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilavlight.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilavlight.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilavlight.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILAVLIGHT",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/lava/ds_ichute01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ichute01.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ichute01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ICHUTE01",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/lava/ds_ilig05.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/ds_ilig05.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/ds_ilig05.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "lava/DS_ILIG05",
+      "original_slot": 11
+    }
+  ],
+  "source": {
+    "model_name": "interior_hbflagstand",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/TWL2-MapPack.vl2:interiors/hbflagstand.dif",
+    "source_path": "interiors/hbflagstand.dif",
+    "source_sha256": "382e3367f55454122c8704412205a5be08c140b4bd7e98723d2289a621f26e44",
+    "source_bytes": 51774,
+    "alternatives": [],
+    "materials": [
+      "lava/DS_IFLO02",
+      "lava/DS_EFLOOR1",
+      "lava/DS_IWAL01",
+      "lava/DS_TECHWALL_1",
+      "lava/DS_SCREEN",
+      "lava/DS_ILAVLIGHT",
+      "lava/DS_ICHUTE01",
+      "lava/DS_ILIG05"
+    ],
+    "version": 44,
+    "triangles": 808,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

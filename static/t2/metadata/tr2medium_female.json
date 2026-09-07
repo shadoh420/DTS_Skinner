@@ -1,0 +1,983 @@
+{
+  "source": {
+    "model_name": "tr2medium_female",
+    "game": "t2",
+    "category": "Players",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/TR2medium_female.dts",
+    "source_path": "shapes/tr2medium_female.dts",
+    "source_sha256": "3acde4121eeb000088a832f6abc75b97f5fa3ccb6565400229ff36a7a3604758",
+    "source_bytes": 246594,
+    "version": 23,
+    "alternatives": [],
+    "sequences": 2,
+    "external_sequences": 38,
+    "materials": [
+      "base.mfemale"
+    ],
+    "triangles": 1760,
+    "selected_detail": "Detail145"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Bip01 Pelvis",
+      "parent": -1,
+      "rotation_quat16": [
+        33,
+        22537,
+        6,
+        23784
+      ],
+      "translation": [
+        2.9165160952970837e-08,
+        -4.621218074873923e-09,
+        2.6635541915893555
+      ]
+    },
+    {
+      "name": "Bip01 Spine",
+      "parent": 0,
+      "rotation_quat16": [
+        1023,
+        709,
+        -116,
+        32743
+      ],
+      "translation": [
+        0.13972914218902588,
+        -0.00025151678710244596,
+        0.008241388015449047
+      ]
+    },
+    {
+      "name": "Bip01 Spine1",
+      "parent": 1,
+      "rotation_quat16": [
+        -1082,
+        731,
+        3695,
+        32531
+      ],
+      "translation": [
+        0.31626152992248535,
+        -0.0003322195552755147,
+        -2.4142727852449752e-05
+      ]
+    },
+    {
+      "name": "Bip01 Spine2",
+      "parent": 2,
+      "rotation_quat16": [
+        1109,
+        -1324,
+        -2460,
+        32628
+      ],
+      "translation": [
+        0.429172545671463,
+        -0.0003494605189189315,
+        2.1759511582786217e-05
+      ]
+    },
+    {
+      "name": "Bip01 Neck",
+      "parent": 3,
+      "rotation_quat16": [
+        -1070,
+        714,
+        23,
+        32741
+      ],
+      "translation": [
+        0.44484981894493103,
+        -0.00010400407336419448,
+        -6.804948952776613e-06
+      ]
+    },
+    {
+      "name": "Bip01 Head",
+      "parent": 4,
+      "rotation_quat16": [
+        75,
+        87,
+        -819,
+        32756
+      ],
+      "translation": [
+        0.1309155374765396,
+        4.840497780378428e-09,
+        -3.9267505913542777e-10
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 5,
+      "rotation_quat16": [
+        187,
+        -23220,
+        -212,
+        23117
+      ],
+      "translation": [
+        0.14085014164447784,
+        0.2296714186668396,
+        0.00016904565563891083
+      ]
+    },
+    {
+      "name": "Bip01 L Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        -21696,
+        -3205,
+        -24200,
+        2647
+      ],
+      "translation": [
+        0.004222034011036158,
+        0.006440259981900454,
+        0.09668862074613571
+      ]
+    },
+    {
+      "name": "Bip01 L UpperArm",
+      "parent": 7,
+      "rotation_quat16": [
+        -1816,
+        -16902,
+        14035,
+        24242
+      ],
+      "translation": [
+        0.4442465007305145,
+        2.0971283376525207e-08,
+        -1.7719061418119963e-07
+      ]
+    },
+    {
+      "name": "Bip01 L Forearm",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        13026,
+        30066
+      ],
+      "translation": [
+        0.8367885947227478,
+        -7.405462554288533e-08,
+        -2.7954094150572928e-08
+      ]
+    },
+    {
+      "name": "Bip01 L Hand",
+      "parent": 9,
+      "rotation_quat16": [
+        -32224,
+        -5472,
+        1833,
+        1389
+      ],
+      "translation": [
+        0.7544987201690674,
+        2.6387436946606613e-07,
+        -4.14342338217466e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Clavicle",
+      "parent": 4,
+      "rotation_quat16": [
+        21447,
+        2081,
+        -24604,
+        1998
+      ],
+      "translation": [
+        -0.0042221746407449245,
+        -0.0062317741103470325,
+        -0.09668862819671631
+      ]
+    },
+    {
+      "name": "Bip01 R UpperArm",
+      "parent": 11,
+      "rotation_quat16": [
+        9092,
+        19540,
+        -7294,
+        23578
+      ],
+      "translation": [
+        0.44424644112586975,
+        2.0657610733110232e-08,
+        -3.102098133922482e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Forearm",
+      "parent": 12,
+      "rotation_quat16": [
+        0,
+        0,
+        27928,
+        17136
+      ],
+      "translation": [
+        0.8367883563041687,
+        9.077488982711657e-08,
+        8.460063760651337e-09
+      ]
+    },
+    {
+      "name": "Bip01 R Hand",
+      "parent": 13,
+      "rotation_quat16": [
+        -24030,
+        -1996,
+        3633,
+        21885
+      ],
+      "translation": [
+        0.7544983625411987,
+        1.3257329101179494e-07,
+        -7.492166886891027e-09
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 14,
+      "rotation_quat16": [
+        -839,
+        1622,
+        23828,
+        22417
+      ],
+      "translation": [
+        0.0995122492313385,
+        0.0632198229432106,
+        -0.000132537359604612
+      ]
+    },
+    {
+      "name": "Righthand",
+      "parent": 15,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -3.112758051315723e-08,
+        0.41182741522789,
+        0.009477844461798668
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 3,
+      "rotation_quat16": [
+        -27509,
+        17802,
+        0,
+        0
+      ],
+      "translation": [
+        -0.12497345358133316,
+        -0.23820026218891144,
+        -0.01508671697229147
+      ]
+    },
+    {
+      "name": "Jetfire145",
+      "parent": 3,
+      "rotation_quat16": [
+        1678,
+        -22964,
+        -3475,
+        23051
+      ],
+      "translation": [
+        -0.13927096128463745,
+        -0.27804118394851685,
+        -0.01161694061011076
+      ]
+    },
+    {
+      "name": "Light0",
+      "parent": 3,
+      "rotation_quat16": [
+        -73,
+        -21014,
+        -352,
+        25138
+      ],
+      "translation": [
+        0.21160411834716797,
+        0.1556473821401596,
+        0.2341873198747635
+      ]
+    },
+    {
+      "name": "Light1",
+      "parent": 3,
+      "rotation_quat16": [
+        -222,
+        -23325,
+        -577,
+        23004
+      ],
+      "translation": [
+        0.21113240718841553,
+        0.16172966361045837,
+        -0.22558864951133728
+      ]
+    },
+    {
+      "name": "Mount2",
+      "parent": 2,
+      "rotation_quat16": [
+        496,
+        -23164,
+        -496,
+        23164
+      ],
+      "translation": [
+        0.615196168422699,
+        -0.2870061695575714,
+        0.034609097987413406
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 2,
+      "rotation_quat16": [
+        496,
+        -23164,
+        -496,
+        23164
+      ],
+      "translation": [
+        0.6151959300041199,
+        -0.2870062291622162,
+        0.03460908681154251
+      ]
+    },
+    {
+      "name": "Bip01 L Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -4194,
+        -32349,
+        -2280,
+        -2096
+      ],
+      "translation": [
+        -0.12700247764587402,
+        -0.017247922718524933,
+        0.29761815071105957
+      ]
+    },
+    {
+      "name": "Bip01 L Calf",
+      "parent": 23,
+      "rotation_quat16": [
+        0,
+        0,
+        5988,
+        32215
+      ],
+      "translation": [
+        1.120401382446289,
+        4.8458627333047843e-08,
+        5.338150366185346e-09
+      ]
+    },
+    {
+      "name": "Bip01 L Foot",
+      "parent": 24,
+      "rotation_quat16": [
+        -193,
+        2057,
+        -2163,
+        32630
+      ],
+      "translation": [
+        1.2770613431930542,
+        -2.6323171198328055e-08,
+        9.436327275125223e-10
+      ]
+    },
+    {
+      "name": "Ski0",
+      "parent": 24,
+      "rotation_quat16": [
+        19288,
+        14883,
+        12421,
+        18051
+      ],
+      "translation": [
+        0.4377744495868683,
+        -0.04729272052645683,
+        -0.07799866050481796
+      ]
+    },
+    {
+      "name": "Bip01 R Thigh",
+      "parent": 1,
+      "rotation_quat16": [
+        -310,
+        -31998,
+        6618,
+        2421
+      ],
+      "translation": [
+        -0.1528918594121933,
+        0.0203884094953537,
+        -0.30186355113983154
+      ]
+    },
+    {
+      "name": "Bip01 R Calf",
+      "parent": 27,
+      "rotation_quat16": [
+        0,
+        0,
+        5736,
+        32260
+      ],
+      "translation": [
+        1.120401382446289,
+        2.236961726964637e-09,
+        -2.591525571915554e-08
+      ]
+    },
+    {
+      "name": "Bip01 R Foot",
+      "parent": 28,
+      "rotation_quat16": [
+        418,
+        -2108,
+        -5685,
+        32198
+      ],
+      "translation": [
+        1.2770613431930542,
+        -9.66128688162371e-09,
+        -5.079522225059918e-08
+      ]
+    },
+    {
+      "name": "Ski1",
+      "parent": 28,
+      "rotation_quat16": [
+        -13382,
+        -20009,
+        -17930,
+        -13141
+      ],
+      "translation": [
+        0.44072917103767395,
+        -0.03379852697253227,
+        0.08307971060276031
+      ]
+    },
+    {
+      "name": "Unlink",
+      "parent": -1,
+      "rotation_quat16": [
+        -16374,
+        -16326,
+        -16388,
+        16443
+      ],
+      "translation": [
+        0.004902756307274103,
+        -0.00026113452622666955,
+        1.439028263092041
+      ]
+    },
+    {
+      "name": "Cam",
+      "parent": 31,
+      "rotation_quat16": [
+        23134,
+        -62,
+        -44,
+        23204
+      ],
+      "translation": [
+        0.16324211657047272,
+        0.7590120434761047,
+        -0.0003816387034021318
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail145",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 145.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "detail112",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 112.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "detail96",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 96.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "Detail80",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 80.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "Detail60",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 60.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "Detail30",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 30.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "Detail18",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": 18.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "Detail12",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": 12.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 9,
+      "size": 6.0,
+      "polyCount": 2230
+    },
+    {
+      "name": "Detail3",
+      "subShapeNum": 0,
+      "objectDetailNum": 10,
+      "size": 3.0,
+      "polyCount": 2214
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 115,
+      "flags": 32,
+      "numKeyframes": 11,
+      "duration": 0.33333438634872437,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 1,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 23,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        22
+      ],
+      "frameMatters": [
+        22
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "JetFlare"
+    },
+    {
+      "nameIndex": 116,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333343267440796,
+      "priority": 0,
+      "firstGroundFrame": 1,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 34,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    }
+  ],
+  "external_sequences": [
+    "shapes/medium_female_head.dsq",
+    "shapes/medium_female_headside.dsq",
+    "shapes/medium_female_idlepda.dsq",
+    "shapes/medium_female_lookde.dsq",
+    "shapes/medium_female_lookms.dsq",
+    "shapes/medium_female_looknw.dsq",
+    "shapes/medium_female_looksn.dsq",
+    "shapes/medium_female_recoilde.dsq",
+    "shapes/medium_female_sitting.dsq",
+    "shapes/tr2medium_female_back.dsq",
+    "shapes/tr2medium_female_celbow.dsq",
+    "shapes/tr2medium_female_celdisco.dsq",
+    "shapes/tr2medium_female_celsalute.dsq",
+    "shapes/tr2medium_female_celwave.dsq",
+    "shapes/tr2medium_female_dieback.dsq",
+    "shapes/tr2medium_female_diechest.dsq",
+    "shapes/tr2medium_female_dieforward.dsq",
+    "shapes/tr2medium_female_diehead.dsq",
+    "shapes/tr2medium_female_dieknees.dsq",
+    "shapes/tr2medium_female_dieleglf.dsq",
+    "shapes/tr2medium_female_dielegrt.dsq",
+    "shapes/tr2medium_female_diesidelf.dsq",
+    "shapes/tr2medium_female_diesidert.dsq",
+    "shapes/tr2medium_female_dieslump.dsq",
+    "shapes/tr2medium_female_diespin.dsq",
+    "shapes/tr2medium_female_fall.dsq",
+    "shapes/tr2medium_female_forward.dsq",
+    "shapes/tr2medium_female_jet.dsq",
+    "shapes/tr2medium_female_jump.dsq",
+    "shapes/tr2medium_female_land.dsq",
+    "shapes/tr2medium_female_root.dsq",
+    "shapes/tr2medium_female_side.dsq",
+    "shapes/tr2medium_female_ski.dsq",
+    "shapes/tr2medium_female_standjump.dsq",
+    "shapes/tr2medium_female_tauntbest.dsq",
+    "shapes/tr2medium_female_tauntbutt.dsq",
+    "shapes/tr2medium_female_tauntimp.dsq",
+    "shapes/tr2medium_female_tauntkiss.dsq"
+  ],
+  "script_sequence_bindings": [
+    {
+      "index": 0,
+      "path": "shapes/tr2medium_female_root.dsq",
+      "alias": "root",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 1,
+      "path": "shapes/tr2medium_female_forward.dsq",
+      "alias": "run",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 2,
+      "path": "shapes/tr2medium_female_back.dsq",
+      "alias": "back",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 3,
+      "path": "shapes/tr2medium_female_side.dsq",
+      "alias": "side",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 4,
+      "path": "shapes/medium_female_lookde.dsq",
+      "alias": "look",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 5,
+      "path": "shapes/medium_female_head.dsq",
+      "alias": "head",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 6,
+      "path": "shapes/medium_female_headside.dsq",
+      "alias": "headside",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 7,
+      "path": "shapes/tr2medium_female_fall.dsq",
+      "alias": "fall",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 8,
+      "path": "shapes/tr2medium_female_jet.dsq",
+      "alias": "jet",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 9,
+      "path": "shapes/tr2medium_female_land.dsq",
+      "alias": "land",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 10,
+      "path": "shapes/tr2medium_female_jump.dsq",
+      "alias": "jump",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 11,
+      "path": "shapes/medium_female_recoilde.dsq",
+      "alias": "light_recoil",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 12,
+      "path": "shapes/medium_female_looksn.dsq",
+      "alias": "looksn",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 13,
+      "path": "shapes/medium_female_lookms.dsq",
+      "alias": "lookms",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 14,
+      "path": "shapes/medium_female_sitting.dsq",
+      "alias": "sitting",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 15,
+      "path": "shapes/medium_female_idlepda.dsq",
+      "alias": "pda",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 16,
+      "path": "shapes/tr2medium_female_diehead.dsq",
+      "alias": "death1",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 17,
+      "path": "shapes/tr2medium_female_diechest.dsq",
+      "alias": "death2",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 18,
+      "path": "shapes/tr2medium_female_dieback.dsq",
+      "alias": "death3",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 19,
+      "path": "shapes/tr2medium_female_diesidelf.dsq",
+      "alias": "death4",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 20,
+      "path": "shapes/tr2medium_female_diesidert.dsq",
+      "alias": "death5",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 21,
+      "path": "shapes/tr2medium_female_dieleglf.dsq",
+      "alias": "death6",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 22,
+      "path": "shapes/tr2medium_female_dielegrt.dsq",
+      "alias": "death7",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 23,
+      "path": "shapes/tr2medium_female_dieslump.dsq",
+      "alias": "death8",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 24,
+      "path": "shapes/tr2medium_female_dieknees.dsq",
+      "alias": "death9",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 25,
+      "path": "shapes/tr2medium_female_dieforward.dsq",
+      "alias": "death10",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 26,
+      "path": "shapes/tr2medium_female_diespin.dsq",
+      "alias": "death11",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 27,
+      "path": "shapes/tr2medium_female_celsalute.dsq",
+      "alias": "cel1",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 28,
+      "path": "shapes/tr2medium_female_celwave.dsq",
+      "alias": "cel2",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 29,
+      "path": "shapes/tr2medium_female_tauntbest.dsq",
+      "alias": "cel3",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 30,
+      "path": "shapes/tr2medium_female_tauntimp.dsq",
+      "alias": "cel4",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 31,
+      "path": "shapes/tr2medium_female_celdisco.dsq",
+      "alias": "cel5",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 32,
+      "path": "shapes/tr2medium_female_tauntkiss.dsq",
+      "alias": "cel6",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 33,
+      "path": "shapes/tr2medium_female_tauntbutt.dsq",
+      "alias": "cel7",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 34,
+      "path": "shapes/tr2medium_female_celbow.dsq",
+      "alias": "cel8",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 35,
+      "path": "shapes/tr2medium_female_ski.dsq",
+      "alias": "ski",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 36,
+      "path": "shapes/tr2medium_female_standjump.dsq",
+      "alias": "standjump",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    },
+    {
+      "index": 37,
+      "path": "shapes/medium_female_looknw.dsq",
+      "alias": "looknw",
+      "script": "scripts/tr2medium_female.cs",
+      "source": "base/TR2final105-server.vl2:scripts/TR2medium_female.cs"
+    }
+  ],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.mfemale.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/base.mfemale.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.mfemale.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.mfemale",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Jetfire"
+  ],
+  "empty_finer_details": []
+}

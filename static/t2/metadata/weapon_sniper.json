@@ -1,0 +1,480 @@
+{
+  "source": {
+    "model_name": "weapon_sniper",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: greenlight",
+      "Animated texture uses frame zero: lite_red"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/weapon_sniper.dts",
+    "source_path": "shapes/weapon_sniper.dts",
+    "source_sha256": "ed49317fe46bbc1bb017a86d13fbff096702de406e80d83c69addb15d93b4c9f",
+    "source_bytes": 40993,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/weapon_sniper.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_sniper",
+      "greenlight",
+      "lite_red"
+    ],
+    "triangles": 490,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.125410425435348e-08,
+        -0.3040725290775299,
+        -0.06687464565038681
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.002041961532086134,
+        -0.0012174546718597412,
+        0.003986649215221405
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0003585769154597074,
+        1.1826603412628174,
+        0.08955641835927963
+      ]
+    },
+    {
+      "name": "SniperHandle128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -2.1255617710380648e-08,
+        0.3040725290775299,
+        0.06687464565038681
+      ]
+    },
+    {
+      "name": "BackMecha128",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        0.04194331914186478,
+        0.02084973454475403,
+        0.17180393636226654
+      ]
+    },
+    {
+      "name": "CylinderLower128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        6.605684029636905e-05,
+        0.7929893732070923,
+        0.04553607478737831
+      ]
+    },
+    {
+      "name": "CylinderUpper128",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        6.605997623410076e-05,
+        0.7929893732070923,
+        0.12165777385234833
+      ]
+    },
+    {
+      "name": "Barrel128",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -9.30627211346291e-05,
+        0.9232709407806396,
+        0.09811115264892578
+      ]
+    },
+    {
+      "name": "Gadget128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        9.982891788240522e-05,
+        1.0490128993988037,
+        -0.0387837216258049
+      ]
+    },
+    {
+      "name": "TopMecha128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.0004897617036476731,
+        0.08209165930747986,
+        0.1720862090587616
+      ]
+    },
+    {
+      "name": "TopSlider128",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        4.4398555473890156e-05,
+        0.46287816762924194,
+        0.1855091005563736
+      ]
+    },
+    {
+      "name": "GreenLeft128",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -0.05506422370672226,
+        0.30253955721855164,
+        0.1592964231967926
+      ]
+    },
+    {
+      "name": "GreenRight128",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.0566754974424839,
+        0.302043080329895,
+        0.1592964231967926
+      ]
+    },
+    {
+      "name": "RedLeft128",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -0.05506422370672226,
+        0.3031291961669922,
+        0.12676513195037842
+      ]
+    },
+    {
+      "name": "RedRight128",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.0566754974424839,
+        0.30158567428588867,
+        0.12667569518089294
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0003585769154597074,
+        1.2497708797454834,
+        0.08955641835927963
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 570
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 439
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 338
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 227
+    },
+    {
+      "name": "Detail4",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 4.0,
+      "polyCount": 138
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 43
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 37,
+      "flags": 16,
+      "numKeyframes": 30,
+      "duration": 1.0000009536743164,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    },
+    {
+      "nameIndex": 38,
+      "flags": 16,
+      "numKeyframes": 4,
+      "duration": 0.30000096559524536,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Fire"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    35,
+    1,
+    7,
+    5,
+    13,
+    36,
+    2,
+    11,
+    6,
+    10
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_sniper.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_sniper.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_sniper.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_sniper",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/greenlight.ifl",
+      "source": "base/skins.vl2:textures/skins/greenlight.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "lite_green0.png 25",
+        "lite_green1.png 2",
+        "lite_green2.png 2",
+        "lite_green3.png 2",
+        "lite_green4.png 2",
+        "lite_green3.png 2",
+        "lite_green2.png 2",
+        "lite_green1.png 2",
+        "lite_green0.png 32",
+        "lite_green1.png 1",
+        "lite_green2.png 1",
+        "lite_green3.png 1",
+        "lite_green4.png 1",
+        "lite_green3.png 1",
+        "lite_green2.png 1",
+        "lite_green1.png 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/lite_green0.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/lite_green0.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/lite_green0.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "greenlight",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/lite_red.ifl",
+      "source": "base/skins.vl2:textures/skins/lite_red.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "lite_red0.png 10",
+        "lite_red1.png 2",
+        "lite_red2.png 2",
+        "lite_red3.png 2",
+        "lite_red4.png 2",
+        "lite_red3.png 2",
+        "lite_red2.png 2",
+        "lite_red1.png 2",
+        "lite_red0.png 47",
+        "lite_red1.png 1",
+        "lite_red2.png 1",
+        "lite_red3.png 1",
+        "lite_red4.png 1",
+        "lite_red3.png 1",
+        "lite_red2.png 1",
+        "lite_red1.png 1"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/lite_red0.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/lite_red0.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/lite_red0.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "lite_red",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,591 @@
+{
+  "source": {
+    "model_name": "turret_aa_large",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "6 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/turret_aa_large.dts",
+    "source_path": "shapes/turret_aa_large.dts",
+    "source_sha256": "7e7aedf39e5161e0f0ee60654423cc9e78c87a4fc7d8bf865a44364b2a2dd10f",
+    "source_bytes": 116213,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/turret_aa_large.dts"
+    ],
+    "sequences": 5,
+    "external_sequences": 0,
+    "materials": [
+      "barrel_aa_large"
+    ],
+    "triangles": 472,
+    "selected_detail": "Detail_40"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.1690942678165224e-15,
+        -2.7632915400310765e-10,
+        0.3499319553375244
+      ]
+    },
+    {
+      "name": "Body_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.2575598340447414e-09,
+        -0.713952362537384,
+        0.34993186593055725
+      ]
+    },
+    {
+      "name": "Col_-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "DumDeployMid",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.2540879652078729e-05,
+        0.24371162056922913,
+        0.3509514033794403
+      ]
+    },
+    {
+      "name": "DumDeployBarExtT",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        1.2546777725219727e-05,
+        -0.22646506130695343,
+        0.173613041639328
+      ]
+    },
+    {
+      "name": "DumFireT",
+      "parent": 6,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        6.661338147750939e-16,
+        0.0,
+        3.49081759321284e-16
+      ]
+    },
+    {
+      "name": "BarrelBaseT_40",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        6.661338147750939e-16,
+        -0.06272047758102417,
+        3.49081759321284e-16
+      ]
+    },
+    {
+      "name": "BarrelT_40",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -5.3411604028497095e-09,
+        -0.23262351751327515,
+        -0.044804900884628296
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        4.218847493575595e-15,
+        0.802524745464325,
+        2.993526493355603e-08
+      ]
+    },
+    {
+      "name": "HulkBarrelBaseT_40",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        6.661338147750939e-16,
+        -0.06272047758102417,
+        3.49081759321284e-16
+      ]
+    },
+    {
+      "name": "HulkBarrelT_40",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -5.3411604028497095e-09,
+        -0.23262351751327515,
+        -0.044804900884628296
+      ]
+    },
+    {
+      "name": "DumDeployBarExtB",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        1.2546777725219727e-05,
+        -0.22646506130695343,
+        -0.17356565594673157
+      ]
+    },
+    {
+      "name": "DumFireB",
+      "parent": 13,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        6.938893903907228e-16,
+        0.0,
+        7.444462459134903e-16
+      ]
+    },
+    {
+      "name": "BarrelBaseB_40",
+      "parent": 14,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        6.938893903907228e-16,
+        -0.06272047758102417,
+        7.444462459134903e-16
+      ]
+    },
+    {
+      "name": "BarrelB_40",
+      "parent": 14,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -5.3411599587605e-09,
+        -0.23262351751327515,
+        -0.044804900884628296
+      ]
+    },
+    {
+      "name": "Muzzlepoint_alt",
+      "parent": 14,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        1.4901164746561335e-08,
+        0.802524745464325,
+        2.9935268486269706e-08
+      ]
+    },
+    {
+      "name": "HulkBarrelB_40",
+      "parent": 14,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -5.3411599587605e-09,
+        -0.23262351751327515,
+        -0.044804900884628296
+      ]
+    },
+    {
+      "name": "HulkBarrelBaseB_40",
+      "parent": 14,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        6.938893903907228e-16,
+        -0.06272047758102417,
+        7.444462459134903e-16
+      ]
+    },
+    {
+      "name": "Mid_40",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        1.2545519894047175e-05,
+        -1.4987030029296875,
+        -0.0010195374488830566
+      ]
+    },
+    {
+      "name": "HulkMid_40",
+      "parent": 5,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        1.2545519894047175e-05,
+        -1.4987030029296875,
+        -0.0010195374488830566
+      ]
+    },
+    {
+      "name": "HulkBody_40",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -1.2575598340447414e-09,
+        -0.713952362537384,
+        0.34993186593055725
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_40",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 40.0,
+      "polyCount": 1038
+    },
+    {
+      "name": "Detail_20",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 20.0,
+      "polyCount": 867
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 530
+    },
+    {
+      "name": "Detail_6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 450
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 129
+    },
+    {
+      "name": "Collision_-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 21
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 90,
+      "flags": 0,
+      "numKeyframes": 27,
+      "duration": 0.8666676878929138,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 13,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        6,
+        13
+      ],
+      "translationMatters": [
+        5,
+        6,
+        13
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    },
+    {
+      "nameIndex": 91,
+      "flags": 0,
+      "numKeyframes": 7,
+      "duration": 0.20000092685222626,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 54,
+      "baseTranslation": 81,
+      "baseScale": 0,
+      "baseObjectState": 13,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        7
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire1"
+    },
+    {
+      "nameIndex": 92,
+      "flags": 0,
+      "numKeyframes": 7,
+      "duration": 0.2000010460615158,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 54,
+      "baseTranslation": 88,
+      "baseScale": 0,
+      "baseObjectState": 13,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        14
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Fire2"
+    },
+    {
+      "nameIndex": 93,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333342671394348,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 54,
+      "baseTranslation": 95,
+      "baseScale": 0,
+      "baseObjectState": 13,
+      "baseDecalState": 48,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 94,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 54,
+      "baseTranslation": 95,
+      "baseScale": 0,
+      "baseObjectState": 13,
+      "baseDecalState": 576,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/barrel_aa_large.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrel_aa_large.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrel_aa_large.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrel_aa_large",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "HulkBarrelB_",
+    "HulkBarrelBaseB_",
+    "HulkBarrelBaseT_",
+    "HulkBarrelT_",
+    "HulkBody_",
+    "HulkMid_"
+  ],
+  "empty_finer_details": []
+}

@@ -1,0 +1,1197 @@
+{
+  "source": {
+    "model_name": "vehicle_pad",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: light_red",
+      "Multiple texture paths: ds_efloor1; selected textures/badlands/ds_efloor1.png",
+      "21 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_pad.dts",
+    "source_path": "shapes/vehicle_pad.dts",
+    "source_sha256": "5f3546236916ac9fe7edc4368314281ced9fec5c40c514626f207eb288491777",
+    "source_bytes": 142955,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_pad.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "vpad_arm",
+      "vpad_ambient",
+      "light_red",
+      "ds_efloor1"
+    ],
+    "triangles": 222,
+    "selected_detail": "Detail256"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        39.94718933105469,
+        -32.1275749206543,
+        2.9800219535827637
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.744213104248047,
+        5.302356719970703,
+        0.0
+      ]
+    },
+    {
+      "name": "Dummy_Arms_Outer_Elevate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        22.286563873291016,
+        -9.361532211303711
+      ]
+    },
+    {
+      "name": "Dummy_ArmsCD_Outer_Rotate",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Dummy_ArmC_Outer_Rotate",
+      "parent": 3,
+      "rotation_quat16": [
+        24,
+        0,
+        0,
+        32766
+      ],
+      "translation": [
+        1.8546350002288818,
+        12.624181747436523,
+        8.240395545959473
+      ]
+    },
+    {
+      "name": "ArmC_Outer_BraceB256",
+      "parent": 4,
+      "rotation_quat16": [
+        -8773,
+        21444,
+        -21444,
+        -8773
+      ],
+      "translation": [
+        5.8488993644714355,
+        -2.699815273284912,
+        0.6200025081634521
+      ]
+    },
+    {
+      "name": "ArmC_Outer_BraceA256",
+      "parent": 4,
+      "rotation_quat16": [
+        -8773,
+        21444,
+        -21444,
+        -8773
+      ],
+      "translation": [
+        8.876446723937988,
+        -5.7806715965271,
+        0.6200032234191895
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Plate_Bot256",
+      "parent": 4,
+      "rotation_quat16": [
+        14035,
+        -18435,
+        18435,
+        14035
+      ],
+      "translation": [
+        1.547302007675171,
+        -0.40730270743370056,
+        0.852796733379364
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Emitter_Lower256",
+      "parent": 4,
+      "rotation_quat16": [
+        14035,
+        -18435,
+        18435,
+        14035
+      ],
+      "translation": [
+        1.4157612323760986,
+        -0.3709139823913574,
+        -0.041756387799978256
+      ]
+    },
+    {
+      "name": "RFX1",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.011499293148517609,
+        0.4071092903614044,
+        -0.6037678718566895
+      ]
+    },
+    {
+      "name": "RFX2",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.011499687097966671,
+        0.40710902214050293,
+        1.968214511871338
+      ]
+    },
+    {
+      "name": "RFX4",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        -8342,
+        0,
+        31687
+      ],
+      "translation": [
+        3.4215946197509766,
+        0.2657374441623688,
+        8.74244213104248
+      ]
+    },
+    {
+      "name": "RFX3",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        -8342,
+        0,
+        31687
+      ],
+      "translation": [
+        1.0626808404922485,
+        0.2657375633716583,
+        4.5730767250061035
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Lower256",
+      "parent": 4,
+      "rotation_quat16": [
+        -22959,
+        3111,
+        -22959,
+        3111
+      ],
+      "translation": [
+        -0.803577184677124,
+        0.19034218788146973,
+        0.28335878252983093
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Upper256",
+      "parent": 4,
+      "rotation_quat16": [
+        -22956,
+        -3137,
+        -14035,
+        18435
+      ],
+      "translation": [
+        2.422468662261963,
+        -0.6032720804214478,
+        0.5234155058860779
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Plate_UpperMid256",
+      "parent": 4,
+      "rotation_quat16": [
+        8878,
+        -21401,
+        21400,
+        8878
+      ],
+      "translation": [
+        4.246798038482666,
+        -2.2279765605926514,
+        0.8527916073799133
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Hinge256",
+      "parent": 4,
+      "rotation_quat16": [
+        -32016,
+        -6970,
+        0,
+        0
+      ],
+      "translation": [
+        2.478419303894043,
+        -0.7266262769699097,
+        0.08922528475522995
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Plate_Mid256",
+      "parent": 4,
+      "rotation_quat16": [
+        14035,
+        -18435,
+        18435,
+        14035
+      ],
+      "translation": [
+        3.514164924621582,
+        -0.9320443868637085,
+        0.8527954816818237
+      ]
+    },
+    {
+      "name": "ArmC_Outer_HingeCap256",
+      "parent": 4,
+      "rotation_quat16": [
+        -31931,
+        7352,
+        0,
+        0
+      ],
+      "translation": [
+        2.478419303894043,
+        -0.72662353515625,
+        -0.5721076726913452
+      ]
+    },
+    {
+      "name": "ArmC_Outer_BraceC256",
+      "parent": 4,
+      "rotation_quat16": [
+        14035,
+        -18435,
+        18435,
+        14035
+      ],
+      "translation": [
+        1.674635648727417,
+        -0.44691240787506104,
+        0.322842538356781
+      ]
+    },
+    {
+      "name": "ArmC_Outer_BraceD256",
+      "parent": 4,
+      "rotation_quat16": [
+        14035,
+        -18435,
+        18435,
+        14035
+      ],
+      "translation": [
+        0.6145713329315186,
+        -0.1542920619249344,
+        0.36456120014190674
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Emitter_Upper256",
+      "parent": 4,
+      "rotation_quat16": [
+        8878,
+        -21401,
+        21400,
+        8878
+      ],
+      "translation": [
+        2.9892396926879883,
+        -1.2410082817077637,
+        -0.03977324813604355
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Mount256",
+      "parent": 4,
+      "rotation_quat16": [
+        16374,
+        16392,
+        16374,
+        16392
+      ],
+      "translation": [
+        -0.4132882356643677,
+        0.23706555366516113,
+        0.2582150995731354
+      ]
+    },
+    {
+      "name": "ArmC_Outer_Plate_Top256",
+      "parent": 4,
+      "rotation_quat16": [
+        2636,
+        -23019,
+        23019,
+        2636
+      ],
+      "translation": [
+        5.674864292144775,
+        -5.17230749130249,
+        0.8527834415435791
+      ]
+    },
+    {
+      "name": "Dummy_ArmD_Outer_Rotate",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -1.8060399293899536,
+        -12.686676025390625,
+        8.246530532836914
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Plate_Top256",
+      "parent": 24,
+      "rotation_quat16": [
+        2622,
+        -23020,
+        23020,
+        2622
+      ],
+      "translation": [
+        5.227786064147949,
+        -5.178781509399414,
+        0.8524208664894104
+      ]
+    },
+    {
+      "name": "ArmD_Outer_BraceB256",
+      "parent": 24,
+      "rotation_quat16": [
+        -8866,
+        21406,
+        -21406,
+        -8866
+      ],
+      "translation": [
+        5.802913665771484,
+        -2.532285451889038,
+        0.6714385151863098
+      ]
+    },
+    {
+      "name": "ArmD_Outer_BraceA256",
+      "parent": 24,
+      "rotation_quat16": [
+        -8866,
+        21406,
+        -21406,
+        -8866
+      ],
+      "translation": [
+        8.857233047485352,
+        -5.586604595184326,
+        0.671439528465271
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Plate_Bot256",
+      "parent": 24,
+      "rotation_quat16": [
+        14024,
+        -18443,
+        18443,
+        14024
+      ],
+      "translation": [
+        1.1056584119796753,
+        -0.4090728759765625,
+        0.852471649646759
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Emitter_Lower256",
+      "parent": 24,
+      "rotation_quat16": [
+        14024,
+        -18443,
+        18443,
+        14024
+      ],
+      "translation": [
+        0.9740336537361145,
+        -0.3738451898097992,
+        -0.034769561141729355
+      ]
+    },
+    {
+      "name": "LFX1",
+      "parent": 29,
+      "rotation_quat16": [
+        -6,
+        18,
+        23,
+        32766
+      ],
+      "translation": [
+        -0.09039038419723511,
+        0.3836389482021332,
+        -0.16933712363243103
+      ]
+    },
+    {
+      "name": "LFX2",
+      "parent": 29,
+      "rotation_quat16": [
+        -6,
+        18,
+        23,
+        32766
+      ],
+      "translation": [
+        -0.09328901767730713,
+        0.38263335824012756,
+        2.3722941875457764
+      ]
+    },
+    {
+      "name": "LFX4",
+      "parent": 29,
+      "rotation_quat16": [
+        0,
+        -8342,
+        0,
+        31687
+      ],
+      "translation": [
+        3.3994414806365967,
+        0.19060097634792328,
+        9.021448135375977
+      ]
+    },
+    {
+      "name": "LFX3",
+      "parent": 29,
+      "rotation_quat16": [
+        0,
+        -8342,
+        0,
+        31687
+      ],
+      "translation": [
+        1.0630794763565063,
+        0.19060197472572327,
+        4.891939640045166
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Lower256",
+      "parent": 24,
+      "rotation_quat16": [
+        -22958,
+        3124,
+        -22958,
+        3124
+      ],
+      "translation": [
+        -1.2445378303527832,
+        0.1912577599287033,
+        0.28303855657577515
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Upper256",
+      "parent": 24,
+      "rotation_quat16": [
+        -22958,
+        -3124,
+        -14024,
+        18443
+      ],
+      "translation": [
+        1.98060142993927,
+        -0.6060373187065125,
+        0.5230888724327087
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Plate_UpperMid_256",
+      "parent": 24,
+      "rotation_quat16": [
+        8866,
+        -21406,
+        21405,
+        8866
+      ],
+      "translation": [
+        3.8030779361724854,
+        -2.2328238487243652,
+        0.852452278137207
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Hinge256",
+      "parent": 24,
+      "rotation_quat16": [
+        -32020,
+        -6952,
+        0,
+        0
+      ],
+      "translation": [
+        2.0364110469818115,
+        -0.7294514179229736,
+        0.08889786154031754
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Plate_Mid256",
+      "parent": 24,
+      "rotation_quat16": [
+        14024,
+        -18443,
+        18443,
+        14024
+      ],
+      "translation": [
+        3.0719223022460938,
+        -0.9360573887825012,
+        0.8524667620658875
+      ]
+    },
+    {
+      "name": "ArmD_Outer_HingeCap256",
+      "parent": 24,
+      "rotation_quat16": [
+        -31927,
+        7370,
+        0,
+        0
+      ],
+      "translation": [
+        2.0364112854003906,
+        -0.7294429540634155,
+        -0.572435200214386
+      ]
+    },
+    {
+      "name": "ArmD_Outer_BraceC256",
+      "parent": 24,
+      "rotation_quat16": [
+        14024,
+        -18443,
+        18443,
+        14024
+      ],
+      "translation": [
+        1.2329472303390503,
+        -0.44888409972190857,
+        0.32251739501953125
+      ]
+    },
+    {
+      "name": "ArmD_Outer_BraceD256",
+      "parent": 24,
+      "rotation_quat16": [
+        14024,
+        -18443,
+        18443,
+        14024
+      ],
+      "translation": [
+        0.17321659624576569,
+        -0.1549958437681198,
+        0.36423811316490173
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Mount256",
+      "parent": 24,
+      "rotation_quat16": [
+        16383,
+        16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -0.8543214797973633,
+        0.23621676862239838,
+        0.2652062475681305
+      ]
+    },
+    {
+      "name": "ArmD_Outer_Emitter_Upper256",
+      "parent": 24,
+      "rotation_quat16": [
+        8866,
+        -21406,
+        21405,
+        8866
+      ],
+      "translation": [
+        2.5466442108154297,
+        -1.2444146871566772,
+        -0.04010423272848129
+      ]
+    },
+    {
+      "name": "Dummy_Pad_Center_Rotate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        22.286563873291016,
+        0.0
+      ]
+    },
+    {
+      "name": "Dummy_Pad_Center_Elevate",
+      "parent": 44,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.017657041549682617
+      ]
+    },
+    {
+      "name": "Dummy_Pad_Mid_Rotate",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        22.286563873291016,
+        0.0
+      ]
+    },
+    {
+      "name": "Dummy_Pad_Mid_Elevate",
+      "parent": 46,
+      "rotation_quat16": [
+        0,
+        0,
+        -8480,
+        31650
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Pad_Middle_Amb256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.5849722596358333e-07,
+        -3.056597672451006e-14,
+        -0.10404777526855469
+      ]
+    },
+    {
+      "name": "Pad_Middle_Act256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.5849722596358333e-07,
+        -3.056597672451006e-14,
+        -0.6705853939056396
+      ]
+    },
+    {
+      "name": "Pie2",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.5849722596358333e-07,
+        -3.056597672451006e-14,
+        -0.10404777526855469
+      ]
+    },
+    {
+      "name": "LightA256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        28377,
+        16383
+      ],
+      "translation": [
+        2.8696348667144775,
+        -10.704190254211426,
+        0.41728854179382324
+      ]
+    },
+    {
+      "name": "LightB256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -7.8352861404418945,
+        -7.837270259857178,
+        0.41728878021240234
+      ]
+    },
+    {
+      "name": "LightC256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        -28377,
+        16383
+      ],
+      "translation": [
+        -10.70492172241211,
+        2.8669216632843018,
+        0.41728878021240234
+      ]
+    },
+    {
+      "name": "LightD256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        -16383,
+        28377
+      ],
+      "translation": [
+        -2.869633913040161,
+        10.704193115234375,
+        0.41728878021240234
+      ]
+    },
+    {
+      "name": "LightE256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.835287570953369,
+        7.837270736694336,
+        0.41728901863098145
+      ]
+    },
+    {
+      "name": "LightF256",
+      "parent": 47,
+      "rotation_quat16": [
+        0,
+        0,
+        16383,
+        28377
+      ],
+      "translation": [
+        10.70491886138916,
+        -2.8669168949127197,
+        0.41728830337524414
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        39.89335632324219,
+        0.23002910614013672
+      ]
+    },
+    {
+      "name": "Pad256",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        26.825300216674805,
+        -0.4221940040588379
+      ]
+    },
+    {
+      "name": "Pad_Outer256",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        22.286563873291016,
+        -0.11004018783569336
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        26.825300216674805,
+        -0.4221940040588379
+      ]
+    },
+    {
+      "name": "glowFX",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -44.7707405090332,
+        22.286563873291016,
+        0.19715356826782227
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail256",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 256.0,
+      "polyCount": 586
+    },
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 128.0,
+      "polyCount": 469
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 64.0,
+      "polyCount": 346
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 32.0,
+      "polyCount": 282
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 186
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 10
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 111,
+      "flags": 0,
+      "numKeyframes": 223,
+      "duration": 7.40000057220459,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 41,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3,
+        4,
+        24,
+        44,
+        46
+      ],
+      "translationMatters": [
+        2,
+        45
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        13,
+        15,
+        16,
+        21,
+        22,
+        23,
+        25,
+        27,
+        29,
+        30,
+        32
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate2"
+    },
+    {
+      "nameIndex": 112,
+      "flags": 16,
+      "numKeyframes": 13,
+      "duration": 0.900001049041748,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 1115,
+      "baseTranslation": 446,
+      "baseScale": 0,
+      "baseObjectState": 4947,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    110,
+    4,
+    327684,
+    458758,
+    589832
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vpad_arm.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vpad_arm.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vpad_arm.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vpad_arm",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vpad_ambient.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/vpad_ambient.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/vpad_ambient.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "vpad_ambient",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/light_red.ifl",
+      "source": "base/skins.vl2:textures/skins/light_red.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "light_red06.png 10",
+        "light_red05.png 2",
+        "light_red04.png 2",
+        "light_red03.png 2",
+        "light_red02.png 2",
+        "light_red01.png 2",
+        "light_red02.png 2",
+        "light_red03.png 2",
+        "light_red04.png 2",
+        "light_red05.png 2",
+        "light_red06.png 10",
+        "light_red05.png 1",
+        "light_red04.png 1",
+        "light_red03.png 1",
+        "light_red02.png 1",
+        "light_red01.png 1",
+        "light_red02.png 1",
+        "light_red03.png 1",
+        "light_red04.png 1",
+        "light_red05.png 1",
+        "light_red06.png 10"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/light_red06.png",
+        "source": "base/skins.vl2:textures/skins/light_red06.png",
+        "alternatives": [],
+        "ambiguous_paths": []
+      },
+      "name": "light_red",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/badlands/ds_efloor1.png",
+      "source": "base/Classic_maps_v1.vl2:textures/badlands/ds_efloor1.png",
+      "alternatives": [],
+      "ambiguous_paths": [
+        "textures/ice/ds_efloor1.png",
+        "textures/lava/ds_efloor1.png"
+      ],
+      "sha256": "5ed2ba840c3da2b480dc34e5be52b6f02203d828ec6e7546d700fd4f19a69c78",
+      "name": "ds_efloor1",
+      "original_slot": 5
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "ArmC_Outer_BraceA",
+    "ArmC_Outer_BraceB",
+    "ArmC_Outer_BraceC",
+    "ArmC_Outer_BraceD",
+    "ArmC_Outer_Emitter_Lower",
+    "ArmC_Outer_Emitter_Upper",
+    "ArmC_Outer_Hinge",
+    "ArmC_Outer_HingeCap",
+    "ArmC_Outer_Lower",
+    "ArmC_Outer_Upper",
+    "ArmD_Outer_BraceA",
+    "ArmD_Outer_BraceB",
+    "ArmD_Outer_BraceC",
+    "ArmD_Outer_BraceD",
+    "ArmD_Outer_Emitter_Lower",
+    "ArmD_Outer_Emitter_Upper",
+    "ArmD_Outer_Hinge",
+    "ArmD_Outer_HingeCap",
+    "ArmD_Outer_Lower",
+    "ArmD_Outer_Upper",
+    "Pad_Middle_Act"
+  ],
+  "empty_finer_details": []
+}

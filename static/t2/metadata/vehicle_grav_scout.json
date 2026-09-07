@@ -1,0 +1,788 @@
+{
+  "source": {
+    "model_name": "vehicle_grav_scout",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "3 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_grav_scout.dts",
+    "source_path": "shapes/vehicle_grav_scout.dts",
+    "source_sha256": "9c98c1dfc3a2a5c852f8fd791f04aa4b6d35dd5a12ca4adc946269a22b24e7ac",
+    "source_bytes": 172906,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_grav_scout.dts"
+    ],
+    "sequences": 3,
+    "external_sequences": 0,
+    "materials": [
+      "Vehicle_grav_scout",
+      "Vehicle_grav_scout_pipes",
+      "Vehicle_grav_scout_windshield",
+      "Vehicle_grav_scout",
+      "Vehicle_grav_scout_pipes",
+      "Vehicle_grav_scout_windshieldInner"
+    ],
+    "triangles": 1254,
+    "selected_detail": "Detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.1383768916130066,
+        -0.6276201009750366
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.12028318643569946
+      ]
+    },
+    {
+      "name": "Main_Body_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.1186811700463295,
+        -0.6601651906967163,
+        0.7503064870834351
+      ]
+    },
+    {
+      "name": "Mass",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032278060913
+      ]
+    },
+    {
+      "name": "SidePipe_Left_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5466756820678711,
+        -0.35545915365219116,
+        -0.32240086793899536
+      ]
+    },
+    {
+      "name": "SidePipe_Right_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.5466756820678711,
+        -0.35545915365219116,
+        -0.32240086793899536
+      ]
+    },
+    {
+      "name": "Windshield_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.7479681968688965,
+        1.5552786588668823
+      ]
+    },
+    {
+      "name": "Mount0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -3.903669054672321e-11,
+        -0.621809184551239,
+        1.2045775651931763
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.13837695121765137,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "Eye",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.2360024942713608e-08,
+        0.08799248933792114,
+        1.5891450643539429
+      ]
+    },
+    {
+      "name": "HandleGrip_Left_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -0.38541877269744873,
+        0.5779494047164917,
+        1.1600086688995361
+      ]
+    },
+    {
+      "name": "HandleGrip_Right_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.38541877269744873,
+        0.5779494047164917,
+        1.1600086688995361
+      ]
+    },
+    {
+      "name": "RearSidePropulsionLeft_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -6.6669025855503605e-09,
+        -1.0082979202270508,
+        0.41194048523902893
+      ]
+    },
+    {
+      "name": "RearSidePropulsionRight_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        6.6669025855503605e-09,
+        -1.0082979202270508,
+        0.41194048523902893
+      ]
+    },
+    {
+      "name": "JetNozzleIllumination_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.1186811700463295,
+        -0.6601651906967163,
+        0.7503064870834351
+      ]
+    },
+    {
+      "name": "RearLeftSideRepulsor_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -6.6669025855503605e-09,
+        -1.0082979202270508,
+        0.41194048523902893
+      ]
+    },
+    {
+      "name": "RearRighttSideRepulsor_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        -6.6669025855503605e-09,
+        -1.0082979202270508,
+        0.41194048523902893
+      ]
+    },
+    {
+      "name": "FrontLeftSideRepulsor_100",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        -0.21544882655143738,
+        1.202791452407837,
+        0.553308367729187
+      ]
+    },
+    {
+      "name": "FrontRightSideRepulsor_100",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.21544882655143738,
+        1.202791452407837,
+        0.553308367729187
+      ]
+    },
+    {
+      "name": "Headlight_node01",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -0.6910005807876587,
+        0.8395131826400757,
+        1.1321988105773926
+      ]
+    },
+    {
+      "name": "Headlight_node02",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.6910005211830139,
+        0.8395131826400757,
+        1.1321988105773926
+      ]
+    },
+    {
+      "name": "Smoke_node01",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        -1.103287935256958,
+        1.5922317504882812
+      ]
+    },
+    {
+      "name": "Smoke_node02",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -0.6170405149459839,
+        -1.4011561870574951,
+        0.46178653836250305
+      ]
+    },
+    {
+      "name": "Smoke_node03",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.6240252256393433,
+        -1.4011561870574951,
+        0.46178653836250305
+      ]
+    },
+    {
+      "name": "Windshield_inner_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.7479681968688965,
+        1.5552786588668823
+      ]
+    },
+    {
+      "name": "JetTrailOuter_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.1186811700463295,
+        -0.6601651906967163,
+        0.7503064870834351
+      ]
+    },
+    {
+      "name": "JetTrail_Flare_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -25732,
+        0,
+        0,
+        20285
+      ],
+      "translation": [
+        0.0044650910422205925,
+        -1.9322922229766846,
+        1.2479480504989624
+      ]
+    },
+    {
+      "name": "JetTrail_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.1186811700463295,
+        -0.6601651906967163,
+        0.7503064870834351
+      ]
+    },
+    {
+      "name": "Jetnozzle0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        -4.090410854473703e-08,
+        -2.308434009552002,
+        1.2434583902359009
+      ]
+    },
+    {
+      "name": "Contrail_0",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.9857645630836487,
+        -0.8904356956481934,
+        0.38438162207603455
+      ]
+    },
+    {
+      "name": "Contrail_1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.9687726497650146,
+        -0.8904356956481934,
+        0.38438162207603455
+      ]
+    },
+    {
+      "name": "Contrail_2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.9416712522506714,
+        0.5250914692878723,
+        1.1352219581604004
+      ]
+    },
+    {
+      "name": "Contrail_3",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.928820013999939,
+        0.5250914692878723,
+        1.1352219581604004
+      ]
+    },
+    {
+      "name": "Mount1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.951283092528683e-08,
+        1.4168243408203125,
+        0.8343852162361145
+      ]
+    },
+    {
+      "name": "LOScol-9",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 1544
+    },
+    {
+      "name": "detail75",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 75.0,
+      "polyCount": 1273
+    },
+    {
+      "name": "Detail50",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 50.0,
+      "polyCount": 1009
+    },
+    {
+      "name": "Detail25",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 25.0,
+      "polyCount": 743
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 10.0,
+      "polyCount": 454
+    },
+    {
+      "name": "Detail6",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 6.0,
+      "polyCount": 228
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 2.0,
+      "polyCount": 39
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -1.0,
+      "polyCount": 16
+    },
+    {
+      "name": "LOS-9",
+      "subShapeNum": 0,
+      "objectDetailNum": 8,
+      "size": -9.0,
+      "polyCount": 10
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 111,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.333334356546402,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 19,
+      "baseDecalState": 47,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 112,
+      "flags": 16,
+      "numKeyframes": 6,
+      "duration": 0.2000010460615158,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 19,
+      "baseDecalState": 564,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        16,
+        17,
+        18
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "MaintainBack"
+    },
+    {
+      "nameIndex": 113,
+      "flags": 8,
+      "numKeyframes": 22,
+      "duration": 0.7000010013580322,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 37,
+      "baseDecalState": 564,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        16,
+        17,
+        18
+      ],
+      "frameMatters": [
+        18
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "ActivateBack"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    110,
+    6,
+    19,
+    17,
+    18
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout_pipes.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout_pipes.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout_pipes.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout_pipes",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout_windshield.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout_windshield.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout_windshield.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout_windshield",
+      "original_slot": 2
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout",
+      "original_slot": 3
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout_pipes.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout_pipes.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout_pipes.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout_pipes",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout_windshieldinner.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout_windshieldInner.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout_windshieldInner.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout_windshieldInner",
+      "original_slot": 5
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "JetTrailOuter_",
+    "JetTrail_",
+    "JetTrail_Flare_"
+  ],
+  "empty_finer_details": []
+}

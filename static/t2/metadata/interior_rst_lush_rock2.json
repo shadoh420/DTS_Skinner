@@ -1,0 +1,70 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 208
+    }
+  ],
+  "null_surfaces_excluded": 624,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/terraintiles/mossdirt4.png",
+      "source": "base/textures.vl2:textures/terrainTiles/mossDirt4.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/mossDirt4",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/terraintiles/grassmix5.png",
+      "source": "base/textures.vl2:textures/terrainTiles/grassMix5.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/grassMix5",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/terraintiles/mossrock3.png",
+      "source": "base/textures.vl2:textures/terrainTiles/mossRock3.PNG",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "name": "terrainTiles/mossRock3",
+      "original_slot": 6
+    }
+  ],
+  "source": {
+    "model_name": "interior_rst_lush_rock2",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/rst_lush_rock2.dif",
+    "source_path": "interiors/rst_lush_rock2.dif",
+    "source_sha256": "cc6038fd1f9118811768db7732be3d6d48696ff915546deac476136ecc0e1d39",
+    "source_bytes": 132258,
+    "alternatives": [],
+    "materials": [
+      "terrainTiles/mossDirt4",
+      "terrainTiles/grassMix5",
+      "terrainTiles/mossRock3"
+    ],
+    "version": 44,
+    "triangles": 208,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

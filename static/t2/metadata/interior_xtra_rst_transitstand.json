@@ -1,0 +1,131 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 348
+    }
+  ],
+  "null_surfaces_excluded": 13,
+  "degenerate_triangles_skipped": 153,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/ice/sw_threshgrate.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_threshgrate.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_threshgrate.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_THRESHGRATE",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/ice/sw_ibor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ibor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ibor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IBOR01",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL01",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/ice/sw_iwal03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_iwal03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_iwal03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IWAL03",
+      "original_slot": 7
+    },
+    {
+      "virtual_path": "textures/ice/sw_ebor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ebor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ebor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EBOR01",
+      "original_slot": 8
+    },
+    {
+      "virtual_path": "textures/ice/sw_espec03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_espec03.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_espec03.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_ESPEC03",
+      "original_slot": 9
+    },
+    {
+      "virtual_path": "textures/ice/sw_eflo01c.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_eflo01c.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_eflo01c.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_EFLO01C",
+      "original_slot": 10
+    },
+    {
+      "virtual_path": "textures/ice/sw_ifloor01.png",
+      "source": "base/yHDTextures2.0.vl2:textures/ice/sw_ifloor01.png",
+      "alternatives": [
+        "base/ice.vl2:textures/ice/sw_ifloor01.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "ice/SW_IFLOOR01",
+      "original_slot": 11
+    }
+  ],
+  "source": {
+    "model_name": "interior_xtra_rst_transitstand",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/Xtra_rst_transitstand.dif",
+    "source_path": "interiors/xtra_rst_transitstand.dif",
+    "source_sha256": "790850da74a636fc8877aa3ac5c22601dcaa6075d2774c2766e2350e8f67f5c2",
+    "source_bytes": 59720,
+    "alternatives": [],
+    "materials": [
+      "ice/SW_THRESHGRATE",
+      "ice/SW_IBOR01",
+      "ice/SW_IWAL01",
+      "ice/SW_IWAL03",
+      "ice/SW_EBOR01",
+      "ice/SW_ESPEC03",
+      "ice/SW_EFLO01C",
+      "ice/SW_IFLOOR01"
+    ],
+    "version": 44,
+    "triangles": 791,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

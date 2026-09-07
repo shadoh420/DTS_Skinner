@@ -1,0 +1,444 @@
+{
+  "source": {
+    "model_name": "pack_upgrade_satchel",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_upgrade_satchel.dts",
+    "source_path": "shapes/pack_upgrade_satchel.dts",
+    "source_sha256": "9283463c0e07c3785407b64998a877244a6a8859ce49a2c06d3e05024997d507",
+    "source_bytes": 48244,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_upgrade_satchel.dts"
+    ],
+    "sequences": 2,
+    "external_sequences": 0,
+    "materials": [
+      "pack_upgrade_satchel"
+    ],
+    "triangles": 632,
+    "selected_detail": "Detail_32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.4421225715335884e-12,
+        -1.731548682215589e-09,
+        1.1374447341723356e-23
+      ]
+    },
+    {
+      "name": "Satchel_Pack_Cannister_Binding_32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -5.494426204677438e-06,
+        -0.0015716953203082085,
+        -0.10958816856145859
+      ]
+    },
+    {
+      "name": "ActivationLightDummy",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -6.575137376785278e-07,
+        -0.04941672831773758,
+        7.034606924749554e-11
+      ]
+    },
+    {
+      "name": "Activation_Light_32",
+      "parent": 3,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        6.575137376785278e-07,
+        0.0091562420129776,
+        -1.0832092167678553e-11
+      ]
+    },
+    {
+      "name": "Antennae_Base_Dummy",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.6291140353120954e-15,
+        0.012683317065238953,
+        -9.528097755229226e-11
+      ]
+    },
+    {
+      "name": "Antennae_Base_Lower_32",
+      "parent": 5,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        6.576302098437736e-07,
+        0.015292513184249401,
+        -0.02569846250116825
+      ]
+    },
+    {
+      "name": "Antennae_Top_Dummy",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        2.6291140353120954e-15,
+        1.4373299772607595e-10,
+        2.1134342539919082e-11
+      ]
+    },
+    {
+      "name": "Antennae_Top_Lower_32",
+      "parent": 7,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        6.576299256266793e-07,
+        0.011735382489860058,
+        -0.02569846250116825
+      ]
+    },
+    {
+      "name": "Antennae_Top_Upper_32",
+      "parent": 7,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        6.576299256266793e-07,
+        0.011735377833247185,
+        0.025698460638523102
+      ]
+    },
+    {
+      "name": "Antennae_Base_Upper_32",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        6.576302098437736e-07,
+        0.015292508527636528,
+        0.0256984643638134
+      ]
+    },
+    {
+      "name": "Activation_Light_ON_32",
+      "parent": 3,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        6.575137376785278e-07,
+        0.0091562420129776,
+        -1.0832092167678553e-11
+      ]
+    },
+    {
+      "name": "Tank_Line_Lower_Left_32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -0.05520963296294212,
+        -0.04518722742795944,
+        -0.02520781010389328
+      ]
+    },
+    {
+      "name": "Tank_Line_Upper_Left_32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -0.05520961061120033,
+        -0.04518723115324974,
+        0.04272787272930145
+      ]
+    },
+    {
+      "name": "Tank_Line_Lower_Right_32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.05510503426194191,
+        -0.045187223702669144,
+        -0.025207852944731712
+      ]
+    },
+    {
+      "name": "Tank_Line_Upper_Right_32",
+      "parent": 2,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        0.0551050566136837,
+        -0.04518723115324974,
+        0.0427284836769104
+      ]
+    },
+    {
+      "name": "Satchel_Pack_Cannister_Left_32",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.10551484674215317,
+        0.13236917555332184,
+        -0.08660756796598434
+      ]
+    },
+    {
+      "name": "Satchel_Pack_Cannister_Main_32",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0005736218299716711,
+        0.1653197854757309,
+        -0.1093587875366211
+      ]
+    },
+    {
+      "name": "Satchel_Pack_Cannister_Right_32",
+      "parent": 1,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.1054035872220993,
+        0.13236917555332184,
+        -0.08658093959093094
+      ]
+    },
+    {
+      "name": "mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        1.443208183168898e-12,
+        3.4164421292004477e-10,
+        -0.050243958830833435
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 730
+    },
+    {
+      "name": "Detail_18",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 18.0,
+      "polyCount": 626
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 508
+    },
+    {
+      "name": "Detail_5",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 5.0,
+      "polyCount": 343
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 171
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 39,
+      "flags": 24,
+      "numKeyframes": 31,
+      "duration": 1.0333341360092163,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 14,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        13
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 40,
+      "flags": 0,
+      "numKeyframes": 51,
+      "duration": 1.6666676998138428,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 45,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        3,
+        5,
+        7
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Deploy"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_upgrade_satchel.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_upgrade_satchel.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_upgrade_satchel.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_upgrade_satchel",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Activation_Light_ON_"
+  ],
+  "empty_finer_details": []
+}

@@ -1,0 +1,258 @@
+{
+  "source": {
+    "model_name": "beacon",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: light_red",
+      "1 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/beacon.dts",
+    "source_path": "shapes/beacon.dts",
+    "source_sha256": "e91d57d9a71ccd19cbb0a431a8ff2e60b945547f2ffacfae9a750d04b1be38fe",
+    "source_bytes": 7274,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/beacon.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "pack_shield",
+      "light_red"
+    ],
+    "triangles": 56,
+    "selected_detail": "Detail_25"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.1473005805143801e-26,
+        6.354027304311671e-10,
+        0.004736036993563175
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Redglow_25",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        1.1848677421155696e-12,
+        2.710338230826892e-05,
+        0.020946281030774117
+      ]
+    },
+    {
+      "name": "base_25",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "light_25",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.06308092176914215
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_25",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 25.0,
+      "polyCount": 79
+    },
+    {
+      "name": "Detail_14",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 14.0,
+      "polyCount": 75
+    },
+    {
+      "name": "Detail_10",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 10.0,
+      "polyCount": 46
+    },
+    {
+      "name": "Detail_6",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 6.0,
+      "polyCount": 40
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 25
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": -1.0,
+      "polyCount": 6
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 17,
+      "flags": 16,
+      "numKeyframes": 21,
+      "duration": 0.7000010013580322,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        3
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    16,
+    2,
+    1073741824,
+    1073741840,
+    -2147483648
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_shield.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_shield.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_shield.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_shield",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/light_red.ifl",
+      "source": "base/skins.vl2:textures/skins/light_red.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "light_red06.png 10",
+        "light_red05.png 2",
+        "light_red04.png 2",
+        "light_red03.png 2",
+        "light_red02.png 2",
+        "light_red01.png 2",
+        "light_red02.png 2",
+        "light_red03.png 2",
+        "light_red04.png 2",
+        "light_red05.png 2",
+        "light_red06.png 10",
+        "light_red05.png 1",
+        "light_red04.png 1",
+        "light_red03.png 1",
+        "light_red02.png 1",
+        "light_red01.png 1",
+        "light_red02.png 1",
+        "light_red03.png 1",
+        "light_red04.png 1",
+        "light_red05.png 1",
+        "light_red06.png 10"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/light_red06.png",
+        "source": "base/skins.vl2:textures/skins/light_red06.png",
+        "alternatives": [],
+        "ambiguous_paths": []
+      },
+      "name": "light_red",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Redglow_"
+  ],
+  "empty_finer_details": []
+}

@@ -1,0 +1,623 @@
+{
+  "source": {
+    "model_name": "tr2weapon_mortar",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "base/TR2final105-client.vl2:shapes/TR2weapon_mortar.dts",
+    "source_path": "shapes/tr2weapon_mortar.dts",
+    "source_sha256": "58e86de840a63bedaeb9dc58e21e2fd3a85a364d4dddb8bc606a2b3198fbfea1",
+    "source_bytes": 76525,
+    "version": 23,
+    "alternatives": [],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "weapon_mortar"
+    ],
+    "triangles": 508,
+    "selected_detail": "Detail100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "M_Body_100",
+      "parent": -1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.166496753692627e-08,
+        -0.6680347323417664,
+        0.0393083319067955
+      ]
+    },
+    {
+      "name": "M_Hood_100",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.039308350533246994,
+        -0.29074567556381226
+      ]
+    },
+    {
+      "name": "DetachBarrl_100",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        2.6230237537561152e-08,
+        -0.2176153063774109
+      ]
+    },
+    {
+      "name": "Dummy20",
+      "parent": 0,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        16383,
+        16383
+      ],
+      "translation": [
+        -3.818422555923462e-08,
+        -0.053258106112480164,
+        -1.9270730018615723
+      ]
+    },
+    {
+      "name": "Dummy15",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        -23169,
+        0,
+        23169
+      ],
+      "translation": [
+        0.2444733828306198,
+        -0.467205286026001,
+        -2.5018422888933856e-07
+      ]
+    },
+    {
+      "name": "M_CollarF05_100",
+      "parent": 4,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.686543337266812e-08,
+        0.20074446499347687,
+        0.011751055717468262
+      ]
+    },
+    {
+      "name": "Attachment05_100",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0012922874884679914,
+        -0.049840446561574936,
+        0.09812995791435242
+      ]
+    },
+    {
+      "name": "Dummy17",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        -30272,
+        0,
+        12539
+      ],
+      "translation": [
+        0.17286908626556396,
+        -0.46720510721206665,
+        -0.17286884784698486
+      ]
+    },
+    {
+      "name": "M_CollarF06_100",
+      "parent": 7,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.2039448427667594e-08,
+        0.20074450969696045,
+        0.011751042678952217
+      ]
+    },
+    {
+      "name": "Attachment06_100",
+      "parent": 8,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.001292299130000174,
+        -0.049840446561574936,
+        0.09812992066144943
+      ]
+    },
+    {
+      "name": "Dummy19",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        -32767,
+        0,
+        0
+      ],
+      "translation": [
+        -9.754401020245496e-08,
+        -0.4672052562236786,
+        -0.244473397731781
+      ]
+    },
+    {
+      "name": "M_CollarF07_100",
+      "parent": 10,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.107043511363372e-08,
+        0.2007444202899933,
+        0.011751051992177963
+      ]
+    },
+    {
+      "name": "Attachment07_100",
+      "parent": 11,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0012922915630042553,
+        -0.04984043538570404,
+        0.0981299877166748
+      ]
+    },
+    {
+      "name": "Dummy21",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        -30272,
+        0,
+        -12539
+      ],
+      "translation": [
+        -0.17286881804466248,
+        -0.4672052562236786,
+        -0.1728687584400177
+      ]
+    },
+    {
+      "name": "M_CollarF08_100",
+      "parent": 13,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -2.8576330635132763e-08,
+        0.2007444202899933,
+        0.011751072481274605
+      ]
+    },
+    {
+      "name": "Attachment08_100",
+      "parent": 14,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0012922831811010838,
+        -0.04984044283628464,
+        0.0981299877166748
+      ]
+    },
+    {
+      "name": "Dummy01",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.24447336792945862,
+        -0.4672052264213562,
+        1.2962334494659444e-07
+      ]
+    },
+    {
+      "name": "M_CollarF01_100",
+      "parent": 16,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.692826311407771e-08,
+        0.20074443519115448,
+        0.011751057580113411
+      ]
+    },
+    {
+      "name": "Attachment01_100",
+      "parent": 17,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.001292287721298635,
+        -0.04984046518802643,
+        0.09812997281551361
+      ]
+    },
+    {
+      "name": "Dummy09",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        12539,
+        0,
+        30272
+      ],
+      "translation": [
+        -0.17286866903305054,
+        -0.467205286026001,
+        0.17286889255046844
+      ]
+    },
+    {
+      "name": "M_CollarF02_100",
+      "parent": 19,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -3.5028794087565984e-08,
+        0.20074446499347687,
+        0.011751065962016582
+      ]
+    },
+    {
+      "name": "Attachment02_100",
+      "parent": 20,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0012922920286655426,
+        -0.04984046891331673,
+        0.09812998026609421
+      ]
+    },
+    {
+      "name": "Dummy11",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.8247114041969326e-07,
+        -0.4672052562236786,
+        0.2444733828306198
+      ]
+    },
+    {
+      "name": "M_CollarF03_100",
+      "parent": 22,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -4.154954780233311e-08,
+        0.20074443519115448,
+        0.011751051992177963
+      ]
+    },
+    {
+      "name": "Attachment03_100",
+      "parent": 23,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0012922888854518533,
+        -0.04984044283628464,
+        0.09812997281551361
+      ]
+    },
+    {
+      "name": "Dummy13",
+      "parent": 3,
+      "rotation_quat16": [
+        0,
+        -12539,
+        0,
+        30272
+      ],
+      "translation": [
+        0.17286892235279083,
+        -0.4672052562236786,
+        0.17286863923072815
+      ]
+    },
+    {
+      "name": "M_CollarF04_100",
+      "parent": 25,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -4.27940172187391e-08,
+        0.20074447989463806,
+        0.011751060374081135
+      ]
+    },
+    {
+      "name": "Attachment04_100",
+      "parent": 26,
+      "rotation_quat16": [
+        0,
+        23169,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.0012922838795930147,
+        -0.049840450286865234,
+        0.09812997281551361
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.12071314454078674,
+        -0.283395916223526,
+        -0.05729535222053528
+      ]
+    },
+    {
+      "name": "Muzzlepoint",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.7963112592697144e-08,
+        1.250133752822876,
+        3.003515303134918e-08
+      ]
+    },
+    {
+      "name": "Extension_100",
+      "parent": -1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        16383,
+        -16383
+      ],
+      "translation": [
+        -6.984919309616089e-08,
+        0.5151431560516357,
+        -0.013950025662779808
+      ]
+    },
+    {
+      "name": "Retractionpoint",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.7963112592697144e-08,
+        1.3974931240081787,
+        3.003515303134918e-08
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 534
+    },
+    {
+      "name": "Detail75",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 75.0,
+      "polyCount": 534
+    },
+    {
+      "name": "Detail40",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 40.0,
+      "polyCount": 534
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 534
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 534
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 5.0,
+      "polyCount": 534
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": 2.0,
+      "polyCount": 534
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 59,
+      "flags": 16,
+      "numKeyframes": 34,
+      "duration": 1.1333342790603638,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 20,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        3,
+        4,
+        7,
+        10,
+        13,
+        16,
+        19,
+        22,
+        25
+      ],
+      "translationMatters": [
+        1,
+        2,
+        4,
+        7,
+        10,
+        13,
+        16,
+        19,
+        22,
+        25
+      ],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Recoil"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/weapon_mortar.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/weapon_mortar.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/weapon_mortar.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "weapon_mortar",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

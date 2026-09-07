@@ -1,0 +1,884 @@
+{
+  "source": {
+    "model_name": "vehicle_pad_station",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "13 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_pad_station.dts",
+    "source_path": "shapes/vehicle_pad_station.dts",
+    "source_sha256": "05973762dd6dc038a4e9e13488cea6d892e3626a46c6fda5ea6d9df6319a1b2f",
+    "source_bytes": 234204,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_pad_station.dts"
+    ],
+    "sequences": 4,
+    "external_sequences": 0,
+    "materials": [
+      "station_inventory",
+      "station_vpad",
+      "blue_blink0"
+    ],
+    "triangles": 262,
+    "selected_detail": "Detail128"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        4.865723609924316,
+        0.904496967792511,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Pad-1",
+      "parent": 1,
+      "rotation_quat16": [
+        8342,
+        -31687,
+        0,
+        0
+      ],
+      "translation": [
+        -4.829168319702148,
+        -0.7714779376983643,
+        0.22624792158603668
+      ]
+    },
+    {
+      "name": "PadOuter128",
+      "parent": 1,
+      "rotation_quat16": [
+        8342,
+        -31687,
+        0,
+        0
+      ],
+      "translation": [
+        -4.829168796539307,
+        -0.7714781761169434,
+        0.23811878263950348
+      ]
+    },
+    {
+      "name": "Dum_Rot__Arm_L",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.865723609924316,
+        -0.9044969081878662,
+        0.10330140590667725
+      ]
+    },
+    {
+      "name": "Dummy07_",
+      "parent": 4,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.23882490396499634,
+        -2.4941928386688232,
+        -0.15942081809043884
+      ]
+    },
+    {
+      "name": "BaseE128",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.2196546494960785,
+        1.3942718091186634e-08,
+        0.2502754032611847
+      ]
+    },
+    {
+      "name": "LightblueA128",
+      "parent": 6,
+      "rotation_quat16": [
+        -10473,
+        10473,
+        20667,
+        20667
+      ],
+      "translation": [
+        -0.5820539593696594,
+        -0.27503713965415955,
+        0.06913638114929199
+      ]
+    },
+    {
+      "name": "Hulk_baseE128",
+      "parent": 5,
+      "rotation_quat16": [
+        0,
+        0,
+        23169,
+        23169
+      ],
+      "translation": [
+        0.2196544110774994,
+        2.5236130340999807e-07,
+        0.2502754032611847
+      ]
+    },
+    {
+      "name": "Dummy03_",
+      "parent": 4,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.32049721479415894,
+        -2.522634267807007,
+        -1.041750192642212
+      ]
+    },
+    {
+      "name": "ElevateB128",
+      "parent": 9,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.12438752502202988,
+        -1.3030418157577515,
+        0.16345269978046417
+      ]
+    },
+    {
+      "name": "SupportA128",
+      "parent": 9,
+      "rotation_quat16": [
+        -31505,
+        0,
+        0,
+        9004
+      ],
+      "translation": [
+        -0.13149073719978333,
+        -0.00201095431111753,
+        0.004743871744722128
+      ]
+    },
+    {
+      "name": "SupportD128",
+      "parent": 9,
+      "rotation_quat16": [
+        -31505,
+        0,
+        0,
+        9004
+      ],
+      "translation": [
+        -0.13149073719978333,
+        -0.0020110229961574078,
+        -0.3575558066368103
+      ]
+    },
+    {
+      "name": "Hulk_elevateB128",
+      "parent": 9,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.12438740581274033,
+        -1.303041696548462,
+        0.16345269978046417
+      ]
+    },
+    {
+      "name": "Hulk_SupportA128",
+      "parent": 9,
+      "rotation_quat16": [
+        -31505,
+        0,
+        0,
+        9004
+      ],
+      "translation": [
+        -0.1314907670021057,
+        -0.0020110139157623053,
+        0.004743871744722128
+      ]
+    },
+    {
+      "name": "Hulk_SupportD128",
+      "parent": 9,
+      "rotation_quat16": [
+        -31505,
+        0,
+        0,
+        9004
+      ],
+      "translation": [
+        -0.1314907670021057,
+        -0.002011082600802183,
+        -0.3575558066368103
+      ]
+    },
+    {
+      "name": "Dum_Rot_Arm_R",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.865723609924316,
+        -0.9044969081878662,
+        0.10330140590667725
+      ]
+    },
+    {
+      "name": "Dummy06_",
+      "parent": 16,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.24134457111358643,
+        -2.4941928386688232,
+        -0.15942081809043884
+      ]
+    },
+    {
+      "name": "BaseD128",
+      "parent": 17,
+      "rotation_quat16": [
+        -23169,
+        -23169,
+        0,
+        0
+      ],
+      "translation": [
+        -0.21958903968334198,
+        -1.2650358982568832e-08,
+        0.25027546286582947
+      ]
+    },
+    {
+      "name": "LightblueB128",
+      "parent": 18,
+      "rotation_quat16": [
+        -20667,
+        20667,
+        -10473,
+        -10473
+      ],
+      "translation": [
+        0.5804728865623474,
+        0.2745223641395569,
+        -0.06913597136735916
+      ]
+    },
+    {
+      "name": "Hulk_baseD128",
+      "parent": 17,
+      "rotation_quat16": [
+        -23169,
+        -23169,
+        0,
+        0
+      ],
+      "translation": [
+        -0.21958909928798676,
+        -1.2650362535282511e-08,
+        0.25027552247047424
+      ]
+    },
+    {
+      "name": "Dummy02_",
+      "parent": 16,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        -0.324756383895874,
+        -2.522634267807007,
+        -1.041750192642212
+      ]
+    },
+    {
+      "name": "ElevateA128",
+      "parent": 21,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.1261926144361496,
+        -1.3030415773391724,
+        0.16345246136188507
+      ]
+    },
+    {
+      "name": "SupportB128",
+      "parent": 21,
+      "rotation_quat16": [
+        9004,
+        0,
+        0,
+        31505
+      ],
+      "translation": [
+        0.13329583406448364,
+        -0.00201095431111753,
+        0.004743633326143026
+      ]
+    },
+    {
+      "name": "SupportC128",
+      "parent": 21,
+      "rotation_quat16": [
+        9004,
+        0,
+        0,
+        31505
+      ],
+      "translation": [
+        0.13329584896564484,
+        -0.0020110232289880514,
+        -0.3575560450553894
+      ]
+    },
+    {
+      "name": "Hulk_SupportB128",
+      "parent": 21,
+      "rotation_quat16": [
+        9004,
+        0,
+        0,
+        31505
+      ],
+      "translation": [
+        0.13329607248306274,
+        -0.0020110139157623053,
+        0.004743633326143026
+      ]
+    },
+    {
+      "name": "Hulk_SupportC128",
+      "parent": 21,
+      "rotation_quat16": [
+        9004,
+        0,
+        0,
+        31505
+      ],
+      "translation": [
+        0.13329607248306274,
+        -0.002011082833632827,
+        -0.3575560450553894
+      ]
+    },
+    {
+      "name": "Hulk_elevateA128",
+      "parent": 21,
+      "rotation_quat16": [
+        23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.11863120645284653,
+        -1.3030415773391724,
+        0.16345269978046417
+      ]
+    },
+    {
+      "name": "Track128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.865723609924316,
+        -0.904496967792511,
+        0.0
+      ]
+    },
+    {
+      "name": "Hulkpad_128",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.962083339691162,
+        -1.0859599113464355,
+        -0.06972542405128479
+      ]
+    },
+    {
+      "name": "Hulk_track128",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -4.865723609924316,
+        -0.904496967792511,
+        0.0
+      ]
+    },
+    {
+      "name": "Dummy01_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.865723609924316,
+        -0.9044968485832214,
+        0.10330142080783844
+      ]
+    },
+    {
+      "name": "PadInner128",
+      "parent": 31,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -5.960464477539063e-08,
+        -0.1336073875427246
+      ]
+    },
+    {
+      "name": "PadInnerB128",
+      "parent": 31,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -5.960464477539063e-08,
+        -0.12894833087921143
+      ]
+    },
+    {
+      "name": "Beam128",
+      "parent": 31,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        1.7881393432617188e-07,
+        -0.12474887073040009
+      ]
+    },
+    {
+      "name": "Dummy08_",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.865723609924316,
+        -3.417313814163208,
+        1.7997287511825562
+      ]
+    },
+    {
+      "name": "Screen128",
+      "parent": 35,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        2.512816905975342,
+        -1.7997287511825562
+      ]
+    },
+    {
+      "name": "Col-2",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.865723609924316,
+        -3.6303181648254395,
+        0.0
+      ]
+    },
+    {
+      "name": "AIRepairNode",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -4.865723609924316,
+        -0.9044968485832214,
+        0.09864236414432526
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail128",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 128.0,
+      "polyCount": 650
+    },
+    {
+      "name": "Detail64",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 64.0,
+      "polyCount": 531
+    },
+    {
+      "name": "Detail32",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 32.0,
+      "polyCount": 451
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 323
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 10.0,
+      "polyCount": 188
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 2.0,
+      "polyCount": 61
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 6,
+      "size": -1.0,
+      "polyCount": 59
+    },
+    {
+      "name": "Collision-2",
+      "subShapeNum": 0,
+      "objectDetailNum": 7,
+      "size": -2.0,
+      "polyCount": 12
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 102,
+      "flags": 0,
+      "numKeyframes": 53,
+      "duration": 1.7333344221115112,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 28,
+      "baseDecalState": 50,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [
+        4,
+        16
+      ],
+      "translationMatters": [
+        9,
+        21
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        3,
+        23,
+        26,
+        27
+      ],
+      "frameMatters": [
+        21,
+        22,
+        27
+      ],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Activate"
+    },
+    {
+      "nameIndex": 103,
+      "flags": 16,
+      "numKeyframes": 7,
+      "duration": 0.23333433270454407,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 106,
+      "baseTranslation": 106,
+      "baseScale": 0,
+      "baseObjectState": 346,
+      "baseDecalState": 50,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Power"
+    },
+    {
+      "nameIndex": 104,
+      "flags": 0,
+      "numKeyframes": 11,
+      "duration": 0.3333345055580139,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 106,
+      "baseTranslation": 106,
+      "baseScale": 0,
+      "baseObjectState": 346,
+      "baseDecalState": 50,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Damage"
+    },
+    {
+      "nameIndex": 105,
+      "flags": 0,
+      "numKeyframes": 2,
+      "duration": 0.03333429992198944,
+      "priority": 1,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 106,
+      "baseTranslation": 106,
+      "baseScale": 0,
+      "baseObjectState": 346,
+      "baseDecalState": 600,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [
+        31,
+        35
+      ],
+      "scaleMatters": [],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": false,
+      "name": "Visibility"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    100,
+    2,
+    1,
+    1,
+    1,
+    101,
+    5,
+    1,
+    1,
+    1
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/station_inventory.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/station_inventory.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/station_inventory.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "station_inventory",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/station_vpad.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/station_vpad.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/station_vpad.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "station_vpad",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/blue_blink0.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/blue_blink0.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/blue_blink0.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "blue_blink0",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "Beam",
+    "Hulk_SupportA",
+    "Hulk_SupportB",
+    "Hulk_SupportC",
+    "Hulk_SupportD",
+    "Hulk_baseD",
+    "Hulk_baseE",
+    "Hulk_elevateA",
+    "Hulk_elevateB",
+    "Hulk_track",
+    "Hulkpad_",
+    "PadInnerB",
+    "Screen"
+  ],
+  "empty_finer_details": []
+}

@@ -1,0 +1,90 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 107
+    }
+  ],
+  "null_surfaces_excluded": 0,
+  "degenerate_triangles_skipped": 8,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/dox_textures/grate1.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/grate1.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/grate1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/GRATE1",
+      "original_slot": 4
+    },
+    {
+      "virtual_path": "textures/dox_textures/bluetrim2.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/bluetrim2.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/bluetrim2.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/BLUETRIM2",
+      "original_slot": 5
+    },
+    {
+      "virtual_path": "textures/dox_textures/ds_ewall06.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/ds_ewall06.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/ds_ewall06.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "dox_textures/DS_EWALL06",
+      "original_slot": 6
+    },
+    {
+      "virtual_path": "textures/dox_textures/rock_wall_lite3.png",
+      "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:textures/dox_textures/rock_wall_lite3.png",
+      "alternatives": [
+        "base/z_mappacks/TWL2-MapPack.vl2:textures/dox_textures/rock_wall_lite3.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "4a0bcf4be702b71ed2ded2d62db01255d8d94cb1e876bd9471a8a801e20d5b18",
+      "name": "dox_textures/ROCK_WALL_LITE3",
+      "original_slot": 7
+    }
+  ],
+  "source": {
+    "model_name": "interior_idmiddle",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/zDMP-4.7.3DX.vl2:interiors/idmiddle.dif",
+    "source_path": "interiors/idmiddle.dif",
+    "source_sha256": "4c542b3655b94a9548aa75c16f1871758b1b32e29af5a0f649eb57409f19b610",
+    "source_bytes": 23311,
+    "alternatives": [
+      "base/z_mappacks/TWL2-MapPack.vl2:interiors/idmiddle.dif"
+    ],
+    "materials": [
+      "dox_textures/GRATE1",
+      "dox_textures/BLUETRIM2",
+      "dox_textures/DS_EWALL06",
+      "dox_textures/ROCK_WALL_LITE3"
+    ],
+    "version": 44,
+    "triangles": 260,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "source": {
+    "model_name": "sorg21",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/sorg21.dts",
+    "source_path": "shapes/sorg21.dts",
+    "source_sha256": "d70330021773bc203f2baec78fcb684ad474bfc75c8debdbd56242bdc6841f09",
+    "source_bytes": 5110,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/sorg21.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "WinMapShrubart"
+    ],
+    "triangles": 32,
+    "selected_detail": "Detail20"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Base01",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.2741096615791321,
+        0.10310617089271545,
+        0.14288115501403809
+      ]
+    },
+    {
+      "name": "Start01",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "MapleShrub20",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -23169,
+        23169
+      ],
+      "translation": [
+        -0.016670331358909607,
+        0.002602308988571167,
+        1.1019972562789917
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail20",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 20.0,
+      "polyCount": 32
+    },
+    {
+      "name": "Detail10",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 10.0,
+      "polyCount": 16
+    },
+    {
+      "name": "Detail5",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 5.0,
+      "polyCount": 8
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/winmapshrubart.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/WinMapShrubart.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/WinMapShrubart.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "WinMapShrubart",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

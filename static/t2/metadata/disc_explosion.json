@@ -1,0 +1,248 @@
+{
+  "source": {
+    "model_name": "disc_explosion",
+    "game": "t2",
+    "category": "Weapons & ammunition",
+    "status": "ready",
+    "warnings": [
+      "3 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/disc_explosion.dts",
+    "source_path": "shapes/disc_explosion.dts",
+    "source_sha256": "5cf9e80b22cb1eda5e8a3d60dae738da871254c393cd343ab03757575e61c286",
+    "source_bytes": 136665,
+    "version": 18,
+    "alternatives": [
+      "base/shapes.vl2:shapes/disc_explosion.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "disc00"
+    ],
+    "triangles": 16,
+    "selected_detail": "detail 100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.4009653925895691,
+        -0.19851073622703552,
+        0.0
+      ]
+    },
+    {
+      "name": "start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0026292800903320312,
+        0.19982537627220154,
+        0.0
+      ]
+    },
+    {
+      "name": "fiery_large100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.5327048301696777,
+        0.06268173456192017,
+        0.7064588665962219
+      ]
+    },
+    {
+      "name": "hide blast wave100",
+      "parent": 2,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.12911048531532288,
+        4.245295524597168,
+        -0.7064581513404846
+      ]
+    },
+    {
+      "name": "hide blast waveb100",
+      "parent": 2,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.12911048531532288,
+        4.245295524597168,
+        -0.7064581513404846
+      ]
+    },
+    {
+      "name": "hide blast wavec100",
+      "parent": 2,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.12911048531532288,
+        4.234127998352051,
+        -0.7064581513404846
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "detail 100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 50",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 50.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 25",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 25.0,
+      "polyCount": 0
+    },
+    {
+      "name": "detail 2",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 2.0,
+      "polyCount": 0
+    },
+    {
+      "name": "collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": -1.0,
+      "polyCount": 0
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 17,
+      "numKeyframes": 28,
+      "duration": 0.9000009894371033,
+      "flags": 0,
+      "cyclic": false,
+      "priority": 0,
+      "firstGroundFrame": 174,
+      "numGroundFrames": 0,
+      "baseRotation": 6,
+      "baseObjectState": 4,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "baseTranslation": 6,
+      "baseScale": 0,
+      "rotationMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "iflMatters": [
+        0,
+        1,
+        2
+      ],
+      "visMatters": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "frameMatters": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "matFrameMatters": [],
+      "translationMatters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "scaleMatters": [],
+      "name": "ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    [
+      15,
+      0
+    ],
+    [
+      16,
+      1
+    ],
+    [
+      16,
+      2
+    ]
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/disc00.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/disc00.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/disc00.PNG"
+      ],
+      "ambiguous_paths": [],
+      "name": "disc00",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "hide blast wave",
+    "hide blast waveb",
+    "hide blast wavec"
+  ],
+  "empty_finer_details": []
+}

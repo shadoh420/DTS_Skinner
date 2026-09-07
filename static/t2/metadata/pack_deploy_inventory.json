@@ -1,0 +1,319 @@
+{
+  "source": {
+    "model_name": "pack_deploy_inventory",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "Animated texture uses frame zero: green_blink"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_deploy_inventory.dts",
+    "source_path": "shapes/pack_deploy_inventory.dts",
+    "source_sha256": "4a0e055cc83095bdc0b1fee0fb9b82fcd35a76e54cbbd92be6c33f721e170b2b",
+    "source_bytes": 25398,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_deploy_inventory.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "deploy_inventory_1",
+      "green_blink",
+      "barrelMount"
+    ],
+    "triangles": 200,
+    "selected_detail": "Detail_100"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0025714561343193054,
+        0.08084167540073395,
+        0.0
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Body_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0012790336040779948,
+        0.02815203182399273,
+        0.4452460706233978
+      ]
+    },
+    {
+      "name": "Panel_face_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -15653,
+        -17082,
+        -15653,
+        17082
+      ],
+      "translation": [
+        -0.09718787670135498,
+        -0.21243485808372498,
+        0.543866753578186
+      ]
+    },
+    {
+      "name": "LiteGreenFront100",
+      "parent": 1,
+      "rotation_quat16": [
+        24221,
+        0,
+        0,
+        22068
+      ],
+      "translation": [
+        -0.005257371813058853,
+        -0.21628957986831665,
+        0.6822760701179504
+      ]
+    },
+    {
+      "name": "Panel_top_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.0014725314686074853,
+        0.2403596192598343,
+        0.6663751006126404
+      ]
+    },
+    {
+      "name": "Hand_left_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.24428227543830872,
+        0.14490753412246704,
+        0.4448849558830261
+      ]
+    },
+    {
+      "name": "Hand_right_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.24428223073482513,
+        0.14490756392478943,
+        0.4448849558830261
+      ]
+    },
+    {
+      "name": "Shoulder_left_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.22133056819438934,
+        0.20537307858467102,
+        0.4604424834251404
+      ]
+    },
+    {
+      "name": "Shoulder_right_100",
+      "parent": 1,
+      "rotation_quat16": [
+        -32767,
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        -0.22133050858974457,
+        0.2053731083869934,
+        0.4604424834251404
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        8.990864164282186e-10,
+        0.2882245182991028,
+        0.39288297295570374
+      ]
+    },
+    {
+      "name": "MountPad_100",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -6.030382304622606e-10,
+        0.2726956307888031,
+        0.5377580523490906
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_100",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 100.0,
+      "polyCount": 221
+    },
+    {
+      "name": "Detail_70",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 70.0,
+      "polyCount": 221
+    },
+    {
+      "name": "Detail_35",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 35.0,
+      "polyCount": 221
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 16.0,
+      "polyCount": 221
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 8.0,
+      "polyCount": 211
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 5,
+      "size": 4.0,
+      "polyCount": 185
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [
+    27,
+    1,
+    1,
+    1,
+    1
+  ],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/deploy_inventory_1.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/deploy_inventory_1.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/deploy_inventory_1.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "deploy_inventory_1",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/green_blink.ifl",
+      "source": "base/skins.vl2:textures/skins/green_blink.ifl",
+      "alternatives": [],
+      "ambiguous_paths": [],
+      "frames": [
+        "green_blink0.PNG 60",
+        "green_blink1.PNG 1",
+        "green_blink2.PNG 1",
+        "green_blink3.PNG 1",
+        "green_blink4.PNG 2",
+        "green_blink3.PNG 1",
+        "green_blink2.PNG 1",
+        "green_blink1.PNG 1",
+        "green_blink0.PNG 2"
+      ],
+      "frame_zero": {
+        "virtual_path": "textures/skins/green_blink0.png",
+        "source": "base/yHDTextures2.0.vl2:textures/skins/green_blink0.png",
+        "alternatives": [
+          "base/skins.vl2:textures/skins/green_blink0.png"
+        ],
+        "ambiguous_paths": []
+      },
+      "name": "green_blink",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/barrelmount.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/barrelMount.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/barrelMount.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "barrelMount",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,231 @@
+{
+  "source": {
+    "model_name": "flag",
+    "game": "t2",
+    "category": "World & props",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/flag.dts",
+    "source_path": "shapes/flag.dts",
+    "source_sha256": "55439281220dc11baff591b90e4884807cb650f084c00c4188ae6a8481402aaf",
+    "source_bytes": 32848,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/flag.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "base.flag",
+      "flag"
+    ],
+    "triangles": 166,
+    "selected_detail": "Detail_16"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.00093117356300354,
+        -0.002329394221305847,
+        0.0030568838119506836
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Flag_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        -1.1920928244535389e-07,
+        0.002290793228894472,
+        1.9330651760101318
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -1.1410917011289712e-07,
+        0.030507156625390053,
+        0.7428760528564453
+      ]
+    },
+    {
+      "name": "Col-1",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bottom_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        -32767,
+        0
+      ],
+      "translation": [
+        1.1378118358607026e-07,
+        1.20543475645718e-07,
+        1.3498185873031616
+      ]
+    },
+    {
+      "name": "Pole_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Top_16",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        1.9241218751631095e-07,
+        2.0381415311021556e-07,
+        2.2826404571533203
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 16.0,
+      "polyCount": 196
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 2.0,
+      "polyCount": 110
+    },
+    {
+      "name": "Collision-1",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": -1.0,
+      "polyCount": 6
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 16,
+      "flags": 16,
+      "numKeyframes": 16,
+      "duration": 0.5333343744277954,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 5,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [],
+      "frameMatters": [
+        0
+      ],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "Ambient"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/base.flag.png",
+      "source": "base/z_textures/zflags.vl2:textures/skins/base.flag.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/base.flag.png",
+        "base/yHDTextures2.0.vl2:textures/skins/base.flag.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "base.flag",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/flag.png",
+      "source": "base/z_textures/zflags.vl2:textures/skins/flag.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/flag.png",
+        "base/yHDTextures2.0.vl2:textures/skins/flag.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "flag",
+      "original_slot": 1
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

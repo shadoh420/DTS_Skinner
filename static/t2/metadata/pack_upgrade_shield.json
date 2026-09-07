@@ -1,0 +1,342 @@
+{
+  "source": {
+    "model_name": "pack_upgrade_shield",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [
+      "2 authored hidden objects excluded from default pose"
+    ],
+    "format": "DTS",
+    "source": "loose:base/shapes/pack_upgrade_shield.dts",
+    "source_path": "shapes/pack_upgrade_shield.dts",
+    "source_sha256": "6dc5aefe7f9706e00213bae5f4a7be73f347931504bcb21c4538caa80c19c130",
+    "source_bytes": 28930,
+    "version": 23,
+    "alternatives": [
+      "base/shapes.vl2:shapes/pack_upgrade_shield.dts"
+    ],
+    "sequences": 1,
+    "external_sequences": 0,
+    "materials": [
+      "pack_shield"
+    ],
+    "triangles": 262,
+    "selected_detail": "Detail_32"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        -0.07463691383600235,
+        0.4937359094619751
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Bottom32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.057927921414375305,
+        -0.49885809421539307
+      ]
+    },
+    {
+      "name": "BoxBack32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.05627318471670151,
+        0.046713508665561676,
+        -0.41397038102149963
+      ]
+    },
+    {
+      "name": "BoxFront32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        -0.05627318471670151,
+        -0.009058453142642975,
+        -0.41397038102149963
+      ]
+    },
+    {
+      "name": "CenterFace32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        0.0684584230184555,
+        -0.2786758542060852
+      ]
+    },
+    {
+      "name": "HandleL32",
+      "parent": 1,
+      "rotation_quat16": [
+        -6870,
+        -23120,
+        -22127,
+        1515
+      ],
+      "translation": [
+        0.16174490749835968,
+        0.031125906854867935,
+        -0.3124009370803833
+      ]
+    },
+    {
+      "name": "HandleR32",
+      "parent": 1,
+      "rotation_quat16": [
+        -1515,
+        22127,
+        -23120,
+        -6870
+      ],
+      "translation": [
+        -0.16076116263866425,
+        0.031125901266932487,
+        -0.3124009370803833
+      ]
+    },
+    {
+      "name": "Light32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.02099606767296791,
+        0.06437812000513077,
+        -0.13211461901664734
+      ]
+    },
+    {
+      "name": "Mid32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.057927921414375305,
+        -0.49885809421539307
+      ]
+    },
+    {
+      "name": "Mounts32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.06513069570064545,
+        0.049020640552043915,
+        -0.24791261553764343
+      ]
+    },
+    {
+      "name": "Top32",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.057927921414375305,
+        -0.49885809421539307
+      ]
+    },
+    {
+      "name": "Mountpoint",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        7.780350586017448e-09,
+        0.1729644536972046,
+        -0.302018940448761
+      ]
+    },
+    {
+      "name": "CenterFace_active32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -0.04657704010605812,
+        -0.2786758542060852
+      ]
+    },
+    {
+      "name": "CenterFace_ambient32",
+      "parent": 1,
+      "rotation_quat16": [
+        -23169,
+        0,
+        0,
+        23169
+      ],
+      "translation": [
+        0.0,
+        -0.04371427372097969,
+        -0.2786758542060852
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail_32",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 32.0,
+      "polyCount": 320
+    },
+    {
+      "name": "Detail_16",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 16.0,
+      "polyCount": 197
+    },
+    {
+      "name": "Detail_8",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 8.0,
+      "polyCount": 96
+    },
+    {
+      "name": "Detail_4",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 4.0,
+      "polyCount": 24
+    },
+    {
+      "name": "Detail_2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 13
+    }
+  ],
+  "sequences": [
+    {
+      "nameIndex": 32,
+      "flags": 16,
+      "numKeyframes": 19,
+      "duration": 0.6333343386650085,
+      "priority": 0,
+      "firstGroundFrame": 0,
+      "numGroundFrames": 0,
+      "baseRotation": 0,
+      "baseTranslation": 0,
+      "baseScale": 0,
+      "baseObjectState": 12,
+      "baseDecalState": 0,
+      "firstTrigger": 0,
+      "numTriggers": 0,
+      "rotationMatters": [],
+      "translationMatters": [],
+      "scaleMatters": [],
+      "visMatters": [
+        11
+      ],
+      "frameMatters": [],
+      "matFrameMatters": [],
+      "cyclic": true,
+      "name": "fire"
+    }
+  ],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/pack_shield.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/pack_shield.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/pack_shield.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "pack_shield",
+      "original_slot": 0
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [
+    "CenterFace_active",
+    "CenterFace_ambient"
+  ],
+  "empty_finer_details": []
+}

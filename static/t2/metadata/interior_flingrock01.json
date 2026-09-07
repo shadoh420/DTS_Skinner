@@ -1,0 +1,51 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 250,
+      "surface_count": 35
+    }
+  ],
+  "null_surfaces_excluded": 45,
+  "degenerate_triangles_skipped": 1,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": null,
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "reason": "No matching source image or frame list",
+      "material": "rilrock/RIL",
+      "name": "rilrock/RIL",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_flingrock01",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Missing texture: rilrock/RIL (No matching source image or frame list)",
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/z_mappacks/S8maps.vl2:interiors/flingrock01.dif",
+    "source_path": "interiors/flingrock01.dif",
+    "source_sha256": "f0b964d25fbafbc5d6409e237ee37f10c0d1e2b788b270480f97589b600f749d",
+    "source_bytes": 16119,
+    "alternatives": [],
+    "materials": [
+      "rilrock/RIL"
+    ],
+    "version": 44,
+    "triangles": 37,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}

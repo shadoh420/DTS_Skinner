@@ -1,0 +1,287 @@
+{
+  "source": {
+    "model_name": "vehicle_grav_scout_debris",
+    "game": "t2",
+    "category": "Vehicles & equipment",
+    "status": "ready",
+    "warnings": [],
+    "format": "DTS",
+    "source": "loose:base/shapes/vehicle_grav_scout_debris.dts",
+    "source_path": "shapes/vehicle_grav_scout_debris.dts",
+    "source_sha256": "587068f5ab8de9ffcf24eff5c1b0fe51a801cad4cb6dcd63afa64db9ee75a725",
+    "source_bytes": 73270,
+    "version": 22,
+    "alternatives": [
+      "base/shapes.vl2:shapes/vehicle_grav_scout_debris.dts"
+    ],
+    "sequences": 0,
+    "external_sequences": 0,
+    "materials": [
+      "Vehicle_grav_scout",
+      "Vehicle_grav_scout_pipes",
+      "Vehicle_grav_scout"
+    ],
+    "triangles": 978,
+    "selected_detail": "Detail55"
+  },
+  "pose": "authored default node transforms / default object frame",
+  "nodes": [
+    {
+      "name": "Shape",
+      "parent": -1,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.1383768916130066,
+        -0.6276201009750366
+      ]
+    },
+    {
+      "name": "Start",
+      "parent": 0,
+      "rotation_quat16": [
+        0,
+        0,
+        0,
+        32767
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        -0.12028318643569946
+      ]
+    },
+    {
+      "name": "Main_Body_55",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "HandleGrip_Left_55",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "HandleGrip_Right_55",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "RearSidePropulsionLeft_55",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "RearSidePropulsionRight_55",
+      "parent": 1,
+      "rotation_quat16": [
+        -16383,
+        -16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "JetNozzleIllumination_55",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "FrontLeftSideRepulsor_55",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        -16383,
+        -16383,
+        -16383
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "FrontRightSideRepulsor_55",
+      "parent": 1,
+      "rotation_quat16": [
+        16383,
+        16383,
+        -16383,
+        16383
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "Main_BodyB_55",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    },
+    {
+      "name": "Main_BodyC_55",
+      "parent": 1,
+      "rotation_quat16": [
+        0,
+        -23169,
+        -23169,
+        0
+      ],
+      "translation": [
+        0.0,
+        -0.1383768916130066,
+        0.7479032874107361
+      ]
+    }
+  ],
+  "details": [
+    {
+      "name": "Detail55",
+      "subShapeNum": 0,
+      "objectDetailNum": 0,
+      "size": 55.0,
+      "polyCount": 1129
+    },
+    {
+      "name": "Detail28",
+      "subShapeNum": 0,
+      "objectDetailNum": 1,
+      "size": 28.0,
+      "polyCount": 870
+    },
+    {
+      "name": "Detail16",
+      "subShapeNum": 0,
+      "objectDetailNum": 2,
+      "size": 16.0,
+      "polyCount": 645
+    },
+    {
+      "name": "Detail8",
+      "subShapeNum": 0,
+      "objectDetailNum": 3,
+      "size": 8.0,
+      "polyCount": 380
+    },
+    {
+      "name": "Detail2",
+      "subShapeNum": 0,
+      "objectDetailNum": 4,
+      "size": 2.0,
+      "polyCount": 164
+    }
+  ],
+  "sequences": [],
+  "external_sequences": [],
+  "script_sequence_bindings": [],
+  "animation": "Playback deferred; embedded and external sequence descriptors retained in catalog metadata. Original DTS/DSQ remain in the read-only installation.",
+  "ifl_material_records": [],
+  "material_resolution": [
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout",
+      "original_slot": 0
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout_pipes.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout_pipes.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout_pipes.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout_pipes",
+      "original_slot": 1
+    },
+    {
+      "virtual_path": "textures/skins/vehicle_grav_scout.png",
+      "source": "base/yHDTextures2.0.vl2:textures/skins/Vehicle_grav_scout.png",
+      "alternatives": [
+        "base/skins.vl2:textures/skins/Vehicle_grav_scout.png"
+      ],
+      "ambiguous_paths": [],
+      "name": "Vehicle_grav_scout",
+      "original_slot": 2
+    }
+  ],
+  "selected_detail": 0,
+  "hidden_by_default": [],
+  "empty_finer_details": []
+}

@@ -1,0 +1,74 @@
+{
+  "format": "DIF",
+  "file_version": 44,
+  "selected_detail": 0,
+  "details": [
+    {
+      "version": 0,
+      "detail_level": 0,
+      "min_pixels": 64,
+      "surface_count": 86
+    },
+    {
+      "version": 0,
+      "detail_level": 1,
+      "min_pixels": 32,
+      "surface_count": 66
+    },
+    {
+      "version": 0,
+      "detail_level": 2,
+      "min_pixels": 16,
+      "surface_count": 34
+    },
+    {
+      "version": 0,
+      "detail_level": 3,
+      "min_pixels": 8,
+      "surface_count": 24
+    }
+  ],
+  "null_surfaces_excluded": 264,
+  "degenerate_triangles_skipped": 0,
+  "lightmap_count": 1,
+  "render_boundary": "Static authored render surfaces with base textures. Baked lightmaps, alarm states, animated lights and resource movers are not applied; collision hulls and null surfaces are excluded.",
+  "resource_tail_error": "unpack_from requires a buffer of at least 108733 bytes for unpacking 4 bytes at offset 108729 (actual buffer size is 108729)",
+  "resource_tail_bytes": 0,
+  "material_resolution": [
+    {
+      "virtual_path": "textures/lava/lavarock03.png",
+      "source": "base/yHDTextures2.0.vl2:textures/lava/lavarock03.png",
+      "alternatives": [
+        "base/lava.vl2:textures/lava/lavarock03.png"
+      ],
+      "ambiguous_paths": [],
+      "sha256": "c1c5d8fae9134ce62894bd08804172b2156118f4a9af14f0c2ea8aceefc5c01d",
+      "name": "lava/lavarock03",
+      "original_slot": 4
+    }
+  ],
+  "source": {
+    "model_name": "interior_drock6",
+    "game": "t2",
+    "category": "Interiors",
+    "format": "DIF",
+    "status": "ready",
+    "warnings": [
+      "Unparsed resource tail: unpack_from requires a buffer of at least 108733 bytes for unpacking 4 bytes at offset 108729 (actual buffer size is 108729)",
+      "Base textures only; lightmaps, alarm states and resource movers deferred"
+    ],
+    "source": "base/interiors.vl2:interiors/drock6.dif",
+    "source_path": "interiors/drock6.dif",
+    "source_sha256": "aba6e4307491d4eeb162bc968f650b7ba70841ba4b977b480d2a88522a539aa4",
+    "source_bytes": 108729,
+    "alternatives": [],
+    "materials": [
+      "lava/lavarock03"
+    ],
+    "version": 44,
+    "triangles": 86,
+    "selected_detail": "0",
+    "sequences": 0,
+    "external_sequences": 0
+  }
+}
