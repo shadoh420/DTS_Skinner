@@ -10,6 +10,7 @@ import sys
 from urllib.parse import urlencode, quote
 from urllib.request import urlopen
 import zipfile
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 def check(base):
@@ -18,9 +19,13 @@ def check(base):
     def get(path):
         with urlopen(base + path, timeout=90) as response:
             return response.read()
-    for game, inventory in [('t1', 'model_catalog.txt'), ('t2', 't2_catalog.txt')]:
+    for game, inventory in [('t1', 'model_catalog.txt'), ('t2', 't2_catalog.txt'), ('q3', None)]:
         catalog = json.loads(get('/list_models?' + urlencode({'game': game})))
-        expected = (root/inventory).read_text(encoding='utf-8').splitlines()
+        if inventory:
+            expected = (root/inventory).read_text(encoding='utf-8').splitlines()
+        else:
+            from tools.import_q3 import current_import
+            expected = [entry['model_name'] for entry in json.loads((current_import(root/'local-data/q3')/'catalog.json').read_text(encoding='utf-8'))]
         assert [m['model_name'] for m in catalog] == expected, (game, 'catalog mismatch')
         ready = [m for m in catalog if m.get('status', 'ready') == 'ready']
         missing = {}
@@ -43,7 +48,7 @@ def check(base):
                         absent.append(texture)
                 if absent:
                     missing[name] = sorted(absent)
-                if game == 't2':
+                if game in ('t2','q3'):
                     assert 'metadata.json' in archive.namelist(), name
         results[game] = {'catalog': len(catalog), 'preview_and_export': len(ready),
                          'unsupported': [m['model_name'] for m in catalog if m not in ready],

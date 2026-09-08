@@ -331,7 +331,10 @@ def json_to_obj_zip(
     
     # Generate README
     readme_content = generate_readme_content(model_name, scale_factor)
-    if data.get("game") == "t2" or data.get("winding") == "ccw":
+    if data.get("game") == "q3":
+        readme_content = readme_content.replace("Tribes 1 DTS/DIS", "Quake 3 MD3")
+        readme_content += '\nStatic MD3 pose. Use GLB export for animation clips. Shader effects are approximated by base textures; see metadata.json.\n'
+    elif data.get("game") == "t2" or data.get("winding") == "ccw":
         readme_content = readme_content.replace("Tribes 1 DTS/DIS", "Tribes 2 DTS")
         readme_content += ("\nStatic authored pose / visible detail only. Animation playback and rigged export are not implemented.\n"
                            "Source, animation descriptors, import warnings and material flags are retained in metadata.json.\n"

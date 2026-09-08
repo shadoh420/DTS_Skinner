@@ -1,4 +1,4 @@
-# DTS_Skinner - Tribes 1 and Tribes 2 Model Workshop
+# DTS_Skinner - Tribes 1, Tribes 2 and Quake 3 Model Workshop
 
 Browse models and interiors, inspect materials, apply editable PNG skins, and export
 OBJ/MTL/texture ZIPs from one Windows application. T1 and T2 have separate model
@@ -18,7 +18,11 @@ skin variants. See [T2 import coverage](T2_IMPORT.md) for exact source versions,
 archive policy, material gaps, animation dependencies and licensing/provenance.
 The executable needs neither the game installation nor the porting kit at runtime.
 
-Current Windows build: `dist/combined-workshop/SkinnerApp.exe`.
+Current Windows build: `dist/animated-workshop/SkinnerApp.exe`.
+Keep its adjacent `local-data` folder for animated exports and local Q3 models.
+Visible orientation controls and **Download GLB + animations** are now available;
+Quake 3 imports appear as a third game. See [animation/export coverage and usage](ANIMATION_EXPORT.md).
+The previous `dist/combined-workshop` build is preserved.
 Older builds, including `dist/complete-catalog`, are preserved.
 
 ![Combined workshop with a T2 Blood Eagle skin](docs/workshop.png)
@@ -29,7 +33,9 @@ Older builds, including `dist/complete-catalog`, are preserved.
 *   Simultaneous 3D viewport and material inspector with per-slot skin selection.
 *   Offline texture reloading, editable PNG selection/reset and PNG download.
 *   Frame model, named camera views, lighting, wireframe, background and turntable.
-*   **Export to OBJ**: Export models as OBJ with textures.
+*   **Export**: static OBJ/MTL ZIP or GLB with embedded textures and animation clips.
+*   Visible X/Y/Z orientation controls, remembered per game/model in the preview.
+*   Local Quake 3 MD3/PK3 import, assembled players and skin variants.
 *   System tray icon: open app, access textures folder, quit.
 *   Standalone executable.
 
@@ -87,7 +93,8 @@ T2 reflectivity stored in alpha without darkening opaque RGB; its inspector can 
 RGB while saved PNGs retain alpha. OBJ/MTL cannot reproduce all Torque rendering
 features, so flags and limitations accompany the export.
 
-Animation playback and rigged exports remain a separate tranche. Sequence and
+In-app animation playback and rigged exports remain a separate tranche. Animated
+GLB export is now implemented; see [current coverage](ANIMATION_EXPORT.md). Sequence and
 external DSQ descriptors are retained, with original samples in the read-only
 installation. DIF interiors currently use base textures; baked lightmaps, alarm
 states and resource movers are deferred. The two unavailable T2 shapes, ten models

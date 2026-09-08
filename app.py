@@ -15,6 +15,9 @@ import os
 import sys
 import webbrowser # To open the web browser
 import subprocess # For opening folders on Linux/macOS
+import gzip
+import zipfile
+from tools.import_q3 import import_catalog as import_q3_catalog, current_import
 
 # --- System Tray Imports ---
 try:
@@ -46,6 +49,9 @@ if getattr(sys, 'frozen', False):
         if not destination.exists():
             shutil.copy2(source, destination)
 model_json_dir = static_dir / "model_json" # Where pre-processed JSONs are stored
+local_data_dir = (pathlib.Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else root) / 'local-data'
+q3_dir = local_data_dir / 'q3'
+import_lock = threading.Lock()
 
 # Source directories (can be used by list_models for discovery if desired, but not for on-demand export)
 # dts_source_dir = root / "tools" / "dts_files"
@@ -87,19 +93,26 @@ def index():
 
 def selected_game():
     game = request.args.get("game", "t1")
-    if game not in ("t1", "t2"):
+    if game not in ("t1", "t2", "q3"):
         abort(400, "Unknown game")
     return game
 
 
 def game_textures(game):
-    return textures_dir / "t2" if game == "t2" else textures_dir
+    return q3_dir / 'textures' if game == 'q3' else textures_dir / "t2" if game == "t2" else textures_dir
 
 
 def model_path(name):
     if name in (".", "..") or any(c in name for c in '/\\:\r\n'):
         abort(400, "Invalid model name")
     directory = static_dir / "t2" / "model_json" if selected_game() == "t2" else model_json_dir
+    if selected_game() == 'q3':
+        active = current_import(q3_dir)
+        catalog_path = active/'catalog.json'
+        entries = json.loads(catalog_path.read_text(encoding='utf-8')) if catalog_path.is_file() else []
+        if not any(entry['model_name']==name and entry['status']=='ready' for entry in entries):
+            abort(404, 'Model is not available in the current Q3 catalog.')
+        directory = active / 'model_json'
     path = directory / (name + ".json")
     if not path.is_file():
         abort(404, "Model has no supported preview geometry; see catalog coverage.")
@@ -135,8 +148,8 @@ def texture_versions():
 
 @app.route("/list_models")
 def list_models():
-    if selected_game() == "t2":
-        catalog = static_dir / "t2" / "catalog.json"
+    if selected_game() in ("t2", "q3"):
+        catalog = current_import(q3_dir) / 'catalog.json' if selected_game() == 'q3' else static_dir / "t2" / "catalog.json"
         if not catalog.exists():
             return jsonify([])
         entries = json.loads(catalog.read_text(encoding="utf-8"))
@@ -161,6 +174,63 @@ def list_models():
     if not models:
         print(f"No pre-processed .json models found in {model_json_dir}. Please run batch export scripts.")
     return jsonify(models)
+
+
+@app.route('/q3_inventory')
+def q3_inventory():
+    return send_from_directory(str(current_import(q3_dir)), 'inventory.json', max_age=0)
+
+
+@app.route('/import_q3', methods=['POST'])
+def import_q3():
+    # Local filesystem mutations require same-origin JSON, not a cross-site form.
+    if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter a local game folder or PK3 file.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_q3_catalog(payload['path'], q3_dir))
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/export_glb/<model_name>')
+def export_glb(model_name):
+    from tools.glb_exporter import model_to_glb
+    game = selected_game()
+    path = model_path(model_name)
+    overrides = material_overrides()
+    try:
+        preview = load_model_data(path, request.args.get('texture'), overrides)
+        cache = local_data_dir / 'animations' / game / (model_name+'.json.gz')
+        if cache.is_file() and game != 't2':
+            with gzip.open(cache, 'rt', encoding='utf-8') as stream:
+                data = json.load(stream)
+            data = dict(preview, **data)
+            data['material_textures'] = preview['material_textures']
+        elif game == 'q3':
+            from tools.import_q3 import load_animated_model
+            data = load_animated_model(model_name, path.parent.parent, preview)
+        elif game == 't1':
+            from tools.animate_t1 import load_animated_model
+            data = load_animated_model(model_name, None, preview)
+        else:
+            from tools.animate_t2 import load_animated_model
+            data = load_animated_model(model_name, None, preview)
+        output = io.BytesIO(model_to_glb(data, game_textures(game)))
+        response = send_file(output, as_attachment=True, download_name=f'{game}_{model_name}.glb', mimetype='model/gltf-binary')
+        response.headers['X-Skinner-Animation-Clips'] = str(len(data.get('animation_clips', [])))
+        response.headers['X-Skinner-Animation-Status'] = data.get('animation_status', 'available')
+        return response
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return jsonify(error=str(exc)), 422
 
 @app.route("/model_json/<model_name>")
 def get_model_json(model_name):

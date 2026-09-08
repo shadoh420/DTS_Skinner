@@ -19,6 +19,18 @@ window.addEventListener('DOMContentLoaded', () => {
   let overrides = {}, data = null, group = null, radius = 1, materials = [], loadedParams = null;
   let loadSerial = 0, catalogSerial = 0, request = null, loading = false;
   let textureFailures = new Set(), versions = null, pollBusy = false;
+  const orientationKey = () => `skinner.orientation.${game}.${selectedName}`;
+  function saveOrientation() {
+    if (!group || loading) return;
+    $('turntable').checked = false;
+    try { localStorage.setItem(orientationKey(), JSON.stringify(group.quaternion.toArray())); } catch (_) { /* Rotation still works when storage is unavailable. */ }
+  }
+  function restoreOrientation() {
+    try {
+      const value = JSON.parse(localStorage.getItem(orientationKey()));
+      if (Array.isArray(value) && value.length === 4 && value.every(Number.isFinite) && Math.hypot(...value) > 0) group.quaternion.fromArray(value).normalize();
+    } catch (_) { /* Ignore unavailable storage or an invalid saved value. */ }
+  }
 
   function query(extra = {}, gameId = game) {
     return new URLSearchParams({game: gameId, ...extra}).toString();
@@ -81,10 +93,14 @@ window.addEventListener('DOMContentLoaded', () => {
     overrides = {}; disposeModel(); emptyInspector();
     $('modelSelect').replaceChildren();
     $('exportObjBtn').disabled = true;
+    $('exportGlbBtn').disabled = true;
     $('modelSearch').value = ''; $('skinSearch').value = '';
     $('status').textContent = 'Loading catalog…';
-    $('texturePath').textContent = game === 't2' ? 'static/textures/t2' : 'static/textures';
-    $('coverageReport').hidden = game !== 't2';
+    $('texturePath').textContent = game === 'q3' ? 'local-data/q3/textures' : game === 't2' ? 'static/textures/t2' : 'static/textures';
+    $('q3Import').hidden = game !== 'q3';
+    $('coverageReport').hidden = game === 't1';
+    $('coverageReport').href = game === 'q3' ? '/q3_inventory' : '/static/t2/inventory.json';
+    $('coverageReport').textContent = `View ${game.toUpperCase()} inventory & coverage report`;
     showWarnings([]);
     try {
       const results = await Promise.allSettled([
@@ -108,6 +124,7 @@ window.addEventListener('DOMContentLoaded', () => {
         selectModel();
       } else {
         $('status').textContent = 'This game has no imported catalog entries.';
+        if (game === 'q3') $('q3Import').open = true;
       }
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
@@ -116,9 +133,9 @@ window.addEventListener('DOMContentLoaded', () => {
   function filterCatalog() {
     const search = $('modelSearch').value.toLocaleLowerCase();
     const family = $('categorySelect').value;
-    filtered = catalog.filter(entry => (!family || (entry.category || 'Other') === family) && `${entry.model_name} ${entry.category || ''}`.toLocaleLowerCase().includes(search));
+    filtered = catalog.filter(entry => (!family || (entry.category || 'Other') === family) && `${entry.model_name} ${entry.display_name || ''} ${entry.category || ''}`.toLocaleLowerCase().includes(search));
     $('modelSelect').replaceChildren(...filtered.map(entry => {
-      const opt = option(`${entry.model_name}${available(entry) ? '' : ' [no preview]'}`, entry.model_name);
+      const opt = option(`${entry.display_name || entry.model_name}${available(entry) ? '' : ' [no preview]'}`, entry.model_name);
       opt.dataset.unavailable = String(!available(entry)); return opt;
     }));
     if (filtered.some(x => x.model_name === selectedName)) $('modelSelect').value = selectedName;
@@ -166,8 +183,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const signal = request.signal;
     loading = true;
     $('exportObjBtn').disabled = true;
+    $('exportGlbBtn').disabled = true;
     $('status').textContent = `Loading ${name}…`;
-    $('modelTitle').textContent = `${gameId.toUpperCase()} / ${name}`;
+    $('modelTitle').textContent = `${gameId.toUpperCase()} / ${(catalog.find(x=>x.model_name===name)||{}).display_name || name}`;
     const oldRotation = group ? group.quaternion.clone() : null;
     disposeModel(); emptyInspector();
     const entry = catalog.find(x => x.model_name === name) || {};
@@ -223,6 +241,7 @@ window.addEventListener('DOMContentLoaded', () => {
       group = new THREE.Group();
       group.add(new THREE.Mesh(geometry, newMaterials));
       if (preserveView && oldRotation) group.quaternion.copy(oldRotation);
+      else restoreOrientation();
       scene.add(group); materials = newMaterials; newMaterials = [];
       data = model; textureFailures = failures; loadedParams = params;
       if (!preserveView || !oldRotation) frameModel();
@@ -233,7 +252,7 @@ window.addEventListener('DOMContentLoaded', () => {
       showWarnings(warnings);
       const sequences = metadata.sequences || metadata.embedded_sequences || [];
       const external = metadata.external_sequences || [];
-      $('animationInfo').textContent = gameId === 't2' ? `Static pose preview and OBJ export. Animation playback is not implemented. ${sequences.length} embedded sequences; ${external.length} external animation files recorded.${metadata.pose ? ` Pose: ${metadata.pose}.` : ''}` : 'Static model preview. OBJ exports geometry and materials.';
+      $('animationInfo').textContent = `Static preview; GLB exports available geometry animation clips. ${gameId === 't2' ? `${sequences.length} embedded sequences; ${external.length} external animation files recorded. ` : ''}${metadata.pose || ''}`;
       $('materialSelect').replaceChildren(...names.map((filename, index) => ({filename, index, label: (model.material_names || [])[index] || filename})).sort((a, b) => compare(a.label, b.label) || a.index - b.index).map(x => option(`${x.label} · slot ${x.index}`, x.index)));
       $('materialSelect').disabled = false;
       if (slot && [...$('materialSelect').options].some(x => x.value === slot)) $('materialSelect').value = slot;
@@ -252,6 +271,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (serial === loadSerial) {
         loading = false;
         $('exportObjBtn').disabled = !group;
+        $('exportGlbBtn').disabled = !group;
       }
     }
   }
@@ -309,6 +329,19 @@ window.addEventListener('DOMContentLoaded', () => {
     loadModel(true);
   }
   $('gameSelect').addEventListener('change', loadCatalog);
+  $('importQ3').addEventListener('click', async () => {
+    const path = $('q3Path').value.trim();
+    if (!path) { $('importStatus').textContent = 'Enter a local game folder or PK3 file.'; return; }
+    $('importQ3').disabled = true; $('importStatus').textContent = 'Importing models and textures…';
+    try {
+      const response = await fetch('/import_q3', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Import failed');
+      $('importStatus').textContent = `${result.entries} entries imported; ${result.ready} previews. Existing PNG edits kept.`;
+      if (game === 'q3') await loadCatalog();
+    } catch (error) { $('importStatus').textContent = error.message; }
+    finally { $('importQ3').disabled = false; }
+  });
   $('modelSearch').addEventListener('input', filterCatalog);
   $('categorySelect').addEventListener('change', filterCatalog);
   $('modelSelect').addEventListener('change', selectModel);
@@ -333,9 +366,10 @@ window.addEventListener('DOMContentLoaded', () => {
   for (const [axis, vector] of [['X', [1, 0, 0]], ['Y', [0, 1, 0]], ['Z', [0, 0, 1]]]) {
     for (const [suffix, direction] of [['90', 1], ['N90', -1]]) $(`rot${axis}${suffix}`).addEventListener('click', () => {
       if (group) group.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...vector), direction * Math.PI / 2));
+      saveOrientation();
     });
   }
-  $('resetRot').addEventListener('click', () => { if (group) group.rotation.set(0, 0, 0); });
+  $('resetRot').addEventListener('click', () => { if (group) { group.rotation.set(0, 0, 0); saveOrientation(); } });
   $('exportObjBtn').addEventListener('click', async () => {
     if (!group || loading || loadedParams === null) return;
     const name = selectedName, gameId = game, params = loadedParams;
@@ -350,6 +384,24 @@ window.addEventListener('DOMContentLoaded', () => {
       $('exportStatus').textContent = `Downloaded ${gameId.toUpperCase()} ${name}. Missing textures, if any, are listed inside the ZIP.`;
     } catch (error) { $('exportStatus').textContent = `Export failed: ${error.message}`; }
     finally { $('exportObjBtn').disabled = loading || !group; }
+  });
+  $('exportGlbBtn').addEventListener('click', async () => {
+    if (!group || loading || loadedParams === null) return;
+    const name = selectedName, gameId = game, params = loadedParams;
+    $('exportGlbBtn').disabled = true; $('exportStatus').textContent = 'Preparing GLB animation clips…';
+    try {
+      const response = await fetch(`/export_glb/${encodeURIComponent(name)}?${params}`);
+      if (!response.ok) {
+        const error = await response.json(); throw new Error(error.error || `Server returned ${response.status}`);
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a'); link.href = url; link.download = `${gameId}_${name}.glb`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const clips = Number(response.headers.get('X-Skinner-Animation-Clips') || 0);
+      const unavailable = response.headers.get('X-Skinner-Animation-Status') === 'static-fallback';
+      $('exportStatus').textContent = `Downloaded ${gameId.toUpperCase()} ${name} GLB · ${unavailable ? 'static only: source animation could not be retained; details are embedded in the GLB' : clips ? `${clips} animation clips` : 'static model (no geometry animation)'}.`;
+    } catch (error) { $('exportStatus').textContent = `GLB export failed: ${error.message}`; }
+    finally { $('exportGlbBtn').disabled = loading || !group; }
   });
   new ResizeObserver(() => {
     const {width, height} = $('viewport').getBoundingClientRect();
