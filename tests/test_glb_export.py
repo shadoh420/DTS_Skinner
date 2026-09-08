@@ -5,10 +5,12 @@ from pathlib import Path
 import struct
 import tempfile
 import unittest
+import zipfile
 
 from PIL import Image
 
 from tools.glb_exporter import model_to_glb
+from tools.obj_exporter import json_to_obj_zip
 
 
 def read_glb(raw):
@@ -76,6 +78,82 @@ class GlbExportTests(unittest.TestCase):
                 'uvs': [0, 0, 1, 0, 1, 1, 0, 1], 'indices': [0, 1, 2, 0, 2, 3],
                 'groups': [{'start': 0, 'count': 3, 'materialIndex': 0}, {'start': 3, 'count': 3, 'materialIndex': 1}],
                 'material_textures': ['skin.png', 'missing.png'], 'winding': 'ccw'}
+
+    def q3_model(self):
+        model = self.model()
+        model.update(game='q3', material_textures=['skin.png'] * 5,
+                     material_settings=[{'shader': 'cutout', 'alphaFunc': 'GE128', 'cull': 'none', 'clamp': True},
+                                        {'shader': 'inverse', 'alphaFunc': 'LT128', 'cull': 'back'},
+                                        {'shader': 'nonzero', 'alphaFunc': 'GT0', 'cull': 'front'},
+                                        {'shader': 'blend', 'blend': ['gl_src_alpha', 'gl_one_minus_src_alpha'], 'tcGen': 'environment', 'depthWrite': False},
+                                        {'shader': 'opaque'}])
+        return model
+
+    def test_q3_alpha_test_blend_sampling_and_slot_local_inversion(self):
+        data = self.q3_model()
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'skin.png'
+            texture = Image.new('RGBA', (5, 1))
+            texture.putdata([(23, 45, 67, alpha) for alpha in [0, 1, 127, 128, 255]])
+            texture.save(source)
+            original = source.read_bytes()
+            document, binary = read_glb(model_to_glb(data, directory))
+            self.assertEqual(source.read_bytes(), original)
+        materials = document['materials']
+        self.assertEqual([materials[i]['alphaMode'] for i in range(4)], ['MASK', 'MASK', 'MASK', 'BLEND'])
+        self.assertEqual(materials[0]['alphaCutoff'], .5)
+        self.assertEqual(materials[1]['alphaCutoff'], .5)
+        self.assertEqual(materials[2]['alphaCutoff'], .5 / 255)
+        self.assertNotIn('alphaMode', materials[4])
+        self.assertTrue(materials[0]['doubleSided'])
+        self.assertFalse(materials[1]['doubleSided'])
+        self.assertEqual(len(document['images']), 2)
+        for slot, expected in [(0, [0, 1, 127, 128, 255]), (1, [255, 254, 128, 127, 0]), (4, [0, 1, 127, 128, 255])]:
+            tex = document['textures'][materials[slot]['pbrMetallicRoughness']['baseColorTexture']['index']]
+            image_view = document['bufferViews'][document['images'][tex['source']]['bufferView']]
+            start = image_view['byteOffset']
+            with Image.open(io.BytesIO(binary[start:start + image_view['byteLength']])) as image:
+                self.assertEqual(list(image.getchannel('A').tobytes()), expected)
+                self.assertEqual(image.getpixel((0, 0))[:3], (23, 45, 67))
+            sampler = document['samplers'][tex['sampler']]
+            self.assertEqual((sampler['magFilter'], sampler['minFilter']), (9729, 9987))
+            self.assertEqual(sampler['wrapS'], 33071 if slot == 0 else 10497)
+        self.assertTrue(any('front-face culling' in note for note in document['extras']['warnings']))
+        self.assertTrue(any('environment' in note for note in document['extras']['warnings']))
+
+    def test_q3_obj_opacity_is_grayscale_alpha_and_preserves_overrides(self):
+        data = self.q3_model()
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            source, override = directory / 'skin.png', directory / 'override.png'
+            texture = Image.new('RGBA', (5, 1))
+            texture.putdata([(23, 45, 67, alpha) for alpha in [0, 1, 127, 128, 255]])
+            texture.save(source)
+            texture.putalpha(Image.frombytes('L', (5, 1), bytes([255, 128, 127, 1, 0])))
+            texture.save(override)
+            original, overridden = source.read_bytes(), override.read_bytes()
+            model_file = directory / 'sample.json'
+            model_file.write_text(json.dumps(data), encoding='utf-8')
+            output = io.BytesIO()
+            json_to_obj_zip(model_file, directory, output, 'sample', material_overrides={'0': 'override.png'})
+            self.assertEqual(source.read_bytes(), original)
+            self.assertEqual(override.read_bytes(), overridden)
+            with zipfile.ZipFile(output) as archive:
+                metadata = json.loads(archive.read('metadata.json'))
+                self.assertEqual(metadata['material_settings'], data['material_settings'])
+                self.assertEqual(metadata['material_textures'][0], 'override.png')
+                self.assertEqual(archive.read('skin.png'), original)
+                self.assertEqual(archive.read('override.png'), overridden)
+                mtl = archive.read('sample.mtl').decode()
+                self.assertIn('map_Kd -clamp on override.png', mtl)
+                expected = [[255, 255, 0, 0, 0], [255, 255, 255, 0, 0], [0, 255, 255, 255, 255], [0, 1, 127, 128, 255]]
+                for slot, values in enumerate(expected):
+                    name = metadata['opacity_maps'][str(slot)]
+                    self.assertIn('map_d ' + ('-clamp on ' if slot == 0 else '') + name, mtl)
+                    with Image.open(io.BytesIO(archive.read(name))) as opacity:
+                        self.assertEqual(opacity.mode, 'L')
+                        self.assertEqual(list(opacity.tobytes()), values)
+                self.assertNotIn('4', metadata['opacity_maps'])
 
     def test_embedded_texture_groups_and_static_winding(self):
         data = self.model()

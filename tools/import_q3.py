@@ -133,6 +133,11 @@ def transform(values, tags=(), normal=False):
     return output
 
 
+def shader_key(name):
+    # R_FindShader strips the image extension before looking up a script.
+    return re.sub(r'\.[^/.]*$', '', key_name(name))
+
+
 def shader_maps(assets):
     result = {}
     for path, record in assets.items():
@@ -145,16 +150,47 @@ def shader_maps(assets):
             name = tokens[index].strip('"').lower(); index += 1
             if tokens[index] != '{':
                 continue
-            depth, body = 1, []
+            depth, body, stages, stage = 1, [], [], []
             index += 1
             while index < len(tokens) and depth:
                 token = tokens[index]; index += 1
-                depth += (token == '{') - (token == '}')
-                body.append(token)
-            for at, token in enumerate(body[:-1]):
-                if token.lower() in ('map', 'clampmap') and not body[at+1].startswith('$'):
-                    result[name] = body[at+1].strip('"').lower()
-                    break
+                if token == '{':
+                    depth += 1
+                    if depth == 2: stage = []
+                elif token == '}':
+                    if depth == 2: stages.append(stage)
+                    depth -= 1
+                elif depth == 1: body.append(token.strip('"').lower())
+                elif depth == 2: stage.append(token.strip('"').lower())
+            def value(tokens, keyword, default=''):
+                return tokens[tokens.index(keyword)+1] if keyword in tokens[:-1] else default
+            for stage in stages:
+                kind = next((x for x in stage if x in ('map','clampmap','animmap')), None)
+                if not kind: continue
+                at = stage.index(kind) + (2 if kind == 'animmap' else 1)
+                if at >= len(stage): continue
+                target = stage[at]
+                if target == '$lightmap': continue
+                blend = []
+                if 'blendfunc' in stage[:-1]:
+                    at = stage.index('blendfunc')+1
+                    blend = {'add':['gl_one','gl_one'], 'blend':['gl_src_alpha','gl_one_minus_src_alpha'],
+                             'filter':['gl_dst_color','gl_zero']}.get(stage[at], stage[at:at+2])
+                    if blend == ['gl_one','gl_zero']: blend = []
+                cull = value(body, 'cull', 'front')
+                settings = dict(shader=shader_key(name), alphaFunc=value(stage,'alphafunc').upper(), blend=blend,
+                    # Store the discarded CCW face, after native clockwise conversion.
+                    cull='none' if cull in ('none','disable','twosided') else 'front' if cull == 'back' else 'back',
+                    depthWrite='depthwrite' in stage or not blend, clamp=kind=='clampmap', tcGen=value(stage,'tcgen','base'))
+                limitations = []
+                if len(stages)>1: limitations.append('additional shader stages')
+                if 'deformvertexes' in body: limitations.append('shader vertex deformation')
+                if kind == 'animmap': limitations.append('animated textures (first frame shown)')
+                if 'tcmod' in stage: limitations.append('texture coordinate modifiers')
+                if value(stage,'rgbgen') not in ('','identity','identitylighting','lightingdiffuse'): limitations.append('dynamic color generation')
+                if value(stage,'alphagen') not in ('','identity'): limitations.append('dynamic alpha generation')
+                result[shader_key(name)] = dict(target=target, settings=settings, limitations=limitations)
+                break
     return result
 
 
@@ -167,13 +203,17 @@ class Textures:
     def resolve(self, shader):
         if shader in self.cache:
             return self.cache[shader]
-        target = self.shaders.get(shader, shader)
-        warnings = [f'Shader {shader}: static base texture only; shader effects are not reproduced.'] if shader in self.shaders else []
+        definition = self.shaders.get(shader_key(shader), {})
+        target = definition.get('target', key_name(shader))
+        settings = definition.get('settings', dict(shader=shader_key(shader), alphaFunc='', blend=[], cull='back', depthWrite=True, clamp=False, tcGen='base'))
+        warnings = [f'Shader {shader}: not reproduced: {", ".join(definition["limitations"])}.'] if definition.get('limitations') else []
         stem = Path(target).with_suffix('').as_posix() if Path(target).suffix.lower() in ('.png','.jpg','.jpeg','.tga') else target
         candidates = [target] + [stem+ext for ext in ('.tga','.jpg','.png','.jpeg')]
         key = next((key for key in candidates if key in self.assets), None)
         filename = asset_name(key or target or 'missing')+'.png'
-        if key:
+        if target == '$whiteimage':
+            if not (self.output/filename).exists(): Image.new('RGBA',(1,1),'white').save(self.output/filename)
+        elif key:
             try:
                 # Never overwrite a user's edited PNG when reimporting.
                 if not (self.output/filename).exists():
@@ -183,28 +223,33 @@ class Textures:
                 warnings.append(f'Cannot decode {key}: {exc}')
         else:
             warnings.append(f'Missing texture: {target or "unassigned MD3 surface"}')
-        self.cache[shader] = filename, warnings
-        return filename, warnings
+        self.cache[shader] = filename, warnings, settings
+        return filename, warnings, settings
 
 
 def combine(parts, resolver):
-    data = dict(game='q3', winding='ccw', vertices=[], normals=[], uvs=[], indices=[], groups=[], material_textures=[], material_names=[], warnings=[])
+    data = dict(game='q3', winding='ccw', vertices=[], normals=[], uvs=[], indices=[], groups=[], material_textures=[], material_names=[], material_settings=[], warnings=[])
     for part in parts:
         md3, skin, tags = part['model'], part.get('skin', {}), part.get('tags', ())
         for surface in md3['surfaces']:
             shader = skin.get(surface['name'], next(iter(surface['shaders']), ''))
             if shader in ('*off', 'off', 'nodraw'):
                 continue
-            texture, warnings = resolver.resolve(shader)
+            texture, warnings, settings = resolver.resolve(shader)
             base = len(data['vertices'])//3
             data['groups'].append(dict(start=len(data['indices']), count=len(surface['indices']), materialIndex=len(data['material_textures'])))
             data['material_textures'].append(texture)
             data['material_names'].append(part['name']+'/'+surface['name'])
+            data['material_settings'].append(settings)
             data['warnings'].extend(warnings)
             data['vertices'].extend(transform(surface['vertices'], tags))
             data['normals'].extend(transform(surface['normals'], tags, True))
             data['uvs'].extend(surface['uvs'])
-            data['indices'].extend(base+i for i in surface['indices'])
+            # Native MD3 faces are clockwise relative to their outward normals.
+            # Our proper axis rotation preserves handedness; glTF/Three use CCW.
+            for at in range(0, len(surface['indices']), 3):
+                a, b, c = surface['indices'][at:at+3]
+                data['indices'].extend((base+a, base+c, base+b))
     data['warnings'] = sorted(set(data['warnings']))
     if not data['vertices']:
         raise ValueError('No visible MD3 surfaces (tag-only attachment model).')
@@ -288,7 +333,7 @@ def import_catalog(source, output):
                 data = combine(parts, resolver)
                 data['metadata'] = dict(source=[dict(virtual_path=s['path'], **manifest[s['path']]) for s in specs],
                     parts=specs, animations=clips, pose='Standing pose where animation.cfg is available; frame 0 otherwise.',
-                    warnings=data['warnings'], limitations=['Static base materials; shader animation/effects not reproduced.'])
+                    warnings=data['warnings'], material_version=2, limitations=['First shader stage with alpha test, blend, culling and wrapping; additional stages and shader animation are not reproduced.'])
                 json_write(output/'model_json'/(name+'.json'), data)
                 entry['warnings'] = data['warnings']
             except (ValueError, KeyError, OSError, struct.error) as exc:
@@ -357,7 +402,7 @@ def load_animated_model(name, source_path, preview_data):
     # Materials are already resolved/edited. Only bake geometry from source.
     class ExistingTextures:
         def resolve(self, shader):
-            return 'unused.png', []
+            return 'unused.png', [], {}
     clips = list(definitions.values())
     if len(specs) == 1:
         part = specs[0]['name']

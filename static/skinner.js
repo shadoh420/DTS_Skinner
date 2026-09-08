@@ -153,7 +153,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('viewSelect').value = 'perspective';
     loadModel(false);
   }
-  async function makeTexture(name, gameId, signal, flags) {
+  async function makeTexture(name, gameId, signal, flags, settings) {
     const response = await fetch(textureUrl(name, gameId), {cache: 'no-store', signal});
     if (!response.ok) throw new Error(`Missing texture: ${name}`);
     // T2 opaque skin alpha stores reflectivity; never bake it into the RGB color.
@@ -171,7 +171,45 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.minFilter = flags & 128 ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
       texture.generateMipmaps = !(flags & 128);
     }
+    if (gameId === 'q3') {
+      texture.wrapS = texture.wrapT = settings.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+    }
     return texture;
+  }
+  function applyQ3Material(material, settings) {
+    material.side = settings.cull === 'none' ? THREE.DoubleSide : settings.cull === 'front' ? THREE.BackSide : THREE.FrontSide;
+    material.alphaTest = settings.alphaFunc === 'GE128' ? .5 : settings.alphaFunc === 'GT0' ? .5 / 255 : 0;
+    material.transparent = Boolean(settings.blend && settings.blend.length);
+    material.depthWrite = settings.depthWrite !== false;
+    if (material.transparent) {
+      const factors = {gl_zero: THREE.ZeroFactor, gl_one: THREE.OneFactor,
+        gl_src_color: THREE.SrcColorFactor, gl_one_minus_src_color: THREE.OneMinusSrcColorFactor,
+        gl_dst_color: THREE.DstColorFactor, gl_one_minus_dst_color: THREE.OneMinusDstColorFactor,
+        gl_src_alpha: THREE.SrcAlphaFactor, gl_one_minus_src_alpha: THREE.OneMinusSrcAlphaFactor,
+        gl_dst_alpha: THREE.DstAlphaFactor, gl_one_minus_dst_alpha: THREE.OneMinusDstAlphaFactor,
+        gl_src_alpha_saturate: THREE.SrcAlphaSaturateFactor};
+      material.blending = THREE.CustomBlending;
+      material.blendSrc = factors[settings.blend[0]] ?? THREE.SrcAlphaFactor;
+      material.blendDst = factors[settings.blend[1]] ?? THREE.OneMinusSrcAlphaFactor;
+    }
+    const environment = settings.tcGen === 'environment' && material.map;
+    material.userData.q3ViewOrigin = new THREE.Vector3();
+    material.onBeforeCompile = shader => {
+      if (environment) {
+        // Native tcGen environment uses the reflected eye vector in model space.
+        shader.uniforms.q3ViewOrigin = {value: material.userData.q3ViewOrigin};
+        shader.vertexShader = 'uniform vec3 q3ViewOrigin;\n' + shader.vertexShader.replace('#include <uv_vertex>', `
+          #include <uv_vertex>
+          vec3 eye = normalize(q3ViewOrigin - position);
+          vec3 reflected = 2.0 * normalize(normal) * dot(normalize(normal), eye) - eye;
+          vUv = vec2(0.5 + reflected.x * 0.5, 0.5 - reflected.y * 0.5);
+        `);
+      }
+      if (settings.alphaFunc === 'LT128') shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', 'if (diffuseColor.a >= 0.5) discard;');
+    };
+    material.customProgramCacheKey = () => `q3:${Boolean(environment)}:${settings.alphaFunc || ''}`;
   }
   async function loadModel(preserveView = true) {
     if (!selectedName) return;
@@ -205,11 +243,12 @@ window.addEventListener('DOMContentLoaded', () => {
       const names = model.material_textures && model.material_textures.length ? model.material_textures : ['[Default material]'];
       const failures = new Set(), cache = new Map();
       const flagsFor = index => Number((model.material_flags || [])[index] || 0);
-      const textureKey = index => `${names[index]}|${flagsFor(index)}`;
+      const settingsFor = index => (model.material_settings || [])[index] || {};
+      const textureKey = index => `${names[index]}|${flagsFor(index)}|${Boolean(settingsFor(index).clamp)}`;
       for (let index = 0; index < names.length; index++) {
         const filename = names[index], key = textureKey(index);
         if (!filename || filename.startsWith('[') || cache.has(key)) continue;
-        cache.set(key, makeTexture(filename, gameId, signal, flagsFor(index)).catch(() => { failures.add(filename); return null; }));
+        cache.set(key, makeTexture(filename, gameId, signal, flagsFor(index), settingsFor(index)).catch(() => { failures.add(filename); return null; }));
       }
       await Promise.all(cache.values());
       for (let index = 0; index < names.length; index++) {
@@ -224,6 +263,7 @@ window.addEventListener('DOMContentLoaded', () => {
           transparent, depthWrite: !transparent,
           blending: flags & 8 ? THREE.AdditiveBlending : flags & 16 ? THREE.SubtractiveBlending : THREE.NormalBlending
         }));
+        if (gameId === 'q3' && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
       }
       if (serial !== loadSerial) { disposeMaterials(newMaterials); return; }
       const geometry = new THREE.BufferGeometry();
@@ -239,7 +279,11 @@ window.addEventListener('DOMContentLoaded', () => {
       const center = geometry.boundingSphere.center;
       geometry.translate(-center.x, -center.y, -center.z);
       group = new THREE.Group();
-      group.add(new THREE.Mesh(geometry, newMaterials));
+      const mesh = new THREE.Mesh(geometry, newMaterials);
+      mesh.onBeforeRender = (renderer, scene, camera, geometry, material) => {
+        if (material.userData.q3ViewOrigin) mesh.worldToLocal(camera.getWorldPosition(material.userData.q3ViewOrigin));
+      };
+      group.add(mesh);
       if (preserveView && oldRotation) group.quaternion.copy(oldRotation);
       else restoreOrientation();
       scene.add(group); materials = newMaterials; newMaterials = [];
@@ -249,6 +293,7 @@ window.addEventListener('DOMContentLoaded', () => {
       $('status').textContent = failures.size ? `Preview loaded with ${failures.size} missing texture${failures.size === 1 ? '' : 's'}.` : 'Preview ready.';
       const metadata = model.metadata || {};
       const warnings = [...(entry.warnings || []), ...(model.warnings || []), ...(metadata.warnings || []), ...[...failures].map(x => `Missing texture: ${x}. Geometry remains visible in magenta.`)];
+      if (gameId === 'q3' && !model.material_settings) warnings.push('Reimport your Q3 game folder to restore shader materials and corrected face orientation. Existing PNG edits are kept.');
       showWarnings(warnings);
       const sequences = metadata.sequences || metadata.embedded_sequences || [];
       const external = metadata.external_sequences || [];

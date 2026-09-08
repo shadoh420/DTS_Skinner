@@ -11,7 +11,7 @@ import zipfile
 
 from PIL import Image
 from app import app
-from tools.import_q3 import read_md3, import_catalog, load_animated_model, asset_name, current_import
+from tools.import_q3 import read_md3, import_catalog, load_animated_model, asset_name, current_import, Textures
 from tools.model_data import load_model_data
 
 
@@ -27,7 +27,7 @@ def md3(tag=None):
         for frame in range(frames):
             struct.pack_into('<64s12f',raw,otags+frame*112,tag.encode(),frame*2,0,0,1,0,0,0,1,0,0,0,1)
     struct.pack_into('<4s64s10i',raw,osurface,b'IDP3',b'body',0,frames,1,vertices,triangles,otri,oshader,ouv,overt,send)
-    struct.pack_into('<3i',raw,osurface+otri,0,1,2)
+    struct.pack_into('<3i',raw,osurface+otri,0,2,1) # Native MD3 clockwise; authored normal is +Z.
     struct.pack_into('<64si',raw,osurface+oshader,b'models/test/skin.tga',0)
     struct.pack_into('<6f',raw,osurface+ouv,0,0,1,0,0,1)
     for frame in range(frames):
@@ -37,6 +37,52 @@ def md3(tag=None):
 
 
 class Quake3Tests(unittest.TestCase):
+    def test_shader_extension_lookup_cutout_remap_and_first_stage(self):
+        image=io.BytesIO(); Image.new('RGBA',(2,2),(50,80,110,0)).save(image,format='PNG')
+        script=b'''models/test/skin
+        { cull none
+          { map models/test/skin.tga alphaFunc GE128 depthWrite }
+        }
+        models/test/pole { { map models/test/skull.tga tcGen environment } }
+        models/test/cloth {
+          { map models/test/skin.tga }
+          { map models/test/glow.tga blendFunc add }
+        }
+        models/test/glow { { clampMap models/test/skin.tga blendFunc GL_ONE GL_ONE } }
+        models/test/animated { { animMap 5 models/test/skin.tga models/test/other.tga } }
+        models/test/white { { map $whiteimage } }
+        models/test/back { cull back { map $whiteimage } }
+        '''
+        assets={key:dict(read=lambda raw=raw:raw) for key,raw in {
+            'scripts/models.shader':script,'models/test/skin.png':image.getvalue(),
+            'models/test/skull.jpg':image.getvalue()}.items()}
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory); textures=Textures(assets,output)
+            name,warnings,settings=textures.resolve('MODELS/TEST/SKIN.TGA')
+            self.assertEqual(warnings,[])
+            self.assertEqual((settings['alphaFunc'],settings['cull'],settings['depthWrite']),('GE128','none',True))
+            self.assertEqual(Image.open(output/name).getpixel((0,0)),(50,80,110,0))
+            pole,warnings,settings=textures.resolve('models/test/pole.tga')
+            self.assertEqual(warnings,[])
+            self.assertEqual(pole,asset_name('models/test/skull.jpg')+'.png')
+            self.assertEqual(settings['tcGen'],'environment')
+            _,warnings,settings=textures.resolve('models/test/cloth.tga')
+            self.assertEqual(settings['alphaFunc'],'')
+            self.assertEqual(settings['blend'],[]) # Later alpha/additive passes must not change the base pass.
+            self.assertIn('additional shader stages',warnings[0])
+            _,_,settings=textures.resolve('models/test/glow.tga')
+            self.assertEqual(settings['blend'],['gl_one','gl_one'])
+            self.assertTrue(settings['clamp'])
+            self.assertFalse(settings['depthWrite'])
+            animated,warnings,_=textures.resolve('models/test/animated')
+            self.assertEqual(animated,name)
+            self.assertIn('first frame shown',warnings[0])
+            white,warnings,_=textures.resolve('models/test/white')
+            self.assertEqual(warnings,[])
+            self.assertEqual(Image.open(output/white).getpixel((0,0)),(255,255,255,255))
+            self.assertEqual(textures.resolve('models/test/back')[2]['cull'],'front')
+            self.assertEqual(textures.resolve('models/test/white')[2]['cull'],'back')
+
     def test_frames_tags_and_malformed_bounds(self):
         first, second = read_md3(md3('tag_torso')),read_md3(md3('tag_torso'),1)
         self.assertEqual(first['surfaces'][0]['vertices'][:3],[0,0,0])
@@ -61,6 +107,7 @@ class Quake3Tests(unittest.TestCase):
             self.assertEqual(result,dict(entries=1,ready=1))
             name=asset_name('models/test/shape.md3')
             data=load_model_data(current_import(output)/'model_json'/(name+'.json'))
+            self.assertEqual(data['indices'],[0,1,2]) # Shared preview/export is CCW after axis rotation.
             animated=load_animated_model(name,output,data)
             self.assertEqual(len(animated['animation_clips']),1)
             self.assertEqual(animated['animation_clips'][0]['frames'][1]['vertices'][:3],[0,1,0])

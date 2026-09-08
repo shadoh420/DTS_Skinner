@@ -12,7 +12,7 @@ import struct
 
 from PIL import Image
 
-from .obj_exporter import compute_smooth_normals
+from .obj_exporter import compute_smooth_normals, q3_material_settings
 
 
 def _floats(values, count, label):
@@ -54,6 +54,7 @@ def model_to_glb(data, textures_dir):
     if end != len(indices):
         raise ValueError('Material groups must cover all triangles exactly once')
     flags = data.get('material_flags') or [0] * len(names)
+    settings = q3_material_settings(dict(data, material_textures=names))
     if len(flags) != len(names) or any(type(flag) is not int or flag < 0 for flag in flags):
         raise ValueError('Invalid material flags')
     reverse = data.get('winding') != 'ccw'
@@ -129,6 +130,8 @@ def model_to_glb(data, textures_dir):
     embedded_images = {}
     for slot, name in enumerate(names):
         flag = flags[slot] if data.get('game') == 't2' else 0
+        setting = settings[slot]
+        alpha_func, blend = setting.get('alphaFunc', ''), setting.get('blend', [])
         material = {'name': name, 'doubleSided': True,
                     'pbrMetallicRoughness': {'metallicFactor': 0, 'roughnessFactor': 1},
                     'extensions': {'KHR_materials_unlit': {}},
@@ -137,23 +140,48 @@ def model_to_glb(data, textures_dir):
             material['alphaMode'] = 'BLEND'
         if flag & (8 | 16):
             gltf['extras']['warnings'].append(f'{name}: additive/subtractive blending is approximated by alpha blending in glTF.')
+        if data.get('game') == 'q3':
+            material['extras']['sourceShaderSettings'] = setting
+            material['doubleSided'] = not data.get('material_settings') or setting.get('cull', 'back') != 'back'
+            if setting.get('cull') == 'front':
+                gltf['extras']['warnings'].append(f'{name}: front-face culling is approximated by a double-sided material in glTF.')
+            if alpha_func:
+                material.update(alphaMode='MASK', alphaCutoff=0.5 / 255 if alpha_func == 'GT0' else .5)
+                if blend:
+                    gltf['extras']['warnings'].append(f'{name}: combined alpha test/blending uses MASK without partial-alpha blending in glTF.')
+            elif blend:
+                material['alphaMode'] = 'BLEND'
+            if blend and blend != ['gl_src_alpha', 'gl_one_minus_src_alpha']:
+                gltf['extras']['warnings'].append(f'{name}: nonstandard blending is approximated by alpha blending in glTF.')
+            if setting.get('tcGen', 'base') != 'base':
+                gltf['extras']['warnings'].append(f'{name}: generated environment coordinates use the authored UVs in glTF.')
+            if not setting.get('depthWrite', True):
+                gltf['extras']['warnings'].append(f'{name}: explicit depth-write state is metadata only in glTF.')
         source = Path(textures_dir) / name
+        image_key = (name, alpha_func == 'LT128')
         if not name.startswith('[') and source.is_file():
-            if name not in embedded_images:
+            if image_key not in embedded_images:
                 with Image.open(source) as texture:
                     texture.load()
                     stream = io.BytesIO()
-                    texture.convert('RGBA').save(stream, format='PNG')
-                embedded_images[name] = len(gltf['images'])
+                    texture = texture.convert('RGBA')
+                    if alpha_func == 'LT128':
+                        texture.putalpha(texture.getchannel('A').point(lambda value: 255 - value))
+                    texture.save(stream, format='PNG')
+                embedded_images[image_key] = len(gltf['images'])
                 gltf['images'].append({'name': name, 'mimeType': 'image/png', 'bufferView': view(stream.getvalue())})
             sampler = {'magFilter': 9729 if data.get('game') == 't2' else 9728,
                        'minFilter': (9729 if flag & 128 else 9987) if data.get('game') == 't2' else 9728,
                        'wrapS': 33071 if data.get('game') == 't2' and not flag & 1 else 10497,
                        'wrapT': 33071 if data.get('game') == 't2' and not flag & 2 else 10497}
+            if data.get('game') == 'q3':
+                sampler = {'magFilter': 9729, 'minFilter': 9987,
+                           'wrapS': 33071 if setting.get('clamp') else 10497,
+                           'wrapT': 33071 if setting.get('clamp') else 10497}
             if sampler not in gltf['samplers']:
                 gltf['samplers'].append(sampler)
             texture_index = len(gltf['textures'])
-            gltf['textures'].append({'source': embedded_images[name], 'sampler': gltf['samplers'].index(sampler)})
+            gltf['textures'].append({'source': embedded_images[image_key], 'sampler': gltf['samplers'].index(sampler)})
             material['pbrMetallicRoughness']['baseColorTexture'] = {'index': texture_index}
         else:
             material['extras']['missingTexture'] = True

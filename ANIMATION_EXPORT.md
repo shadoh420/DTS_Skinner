@@ -46,8 +46,19 @@ mount unrelated custom map archives. Select a mod PK3 explicitly to import it.
 The local reviewed corpus contains 468 entries: 458 geometry previews/exports,
 including 96 assembled player/skin combinations; 10 tag-only hand attachments
 remain visible with an explanation. Q3 names and textures cannot collide with
-either Tribes game. Shader materials use a static base texture approximation with
-explicit warnings. Missing images stay visible as missing materials.
+either Tribes game. Shader lookup strips image extensions before resolving the
+script's image, including TGA-to-JPG fallback. The first stage retains alpha
+cutouts, blend factors, depth writing, culling and texture wrapping. The preview
+also supports environment texture coordinates. Native clockwise triangles are
+converted to CCW while retaining their outward normals.
+
+Additional shader stages, animated textures, texture coordinate modifiers and
+shader vertex deformation remain explicit approximations. GLB preserves cutout
+MASK and standard alpha BLEND materials. Nonstandard blending, generated UVs and
+front-face culling have documented portable fallbacks in export metadata. OBJ
+includes separate grayscale opacity PNGs derived from the selected texture's
+alpha; original editable PNGs remain unchanged. Missing images stay visible as
+missing materials.
 
 Q3 source frame data and imported models are local to `local-data/q3`; editable
 PNGs are in `local-data/q3/textures`. Reimport preserves existing edited PNGs.
@@ -55,6 +66,12 @@ Catalog/source publication is atomic via `current.json`; older import generation
 remain under `imports` so active exports never read half-replaced source files.
 No Q3 game files or generated retail assets are committed to the repository or
 embedded in the executable.
+
+The material correction build is `dist/material-workshop/SkinnerApp.exe`, with
+its refreshed Q3 import and the T1/T2 animation caches beside it. Keep that folder
+together. When using an older `local-data/q3` import, import the game folder again
+to regenerate shader settings and triangle order; existing PNG edits are kept.
+The viewer identifies older imports with a reimport message.
 
 ## Rebuilding the local animation data
 
@@ -68,8 +85,8 @@ From the repository, using the existing virtual environment:
 .venv/Scripts/python.exe -m tools.animate_t1 --all --source C:/DiscSkinner/tools
 .venv/Scripts/python.exe -m tools.animate_t2 --bake
 .venv/Scripts/python.exe -m tools.import_q3 'C:/Program Files (x86)/Steam/steamapps/common/Quake 3 Arena/baseq3'
-.venv/Scripts/python.exe -m PyInstaller --noconfirm --distpath dist/animated-workshop DiscSkinnerApp.spec
-Copy-Item -LiteralPath local-data -Destination dist/animated-workshop/local-data -Recurse
+.venv/Scripts/python.exe -m PyInstaller --noconfirm --distpath dist/material-workshop DiscSkinnerApp.spec
+Copy-Item -LiteralPath local-data -Destination dist/material-workshop/local-data -Recurse
 ```
 
 T1 source override: `SKINNER_T1_SOURCE`. T2 overrides: `SKINNER_T2_GAME_DATA` and
@@ -78,6 +95,23 @@ T1 source override: `SKINNER_T1_SOURCE`. T2 overrides: `SKINNER_T2_GAME_DATA` an
 inputs, excluded from Git. Run the copy command for a fresh build directory.
 
 ## Validation
+
+Material correction, September 8: 43 regression tests passed, then all 11 focused
+Q3/GLB tests passed after the final winding/cutoff changes. The new executable
+passed all 458 ready Q3 preview/OBJ exports. Hidden Edge checked both flags,
+Hunter, Uriel, fembot and the rocket launcher from front/back with lighting on/off;
+flag cutouts changed 6,448 rendered pixels against the opaque regression state.
+There were no browser/WebGL errors. The general T1/T2/Q3 browser workflow also
+passed. Independently loaded flag GLBs and animated Hunter/Sarge GLBs rendered
+with zero Khronos validator errors/warnings. Shader resolution reduced models
+with missing export textures from 72 to 3 in this corpus; the remaining unassigned
+or absent source materials stay explicit. Full native shader effects and
+full-catalog visual acceptance remain outside this evidence.
+
+Reproduce the focused material checks with `tools/check_q3_materials.cjs` against
+the packaged server and `tools/check_packaged.py <url> q3`. Evidence is local in
+`build/material-package-review`, `build/material-general-review` and
+`build/packaged-validation-q3.json`.
 
 September 8, 2026: 40 regression tests passed, followed by the final eight focused
 GLB/Q3 checks after integration. The packaged executable passed all 1,807 available
@@ -102,5 +136,7 @@ them with Khronos glTF Validator, and compares rendered animation frames.
 
 Format references: [id Software MD3 definitions](https://github.com/id-Software/Quake-III-Arena/blob/master/code/qcommon/qfiles.h),
 [MD3 surface normalization](https://github.com/id-Software/Quake-III-Arena/blob/master/code/renderer/tr_model.c),
+[shader lookup and stage parsing](https://github.com/id-Software/Quake-III-Arena/blob/master/code/renderer/tr_shader.c),
+[native alpha test and face culling](https://github.com/id-Software/Quake-III-Arena/blob/master/code/renderer/tr_backend.c),
 [player tags and animation configuration](https://github.com/id-Software/Quake-III-Arena/blob/master/code/cgame/cg_players.c),
 and [glTF 2.0](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html).

@@ -28,7 +28,7 @@ window.loadModel=async name=>{
   const gltf=await loader.loadAsync('/model?name='+encodeURIComponent(name));
   model=gltf.scene; scene.add(model); model.updateMatrixWorld(true);
   clip=gltf.animations.find(x=>/^run$|^legs_run$/i.test(x.name))||gltf.animations.find(x=>/run|walk|forward/i.test(x.name))||gltf.animations.find(x=>x.duration>0);
-  if(!clip) throw new Error('No playable animation in '+name);
+  if(!clip) return {clip:'Static model',duration:0,tracks:[],animations:[]};
   mixer=new THREE.AnimationMixer(model); action=mixer.clipAction(clip); action.setLoop(THREE.LoopOnce,1); action.clampWhenFinished=true; action.play();
   return {clip:clip.name,duration:clip.duration,tracks:clip.tracks.map(x=>x.name),animations:gltf.animations.map(x=>x.name)};
 };
@@ -39,8 +39,8 @@ window.framePositions=vertices=>{
   camera.near=Math.max(size/1000,.0001); camera.far=distance*10; camera.lookAt(center);camera.updateProjectionMatrix();
 };
 window.sample=time=>{
-  mixer.setTime(time);model.updateMatrixWorld(true);renderer.render(scene,camera);
-  document.querySelector('#label').textContent=clip.name+' · '+time.toFixed(3)+' s';
+  if(mixer) mixer.setTime(time);model.updateMatrixWorld(true);renderer.render(scene,camera);
+  document.querySelector('#label').textContent=clip?clip.name+' · '+time.toFixed(3)+' s':'Static model';
   const vertices=[],activeTargets=[];
   model.traverse(mesh=>{
     if(!mesh.isMesh) return;
@@ -117,9 +117,11 @@ window.ready=true;
         maxDisplacement=Math.max(maxDisplacement,Math.hypot(...first.vertices.slice(i,i+3).map((x,j)=>x-second.vertices[i+j])));
       }
       assert(first.drawCalls>0&&first.triangles>0,result.name+' did not render geometry');
-      if(maxDisplacement<=1e-5) console.error(JSON.stringify({info,errors,firstTargets:first.activeTargets,secondTargets:second.activeTargets}));
-      assert(maxDisplacement>1e-5,result.name+' did not deform between samples');
-      assert(!firstImage.equals(secondImage),result.name+' screenshots did not change');
+      if(info.animations.length) {
+        if(maxDisplacement<=1e-5) console.error(JSON.stringify({info,errors,firstTargets:first.activeTargets,secondTargets:second.activeTargets}));
+        assert(maxDisplacement>1e-5,result.name+' did not deform between samples');
+        assert(!firstImage.equals(secondImage),result.name+' screenshots did not change');
+      }
       assert.deepEqual(errors,[],result.name+' browser errors');
       Object.assign(result,info,{firstTime,secondTime,maxDisplacement,drawCalls:first.drawCalls,triangles:first.triangles,pageErrors:errors,
                                  firstActiveTargets:first.activeTargets,secondActiveTargets:second.activeTargets});

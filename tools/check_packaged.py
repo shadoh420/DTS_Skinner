@@ -13,13 +13,15 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
-def check(base):
+def check(base, games=('t1','t2','q3')):
     root = Path(__file__).resolve().parents[1]
     results = {}
     def get(path):
         with urlopen(base + path, timeout=90) as response:
             return response.read()
     for game, inventory in [('t1', 'model_catalog.txt'), ('t2', 't2_catalog.txt'), ('q3', None)]:
+        if game not in games:
+            continue
         catalog = json.loads(get('/list_models?' + urlencode({'game': game})))
         if inventory:
             expected = (root/inventory).read_text(encoding='utf-8').splitlines()
@@ -54,9 +56,10 @@ def check(base):
                          'unsupported': [m['model_name'] for m in catalog if m not in ready],
                          'missing_export_textures': missing}
         print(game, len(catalog), 'catalog;', len(ready), 'previews/exports verified', flush=True)
-    (root/'build/packaged-validation.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
+    suffix = '' if len(games) == 3 else '-'+'-'.join(games)
+    (root/('build/packaged-validation'+suffix+'.json')).write_text(json.dumps(results, indent=2), encoding='utf-8')
     return results
 
 
 if __name__ == '__main__':
-    check(sys.argv[1])
+    check(sys.argv[1], sys.argv[2:] or ('t1','t2','q3'))
