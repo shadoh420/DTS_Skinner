@@ -66,6 +66,9 @@
       <label for="textureGame">Texture library</label><select id="textureGame"><option value="t1">Tribes 1 textures</option><option value="t2">Tribes 2 textures</option><option value="q3">Quake 3 textures</option></select>
       <label for="skinSearch">Find an editable PNG</label><input id="skinSearch" type="search" placeholder="Filter texture filenames…" autocomplete="off">
       <label class="sr-only" for="skinSelect">Replacement texture</label><select id="skinSelect" disabled></select>
+      <div id="textureCount" class="hint" role="status"></div>
+      <div id="textureGallery" class="texture-gallery" role="group" aria-label="Replacement texture thumbnails"></div>
+      <p class="hint">Click a thumbnail to select it, then Apply to slot.</p>
       <div class="button-row"><button id="applySkin" disabled>Apply to slot</button><button id="resetSkin" disabled>Reset slot</button></div>
       <div class="button-row"><button id="loadModelBtn">Reload textures</button><a id="downloadTexture" class="button disabled" download>Save PNG</a></div>
       <p class="hint">Choose textures from any game. Edit PNGs in <code id="texturePath">static/textures</code> beside the executable, then reload. Slot changes affect preview, OBJ and GLB. The target material keeps its UVs and rendering settings.</p>
