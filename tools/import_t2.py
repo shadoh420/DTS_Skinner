@@ -31,7 +31,7 @@ def safe_name(name):
     return re.sub(r'[^a-z0-9_.-]', '_', name.lower()).strip('.') or 'asset'
 
 
-def load_readers(kit, assets):
+def load_readers(kit, assets, source_transform=None):
     """Load user-provided readers without writing into their original directory."""
     modules, provenance = {}, {}
     for name in ('t2_dts_legacy_read', 't2_dts_read', 't2_dsq_read', 't2_dif_read'):
@@ -52,6 +52,8 @@ def load_readers(kit, assets):
                     raise ValueError('Kit reader changed; inspect adaptation: ' + old)
                 source = source.replace(old, new)
                 adaptations.append(new)
+        if source_transform is not None:
+            source = source_transform(name, source)
         module = types.ModuleType(name)
         module.__file__ = str(path)
         module.open = lambda key, mode='rb': io.BytesIO(assets[str(key)]['read']())

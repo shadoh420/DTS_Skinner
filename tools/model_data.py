@@ -26,6 +26,52 @@ def model_sort_key(name):
     return parts, name.casefold(), name
 
 
+def material_texture_refs(data, material_overrides=None):
+    """Validate slot references while keeping filenames compatible with old clients."""
+    game = data.get('game', 't1')
+    if game not in ('t1', 't2', 'q3'):
+        raise ValueError('Unknown model game')
+    names = data['material_textures']
+    if not isinstance(names, list) or not names:
+        raise ValueError('Material textures must be a nonempty list')
+    names = list(names)
+    games = data.get('material_texture_games', [game] * len(names))
+    if not isinstance(games, list) or len(games) != len(names):
+        raise ValueError('Texture games must match material slots')
+    games = list(games)
+    if material_overrides is not None and not isinstance(material_overrides, dict):
+        raise ValueError('Material overrides must be a slot-to-texture object')
+    for slot, reference in (material_overrides or {}).items():
+        if not isinstance(slot, str) or not slot.isascii() or not slot.isdecimal() or not 0 <= int(slot) < len(names):
+            raise ValueError('Material slot outside model material array')
+        if isinstance(reference, dict):
+            if set(reference) != {'game', 'filename'}:
+                raise ValueError('Texture reference must contain game and filename')
+            source_game, filename = reference['game'], reference['filename']
+        else:
+            source_game, filename = game, reference
+        names[int(slot)], games[int(slot)] = filename, source_game
+    for name, source_game in zip(names, games):
+        if source_game not in ('t1', 't2', 'q3'):
+            raise ValueError('Unknown texture game')
+        # Imported untextured slots are labels, never filesystem lookups.
+        placeholder = isinstance(name, str) and re.fullmatch(r'\[Slot [0-9]+: [A-Za-z0-9 _.-]+\]', name)
+        if (not isinstance(name, str) or not name or name in ('.', '..')
+                or name.endswith((' ', '.')) or any(c in name for c in '/\\<>"|?*')
+                or (':' in name and not placeholder)
+                or any(ord(c) < 32 or ord(c) == 127 for c in name)):
+            raise ValueError('Texture names must be local filenames')
+    return names, games
+
+
+def material_texture_paths(data, textures_dir, texture_dirs=None):
+    names, games = material_texture_refs(data)
+    directories = texture_dirs if texture_dirs is not None else {data.get('game', 't1'): textures_dir}
+    if any(game not in directories for game in games):
+        raise ValueError('Texture source game directory is unavailable')
+    return [pathlib.Path(directories[game]) / name for name, game in zip(names, games)]
+
+
 def load_model_data(json_path, fallback_texture=None, material_overrides=None):
     path = pathlib.Path(json_path)
     with path.open(encoding="utf-8") as stream:
@@ -45,15 +91,7 @@ def load_model_data(json_path, fallback_texture=None, material_overrides=None):
         raise ValueError("Triangle index outside vertex array")
     if not data.get("material_textures"):
         data["material_textures"] = [fallback_texture or default_texture(path.stem)]
-    for slot, filename in (material_overrides or {}).items():
-        if not isinstance(slot, str) or not slot.isdecimal() or not 0 <= int(slot) < len(data["material_textures"]):
-            raise ValueError("Material slot outside model material array")
-        data["material_textures"][int(slot)] = filename
-    for name in data["material_textures"]:
-        if not isinstance(name, str) or not name:
-            raise ValueError("Invalid texture name")
-        if not name.startswith("[Slot") and (name in (".", "..") or any(c in name for c in '/\\:\r\n')):
-            raise ValueError("Texture names must be local filenames")
+    data['material_textures'], data['material_texture_games'] = material_texture_refs(data, material_overrides)
     if not data.get("groups"):
         data["groups"] = [{"start": 0, "count": len(indices), "materialIndex": 0}]
     expected_start = 0

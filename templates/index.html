@@ -10,12 +10,13 @@
   <script defer src="/static/skinner.js"></script>
 </head>
 <body>
-  <header class="app-header"><div><strong>DTS SKINNER</strong><span class="subtle">Tribes model workshop</span></div><span id="catalogSummary" class="subtle"></span></header>
+  <header class="app-header"><div><strong>DTS SKINNER</strong><span class="subtle">Tribes &amp; Quake 3 model workshop</span></div><span id="catalogSummary" class="subtle"></span></header>
   <main class="workspace">
     <aside class="catalog panel" aria-label="Model browser">
       <h1>Models</h1>
       <label for="gameSelect">Game</label>
-      <select id="gameSelect"><option value="t1">Starsiege: Tribes</option><option value="t2">Tribes 2</option></select>
+      <select id="gameSelect"><option value="t1">Starsiege: Tribes</option><option value="t2">Tribes 2</option><option value="q3">Quake 3 Arena</option></select>
+      <details id="q3Import" hidden><summary>Import Quake 3 models</summary><label for="q3Path">Game folder, baseq3 folder, or PK3 file</label><input id="q3Path" placeholder="C:\Games\Quake 3 Arena"><button id="importQ3">Import local models</button><p id="importStatus" class="hint" role="status">Reads MD3 models and skins from your installed game. Existing PNG edits are kept.</p></details>
       <label for="modelSearch">Search catalog</label>
       <input id="modelSearch" type="search" placeholder="Name or family…" autocomplete="off">
       <label for="categorySelect">Family</label>
@@ -30,28 +31,50 @@
     <section class="viewport" id="viewport" aria-label="3D preview">
       <div class="viewport-toolbar">
         <button id="frameModel">Frame</button>
+        <button id="resetAll" title="Restore this model's materials, transforms, camera and preview settings">Reset all</button>
+        <button id="walkMode" title="Shift + backtick" aria-pressed="false">Walk / Fly</button>
+        <button id="fullscreen" aria-pressed="false">Fullscreen</button>
         <label class="sr-only" for="viewSelect">Camera view</label>
         <select id="viewSelect"><option value="perspective">Perspective</option><option value="front">Front</option><option value="back">Back</option><option value="left">Left</option><option value="right">Right</option><option value="top">Top</option><option value="bottom">Bottom</option></select>
         <label class="check"><input id="wireframe" type="checkbox">Wireframe</label>
         <label class="check"><input id="lighting" type="checkbox">Lighting</label>
-        <label class="check"><input id="turntable" type="checkbox">Rotate</label>
+        <label class="check"><input id="turntable" type="checkbox">Turntable</label>
         <label class="color-label" title="Viewport background">BG <input id="backgroundColor" type="color" value="#182229" aria-label="Viewport background"></label>
       </div>
+      <div class="orientation-toolbar" role="group" aria-label="Model orientation">
+        <span>Orientation</span>
+        <button id="rotX90" aria-label="Rotate X plus 90 degrees">X +90°</button><button id="rotXN90" aria-label="Rotate X minus 90 degrees">X −90°</button>
+        <button id="rotY90" aria-label="Rotate Y plus 90 degrees">Y +90°</button><button id="rotYN90" aria-label="Rotate Y minus 90 degrees">Y −90°</button>
+        <button id="rotZ90" aria-label="Rotate Z plus 90 degrees">Z +90°</button><button id="rotZN90" aria-label="Rotate Z minus 90 degrees">Z −90°</button>
+        <button id="resetRot">Reset orientation</button><span class="hint">Preview only · remembered per model</span>
+        <div class="position-controls" role="group" aria-label="Model position in world axes">
+          <span>Position</span>
+          <label>X <input id="positionX" type="number" step="any" value="0" aria-label="Model position X"></label><button id="moveXN" aria-label="Move X minus step">X −</button><button id="moveXP" aria-label="Move X plus step">X +</button>
+          <label>Y ↑ <input id="positionY" type="number" step="any" value="0" aria-label="Model position Y (up)"></label><button id="moveYN" aria-label="Move down one step">Y −</button><button id="moveYP" aria-label="Move up one step">Y +</button>
+          <label>Z <input id="positionZ" type="number" step="any" value="0" aria-label="Model position Z"></label><button id="moveZN" aria-label="Move Z minus step">Z −</button><button id="moveZP" aria-label="Move Z plus step">Z +</button>
+          <label>Step <input id="moveStep" type="number" min="0.0001" step="any" value="1"></label><button id="resetPosition">Reset position</button><span class="hint">World axes · Y is up · preview only</span>
+        </div>
+      </div>
       <canvas id="c" aria-label="Model preview: drag to orbit, wheel to zoom, right-drag to pan"></canvas>
-      <div class="viewport-caption"><strong id="modelTitle">Choose a model</strong><span id="geometryInfo" class="subtle"></span><span class="hint">Drag: orbit · Wheel: zoom · Right-drag: pan</span></div>
+      <div class="viewport-caption"><strong id="modelTitle">Choose a model</strong><span id="geometryInfo" class="subtle"></span><span id="navigationHint" class="hint" role="status">Drag: orbit · Wheel: zoom · Right-drag: pan · Shift + `: walk/fly</span></div>
     </section>
     <aside class="inspector panel" aria-label="Skins and model details">
       <h2>Skins &amp; materials</h2>
       <label for="materialSelect">Material slot</label><select id="materialSelect" disabled></select>
       <div class="texture-preview"><img id="texturePreview" alt="Selected material texture" hidden><span id="texturePreviewEmpty">No material selected</span></div>
       <div id="textureDetails" class="hint"></div>
+      <label for="textureGame">Texture library</label><select id="textureGame"><option value="t1">Tribes 1 textures</option><option value="t2">Tribes 2 textures</option><option value="q3">Quake 3 textures</option></select>
       <label for="skinSearch">Find an editable PNG</label><input id="skinSearch" type="search" placeholder="Filter texture filenames…" autocomplete="off">
       <label class="sr-only" for="skinSelect">Replacement texture</label><select id="skinSelect" disabled></select>
       <div class="button-row"><button id="applySkin" disabled>Apply to slot</button><button id="resetSkin" disabled>Reset slot</button></div>
       <div class="button-row"><button id="loadModelBtn">Reload textures</button><a id="downloadTexture" class="button disabled" download>Save PNG</a></div>
-      <p class="hint">Edit PNGs in <code id="texturePath">static/textures</code> beside the executable, then reload. Slot changes affect this preview and its OBJ export.</p>
-      <details><summary>Legacy fallback &amp; orientation</summary><label for="textureName">Fallback PNG (models without material slots)</label><input id="textureName" type="text" placeholder="texture.png"><button id="applyFallback">Apply fallback</button><div class="rotation-grid"><span>X</span><button id="rotX90">+90°</button><button id="rotXN90">−90°</button><span>Y</span><button id="rotY90">+90°</button><button id="rotYN90">−90°</button><span>Z</span><button id="rotZ90">+90°</button><button id="rotZN90">−90°</button></div><button id="resetRot">Reset rotation</button><p class="hint">Orientation controls affect the preview only.</p></details>
-      <h2 class="section-heading">Export</h2><button id="exportObjBtn" class="primary" disabled>Download OBJ + textures ZIP</button><p id="exportStatus" class="hint" role="status"></p>
+      <p class="hint">Choose textures from any game. Edit PNGs in <code id="texturePath">static/textures</code> beside the executable, then reload. Slot changes affect preview, OBJ and GLB. The target material keeps its UVs and rendering settings.</p>
+      <h2 class="section-heading">Navigation</h2>
+      <label for="navigationStyle">Movement</label><select id="navigationStyle"><option value="walk">Walk (level movement)</option><option value="fly">Fly (follow view direction)</option></select>
+      <label for="walkSpeed">Speed (model units / second)</label><input id="walkSpeed" type="number" min="0.01" max="100000" step="any" value="5">
+      <p class="hint">Walk / Fly or Shift + ` captures the mouse. WASD / arrows move; E / Q move up / down. Shift: faster; Alt: slower; wheel: speed. Esc or Enter returns to orbit. Free navigation through geometry; no collision.</p>
+      <details><summary>Legacy fallback texture</summary><label for="textureName">Fallback PNG (models without material slots)</label><input id="textureName" type="text" placeholder="texture.png"><button id="applyFallback">Apply fallback</button></details>
+      <h2 class="section-heading">Export</h2><button id="exportObjBtn" class="primary" disabled>Download OBJ + textures ZIP</button><button id="exportGlbBtn" class="primary" disabled>Download GLB + animations</button><p class="hint">GLB embeds textures and available animation clips. Static models stay static. Preview orientation and position do not change either export.</p><p id="exportStatus" class="hint" role="status"></p>
       <h2 class="section-heading">Model details</h2><div id="status" role="status">Loading catalog…</div><ul id="warnings" class="warnings"></ul><p id="animationInfo" class="hint"></p>
       <details><summary>Texture inventory</summary><ul id="loadedTexturesList"></ul></details>
     </aside>

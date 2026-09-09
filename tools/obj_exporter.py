@@ -6,16 +6,37 @@ Converts JSON model data to Wavefront OBJ format with materials and textures.
 """
 
 if __package__:
-    from .model_data import load_model_data
+    from .model_data import load_model_data, material_texture_paths
 else:
-    from model_data import load_model_data
+    from model_data import load_model_data, material_texture_paths
 import pathlib
 import zipfile
 import math
 import tempfile
 import shutil
 import json
+import io
+from PIL import Image
 from typing import List, Tuple, Dict, Optional
+
+
+def q3_material_settings(data):
+    """Keep the imported shader contract aligned with texture slot overrides."""
+    count = len(data['material_textures'])
+    if data.get('game') != 'q3':
+        return [{} for _ in range(count)]
+    settings = data.get('material_settings') or [{} for _ in range(count)]
+    if not isinstance(settings, list) or len(settings) != count:
+        raise ValueError('Q3 material settings must match material slots')
+    for setting in settings:
+        if not isinstance(setting, dict) or setting.get('alphaFunc', '') not in ('', 'GE128', 'GT0', 'LT128'):
+            raise ValueError('Invalid Q3 alpha function')
+        blend = setting.get('blend', [])
+        if not isinstance(blend, list) or len(blend) not in (0, 2) or any(not isinstance(x, str) for x in blend):
+            raise ValueError('Invalid Q3 blend function')
+        if setting.get('cull', 'back') not in ('back', 'front', 'none'):
+            raise ValueError('Invalid Q3 culling mode')
+    return settings
 
 
 def compute_smooth_normals(vertices: List[float], indices: List[int]) -> List[Tuple[float, float, float]]:
@@ -181,7 +202,8 @@ def generate_obj_content(
     return '\n'.join(lines)
 
 
-def generate_mtl_content(material_textures: List[str], model_name: str, material_flags=None) -> str:
+def generate_mtl_content(material_textures: List[str], model_name: str, material_flags=None,
+                         opacity_maps=None, material_settings=None) -> str:
     """
     Generate MTL (material library) file content.
     
@@ -202,6 +224,9 @@ def generate_mtl_content(material_textures: List[str], model_name: str, material
         mat_name = f"material_{idx}"
         
         lines.append(f"newmtl {mat_name}")
+        settings = material_settings[idx] if material_settings else {}
+        if settings:
+            lines.append('# Q3 shader settings: ' + json.dumps(settings, ensure_ascii=True))
         lines.append("Ka 1.000 1.000 1.000")  # Ambient color (white)
         lines.append("Kd 1.000 1.000 1.000")  # Diffuse color (white)
         lines.append("Ks 0.000 0.000 0.000")  # Specular color (black)
@@ -211,8 +236,11 @@ def generate_mtl_content(material_textures: List[str], model_name: str, material
         
         # Only add texture map if it's a valid texture (not a placeholder)
         if tex_name and not tex_name.startswith('[Slot'):
-            lines.append(f"map_Kd {tex_name}")
-            if material_flags and material_flags[idx] & 4:
+            clamp = '-clamp on ' if settings.get('clamp') else ''
+            lines.append(f"map_Kd {clamp}{tex_name}")
+            if opacity_maps and idx in opacity_maps:
+                lines.append(f"map_d {clamp}{opacity_maps[idx]}")
+            elif not material_settings and material_flags and material_flags[idx] & 4:
                 lines.append(f"map_d {tex_name}")
         
         lines.append("")
@@ -281,7 +309,8 @@ def json_to_obj_zip(
     model_name: str,
     scale_factor: float = 1.0,
     fallback_texture: Optional[str] = None,
-    material_overrides=None
+    material_overrides=None,
+    texture_dirs=None
 ) -> pathlib.Path:
     """
     Convert JSON model data to OBJ/MTL and bundle with textures in a ZIP archive.
@@ -310,6 +339,41 @@ def json_to_obj_zip(
     data = load_model_data(json_path, fallback_texture, material_overrides)
     vertices, uvs, indices = (data[key] for key in ("vertices", "uvs", "indices"))
     material_textures, groups = data["material_textures"], data["groups"]
+    texture_games = data['material_texture_games']
+    sources = material_texture_paths(data, textures_dir, texture_dirs)
+    cross_game = any(game != data.get('game', 't1') for game in texture_games)
+    export_names = [f'textures/{game}/{name}' if cross_game and not name.startswith('[') else name
+                    for name, game in zip(material_textures, texture_games)]
+    settings = q3_material_settings(data)
+    opacity_maps, opacity_images, export_warnings = {}, {}, []
+    reserved_names = {name.casefold() for name in export_names}
+    if data.get('game') == 'q3':
+        for slot, (name, setting) in enumerate(zip(material_textures, settings)):
+            alpha_func, blend = setting.get('alphaFunc', ''), setting.get('blend', [])
+            if blend and blend != ['gl_src_alpha', 'gl_one_minus_src_alpha']:
+                export_warnings.append(f'{name}: nonstandard blending is approximated by alpha opacity in OBJ/MTL.')
+            if setting.get('tcGen', 'base') != 'base':
+                export_warnings.append(f'{name}: generated environment coordinates use the authored UVs in OBJ/MTL.')
+            if setting.get('cull', 'back') != 'back' or not setting.get('depthWrite', True):
+                export_warnings.append(f'{name}: culling/depth-write settings are metadata only in OBJ/MTL.')
+            source = sources[slot]
+            if (not alpha_func and not blend) or name.startswith('[') or not source.is_file():
+                continue
+            with Image.open(source) as texture:
+                alpha = texture.convert('RGBA').getchannel('A')
+            if alpha_func:
+                def opacity(value):
+                    passes = value >= 128 if alpha_func == 'GE128' else value > 0 if alpha_func == 'GT0' else value < 128
+                    return (value if blend else 255) if passes else 0
+                alpha = alpha.point(opacity)
+            filename = f'_skinner_opacity_{slot}.png'
+            while filename.casefold() in reserved_names:
+                filename = '_' + filename
+            reserved_names.add(filename.casefold())
+            output = io.BytesIO()
+            alpha.save(output, format='PNG')
+            opacity_maps[slot] = filename
+            opacity_images[filename] = output.getvalue()
 
     # Compute normals
     print(f"Computing normals for {len(vertices)//3} vertices...")
@@ -327,11 +391,22 @@ def json_to_obj_zip(
     
     # Generate MTL content
     print(f"Generating MTL content for {len(material_textures)} materials...")
-    mtl_content = generate_mtl_content(material_textures, model_name, data.get("material_flags"))
+    mtl_content = generate_mtl_content(export_names, model_name, data.get("material_flags"),
+                                      opacity_maps, settings if data.get('game') == 'q3' else None)
     
     # Generate README
     readme_content = generate_readme_content(model_name, scale_factor)
-    if data.get("game") == "t2" or data.get("winding") == "ccw":
+    if cross_game:
+        readme_content = readme_content.replace('*.png             (textures)', 'textures/<game>/*.png (textures by source game)')
+        readme_content = readme_content.replace('Check texture files are in same folder as .obj', 'Keep the textures subfolders beside the .obj')
+        readme_content += '\nReplacement texture source games and exported paths are recorded per slot in metadata.json.\n'
+    if data.get("game") == "q3":
+        readme_content = readme_content.replace("Tribes 1 DTS/DIS", "Quake 3 MD3")
+        readme_content += '\nStatic MD3 pose. Use GLB export for animation clips. Shader effects are approximated by base textures; see metadata.json.\n'
+        readme_content += '\nOpacity PNGs are derived from source alpha per material slot; original edited PNGs are preserved.\n'
+        if export_warnings:
+            readme_content += '\n' + '\n'.join(export_warnings) + '\n'
+    elif data.get("game") == "t2" or data.get("winding") == "ccw":
         readme_content = readme_content.replace("Tribes 1 DTS/DIS", "Tribes 2 DTS")
         readme_content += ("\nStatic authored pose / visible detail only. Animation playback and rigged export are not implemented.\n"
                            "Source, animation descriptors, import warnings and material flags are retained in metadata.json.\n"
@@ -354,8 +429,8 @@ def json_to_obj_zip(
         print(f"Created {mtl_file.name}")
         
         # Write README
-        missing = [name for name in dict.fromkeys(material_textures)
-                   if not name.startswith('[Slot') and not (textures_dir / name).is_file()]
+        missing = list(dict.fromkeys(name for name, source in zip(export_names, sources)
+                                    if not name.startswith('[') and not source.is_file()))
         if missing:
             readme_content += '\nMissing textures (not included):\n' + '\n'.join(missing) + '\n'
         readme_file = temp_path / "README.txt"
@@ -366,14 +441,14 @@ def json_to_obj_zip(
         # Copy texture files
         textures_copied = []
         if material_textures:
-            for tex_name in dict.fromkeys(material_textures):
+            for tex_name, tex_src in dict(zip(export_names, sources)).items():
                 # Skip placeholder materials
-                if not tex_name or tex_name.startswith('[Slot'):
+                if not tex_name or tex_name.startswith('['):
                     continue
                 
-                tex_src = textures_dir / tex_name
-                if tex_src.exists():
+                if tex_src.is_file():
                     tex_dst = temp_path / tex_name
+                    tex_dst.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(tex_src, tex_dst)
                     textures_copied.append(tex_name)
                 else:
@@ -392,9 +467,15 @@ def json_to_obj_zip(
             
             # Add README
             zipf.write(readme_file, readme_file.name)
-            if data.get("metadata"):
-                zipf.writestr("metadata.json", json.dumps(dict(data["metadata"],
-                    material_textures=material_textures, material_flags=data.get("material_flags", [])), indent=2))
+            if data.get("metadata") or data.get('game') == 'q3' or cross_game:
+                metadata = dict(data.get('metadata') or {}, material_textures=material_textures,
+                                material_texture_games=texture_games, material_texture_paths=export_names,
+                                material_flags=data.get('material_flags', []))
+                if data.get('game') == 'q3':
+                    metadata.update(material_settings=settings, opacity_maps=opacity_maps, export_warnings=export_warnings)
+                zipf.writestr("metadata.json", json.dumps(metadata, indent=2))
+            for name, contents in opacity_images.items():
+                zipf.writestr(name, contents)
             
             # Add textures
             for tex_name in textures_copied:

@@ -106,7 +106,7 @@ class ModelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = pathlib.Path(directory) / 'sample.json'
             path.write_text(json.dumps(data))
-            self.assertEqual(load_model_data(path, 'rainbow.png'), data)
+            self.assertEqual(load_model_data(path, 'rainbow.png'), dict(data, material_texture_games=['t1']))
             for changes in ({'indices': [0, 1, 9]}, {'uvs': [0, 0]},
                             {'vertices': [float('nan')] * 9},
                             {'groups': [dict(start=0, count=6, materialIndex=0)]}):
