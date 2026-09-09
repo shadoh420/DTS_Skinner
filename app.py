@@ -123,7 +123,7 @@ def material_overrides():
     try:
         value = json.loads(request.args.get("materials", "{}"))
         if not isinstance(value, dict) or len(value) > 4096:
-            raise ValueError("Material overrides must be a slot-to-filename object")
+            raise ValueError("Material overrides must be a slot-to-texture object")
         return value
     except (ValueError, TypeError) as exc:
         abort(422, str(exc))
@@ -224,7 +224,11 @@ def export_glb(model_name):
         else:
             from tools.animate_t2 import load_animated_model
             data = load_animated_model(model_name, None, preview)
-        output = io.BytesIO(model_to_glb(data, game_textures(game)))
+        # Animation caches retain geometry, but texture choices belong to this request.
+        data['material_textures'] = preview['material_textures']
+        data['material_texture_games'] = preview['material_texture_games']
+        output = io.BytesIO(model_to_glb(data, game_textures(game),
+                                       texture_dirs={source: game_textures(source) for source in ('t1', 't2', 'q3')}))
         response = send_file(output, as_attachment=True, download_name=f'{game}_{model_name}.glb', mimetype='model/gltf-binary')
         response.headers['X-Skinner-Animation-Clips'] = str(len(data.get('animation_clips', [])))
         response.headers['X-Skinner-Animation-Status'] = data.get('animation_status', 'available')
@@ -293,7 +297,8 @@ def export_obj(model_name):
         # Stream an in-memory archive; repeated exports leave no temporary ZIPs.
         output = io.BytesIO()
         json_to_obj_zip(json_path, game_textures(selected_game()), output, model_name,
-                        fallback_texture=request.args.get("texture"), material_overrides=overrides)
+                        fallback_texture=request.args.get("texture"), material_overrides=overrides,
+                        texture_dirs={source: game_textures(source) for source in ('t1', 't2', 'q3')})
         output.seek(0)
         return send_file(output, as_attachment=True,
                          download_name=f"{model_name}_export.zip",

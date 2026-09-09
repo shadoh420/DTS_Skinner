@@ -51,6 +51,12 @@ details button { margin-top:7px; }
 .orientation-toolbar { position:absolute; z-index:1; bottom:96px; left:12px; right:12px; display:flex; flex-wrap:wrap; align-items:center; gap:5px; padding:7px; border-radius:5px; background:#17222ae8; font-size:12px; }
 .orientation-toolbar button { padding:4px 6px; font-size:12px; }
 .orientation-toolbar .hint { margin:0; }
+.position-controls { display:flex; flex-wrap:wrap; align-items:center; gap:5px; width:100%; border-top:1px solid #40515b; padding-top:6px; }
+.position-controls label { display:flex; align-items:center; gap:4px; margin:0; }
+.position-controls input { width:67px; padding:3px; min-height:29px; }
+#walkMode[aria-pressed="true"] { background:#23755e; }
+.viewport:fullscreen { width:100vw; height:100vh; }
+.viewport.walking .orientation-toolbar,.viewport.walking .viewport-toolbar { visibility:hidden; }
 #q3Import input,#q3Import button { width:100%; }
 #status { font-size:13px; overflow-wrap:anywhere; }
 .warnings { color:#efb987; padding-left:17px; font-size:12px; overflow-wrap:anywhere; }

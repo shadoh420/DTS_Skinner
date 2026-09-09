@@ -7,12 +7,12 @@ import hashlib
 import io
 import json
 import math
-from pathlib import Path
 import struct
 
 from PIL import Image
 
 from .obj_exporter import compute_smooth_normals, q3_material_settings
+from .model_data import material_texture_refs, material_texture_paths
 
 
 def _floats(values, count, label):
@@ -23,7 +23,7 @@ def _floats(values, count, label):
     return values
 
 
-def model_to_glb(data, textures_dir):
+def model_to_glb(data, textures_dir, texture_dirs=None):
     """Return an embedded GLB; optional animation_clips contain name/fps/frames/loop.
 
     Frames contain flat vertices and optional normals, in the base model's order.
@@ -39,10 +39,9 @@ def model_to_glb(data, textures_dir):
     indices = data.get('indices', [])
     if not indices or len(indices) % 3 or any(type(i) is not int or not 0 <= i < vertex_count for i in indices):
         raise ValueError('Model must contain complete triangles with valid indices')
-    names = data.get('material_textures') or ['[Unassigned material]']
-    for name in names:
-        if not isinstance(name, str) or not name or name in ('.', '..') or any(c in name for c in '/\\:\r\n'):
-            raise ValueError('Texture names must be local filenames')
+    data = dict(data, material_textures=data.get('material_textures') or ['[Unassigned material]'])
+    names, games = material_texture_refs(data)
+    sources = material_texture_paths(data, textures_dir, texture_dirs)
     groups = data.get('groups') or [{'start': 0, 'count': len(indices), 'materialIndex': 0}]
     end = 0
     for group in groups:
@@ -82,6 +81,7 @@ def model_to_glb(data, textures_dir):
             'extensionsUsed': ['KHR_materials_unlit'],
             'extras': {'sourceMetadata': data.get('metadata', {}),
                        'animationRepresentation': 'Baked vertex motion; no skeleton or rig.',
+                       'materialTextureGames': games,
                        'missingTextures': [], 'warnings': list(data.get('warnings') or []) + list(data.get('animation_notes') or [])}}
 
     def view(raw, target=None):
@@ -135,7 +135,7 @@ def model_to_glb(data, textures_dir):
         material = {'name': name, 'doubleSided': True,
                     'pbrMetallicRoughness': {'metallicFactor': 0, 'roughnessFactor': 1},
                     'extensions': {'KHR_materials_unlit': {}},
-                    'extras': {'sourceTexture': name, 'sourceFlags': flags[slot]}}
+                    'extras': {'sourceTexture': name, 'sourceGame': games[slot], 'sourceFlags': flags[slot]}}
         if flag & (4 | 8 | 16):
             material['alphaMode'] = 'BLEND'
         if flag & (8 | 16):
@@ -157,8 +157,8 @@ def model_to_glb(data, textures_dir):
                 gltf['extras']['warnings'].append(f'{name}: generated environment coordinates use the authored UVs in glTF.')
             if not setting.get('depthWrite', True):
                 gltf['extras']['warnings'].append(f'{name}: explicit depth-write state is metadata only in glTF.')
-        source = Path(textures_dir) / name
-        image_key = (name, alpha_func == 'LT128')
+        source = sources[slot]
+        image_key = (games[slot], name, alpha_func == 'LT128')
         if not name.startswith('[') and source.is_file():
             if image_key not in embedded_images:
                 with Image.open(source) as texture:

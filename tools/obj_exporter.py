@@ -6,9 +6,9 @@ Converts JSON model data to Wavefront OBJ format with materials and textures.
 """
 
 if __package__:
-    from .model_data import load_model_data
+    from .model_data import load_model_data, material_texture_paths
 else:
-    from model_data import load_model_data
+    from model_data import load_model_data, material_texture_paths
 import pathlib
 import zipfile
 import math
@@ -309,7 +309,8 @@ def json_to_obj_zip(
     model_name: str,
     scale_factor: float = 1.0,
     fallback_texture: Optional[str] = None,
-    material_overrides=None
+    material_overrides=None,
+    texture_dirs=None
 ) -> pathlib.Path:
     """
     Convert JSON model data to OBJ/MTL and bundle with textures in a ZIP archive.
@@ -338,9 +339,14 @@ def json_to_obj_zip(
     data = load_model_data(json_path, fallback_texture, material_overrides)
     vertices, uvs, indices = (data[key] for key in ("vertices", "uvs", "indices"))
     material_textures, groups = data["material_textures"], data["groups"]
+    texture_games = data['material_texture_games']
+    sources = material_texture_paths(data, textures_dir, texture_dirs)
+    cross_game = any(game != data.get('game', 't1') for game in texture_games)
+    export_names = [f'textures/{game}/{name}' if cross_game and not name.startswith('[') else name
+                    for name, game in zip(material_textures, texture_games)]
     settings = q3_material_settings(data)
     opacity_maps, opacity_images, export_warnings = {}, {}, []
-    reserved_names = {name.casefold() for name in material_textures}
+    reserved_names = {name.casefold() for name in export_names}
     if data.get('game') == 'q3':
         for slot, (name, setting) in enumerate(zip(material_textures, settings)):
             alpha_func, blend = setting.get('alphaFunc', ''), setting.get('blend', [])
@@ -350,7 +356,7 @@ def json_to_obj_zip(
                 export_warnings.append(f'{name}: generated environment coordinates use the authored UVs in OBJ/MTL.')
             if setting.get('cull', 'back') != 'back' or not setting.get('depthWrite', True):
                 export_warnings.append(f'{name}: culling/depth-write settings are metadata only in OBJ/MTL.')
-            source = textures_dir / name
+            source = sources[slot]
             if (not alpha_func and not blend) or name.startswith('[') or not source.is_file():
                 continue
             with Image.open(source) as texture:
@@ -385,11 +391,15 @@ def json_to_obj_zip(
     
     # Generate MTL content
     print(f"Generating MTL content for {len(material_textures)} materials...")
-    mtl_content = generate_mtl_content(material_textures, model_name, data.get("material_flags"),
+    mtl_content = generate_mtl_content(export_names, model_name, data.get("material_flags"),
                                       opacity_maps, settings if data.get('game') == 'q3' else None)
     
     # Generate README
     readme_content = generate_readme_content(model_name, scale_factor)
+    if cross_game:
+        readme_content = readme_content.replace('*.png             (textures)', 'textures/<game>/*.png (textures by source game)')
+        readme_content = readme_content.replace('Check texture files are in same folder as .obj', 'Keep the textures subfolders beside the .obj')
+        readme_content += '\nReplacement texture source games and exported paths are recorded per slot in metadata.json.\n'
     if data.get("game") == "q3":
         readme_content = readme_content.replace("Tribes 1 DTS/DIS", "Quake 3 MD3")
         readme_content += '\nStatic MD3 pose. Use GLB export for animation clips. Shader effects are approximated by base textures; see metadata.json.\n'
@@ -419,8 +429,8 @@ def json_to_obj_zip(
         print(f"Created {mtl_file.name}")
         
         # Write README
-        missing = [name for name in dict.fromkeys(material_textures)
-                   if not name.startswith('[Slot') and not (textures_dir / name).is_file()]
+        missing = list(dict.fromkeys(name for name, source in zip(export_names, sources)
+                                    if not name.startswith('[') and not source.is_file()))
         if missing:
             readme_content += '\nMissing textures (not included):\n' + '\n'.join(missing) + '\n'
         readme_file = temp_path / "README.txt"
@@ -431,14 +441,14 @@ def json_to_obj_zip(
         # Copy texture files
         textures_copied = []
         if material_textures:
-            for tex_name in dict.fromkeys(material_textures):
+            for tex_name, tex_src in dict(zip(export_names, sources)).items():
                 # Skip placeholder materials
-                if not tex_name or tex_name.startswith('[Slot'):
+                if not tex_name or tex_name.startswith('['):
                     continue
                 
-                tex_src = textures_dir / tex_name
-                if tex_src.exists():
+                if tex_src.is_file():
                     tex_dst = temp_path / tex_name
+                    tex_dst.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(tex_src, tex_dst)
                     textures_copied.append(tex_name)
                 else:
@@ -457,8 +467,9 @@ def json_to_obj_zip(
             
             # Add README
             zipf.write(readme_file, readme_file.name)
-            if data.get("metadata") or data.get('game') == 'q3':
+            if data.get("metadata") or data.get('game') == 'q3' or cross_game:
                 metadata = dict(data.get('metadata') or {}, material_textures=material_textures,
+                                material_texture_games=texture_games, material_texture_paths=export_names,
                                 material_flags=data.get('material_flags', []))
                 if data.get('game') == 'q3':
                     metadata.update(material_settings=settings, opacity_maps=opacity_maps, export_warnings=export_warnings)
