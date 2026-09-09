@@ -7,7 +7,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 ## Features
 
 - Browse models and interiors; inspect and replace individual materials.
-- Use textures from any of the three games, with live PNG reloading.
+- Browse texture thumbnails, filter by name, and use skins from any of the three games.
 - Export OBJ with textures or GLB with available animations.
 - Explore in walk/fly mode and fullscreen; rotate and move models along X/Y/Z.
 - Restore the default view and materials with **Reset all**.

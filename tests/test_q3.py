@@ -37,6 +37,35 @@ def md3(tag=None):
 
 
 class Quake3Tests(unittest.TestCase):
+    def test_unreferenced_texture_library_formats_and_reimport(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); source = root/'pak0.pk3'; output = root/'q3'
+            keys = []
+            with zipfile.ZipFile(source, 'w') as archive:
+                archive.writestr('models/test/shape.md3', md3())
+                for extension, encoding in (('tga','TGA'), ('jpg','JPEG'), ('jpeg','JPEG'), ('png','PNG')):
+                    key = f'textures/walls/unused.{extension}'; keys.append(key)
+                    raw = io.BytesIO(); Image.new('RGB', (4, 4), (100, 120, 140)).save(raw, format=encoding)
+                    archive.writestr(key, raw.getvalue())
+                # A shader with the same stem must not redirect raw library images.
+                archive.writestr('scripts/walls.shader', 'textures/walls/unused { { map $whiteimage } }')
+                archive.writestr('textures/broken.tga', b'broken')
+            import_catalog(source, output)
+            for key in keys:
+                texture = output/'textures'/(asset_name(key)+'.png')
+                with Image.open(texture) as image:
+                    self.assertEqual(image.size, (4, 4))
+                Image.new('RGBA', (2, 2), (1, 2, 3, 4)).save(texture)
+            import_catalog(source, output)
+            for key in keys:
+                with Image.open(output/'textures'/(asset_name(key)+'.png')) as image:
+                    self.assertEqual(image.getpixel((0, 0)), (1, 2, 3, 4))
+            inventory = json.loads((current_import(output)/'inventory.json').read_text())
+            self.assertEqual(inventory['source_texture_count'], 5)
+            self.assertIn('textures/broken.tga', inventory['texture_warnings'][0])
+            with patch('app.q3_dir', output):
+                self.assertEqual(len(app.test_client().get('/list_textures?game=q3').json), 4)
+
     def test_shader_extension_lookup_cutout_remap_and_first_stage(self):
         image=io.BytesIO(); Image.new('RGBA',(2,2),(50,80,110,0)).save(image,format='PNG')
         script=b'''models/test/skin

@@ -200,6 +200,14 @@ class Textures:
         self.shaders = shader_maps(assets)
         output.mkdir(parents=True, exist_ok=True)
 
+    def convert(self, key):
+        filename = asset_name(key)+'.png'
+        # Preserve edited PNGs, including when importing the full library again.
+        if not (self.output/filename).exists():
+            with Image.open(io.BytesIO(self.assets[key]['read']())) as source:
+                source.convert('RGBA').save(self.output/filename)
+        return filename
+
     def resolve(self, shader):
         if shader in self.cache:
             return self.cache[shader]
@@ -215,10 +223,7 @@ class Textures:
             if not (self.output/filename).exists(): Image.new('RGBA',(1,1),'white').save(self.output/filename)
         elif key:
             try:
-                # Never overwrite a user's edited PNG when reimporting.
-                if not (self.output/filename).exists():
-                    with Image.open(io.BytesIO(self.assets[key]['read']())) as source:
-                        source.convert('RGBA').save(self.output/filename)
+                self.convert(key)
             except (OSError, ValueError) as exc:
                 warnings.append(f'Cannot decode {key}: {exc}')
         else:
@@ -317,6 +322,14 @@ def import_catalog(source, output):
                 (output/'sources'/filename).write_bytes(raw)
                 manifest[key] = dict(file=filename, source=record['source'], sha256=hashlib.sha256(raw).hexdigest())
         resolver, catalog = Textures(assets, texture_output), []
+        texture_warnings = []
+        image_keys = sorted(key for key in assets if Path(key).suffix in ('.tga','.jpg','.jpeg','.png'))
+        for key in image_keys:
+            try:
+                # Import raw images too: map textures need no MD3 or shader reference.
+                resolver.convert(key)
+            except (OSError, ValueError) as exc:
+                texture_warnings.append(f'Cannot decode {key}: {exc}')
 
         def config(key):
             path = (Path(key).parent/'animation.cfg').as_posix()
@@ -365,6 +378,7 @@ def import_catalog(source, output):
         catalog.sort(key=lambda item:model_sort_key(item['model_name']))
         json_write(output/'sources.json', manifest)
         json_write(output/'inventory.json', dict(source=str(source), archives=[str(z.filename) for z in archives], source_model_count=len(models),
+            source_texture_count=len(image_keys), texture_warnings=texture_warnings,
             policy='Retail pak*.pk3 in filename order, then loose files. Explicit single PK3 supported.', entries=len(catalog),
             ready=sum(x['status']=='ready' for x in catalog), limitations=['MD3 and standard lower/upper/head players supported; shader effects approximated with static base maps.']))
         json_write(output/'catalog.json', catalog)

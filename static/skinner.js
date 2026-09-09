@@ -468,8 +468,32 @@ window.addEventListener('DOMContentLoaded', () => {
     const list = textures.filter(name => name.toLocaleLowerCase().includes(search));
     $('skinSelect').replaceChildren(...list.map(name => option(name, name)));
     if (list.includes(previous)) $('skinSelect').value = previous;
-    $('skinSelect').disabled = !data || !list.length;
+    $('skinSelect').disabled = !list.length;
     $('applySkin').disabled = !data || !list.length || $('materialSelect').disabled;
+    const library = $('textureGame').value;
+    $('textureCount').textContent = `${list.length.toLocaleString()} textures · ${library.toUpperCase()}${library === 't2' ? ' · RGB thumbnails' : ''}`;
+    $('textureGallery').replaceChildren(...list.map(name => {
+      const button = document.createElement('button');
+      button.className = 'texture-thumb'; button.type = 'button';
+      button.dataset.texture = name; button.title = name;
+      button.setAttribute('aria-pressed', String(name === $('skinSelect').value));
+      const thumbnail = document.createElement('img');
+      thumbnail.alt = ''; thumbnail.loading = 'lazy'; thumbnail.decoding = 'async';
+      thumbnail.width = 96; thumbnail.height = 88;
+      // T2 stores reflectivity in alpha; RGB keeps opaque skins recognizable.
+      const version = versions && versions[textureId(name, library)];
+      thumbnail.src = `${textureUrl(name, library)}${library === 't2' ? '&opaque=1' : ''}&v=${encodeURIComponent(JSON.stringify(version || []))}`;
+      thumbnail.addEventListener('error', () => { button.classList.add('missing'); button.title = `${name} — preview unavailable`; });
+      const label = document.createElement('span'); label.textContent = name;
+      button.append(thumbnail, label);
+      button.addEventListener('click', () => { $('skinSelect').value = name; selectThumbnail(); });
+      return button;
+    }));
+  }
+  function selectThumbnail() {
+    for (const button of $('textureGallery').children) {
+      button.setAttribute('aria-pressed', String(button.dataset.texture === $('skinSelect').value));
+    }
   }
   function frameModel() {
     if (!group) return;
@@ -536,6 +560,10 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   $('materialSelect').addEventListener('change', updateMaterialInspector);
   $('skinSearch').addEventListener('input', () => filterSkins());
+  $('skinSelect').addEventListener('change', () => {
+    selectThumbnail();
+    $('textureGallery').querySelector('[aria-pressed="true"]')?.scrollIntoView({block: 'nearest'});
+  });
   $('textureGame').addEventListener('change', () => { $('skinSearch').value = ''; loadTextureLibrary(); });
   $('applySkin').addEventListener('click', () => { overrides[$('materialSelect').value] = {game: $('textureGame').value, filename: $('skinSelect').value}; loadModel(true); });
   $('resetSkin').addEventListener('click', () => { delete overrides[$('materialSelect').value]; loadModel(true); });
