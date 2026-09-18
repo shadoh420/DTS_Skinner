@@ -10,7 +10,7 @@
   <script defer src="/static/skinner.js"></script>
 </head>
 <body>
-  <header class="app-header"><div><strong>DTS SKINNER</strong><span class="subtle">Tribes &amp; Quake 3 model workshop</span></div><span id="catalogSummary" class="subtle"></span></header>
+  <header class="app-header"><div><strong>DTS SKINNER</strong><span class="subtle">Tribes &amp; Quake 3 model workshop</span></div><div class="history-controls"><button id="undoAction" disabled title="Ctrl+Z">Undo</button><button id="redoAction" disabled title="Ctrl+Shift+Z / Ctrl+Y">Redo</button><span id="historyStatus" class="subtle" role="status">Session history</span></div><span id="catalogSummary" class="subtle"></span></header>
   <main class="workspace">
     <aside class="catalog panel" aria-label="Model browser">
       <h1>Models</h1>
@@ -63,13 +63,38 @@
       <label for="materialSelect">Material slot</label><select id="materialSelect" disabled></select>
       <div class="texture-preview"><img id="texturePreview" alt="Selected material texture" hidden><span id="texturePreviewEmpty">No material selected</span></div>
       <div id="textureDetails" class="hint"></div>
-      <label for="textureGame">Texture library</label><select id="textureGame"><option value="t1">Tribes 1 textures</option><option value="t2">Tribes 2 textures</option><option value="q3">Quake 3 textures</option></select>
-      <label for="skinSearch">Find an editable PNG</label><input id="skinSearch" type="search" placeholder="Filter texture filenames…" autocomplete="off">
-      <label class="sr-only" for="skinSelect">Replacement texture</label><select id="skinSelect" disabled></select>
-      <div id="textureCount" class="hint" role="status"></div>
-      <div id="textureGallery" class="texture-gallery" role="group" aria-label="Replacement texture thumbnails"></div>
-      <p class="hint">Click a thumbnail to select it, then Apply to slot.</p>
-      <div class="button-row"><button id="applySkin" disabled>Apply to slot</button><button id="resetSkin" disabled>Reset slot</button></div>
+      <div class="button-row"><button id="expandGallery">Expand texture browser</button><button id="resetSkin" disabled>Reset slot</button></div>
+      <div id="textureWorkbenchHome"><div id="textureWorkbench" class="texture-workbench">
+        <div class="browser-controls">
+          <label for="textureGame">Texture library</label><select id="textureGame"><option value="t1">Tribes 1 textures</option><option value="t2">Tribes 2 textures</option><option value="q3">Quake 3 textures</option></select>
+          <label for="skinSearch">Find by filename or user tag</label><input id="skinSearch" type="search" placeholder="walls, metal, texture name…" autocomplete="off">
+          <details id="textureFilters"><summary>Size &amp; hue search</summary>
+            <div class="range-fields"><label>Width min (px)<input id="widthMin" type="number" min="1" step="1" placeholder="Any"></label><label>Width max (px)<input id="widthMax" type="number" min="1" step="1" placeholder="Any"></label><label>Height min (px)<input id="heightMin" type="number" min="1" step="1" placeholder="Any"></label><label>Height max (px)<input id="heightMax" type="number" min="1" step="1" placeholder="Any"></label></div>
+            <label for="sizeTolerance">Similar size tolerance (± pixels per dimension)</label><input id="sizeTolerance" type="number" min="0" max="32768" step="1" value="16">
+            <button id="similarSize" disabled>Find similar size</button>
+            <label for="hueTolerance">Similar hue tolerance (± degrees, 0–180)</label><input id="hueTolerance" type="number" min="0" max="180" step="1" value="20">
+            <button id="similarHue" disabled>Find similar hue</button>
+            <p class="hint">Hue compares overall color, not shape or pattern. Neutral textures match other neutrals. T2 uses RGB because alpha may store reflectivity.</p>
+            <button id="clearTextureFilters">Clear search filters</button>
+          </details>
+          <p id="similarityStatus" class="hint" role="status"></p>
+          <label class="sr-only" for="skinSelect">Replacement texture</label><select id="skinSelect" disabled></select>
+          <div class="texture-preview candidate-preview"><img id="candidatePreview" alt="Selected texture copy" hidden><span id="candidateEmpty">Select a texture</span></div>
+          <p id="candidateDetails" class="hint"></p>
+          <div class="button-row"><button id="rotateTextureLeft" disabled title="Rotate copy counterclockwise">↶ 90°</button><button id="rotateTextureRight" disabled title="Rotate copy clockwise">↷ 90°</button></div>
+          <div class="button-row"><button id="flipTextureX" disabled>Flip horizontal</button><button id="flipTextureY" disabled>Flip vertical</button></div>
+          <div class="button-row"><button id="resetTextureCopy" disabled>Reset copy</button><a id="saveTextureCopy" class="button disabled" download>Save rotated copy</a></div>
+          <button id="applySkin" class="primary" disabled>Apply to slot</button>
+          <p class="hint">Rotation and flips create a temporary copy. Originals stay unchanged. Save downloads a PNG; unsaved copies disappear when this window closes. Applied copies are included in model exports.</p>
+          <label for="textureTags">User tags (comma separated)</label><input id="textureTags" placeholder="walls, metal, concrete" maxlength="2048" disabled><button id="saveTextureTags" disabled>Save tags</button><p id="tagStatus" class="hint" role="status"></p>
+        </div>
+        <div class="gallery-area">
+          <label for="thumbnailSize">Thumbnail size <input id="thumbnailSize" type="range" min="80" max="220" step="10" value="120"></label>
+          <div id="textureCount" class="hint" role="status"></div>
+          <div id="textureGallery" class="texture-gallery" role="group" aria-label="Replacement texture thumbnails"></div>
+          <p class="hint">Click a thumbnail to inspect or rotate it, then Apply to slot.</p>
+        </div>
+      </div></div>
       <div class="button-row"><button id="loadModelBtn">Reload textures</button><a id="downloadTexture" class="button disabled" download>Save PNG</a></div>
       <p class="hint">Choose textures from any game. Edit PNGs in <code id="texturePath">static/textures</code> beside the executable, then reload. Slot changes affect preview, OBJ and GLB. The target material keeps its UVs and rendering settings.</p>
       <h2 class="section-heading">Navigation</h2>
@@ -82,5 +107,6 @@
       <details><summary>Texture inventory</summary><ul id="loadedTexturesList"></ul></details>
     </aside>
   </main>
+  <dialog id="galleryDialog" aria-labelledby="galleryTitle"><div class="dialog-heading"><h2 id="galleryTitle">Texture browser</h2><div class="history-controls"><button id="galleryUndo" disabled>Undo</button><button id="galleryRedo" disabled>Redo</button><button id="closeGallery">Back to model</button></div></div><div id="galleryDialogBody"></div></dialog>
 </body>
 </html>

@@ -4,6 +4,10 @@ import json
 import math
 import pathlib
 import re
+if __package__:
+    from .texture_workshop import normalize_transform
+else:
+    from texture_workshop import normalize_transform
 
 TEXTURE_MAPPINGS = {
     "disc": "stock_disc.png",
@@ -39,18 +43,25 @@ def material_texture_refs(data, material_overrides=None):
     if not isinstance(games, list) or len(games) != len(names):
         raise ValueError('Texture games must match material slots')
     games = list(games)
+    transforms = data.get('material_texture_transforms', [None] * len(names))
+    if not isinstance(transforms, list) or len(transforms) != len(names):
+        raise ValueError('Texture transforms must match material slots')
+    transforms = [normalize_transform(value) for value in transforms]
     if material_overrides is not None and not isinstance(material_overrides, dict):
         raise ValueError('Material overrides must be a slot-to-texture object')
     for slot, reference in (material_overrides or {}).items():
         if not isinstance(slot, str) or not slot.isascii() or not slot.isdecimal() or not 0 <= int(slot) < len(names):
             raise ValueError('Material slot outside model material array')
         if isinstance(reference, dict):
-            if set(reference) != {'game', 'filename'}:
-                raise ValueError('Texture reference must contain game and filename')
+            if set(reference) not in ({'game', 'filename'}, {'game', 'filename', 'transform'}):
+                raise ValueError('Texture reference must contain game, filename and optional transform')
             source_game, filename = reference['game'], reference['filename']
+            transform = normalize_transform(reference.get('transform'))
         else:
             source_game, filename = game, reference
+            transform = normalize_transform()
         names[int(slot)], games[int(slot)] = filename, source_game
+        transforms[int(slot)] = transform
     for name, source_game in zip(names, games):
         if source_game not in ('t1', 't2', 'q3'):
             raise ValueError('Unknown texture game')
@@ -61,11 +72,11 @@ def material_texture_refs(data, material_overrides=None):
                 or (':' in name and not placeholder)
                 or any(ord(c) < 32 or ord(c) == 127 for c in name)):
             raise ValueError('Texture names must be local filenames')
-    return names, games
+    return names, games, transforms
 
 
 def material_texture_paths(data, textures_dir, texture_dirs=None):
-    names, games = material_texture_refs(data)
+    names, games, _ = material_texture_refs(data)
     directories = texture_dirs if texture_dirs is not None else {data.get('game', 't1'): textures_dir}
     if any(game not in directories for game in games):
         raise ValueError('Texture source game directory is unavailable')
@@ -91,7 +102,7 @@ def load_model_data(json_path, fallback_texture=None, material_overrides=None):
         raise ValueError("Triangle index outside vertex array")
     if not data.get("material_textures"):
         data["material_textures"] = [fallback_texture or default_texture(path.stem)]
-    data['material_textures'], data['material_texture_games'] = material_texture_refs(data, material_overrides)
+    data['material_textures'], data['material_texture_games'], data['material_texture_transforms'] = material_texture_refs(data, material_overrides)
     if not data.get("groups"):
         data["groups"] = [{"start": 0, "count": len(indices), "materialIndex": 0}]
     expected_start = 0

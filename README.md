@@ -7,7 +7,10 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 ## Features
 
 - Browse models and interiors; inspect and replace individual materials.
-- Browse texture thumbnails, filter by name, and use skins from any of the three games.
+- Expand the texture browser, resize thumbnails, and search filenames or your own tags.
+- Rotate textures 90° left/right or flip horizontally/vertically using temporary copies; save a copy only when wanted.
+- Filter pixel dimensions or find textures with similar size or overall hue, with adjustable tolerances.
+- Undo/redo session edits, tags, material choices, model transforms, camera moves, and browsing actions.
 - Export OBJ with textures or GLB with available animations.
 - Explore in walk/fly mode and fullscreen; rotate and move models along X/Y/Z.
 - Restore the default view and materials with **Reset all**.
@@ -21,6 +24,18 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 If the browser doesn't open, visit `http://localhost:5000/`. Quit through the app's system-tray menu.
 
 **Controls:** drag to orbit, wheel to zoom, right-drag to pan. **Walk / Fly** (Shift + backtick) uses WASD and Q/E; Escape returns to orbit. Position and rotation changes are preview-only.
+
+### Texture workshop
+
+**Expand texture browser** opens a large gallery with adjustable thumbnail size. Selecting a thumbnail previews it without changing the model. Rotate or flip the selected texture, then **Apply to slot** to see the copy on the model. **Save rotated copy** downloads a separate PNG with alpha preserved; it does not add it to the library. Applied copies also appear in OBJ and GLB exports. Original PNGs are never overwritten. Copies are temporary for the current window and disappear on reload/close; place a saved PNG in the relevant texture folder and reload to keep it in the library.
+
+Enter comma-separated **User tags** such as `walls, metal, concrete`, then **Save tags**. Tags are stored by game and filename in `local-data/texture-tags.json` beside the executable and remain available after restart. Filename/tag search matches all entered words.
+
+Under **Size & hue search**, width and height limits are inclusive; leave either end blank for no limit. For example, Width min `100` and Width max `120` finds textures 100–120 pixels wide at any height. **Find similar size** uses the highlighted texture's original dimensions and a ±pixel tolerance for each dimension (zero means exact). **Find similar hue** compares a sampled, chroma-weighted circular average hue, with tolerance from 0 to 180 degrees. Neutral or color-balanced textures without a meaningful average match each other. Hue search is a color aid, not image/pattern recognition. Transparent pixels contribute less; T2 uses RGB because alpha can store reflectivity. Similarity buttons clear previous search filters; changing tolerance updates matches immediately.
+
+**Undo / Redo** retain the latest 100 actions in the current window, including persisted tag edits. Use Ctrl+Z and Ctrl+Shift+Z / Ctrl+Y outside text fields (text fields keep native text undo). Reset all is undoable. Downloads and external PNG edits are not reversed. Importing a new Q3 catalog starts a new history; window reload/close also clears history. Existing PNGs and saved tags remain on disk.
+
+Developer checks: `python -B -m unittest discover -s tests -v`, then run `node tools/check_texture_workshop.cjs http://127.0.0.1:5000 build/workshop-review` with optional Playwright available. The browser check verifies real texture pixels/downloads, gallery layout, search, and history without adding image files to the library.
 
 ![DTS Skinner](docs/workshop.png)
 

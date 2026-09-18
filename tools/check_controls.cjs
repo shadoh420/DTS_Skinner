@@ -107,6 +107,7 @@ const path = require('node:path');
         await page.selectOption('#textureGame',source);
         await page.waitForFunction(() => !document.querySelector('#applySkin').disabled);
         const filename = await page.locator('#skinSelect option').first().getAttribute('value');
+        await page.selectOption('#skinSelect', filename);
         const responseEvent = page.waitForResponse(response => response.url().includes('/model_json/'));
         await page.click('#applySkin');
         const model = await (await responseEvent).json(); await ready();
