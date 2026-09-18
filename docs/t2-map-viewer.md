@@ -69,6 +69,15 @@ and Escape releases the mouse. Keys 1–9 select authored observer viewpoints.
 Drag to look also works when an embedded browser cannot capture the mouse.
 FOV, fog, and Reset view are available above the scene. Models returns to Skinner.
 Map settings use a separate browser-storage namespace.
+**Invert horizontal** and **Invert vertical** independently reverse mouse-look
+axes, for both captured mouse movement and drag-to-look. Both default off (mouse
+right looks right, mouse up looks up) and persist across reloads and Reset view.
+This fixes the initial preview's reversed drag-to-look direction.
+Mouse-controls validation: all four axis combinations passed the direction check;
+the rebuilt executable verified normal/reversed drag and independent persistence
+across reloads, with no browser errors. Captured input uses the same axis function.
+Direction check after building: from the pinned upstream checkout, run
+`node --import=tsx/esm skinner/check-mouse-look.ts`.
 
 This first milestone is Katabatic CTF only: free-flight without collision,
 gameplay, audio, map editing or material editing. T1 and Q3 maps are not implemented.

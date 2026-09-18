@@ -7,6 +7,7 @@ import {SettingsProvider, useSettings} from '../src/components/SettingsProvider'
 import {InputProvider} from '../src/components/InputProducer';
 import {GameView} from '../src/components/GameView';
 import {useProgress} from '@react-three/drei';
+import {MouseLookProvider, useMouseLook} from './mouse-look';
 
 const client = new QueryClient({defaultOptions:{queries:{refetchOnWindowFocus:false,retry:false}}});
 function Viewer() {
@@ -14,11 +15,14 @@ function Viewer() {
   const [progress, setProgress] = useState(0);
   const assets = useProgress();
   const {fov, setFov, fogEnabled, setFogEnabled} = useSettings();
+  const {settings, setSettings} = useMouseLook();
   const onLoadingChange = useCallback((loading:boolean, amount = 0) => {setMissionLoading(loading); setProgress(amount);},[]);
   return <>
     <header><a href="/">← Models</a><strong>T2 Maps · Katabatic</strong><span>Offline preview · free-flight, no collision or audio</span>
       <label>FOV <input aria-label="Map field of view" type="number" min="30" max="110" value={fov} onChange={e=>setFov(Math.max(30,Math.min(110,Number(e.target.value)||90)))}/></label>
       <label><input type="checkbox" checked={fogEnabled} onChange={e=>setFogEnabled(e.target.checked)}/> Fog</label>
+      <label><input type="checkbox" checked={settings.invertX} onChange={e=>setSettings({...settings,invertX:e.target.checked})}/> Invert horizontal</label>
+      <label><input type="checkbox" checked={settings.invertY} onChange={e=>setSettings({...settings,invertY:e.target.checked})}/> Invert vertical</label>
       <button onClick={()=>{location.hash=''; location.reload();}}>Reset view</button>
     </header>
     <main><InputProvider><GameView missionName="Katabatic" missionType="CTF" onLoadingChange={onLoadingChange} dpr={1}/></InputProvider></main>
@@ -29,6 +33,6 @@ function Viewer() {
 }
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary fallbackRender={({error})=><p>Map could not load: {String(error)} <a href="/">Back to models</a></p>}>
-    <Suspense fallback={<p>Loading map components…</p>}><NuqsAdapter><QueryClientProvider client={client}><SettingsProvider><Viewer/></SettingsProvider></QueryClientProvider></NuqsAdapter></Suspense>
+    <Suspense fallback={<p>Loading map components…</p>}><NuqsAdapter><QueryClientProvider client={client}><SettingsProvider><MouseLookProvider><Viewer/></MouseLookProvider></SettingsProvider></QueryClientProvider></NuqsAdapter></Suspense>
   </ErrorBoundary>
 );
