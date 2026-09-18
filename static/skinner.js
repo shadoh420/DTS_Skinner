@@ -29,7 +29,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let historyBusy = false, lastState = null, orbitStart = null, walkingStart = null;
   const historyFields = ['gameSelect', 'modelSearch', 'categorySelect', 'modelSelect', 'materialSelect', 'textureGame', 'skinSearch', 'skinSelect',
     'widthMin', 'widthMax', 'heightMin', 'heightMax', 'sizeTolerance', 'hueTolerance', 'thumbnailSize', 'textureTags', 'textureName',
-    'viewSelect', 'wireframe', 'lighting', 'turntable', 'backgroundColor', 'navigationStyle', 'walkSpeed', 'moveStep'];
+    'viewSelect', 'wireframe', 'lighting', 'turntable', 'backgroundColor', 'navigationStyle', 'walkSpeed', 'moveStep', 'fieldOfView'];
   function snapshot() {
     return copy({game, selectedName, overrides, drafts, sizeReference, hueReference,
       ui: Object.fromEntries(historyFields.map(id => [id, $(id).type === 'checkbox' ? $(id).checked : $(id).value])),
@@ -101,6 +101,7 @@ window.addEventListener('DOMContentLoaded', () => {
     filterCatalog(); $('modelSelect').value = selectedName;
     if (reload) await loadModel(false);
     restoreFields();
+    updateFieldOfView($('fieldOfView').value);
     if (group && state.position && state.orientation) {
       group.position.fromArray(state.position); group.quaternion.fromArray(state.orientation);
       try { localStorage.setItem(positionKey(), JSON.stringify(state.position)); localStorage.setItem(orientationKey(), JSON.stringify(state.orientation)); } catch (_) { /* Live undo still works. */ }
@@ -784,6 +785,29 @@ window.addEventListener('DOMContentLoaded', () => {
   action('loadModelBtn', 'click', 'Reload textures', reloadTextures);
   action('frameModel', 'click', 'Frame model', frameModel);
   action('viewSelect', 'change', 'Camera view', frameModel);
+  function updateFieldOfView(value) {
+    camera.fov = Math.max(20, Math.min(110, Math.round(Number(value) || 45)));
+    $('fieldOfView').value = $('fieldOfViewRange').value = camera.fov;
+    camera.updateProjectionMatrix();
+  }
+  $('fieldOfViewRange').addEventListener('input', () => updateFieldOfView($('fieldOfViewRange').value));
+  action('fieldOfViewRange', 'change', 'Field of view', () => updateFieldOfView($('fieldOfViewRange').value));
+  action('fieldOfView', 'change', 'Field of view', () => updateFieldOfView($('fieldOfView').value));
+  $('saveViewport').addEventListener('click', () => {
+    if (!group || loading) { $('captureStatus').textContent = 'Load a model first.'; return; }
+    const filename = `${game}_${selectedName.replace(/[^a-z0-9._-]/gi, '_')}_view.png`;
+    try {
+      // Capture immediately after rendering; no permanent drawing-buffer retention.
+      renderer.render(scene, camera);
+      renderer.domElement.toBlob(blob => {
+        if (!blob) { $('captureStatus').textContent = 'PNG capture failed.'; return; }
+        const url = URL.createObjectURL(blob), link = document.createElement('a');
+        link.href = url; link.download = filename; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        $('captureStatus').textContent = 'View PNG saved.';
+      }, 'image/png');
+    } catch (error) { $('captureStatus').textContent = `Capture failed: ${error.message}`; }
+  });
   $('backgroundColor').addEventListener('input', () => renderer.setClearColor($('backgroundColor').value));
   action('backgroundColor', 'change', 'Background color', () => {});
   action('wireframe', 'change', 'Wireframe', () => materials.forEach(material => { material.wireframe = $('wireframe').checked; }));
@@ -814,6 +838,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('textureName').value = (catalog.find(entry => entry.model_name === selectedName) || {}).texture_name || '';
     $('viewSelect').value = 'perspective';
     for (const id of ['turntable', 'wireframe', 'lighting']) $(id).checked = false;
+    updateFieldOfView(45);
     $('backgroundColor').value = '#182229'; renderer.setClearColor('#182229');
     $('walkSpeed').value = 5; $('navigationStyle').value = 'walk'; $('moveStep').value = 1;
     $('textureGame').value = game; clearTextureFilters(); $('exportStatus').textContent = '';

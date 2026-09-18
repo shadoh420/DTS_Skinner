@@ -13,6 +13,10 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 - Undo/redo session edits, tags, material choices, model transforms, camera moves, and browsing actions.
 - Export OBJ with textures or GLB with available animations.
 - Explore in walk/fly mode and fullscreen; rotate and move models along X/Y/Z.
+- Expand **Transforms** when needed; position/orientation controls start collapsed.
+- Adjust vertical field of view from 20–110° under Navigation, using a slider or exact value. Undo/redo includes FOV; Reset all restores 45°.
+- **Save view PNG** downloads the current rendered view, including the background and preview transforms, without interface controls.
+- The expanded texture browser keeps **Apply to slot** visible while its settings and thumbnails scroll.
 - Restore the default view and materials with **Reset all**.
 
 ## Getting started
@@ -38,6 +42,8 @@ Under **Size & hue search**, width and height limits are inclusive; leave either
 Switching games reads texture dimensions without decoding every image. Color analysis starts on the first **Find similar hue** request and can take several seconds for large libraries; subsequent searches reuse cached results until a texture changes. Selecting a texture reuses the gallery thumbnails.
 
 Developer checks: `python -B -m unittest discover -s tests -v`, then run `node tools/check_texture_workshop.cjs http://127.0.0.1:5000 build/workshop-review` with optional Playwright available. The browser check verifies real texture pixels/downloads, gallery layout, search, and history without adding image files to the library.
+
+Viewport checks: `node tools/check_viewport_workshop.cjs http://127.0.0.1:5000 build/viewport-review` verifies visible gallery actions at three window sizes, collapsed transforms, FOV/reset/history, and nonblank PNG downloads for all three games. Run against the packaged executable with its complete texture/model libraries.
 
 ![DTS Skinner](docs/workshop.png)
 
