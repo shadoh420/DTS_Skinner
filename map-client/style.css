@@ -1,0 +1,9 @@
+:root {color-scheme:dark;font:14px/1.5 "Segoe UI",sans-serif;color:#dce5e9;background:#17222a;}
+* {box-sizing:border-box;}
+body {margin:0;}
+#root {height:100dvh;display:flex;flex-direction:column;}
+header,footer {display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:10px 16px;}
+header {border-bottom:1px solid #40515b;} footer {font-size:12px;border-top:1px solid #40515b;}
+main {flex:1;min-height:0;position:relative;}
+a {color:#8ce0cb;} button,input {font:inherit;color:inherit;background:#202e37;border:1px solid #587368;border-radius:4px;padding:5px;}
+input[type=number] {width:65px;} label {display:flex;gap:5px;align-items:center;}

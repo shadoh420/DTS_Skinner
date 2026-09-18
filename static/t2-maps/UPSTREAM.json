@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/exogen/t2-mapper",
+  "revision": "e9b6332aaa48bc79535655d644bacc7e22b6ac79",
+  "author": "Brian Beck (exogen)",
+  "declaredLicense": "MIT",
+  "scope": "Offline Katabatic map viewer; Skinner adapter in map-client"
+}

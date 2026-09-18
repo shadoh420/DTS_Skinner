@@ -92,6 +92,18 @@ def index():
     return render_template("index.html")
 
 
+@app.route('/maps/')
+def maps_viewer():
+    response = send_from_directory(static_dir / 't2-maps/skinner', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:"
+    return response
+
+
+@app.route('/t2-map-data/<path:filename>')
+def t2_map_data(filename):
+    return send_from_directory(local_data_dir / 't2-maps', filename)
+
+
 def selected_game():
     game = request.args.get("game", "t1")
     if game not in ("t1", "t2", "q3"):

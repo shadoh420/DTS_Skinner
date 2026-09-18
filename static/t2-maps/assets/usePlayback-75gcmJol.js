@@ -1,0 +1,1 @@
+import"./rolldown-runtime-hePW80VL.js";import{as as e}from"./imageFileList-BA5Ei791.js";import{a as t}from"./engineStore-DqTKOi-c.js";e();function n(){return t(e=>e.playback.recording)}export{n as t};
