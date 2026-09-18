@@ -34,6 +34,8 @@
         <button id="resetAll" title="Restore this model's materials, transforms, camera and preview settings">Reset all</button>
         <button id="walkMode" title="Shift + backtick" aria-pressed="false">Walk / Fly</button>
         <button id="fullscreen" aria-pressed="false">Fullscreen</button>
+        <button id="saveViewport" title="Download the current 3D view without interface controls">Save view PNG</button>
+        <span id="captureStatus" class="hint" role="status"></span>
         <label class="sr-only" for="viewSelect">Camera view</label>
         <select id="viewSelect"><option value="perspective">Perspective</option><option value="front">Front</option><option value="back">Back</option><option value="left">Left</option><option value="right">Right</option><option value="top">Top</option><option value="bottom">Bottom</option></select>
         <label class="check"><input id="wireframe" type="checkbox">Wireframe</label>
@@ -41,7 +43,7 @@
         <label class="check"><input id="turntable" type="checkbox">Turntable</label>
         <label class="color-label" title="Viewport background">BG <input id="backgroundColor" type="color" value="#182229" aria-label="Viewport background"></label>
       </div>
-      <div class="orientation-toolbar" role="group" aria-label="Model orientation">
+      <details class="orientation-toolbar" id="transformControls"><summary>Transforms</summary><div class="transform-fields" role="group" aria-label="Model orientation">
         <span>Orientation</span>
         <button id="rotX90" aria-label="Rotate X plus 90 degrees">X +90°</button><button id="rotXN90" aria-label="Rotate X minus 90 degrees">X −90°</button>
         <button id="rotY90" aria-label="Rotate Y plus 90 degrees">Y +90°</button><button id="rotYN90" aria-label="Rotate Y minus 90 degrees">Y −90°</button>
@@ -55,6 +57,7 @@
           <label>Step <input id="moveStep" type="number" min="0.0001" step="any" value="1"></label><button id="resetPosition">Reset position</button><span class="hint">World axes · Y is up · preview only</span>
         </div>
       </div>
+      </details>
       <canvas id="c" aria-label="Model preview: drag to orbit, wheel to zoom, right-drag to pan"></canvas>
       <div class="viewport-caption"><strong id="modelTitle">Choose a model</strong><span id="geometryInfo" class="subtle"></span><span id="navigationHint" class="hint" role="status">Drag: orbit · Wheel: zoom · Right-drag: pan · Shift + `: walk/fly</span></div>
     </section>
@@ -84,10 +87,10 @@
           <div class="button-row"><button id="rotateTextureLeft" disabled title="Rotate copy counterclockwise">↶ 90°</button><button id="rotateTextureRight" disabled title="Rotate copy clockwise">↷ 90°</button></div>
           <div class="button-row"><button id="flipTextureX" disabled>Flip horizontal</button><button id="flipTextureY" disabled>Flip vertical</button></div>
           <div class="button-row"><button id="resetTextureCopy" disabled>Reset copy</button><a id="saveTextureCopy" class="button disabled" download>Save rotated copy</a></div>
-          <button id="applySkin" class="primary" disabled>Apply to slot</button>
           <p class="hint">Rotation and flips create a temporary copy. Originals stay unchanged. Save downloads a PNG; unsaved copies disappear when this window closes. Applied copies are included in model exports.</p>
           <label for="textureTags">User tags (comma separated)</label><input id="textureTags" placeholder="walls, metal, concrete" maxlength="2048" disabled><button id="saveTextureTags" disabled>Save tags</button><p id="tagStatus" class="hint" role="status"></p>
         </div>
+        <div class="texture-actions"><button id="applySkin" class="primary" disabled>Apply to slot</button></div>
         <div class="gallery-area">
           <label for="thumbnailSize">Thumbnail size <input id="thumbnailSize" type="range" min="80" max="220" step="10" value="120"></label>
           <div id="textureCount" class="hint" role="status"></div>
@@ -98,6 +101,8 @@
       <div class="button-row"><button id="loadModelBtn">Reload textures</button><a id="downloadTexture" class="button disabled" download>Save PNG</a></div>
       <p class="hint">Choose textures from any game. Edit PNGs in <code id="texturePath">static/textures</code> beside the executable, then reload. Slot changes affect preview, OBJ and GLB. The target material keeps its UVs and rendering settings.</p>
       <h2 class="section-heading">Navigation</h2>
+      <label for="fieldOfView">Vertical field of view (degrees)</label>
+      <div class="fov-controls"><input id="fieldOfViewRange" type="range" min="20" max="110" step="1" value="45" aria-label="Vertical field of view slider"><input id="fieldOfView" type="number" min="20" max="110" step="1" value="45"></div>
       <label for="navigationStyle">Movement</label><select id="navigationStyle"><option value="walk">Walk (level movement)</option><option value="fly">Fly (follow view direction)</option></select>
       <label for="walkSpeed">Speed (model units / second)</label><input id="walkSpeed" type="number" min="0.01" max="100000" step="any" value="5">
       <p class="hint">Walk / Fly or Shift + ` captures the mouse. WASD / arrows move; E / Q move up / down. Shift: faster; Alt: slower; wheel: speed. Esc or Enter returns to orbit. Free navigation through geometry; no collision.</p>
