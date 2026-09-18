@@ -21,6 +21,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let textureFailures = new Set(), versions = null, pollBusy = false;
   let textureSerial = 0;
   let textureMetadata = new Map(), drafts = {}, sizeReference = null, hueReference = null;
+  let galleryKey = '';
   const identityTransform = () => ({rotation: 0, flip_x: false, flip_y: false});
   const slotTransform = (model, slot) => (model.material_texture_transforms || [])[slot] || identityTransform();
   const copy = value => JSON.parse(JSON.stringify(value));
@@ -351,7 +352,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const results = await Promise.allSettled([
         json(`/list_models?${query({}, gameId)}`),
         loadTextureLibrary(),
-        allTextureVersions()
+        allTextureVersions().then(values => { if (serial === catalogSerial) versions = values; return values; })
       ]);
       if (serial !== catalogSerial) return;
       if (results[0].status === 'rejected') throw results[0].reason;
@@ -618,16 +619,21 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       return true;
     });
-    $('skinSelect').replaceChildren(...list.map(name => option(name, name)));
+    const library = $('textureGame').value;
+    const nextGalleryKey = JSON.stringify([library, list.map(name => {
+      const meta = textureMetadata.get(name) || {};
+      return [name, meta.width, meta.height, meta.tags, meta.error, versions?.[textureId(name, library)]];
+    })]);
+    const rebuild = nextGalleryKey !== galleryKey;
+    if (rebuild) $('skinSelect').replaceChildren(...list.map(name => option(name, name)));
     if (list.includes(previous)) $('skinSelect').value = previous;
     $('skinSelect').disabled = !list.length;
     $('applySkin').disabled = loading || !data || !list.length || $('materialSelect').disabled;
-    const library = $('textureGame').value;
     $('textureCount').textContent = `${list.length.toLocaleString()} of ${textures.length.toLocaleString()} textures · ${library.toUpperCase()}${library === 't2' ? ' · RGB thumbnails' : ''}`;
     $('similarityStatus').textContent = !validBounds ? 'Enter positive whole-pixel ranges with minimum ≤ maximum.' :
       [sizeReference && `Size near ${sizeReference.filename} (${sizeReference.width} × ${sizeReference.height}) ± ${sizeTolerance} px`,
        hueReference && `Hue near ${hueReference.filename} (${hueReference.hue === null ? 'neutral' : Math.round(hueReference.hue) + '°'}) ± ${hueTolerance}°`].filter(Boolean).join(' · ');
-    $('textureGallery').replaceChildren(...list.map(name => {
+    if (rebuild) $('textureGallery').replaceChildren(...list.map(name => {
       const button = document.createElement('button');
       button.className = 'texture-thumb'; button.type = 'button';
       const meta = textureMetadata.get(name) || {};
@@ -646,7 +652,8 @@ window.addEventListener('DOMContentLoaded', () => {
       button.addEventListener('click', () => perform('Select texture', () => { $('skinSelect').value = name; selectThumbnail(); }));
       return button;
     }));
-    updateCandidate();
+    galleryKey = nextGalleryKey;
+    selectThumbnail();
   }
   function selectThumbnail() {
     for (const button of $('textureGallery').children) {
@@ -711,9 +718,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const previous = $('skinSelect').value;
     $('texturePath').textContent = gameId === 'q3' ? 'local-data/q3/textures' : gameId === 't2' ? 'static/textures/t2' : 'static/textures';
     textures = []; textureMetadata = new Map(); filterSkins();
-    $('textureCount').textContent = 'Reading texture dimensions and colors…';
+    $('textureCount').textContent = 'Reading texture dimensions…';
     try {
-      const entries = await json(`/texture_metadata?${query({}, gameId)}`);
+      const entries = await json(`/texture_metadata?${query(hueReference ? {} : {details: 'dimensions'}, gameId)}`);
       if (serial !== textureSerial) return;
       textureMetadata = new Map(entries.map(entry => [entry.filename, entry]));
       textures = entries.map(entry => entry.filename).sort(compare);
@@ -832,9 +839,21 @@ window.addEventListener('DOMContentLoaded', () => {
     action(id, 'click', 'Transform texture copy', () => transformCandidate(operation));
   }
   for (const id of ['widthMin', 'widthMax', 'heightMin', 'heightMax', 'sizeTolerance', 'hueTolerance']) action(id, 'input', 'Filter textures', () => filterSkins());
-  for (const [id, kind] of [['similarSize', 'size'], ['similarHue', 'hue']]) action(id, 'click', `Find similar ${kind}`, () => {
-    const meta = textureMetadata.get($('skinSelect').value);
+  for (const [id, kind] of [['similarSize', 'size'], ['similarHue', 'hue']]) action(id, 'click', `Find similar ${kind}`, async () => {
+    const filename = $('skinSelect').value;
+    let meta = textureMetadata.get(filename);
     if (!meta?.width) return;
+    if (kind === 'hue' && !Object.hasOwn(meta, 'hue')) {
+      const serial = textureSerial, gameId = $('textureGame').value;
+      $('similarityStatus').textContent = 'Reading texture colors for this search…';
+      try {
+        const entries = await json(`/texture_metadata?${query({}, gameId)}`);
+        if (serial !== textureSerial) return;
+        textureMetadata = new Map(entries.map(entry => [entry.filename, entry]));
+        meta = textureMetadata.get(filename);
+        if (!meta?.width) throw new Error('The selected texture is no longer readable. Reload textures.');
+      } catch (error) { $('similarityStatus').textContent = error.message; throw error; }
+    }
     clearTextureFilters();
     if (kind === 'size') sizeReference = copy(meta); else hueReference = copy(meta);
     $('textureFilters').open = true; filterSkins(meta.filename);

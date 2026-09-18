@@ -138,6 +138,7 @@ def list_textures():
 @app.route('/texture_metadata')
 def get_texture_metadata():
     game = selected_game()
+    include_hue = request.args.get('details') != 'dimensions'
     try:
         tags = read_tags(local_data_dir / 'texture-tags.json').get(game, {})
     except (OSError, ValueError) as exc:
@@ -145,7 +146,7 @@ def get_texture_metadata():
     result = []
     for path in sorted(game_textures(game).glob('*.png'), key=lambda p: model_sort_key(p.name)):
         try:
-            metadata = texture_metadata(path, game)
+            metadata = texture_metadata(path, game, include_hue=include_hue)
         except FileNotFoundError:
             continue  # An editor may replace/delete a texture during enumeration.
         except (OSError, ValueError) as exc:

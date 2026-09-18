@@ -19,7 +19,11 @@ const path = require('node:path');
   };
   const metadata = async () => (await get('/texture_metadata?game=t1')).json();
   const names = () => page.locator('#skinSelect option').evaluateAll(options => options.map(option => option.value).sort());
-  const sameNames = async expected => assert.deepEqual(await names(), expected.map(item => item.filename).sort());
+  const sameNames = async expected => {
+    // Hue indexing is requested only when first used; wait for that user action.
+    await page.waitForFunction(() => !document.querySelector('.workspace').inert);
+    assert.deepEqual(await names(), expected.map(item => item.filename).sort());
+  };
   const imageSource = async selector => {
     const value = await page.locator(selector).getAttribute('src');
     if (!value) return value;

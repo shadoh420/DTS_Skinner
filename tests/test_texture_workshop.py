@@ -37,6 +37,23 @@ def embedded(document, binary, slot):
 
 
 class TextureWorkshopTests(unittest.TestCase):
+    def test_library_dimensions_do_not_decode_pixels_and_hue_stays_available(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            Image.new('RGB', (110, 64), (255, 0, 0)).save(root / 'red.png')
+            with patch('app.textures_dir', root), patch('app.local_data_dir', root / 'local'):
+                client = app.test_client()
+                with patch.object(Image.Image, 'convert', side_effect=AssertionError('Decoded pixels during library load')):
+                    response = client.get('/texture_metadata?game=t1&details=dimensions')
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.json, [dict(filename='red.png', width=110, height=64, tags=[])])
+                response = client.get('/texture_metadata?game=t1')
+                self.assertEqual(response.json[0]['hue'], 0)
+                # Header cache invalidates when an editor replaces the PNG.
+                Image.new('RGB', (120, 90), (0, 255, 0)).save(root / 'red.png')
+                response = client.get('/texture_metadata?game=t1&details=dimensions')
+                self.assertEqual((response.json[0]['width'], response.json[0]['height']), (120, 90))
+
     def test_every_transform_preview_download_obj_glb_and_source_preservation(self):
         colors = [(255, 0, 0, 0), (0, 255, 0, 64), (0, 0, 255, 127),
                   (255, 255, 0, 128), (255, 0, 255, 200), (0, 255, 255, 255)]
