@@ -50,9 +50,12 @@ def transformed_name(filename, transform=None):
 
 
 @lru_cache(maxsize=16384)
-def _image_metadata(path, fingerprint, ignore_alpha):
+def _image_metadata(path, fingerprint, ignore_alpha, include_hue=True):
     with Image.open(path) as source:
         width, height = source.size
+        if not include_hue:
+            # PNG dimensions are available from the header without decoding pixels.
+            return {'width': width, 'height': height}
         image = source.convert('RGBA')
         # ponytail: sample at most 4096 pixels; use histograms if perceptual matching is needed.
         image.thumbnail((64, 64), Image.Resampling.NEAREST)
@@ -69,10 +72,10 @@ def _image_metadata(path, fingerprint, ignore_alpha):
         return {'width': width, 'height': height, 'hue': hue}
 
 
-def texture_metadata(path, game):
+def texture_metadata(path, game, include_hue=True):
     path = Path(path)
     stat = path.stat()
-    return dict(_image_metadata(str(path.resolve()), (stat.st_mtime_ns, stat.st_size, stat.st_ino), game == 't2'))
+    return dict(_image_metadata(str(path.resolve()), (stat.st_mtime_ns, stat.st_size, stat.st_ino), game == 't2', include_hue))
 
 
 def validate_tags(tags):

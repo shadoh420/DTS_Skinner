@@ -35,6 +35,8 @@ Under **Size & hue search**, width and height limits are inclusive; leave either
 
 **Undo / Redo** retain the latest 100 actions in the current window, including persisted tag edits. Use Ctrl+Z and Ctrl+Shift+Z / Ctrl+Y outside text fields (text fields keep native text undo). Reset all is undoable. Downloads and external PNG edits are not reversed. Importing a new Q3 catalog starts a new history; window reload/close also clears history. Existing PNGs and saved tags remain on disk.
 
+Switching games reads texture dimensions without decoding every image. Color analysis starts on the first **Find similar hue** request and can take several seconds for large libraries; subsequent searches reuse cached results until a texture changes. Selecting a texture reuses the gallery thumbnails.
+
 Developer checks: `python -B -m unittest discover -s tests -v`, then run `node tools/check_texture_workshop.cjs http://127.0.0.1:5000 build/workshop-review` with optional Playwright available. The browser check verifies real texture pixels/downloads, gallery layout, search, and history without adding image files to the library.
 
 ![DTS Skinner](docs/workshop.png)
