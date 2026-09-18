@@ -7,8 +7,10 @@ Converts JSON model data to Wavefront OBJ format with materials and textures.
 
 if __package__:
     from .model_data import load_model_data, material_texture_paths
+    from .texture_workshop import transform_image, transformed_name
 else:
     from model_data import load_model_data, material_texture_paths
+    from texture_workshop import transform_image, transformed_name
 import pathlib
 import zipfile
 import math
@@ -344,6 +346,20 @@ def json_to_obj_zip(
     cross_game = any(game != data.get('game', 't1') for game in texture_games)
     export_names = [f'textures/{game}/{name}' if cross_game and not name.startswith('[') else name
                     for name, game in zip(material_textures, texture_games)]
+    transforms = data['material_texture_transforms']
+    reserved_names = {name.casefold() for name in export_names}
+    transformed_exports = {}
+    for slot, (source, transform) in enumerate(zip(sources, transforms)):
+        if any(transform.values()) and not material_textures[slot].startswith('['):
+            key = (source, tuple(transform.values()))
+            if key not in transformed_exports:
+                original = pathlib.PurePosixPath(export_names[slot])
+                candidate = original.with_name(transformed_name(original.name, transform))
+                while str(candidate).casefold() in reserved_names:
+                    candidate = candidate.with_name('_' + candidate.name)
+                transformed_exports[key] = str(candidate)
+                reserved_names.add(str(candidate).casefold())
+            export_names[slot] = transformed_exports[key]
     settings = q3_material_settings(data)
     opacity_maps, opacity_images, export_warnings = {}, {}, []
     reserved_names = {name.casefold() for name in export_names}
@@ -360,7 +376,7 @@ def json_to_obj_zip(
             if (not alpha_func and not blend) or name.startswith('[') or not source.is_file():
                 continue
             with Image.open(source) as texture:
-                alpha = texture.convert('RGBA').getchannel('A')
+                alpha = transform_image(texture, transforms[slot]).getchannel('A')
             if alpha_func:
                 def opacity(value):
                     passes = value >= 128 if alpha_func == 'GE128' else value > 0 if alpha_func == 'GT0' else value < 128
@@ -441,7 +457,7 @@ def json_to_obj_zip(
         # Copy texture files
         textures_copied = []
         if material_textures:
-            for tex_name, tex_src in dict(zip(export_names, sources)).items():
+            for tex_name, (tex_src, transform) in dict(zip(export_names, zip(sources, transforms))).items():
                 # Skip placeholder materials
                 if not tex_name or tex_name.startswith('['):
                     continue
@@ -449,7 +465,11 @@ def json_to_obj_zip(
                 if tex_src.is_file():
                     tex_dst = temp_path / tex_name
                     tex_dst.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(tex_src, tex_dst)
+                    if any(transform.values()):
+                        with Image.open(tex_src) as texture:
+                            transform_image(texture, transform).save(tex_dst, format='PNG')
+                    else:
+                        shutil.copy2(tex_src, tex_dst)
                     textures_copied.append(tex_name)
                 else:
                     print(f"Warning: Texture not found: {tex_name}")
@@ -467,9 +487,10 @@ def json_to_obj_zip(
             
             # Add README
             zipf.write(readme_file, readme_file.name)
-            if data.get("metadata") or data.get('game') == 'q3' or cross_game:
+            if data.get("metadata") or data.get('game') == 'q3' or cross_game or transformed_exports:
                 metadata = dict(data.get('metadata') or {}, material_textures=material_textures,
                                 material_texture_games=texture_games, material_texture_paths=export_names,
+                                material_texture_transforms=transforms,
                                 material_flags=data.get('material_flags', []))
                 if data.get('game') == 'q3':
                     metadata.update(material_settings=settings, opacity_maps=opacity_maps, export_warnings=export_warnings)

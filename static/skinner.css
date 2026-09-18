@@ -15,7 +15,7 @@ h1,h2 { margin:0 0 8px; font-size:17px; font-weight:600; color:#eff5f8; }
 .app-header .subtle { margin-left:18px; }
 .subtle,.hint { color:#9eafb8; font-size:12px; }
 .hint { margin:9px 0; overflow-wrap:anywhere; }
-.workspace { display:grid; grid-template-columns:245px minmax(280px,1fr) 290px; height:calc(100dvh - 55px); min-height:440px; }
+.workspace { display:grid; grid-template-columns:225px minmax(280px,1fr) 360px; height:calc(100dvh - 55px); min-height:440px; }
 .panel { padding:16px; overflow:auto; background:#17222a; }
 .panel>select,.panel>input,.panel>button { width:100%; }
 .catalog { display:flex; flex-direction:column; border-right:1px solid #34434c; }
@@ -42,12 +42,33 @@ input[type="color"] { width:25px; min-height:22px; height:22px; padding:0; borde
 .texture-preview { height:190px; margin-top:12px; display:flex; align-items:center; justify-content:center; background:repeating-conic-gradient(#24333b 0% 25%,#1b2931 0% 50%) 0/20px 20px; border:1px solid #40515b; border-radius:5px; overflow:hidden; }
 .texture-preview img { max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated; }
 .texture-preview span { padding:12px; color:#b1bfc6; text-align:center; }
-.texture-gallery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; max-height:300px; overflow:auto; padding:3px; scrollbar-gutter:stable; }
-.texture-thumb { padding:5px; min-width:0; text-align:left; }
-.texture-thumb img { display:block; width:100%; height:88px; object-fit:contain; background:repeating-conic-gradient(#24333b 0% 25%,#1b2931 0% 50%) 0/16px 16px; }
+.texture-gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--thumb-size,120px)),1fr)); grid-auto-rows:max-content; align-content:start; gap:8px; height:420px; overflow:auto; padding:3px; scrollbar-gutter:stable; }
+.texture-thumb { padding:5px; min-width:0; min-height:calc(var(--thumb-size,120px) + 50px); text-align:left; overflow:hidden; }
+.texture-thumb img { display:block; width:100%; height:var(--thumb-size,120px); object-fit:contain; background:repeating-conic-gradient(#24333b 0% 25%,#1b2931 0% 50%) 0/16px 16px; image-rendering:pixelated; }
 .texture-thumb span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; margin-top:4px; }
 .texture-thumb[aria-pressed="true"] { border-color:#70dfc1; background:#245747; }
 .texture-thumb.missing span { color:#efb987; }
+.texture-thumb small { display:block; color:#a6bdb4; font-size:11px; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.browser-controls>input,.browser-controls>select,.browser-controls>button { width:100%; }
+.browser-controls>button { margin-top:8px; }
+.range-fields { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.range-fields input { width:100%; }
+.range-fields label { min-width:0; }
+.candidate-preview { height:160px; }
+.history-controls { display:flex; gap:6px; align-items:center; }
+#historyStatus { max-width:180px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; margin:0; }
+#galleryDialog { width:96vw; max-width:1700px; height:92dvh; max-height:96dvh; padding:18px; color:#dce5e9; background:#17222a; border:1px solid #587368; border-radius:8px; }
+#galleryDialog::backdrop { background:#000a; }
+.dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.dialog-heading h2 { margin:0; }
+#galleryDialogBody { height:calc(100% - 50px); }
+#galleryDialog .texture-workbench { display:grid; grid-template-columns:290px minmax(0,1fr); gap:20px; height:100%; }
+#galleryDialog .browser-controls { overflow:auto; padding-right:10px; }
+#galleryDialog .gallery-area { display:flex; flex-direction:column; min-height:0; }
+#galleryDialog .texture-gallery { flex:1; min-height:200px; height:auto; }
+.gallery-area input[type="range"] { vertical-align:middle; width:140px; }
+#similarityStatus:empty,#tagStatus:empty { display:none; }
+@media(max-width:700px) { #galleryDialog .texture-workbench { display:block; overflow:auto; } #galleryDialog .texture-gallery { height:65vh; } #catalogSummary { display:none; } }
 .primary { background:#23755e; border-color:#459b82; color:white; }
 #exportGlbBtn { margin-top:8px; }
 .section-heading { margin-top:20px; padding-top:14px; border-top:1px solid #34434c; }

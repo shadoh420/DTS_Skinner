@@ -4,8 +4,9 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tools.model_data import load_model_data, default_texture, model_sort_key
+from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs
 from tools.obj_exporter import json_to_obj_zip
+from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
 import io
 import json
 import shutil
@@ -134,6 +135,48 @@ def list_textures():
     return jsonify(sorted((p.name for p in game_textures(selected_game()).glob("*.png")), key=model_sort_key))
 
 
+@app.route('/texture_metadata')
+def get_texture_metadata():
+    game = selected_game()
+    try:
+        tags = read_tags(local_data_dir / 'texture-tags.json').get(game, {})
+    except (OSError, ValueError) as exc:
+        return jsonify(error=f'Cannot read texture tags: {exc}'), 422
+    result = []
+    for path in sorted(game_textures(game).glob('*.png'), key=lambda p: model_sort_key(p.name)):
+        try:
+            metadata = texture_metadata(path, game)
+        except FileNotFoundError:
+            continue  # An editor may replace/delete a texture during enumeration.
+        except (OSError, ValueError) as exc:
+            metadata = dict(width=None, height=None, hue=None, error=str(exc))
+        result.append(dict(filename=path.name, tags=tags.get(path.name, []), **metadata))
+    return jsonify(result)
+
+
+@app.route('/texture_tags', methods=['POST'])
+def set_texture_tags():
+    if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        return jsonify(error='Tags must be edited from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON tags request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) != {'filename', 'tags'}:
+        return jsonify(error='Expected filename and tags.'), 400
+    game = selected_game()
+    try:
+        filename = payload['filename']
+        material_texture_refs(dict(game=game, material_textures=[filename]))
+        if not filename.lower().endswith('.png'):
+            raise ValueError('Tags require a PNG texture filename')
+        if not (game_textures(game) / filename).is_file():
+            return jsonify(error='Texture no longer exists.'), 404
+        tags = save_tags(local_data_dir / 'texture-tags.json', game, filename, payload['tags'])
+        return jsonify(filename=filename, tags=tags)
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+
+
 @app.route("/texture_versions")
 def texture_versions():
     # Local polling keeps reloads available when offline, including atomic saves/deletes.
@@ -227,6 +270,7 @@ def export_glb(model_name):
         # Animation caches retain geometry, but texture choices belong to this request.
         data['material_textures'] = preview['material_textures']
         data['material_texture_games'] = preview['material_texture_games']
+        data['material_texture_transforms'] = preview['material_texture_transforms']
         output = io.BytesIO(model_to_glb(data, game_textures(game),
                                        texture_dirs={source: game_textures(source) for source in ('t1', 't2', 'q3')}))
         response = send_file(output, as_attachment=True, download_name=f'{game}_{model_name}.glb', mimetype='model/gltf-binary')
@@ -255,9 +299,20 @@ def get_model_json(model_name):
 def get_texture(texture_filename):
     if ".." in texture_filename or any(c in texture_filename for c in '/\\:\r\n\0'): abort(400)
     directory = game_textures(selected_game())
-    if request.args.get("opaque") == "1":
-        # T2 opaque textures can store reflectivity in alpha. Show RGB in the
-        # material inspector while keeping the editable/exported PNG untouched.
+    try:
+        for key in ('flip_x', 'flip_y'):
+            if request.args.get(key, '0') not in ('0', '1'):
+                raise ValueError('Texture flips must be 0 or 1')
+        rotation = request.args.get('rotation', '0')
+        if rotation not in ('0', '90', '180', '270'):
+            raise ValueError('Rotation must be 0, 90, 180 or 270 degrees')
+        transform = normalize_transform(dict(rotation=int(rotation), flip_x=request.args.get('flip_x') == '1',
+                                             flip_y=request.args.get('flip_y') == '1'))
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 422
+    download = request.args.get('download') == '1'
+    if any(transform.values()) or download or request.args.get('opaque') == '1':
+        # Derived copies exist only in memory until the user downloads/exports one.
         path = directory / texture_filename
         if not path.is_file():
             abort(404)
@@ -265,9 +320,14 @@ def get_texture(texture_filename):
         try:
             output = io.BytesIO()
             with Image.open(path) as source:
-                source.convert("RGB").save(output, format="PNG")
+                image = transform_image(source, transform)
+                # T2 opaque alpha contains reflectivity: discard only for inspection.
+                if request.args.get('opaque') == '1' and not download:
+                    image = image.convert('RGB')
+                image.save(output, format='PNG')
             output.seek(0)
-            return send_file(output, mimetype="image/png", max_age=0)
+            return send_file(output, mimetype='image/png', max_age=0, as_attachment=download,
+                             download_name=transformed_name(texture_filename, transform))
         except (OSError, ValueError):
             abort(422, "Cannot decode texture")
     return send_from_directory(str(directory), texture_filename, max_age=0)

@@ -13,6 +13,7 @@ from PIL import Image
 
 from .obj_exporter import compute_smooth_normals, q3_material_settings
 from .model_data import material_texture_refs, material_texture_paths
+from .texture_workshop import transform_image
 
 
 def _floats(values, count, label):
@@ -40,7 +41,7 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
     if not indices or len(indices) % 3 or any(type(i) is not int or not 0 <= i < vertex_count for i in indices):
         raise ValueError('Model must contain complete triangles with valid indices')
     data = dict(data, material_textures=data.get('material_textures') or ['[Unassigned material]'])
-    names, games = material_texture_refs(data)
+    names, games, transforms = material_texture_refs(data)
     sources = material_texture_paths(data, textures_dir, texture_dirs)
     groups = data.get('groups') or [{'start': 0, 'count': len(indices), 'materialIndex': 0}]
     end = 0
@@ -82,6 +83,7 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
             'extras': {'sourceMetadata': data.get('metadata', {}),
                        'animationRepresentation': 'Baked vertex motion; no skeleton or rig.',
                        'materialTextureGames': games,
+                       'materialTextureTransforms': transforms,
                        'missingTextures': [], 'warnings': list(data.get('warnings') or []) + list(data.get('animation_notes') or [])}}
 
     def view(raw, target=None):
@@ -135,7 +137,8 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
         material = {'name': name, 'doubleSided': True,
                     'pbrMetallicRoughness': {'metallicFactor': 0, 'roughnessFactor': 1},
                     'extensions': {'KHR_materials_unlit': {}},
-                    'extras': {'sourceTexture': name, 'sourceGame': games[slot], 'sourceFlags': flags[slot]}}
+                    'extras': {'sourceTexture': name, 'sourceGame': games[slot], 'sourceFlags': flags[slot],
+                               'textureTransform': transforms[slot]}}
         if flag & (4 | 8 | 16):
             material['alphaMode'] = 'BLEND'
         if flag & (8 | 16):
@@ -158,13 +161,13 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
             if not setting.get('depthWrite', True):
                 gltf['extras']['warnings'].append(f'{name}: explicit depth-write state is metadata only in glTF.')
         source = sources[slot]
-        image_key = (games[slot], name, alpha_func == 'LT128')
+        image_key = (games[slot], name, tuple(transforms[slot].values()), alpha_func == 'LT128')
         if not name.startswith('[') and source.is_file():
             if image_key not in embedded_images:
                 with Image.open(source) as texture:
                     texture.load()
                     stream = io.BytesIO()
-                    texture = texture.convert('RGBA')
+                    texture = transform_image(texture, transforms[slot])
                     if alpha_func == 'LT128':
                         texture.putalpha(texture.getchannel('A').point(lambda value: 255 - value))
                     texture.save(stream, format='PNG')
