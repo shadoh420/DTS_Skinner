@@ -185,8 +185,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (materials) materials.length = 0;
     let start = 0;
     for (const [key, bucket] of buckets) {
-      for (const name in all) all[name].push(...bucket[name]);
-      owners.push(...bucket.owners);
+      // Copied a value at a time: spreading a large map's arrays into push overflows the stack.
+      for (const name in all) { const from = bucket[name], to = all[name]; for (let i = 0; i < from.length; i++) to.push(from[i]); }
+      for (const owner of bucket.owners) owners.push(owner);
       const count = bucket.positions.length / 3;
       if (materials && count) { geometry.addGroup(start, count, materials.length); materials.push(key === null ? brushMaterial : texturedMaterial(bucket.source)); }
       start += count;
@@ -278,6 +279,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const globalGroup = () => M.global(map);
   function rebuild() {
     flat = M.flatten(map);
+    playWorld = null; player = null;
     ownerOfItem = new Map(flat.brushes.filter(entry => !entry.path.length).map(entry => [entry.source, entry.owner]));
     for (const mesh of [world, clips, glass, volumes]) mesh.geometry.dispose();
     const volume = entry => M.isVolume(entry.owner);
@@ -305,10 +307,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     const end = worldSpawn() && M.property(worldSpawn(), 'targetGameOverCamera');
     const of = type => flat.entities.filter(({entity, position}) => entity.type === type && position);
     return [...of('Target').filter(({entity}) => M.property(entity, 'name') === end), ...of('PlayerSpawn')]
-      .map(({entity, position}) => ({position, angles: M.property(entity, 'angles') || [0, 0, 0], height: entity.type === 'PlayerSpawn' ? 48 : 0}));
+      .map(({entity, position}) => ({position, angles: M.property(entity, 'angles') || [0, 0, 0], height: entity.type === 'PlayerSpawn' ? 48 : 0, spawn: entity.type === 'PlayerSpawn'}));
   }
+  // Walking, 1–9 are the spawn points only: the end camera is often out in the air.
   function showViewpoint(index) {
-    const view = viewpoints()[index];
+    const all = viewpoints(), spawns = all.filter(view => view.spawn), view = (!editing && walking && spawns.length ? spawns : all)[index];
     if (!view) {
       // No viewpoint: above the middle of the map, looking down into it.
       const box = new THREE.Box3().setFromObject(world);
@@ -352,7 +355,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function showReady() {
     const editable = globalGroup().items.filter(item => item.kind === 'brush').length;
     showStatus(`${mapName}: ${flat.brushes.length} brushes (${editable} in the map, ${flat.brushes.length - editable} placed by prefabs), ` +
-      `${flat.entities.length} entities · speed ${Math.round(speed)}`);
+      `${flat.entities.length} entities · ${!editing && walking ? 'walking' : `speed ${Math.round(speed)}`}`);
     updateTools();
   }
 
@@ -1584,9 +1587,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('crosshair').hidden = on;
     if (!on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; texturePreview = null; showHover(null); ghost.clear(); }
     if (on && document.pointerLockElement === canvas) document.exitPointerLock();
-    $('help').textContent = on
-      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · C clip · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
-      : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints';
+    // Playing starts where the camera is, as the game's play mode starts where the editor's camera was.
+    player = null;
+    $('help').textContent = helpText();
+    if (flat) showReady();
     updateTools();
     applySettings();  // The toolbar changes the scene's height; reading it lays the page out now, not a frame later.
   }
@@ -1660,7 +1664,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (event.target.matches('input:not([type=checkbox]), select')) return;
     const ctrl = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
     if (event.code === 'Tab' || (event.code === 'Digit0' && !ctrl)) { event.preventDefault(); setEditing(!editing); return; }
-    if (/^Digit[1-9]$/.test(event.code) && !ctrl && !editing) showViewpoint(Number(event.code.slice(5)) - 1);
+    if (/^Digit[1-9]$/.test(event.code) && !ctrl && !editing) { showViewpoint(Number(event.code.slice(5)) - 1); player = null; }
+    if (event.code === 'KeyF' && !ctrl && !editing) { setWalking(!walking); return; }
     if (editing && flat) {
       if (/^Digit[1-8]$/.test(event.code) && !ctrl) { setCreate(Number(event.code.slice(5))); return; }
       if (!ctrl && event.code === 'KeyV') { setVertexMode(!vertexMode); return; }
@@ -1705,9 +1710,78 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.addEventListener('keyup', event => keys.delete(event.code));
 
+  // ---- Play mode (movement.js): walking through the map, as the game's play mode; F flies instead ----
+  const P = window.ReflexMovement;
+  let walking = true, player = null, playWorld = null, triggers = null, tick = 0, lowest = -1e9;
+  const LIQUID = /(^|\/)liquids\//;
+  // The brushes a player meets: those of the world, not volumes, liquids or weapon clips; and the volumes, which
+  // teleport and launch.
+  function buildPlayWorld() {
+    const solid = [], volume = [];
+    for (const entry of flat.brushes) {
+      if (M.isVolume(entry.owner)) { volume.push({brush: entry.brush, tag: entry.owner}); continue; }
+      const faces = entry.brush.faces;
+      if (faces.some(face => LIQUID.test(face.material || '')) || faces.every(face => /editor_weaponclip$/.test(face.material || ''))) continue;
+      solid.push({brush: entry.brush, tag: entry});
+    }
+    playWorld = P.createWorld(solid);
+    triggers = P.createWorld(volume);
+    const box = new THREE.Box3().setFromObject(world);
+    lowest = box.isEmpty() ? -4096 : box.min.y - 2048;
+  }
+  // Puts the player with its eye at `eye` (the map's axes), or as near above as there is room; looks along `yaw`.
+  function placePlayer(eye) {
+    if (!playWorld) buildPlayWorld();
+    const origin = P.free(playWorld, [eye[0], eye[1] - P.PLAYER.eye, eye[2]]);
+    player = origin ? {origin, velocity: [0, 0, 0], ground: null} : null;
+    if (!origin) say('No room for the player here: F flies');
+  }
+  const targetNamed = name => flat.entities.find(entry => entry.entity.type === 'Target' && M.property(entry.entity, 'name') === name && entry.position);
+  // Teleporters and jump pads the player stands in: a teleporter puts it at its Target, facing the Target's yaw,
+  // at the speed it had; a jump pad throws it onto its Target.
+  function touchTriggers() {
+    const inside = triggers.trace(player.origin, player.origin);
+    if (!inside.allSolid || !inside.tag) return;
+    const owner = inside.tag, target = targetNamed(M.property(owner, 'target'));
+    if (!target) return;
+    if (owner.type === 'Teleporter') {
+      const yaw = (M.property(target.entity, 'angles') || [0])[0] * Math.PI / 180, speed = Math.hypot(player.velocity[0], player.velocity[2]);
+      player.origin = P.free(playWorld, [target.position[0], target.position[1] + 24.125, target.position[2]]) || player.origin;
+      player.velocity = [Math.sin(yaw) * speed, 0, Math.cos(yaw) * speed];
+      camera.rotation.y = -yaw;
+    } else if (owner.type === 'JumpPad') {
+      player.velocity = P.launch(player.origin, target.position);
+      player.ground = null;
+    }
+  }
+  function playStep(delta) {
+    if (!playWorld) buildPlayWorld();
+    if (!player) { placePlayer([camera.position.x, camera.position.y, -camera.position.z]); if (!player) return; }
+    const held = code => Number(keys.has(code)), input = {forward: held('KeyW') - held('KeyS'), right: held('KeyD') - held('KeyA'), jump: keys.has('Space'), yaw: -camera.rotation.y};
+    tick = Math.min(tick + delta, .1);
+    while (tick >= 1 / 125) {
+      P.move(player, input, playWorld, 1 / 125);
+      touchTriggers();
+      tick -= 1 / 125;
+    }
+    if (player.origin[1] < lowest) { showViewpoint(0); placePlayer([camera.position.x, camera.position.y, -camera.position.z]); if (!player) return; }
+    camera.position.set(player.origin[0], player.origin[1] + P.PLAYER.eye, -player.origin[2]);
+  }
+  function setWalking(on) {
+    walking = on;
+    player = null;
+    if (flat) showReady();
+    $('help').textContent = helpText();
+  }
+  const helpText = () => editing
+    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · C clip · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
+    : walking ? '0 edit · Click to capture / drag to look · WASD walk · Space jump · F fly · Esc release · 1–9 viewpoints'
+      : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · F walk · Esc release · 1–9 viewpoints';
+
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), step = new THREE.Vector3();
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
+    if (!editing && walking && flat) { playStep(delta); renderer.render(scene, camera); return; }
     camera.getWorldDirection(forward);
     right.crossVectors(forward, camera.up).normalize();
     step.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
@@ -1717,7 +1791,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; },
     get createType() { return createType; }, get vertexMode() { return vertexMode; }, get bridging() { return bridging; }, get segments() { return segments; }, get clipMode() { return clipMode; }, get clipPoints() { return clipPoints; },
-    settings, run, load, actions, selected, setEditing, showViewpoint};
+    get player() { return player; }, get walking() { return walking; }, settings, run, load, actions, selected, setEditing, setWalking, showViewpoint};
 
   // ---- Loading ----
   $('open').addEventListener('change', async event => {

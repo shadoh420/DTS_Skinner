@@ -446,6 +446,47 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     assert.equal(M.flatten(prefabMap).brushes.length, 3);
     assert.equal(M.prefab(prefabMap, 'block').items.length, 2);
 
+    // Play mode (0): walking from where the camera is, a teleporter to its Target, a jump pad onto its Target; F flies.
+    await page.evaluate(() => {
+      const m = window.skinnerReflexMaps, M = window.ReflexMap, B = window.ReflexBrush, map = M.empty(), g = M.global(map);
+      const face = {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: 'structural/dev/dev_grey128'};
+      const vector = (name, value) => ({type: 'Vector3', name, value}), string = (name, value) => ({type: 'String32', name, value});
+      g.items.push({kind: 'brush', ...B.box([-1024, -16, -1024], [1024, 0, 1024], face)});
+      g.items.push({kind: 'entity', type: 'Target', properties: [vector('position', [600, 0, 600]), vector('angles', [90, 0, 0]), string('name', 'far')]});
+      g.items.push({kind: 'entity', type: 'Target', properties: [vector('position', [-400, 200, 0]), string('name', 'up')]});
+      g.items.push({kind: 'entity', type: 'Teleporter', properties: [string('target', 'far')]}, {kind: 'brush', ...B.box([300, 0, -32], [364, 96, 32], {...face, material: ''})});
+      g.items.push({kind: 'entity', type: 'JumpPad', properties: [string('target', 'up')]}, {kind: 'brush', ...B.box([-132, 0, -32], [-68, 16, 32], {...face, material: ''})});
+      m.load(M.write(map), 'play');
+      m.setEditing(true);
+      m.camera.position.set(0, 200, 0); m.camera.rotation.set(0, -Math.PI / 2, 0);  // Looking along +x.
+    });
+    await page.keyboard.press('0');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.walking), true);
+    await page.waitForFunction(() => { const p = window.skinnerReflexMaps.player; return p && p.ground; }, null, {timeout: 10000});
+    const standing = await page.evaluate(() => window.skinnerReflexMaps.player.origin);
+    // On the ground once within a quarter unit of it, as Quake 3 checks.
+    assert.ok(standing[1] >= 24.125 && standing[1] < 24.4, `the player lands on the floor: ${standing}`);
+    assert.match(await status(), /walking/);
+    // Walking along +x for a moment, then into the teleporter at x 300.
+    await page.keyboard.down('w');
+    await page.waitForFunction(() => window.skinnerReflexMaps.player.origin[0] > 500, null, {timeout: 10000});
+    await page.keyboard.up('w');
+    const arrived = await page.evaluate(() => window.skinnerReflexMaps.player.origin);
+    assert.ok(Math.hypot(arrived[0] - 600, arrived[2] - 600) < 120, `teleported to ${arrived}`);
+    // Onto the jump pad: thrown up and across to its Target.
+    await page.evaluate(() => { const p = window.skinnerReflexMaps.player; p.origin = [-100, 24.125, 0]; p.velocity = [0, 0, 0]; });
+    await page.waitForFunction(() => window.skinnerReflexMaps.player.origin[1] > 150, null, {timeout: 5000});
+    await page.waitForFunction(() => window.skinnerReflexMaps.player.ground, null, {timeout: 10000});
+    const landed = await page.evaluate(() => window.skinnerReflexMaps.player.origin);
+    assert.ok(landed[0] < -300, `the jump pad threw the player to ${landed}`);
+    await page.screenshot({path: path.join(output, 'play.png')});
+    await page.keyboard.press('f');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.walking), false, 'F flies');
+    assert.match(await status(), /speed/);
+    await page.keyboard.press('f');
+    await page.keyboard.press('0');
+    assert.equal(await page.isVisible('#tools'), true);
+
     // The edited map still writes and reads back.
     const written = await page.evaluate(() => window.ReflexMap.write(window.skinnerReflexMaps.map));
     assert.equal(M.write(M.parse(written)), written);

@@ -494,3 +494,59 @@ test('every placement in REFLEX_MAPS breaks into what flatten draws, and goes ba
   }
   assert.ok(placements > 100, `${placements} placements`);
 });
+
+// ---- Play mode (movement.js) ----
+const {ReflexMovement: P} = require(path.join(__dirname, '../static/reflex-maps/movement.js'));
+const room = extra => P.createWorld([
+  {brush: B.box([-1024, -64, -1024], [1024, 0, 1024], {}), tag: 'floor'},
+  {brush: B.box([256, 0, -1024], [320, 512, 1024], {}), tag: 'wall'},
+  ...extra.map(([min, max, tag]) => ({brush: B.box(min, max, {}), tag})),
+]);
+const run = (world, player, input, seconds) => { for (let t = 0; t < seconds; t += 1 / 125) P.move(player, {forward: 0, right: 0, jump: false, yaw: 0, ...input}, world, 1 / 125); return player; };
+const spawn = (x, y, z) => ({origin: [x, y, z], velocity: [0, 0, 0], ground: null});
+
+test('a player falls onto the floor and stands on it, the box 24 below its middle', () => {
+  const world = room([]), player = run(world, spawn(0, 200, 0), {}, 2);
+  // A box stops an eighth of a unit off what it meets (Quake 3's SURFACE_CLIP_EPSILON).
+  assert.ok(Math.abs(player.origin[1] - 24.125) < .01, `stands at ${player.origin[1]}`);
+  assert.ok(player.ground);
+  assert.deepEqual(player.velocity.map(Math.round), [0, 0, 0]);
+});
+
+test('walking reaches 320 units a second, a wall stops it and running along a wall slides', () => {
+  const world = room([]), player = run(world, spawn(0, 24, 0), {forward: 1, yaw: Math.PI / 2}, 1);
+  // Yaw 90 looks along +x; the wall's face is at x 256, the box 15 wide.
+  assert.ok(Math.abs(player.origin[0] - (256 - 15 - .125)) < .01, `stopped by the wall at ${player.origin[0]}`);
+  const runner = run(world, spawn(0, 24, 0), {forward: 1, yaw: 0}, .5);
+  near(Math.hypot(runner.velocity[0], runner.velocity[2]), 320, 'speed');
+  // Into the wall at 45 degrees: the part along it carries on.
+  const slider = run(world, spawn(200, 24, 0), {forward: 1, yaw: Math.PI / 4}, 1);
+  assert.ok(slider.origin[0] < 241.5 && slider.origin[2] > 100, `slid to ${slider.origin}`);
+});
+
+test('a jump rises 270²/(2 × 800) units, and steps up to 18 units high are climbed, higher ones not', () => {
+  const world = room([[[64, 0, -64], [256, 16, 64], 'step'], [[-128, 0, -64], [-64, 32, 64], 'ledge']]);
+  const jumper = spawn(0, 24, -300);
+  run(world, jumper, {}, .2);
+  let top = 0;
+  for (let t = 0; t < 1; t += 1 / 125) { P.move(jumper, {forward: 0, right: 0, jump: t === 0, yaw: 0}, world, 1 / 125); top = Math.max(top, jumper.origin[1]); }
+  assert.ok(Math.abs(top - 24.125 - 270 * 270 / 1600) < 2, `jumped ${top - 24.125}`);
+  const climber = run(world, spawn(0, 24, 0), {forward: 1, yaw: Math.PI / 2}, 1);
+  assert.ok(Math.abs(climber.origin[1] - 40.125) < .01, `on the step at ${climber.origin[1]}`);
+  const blocked = run(world, spawn(0, 24, 0), {forward: 1, yaw: -Math.PI / 2}, 1);
+  assert.ok(Math.abs(blocked.origin[1] - 24.125) < .01, `not on the ledge: ${blocked.origin[1]}`);
+  assert.ok(Math.abs(blocked.origin[0] - (-64 + 15.125)) < .01, `stopped by the ledge at ${blocked.origin[0]}`);
+});
+
+test('a trace reports what it hit; a box inside a brush starts solid; free finds room above', () => {
+  const world = room([]);
+  const hit = world.trace([0, 100, 0], [0, -100, 0]);
+  assert.equal(hit.tag, 'floor');
+  near(hit.end[1], 24.125, 'stops just above the floor');
+  assert.ok(world.trace([0, 0, 0], [0, 0, 0]).startSolid);
+  const room_ = P.free(world, [0, 0, 0]);
+  assert.ok(room_[1] > 24 && room_[1] <= 32 && !world.trace(room_, room_).startSolid, `free at ${room_}`);
+  // A jump pad's launch lands its player on the target at the top of the arc.
+  const velocity = P.launch([0, 24, 0], [400, 280, 0]), time = velocity[1] / P.GRAVITY;
+  near(velocity[0] * time, 400, 'across'); near(velocity[1] * time - P.GRAVITY * time * time / 2, 256, 'up');
+});
