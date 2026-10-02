@@ -24,30 +24,31 @@
         <label>Reflex Arena folder <input id="gamePath" placeholder="C:\Program Files (x86)\Steam\steamapps\common\Reflex Arena"></label>
         <label><input id="replace" type="checkbox"> Re-import existing maps</label>
         <button id="import">Import</button>
-        <span id="importStatus" role="status">Imports the maps and material images of the install and of Steam Workshop items beside it. The game folder is only read.</span>
+        <span id="importStatus" role="status">Imports the maps of the install (and of Steam Workshop items beside it) and the colours of the materials they use. The game folder is only read.</span>
       </div>
     </details>
   </header>
   <nav id="tools" aria-label="Edit tools" hidden>
     <span class="mode">Edit mode</span>
     <label>Grid <select id="grid">
-      <option>1</option><option>2</option><option>4</option><option selected>8</option><option>16</option><option>32</option><option>64</option>
+      <option>1</option><option>2</option><option>4</option><option>8</option><option selected>16</option><option>32</option><option>64</option>
     </select></label>
     <button id="newBrush" title="New box brush in front of the camera (B)">New box</button>
     <button id="subtract" title="Carve the selected brushes out of every brush they touch (Ctrl+Shift+S)">Subtract</button>
     <button id="hollow" title="Turn the selected brush into walls one grid step thick (H)">Hollow</button>
     <button id="merge" title="Join the selected brushes into one when their union is convex (Ctrl+M)">Merge</button>
     <button id="clip" title="Cut the selected brushes along the grid plane facing the camera through the point clicked last (C)">Split</button>
-    <button id="duplicate" title="Copy the selected brushes one grid step along (Ctrl+D)">Duplicate</button>
-    <button id="delete" title="Delete the selected brushes (Delete)">Delete</button>
-    <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
-    <button id="redo" title="Redo (Ctrl+Shift+Z / Ctrl+Y)">Redo</button>
+    <button id="duplicate" title="Copy the selected brushes one grid step along x (G)">Clone</button>
+    <button id="delete" title="Delete the selected brushes (Backspace)">Delete</button>
+    <button id="undo" title="Undo (Z)">Undo</button>
+    <button id="redo" title="Redo (X)">Redo</button>
     <button id="save" title="Download the edited map as a Reflex .map file (Ctrl+S)">Save .map</button>
+    <span class="active" title="K picks up the material and colour of the face under the cursor; M puts them on the selected brushes, Shift+M on the face under the cursor"><span id="swatch"></span><span id="material"></span></span>
     <span id="selection" role="status"></span>
   </nav>
   <main><canvas id="c"></canvas><div id="crosshair" hidden></div></main>
   <footer><span id="status" role="status">Loading map…</span>
-    <span id="help">Tab edit / fly · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
-    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay, audio or baked lighting. Brushes are drawn with their materials' images and face colours, lit by one fixed light, and entities are marked where the map places them.</span></details></footer>
+    <span id="help">0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay, audio or baked lighting. Brushes are drawn in their face colours or their materials' colours, lit by one fixed sun, and entities are marked where the map places them.</span></details></footer>
 </body>
 </html>

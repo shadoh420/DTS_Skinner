@@ -98,28 +98,92 @@ the mouse and keys 1–9 jump between viewpoints: the camera the map ends on
 spawn points at eye height. FOV (horizontal, as in the game), invert and Reset
 view are above the scene.
 
-Editing (**Tab**): a click selects a brush of the map, Shift-click adds or
-removes one, Escape clears the selection; the right button looks, WASD/QE
-move. The toolbar and keys:
+Editing (**0**, as in the game, or Tab) follows the game's editor binds, read
+from `game_default.cfg` of the install (its `bind me …` lines): the same
+first-person view, everything done at the mouse, with keys held to change what
+a drag does rather than separate tools.
+
+| Do | Mouse / key | Game's command (key) |
+| --- | --- | --- |
+| Switch flying / editing | 0 (or Tab) | `toggleeditor` (0), `cl_playerstate 1` (0) |
+| Select a brush | Click | `+editorprimary` (Mouse1) |
+| Add or remove one | Ctrl+click | `+editormultiselect` (Ctrl) |
+| Look | Hold the right button | `+editorcameradrag` (Mouse2) |
+| Move the selection on the grid, at the height it was taken | Drag a selected brush | `+editorprimary` |
+| Move it up and down | Alt+drag | `+editorvertical` (Alt) |
+| Push or pull one face (resize) | Shift+drag a face of a selected brush | `+editorfacemode` (Shift) |
+| Clone | G | `editorclone` (G) |
+| Delete | Backspace (or Delete) | `editordelete` (Backspace) |
+| Undo / redo | Z / X (or Ctrl+Z, Ctrl+Y) | `editorundo` (Z), `editorredo` (X) |
+| Pick up the material and colour under the cursor | K | `me_getmaterial` (K) |
+| Put them on the selection; on the face under the cursor | M; Shift+M | `me_setmaterial` (M) |
+| Clear the selection | Escape | |
+| Fly | WASD, Q / E down and up | |
+
+The toolbar shows the material K picked (or that of the face clicked last)
+and holds what the game's editor did not have:
 
 | Tool | Key | What it does |
 | --- | --- | --- |
-| Grid | | Snap and step size, 1 to 64 units; drawn on every surface while editing, with a heavier line every 8 steps |
-| New box | B | A box 8 grid steps wide, 256 units in front of the camera, on the grid, with the faces of the brush selected last |
+| Grid | | Snap and step size, 1 to 64 units, 16 to start with as the game's `me_snapdistance`; drawn on every surface while editing, with a heavier line every 8 steps |
+| New box | B | A box 8 grid steps wide, 256 units in front of the camera, on the grid, with the picked material |
 | Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap; the selection stays |
 | Hollow | H | Turns the selected brush into walls one grid step thick that do not overlap |
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
 | Split | C | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
-| Move | Arrows, PgUp/PgDn | Moves the selection one grid step along the horizontal axis nearest the view, or up and down |
-| Duplicate | Ctrl+D | Copies the selection one grid step along x |
-| Delete | Delete | |
-| Undo / Redo | Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y | The last 100 edits |
+| Nudge | Arrows, PgUp/PgDn | Moves the selection one grid step along the horizontal axis nearest the view, or up and down (in the game these keys move a face's texture) |
 | Save .map | Ctrl+S | Downloads the map as a Reflex map file |
+
+Every edit is one step of undo (the last 100), and undoing brings back the
+selection with it. While dragging, the yellow outline shows where the
+selection goes; releasing makes the edit. A face pulled through its brush
+stops at the last shape that is one.
 
 Brushes placed by a prefab are drawn but not selected: clicking one names its
 prefab. A brush that is not convex or has a bent face (the game's editor can
 make one by moving a vertex; 33 brushes of the stock maps are such) is drawn,
-and the CSG tools leave it alone.
+and the CSG tools and face dragging leave it alone.
+
+## How the game's editor worked
+
+What the page copies and what it does not yet, from the install's
+`game_default.cfg` and from what could be found of the game's editor
+documentation (the Reflex wiki at wiki.reflexfiles.com is gone, so its pages
+were seen only as search summaries; players' configs on GitHub, such as
+[Limegrass/configs](https://github.com/Limegrass/configs/blob/HEAD/games/reflex/game.cfg),
+and a [console reference](https://github.com/TonikwithaK/tarp-wiki/blob/HEAD/content/games/reflex/console.md)
+transcribed from AEon's command document were read as they are):
+
+- One key switches the live map between playing and editing, with no compile
+  step and the camera where it was. Several players could edit one map on a
+  server at once.
+- Everything is done in the one first-person view at the crosshair: click
+  selects, drag moves, Alt drags vertically, Shift works on the face under the
+  cursor, Ctrl adds to the selection. `editortogglevertexmode` (V) shows the
+  corners of a brush to drag one at a time; `editortoggleclipmode` (C) is
+  bound but was listed as unimplemented in 2015. Neither is on the page yet.
+- New things are made by choosing a type, `me_createtype` (keys 1–8:
+  worldspawn (a brush), teleporter, jumppad, target, effect, pickup,
+  pointlight, playerspawn; others by name), and dragging it out in the world.
+  The page's B makes a fixed box instead.
+- Snapping: `me_snapdistance` (16) and `me_snapangle`, with `me_rotate_inc` and
+  `me_rotate_dec` (numpad + and −) turning the selection.
+- Faces: `me_activematerial` and `me_activealbedo` set the material and colour
+  to put on; arrows, Home/End/Insert/Delete, PgUp/PgDn and `,`/`.` move, scale,
+  flip and turn a face's texture (`me_texcoords_*`).
+- The bridge tool (B, `me_startbridge`, added in 0.48): Shift-select a face,
+  press B, aim at another face, and brushes joining the two are shown; the
+  wheel (`me_segments_inc`/`_dec`) sets how many; a click makes them.
+- Prefabs (0.40): `me_createprefab <name>` from the selection,
+  `me_breakprefab`, `me_updateprefab`, `me_listprefabs`; placed as Prefab
+  entities that can nest.
+- `me_showproperties 1` (N) opens the selection's properties; teleporters and
+  jump pads name their Target there.
+- Light is baked with `r_lm_build` (F4) into light probes on a 64-unit grid
+  (the map's `.light` file); until then edited geometry is drawn fullbright.
+  `savemap` saves; the stock MapAutoSave widget saves numbered copies.
+- No subtract, hollow, merge or mirror was found in the game's editor; clip
+  brushes and `editor_nolight` did some of that work.
 
 ## The map file
 

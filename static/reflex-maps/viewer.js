@@ -3,15 +3,19 @@
    a root mirrored on z, so x right, y up and z forward appear as in the game; Three turns the front faces of a
    mirrored mesh round itself, so faces wound counter-clockwise from outside in the file face out here too.
 
-   Tab switches between flying and editing, as the game's editor switches between playing and editing. While
-   editing, a click selects a brush of the map (Shift adds), the right button looks, and the toolbar's CSG works on
-   the selection. Brushes placed by a prefab are drawn but not edited: their prefab holds them. */
+   0 (or Tab) switches between flying and editing, as the game's 0 switches between playing and editing. The editing
+   controls follow the game's editor binds (game_default.cfg, "bind me"): a click selects a brush of the map, Ctrl
+   adds to the selection, the right button looks; dragging a selected brush moves it on the grid, Alt dragging it up
+   and down, and Shift dragging one of its faces pushes or pulls that face; G clones, Backspace deletes, Z and X undo
+   and redo, K picks up the material under the cursor and M puts it on the selection (Shift+M on one face). The
+   toolbar's CSG, which the game's editor did not have, works on the selection. Brushes placed by a prefab are drawn
+   but not edited: their prefab holds them. */
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const B = window.ReflexBrush, M = window.ReflexMap;
   const storageKey = 'skinner.reflexmaps';
-  const settings = {fov: 100, invertX: false, invertY: false, grid: 8};
+  const settings = {fov: 100, invertX: false, invertY: false, grid: 16};  // The game's me_snapdistance is 16.
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -144,7 +148,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             colours.push(...diffuse);
             speculars.push(...specular);
           }
-          owners.push(index);
+          owners.push([index, face]);
         }
       }
     });
@@ -280,45 +284,54 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Fields a new brush takes: those of the selected face's brush if any, else plain concrete.
   let template = {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: 'common/materials/stone/concrete'};
 
+  // A step of undo is the map's list of items and what was selected, so undoing brings back both.
+  const snapshot = () => ({items: globalGroup().items.slice(), selected: [...selected]});
   function remember() {
-    undoStack.push(globalGroup().items.slice());
+    undoStack.push(snapshot());
     if (undoStack.length > 100) undoStack.shift();
     redoStack.length = 0;
   }
   function restore(from, to) {
     if (!from.length) return;
-    to.push(globalGroup().items.slice());
-    globalGroup().items = from.pop();
-    for (const item of [...selected]) if (!globalGroup().items.includes(item)) selected.delete(item);
+    to.push(snapshot());
+    const step = from.pop();
+    globalGroup().items = step.items;
+    selected.clear();
+    for (const item of step.selected) if (step.items.includes(item)) selected.add(item);
     rebuild(); showReady();
   }
   // Replaces brushes of the map: `changes` maps an old brush to the brushes standing in its place.
   function replace(changes, added = [], select = null) {
     remember();
-    const items = [];
+    const items = [], changed = [];
     for (const item of globalGroup().items) {
       if (!changes.has(item)) { items.push(item); continue; }
-      items.push(...changes.get(item).map(brush => ({kind: 'brush', vertices: brush.vertices, faces: brush.faces})));
+      const instead = changes.get(item).map(brush => ({kind: 'brush', vertices: brush.vertices, faces: brush.faces}));
+      items.push(...instead);
+      changed.push(...instead);
     }
     const fresh = added.map(brush => ({kind: 'brush', vertices: brush.vertices, faces: brush.faces}));
     items.push(...fresh);
     globalGroup().items = items;
     selected.clear();
-    for (const item of select === 'added' ? fresh : select || []) if (items.includes(item)) selected.add(item);
+    selection.position.set(0, 0, 0);
+    for (const item of select === 'added' ? fresh : select === 'changed' ? changed : select || []) if (items.includes(item)) selected.add(item);
     rebuild(); showReady();
   }
   const selectedBrushes = () => [...selected];
   const say = text => { $('selection').textContent = text; };
 
-  function showSelection() {
+  // The selection's overlay; `preview` maps a selected brush to the brush a drag would make of it.
+  function showSelection(preview = new Map()) {
     selection.clear();
     if (!flat) return;
     for (const entry of flat.brushes) {
       if (!selected.has(entry.source) || entry.path.length) continue;
-      const geometry = buildMesh([entry], () => true, []);
+      const brush = preview.get(entry.source) || entry.brush;
+      const geometry = buildMesh([{brush}], () => true, []);
       selection.add(new THREE.Mesh(geometry, selectedFill));
       const lines = [];
-      for (const face of entry.brush.faces) face.indices.forEach((index, n) => lines.push(...entry.brush.vertices[index], ...entry.brush.vertices[face.indices[(n + 1) % face.indices.length]]));
+      for (const face of brush.faces) face.indices.forEach((index, n) => lines.push(...brush.vertices[index], ...brush.vertices[face.indices[(n + 1) % face.indices.length]]));
       const edges = new THREE.BufferGeometry();
       edges.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
       selection.add(new THREE.LineSegments(edges, selectedEdges));
@@ -334,7 +347,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('clip').disabled = !count || !convex || !lastPoint;
     $('duplicate').disabled = $('delete').disabled = !count;
     $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length;
-    if (count) say(`${count} selected · arrows / PgUp PgDn move by ${settings.grid}`);
+    if (count) say(`${count} selected · drag to move (Alt up and down), Shift-drag a face to push or pull it · grid ${settings.grid}`);
+    $('material').textContent = `${template.material || 'no material'}${template.colour && M.colourOf(template) ? ` · ${template.colour}` : ''}`;
+    $('swatch').style.background = '#' + new THREE.Color(...faceShade(template).diffuse.map(c => Math.pow(c, 1 / 2.2))).getHexString();
   }
 
   // Picks the brush under the mouse. Placed prefab brushes are reported, not selected.
@@ -346,29 +361,133 @@ window.addEventListener('DOMContentLoaded', async () => {
     const hit = raycaster.intersectObjects([world, glass, clips], false)[0];
     if (!hit) return null;
     const owners = hit.object === world ? entryOfTriangle : hit.object === glass ? glassEntryOfTriangle : clipEntryOfTriangle;
-    const entry = flat.brushes[owners[hit.faceIndex]];
+    const [index, face] = owners[hit.faceIndex];
     const point = root.worldToLocal(hit.point.clone()).toArray();
     const normal = hit.face.normal.toArray();  // Geometry normals are in the game's axes already.
-    return {entry, point, normal};
+    return {entry: flat.brushes[index], face, point, normal};
   }
+  const adding = event => event.ctrlKey || event.metaKey;
   function select(event) {
     const hit = pick(event);
-    if (!hit) { if (!event.shiftKey) selected.clear(); say(''); showSelection(); return; }
+    if (!hit) { if (!adding(event)) selected.clear(); say(''); showSelection(); return; }
     lastPoint = hit.point; lastNormal = hit.normal;
     if (hit.entry.path.length) {
       say(`Part of prefab "${M.property(hit.entry.path[0], 'prefabName')}", placed by a Prefab entity; edit the prefab in Reflex`);
-      if (!event.shiftKey) selected.clear();
+      if (!adding(event)) selected.clear();
       showSelection();
       return;
     }
     const item = hit.entry.source;
-    if (event.shiftKey) { if (selected.has(item)) selected.delete(item); else selected.add(item); } else { selected.clear(); selected.add(item); }
-    const face = item.faces.find(f => !isClip(f)) || item.faces[0];
-    if (face) template = {...face, indices: undefined};
-    delete template.indices;
+    if (adding(event)) { if (selected.has(item)) selected.delete(item); else selected.add(item); } else { selected.clear(); selected.add(item); }
     const problems = B.check(item);
-    say(`${selected.size} selected${problems.length ? ` · this brush is ${problems.join(', ')}; CSG leaves it alone` : ''} · ${face ? face.material || 'no material' : ''}`);
     showSelection();
+    if (problems.length) say(`${selected.size} selected · this brush is ${problems.join(', ')}; CSG and dragging faces leave it alone`);
+  }
+  // The fields of a face, without its vertices: what a new brush or M gives faces.
+  const fieldsOf = face => { const fields = {...face}; delete fields.indices; return fields; };
+
+  // ---- Dragging (the game's +editorprimary with +editorvertical and +editorfacemode) ----
+  // The mouse ray in the game's axes.
+  function ray(event) {
+    const rect = canvas.getBoundingClientRect();
+    pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    const {origin, direction} = raycaster.ray;
+    return {origin: [origin.x, origin.y, -origin.z], direction: [direction.x, direction.y, -direction.z]};
+  }
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  // How far along the line through `point` in direction `along` the mouse ray comes closest.
+  function alongLine(point, along, {origin, direction}) {
+    const w = point.map((p, i) => p - origin[i]), a = dot(along, along), b = dot(along, direction), c = dot(direction, direction);
+    const denominator = a * c - b * b;
+    return Math.abs(denominator) < 1e-9 ? 0 : (b * dot(direction, w) - c * dot(along, w)) / denominator;
+  }
+  let drag = null;
+  function startDrag(event) {
+    const hit = pick(event);
+    if (!hit || hit.entry.path.length) return;
+    const item = hit.entry.source;
+    if (event.shiftKey) {
+      // Push or pull the face under the mouse of a selected brush along its normal.
+      if (!selected.has(item) || !B.convex(item)) return;
+      const plane = B.planesOf(item).find(candidate => candidate.face === hit.face);
+      if (plane) drag = {kind: 'face', item, plane, point: hit.point, offset: 0, result: item};
+      return;
+    }
+    if (adding(event)) return;
+    if (!selected.has(item)) { selected.clear(); selected.add(item); showSelection(); }
+    drag = {kind: 'move', point: hit.point, offset: [0, 0, 0]};
+  }
+  function continueDrag(event) {
+    const mouse = ray(event), grid = settings.grid;
+    if (drag.kind === 'move') {
+      let offset;
+      if (event.altKey) offset = [0, Math.round(alongLine(drag.point, [0, 1, 0], mouse) / grid) * grid, 0];
+      else {
+        // Across the level the brush was taken at.
+        if (Math.abs(mouse.direction[1]) < 1e-6) return;
+        const t = (drag.point[1] - mouse.origin[1]) / mouse.direction[1];
+        if (t <= 0) return;
+        offset = [0, 2].reduce((o, axis) => { o[axis] = Math.round((mouse.origin[axis] + mouse.direction[axis] * t - drag.point[axis]) / grid) * grid; return o; }, [0, 0, 0]);
+      }
+      drag.offset = offset.map(x => x + 0);
+      selection.position.set(...drag.offset);
+      say(`Move ${drag.offset.join(' ')}`);
+      return;
+    }
+    // A face square to an axis lands on the grid; a slanted one moves by whole grid steps.
+    const {plane} = drag, along = alongLine(drag.point, plane.normal, mouse), square = plane.normal.some(n => Math.abs(Math.abs(n) - 1) < 1e-6);
+    const distance = square ? Math.round((plane.distance + along) / grid) * grid : plane.distance + Math.round(along / grid) * grid;
+    if (distance === plane.distance + drag.offset) return;
+    const result = B.fromPlanes(B.planesOf(drag.item).map(candidate => candidate === plane || candidate.face === plane.face ? {...candidate, distance} : candidate));
+    if (!result) return;  // Pushed through the brush: keep the last shape that was one.
+    drag.offset = distance - plane.distance;
+    drag.result = result;
+    showSelection(new Map([[drag.item, result]]));
+    say(`Face ${drag.offset > 0 ? '+' : ''}${Math.round(drag.offset * 1000) / 1000}`);
+  }
+  function endDrag() {
+    const done = drag;
+    drag = null;
+    selection.position.set(0, 0, 0);
+    if (done.kind === 'move' && done.offset.some(Boolean)) {
+      const items = selectedBrushes();
+      replace(new Map(items.map(item => [item, [B.translate(item, done.offset)]])), [], 'changed');
+      say(`Moved ${done.offset.join(' ')}`);
+      return true;
+    }
+    if (done.kind === 'face' && done.offset) {
+      replace(new Map([[done.item, [done.result]]]), [], 'changed');
+      say(`Face moved ${Math.round(done.offset * 1000) / 1000}`);
+      return true;
+    }
+    showSelection();
+    return false;
+  }
+
+  // K and M: the game's me_getmaterial and me_setmaterial.
+  let mouseAt = null;
+  function pickMaterial() {
+    const hit = mouseAt && pick(mouseAt);
+    if (!hit) return;
+    template = fieldsOf(hit.face);
+    updateTools();
+    say(`Picked ${template.material || 'no material'}${M.colourOf(template) ? ' · ' + template.colour : ''}`);
+  }
+  function applyMaterial(oneFace) {
+    const paint = face => ({...face, material: template.material, colour: template.colour});
+    if (oneFace) {
+      const hit = mouseAt && pick(mouseAt);
+      if (!hit || hit.entry.path.length) return;
+      const item = hit.entry.source;
+      replace(new Map([[item, [{vertices: item.vertices, faces: item.faces.map(face => face === hit.face ? paint(face) : face)}]]]), [], selected.has(item) ? 'changed' : null);
+      say(`Material on one face: ${template.material || 'no material'}`);
+      return;
+    }
+    const items = selectedBrushes();
+    if (!items.length) return;
+    replace(new Map(items.map(item => [item, [{vertices: item.vertices, faces: item.faces.map(paint)}]])), [], 'changed');
+    say(`Material on ${items.length} brushes: ${template.material || 'no material'}`);
   }
 
   // The brush operations, each one step of undo.
@@ -446,13 +565,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   };
   function move(offset) {
     const items = selectedBrushes();
-    if (!items.length) return;
-    const moved = items.map(item => B.translate(item, offset));
-    replace(new Map(items.map((item, index) => [item, [moved[index]]])), [], null);
-    // Keep the moved brushes selected.
-    const fresh = globalGroup().items.filter(item => moved.some(brush => brush.vertices === item.vertices));
-    fresh.forEach(item => selected.add(item));
-    showSelection();
+    if (items.length) replace(new Map(items.map(item => [item, [B.translate(item, offset)]])), [], 'changed');
   }
   for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', event => { action(); event.target.blur(); });
 
@@ -465,8 +578,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('crosshair').hidden = on;
     if (on && document.pointerLockElement === canvas) document.exitPointerLock();
     $('help').textContent = on
-      ? 'Tab fly · Click select (Shift adds) · Right-drag look · WASD move · Arrows / PgUp PgDn move selection · B box · H hollow · C split · Del delete · Ctrl+Z undo'
-      : 'Tab edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints';
+      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Right-drag look · WASD QE move · G clone · Backspace delete · Z/X undo/redo · K/M pick/put material · B box · H hollow · C split'
+      : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints';
     requestAnimationFrame(applySettings);  // The toolbar changes the canvas height.
   }
 
@@ -494,18 +607,24 @@ window.addEventListener('DOMContentLoaded', async () => {
   canvas.addEventListener('contextmenu', event => event.preventDefault());
   canvas.addEventListener('mousedown', event => {
     if (editing) {
-      if (event.button === 2) looking = true; else if (event.button === 0) downAt = [event.clientX, event.clientY];
+      if (event.button === 2) looking = true;
+      else if (event.button === 0 && flat) { downAt = [event.clientX, event.clientY]; startDrag(event); }
       return;
     }
     looking = true;
     try { Promise.resolve(canvas.requestPointerLock()).catch(() => { /* Drag-to-look still works. */ }); } catch (_) { /* Same. */ }
   });
   window.addEventListener('mouseup', event => {
-    if (editing && event.button === 0 && downAt && Math.hypot(event.clientX - downAt[0], event.clientY - downAt[1]) < 5 && flat) select(event);
-    looking = false; downAt = null;
+    const still = downAt && Math.hypot(event.clientX - downAt[0], event.clientY - downAt[1]) < 5;
+    const dragged = editing && event.button === 0 && drag ? endDrag() : false;
+    if (editing && event.button === 0 && still && !dragged && flat) select(event);
+    if (event.button === 2 || !editing) looking = false;
+    downAt = null;
   });
   window.addEventListener('blur', () => { looking = false; keys.clear(); });
   document.addEventListener('mousemove', event => {
+    if (event.target === canvas) mouseAt = {clientX: event.clientX, clientY: event.clientY};
+    if (drag && editing) { continueDrag(event); return; }
     if (!looking && document.pointerLockElement !== canvas) return;
     camera.rotation.y -= event.movementX * .0025 * (settings.invertX ? -1 : 1);
     camera.rotation.x = Math.max(-1.55, Math.min(1.55, camera.rotation.x - event.movementY * .0025 * (settings.invertY ? -1 : 1)));
@@ -518,7 +637,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', event => {
     if (event.target.matches('input:not([type=checkbox]), select')) return;
     const ctrl = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
-    if (event.code === 'Tab') { event.preventDefault(); setEditing(!editing); return; }
+    if (event.code === 'Tab' || (event.code === 'Digit0' && !ctrl)) { event.preventDefault(); setEditing(!editing); return; }
     if (/^Digit[1-9]$/.test(event.code) && !ctrl) showViewpoint(Number(event.code.slice(5)) - 1);
     if (editing && flat) {
       if (ctrl && key === 'z') { event.preventDefault(); actions[event.shiftKey ? 'redo' : 'undo'](); return; }
@@ -527,11 +646,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (ctrl && key === 's') { event.preventDefault(); actions.save(); return; }
       if (ctrl && key === 'd') { event.preventDefault(); if (selected.size) actions.duplicate(); return; }
       if (ctrl && key === 'm') { event.preventDefault(); if (!$('merge').disabled) actions.merge(); return; }
+      if (!ctrl && event.code === 'KeyZ') { actions.undo(); return; }
+      if (!ctrl && event.code === 'KeyX') { actions.redo(); return; }
+      if (!ctrl && event.code === 'KeyG') { if (selected.size) actions.duplicate(); return; }
+      if (!ctrl && event.code === 'KeyK') { pickMaterial(); return; }
+      if (!ctrl && event.code === 'KeyM') { applyMaterial(event.shiftKey); return; }
       if (!ctrl && key === 'b') { actions.newBrush(); return; }
       if (!ctrl && key === 'h' && !$('hollow').disabled) { actions.hollow(); return; }
       if (!ctrl && key === 'c' && !$('clip').disabled) { actions.clip(); return; }
       if ((event.code === 'Delete' || event.code === 'Backspace') && selected.size) { event.preventDefault(); actions.delete(); return; }
-      if (event.code === 'Escape') { selected.clear(); say(''); showSelection(); return; }
+      if (event.code === 'Escape') { if (drag) { drag = null; selection.position.set(0, 0, 0); } selected.clear(); say(''); showSelection(); return; }
       // Arrows move the selection along the horizontal axis nearest to where the camera looks.
       const step = settings.grid, yaw = -camera.rotation.y, along = Math.round(yaw / (Math.PI / 2)) & 3;
       const ahead = [[0, 0, 1], [1, 0, 0], [0, 0, -1], [-1, 0, 0]][along], side = [[1, 0, 0], [0, 0, -1], [-1, 0, 0], [0, 0, 1]][along];
@@ -548,11 +672,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     camera.getWorldDirection(forward);
     right.crossVectors(forward, camera.up).normalize();
     step.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
-    step.y += held('Space') + held('KeyE') - held('ShiftLeft') - held('ShiftRight') - held('KeyQ');
+    step.y += held('Space') + held('KeyE') - held('KeyQ') - (editing ? 0 : held('ShiftLeft') + held('ShiftRight'));
     if (step.lengthSq()) camera.position.addScaledVector(step.normalize(), speed * delta);
     renderer.render(scene, camera);
   });
-  window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, load, actions, selected, setEditing, showViewpoint};
+  window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; }, load, actions, selected, setEditing, showViewpoint};
 
   // ---- Loading ----
   $('open').addEventListener('change', async event => {
@@ -607,7 +731,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!maps.length) $('importPanel').open = true;
       load(M.write(M.empty()), 'untitled');
       setEditing(true);
-      say('New map: B makes a box in front of the camera; Open .map file loads one from disk');
+      say('New map: B makes a box in front of the camera; 0 flies; Open .map file loads one from disk');
     }
   } catch (error) { showStatus('Map could not load: ' + error.message); }
 });
