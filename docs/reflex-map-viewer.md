@@ -5,8 +5,9 @@ the map's brushes coloured by their faces' colours and materials, prefabs
 placed where the map places them, and its entities marked. **Tab** switches
 between flying and editing, as the game's editor switches between playing and
 editing a map. While editing, brushes of the map are selected, made, carved,
-hollowed, merged, split, moved, copied and deleted, with undo, and the map is
-saved back as a Reflex `.map` file. No collision, movement physics, gameplay,
+hollowed, merged, split, clipped, moved, turned, copied and deleted, their
+textures moved, scaled and turned, prefabs made, broken and updated, with
+undo, and the map is saved back as a Reflex `.map` file. No collision, movement physics, gameplay,
 audio or baked lighting. Q3, T1 and T2 maps have their own pages, see
 [q3-map-viewer.md](q3-map-viewer.md), [t1-map-viewer.md](t1-map-viewer.md)
 and [t2-map-viewer.md](t2-map-viewer.md).
@@ -113,7 +114,7 @@ a drag does rather than separate tools.
 | Move it up and down | Alt+drag | `+editorvertical` (Alt) |
 | Push or pull one face (resize) | Shift+drag a face of a selected brush | `+editorfacemode` (Shift) |
 | Clone | G | `editorclone` (G) |
-| Delete | Backspace (or Delete) | `editordelete` (Backspace) |
+| Delete | Backspace | `editordelete` (Backspace) |
 | Undo / redo | Z / X (or Ctrl+Z, Ctrl+Y) | `editorundo` (Z), `editorredo` (X) |
 | Choose what a click makes: brush, teleporter, jump pad, target, effect, pickup, point light, player spawn | 1–8 (again, or Escape, to stop) | `me_createtype` (1–8) |
 | Make a brush, or a teleporter's or jump pad's volume | Drag a rectangle on a surface (or on the ground, y = 0) | `+editorprimary` |
@@ -122,9 +123,16 @@ a drag does rather than separate tools.
 | Pick a face (for the bridge) | Shift+click | `+editorfacemode` (Shift) |
 | Bridge the picked face to the face aimed at; steps; make it | B, then the wheel, then click | `me_startbridge` (B), `me_segments_inc/dec` (wheel) |
 | Properties of the selection, or of the map | N | `me_showproperties 1` (N) |
+| Turn the selection about the vertical through its middle, by the angle step | Numpad + / − | `me_rotate_inc` / `me_rotate_dec` (numpad + / −), `me_snapangle` |
+| Move the texture of the face under the cursor (or the face Shift-click picked) a grid step | Arrows | `me_texcoords_inc/dec_offset_x/y` (arrows) |
+| Scale it up / down along u; along v | Home / Insert; End / Delete | `me_texcoords_inc/dec_scale_x/y` |
+| Flip it along u; along v | PgUp; PgDn | `me_texcoords_flip_scale_x/y` |
+| Turn it by the angle step | `,` / `.` | `me_texcoords_dec/inc_rotation` |
+| Clip mode: click two or three points of a plane; Enter clips, Shift+Enter splits, the wheel (or Ctrl+Enter) flips the side kept | C | `editortoggleclipmode` (C) |
+| The console, for commands with no key (prefabs and the rest below) | ` | the game's console |
 | Pick up the material and colour under the cursor | K | `me_getmaterial` (K) |
 | Put them on the selection; on the face under the cursor | M; Shift+M | `me_setmaterial` (M) |
-| Clear the selection | Escape | |
+| Leave a mode, or clear the selection | Escape | |
 | Fly | WASD, Q / E down and up | |
 
 The toolbar shows the material K picked (or that of the face clicked last)
@@ -133,13 +141,18 @@ and holds what the game's editor did not have:
 | Tool | Key | What it does |
 | --- | --- | --- |
 | Grid | | Snap and step size, 1 to 64 units, 16 to start with as the game's `me_snapdistance`; drawn on every surface while editing, with a heavier line every 8 steps |
+| Angle | | The step numpad + and − turn the selection by and `,` and `.` turn a texture by (the game's `me_snapangle`): 1 to 90 degrees, 45 to start with (the game's own default is not known; 45 is the step most angles of the stock maps are on) |
+| ⟲ ⟳ | Numpad − + | Turn the selection |
 | New box | | A box 8 grid steps wide, 256 units in front of the camera, on the grid, with the picked material (1 and a drag on a surface makes one where wanted) |
 | Properties | N | Opens the property panel |
 | Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap; the selection stays |
 | Hollow | H | Turns the selected brush into walls one grid step thick that do not overlap |
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
-| Split | C | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
-| Nudge | Arrows, PgUp/PgDn | Moves the selection one grid step along the horizontal axis nearest the view, or up and down (in the game these keys move a face's texture) |
+| Split | | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
+| Clip | C | Clip mode, as below |
+| Prefabs | | The map's prefabs, with how many placements each has: make one from the selection, break the selected placements, update a prefab from the selection, place one or select its placements |
+| Console | ` | Runs editor commands, below |
+| Nudge | Shift+arrows, Shift+PgUp/PgDn | Moves the selection one grid step along the horizontal axis nearest the view, or up and down (without Shift, as in the game, these keys move a face's texture) |
 | Save .map | Ctrl+S | Downloads the map as a Reflex map file |
 
 Every edit is one step of undo (the last 100), and undoing brings back the
@@ -194,6 +207,77 @@ The mode (create, vertex, bridge) and the status stand over the scene, and
 the footer keeps one line, so the scene never changes size under the mouse
 while working.
 
+**Turning** (numpad + and −, or ⟲ and ⟳) turns the selection about the
+vertical through the middle of its box, by the angle step; + turns +z toward
++x, as a positive yaw turns a prefab. Brushes turn, entities move round with
+them and their yaw turns too (an Effect, Prefab, PlayerSpawn, Target or Pickup
+without angles is given them), and a volume turns with its entity. A quarter
+turn of a selection whose corner is on the grid can leave it half a step off
+(a box 64 by 16 about its middle); it then moves the rest of the way, so it
+stays on the grid. Other angles leave corners off the grid, as the game's do.
+
+**Texture keys**, as the game binds them: on the face under the cursor, or on
+the face Shift-click picked while one is (outlined in light blue), the arrows
+move the texture a grid step (left and right along u, up and down along v),
+Home and Insert scale it up and down along u by a quarter, End and Delete
+along v, PgUp and PgDn flip it along u and v (the scale's sign), and `,` and
+`.` turn it by the angle step. Each press is a step of undo. Textures are not
+drawn, so the face changed shows its texture coordinates as a pattern: tiles
+of 64 units shaded red along u and green along v, chequered every 16. Those
+coordinates are a guess at the game's mapping (`texcoords` in `brush.js`):
+Quake 3's, projecting the face on the axis plane it faces most, turning by
+the rotation, dividing by the scale and adding the offset, which is what
+[Q3ToReflex](https://github.com/chronokun/Q3ToReflex) assumes when it
+converts Quake 3 faces (with its scale doubled, and a note that offsets,
+scales and rotations may not come out right). The values written are what
+the keys set either way; only the preview may differ from the game. The
+steps (a grid step, a quarter, the angle step) are the page's choice: the
+stock maps' offsets are mostly multiples of 16, their scales other than 1
+mostly quarters and their rotations mostly multiples of 45.
+
+**The clipper** (C, as the game's `editortoggleclipmode`, which was bound but
+listed as unimplemented in 2015, so this is Radiant's clipper in the game's
+key): select brushes, press C and click two or three points on surfaces
+(on the grid across them, red dots; a click near a dot drags it, a fourth
+click starts again). Three points make the plane through them; two make the
+upright plane through them, or, when they are one above the other, the plane
+through them along the view. The parts of the selected brushes it would keep
+are outlined green and those it would cut away red: the side kept is the one
+away from the camera, and the wheel or Ctrl+Enter flips it. Enter clips
+(a brush wholly on the side cut away goes), Shift+Enter splits, keeping both
+parts; the points stay for another cut, and Escape clears them, then leaves
+clip mode. The cut faces take the picked material, as new brushes do (a
+volume's, its own). The Split button still cuts on a grid plane at the last
+click.
+
+**Prefabs.** A Prefab entity places a prefab; clicking anything it places
+selects it, as one thing, outlined whole, to move, turn, clone and delete as
+an entity. The console (`) takes the game's commands, and the Prefabs panel
+has a button for each:
+
+| Command | What it does |
+| --- | --- |
+| `me_createprefab <name>` | The selection becomes the prefab `name` (letters, digits, `_`, `.` and `-`), placed where it stood by a new Prefab entity: its origin the middle of the selection across and its bottom, on the grid. A selected volume takes its entity with it and the other way round |
+| `me_breakprefab` | Each selected placement becomes copies of what its prefab holds, where it placed them: brushes of the world, entities (a nested Prefab stays a Prefab), selected. The prefab stays for its other placements |
+| `me_updateprefab [name]` | The selection becomes what the prefab holds, in every placement of it, and is replaced by a placement where it stood. Without a name, the prefab the selection was broken from (an edited, cloned or carved piece remembers it); it goes back by the inverse of that placement's position and turn, so every other placement shows the change in its own place. A prefab named but not broken from takes the selection about a new origin, as `me_createprefab` would |
+| `me_listprefabs` | Opens the Prefabs panel: each prefab with how many Prefab entities name it (in the map and in other prefabs, as the game's `meGetPrefabList` gives `refCount`), Place (the next click on a surface places one, turned to the view, as `me_createtype prefab <name>`) and Select (its placements in the map) |
+
+So editing a prefab is: click one of its placements, `me_breakprefab`, change
+the pieces, select them, `me_updateprefab`. Undo undoes a prefab change as one
+step, with the map's. New prefabs are written before `global`, each starting
+with a WorldSpawn, as every prefab of the stock maps does. Breaking every
+placement in the 18 stock maps gives exactly the brushes the page draws for
+it, and putting each back gives the prefab's own coordinates (within 0.001).
+What the game's own `me_updateprefab` takes, a name or the selection's
+prefab, is not known; the page takes either. A placement's pitch and roll do
+not carry to the angles of the entities inside when it is broken; no stock
+map tilts a prefab that holds entities with angles.
+
+The console also takes `me_rotate_inc`, `me_rotate_dec`, `me_snapangle <n>`,
+`me_snapdistance <n>`, `me_createtype <type> [prefab name]`,
+`me_showproperties`, `editortoggleclipmode`, `editortogglevertexmode` and
+`help`.
+
 **Entities** are selected by their markers (within 12 pixels; volumes, clips
 and glass do not hide them), moved, cloned and deleted as brushes are.
 Teleporters and jump pads have no position, so they are selected by their
@@ -207,8 +291,7 @@ maps have bent faces or are not convex; the CSG tools leave such brushes
 alone). A corner dropped on another corner of its brush becomes it, and faces
 left with fewer than three corners go.
 
-Brushes placed by a prefab are drawn but not selected: clicking one names its
-prefab. A brush that is not convex or has a bent face (the game's editor can
+A brush that is not convex or has a bent face (the game's editor can
 make one by moving a vertex; 33 brushes of the stock maps are such) is drawn,
 and the CSG tools and face dragging leave it alone.
 
@@ -229,24 +312,26 @@ transcribed from AEon's command document were read as they are):
   selects, drag moves, Alt drags vertically, Shift works on the face under the
   cursor, Ctrl adds to the selection. `editortogglevertexmode` (V) shows the
   corners of a brush to drag one at a time; `editortoggleclipmode` (C) is
-  bound but was listed as unimplemented in 2015. Vertex mode is on the page;
-  the clipper is not.
+  bound but was listed as unimplemented in 2015. Both are on the page, the
+  clipper as Radiant's.
 - New things are made by choosing a type, `me_createtype` (keys 1–8:
   worldspawn (a brush), teleporter, jumppad, target, effect, pickup,
   pointlight, playerspawn; others by name), and dragging it out in the world,
   as on the page; B on the page also makes a fixed box.
 - Snapping: `me_snapdistance` (16) and `me_snapangle`, with `me_rotate_inc` and
-  `me_rotate_dec` (numpad + and −) turning the selection.
+  `me_rotate_dec` (numpad + and −) turning the selection. On the page.
 - Faces: `me_activematerial` and `me_activealbedo` set the material and colour
   to put on; arrows, Home/End/Insert/Delete, PgUp/PgDn and `,`/`.` move, scale,
-  flip and turn a face's texture (`me_texcoords_*`).
+  flip and turn a face's texture (`me_texcoords_*`). On the page, with the
+  bound keys; the steps the game takes are not known.
 - The bridge tool (B, `me_startbridge`, added in 0.48): Shift-select a face,
   press B, aim at another face, and brushes joining the two are shown; the
   wheel (`me_segments_inc`/`_dec`) sets how many; a click makes them. On the
   page, as above.
 - Prefabs (0.40): `me_createprefab <name>` from the selection,
   `me_breakprefab`, `me_updateprefab`, `me_listprefabs`; placed as Prefab
-  entities that can nest.
+  entities that can nest. The game's Lua API has `meGetPrefabList()`, giving
+  each prefab's name and `refCount`. On the page, from its console.
 - `me_showproperties 1` (N) opens the selection's properties; teleporters and
   jump pads name their Target there. On the page, as above.
 - Light is baked with `r_lm_build` (F4) into light probes on a 64-unit grid
@@ -368,16 +453,15 @@ random convex brushes.
 
 - **Textures**: faces are drawn flat in their colour, lit by one fixed sun and
   the sky, with the editor's grid while editing. How the game maps the face's
-  offset, scale and rotation to texture coordinates has not been checked; the
-  page keeps those values and writes them back unchanged.
+  offset, scale and rotation to texture coordinates has not been checked: the
+  texture keys set those values, and the preview of a changed face shows
+  Quake 3's mapping of them, a guess.
 - **Effects** (the game's models, by `effectName`) are marked as small grey
   points while editing, not drawn. Sky, fog and the baked light are not drawn;
   the background is the WorldSpawn's horizon colour.
-- **Editing** works on the brushes of the map (`global`), not on prefabs or
-  entities. There is no face selection, texture tool, vertex editing or
-  clipper of three points yet, and Split cuts only on grid planes square to
-  the axes. `brush.js` already has the arbitrary-plane clip and a ray test the
-  page can build a three-point clipper and face picking on.
+- **Editing** works on the map (`global`): a prefab is edited by breaking a
+  placement and updating the prefab from the pieces, not in place. One face
+  at a time is picked (Shift-click), not a selection of faces.
 - **Play mode**: flying stands in for the game's play mode. Movement with
   collision against the brushes (the planes `brush.js` keeps are what a
   Quake-style player trace needs) is the next step toward it.
@@ -388,7 +472,8 @@ random convex brushes.
 
 - `node --test tests/reflex_maps.test.cjs`: brush CSG and the map file reader
   and writer. Set `REFLEX_MAPS` to a folder of `.map` files to also read each,
-  write it back unchanged and place its prefabs.
+  write it back unchanged and place its prefabs, and to break every placement
+  of its prefabs and put each back.
 - `python -m unittest tests.test_reflex_maps`: the import, the routes, and the
   Node tests when Node is installed. Set `REFLEX_GAME_BASE` to a Reflex Arena
   folder to import that install and run the Node tests over its maps.
@@ -400,19 +485,27 @@ random convex brushes.
   and a target, moves the pickup by its marker, deletes the teleporter by its
   volume; drags and welds corners in vertex mode; sets the map's title, a
   pickup's type and a teleporter's target in the property panel; bridges a
-  face to another at a right angle in six steps; then draws the first imported
-  map and checks it is not blank. Run eight times in a row it passed every
-  time.
+  face to another at a right angle in six steps; turns a box and a spawn a
+  quarter onto the grid with numpad + and back with −; moves, scales, flips
+  and turns a face's texture with the bound keys and undoes each; nudges with
+  Shift; clips a box with two points, splits it and clips the other side;
+  makes a prefab from the console, selects it by clicking it, clones and
+  drags it, breaks the clone, pulls its top up and updates the prefab, which
+  changes both placements, undoes that, and places a third from the Prefabs
+  list; then draws the first imported map and checks it is not blank. Run
+  five times in a row it passed every time.
 
 Checked on 2026-10-02 with the 18 maps of a stock install (Steam folder
 `reflexfps`): AbandonedShelter, Aerowalk, Ashur, empty, forge, furnace,
 Fusion, Hieratic, ironguard, Phobos, Ruin, SkyTemples, TheCatalyst and the
 five training stages. Every one reads and writes back identical and places
 every prefab it names (Hieratic, the largest: 8,539 brushes, 4,192 of them
-from prefabs, drawn in about a second in headless Chromium). The import ran
-against a stand-in install with those maps and the stock `common.pak`, which
-and `common.pak`, `environment.pak`, `structural.pak` and the material files of
-`internal.pak`, which gave a colour to 50 of the 55 materials the maps name.
+from prefabs, drawn in about a second in headless Chromium; breaking and
+updating one of its prefabs takes under a second, and undoing both gives back
+the file byte for byte). The import ran against a stand-in install with those
+maps and the stock `common.pak`, `environment.pak`, `structural.pak` and the
+material files of `internal.pak`, which gave a colour to 50 of the 55
+materials the maps name.
 The other five have none to give: the three clip materials (a texture) and
 race start and finish (an effect shader). Not
 checked: any map against the game side by side.

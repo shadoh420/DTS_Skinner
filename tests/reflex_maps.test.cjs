@@ -408,3 +408,89 @@ test('a bridge refuses faces of different corner counts', () => {
   const quad = faceOf(box, points => points.every(p => p[0] === 32));
   assert.equal(B.bridge(quad, [1, 0, 0], [[64, 0, 0], [64, 32, 0], [64, 0, 32]], [-1, 0, 0], 2, cutter), null);
 });
+
+test('texture coordinates project a face on the axis plane it faces, then turn, scale and offset them', () => {
+  const box = B.box([0, 0, 0], [64, 32, 16], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0});
+  const top = box.faces.find(face => face.indices.every(i => box.vertices[i][1] === 32));
+  const corner = brush => B.texcoords(brush, brush.faces[box.faces.indexOf(top)])[top.indices.indexOf(box.vertices.findIndex(v => v[0] === 64 && v[1] === 32 && v[2] === 16))];
+  const withFace = fields => ({vertices: box.vertices, faces: box.faces.map(face => face === top ? {...face, ...fields} : face)});
+  // A floor or ceiling: u along x, v against z.
+  assert.deepEqual(corner(box), [64, -16]);
+  assert.deepEqual(corner(withFace({u: 16, v: -32})), [80, -48]);
+  assert.deepEqual(corner(withFace({scaleU: 2, scaleV: -1})), [32, 16]);
+  const [u, v] = corner(withFace({rotation: 90}));
+  near(u, 16); near(v, 64);
+  // A wall facing x: u along z, v down y.
+  const side = box.faces.find(face => face.indices.every(i => box.vertices[i][0] === 64));
+  const coords = B.texcoords(box, side), at = side.indices.indexOf(box.vertices.findIndex(v => v[0] === 64 && v[1] === 32 && v[2] === 16));
+  assert.deepEqual(coords[at], [16, -32]);
+});
+
+test('breaking a placement gives what flatten draws, and the inverse of its placement gives the prefab back', () => {
+  const map = M.parse(SAMPLE), flat = M.flatten(map);
+  const turned = M.global(map).items.find(item => item.type === 'Prefab' && M.property(item, 'angles'));
+  const parts = M.breakPrefab(map, turned);
+  assert.equal(parts.world.length, 1);
+  assert.deepEqual(parts.world[0].vertices, flat.brushes[0].brush.vertices.map(v => v.map(x => Math.round(x * 1e6) / 1e6 + 0)));
+  const placed = M.placement(map, turned), back = M.moveItem(parts.world[0], M.invert(placed.transform), -placed.yaw);
+  assert.deepEqual(back.vertices, M.prefab(map, 'step').items.find(item => item.kind === 'brush').vertices);
+  // A placement's yaw is added to the angles of what it holds, or given to a turnable entity that has none.
+  const spawn = {kind: 'entity', type: 'PlayerSpawn', properties: [{type: 'Vector3', name: 'position', value: [0, 0, 32]}]};
+  const moved = M.moveItem(spawn, placed.transform, placed.yaw);
+  assert.deepEqual(M.property(moved, 'position'), [132, 0, 0]);
+  assert.deepEqual(M.property(moved, 'angles'), [90, 0, 0]);
+  assert.deepEqual(M.property(M.moveItem(moved, placed.transform, 300), 'angles'), [30, 0, 0]);
+  assert.equal(M.breakPrefab(map, M.global(map).items.find(item => M.property(item, 'prefabName') === 'nowhere')), null);
+});
+
+test('setPrefab makes a prefab before the map, or replaces what one holds; prefabUses counts its placements', () => {
+  const map = M.parse(SAMPLE), brush = {kind: 'brush', ...B.box([0, 0, 0], [16, 16, 16], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: ''})};
+  const light = {kind: 'entity', type: 'PointLight', properties: [{type: 'Vector3', name: 'position', value: [8, 24, 8]}]};
+  M.setPrefab(map, 'lamp', {world: [brush], rest: [light]});
+  assert.deepEqual(map.groups.map(group => group.kind === 'global' ? 'global' : group.name), ['step', 'lamp', 'global']);
+  assert.deepEqual(M.prefab(map, 'lamp').items.map(item => item.type || item.kind), ['WorldSpawn', 'brush', 'PointLight']);
+  const head = M.prefab(map, 'step').items[0];
+  M.setPrefab(map, 'STEP', {world: [brush], rest: []});
+  assert.equal(M.prefab(map, 'step').items[0], head, 'an existing prefab keeps its WorldSpawn');
+  assert.equal(M.prefab(map, 'step').items.length, 2);
+  assert.deepEqual(M.prefabUses(map).map(({name, uses}) => [name, uses]), [['step', 2], ['lamp', 0]]);
+  const text = M.write(map);
+  assert.equal(M.write(M.parse(text)), text);
+  assert.equal(M.flatten(M.parse(text)).brushes.length, 2);
+});
+
+test('every placement in REFLEX_MAPS breaks into what flatten draws, and goes back into its prefab', {skip: !process.env.REFLEX_MAPS && 'set REFLEX_MAPS to a folder of .map files'}, () => {
+  const fs = require('node:fs'), files = [];
+  const walk = folder => { for (const entry of fs.readdirSync(folder, {withFileTypes: true})) {
+    const full = path.join(folder, entry.name);
+    if (entry.isDirectory()) walk(full); else if (/\.map$/i.test(entry.name)) files.push(full);
+  } };
+  walk(process.env.REFLEX_MAPS);
+  let placements = 0;
+  for (const file of files) {
+    const map = M.parse(fs.readFileSync(file, 'utf8')), flat = M.flatten(map);
+    for (const entity of M.global(map).items.filter(item => item.type === 'Prefab')) {
+      const parts = M.breakPrefab(map, entity);
+      if (!parts) continue;
+      placements++;
+      // flatten's brushes placed directly by this entity, those of nested prefabs left out.
+      const drawn = flat.brushes.filter(entry => entry.path.length === 1 && entry.path[0] === entity);
+      const broken = [...parts.world, ...parts.rest.filter(item => item.kind === 'brush')];
+      assert.equal(broken.length, drawn.length, file);
+      const pool = drawn.map(entry => entry.brush), same = (a, b) => a.vertices.length === b.vertices.length && a.vertices.every((v, j) => v.every((x, k) => Math.abs(x - b.vertices[j][k]) < 1e-3));
+      for (const brush of broken) {
+        const match = pool.findIndex(other => same(brush, other));
+        assert.ok(match >= 0, `${file}: a broken brush flatten does not draw`);
+        pool.splice(match, 1);
+      }
+      const placed = M.placement(map, entity), inverse = M.invert(placed.transform);
+      const original = M.parts(placed.group.items);
+      [...parts.world, ...parts.rest].forEach((item, i) => {
+        const source = [...original.world, ...original.rest][i], back = M.moveItem(item, inverse, -placed.yaw);
+        if (item.kind === 'brush') back.vertices.forEach((v, j) => v.forEach((x, k) => near(x, source.vertices[j][k], file)));
+        else if (M.property(source, 'position')) M.property(back, 'position').forEach((x, k) => near(x, M.property(source, 'position')[k], file));
+      });
+    }
+  }
+  assert.ok(placements > 100, `${placements} placements`);
+});

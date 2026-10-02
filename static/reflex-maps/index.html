@@ -33,21 +33,29 @@
     <label>Grid <select id="grid">
       <option>1</option><option>2</option><option>4</option><option>8</option><option selected>16</option><option>32</option><option>64</option>
     </select></label>
+    <label title="The step numpad + and − turn the selection by, and , and . a face's texture (the game's me_snapangle)">Angle <select id="angle">
+      <option>1</option><option>5</option><option>15</option><option>22.5</option><option selected>45</option><option>90</option>
+    </select></label>
+    <button id="rotateDec" title="Turn the selection about the vertical through its middle, back by the angle (numpad −)">⟲</button>
+    <button id="rotateInc" title="Turn the selection about the vertical through its middle, on by the angle (numpad +)">⟳</button>
     <button id="newBrush" title="New box brush in front of the camera (or 1 and drag on a surface)">New box</button>
     <button id="subtract" title="Carve the selected brushes out of every brush they touch (Ctrl+Shift+S)">Subtract</button>
     <button id="hollow" title="Turn the selected brush into walls one grid step thick (H)">Hollow</button>
     <button id="merge" title="Join the selected brushes into one when their union is convex (Ctrl+M)">Merge</button>
-    <button id="clip" title="Cut the selected brushes along the grid plane facing the camera through the point clicked last (C)">Split</button>
+    <button id="split" title="Cut the selected brushes along the grid plane facing the camera through the point clicked last">Split</button>
+    <button id="clipButton" title="Clip mode: click two or three points of a plane, Enter cuts the selection with it (C)">Clip</button>
     <button id="duplicate" title="Copy the selected brushes one grid step along x (G)">Clone</button>
     <button id="delete" title="Delete the selected brushes (Backspace)">Delete</button>
     <button id="undo" title="Undo (Z)">Undo</button>
     <button id="redo" title="Redo (X)">Redo</button>
     <button id="propsButton" title="Properties of the selected entity, or of the map (N)">Properties</button>
+    <button id="prefabsButton" title="The map's prefabs: make one from the selection, break, update and place them (me_listprefabs)">Prefabs</button>
+    <input id="console" placeholder="Console (`): me_createprefab name…" aria-label="Editor console" spellcheck="false" autocomplete="off">
     <button id="save" title="Download the edited map as a Reflex .map file (Ctrl+S)">Save .map</button>
     <span class="active" title="K picks up the material and colour of the face under the cursor; M puts them on the selected brushes, Shift+M on the face under the cursor"><span id="swatch"></span><span id="material"></span></span>
   </nav>
   <main><canvas id="c"></canvas><div id="crosshair" hidden></div><span id="mode" role="status"></span><span id="selection" role="status"></span>
-    <aside id="props" hidden><header><strong>Properties</strong><button id="propsClose" type="button" title="Close (N)">×</button></header><div id="propsBody"></div></aside></main>
+    <aside id="props" hidden><header><strong id="propsTitle">Properties</strong><button id="propsClose" type="button" title="Close (N)">×</button></header><div id="propsBody"></div></aside></main>
   <footer><span id="status" role="status">Loading map…</span>
     <span id="help">0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
     <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay, audio or baked lighting. Brushes are drawn in their face colours or their materials' colours, lit by one fixed sun, and entities are marked where the map places them.</span></details></footer>

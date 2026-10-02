@@ -1,6 +1,8 @@
 // Hidden browser check of the Reflex Maps page: node tools/check_reflex_maps.cjs URL [output directory].
 // Starts a new map, builds and carves brushes with the keyboard and mouse, undoes and redoes, saves the map and reads
-// the download back; then, when maps are imported, draws the first one and checks it is not blank.
+// the download back; works the game's editor gestures, create types, vertex mode, the property panel, the bridge tool,
+// turning, the texture keys, the clipper and prefabs; then, when maps are imported, draws the first one and checks it is
+// not blank.
 // Uses the same optional Playwright dependency as check_browser.cjs.
 const {chromium} = require('playwright');
 const assert = require('node:assert/strict');
@@ -34,10 +36,10 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     await centre();
     assert.match(await said(), /1 selected/);
 
-    // A second box, moved along by the arrows, is carved out of the first (Ctrl+Shift+S).
+    // A second box, moved along by Shift and the arrows, is carved out of the first (Ctrl+Shift+S).
     await page.click('#newBrush');
-    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('PageUp');
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Shift+PageUp');
     const before = await page.evaluate(() => { const g = window.skinnerReflexMaps.map.groups.find(g => g.kind === 'global'); return g.items.filter(i => i.kind === 'brush').map(b => b.vertices); });
     assert.equal(before.length, 2);
     await page.keyboard.press('Control+Shift+S');
@@ -48,8 +50,8 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     assert.ok(Math.abs(kept - (64 ** 3 - 40 * 56 * 64)) < 1, `carved volume ${kept}`);
     carved.forEach(brush => assert.deepEqual(B.check(brush), []));
 
-    // Delete the cutter, undo it back, redo the delete.
-    await page.keyboard.press('Delete');
+    // Delete the cutter (Backspace, as the game; Delete is a texture key), undo it back, redo the delete.
+    await page.keyboard.press('Backspace');
     const afterDelete = await brushes();
     await page.keyboard.press('Control+z');
     assert.equal(await brushes(), afterDelete + 1);
@@ -295,6 +297,154 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     await page.screenshot({path: path.join(output, 'bridged.png')});
     await page.keyboard.press('z');
     assert.equal((await items()).filter(item => item.kind === 'brush').length, brushesBefore);
+
+    // Turning (numpad + and −, by the angle step), the texture keys, the clipper and prefabs, on a new map with one box
+    // and a player spawn, seen from the same fixed place.
+    const fresh = () => page.evaluate(() => {
+      const m = window.skinnerReflexMaps, map = window.ReflexMap.empty(), g = window.ReflexMap.global(map);
+      g.items.push({kind: 'brush', ...window.ReflexBrush.box([-32, 0, -32], [32, 64, 32], m.template)});
+      m.load(window.ReflexMap.write(map), 'untitled');
+      m.camera.position.set(0, 384, 512); m.camera.lookAt(0, 0, 0);
+    });
+    const firstBrush = () => page.evaluate(() => window.ReflexMap.global(window.skinnerReflexMaps.map).items.find(item => item.kind === 'brush'));
+    await fresh();
+    await page.selectOption('#grid', '16');
+    await page.selectOption('#angle', '90');
+    await page.keyboard.press('0'); await page.keyboard.press('0');
+    // A box 64 by 16 and a spawn at its corner, turned a quarter about their middle (32, 8): the turn would leave
+    // them 8 off the grid, so they move the rest of the way onto it.
+    await page.evaluate(() => {
+      const m = window.skinnerReflexMaps, g = window.ReflexMap.global(m.map);
+      g.items.splice(window.ReflexMap.worldInsertAt(g), 0, {kind: 'brush', ...window.ReflexBrush.box([0, 0, 0], [64, 32, 16], m.template)});
+      g.items.push({kind: 'entity', type: 'PlayerSpawn', properties: [{type: 'Vector3', name: 'position', value: [0, 0, 0]}, {type: 'Vector3', name: 'angles', value: [0, 0, 0]}]});
+      m.load(window.ReflexMap.write(m.map), 'untitled');
+      const items = window.ReflexMap.global(m.map).items;
+      m.selected.add(items[2]); m.selected.add(items.at(-1));
+    });
+    await page.keyboard.press('NumpadAdd');
+    now = await items();
+    assert.deepEqual(now[2].bounds, {min: [32, 0, -16], max: [48, 32, 48]}, 'numpad + turns the box a quarter, onto the grid');
+    assert.deepEqual([now.at(-1).properties.position, now.at(-1).properties.angles], [[32, 0, 48], [90, 0, 0]], 'the spawn turns with it');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.selected.size), 2, 'what was turned stays selected');
+    await page.keyboard.press('NumpadSubtract');
+    now = await items();
+    assert.equal(now.at(-1).properties.angles[0], 0, 'numpad − turns back');
+    await page.keyboard.press('z'); await page.keyboard.press('z');
+    assert.deepEqual((await items())[2].bounds, {min: [0, 0, 0], max: [64, 32, 16]});
+
+    // The texture keys work on the face under the cursor: the top of the large box.
+    await fresh();
+    await page.keyboard.press('0'); await page.keyboard.press('0');
+    const topFace = async () => { const brush = await firstBrush(); return brush.faces.find(face => face.indices.every(i => brush.vertices[i][1] === 64)); };
+    await page.mouse.move(...await screen([-8, 64, 8]));
+    for (const key of ['ArrowRight', 'ArrowUp', 'ArrowUp', 'Home', 'PageUp', 'Period', 'Delete']) await page.keyboard.press(key);
+    const textured = await topFace();
+    assert.deepEqual([textured.u, textured.v, textured.scaleU, textured.scaleV, textured.rotation], [16, 32, -1.25, 0.75, 90], 'arrows move, Home and Delete scale, PgUp flips, . turns');
+    assert.match(await said(), /Texture offset 16 32 · scale -1.25 0.75 · rotation 90°/);
+    assert.ok(await page.evaluate(() => { let found = false; window.skinnerReflexMaps.scene.traverse(o => { if (o.geometry && o.geometry.getAttribute('texcoord')) found = true; }); return found; }), 'the face shows its texture coordinates');
+    await page.screenshot({path: path.join(output, 'texture.png')});
+    await page.keyboard.press('Comma');
+    assert.equal((await topFace()).rotation, 0);
+    for (let i = 0; i < 8; i++) await page.keyboard.press('z');
+    assert.deepEqual(await topFace().then(face => [face.u, face.v, face.scaleU, face.scaleV, face.rotation]), [0, 0, 1, 1, 0], 'each key is a step of undo');
+    // Shift and the arrows nudge the selection instead.
+    await clickAt([0, 64, 0]);
+    await page.keyboard.press('Shift+PageUp');
+    assert.equal((await items())[1].bounds.min[1], 16, 'Shift+PgUp lifts the selection a grid step');
+    await page.keyboard.press('z');
+
+    // The clipper: C, two points on the top at x = 16, Enter keeps the side away from the camera (which looks from
+    // x = 0); Shift+Enter keeps both; the wheel flips the side.
+    await clickAt([0, 64, 0]);
+    await page.keyboard.press('c');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.clipMode), true);
+    await clickAt([17, 64, -15]);
+    await clickAt([15, 64, 17]);
+    assert.deepEqual(await page.evaluate(() => window.skinnerReflexMaps.clipPoints), [[16, 64, -16], [16, 64, 16]], 'points land on the grid');
+    assert.match(await page.textContent('#mode'), /Clip \(C\): 2 of 3 points/);
+    await page.screenshot({path: path.join(output, 'clip.png')});
+    await page.keyboard.press('Enter');
+    now = await items();
+    assert.deepEqual(now.filter(item => item.kind === 'brush').map(item => item.bounds), [{min: [16, 0, -32], max: [32, 64, 32]}]);
+    await page.keyboard.press('z');
+    await clickAt([0, 64, 0]);
+    await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    await clickAt([0, 64, 0]);
+    await page.keyboard.press('c');
+    await clickAt([17, 64, -15]); await clickAt([15, 64, 17]);
+    await page.keyboard.press('Shift+Enter');
+    assert.deepEqual((await items()).filter(item => item.kind === 'brush').map(item => item.bounds).sort((a, b) => a.min[0] - b.min[0]),
+      [{min: [-32, 0, -32], max: [16, 64, 32]}, {min: [16, 0, -32], max: [32, 64, 32]}], 'Shift+Enter splits');
+    await page.keyboard.press('z');
+    await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    await clickAt([0, 64, 0]);
+    await page.keyboard.press('c');
+    await clickAt([17, 64, -15]); await clickAt([15, 64, 17]);
+    await page.mouse.wheel(0, 100);
+    await page.keyboard.press('Enter');
+    assert.deepEqual((await items()).filter(item => item.kind === 'brush').map(item => item.bounds), [{min: [-32, 0, -32], max: [16, 64, 32]}], 'the wheel flips the side kept');
+    await page.keyboard.press('z');
+    await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.clipMode), false, 'Escape leaves clip mode');
+
+    // Prefabs, from the console (`): the box becomes prefab "block", placed where it stood.
+    const run = async line => { await page.keyboard.press('Backquote'); await page.keyboard.type(line); await page.keyboard.press('Enter'); };
+    await clickAt([0, 64, 0]);
+    await run('me_createprefab block');
+    assert.match(await said(), /Prefab block: 1 brushes and 0 entities, placed at 0 0 0/);
+    now = await items();
+    assert.deepEqual(now.map(item => item.type || item.kind), ['WorldSpawn', 'Prefab']);
+    assert.deepEqual(await page.evaluate(() => window.skinnerReflexMaps.map.groups.map(g => g.kind === 'global' ? 'global' : g.name)), ['block', 'global']);
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.flat.brushes.length), 1, 'the prefab is drawn where the box was');
+    // A click on the drawn box selects its placement; G clones it, and a drag moves the clone.
+    await page.keyboard.press('Escape');
+    await clickAt([0, 64, 0]);
+    assert.match(await said(), /1 selected · Prefab block · 1 brushes/);
+    await page.keyboard.press('g');
+    const cloneAt = await screen([40, 64, 0]);  // Only the clone (16 along x) is there.
+    await dragFrom(cloneAt, [cloneAt[0] + 150, cloneAt[1]]);
+    now = await items();
+    const placements = now.filter(item => item.type === 'Prefab');
+    assert.equal(placements.length, 2);
+    const offsetX = placements[1].properties.position[0];
+    assert.ok(offsetX > 16 && offsetX % 16 === 0, `the clone moved to x ${offsetX}`);
+    // me_breakprefab: the clone becomes a brush of the map; its top pulled up 3 or more grid steps; me_updateprefab
+    // puts it back, and the other placement changes with it.
+    await run('me_breakprefab');
+    now = await items();
+    assert.deepEqual(now.map(item => item.type || item.kind), ['WorldSpawn', 'brush', 'Prefab']);
+    const broken = now[1].bounds;
+    assert.deepEqual(broken, {min: [offsetX - 32, 0, -32], max: [offsetX + 32, 64, 32]});
+    at = await screen([broken.max[0] - 8, 64, 0]);
+    await dragFrom(at, [at[0], at[1] - 80], 'Shift');
+    const pulledTop = (await items())[1].bounds.max[1];
+    assert.ok(pulledTop > 64, `top pulled to ${pulledTop}`);
+    await run('me_updateprefab');
+    assert.match(await said(), /Prefab block now holds 1 brushes and 0 entities, in its 2 placements/);
+    const tops = await page.evaluate(() => window.skinnerReflexMaps.flat.brushes.map(entry => Math.max(...entry.brush.vertices.map(v => v[1]))));
+    assert.deepEqual(tops, [pulledTop, pulledTop], 'both placements show the updated prefab');
+    now = await items();
+    assert.deepEqual(now.map(item => item.type || item.kind), ['WorldSpawn', 'Prefab', 'Prefab']);
+    assert.deepEqual(now[2].properties.position, [offsetX, 0, 0], 'the placement goes back where it was');
+    await page.keyboard.press('z');
+    assert.deepEqual(await page.evaluate(() => window.skinnerReflexMaps.flat.brushes.map(entry => Math.max(...entry.brush.vertices.map(v => v[1])))).then(t => t.sort((a, b) => a - b)), [64, pulledTop].sort((a, b) => a - b), 'undo puts the prefab back as it was');
+    await page.keyboard.press('x');
+    // me_listprefabs lists it with its placements; Place and a click on the ground puts down a third.
+    await run('me_listprefabs');
+    assert.match(await page.textContent('#props .prefabs'), /block\s*2/);
+    await page.screenshot({path: path.join(output, 'prefabs.png')});
+    await page.click('#props .prefabs button:has-text("Place")');
+    assert.match(await page.textContent('#mode'), /Create prefab block/);
+    await clickAt([-128, 0, 96]);
+    now = await items();
+    assert.deepEqual([now.at(-1).type, now.at(-1).properties.prefabName, now.at(-1).properties.position], ['Prefab', 'block', [-128, 0, 96]]);
+    assert.match(await page.textContent('#props .prefabs'), /block\s*3/);
+    await page.keyboard.press('Escape');
+    await page.click('#prefabsButton');
+    assert.equal(await page.isVisible('#props'), false);
+    const prefabMap = M.parse(await page.evaluate(() => window.ReflexMap.write(window.skinnerReflexMaps.map)));
+    assert.equal(M.flatten(prefabMap).brushes.length, 3);
+    assert.equal(M.prefab(prefabMap, 'block').items.length, 2);
 
     // The edited map still writes and reads back.
     const written = await page.evaluate(() => window.ReflexMap.write(window.skinnerReflexMaps.map));

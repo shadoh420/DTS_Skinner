@@ -317,8 +317,24 @@
     return brushes;
   }
 
+  /* Texture coordinates of a face's corners, [u, v] in world units, as a guess at the game's mapping: the face is
+     projected on the axis plane it faces most (Quake 3's TextureAxisFromPlane, in the game's y-up axes), the
+     projection turned by `rotation` degrees and divided by the scale, and the offset added. Q3ToReflex converts Quake 3
+     faces so (its scale times two, Quake 3's 0.5 being the game's 1), with a note that it may not be right; how the
+     game itself maps them is unconfirmed. A scale of zero is taken as one. */
+  function texcoords(brush, face) {
+    const points = polygonOf(brush, face), n = newell(points).map(Math.abs);
+    const [s, t] = n[1] >= n[0] && n[1] >= n[2] ? [[1, 0, 0], [0, 0, -1]] : n[0] >= n[2] ? [[0, 0, 1], [0, -1, 0]] : [[1, 0, 0], [0, -1, 0]];
+    const radians = (face.rotation || 0) * Math.PI / 180, c = Math.cos(radians), sn = Math.sin(radians);
+    return points.map(p => {
+      const a = dot(p, s), b = dot(p, t);
+      return [(a * c - b * sn) / (face.scaleU || 1) + (face.u || 0), (a * sn + b * c) / (face.scaleV || 1) + (face.v || 0)];
+    });
+  }
+
   exports.ReflexBrush = {
     EPSILON, planesOf, planeFromPoints, fromPlanes, rebuild, volume, bounds, check, convex, box, translate, clone, offset,
     split, clip, intersection, intersects, subtract, hollow, hull, merge, triangles, raycast, newell, normalize, orient, bridge,
+    texcoords,
   };
 })(typeof module !== 'undefined' ? module.exports : window);

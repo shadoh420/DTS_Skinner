@@ -34,3 +34,10 @@ footer > span {white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-wid
 #help {flex:1;}
 footer details {flex:none;max-width:40%;}
 footer details[open] {flex:1 1 40%;}
+#console {width:220px;font-family:ui-monospace,Consolas,monospace;font-size:12px;padding:3px 6px;}
+#props .prefabs {width:100%;border-collapse:collapse;margin-top:6px;}
+#props .prefabs td {padding:2px 4px;border-top:1px solid #2c3d47;}
+#props .prefabs td:nth-child(2) {color:#aebfc7;text-align:right;}
+#props .make {display:grid;grid-template-columns:1fr auto;gap:6px;margin:4px 0;}
+#props .actions {display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
+nav button.on {outline:2px solid #f0c674;outline-offset:-2px;}

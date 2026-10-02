@@ -256,5 +256,80 @@
     return at;
   }
 
-  exports.ReflexMap = {parse, write, empty, global, prefab, property, colourOf, flatten, compose, apply, fixed, isVolume, worldInsertAt, VOLUMES, MapError};
+  // ---- Prefabs, as the game's me_createprefab, me_breakprefab, me_updateprefab and me_listprefabs make and undo them ----
+  // A placement's transform is a turn and a move, so its inverse is the turn transposed.
+  function invert(m) {
+    const turn = [0, 1, 2].map(i => [0, 1, 2].map(j => m[j][i]));
+    return turn.map(row => [...row, -(row[0] * m[0][3] + row[1] * m[1][3] + row[2] * m[2][3])]);
+  }
+  // Coordinates as the editor writes them: six places, near-integers made integers.
+  const tidy = value => { const near = Math.round(value); return Math.abs(value - near) < 1e-6 ? near + 0 : Math.round(value * 1e6) / 1e6 + 0; };
+  const turnable = new Set(['Effect', 'Prefab', 'PlayerSpawn', 'Target', 'Pickup']);
+  /* A copy of a brush or entity moved by `transform`: a brush's corners, an entity's position. `yaw` (degrees) is
+     added to the entity's angles, or given as its angles where its type turns and it has none. A placement's pitch
+     and roll do not carry to the angles of the entities inside: stock maps tilt no prefab holding one. */
+  function moveItem(item, transform, yaw = 0) {
+    if (item.kind === 'brush') return {kind: 'brush', vertices: item.vertices.map(v => apply(transform, v).map(tidy)), faces: item.faces.map(face => ({...face, indices: [...face.indices]}))};
+    const turned = value => tidy(((value + yaw) % 360 + 360) % 360);
+    const properties = item.properties.map(p => p.name === 'position' && p.type === 'Vector3' ? {...p, value: apply(transform, p.value).map(tidy)}
+      : p.name === 'angles' && p.type === 'Vector3' && yaw ? {...p, value: [turned(p.value[0]), p.value[1], p.value[2]]} : {...p});
+    if (yaw && turnable.has(item.type) && !properties.some(p => p.name === 'angles')) properties.push({type: 'Vector3', name: 'angles', value: [turned(0), 0, 0]});
+    return {...item, properties};
+  }
+  // How a Prefab entity places its prefab: the group, the transform into the map and the yaw.
+  function placement(map, entity) {
+    const group = prefab(map, property(entity, 'prefabName'));
+    if (!group) return null;
+    const angles = property(entity, 'angles') || [0, 0, 0];
+    return {group, transform: compose(property(entity, 'position') || [0, 0, 0], angles), yaw: angles[0]};
+  }
+  /* A group's items as the parts of a prefab: `world`, the brushes that are the world's (those of its WorldSpawn, or of
+     no entity, or of an entity that owns no volume), and `rest`, the other entities in order, each volume entity
+     followed by its brushes. The group's own WorldSpawn is left out. */
+  function parts(items) {
+    const world = [], rest = [];
+    let owner = null;
+    for (const item of items) {
+      if (item.kind === 'brush') { (isVolume(owner) ? rest : world).push(item); continue; }
+      owner = item;
+      if (item.type !== 'WorldSpawn') rest.push(item);
+    }
+    return {world, rest};
+  }
+  // The parts of the prefab a Prefab entity places, moved to where it places them (me_breakprefab); null when the
+  // map has no prefab of that name.
+  function breakPrefab(map, entity) {
+    const placed = placement(map, entity);
+    if (!placed) return null;
+    const {world, rest} = parts(placed.group.items);
+    return {world: world.map(item => moveItem(item, placed.transform, placed.yaw)), rest: rest.map(item => moveItem(item, placed.transform, placed.yaw))};
+  }
+  // Makes the prefab `name`, or replaces what an existing one holds (found without regard to case), from parts in its
+  // own coordinates. A new prefab goes after the others, before the map itself, as the game writes them. Each starts
+  // with a WorldSpawn, as every prefab of the stock maps does; an existing one keeps its own.
+  function setPrefab(map, name, {world, rest}) {
+    let group = prefab(map, name);
+    if (!group) {
+      group = {kind: 'prefab', name, items: []};
+      const at = map.groups.findIndex(candidate => candidate.kind === 'global');
+      map.groups.splice(at < 0 ? map.groups.length : at, 0, group);
+    }
+    const head = group.items.find(item => item.kind === 'entity' && item.type === 'WorldSpawn') || {kind: 'entity', type: 'WorldSpawn', properties: []};
+    group.items = [head, ...world, ...rest];
+    return group;
+  }
+  // Every prefab of the map with how many Prefab entities name it, in the map and in other prefabs (me_listprefabs, as
+  // the game's meGetPrefabList gives name and refCount).
+  function prefabUses(map) {
+    const uses = new Map(map.groups.filter(group => group.kind === 'prefab').map(group => [group, 0]));
+    for (const group of map.groups) for (const item of group.items) {
+      if (item.kind !== 'entity' || item.type !== 'Prefab') continue;
+      const named = prefab(map, property(item, 'prefabName'));
+      if (named) uses.set(named, uses.get(named) + 1);
+    }
+    return [...uses].map(([group, count]) => ({name: group.name, uses: count, group}));
+  }
+
+  exports.ReflexMap = {parse, write, empty, global, prefab, property, colourOf, flatten, compose, apply, fixed, isVolume, worldInsertAt, VOLUMES, MapError,
+    invert, moveItem, placement, parts, breakPrefab, setPrefab, prefabUses};
 })(typeof module !== 'undefined' ? module.exports : window);

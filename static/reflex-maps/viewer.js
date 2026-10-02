@@ -14,13 +14,19 @@
    of the selected brushes to drag, as the game's vertex mode. Entities are selected and moved as brushes are. Shift
    and a click picks a face; B then bridges it to the face aimed at, as the game's bridge tool (me_startbridge), the
    wheel setting the steps. N shows the properties of the selected entity, or of the map's WorldSpawn
-   (me_showproperties). Brushes placed by a prefab are drawn but not edited: their prefab holds them. */
+   (me_showproperties). Numpad + and − turn the selection (me_rotate_inc/dec, by the angle step, me_snapangle); the
+   arrows, Home/End/Insert/Delete, PgUp/PgDn and , and . move, scale, flip and turn the texture of the face under the
+   cursor (me_texcoords_*), and Shift with the arrows nudges the selection instead. C is clip mode: two or three points
+   make a plane, Enter clips and Shift+Enter splits. A click on anything a prefab places selects its Prefab entity;
+   the console (`) breaks, updates, makes and lists prefabs (me_breakprefab, me_updateprefab, me_createprefab,
+   me_listprefabs), so a prefab is edited by breaking a placement and updating it from the pieces. */
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const B = window.ReflexBrush, M = window.ReflexMap;
   const storageKey = 'skinner.reflexmaps';
-  const settings = {fov: 100, invertX: false, invertY: false, grid: 16};  // The game's me_snapdistance is 16.
+  // The game's me_snapdistance is 16; its me_snapangle default is not known, and 45 is the step most stock angles are on.
+  const settings = {fov: 100, invertX: false, invertY: false, grid: 16, angle: 45};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -309,8 +315,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   const positionOf = entity => M.property(entity, 'position');
   const withPosition = (entity, position) => ({...entity, properties: entity.properties.map(p => p.name === 'position' ? {...p, value: position.map(v => Math.round(v * 1e6) / 1e6 + 0)} : p)});
 
-  // A step of undo is the map's list of items and what was selected, so undoing brings back both.
-  const snapshot = () => ({items: globalGroup().items.slice(), selected: [...selected]});
+  // A step of undo is the lists of every group (the map's and its prefabs') and what was selected, so undoing brings
+  // back both.
+  const snapshot = () => ({groups: map.groups.map(group => ({...group, items: group.items.slice()})), selected: [...selected]});
   function remember() {
     undoStack.push(snapshot());
     if (undoStack.length > 100) undoStack.shift();
@@ -320,26 +327,34 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!from.length) return;
     to.push(snapshot());
     const step = from.pop();
-    globalGroup().items = step.items;
+    map.groups = step.groups;
     selected.clear();
-    for (const item of step.selected) if (step.items.includes(item)) selected.add(item);
+    const items = globalGroup().items;
+    for (const item of step.selected) if (items.includes(item)) selected.add(item);
     rebuild(); showReady();
   }
   // Changes the map's list, as one step of undo. `changes` maps an item to the items (or brushes) standing in its
   // place, which so keep its owner; `inserts` adds things at a place: 'world' (in the WorldSpawn's run of brushes, so a
-  // brush is the world's and not that of whatever entity comes last), 'end', or after an item.
+  // brush is the world's and not that of whatever entity comes last), 'end', or after an item. `alter`, when given,
+  // changes the map's prefabs in the same step.
   const asItem = thing => thing.kind ? thing : {kind: 'brush', vertices: thing.vertices, faces: thing.faces};
-  function replace(changes, inserts = [], select = null) {
+  // Items that came out of breaking a prefab, with the prefab and its placement, so me_updateprefab can put them back;
+  // what stands in an item's place, and its clones, inherit it.
+  const brokenFrom = new WeakMap();
+  function replace(changes, inserts = [], select = null, alter = null) {
     remember();
+    if (alter) alter();
     const items = [], changed = [], added = [];
     for (const item of globalGroup().items) {
       if (!changes.has(item)) { items.push(item); continue; }
       const instead = changes.get(item).map(asItem);
+      if (brokenFrom.has(item)) for (const next of instead) if (!brokenFrom.has(next)) brokenFrom.set(next, brokenFrom.get(item));
       items.push(...instead);
       changed.push(...instead);
     }
     for (const {at, things} of inserts) {
       const fresh = things.map(asItem);
+      if (brokenFrom.has(at)) for (const next of fresh) if (!brokenFrom.has(next)) brokenFrom.set(next, brokenFrom.get(at));
       const index = at === 'world' ? M.worldInsertAt({items}) : at === 'end' ? items.length : (items.indexOf(at) + 1 || items.length);
       items.splice(index, 0, ...fresh);
       added.push(...fresh);
@@ -360,9 +375,37 @@ window.addEventListener('DOMContentLoaded', async () => {
   hoverDot.renderOrder = 5; hoverDot.visible = false;
   root.add(hoverDot);
   let dots = [];  // {item, index, position} of the corners of the selected brushes, in vertex mode.
-  const edgesOf = brush => {
+  // The face the texture keys changed last, {item, index}, drawn with its texture coordinates as brush.js guesses the
+  // game maps them: tiles of 64 units shaded red along u and green along v, chequered every 16, so moving, scaling,
+  // flipping and turning show.
+  let texturePreview = null;
+  const textureMaterial = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    vertexShader: `attribute vec2 texcoord; varying vec2 vTex;
+      void main() { vTex = texcoord; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: `varying vec2 vTex;
+      void main() {
+        vec2 tile = fract(vTex / 64.);
+        float check = mod(floor(vTex.x / 16.) + floor(vTex.y / 16.), 2.);
+        gl_FragColor = vec4(vec3(tile.x, tile.y, .3) * (.65 + .35 * check), .85);
+      }`,
+  });
+  function textureMesh(brush, face) {
+    const coords = B.texcoords(brush, face), positions = [], texcoords = [];
+    for (const triangle of B.triangles(brush, face, triangulate)) for (const vertex of triangle) {
+      positions.push(...brush.vertices[vertex]);
+      texcoords.push(...coords[face.indices.indexOf(vertex)]);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('texcoord', new THREE.Float32BufferAttribute(texcoords, 2));
+    const mesh = new THREE.Mesh(geometry, textureMaterial);
+    mesh.renderOrder = 4;
+    return mesh;
+  }
+  const edgesOf = (...brushes) => {
     const lines = [];
-    for (const face of brush.faces) face.indices.forEach((index, n) => lines.push(...brush.vertices[index], ...brush.vertices[face.indices[(n + 1) % face.indices.length]]));
+    for (const brush of brushes) for (const face of brush.faces) face.indices.forEach((index, n) => lines.push(...brush.vertices[index], ...brush.vertices[face.indices[(n + 1) % face.indices.length]]));
     const edges = new THREE.BufferGeometry();
     edges.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
     return new THREE.LineSegments(edges, selectedEdges);
@@ -372,12 +415,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     selection.clear();
     dots = [];
     if (!flat) return;
+    // The selected brushes, and those a selected Prefab entity places, in one mesh and one set of lines.
+    const shown = [];
     for (const entry of flat.brushes) {
-      if (!selected.has(entry.source) || entry.path.length) continue;
+      if (entry.path.length ? !selected.has(entry.path[0]) : !selected.has(entry.source)) continue;
       const brush = preview.get(entry.source) || entry.brush;
-      selection.add(new THREE.Mesh(buildMesh([{brush}], () => true, []), selectedFill), edgesOf(brush));
-      if (vertexMode) brush.vertices.forEach((position, index) => dots.push({item: entry.source, index, position}));
+      shown.push({brush});
+      if (vertexMode && !entry.path.length) brush.vertices.forEach((position, index) => dots.push({item: entry.source, index, position}));
     }
+    if (shown.length) selection.add(new THREE.Mesh(buildMesh(shown, () => true, []), selectedFill), edgesOf(...shown.map(entry => entry.brush)));
+    if (texturePreview && globalGroup().items.includes(texturePreview.item)) selection.add(textureMesh(texturePreview.item, texturePreview.item.faces[texturePreview.index]));
+    else texturePreview = null;
     for (const entry of flat.entities) {
       if (!selected.has(entry.entity) || entry.path.length || !entry.position) continue;
       const box = new THREE.Box3Helper(new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...entry.position), new THREE.Vector3(24, 36, 24)), 0xf0c674);
@@ -405,19 +453,23 @@ window.addEventListener('DOMContentLoaded', async () => {
   const CREATE = {
     1: {label: 'brush'}, 2: {type: 'Teleporter', label: 'teleporter'}, 3: {type: 'JumpPad', label: 'jump pad'},
     4: {type: 'Target', label: 'target'}, 5: {type: 'Effect', label: 'effect'}, 6: {type: 'Pickup', label: 'pickup'},
-    7: {type: 'PointLight', label: 'point light'}, 8: {type: 'PlayerSpawn', label: 'player spawn'},
+    7: {type: 'PointLight', label: 'point light'}, 8: {type: 'PlayerSpawn', label: 'player spawn'}, 9: {type: 'Prefab', label: 'prefab'},
   };
+  const createLabel = () => createType === 9 ? `prefab ${placeName}` : CREATE[createType].label;
   function updateTools() {
     if (!flat) return;
     const brushes = selectedBrushes(), count = selected.size, convex = brushes.length > 0 && brushes.every(B.convex);
     $('subtract').disabled = !convex;
     $('hollow').disabled = brushes.length !== 1 || !convex;
     $('merge').disabled = brushes.length < 2 || !convex;
-    $('clip').disabled = !convex || !lastPoint;
+    $('split').disabled = !convex || !lastPoint;
+    $('clipButton').classList.toggle('on', clipMode);
+    $('rotateInc').disabled = $('rotateDec').disabled = !count;
     $('duplicate').disabled = $('delete').disabled = !count;
     $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length;
     $('mode').title = ($('mode').textContent = bridging ? `Bridge (B): aim at a face · wheel ${segments} step${segments > 1 ? 's' : ''} · click makes · Esc stops`
-      : createType ? `Create ${CREATE[createType].label} (${createType}): ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
+      : clipMode ? `Clip (C): ${clipPoints.length} of 3 points · Enter clips · Shift+Enter splits · wheel flips · Esc`
+      : createType ? `Create ${createLabel()}${createType <= 8 ? ` (${createType})` : ''}: ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
       : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode');
     showPanel();
     $('material').textContent = `${template.material || 'no material'}${template.colour && M.colourOf(template) ? ` · ${template.colour}` : ''}`;
@@ -463,8 +515,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   const problemText = problems => problems.map(problem => PROBLEM[problem] || problem).join(' and ').replace(/ and (?=.* and )/g, ', ');
   function describe(item, entry) {
     if (!isBrush(item)) {
-      const name = M.property(item, 'name') || M.property(item, 'target') || M.property(item, 'effectName') || (item.type === 'Pickup' ? `type ${M.property(item, 'pickupType')}` : '');
-      return `${item.type}${name !== undefined && name !== '' ? ` ${name}` : ''}`;
+      const name = M.property(item, 'name') || M.property(item, 'target') || M.property(item, 'effectName') || M.property(item, 'prefabName') || (item.type === 'Pickup' ? `type ${M.property(item, 'pickupType')}` : '');
+      const placed = item.type === 'Prefab' ? ` · ${flat.brushes.filter(e => e.path[0] === item).length} brushes; me_breakprefab breaks it into the map` : '';
+      return `${item.type}${name !== undefined && name !== '' ? ` ${name}` : ''}${placed}`;
     }
     const owner = entry.owner, problems = B.check(item);
     const what = M.isVolume(owner) ? `${owner.type} volume${M.property(owner, 'target') ? ` to ${M.property(owner, 'target')}` : ''}` : 'brush';
@@ -489,18 +542,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     const hit = pick(event);
     if (!hit) { if (!adding(event)) selected.clear(); say(''); showSelection(); return; }
     lastPoint = hit.point; lastNormal = hit.normal;
-    const entry = hit.entity || hit.entry;
-    if (entry.path.length) {
-      say(`Part of prefab "${M.property(entry.path[0], 'prefabName')}", placed by a Prefab entity; edit the prefab in Reflex`);
-      if (!adding(event)) selected.clear();
-      showSelection();
-      return;
-    }
-    const item = hit.entity ? hit.entity.entity : hit.entry.source;
+    const item = itemOf(hit);
     if (adding(event)) { if (selected.has(item)) selected.delete(item); else selected.add(item); } else { selected.clear(); selected.add(item); }
     showSelection();
-    say(`${selected.size} selected · ${describe(item, entry)}`);
+    say(`${selected.size} selected · ${describe(item, hit.entity || hit.entry)}`);
   }
+  // What a click on a hit selects: the brush or entity, or for one a prefab places, the Prefab entity of the map that
+  // places it (as the game selects a prefab as one thing).
+  const itemOf = hit => { const entry = hit.entity || hit.entry; return entry.path.length ? entry.path[0] : hit.entity ? hit.entity.entity : hit.entry.source; };
   // The fields of a face, without its vertices: what a new brush or M gives faces.
   const fieldsOf = face => { const fields = {...face}; delete fields.indices; return fields; };
 
@@ -535,18 +584,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     return at && [Math.round((at[0] - point[0]) / grid) * grid, 0, Math.round((at[2] - point[2]) / grid) * grid];
   }
 
-  // The corner dot nearest the mouse, within 10 pixels.
-  function nearestDot(event) {
+  // The index of the point of `points` nearest the mouse on screen, within 10 pixels; -1 when none is.
+  function nearestOf(points, event) {
     const rect = canvas.getBoundingClientRect(), v = new THREE.Vector3();
-    let best = null;
-    for (const candidate of dots) {
-      v.set(candidate.position[0], candidate.position[1], -candidate.position[2]).project(camera);
-      if (v.z > 1) continue;
+    let best = -1, nearest = 10;
+    camera.updateMatrixWorld();
+    points.forEach((point, index) => {
+      v.set(point[0], point[1], -point[2]).project(camera);
+      if (v.z > 1) return;
       const off = Math.hypot(rect.left + (v.x + 1) / 2 * rect.width - event.clientX, rect.top + (1 - v.y) / 2 * rect.height - event.clientY);
-      if (off < 10 && (!best || off < best.off)) best = {...candidate, off};
-    }
+      if (off < nearest) { nearest = off; best = index; }
+    });
     return best;
   }
+  // The corner dot nearest the mouse, within 10 pixels.
+  const nearestDot = event => dots[nearestOf(dots.map(dot => dot.position), event)] || null;
   function showHover(position) {
     hoverDot.visible = !!position;
     if (position) { hoverDot.geometry.dispose(); hoverDot.geometry = new THREE.BufferGeometry(); hoverDot.geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3)); }
@@ -590,6 +642,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       PointLight: () => [vector('position', position), {type: 'ColourXRGB32', name: 'color', value: 'ffffc400'},
         {type: 'Float', name: 'nearAttenuation', value: 32}, {type: 'Float', name: 'farAttenuation', value: 160}, {type: 'Float', name: 'intensity', value: 1.5}],
       PlayerSpawn: () => [vector('position', position), vector('angles', [yaw, 0, 0])],
+      Prefab: () => prefabEntity(placeName, position, [(yaw + 360) % 360, 0, 0]).properties,
     }[type];
     return {kind: 'entity', type, properties: properties ? properties() : []};
   }
@@ -604,26 +657,46 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     return {min, max, empty: [0, 1, 2].some(axis => axis !== drag.axis && max[axis] - min[axis] < 1e-6)};
   }
-  function startCreate(event) {
-    const hit = pick(event, false), mouse = ray(event);
+  // Where the mouse is on a surface (or, with nothing under it, on the ground plane y = 0): the point, its normal, the
+  // axis the surface faces most and the point on the grid across that axis.
+  function surfaceAt(event) {
+    const hit = pick(event, false);
     let point, normal;
     if (hit) ({point, normal} = hit);
     else {
-      // Nothing under the mouse: the ground plane, y = 0.
-      point = onPlane(mouse, 1, 0);
-      if (!point) return;
+      point = onPlane(ray(event), 1, 0);
+      if (!point) return null;
       normal = [0, 1, 0];
     }
-    if (createType >= 4) { drag = {kind: 'place', point, normal}; return; }
     const axis = normal.map(Math.abs).indexOf(Math.max(...normal.map(Math.abs))), sign = Math.sign(normal[axis]) || 1;
     const level = Math.abs(point[axis] - snap(point[axis])) < .01 ? snap(point[axis]) : point[axis];
-    const start = point.map((p, i) => i === axis ? level : snap(p));
-    drag = {kind: 'create', axis, sign, level, start, end: start};
+    return {point, normal, axis, sign, level, snapped: point.map((p, i) => i === axis ? level : snap(p))};
+  }
+  function startCreate(event) {
+    const at = surfaceAt(event);
+    if (!at) return;
+    if (createType >= 4) { drag = {kind: 'place', point: at.point, normal: at.normal}; return; }
+    drag = {kind: 'create', axis: at.axis, sign: at.sign, level: at.level, start: at.snapped, end: at.snapped};
   }
 
   let drag = null;
   function startDrag(event) {
     if (bridging) { makeBridge(); drag = {kind: 'done'}; return; }  // The click is the bridge's, not a selection.
+    if (clipMode) {
+      // A click near a point takes it to drag; elsewhere it adds one (a fourth starts the plane again), which the drag
+      // then moves.
+      let index = nearestOf(clipPoints, event);
+      if (index < 0) {
+        const at = surfaceAt(event);
+        if (!at) { drag = {kind: 'done'}; return; }
+        if (clipPoints.length >= 3) clipPoints = [];
+        clipPoints.push(at.snapped);
+        index = clipPoints.length - 1;
+        showClip();
+      }
+      drag = {kind: 'clippoint', index};
+      return;
+    }
     if (vertexMode) {
       const corner = nearestDot(event);
       if (corner) { drag = {kind: 'corner', ...corner, offset: [0, 0, 0], result: null}; return; }
@@ -631,10 +704,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (createType) { startCreate(event); return; }
     const hit = pick(event);
     if (!hit) return;
-    const entry = hit.entity || hit.entry;
-    if (entry.path.length) return;
-    const item = hit.entity ? hit.entity.entity : hit.entry.source;
+    const item = itemOf(hit), entry = hit.entity || hit.entry;
     if (event.shiftKey) {
+      if (entry.path.length) return;
       // Push or pull the face under the mouse of a selected brush along its normal.
       if (hit.entity || !selected.has(item) || !B.convex(item)) return;
       const plane = B.planesOf(item).find(candidate => candidate.face === hit.face);
@@ -647,7 +719,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   function continueDrag(event) {
     const grid = settings.grid;
-    if (drag.kind === 'place') return;
+    if (drag.kind === 'place' || drag.kind === 'done') return;
+    if (drag.kind === 'clippoint') {
+      const at = surfaceAt(event);
+      if (at) { clipPoints[drag.index] = at.snapped; showClip(); }
+      return;
+    }
     if (drag.kind === 'move') {
       const offset = gridOffset(event, drag.point);
       if (!offset) return;
@@ -698,7 +775,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function endDrag(still) {
     const done = drag;
     drag = null;
-    if (done.kind === 'done') return true;
+    if (done.kind === 'done' || done.kind === 'clippoint') return true;
     selection.position.set(0, 0, 0);
     ghost.clear();
     if (done.kind === 'move' && done.offset.some(Boolean)) {
@@ -737,7 +814,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (done.kind === 'place' && still) {
       const type = CREATE[createType].type, entity = newEntity(type, placeAt(done.point, done.normal));
       replace(new Map(), [{at: 'end', things: [entity]}], 'added');
-      say(`New ${describe(entity)} at ${positionOf(entity).join(' ')}`);
+      say(`New ${describe(entity).replace(/ · .*/, '')} at ${positionOf(entity).join(' ')}`);
       return true;
     }
     showSelection();
@@ -747,7 +824,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ---- The bridge tool ----
   function startBridge() {
     if (!bridgeFrom) { say('Shift-click a face first; B then bridges it to the face you aim at'); return; }
-    bridging = true; createType = 0; vertexMode = false;
+    bridging = true; createType = 0; vertexMode = false; clipMode = false; clipPoints = []; ghost.clear();
     showHover(null);
     updateTools();
     say('Aim at the face to bridge to; the wheel sets the steps');
@@ -792,6 +869,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     PlayerSpawn: [['Vector3', 'position', [0, 0, 0]], ['Vector3', 'angles', [0, 0, 0]], ['Bool8', 'teamA', 0], ['Bool8', 'teamB', 0], ['Bool8', 'initialSpawn', 0],
       ['Bool8', 'modeFFA', 0], ['Bool8', 'mode1v1', 0], ['Bool8', 'modeTDM', 0], ['Bool8', 'modeCTF', 0], ['Bool8', 'modeRace', 0]],
     PointLight: [['Vector3', 'position', [0, 0, 0]], ['ColourXRGB32', 'color', 'ffffc400'], ['Float', 'nearAttenuation', 32], ['Float', 'farAttenuation', 160], ['Float', 'intensity', 1.5]],
+    Prefab: [['Vector3', 'position', [0, 0, 0]], ['String64', 'prefabName', ''], ['Vector3', 'angles', [0, 0, 0]]],
     Effect: [['Vector3', 'position', [0, 0, 0]], ['String64', 'effectName', ''], ['Float', 'effectScale', 1], ['Vector3', 'angles', [0, 0, 0]],
       ['String256', 'material0Name', ''], ['ColourARGB32', 'material0Albedo', 'ffffffff']],
   };
@@ -801,7 +879,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     40: 'Health 5', 41: 'Health 25', 42: 'Health 50', 43: 'Mega health', 50: 'Armour shard', 51: 'Light armour', 52: 'Medium armour', 53: 'Heavy armour',
     60: 'Carnage (quad damage)', 70: 'Flag, team A (guess)', 71: 'Flag, team B (guess)', 80: 'Race token (guess)'};
   const NAMES_OF = {target: 'Target', nameNext: 'Target', targetGameOverCamera: 'Target'};
-  let panelOpen = false;
+  let panelOpen = false, panelView = 'properties', prefabDraft = '';
   // The entity the panel shows: the selected one, the entity a selected volume belongs to, or with nothing selected
   // the map's WorldSpawn.
   // A volume and its entity are one thing here: a teleporter just made selects both.
@@ -822,6 +900,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (NAMES_OF[name]) return flat.entities.filter(entry => entry.entity.type === 'Target').map(entry => M.property(entry.entity, 'name')).filter(Boolean);
     if (name === 'effectName') return flat.entities.filter(entry => entry.entity.type === 'Effect').map(entry => M.property(entry.entity, 'effectName')).filter(Boolean);
     if (/^material\dName$/.test(name)) return Object.keys(packColours);
+    if (name === 'prefabName') return M.prefabUses(map).map(entry => entry.name);
     return [];
   }
   // Writes one property (or removes it when `value` is undefined) as a step of undo, keeping the selection.
@@ -861,6 +940,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (panel.hidden || !flat) return;
     const body = $('propsBody'), target = panelTarget();
     body.replaceChildren();
+    $('propsTitle').textContent = panelView === 'prefabs' ? 'Prefabs' : 'Properties';
+    if (panelView === 'prefabs') { showPrefabList(body); return; }
     if (!target) { body.textContent = 'This map has no WorldSpawn.'; return; }
     if (target.many) { body.textContent = `${target.many} selected: select one entity to see its properties.`; return; }
     if (target.brush) {
@@ -890,7 +971,35 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     if (M.VOLUMES.has(entity.type) && !M.property(entity, 'target') && /Teleporter|JumpPad/.test(entity.type)) body.append(element('p', {className: 'hint', textContent: 'Set target to the name of a Target to link it.'}));
   }
-  function togglePanel() { panelOpen = !panelOpen; showPanel(); say(panelOpen ? 'Properties: N closes' : ''); }
+  function togglePanel() {
+    panelOpen = !(panelOpen && panelView === 'properties');
+    panelView = 'properties';
+    showPanel();
+    say(panelOpen ? 'Properties: N closes' : '');
+  }
+  // The prefab view of the panel: making, breaking and updating, and the map's prefabs with how many placements each
+  // has, to place or select.
+  function showPrefabList(body) {
+    const button = (textContent, onclick, title = '') => element('button', {type: 'button', textContent, onclick, title});
+    body.append(element('p', {textContent: 'Break a placement to edit what it holds; Update puts the selection back into every placement.'}));
+    const name = element('input', {type: 'text', value: prefabDraft, placeholder: 'name', maxLength: 64, oninput: event => { prefabDraft = event.target.value; }});
+    body.append(element('div', {className: 'make'}, name, button('Make from selection', () => createPrefab(prefabDraft.trim()), 'me_createprefab <name>')),
+      element('div', {className: 'actions'},
+        button('Break selected', breakPrefabs, 'me_breakprefab: the selected placements become what their prefab holds'),
+        button('Update from selection', () => updatePrefab(prefabDraft.trim() || undefined), 'me_updateprefab [name]: the selection becomes what the prefab holds, in every placement')));
+    const uses = M.prefabUses(map);
+    if (!uses.length) { body.append(element('p', {textContent: 'This map has no prefabs.'})); return; }
+    body.append(element('table', {className: 'prefabs'}, ...uses.map(({name: prefab, uses: count}) => element('tr', {},
+      element('td', {textContent: prefab}), element('td', {textContent: String(count), title: 'Placements'}),
+      element('td', {}, button('Place', () => placePrefab(prefab), 'Click a surface to place it (me_createtype prefab)'), ' ',
+        button('Select', () => {
+          const wanted = prefab.toLowerCase();
+          selected.clear();
+          for (const item of globalGroup().items) if (!isBrush(item) && item.type === 'Prefab' && String(M.property(item, 'prefabName')).toLowerCase() === wanted) selected.add(item);
+          showSelection();
+          say(`${selected.size} placement${selected.size === 1 ? '' : 's'} of ${prefab} in the map selected`);
+        }, 'Select its placements in the map'))))));
+  }
 
   // K and M: the game's me_getmaterial and me_setmaterial.
   let mouseAt = null;
@@ -916,6 +1025,288 @@ window.addEventListener('DOMContentLoaded', async () => {
     replace(new Map(items.map(item => [item, [{vertices: item.vertices, faces: item.faces.map(paint)}]])), [], 'changed');
     say(`Material on ${items.length} brushes: ${template.material || 'no material'}`);
   }
+
+  // ---- Texture keys (the game's me_texcoords_*) ----
+  // On the face Shift-click picked, else the face under the cursor: the arrows move its texture a grid step (left and
+  // right along u, up and down along v), Home and Insert scale it up and down along u, End and Delete along v, PgUp and
+  // PgDn flip it along u and v, and , and . turn it by the angle step.
+  const SCALE_STEP = .25;  // The stock maps' scales other than 1 are mostly quarters (0.25, 0.75, 1.25).
+  const TEXTURE_KEYS = {ArrowLeft: ['u', -1], ArrowRight: ['u', 1], ArrowUp: ['v', 1], ArrowDown: ['v', -1], Home: ['scaleU', 1], Insert: ['scaleU', -1],
+    End: ['scaleV', 1], Delete: ['scaleV', -1], PageUp: ['scaleU', 0], PageDown: ['scaleV', 0], Comma: ['rotation', -1], Period: ['rotation', 1]};
+  function textureTarget() {
+    if (bridgeFrom && globalGroup().items.includes(bridgeFrom.item)) return {item: bridgeFrom.item, face: bridgeFrom.face};
+    const hit = mouseAt && pick(mouseAt, false);
+    if (!hit) return null;
+    return hit.entry.path.length ? {placed: hit.entry.path[0]} : {item: hit.entry.source, face: hit.face};
+  }
+  function moveTexture(code) {
+    const target = textureTarget();
+    if (!target) { say('Aim at a face, or Shift-click one, to move its texture'); return; }
+    if (target.placed) { say(`That face is prefab ${M.property(target.placed, 'prefabName')}'s: break the prefab (me_breakprefab) to change it`); return; }
+    const [field, sign] = TEXTURE_KEYS[code], {item, face} = target, value = Number(face[field]) || 0;
+    let next;
+    if (field === 'u' || field === 'v') next = value + sign * settings.grid;
+    else if (field === 'rotation') next = ((value + sign * settings.angle) % 360 + 360) % 360;
+    else if (!sign) next = -(value || 1);
+    else next = (value < 0 ? -1 : 1) * Math.max(SCALE_STEP, (Math.abs(value) || 1) + sign * SCALE_STEP);
+    next = Math.round(next * 1e6) / 1e6 + 0;
+    const index = item.faces.indexOf(face), picked = bridgeFrom && bridgeFrom.item === item;
+    const fresh = {kind: 'brush', vertices: item.vertices, faces: item.faces.map(other => other === face ? {...other, [field]: next} : other)};
+    replace(new Map([[item, [fresh]]]), [], [...selected].map(other => other === item ? fresh : other));
+    if (picked) bridgeFrom = pickFace({entry: {source: fresh}, face: fresh.faces[index]});
+    texturePreview = {item: fresh, index};
+    showSelection();
+    const f = fresh.faces[index];
+    say(`Texture offset ${f.u} ${f.v} · scale ${f.scaleU} ${f.scaleV} · rotation ${f.rotation}°`);
+  }
+
+  // ---- Turning (numpad + and −, the game's me_rotate_inc and me_rotate_dec, by me_snapangle) ----
+  // The items of the map selected, with the brushes of a selected volume entity and the entity of a selected volume.
+  function withVolumes(items) {
+    const all = new Set(items);
+    for (const entry of flat.brushes) if (!entry.path.length && M.isVolume(entry.owner) && all.has(entry.owner)) all.add(entry.source);
+    for (const item of [...all]) if (isBrush(item) && M.isVolume(ownerOf(item))) all.add(ownerOf(item));
+    return globalGroup().items.filter(item => all.has(item));
+  }
+  // The box round items: brushes' corners and entities' positions, and with `placed` the brushes a Prefab places.
+  function extent(items, placed = false) {
+    const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+    const add = point => { for (let i = 0; i < 3; i++) { min[i] = Math.min(min[i], point[i]); max[i] = Math.max(max[i], point[i]); } };
+    for (const item of items) {
+      if (isBrush(item)) { item.vertices.forEach(add); continue; }
+      const position = positionOf(item);
+      if (position) add(position);
+      if (placed && item.type === 'Prefab') for (const entry of flat.brushes) if (entry.path[0] === item) entry.brush.vertices.forEach(add);
+    }
+    return min[0] <= max[0] ? {min, max} : null;
+  }
+  const translation = offset => [[1, 0, 0, offset[0]], [0, 1, 0, offset[1]], [0, 0, 1, offset[2]]];
+  const onGrid = value => Math.abs(value - snap(value)) < 1e-6;
+  // Turns the selection about the vertical through its middle, +z toward +x for `sign` 1 as a yaw turns; entities'
+  // yaw turns with it. A quarter turn of a selection whose corner was on the grid leaves it on the grid: when the turn
+  // about the middle does not, the selection moves the rest of the way, less than a grid step.
+  function rotateSelection(sign) {
+    const items = withVolumes([...selected]), box = items.length && extent(items, true);
+    if (!box) { say('Select something to turn'); return; }
+    const degrees = sign * settings.angle, centre = box.min.map((v, i) => (v + box.max[i]) / 2), turn = M.compose([0, 0, 0], [degrees, 0, 0]);
+    let transform = turn.map((row, i) => [row[0], row[1], row[2], centre[i] - (row[0] * centre[0] + row[1] * centre[1] + row[2] * centre[2])]);
+    if (degrees % 90 === 0) {
+      const before = extent(items), after = extent(items.map(item => M.moveItem(item, transform, degrees)));
+      const shift = [0, 0, 0];
+      for (const axis of [0, 2]) if (onGrid(before.min[axis]) && !onGrid(after.min[axis])) shift[axis] = snap(after.min[axis]) - after.min[axis];
+      transform = transform.map((row, i) => [row[0], row[1], row[2], row[3] + shift[i]]);
+    }
+    const turned = items.map(item => M.moveItem(item, transform, degrees));
+    replace(new Map(items.map((item, i) => [item, [turned[i]]])), [], turned.filter((_, i) => selected.has(items[i])));
+    say(`Turned ${degrees > 0 ? '+' : ''}${degrees}° about ${Math.round(centre[0] * 1000) / 1000} ${Math.round(centre[2] * 1000) / 1000}`);
+  }
+
+  // ---- Prefabs (the game's me_createprefab, me_breakprefab, me_updateprefab, me_listprefabs) ----
+  const PREFAB_NAME = /^[A-Za-z0-9_.-]+$/;
+  // Selected items as a prefab holds them: the world's brushes, then the entities, a volume entity followed by its
+  // brushes. A WorldSpawn is never taken in; the prefab has its own.
+  function prefabParts(items) {
+    const world = items.filter(item => isBrush(item) && !M.isVolume(ownerOf(item))), rest = [];
+    for (const item of items) {
+      if (isBrush(item) || item.type === 'WorldSpawn') continue;
+      rest.push(item);
+      if (M.isVolume(item)) rest.push(...items.filter(other => isBrush(other) && ownerOf(other) === item));
+    }
+    return {world, rest};
+  }
+  const moveParts = ({world, rest}, transform, yaw) => ({world: world.map(item => M.moveItem(item, transform, yaw)), rest: rest.map(item => M.moveItem(item, transform, yaw))});
+  const prefabEntity = (name, position, angles = [0, 0, 0]) => ({kind: 'entity', type: 'Prefab', properties: [
+    {type: 'Vector3', name: 'position', value: position}, {type: 'String64', name: 'prefabName', value: name}, {type: 'Vector3', name: 'angles', value: angles}]});
+  // Where a new prefab's origin goes: the middle of the selection across, its bottom, on the grid.
+  function originOf(items) {
+    const {min, max} = extent(items, true);
+    return [snap((min[0] + max[0]) / 2), Math.floor(min[1] / settings.grid + 1e-9) * settings.grid + 0, snap((min[2] + max[2]) / 2)];
+  }
+  // Whether Prefab entities among `items` place the prefab `name`, at any depth.
+  function holds(name, items, seen = new Set()) {
+    for (const item of items) {
+      if (isBrush(item) || item.type !== 'Prefab') continue;
+      const inner = M.prefab(map, M.property(item, 'prefabName'));
+      if (!inner || seen.has(inner)) continue;
+      if (inner.name.toLowerCase() === name.toLowerCase()) return true;
+      seen.add(inner);
+      if (holds(name, inner.items, seen)) return true;
+    }
+    return false;
+  }
+  const counted = ({world, rest}) => `${world.length + rest.filter(isBrush).length} brushes and ${rest.filter(item => !isBrush(item)).length} entities`;
+  // me_createprefab: the selection becomes the prefab `name`, placed where it stood by a new Prefab entity.
+  function createPrefab(name) {
+    if (!name || !PREFAB_NAME.test(name)) { say('me_createprefab <name>: a name of letters, digits, _, . and -'); return; }
+    const existing = M.prefab(map, name);
+    if (existing) { say(`There is a prefab ${existing.name} already: me_updateprefab ${existing.name} changes it`); return; }
+    const items = withVolumes([...selected]).filter(item => isBrush(item) || item.type !== 'WorldSpawn');
+    if (!items.length) { say('Select what the prefab is to hold, then me_createprefab <name>'); return; }
+    const origin = originOf(items), placed = prefabEntity(name, origin);
+    const local = moveParts(prefabParts(items), translation(origin.map(v => -v)), 0);
+    replace(new Map(items.map(item => [item, []])), [{at: 'end', things: [placed]}], [placed], () => M.setPrefab(map, name, local));
+    say(`Prefab ${name}: ${counted(local)}, placed at ${origin.join(' ')}`);
+  }
+  // me_breakprefab: each selected placement becomes copies of what its prefab holds, where it placed them; the prefab
+  // stays in the map for its other placements.
+  function breakPrefabs() {
+    const placements = [...selected].filter(item => !isBrush(item) && item.type === 'Prefab');
+    if (!placements.length) { say('Select a placed prefab (click any part of it), then me_breakprefab'); return; }
+    const changes = new Map(), world = [], made = [], missing = [];
+    for (const entity of placements) {
+      const parts = M.breakPrefab(map, entity);
+      if (!parts) { missing.push(M.property(entity, 'prefabName')); continue; }
+      const from = {name: M.placement(map, entity).group.name, position: positionOf(entity) || [0, 0, 0], angles: M.property(entity, 'angles') || [0, 0, 0]};
+      for (const item of [...parts.world, ...parts.rest]) brokenFrom.set(item, from);
+      changes.set(entity, parts.rest);
+      world.push(...parts.world);
+      made.push(...parts.world, ...parts.rest);
+    }
+    if (!changes.size) { say(`This map has no prefab named ${missing.join(', ')}`); return; }
+    replace(changes, world.length ? [{at: 'world', things: world}] : [], made);
+    say(`Broke ${changes.size} placement${changes.size > 1 ? 's' : ''} into ${counted({world, rest: made.slice(world.length)})}; me_updateprefab puts the selection back into the prefab`);
+  }
+  // me_updateprefab: the selection becomes what the prefab holds, in every placement of it, and is replaced by a
+  // placement where it stands. Without a name, the prefab the selection was broken from; it then goes back into that
+  // placement's frame (its position and turn), so the other placements keep theirs. A prefab named but not broken
+  // takes the selection about a new origin, as me_createprefab would.
+  function updatePrefab(name) {
+    const items = withVolumes([...selected]).filter(item => isBrush(item) || item.type !== 'WorldSpawn');
+    if (!items.length) { say('Select what the prefab is to hold, then me_updateprefab'); return; }
+    const sources = [...new Set(items.map(item => brokenFrom.get(item)).filter(Boolean).map(from => from.name))];
+    if (!name) {
+      if (sources.length !== 1) { say(sources.length ? `The selection comes from ${sources.join(' and ')}: me_updateprefab <name>` : 'me_updateprefab <name>: which prefab the selection is to become'); return; }
+      name = sources[0];
+    }
+    const group = M.prefab(map, name);
+    if (!group) { say(`This map has no prefab named ${name}: me_createprefab ${name} makes one`); return; }
+    const parts = prefabParts(items);
+    if (holds(group.name, parts.rest)) { say(`A prefab cannot hold itself: the selection places ${group.name}`); return; }
+    const frame = items.map(item => brokenFrom.get(item)).find(from => from && from.name.toLowerCase() === group.name.toLowerCase()) || {position: originOf(items), angles: [0, 0, 0]};
+    const local = moveParts(parts, M.invert(M.compose(frame.position, frame.angles)), -frame.angles[0]);
+    const placed = prefabEntity(group.name, frame.position, frame.angles);
+    replace(new Map(items.map(item => [item, []])), [{at: 'end', things: [placed]}], [placed], () => M.setPrefab(map, group.name, local));
+    const uses = M.prefabUses(map).find(entry => entry.group === M.prefab(map, group.name));
+    say(`Prefab ${group.name} now holds ${counted(local)}, in its ${uses ? uses.uses : 1} placement${uses && uses.uses === 1 ? '' : 's'}`);
+  }
+  // me_listprefabs: the panel's list of the map's prefabs.
+  function showPrefabs() { panelOpen = true; panelView = 'prefabs'; showPanel(); say(''); }
+  let placeName = '';  // The prefab create type 9 places (Place in the list).
+  function placePrefab(name) { placeName = name; createType = 0; setCreate(9); }
+
+  // ---- The clipper (C, the game's editortoggleclipmode) ----
+  // Two or three points clicked on surfaces (on the grid across them) make a plane; Enter keeps the part of each
+  // selected brush on the far side of it from the camera, Shift+Enter keeps both parts, and the wheel or Ctrl+Enter
+  // flips which side is kept. With two points the plane stands upright through them (or, through an upright line,
+  // holds the view direction). The cut faces take the picked material, as new brushes do; a volume's, its own.
+  let clipMode = false, clipPoints = [], clipFlip = false, clipPlane = null;
+  const clipKept = new THREE.LineBasicMaterial({color: 0x7ee787, depthTest: false, transparent: true});
+  const clipCut = new THREE.LineBasicMaterial({color: 0xff6b6b, depthTest: false, transparent: true, opacity: .6});
+  const clipDots = new THREE.PointsMaterial({color: 0xff6b6b, size: 11, sizeAttenuation: false, depthTest: false, transparent: true});
+  const clipBrushes = () => selectedBrushes().filter(B.convex);
+  const clipFields = item => M.isVolume(ownerOf(item)) ? fieldsOf(item.faces[0]) : template;
+  function setClipMode(on) {
+    clipMode = on; clipPoints = []; clipPlane = null;
+    if (on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; }
+    showHover(null);
+    showClip();
+    showSelection();
+    say(on ? (clipBrushes().length ? 'Click two or three points of the cutting plane on surfaces' : 'Select the brushes to clip, then click two or three points') : '');
+  }
+  function clipPlaneOf() {
+    if (clipPoints.length < 2) return null;
+    let [a, b, c] = clipPoints;
+    if (!c) {
+      const d = b.map((v, i) => v - a[i]), length = Math.hypot(...d);
+      if (length < 1e-6) return null;
+      if (Math.abs(d[1]) < .9 * length) c = [b[0], b[1] + 64, b[2]];
+      else { const f = new THREE.Vector3(); camera.getWorldDirection(f); c = [b[0] + f.x * 64, b[1], b[2] - f.z * 64]; }
+    }
+    const plane = B.planeFromPoints(a, b, c);
+    if (!(Math.hypot(...plane.normal) > .5)) return null;
+    const eye = [camera.position.x, camera.position.y, -camera.position.z], facing = dot(plane.normal, eye) > plane.distance;
+    return facing !== clipFlip ? {normal: plane.normal, distance: plane.distance} : {normal: plane.normal.map(n => -n + 0), distance: -plane.distance + 0};
+  }
+  function showClip() {
+    ghost.clear();
+    clipPlane = clipMode ? clipPlaneOf() : null;
+    if (!clipMode) return;
+    if (clipPoints.length) {
+      const points = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(clipPoints.flat(), 3)), clipDots);
+      points.renderOrder = 5;
+      ghost.add(points);
+    }
+    if (clipPlane) {
+      const kept = [], cut = [];
+      for (const item of clipBrushes()) {
+        const {back, front} = B.split(item, clipPlane, clipFields(item));
+        if (back) kept.push(back);
+        if (front) cut.push(front);
+      }
+      for (const [brushes, material] of [[kept, clipKept], [cut, clipCut]]) if (brushes.length) { const lines = edgesOf(...brushes); lines.material = material; lines.renderOrder = 4; ghost.add(lines); }
+      say(`Plane through ${clipPoints.length} points: green is kept, red cut away · Enter clips, Shift+Enter splits, wheel flips`);
+    }
+    updateTools();
+  }
+  function flipClip() { clipFlip = !clipFlip; showClip(); }
+  function applyClip(both) {
+    if (!clipPlane) { say('Click two or three points first'); return; }
+    const changes = new Map();
+    for (const item of clipBrushes()) {
+      const {back, front} = B.split(item, clipPlane, clipFields(item));
+      if (back && front) changes.set(item, both ? [back, front] : [back]);
+      else if (!back && !both) changes.set(item, []);  // Wholly on the side cut away.
+    }
+    if (!changes.size) { say('The plane does not cut the selection'); return; }
+    replace(changes, [], 'changed');
+    showClip();
+    say(`${both ? 'Split' : 'Clipped'} ${changes.size} brush${changes.size > 1 ? 'es' : ''}`);
+  }
+
+  // ---- The console (`), for the game's editor commands that have no key ----
+  const TYPES = {worldspawn: 1, teleporter: 2, jumppad: 3, target: 4, effect: 5, pickup: 6, pointlight: 7, playerspawn: 8, prefab: 9};
+  // A grid or angle step from a command: the toolbar's list takes a value it does not have.
+  function setStep(key, text) {
+    const value = Number(text), list = $(key);
+    if (!(value > 0)) { say(`${key === 'grid' ? 'me_snapdistance' : 'me_snapangle'} <number>: now ${settings[key]}`); return; }
+    if (![...list.options].some(option => Number(option.value) === value)) list.append(new Option(String(value)));
+    settings[key] = value;
+    save();
+    setEditing(editing);
+    say(`${key === 'grid' ? 'Grid' : 'Angle step'} ${value}`);
+  }
+  const COMMANDS = {
+    me_createprefab: name => createPrefab(name),
+    me_breakprefab: () => breakPrefabs(),
+    me_updateprefab: name => updatePrefab(name),
+    me_listprefabs: () => showPrefabs(),
+    me_rotate_inc: () => rotateSelection(1),
+    me_rotate_dec: () => rotateSelection(-1),
+    me_snapangle: value => setStep('angle', value),
+    me_snapdistance: value => setStep('grid', value),
+    me_createtype: (type = '', name = '') => {
+      const number = TYPES[type.toLowerCase()];
+      if (!number) { say(`me_createtype ${Object.keys(TYPES).join('|')}`); return; }
+      if (number === 9) { if (M.prefab(map, name)) placePrefab(M.prefab(map, name).name); else say('me_createtype prefab <name of a prefab of this map>'); return; }
+      if (createType !== number) setCreate(number);
+    },
+    me_showproperties: () => { panelOpen = true; panelView = 'properties'; showPanel(); },
+    editortoggleclipmode: () => setClipMode(!clipMode),
+    editortogglevertexmode: () => setVertexMode(!vertexMode),
+    help: () => say(`Commands: ${Object.keys(COMMANDS).join(', ')}`),
+  };
+  function run(line) {
+    const [command, ...args] = line.trim().split(/\s+/);
+    if (!command) return;
+    const handler = COMMANDS[command.toLowerCase()];
+    if (!handler) { say(`Unknown command ${command}; help lists them`); return; }
+    handler(...args);
+  }
+  $('console').addEventListener('keydown', event => {
+    event.stopPropagation();
+    if (event.key === 'Enter') { const line = event.target.value; event.target.value = ''; event.target.blur(); if (editing && flat) run(line); }
+    if (event.key === 'Escape') event.target.blur();
+  });
 
   // The toolbar's operations, each one step of undo. CSG works on brushes of the world, not on volumes.
   function others(of) { return globalGroup().items.filter(item => isWorldBrush(item) && !of.includes(item) && B.convex(item)); }
@@ -954,7 +1345,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       replace(new Map([[first, [joined]], ...rest.map(item => [item, []])]), [], 'changed');
       say('Merged');
     },
-    clip() {
+    split() {
       // The grid plane through the point clicked last, across the axis the camera faces most.
       const forward = new THREE.Vector3();
       camera.getWorldDirection(forward);
@@ -1017,18 +1408,23 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', event => { action(); event.target.blur(); });
   $('propsButton').addEventListener('click', event => { togglePanel(); event.target.blur(); });
+  $('prefabsButton').addEventListener('click', event => { if (panelOpen && panelView === 'prefabs') { panelOpen = false; showPanel(); } else showPrefabs(); event.target.blur(); });
+  $('rotateInc').addEventListener('click', event => { rotateSelection(1); event.target.blur(); });
+  $('rotateDec').addEventListener('click', event => { rotateSelection(-1); event.target.blur(); });
+  $('clipButton').addEventListener('click', event => { setClipMode(!clipMode); event.target.blur(); });
+  $('angle').addEventListener('change', event => { settings.angle = Number(event.target.value); event.target.blur(); save(); updateTools(); });
   $('propsClose').addEventListener('click', () => { panelOpen = false; showPanel(); });
 
   function setCreate(type) {
     createType = createType === type ? 0 : type;
-    if (createType) { vertexMode = false; bridging = false; bridgePreview = null; ghost.clear(); }
+    if (createType) { vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; ghost.clear(); }
     showHover(null);
     updateTools();
-    say(createType ? `${CREATE[createType].label}: ${createType <= 3 ? 'drag a rectangle on a surface' : 'click where it goes'}` : '');
+    say(createType ? `${createLabel()}: ${createType <= 3 ? 'drag a rectangle on a surface' : 'click where it goes'}` : '');
   }
   function setVertexMode(on) {
     vertexMode = on;
-    if (on) { createType = 0; bridging = false; bridgePreview = null; ghost.clear(); }
+    if (on) { createType = 0; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; ghost.clear(); }
     showHover(null);
     showSelection();
     say(on ? (selectedBrushes().length ? 'Drag a corner; Alt drags it up and down' : 'Select a brush to see its corners') : '');
@@ -1040,10 +1436,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const mesh of entityLayer.children) if (mesh.userData.editOnly) mesh.visible = on;
     uniforms.uGrid.value = on ? settings.grid : 0;
     $('crosshair').hidden = on;
-    if (!on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; showHover(null); ghost.clear(); }
+    if (!on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; texturePreview = null; showHover(null); ghost.clear(); }
     if (on && document.pointerLockElement === canvas) document.exitPointerLock();
     $('help').textContent = on
-      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · N properties · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
+      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · C clip · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints';
     updateTools();
     applySettings();  // The toolbar changes the scene's height; reading it lays the page out now, not a frame later.
@@ -1083,7 +1479,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('mouseup', event => {
     const still = downAt && Math.hypot(event.clientX - downAt[0], event.clientY - downAt[1]) < 5;
     const dragged = editing && event.button === 0 && drag ? endDrag(still) : false;
-    if (editing && event.button === 0 && still && !dragged && !createType && flat) select(event);
+    if (editing && event.button === 0 && still && !dragged && !createType && !clipMode && flat) select(event);
     if (event.button === 2 || !editing) looking = false;
     downAt = null;
   });
@@ -1093,12 +1489,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (drag && editing) { continueDrag(event); return; }
     if (editing && vertexMode && !looking && event.target === canvas) { const corner = nearestDot(event); showHover(corner && corner.position); }
     if (editing && bridging && !looking && event.target === canvas) aimBridge(event);
+    // The texture preview stays while the mouse is on its face (or the face is the one Shift-click picked).
+    if (editing && texturePreview && !looking && event.target === canvas && !(bridgeFrom && bridgeFrom.item === texturePreview.item)) {
+      const hit = pick(event, false);
+      if (!hit || hit.entry.source !== texturePreview.item || hit.face !== texturePreview.item.faces[texturePreview.index]) { texturePreview = null; showSelection(); }
+    }
     if (!looking && document.pointerLockElement !== canvas) return;
     camera.rotation.y -= event.movementX * .0025 * (settings.invertX ? -1 : 1);
     camera.rotation.x = Math.max(-1.55, Math.min(1.55, camera.rotation.x - event.movementY * .0025 * (settings.invertY ? -1 : 1)));
   });
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
+    if (editing && clipMode) { flipClip(); return; }
     if (editing && bridging) {
       segments = Math.max(1, Math.min(32, segments + (event.deltaY < 0 ? 1 : -1)));
       updateTools();
@@ -1130,21 +1532,28 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!ctrl && key === 'b') { if (bridging) stopBridge(); else startBridge(); return; }
       if (!ctrl && event.code === 'KeyN') { togglePanel(); return; }
       if (!ctrl && key === 'h' && !$('hollow').disabled) { actions.hollow(); return; }
-      if (!ctrl && key === 'c' && !$('clip').disabled) { actions.clip(); return; }
-      if ((event.code === 'Delete' || event.code === 'Backspace') && selected.size) { event.preventDefault(); actions.delete(); return; }
+      if (!ctrl && event.code === 'KeyC') { setClipMode(!clipMode); return; }
+      if (event.code === 'Backquote') { event.preventDefault(); $('console').focus(); return; }
+      if (clipMode && (event.code === 'Enter' || event.code === 'NumpadEnter')) { event.preventDefault(); if (ctrl) flipClip(); else applyClip(event.shiftKey); return; }
+      if (event.code === 'NumpadAdd' || event.code === 'NumpadSubtract') { event.preventDefault(); rotateSelection(event.code === 'NumpadAdd' ? 1 : -1); return; }
+      if (event.code === 'Backspace' && selected.size) { event.preventDefault(); actions.delete(); return; }
       if (event.code === 'Escape') {
-        if (drag) { drag = null; selection.position.set(0, 0, 0); ghost.clear(); showSelection(); return; }
+        if (drag) { drag = null; selection.position.set(0, 0, 0); ghost.clear(); showSelection(); if (clipMode) showClip(); return; }
+        if (clipMode) { if (clipPoints.length) { clipPoints = []; showClip(); say(''); } else setClipMode(false); return; }
         if (bridging) { stopBridge(); return; }
         if (bridgeFrom) { bridgeFrom = null; showSelection(); say(''); return; }
         if (createType) { setCreate(createType); return; }
         if (vertexMode) { setVertexMode(false); return; }
+        if (texturePreview) { texturePreview = null; showSelection(); say(''); return; }
         selected.clear(); say(''); showSelection(); return;
       }
-      // Arrows move the selection along the horizontal axis nearest to where the camera looks.
+      // Shift and the arrows (or PgUp and PgDn) move the selection a grid step along the horizontal axis nearest to
+      // where the camera looks (or up and down); without Shift these keys are the game's texture keys.
       const step = settings.grid, yaw = -camera.rotation.y, along = Math.round(yaw / (Math.PI / 2)) & 3;
       const ahead = [[0, 0, 1], [1, 0, 0], [0, 0, -1], [-1, 0, 0]][along], side = [[1, 0, 0], [0, 0, -1], [-1, 0, 0], [0, 0, 1]][along];
       const arrows = {ArrowUp: ahead, ArrowDown: ahead.map(x => -x), ArrowRight: side, ArrowLeft: side.map(x => -x), PageUp: [0, 1, 0], PageDown: [0, -1, 0]};
-      if (arrows[event.code] && selected.size) { event.preventDefault(); move(arrows[event.code].map(x => x * step + 0)); return; }
+      if (event.shiftKey && !ctrl && arrows[event.code]) { event.preventDefault(); if (selected.size) move(arrows[event.code].map(x => x * step + 0)); return; }
+      if (!event.shiftKey && !ctrl && !event.altKey && TEXTURE_KEYS[event.code]) { event.preventDefault(); moveTexture(event.code); return; }
     }
     if (/^(Key[WASDQE]|Space|Shift(Left|Right))$/.test(event.code) && !ctrl) { keys.add(event.code); if (event.code === 'Space') event.preventDefault(); }
   });
@@ -1161,7 +1570,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderer.render(scene, camera);
   });
   window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; },
-    get createType() { return createType; }, get vertexMode() { return vertexMode; }, get bridging() { return bridging; }, get segments() { return segments; }, load, actions, selected, setEditing, showViewpoint};
+    get createType() { return createType; }, get vertexMode() { return vertexMode; }, get bridging() { return bridging; }, get segments() { return segments; }, get clipMode() { return clipMode; }, get clipPoints() { return clipPoints; },
+    settings, run, load, actions, selected, setEditing, showViewpoint};
 
   // ---- Loading ----
   $('open').addEventListener('change', async event => {
