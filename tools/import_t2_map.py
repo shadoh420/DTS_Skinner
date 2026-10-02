@@ -17,7 +17,8 @@ ARCHIVES = ('base.vl2', 'scripts.vl2', 'missions.vl2', 'shapes.vl2',
             'desert.vl2', 'ice.vl2', 'lava.vl2', 'lush.vl2')
 # Map packs a stock install may lack. The TR2 server archive holds the game type scripts TR2 missions run.
 OPTIONAL = ('Classic_maps_v1.vl2', 'TR2final105-client.vl2', 'TR2final105-server.vl2')
-EXTENSIONS = {'.cs', '.mis', '.ter', '.dts', '.dsq', '.dif', '.png', '.jpg', '.jpeg', '.bmp', '.bm8', '.ifl', '.dml'}
+# Not .bm8: the game's paletted copy of nearly every .png (126 MB of them), which t2-mapper never reads.
+EXTENSIONS = {'.cs', '.mis', '.ter', '.dts', '.dsq', '.dif', '.png', '.jpg', '.jpeg', '.bmp', '.ifl', '.dml'}
 # Short codes as exogen/t2-mapper's src/mission.ts normalizes them.
 MISSION_TYPES = {name.lower(): name for name in (
     'Arena', 'Bounty', 'CnH', 'CTF', 'DM', 'DnD', 'Hunters', 'LakRabbit', 'LakZM', 'LCTF', 'None', 'Rabbit',

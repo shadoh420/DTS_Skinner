@@ -18,7 +18,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 - **Save view PNG** downloads the current rendered view, including the background and preview transforms, without interface controls.
 - The expanded texture browser keeps **Apply to slot** visible while its settings and thumbnails scroll.
 - Restore the default view and materials with **Reset all**.
-- **T2 Maps · Katabatic** opens an experimental offline map viewer with terrain, buildings, placed objects, fog and free-flight. Requires the separate local map pack included in the preview package; see [map setup and limitations](docs/t2-map-viewer.md).
+- **T2 Maps** opens a free-flight preview of Tribes 2 missions with terrain, buildings, placed objects, sky, water and fog: every stock, Classic and Team Rabbit 2 map of your own install, imported from the page's **Import maps** panel; see [T2 map setup and limitations](docs/t2-map-viewer.md).
 - **T1 Maps** opens a free-flight preview of Starsiege: Tribes missions: every map in your own install plus custom missions, imported from the page's **Import maps** panel; see [T1 map setup and limitations](docs/t1-map-viewer.md).
 
 ## Getting started

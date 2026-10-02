@@ -2,9 +2,11 @@
 // its missionLoad.integration.spec.ts loads one, and lists what fails or is not in the pack.
 // Run from the pinned upstream checkout, with LOG_LEVEL=error and TSX_TSCONFIG_PATH=tsconfig.node.json set:
 //   node --import=tsx/esm skinner/check-pack.ts <pack> [report.json]
-import {readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, readFileSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
+import {parseDTS} from '../src/dts/dts';
+import {extractMountTransforms} from '../scripts/lib/mounts';
 import {parseMissionScript} from '../src/mission';
 import {runServer} from '../src/torqueScript';
 import {createScriptLoader} from '../src/torqueScript/scriptLoader.node.ts';
@@ -14,8 +16,14 @@ import {walkMissionTree} from '../src/stream/missionEntityBridge';
 const pack = process.argv[2];
 if (!pack) throw new Error('Pass the imported map pack directory');
 const manifest = JSON.parse(readFileSync(path.join(pack, 'manifest.json'), 'utf8'));
-const mounts = JSON.parse(readFileSync(path.join(pack, 'mounts.json'), 'utf8'));  // Written when the viewer first opens the pack.
 const files = Object.keys(manifest.resources);
+// The viewer writes mounts.json when it first opens a pack; before that they are read here the same way.
+const mounts: Record<string, unknown> = existsSync(path.join(pack, 'mounts.json')) ? JSON.parse(readFileSync(path.join(pack, 'mounts.json'), 'utf8')) : {};
+if (!Object.keys(mounts).length) for (const file of files.filter(file => file.endsWith('.dts')).sort()) {
+  const data = readFileSync(path.join(pack, 'base', file));
+  const found = data.length ? extractMountTransforms(parseDTS(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength))) : null;
+  if (found) mounts[path.basename(file, '.dts')] = found;
+}
 const has = (file: string) => file.toLowerCase() in manifest.resources;
 const fileSystem = {
   findFiles: (pattern: string) => { const matches = picomatch(pattern, {nocase: true}); return files.filter(file => matches(file)); },

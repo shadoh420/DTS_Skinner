@@ -14,7 +14,7 @@ Source checkout: C:/tmp/t2-mapper-skinner-reference (sparse source, no game asse
 
 In the app: **T2 Maps** in the model sidebar, then **Import maps**. Enter your
 Tribes 2 folder (`GameData` or its `base` folder). Every mission in the archives
-below is imported in one go, about 500 MB and a few seconds on a local disk. A
+below is imported in one go, about 370 MB and a few seconds on a local disk. A
 pack that already exists is kept unless **Re-import existing maps** is ticked.
 From a checkout the same import runs as:
 
@@ -29,6 +29,12 @@ in this order, later ones winning; loose files and other archives are not:
 `base`, `scripts`, `missions`, `shapes`, `interiors`, `textures`, `skins`,
 `badlands`, `desert`, `ice`, `lava`, `lush` (all required), then
 `Classic_maps_v1`, `TR2final105-client` and `TR2final105-server` where present.
+
+Of the archives' files only those the viewer reads are copied (scripts,
+missions, terrains, shapes, interiors, PNG, JPEG and BMP textures and their
+lists). The game's paletted `.bm8` copy of nearly every PNG, 126 MB in all, is
+left out: upstream never reads one, and the 130 kB of textures that exist only
+as `.bm8` could not be drawn either way.
 
 The TR2 server archive holds no maps: it has `TR2Game.cs` and the datablocks the
 eight Team Rabbit 2 missions run. `T2csri`, `zz_Classic_client_v1` (client and
@@ -56,9 +62,11 @@ A mission whose display name is not its file name is listed with both
 ("Training1 · Newblood").
 
 **Preview notes** lists what the renderer could not resolve on the map in
-view: files a mission, shape or material list names that the pack does not
-hold (upstream draws a fallback), shapes that failed to load, script errors,
-and a mission whose scripts have not reported ready after 90 seconds.
+view, in plain words taken from upstream's log: files a mission, shape or
+material list names that are not in the game files (upstream draws a
+fallback), with the stock game's own known gaps marked as such, shapes or
+shaders that failed, lines a mission's scripts print through `error()`, and a
+mission whose scripts have not reported ready after 90 seconds.
 
 ## Where this departs from upstream
 
@@ -90,7 +98,7 @@ and a mission whose scripts have not reported ready after 90 seconds.
 
 Checked on 2026-10-02 against the install at `C:\Dynamix\Tribes2\GameData`:
 84 missions (52 in `missions.vl2`, 24 in `Classic_maps_v1.vl2`, 8 in
-`TR2final105-client.vl2`), 6,927 resources, 503 MB, mount points on 89 shapes.
+`TR2final105-client.vl2`), 4,450 resources, 371 MB, mount points on 89 shapes.
 The 79 shapes of the earlier Katabatic pack get the same mount points as the
 Node build step gave them; the other ten are TR2 armors and weapons.
 
@@ -165,8 +173,8 @@ node --import=tsx/esm skinner/check-pack.ts C:/path/to/local-data/t2-maps
 node --import=tsx/esm skinner/check-mouse-look.ts
 ```
 
-`check-pack.ts` needs a pack the viewer has opened once (for `mounts.json`). It
-loads every mission in each of its types through upstream's script runtime, as
+`check-pack.ts` reads the mount points itself when the viewer has not yet
+opened the pack and written `mounts.json`. It loads every mission in each of its types through upstream's script runtime, as
 upstream's own mission-load test does for one map, and reports missions that
 fail or do not become ready, terrain, interior, sky and shape files the pack
 lacks, runtime errors, and any mission whose name or types the importer read

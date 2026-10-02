@@ -50,7 +50,7 @@ function ImportPanel() {
   const [status, setStatus] = useState("Imports every mission in the game's stock, Classic and Team Rabbit 2 archives. The game folder is only read.");
   async function run() {
     if (!game.trim()) { setStatus('Enter your Tribes 2 folder.'); return; }
-    setBusy(true); setStatus('Importing maps… this copies about 500 MB.');
+    setBusy(true); setStatus('Importing maps… this copies about 370 MB.');
     try {
       try { localStorage.setItem(gameKey, game.trim()); } catch {/* Storage may be unavailable. */}
       const response = await fetch('/import_t2_maps', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({game: game.trim(), replace})});

@@ -20,6 +20,7 @@ class MapTests(unittest.TestCase):
                     archive.writestr('Terrains/Katabatic.ter', b'terrain')
                     archive.writestr('Missions/Other.mis', '// DisplayName = Another Map\nterrainFile = "Absent.ter";')
                     archive.writestr('textures/test.png', b'first')
+                    archive.writestr('textures/test.bm8', b'paletted copy, not imported')
                     if extra:
                         archive.writestr(*extra)
                 if name == 'lush.vl2':
