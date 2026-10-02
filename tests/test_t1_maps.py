@@ -203,6 +203,8 @@ class T1MapTests(unittest.TestCase):
             root = Path(directory)
             (root / 't1-maps').mkdir()
             (root / 't1-maps/index.json').write_text('[]')
+            (root / 't1-maps/textures').mkdir()
+            (root / 't1-maps/textures/0123456789abcdef0123.png').write_bytes(b'png')
             (root / 'secret.txt').write_text('outside pack')
             client = app.test_client()
             with patch('app.local_data_dir', root):
@@ -211,6 +213,10 @@ class T1MapTests(unittest.TestCase):
                     self.assertIn("default-src 'self'", response.headers['Content-Security-Policy'])
                 with client.get('/t1-map-data/index.json') as response:
                     self.assertEqual(response.json, [])
+                    self.assertNotIn('immutable', response.headers.get('Cache-Control', ''))
+                # Content-named files are kept by the browser; the map list and scenes are asked for each time.
+                with client.get('/t1-map-data/textures/0123456789abcdef0123.png') as response:
+                    self.assertIn('immutable', response.headers['Cache-Control'])
                 with client.get('/t1-map-data/../secret.txt') as response:
                     self.assertEqual(response.status_code, 404)
                 self.assertEqual(client.post('/import_t1_maps', json={'game': str(root)}, headers={'Origin': 'http://elsewhere.example'}).status_code, 403)

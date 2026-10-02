@@ -61,6 +61,10 @@ look t2-mapper's terrain has while loading (unlit here); locally that is a
 tenth to half a second, longer the first time a map is opened. Each placed
 building and object is likewise an orange wireframe box, t2-mapper's loading
 interior, until its model has loaded (0.3 to 0.9 seconds on the larger maps).
+Because the files under `textures/` and `models/` are named by their content,
+the browser keeps them: opening a map again, or another map that shares them,
+asks the app for none of them (Raindance: ready in 0.37 seconds instead of
+0.61).
 
 ## How a mission is resolved
 

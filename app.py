@@ -159,7 +159,11 @@ def t1_maps_viewer():
 
 @app.route('/t1-map-data/<path:filename>')
 def t1_map_data(filename):
-    return send_from_directory(local_data_dir / 't1-maps', filename)
+    # Files under textures/ and models/ are named by their content, so a browser need never ask for one twice.
+    shared = filename.startswith(('textures/', 'models/'))
+    response = send_from_directory(local_data_dir / 't1-maps', filename, max_age=31536000 if shared else None)
+    response.cache_control.immutable = shared
+    return response
 
 
 @app.route('/import_t1_maps', methods=['POST'])
