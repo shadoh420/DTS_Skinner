@@ -101,11 +101,11 @@ class T1MapTests(unittest.TestCase):
             self.assertEqual([image.getpixel((x, y)) for y in range(2) for x in range(2)], [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 255)])
         with self.assertRaisesRegex(ValueError, 'no palette'):
             bitmap_png(bitmap, {})
-        # Sky sprites keep transparency: a bitmap flagged colour-keyed (1) or translucent (4) takes each palette
-        # entry's fourth byte as alpha; an unflagged one stays opaque whatever its palette says.
+        # Sky sprites keep transparency: a bitmap flagged colour-keyed (1) is clear at palette index 0, one flagged
+        # translucent (4) takes each palette entry's fourth byte, and an unflagged one stays opaque.
         colours = bytes([255, 0, 0, 0, 0, 255, 0, 128, 0, 0, 255, 255, 255, 255, 255, 255]) + bytes(252 * 4)
         palettes, _ = read_palettes(b'PL98' + struct.pack('<iiii', 1, 0, 0, 2) + bytes(32) + colours + struct.pack('<II', 7, 2))
-        for flags, alphas in ((1, [0, 128, 255, 255]), (4, [0, 128, 255, 255]), (8, [255] * 4)):
+        for flags, alphas in ((1, [0, 255, 255, 255]), (4, [0, 128, 255, 255]), (8, [255] * 4)):
             sprite = (b'PBMP' + bytes(4) + chunk(b'head', struct.pack('<5i', 0, 2, 2, 8, flags))
                       + chunk(b'data', bytes([0, 1, 9, 9, 2, 3, 9, 9])) + chunk(b'PiDX', struct.pack('<I', 7)))
             with Image.open(io.BytesIO(bitmap_png(sprite, palettes, True))) as image:

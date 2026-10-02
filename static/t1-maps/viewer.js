@@ -35,6 +35,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     return textures.get(url);
   }
 
+  let ground = () => -Infinity, highest = -Infinity;  // Terrain height under a point and its peak, for sight lines.
   async function buildTerrain(terrain) {
     const [heightData, squareData, lightData] = await Promise.all(['heights.bin', 'materials.bin', 'light.bin']
       .map(async name => (await get(`${data}maps/${mapId}/${name}`)).arrayBuffer()));
@@ -80,11 +81,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       return new THREE.MeshBasicMaterial(texture ? {map: texture, vertexColors: true} : {color: 0xcc00cc});
     }));
     const width = size * unit, [x, y, z] = terrain.position;
+    highest = z + heights.reduce((most, height) => Math.max(most, height), -Infinity);
+    ground = (worldX, worldZ) => {  // The game's terrain repeats without end, so this wraps.
+      const column = (((worldX - x) / unit) % size + size) % size, row = (((-worldZ - y) / unit) % size + size) % size;
+      const i = Math.floor(column), j = Math.floor(row), u = column - i, v = row - j, at = (a, b) => heights[b * (size + 1) + a];
+      return z + (at(i, j) * (1 - u) + at(i + 1, j) * u) * (1 - v) + (at(i, j + 1) * (1 - u) + at(i + 1, j + 1) * u) * v;
+    };
     for (let row = 0; row < terrain.rows; row++) for (let column = 0; column < terrain.columns; column++) {
       const mesh = new THREE.Mesh(geometry, materials);
       mesh.position.set(x + column * width, z, -(y + row * width));
       scene.add(mesh);
-      occluders.push(mesh);
     }
   }
 
@@ -218,7 +224,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Lens flare, after ArenaPrototype's TribesPlanetFlare: eleven bitmaps strung from the sun through the screen centre
   // and a wash of the sun's colour, both fading as the sun leaves the centre and gone when something stands in front.
-  const overlay = new THREE.Scene(), overlayCamera = new THREE.OrthographicCamera(0, 1, 1, 0, -1, 1), occluders = [];
+  const overlay = new THREE.Scene(), overlayCamera = new THREE.OrthographicCamera(0, 1, 1, 0, -1, 1), occluders = [];  // Placed objects.
   let flare = null;
   async function buildFlare(planet, files) {
     const textures = await Promise.all(files.map(file => loadTexture(data + 'textures/' + file)));
@@ -250,6 +256,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (frame++ % 15 === 0) {  // The game also checks the line of sight only now and then.
         ray.set(camera.position, direction);
         blocked = ray.intersectObjects(occluders, false).length > 0;
+        // Terrain is checked by walking the height field: a ray test of its 131,072 triangles per tile takes 30-50 ms.
+        point.copy(camera.position);
+        for (let reach = 4; !blocked && reach < 9000 && (direction.y <= 0 || point.y < highest); reach += 4) {
+          point.copy(camera.position).addScaledVector(direction, reach);
+          blocked = ground(point.x, point.z) > point.y;
+        }
       }
       if (blocked) return;
       const angle = Math.atan2(-dy, dx) - Math.PI / 2;

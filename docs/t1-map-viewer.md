@@ -99,10 +99,11 @@ view above the placed objects.
   A planet with `useLensFlare` strings the six `lensflare.dml` bitmaps from the sun
   through the screen centre with a wash of the sun's colour, fading as the sun
   leaves the centre and hidden when terrain or an object is in the way.
-- Planet and flare bitmaps keep their transparency: a PNG's own, or for a classic
-  bitmap flagged colour-keyed or translucent, the fourth byte of its palette
-  entries. ArenaPrototype reads only the colour key; the palette rule was checked
-  against the 1.40 PNG planets and flares, which it reproduces exactly.
+- Planet and flare bitmaps keep their transparency: a PNG's own; for a classic
+  bitmap flagged colour-keyed, palette index 0 is clear (as ArenaPrototype reads
+  it); for one flagged translucent, alpha is the fourth byte of its palette
+  entries. ArenaPrototype has no rule for the translucent ones; this one was
+  checked against the 1.40 PNG lens flares, which it reproduces exactly.
 - `Snowfall` objects with rendering enabled draw rain or snow around the camera.
 - Other objects map their datablock to a shape through the `shapeFile` values in
   the install's scripts (and scripts beside a custom mission).

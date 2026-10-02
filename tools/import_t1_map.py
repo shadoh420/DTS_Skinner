@@ -273,8 +273,9 @@ def read_palettes(data):
 def bitmap_png(data, palettes, alpha=False):
     """PNG bytes for a PNG, Windows bitmap or DarkStar PBMP; indexed PBMPs take colours from the mission palette.
 
-    alpha keeps transparency, for sky sprites: a PNG's own, or for a PBMP flagged colour-keyed (1) or translucent (4)
-    the fourth byte of its palette entries. That reproduces the 1.40 PNG planets and lens flares from the classic ones.
+    alpha keeps transparency, for sky sprites: a PNG's own; for a PBMP flagged colour-keyed (1) palette index 0 is
+    clear, as in ArenaPrototype; for one flagged translucent (4) alpha is the fourth byte of its palette entries.
+    Both reproduce the 1.40 PNG planets and lens flares from the classic ones.
     """
     mode = 'RGBA' if alpha else 'RGB'
     if data[:4] != b'PBMP':
@@ -297,8 +298,10 @@ def bitmap_png(data, palettes, alpha=False):
         image = Image.frombytes('P', (width, height), pixels, 'raw', 'P', stride)
         image.putpalette(palette[0])
         image = image.convert(mode)
-        if alpha and int.from_bytes(chunks[b'head'][16:20], 'little') & 5:
-            image.putalpha(Image.frombytes('L', (width, height), pixels, 'raw', 'L', stride).point(palette[1]))
+        flags = int.from_bytes(chunks[b'head'][16:20], 'little')
+        if alpha and flags & 5:
+            table = palette[1] if flags & 4 else [0] + [255] * 255
+            image.putalpha(Image.frombytes('L', (width, height), pixels, 'raw', 'L', stride).point(table))
     output = io.BytesIO()
     image.save(output, 'PNG')
     return output.getvalue()
