@@ -16,7 +16,9 @@
      			<offset u> <offset v> <scale u> <scale v> <rotation> <vertex index…> <0xAARRGGBB> <material>
      global                   the map itself, laid out as a prefab is
 
-   Entities and brushes of a group come in the order they were made, so they are kept as one list. A face's
+   A brush belongs to the entity before it in its group: the WorldSpawn's are the world, and a Teleporter, JumpPad,
+   RaceStart, RaceFinish or TriggerVolume is followed by the brush that is its volume (no other type owns brushes in
+   the stock maps). So a group's entities and brushes are kept as one list, in order. A face's
    material may be empty (the line then ends in a space after the colour), and version 6 has no colour. Version 6
    files have no group lines: entities and brushes stand at the top level, with one less tab. Coordinates are y up
    and faces are wound counter-clockwise seen from outside (normal by the right-hand rule on the numbers as
@@ -197,11 +199,13 @@
   function flatten(map, limit = 16) {
     const brushes = [], entities = [], missing = new Set();
     function place(group, transform, path) {
+      let owner = null;
       for (const item of group.items) {
         if (item.kind === 'brush') {
-          brushes.push({brush: transform ? moveBrush(item, transform) : item, source: item, group, path});
+          brushes.push({brush: transform ? moveBrush(item, transform) : item, source: item, group, path, owner});
           continue;
         }
+        owner = item;
         const position = property(item, 'position');
         entities.push({entity: item, group, path, position: position && transform ? apply(transform, position) : position});
         if (item.type !== 'Prefab') continue;
@@ -235,5 +239,22 @@
     return {kind: 'brush', vertices: brush.vertices.map(vertex => apply(transform, vertex)), faces: brush.faces};
   }
 
-  exports.ReflexMap = {parse, write, empty, global, prefab, property, colourOf, flatten, compose, apply, fixed, MapError};
+  // Entity types whose brushes are a volume (a trigger), not part of the world.
+  const VOLUMES = new Set(['Teleporter', 'JumpPad', 'RaceStart', 'RaceFinish', 'TriggerVolume']);
+  const isVolume = owner => !!owner && VOLUMES.has(owner.type);
+  // Where in a group's list a new world brush goes: after the last brush of the first WorldSpawn's run, so it is the
+  // WorldSpawn's and not that of whatever entity comes last.
+  function worldInsertAt(group) {
+    const items = group.items, start = items.findIndex(item => item.kind === 'entity' && item.type === 'WorldSpawn');
+    if (start < 0) {
+      // No WorldSpawn: brushes before the first entity are the world's.
+      const first = items.findIndex(item => item.kind === 'entity');
+      return first < 0 ? items.length : first;
+    }
+    let at = start + 1;
+    while (at < items.length && items[at].kind === 'brush') at++;
+    return at;
+  }
+
+  exports.ReflexMap = {parse, write, empty, global, prefab, property, colourOf, flatten, compose, apply, fixed, isVolume, worldInsertAt, VOLUMES, MapError};
 })(typeof module !== 'undefined' ? module.exports : window);

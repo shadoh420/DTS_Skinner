@@ -123,8 +123,9 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     await page.keyboard.press('g');
     assert.equal(await brushes(), count + 1, 'G clones');
     // K over a face picks its material; M puts it on the selection.
-    await page.evaluate(() => { const g = window.ReflexMap.global(window.skinnerReflexMaps.map), last = g.items.at(-1);
-      g.items[g.items.length - 1] = {...last, faces: last.faces.map(face => ({...face, material: 'common/materials/wood/bare', colour: '0xff332805'}))}; });
+    // The clone (selected after G, and placed beside its original) is given wood.
+    await page.evaluate(() => { const m = window.skinnerReflexMaps, g = window.ReflexMap.global(m.map), [clone] = m.selected, at = g.items.indexOf(clone);
+      g.items[at] = {...clone, faces: clone.faces.map(face => ({...face, material: 'common/materials/wood/bare', colour: '0xff332805'}))}; });
     // Reloaded, as an edited file would be, with the camera kept where it was.
     await page.evaluate(() => {
       const m = window.skinnerReflexMaps, position = m.camera.position.clone(), rotation = m.camera.rotation.clone();
@@ -141,6 +142,91 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     await page.keyboard.press('m');
     assert.ok(await page.evaluate(() => [...window.skinnerReflexMaps.selected][0].faces.every(face => face.material === 'common/materials/wood/bare' && face.colour === '0xff332805')), 'M puts the material on the selection');
     await page.screenshot({path: path.join(output, 'gestures.png')});
+
+    // Create types, entities and vertex mode, on a new map seen from a fixed place: the camera 512 back and 384 up,
+    // looking at the origin.
+    await page.evaluate(() => {
+      const m = window.skinnerReflexMaps;
+      m.load(window.ReflexMap.write(window.ReflexMap.empty()), 'untitled');
+      m.camera.position.set(0, 384, 512); m.camera.lookAt(0, 0, 0);
+    });
+    const items = () => page.evaluate(() => window.ReflexMap.global(window.skinnerReflexMaps.map).items.map(item => item.kind === 'brush'
+      ? {kind: 'brush', bounds: window.ReflexBrush.bounds(item), corners: item.vertices.length, owner: (window.skinnerReflexMaps.flat.brushes.find(e => e.source === item).owner || {}).type}
+      : {kind: 'entity', type: item.type, properties: Object.fromEntries(item.properties.map(p => [p.name, p.value]))}));
+    const clickAt = async (point, options) => { await page.mouse.click(...await screen(point), options); };
+    // 1 and a drag on the ground (nothing under the mouse: the plane y = 0) makes a brush four grid steps tall.
+    await page.keyboard.press('1');
+    assert.match(await page.textContent('#mode'), /Create brush \(1\)/);
+    await dragFrom(await screen([-32, 0, -32]), await screen([32, 0, 32]));
+    let now = await items();
+    assert.deepEqual(now[1].bounds, {min: [-32, 0, -32], max: [32, 32, 32]}, 'a dragged brush stands on its footprint');
+    assert.equal(now[1].owner, 'WorldSpawn');
+    // 6 and a click on its top places a pickup there, on the grid; 8 a player spawn with angles.
+    await page.keyboard.press('6');
+    await clickAt([9, 32, 7]);
+    now = await items();
+    assert.deepEqual(now.at(-1), {kind: 'entity', type: 'Pickup', properties: {position: [8, 32, 8], pickupType: 40}});
+    await page.keyboard.press('8');
+    await clickAt([-16, 32, 16]);
+    now = await items();
+    assert.equal(now.at(-1).type, 'PlayerSpawn');
+    assert.deepEqual(now.at(-1).properties.position, [-16, 32, 16]);
+    assert.equal(now.at(-1).properties.angles.length, 3);
+    // 2 and a drag on the top makes a teleporter: its entity, then the brush that is its volume, drawn as a volume.
+    await page.keyboard.press('2');
+    await dragFrom(await screen([-24, 32, -24]), await screen([24, 32, -8]));
+    now = await items();
+    assert.equal(now.at(-2).type, 'Teleporter');
+    assert.deepEqual([now.at(-1).bounds, now.at(-1).owner], [{min: [-24, 32, -24], max: [24, 64, -8]}, 'Teleporter']);
+    assert.ok(await page.evaluate(() => window.skinnerReflexMaps.scene.getObjectByProperty('type', 'Mesh') && true));
+    // Escape leaves create mode; B's box goes into the WorldSpawn's brushes, ahead of the entities, so it is the world's.
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.createType), 0);
+    await page.keyboard.press('b');
+    now = await items();
+    assert.deepEqual(now.map(item => item.kind === 'brush' ? `brush:${item.owner}` : item.type),
+      ['WorldSpawn', 'brush:WorldSpawn', 'brush:WorldSpawn', 'Pickup', 'PlayerSpawn', 'Teleporter', 'brush:Teleporter']);
+    await page.keyboard.press('Backspace');
+    // A click on the pickup's marker selects it; a drag moves it on the grid.
+    await page.keyboard.press('Escape');
+    await clickAt([8, 32, 8]);
+    assert.match(await page.textContent('#selection'), /Pickup/);
+    const pickup = await screen([8, 32, 8]);
+    await dragFrom(pickup, [pickup[0] + 90, pickup[1]]);
+    now = await items();
+    const dropped = now.find(item => item.type === 'Pickup').properties.position;
+    assert.ok(dropped[0] > 8 && (dropped[0] - 8) % 8 === 0 && dropped[1] === 32 && dropped[2] === 8, `pickup moved to ${dropped}`);
+    // Deleting a teleporter's volume deletes the teleporter with it.
+    await clickAt([0, 64, -16]);
+    assert.match(await page.textContent('#selection'), /Teleporter volume/);
+    await page.keyboard.press('Backspace');
+    now = await items();
+    assert.equal(now.filter(item => item.type === 'Teleporter' || item.owner === 'Teleporter').length, 0);
+    // V shows the corners of the selected brush; Alt-dragging one moves only it, up on the grid.
+    await clickAt([-20, 8, -32]);
+    await page.keyboard.press('v');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.vertexMode), true);
+    const corner = await screen([-32, 32, -32]);
+    await dragFrom(corner, [corner[0], corner[1] - 50], 'Alt');
+    now = await items();
+    const cornersNow = await page.evaluate(() => window.ReflexMap.global(window.skinnerReflexMaps.map).items.find(item => item.kind === 'brush').vertices);
+    const raised = cornersNow.filter(v => v[1] > 32);
+    assert.equal(raised.length, 1, 'one corner moved');
+    assert.ok(raised[0][0] === -32 && raised[0][2] === -32 && raised[0][1] % 8 === 0, `corner at ${raised[0]}`);
+    await page.keyboard.press('z');
+    // A corner dropped on another corner becomes it: the top front right corner onto the bottom one.
+    const upper = await screen([32, 32, -32]), lower = await screen([32, 0, -32]);
+    await dragFrom(upper, lower, 'Alt');
+    const welded = await page.evaluate(() => window.ReflexMap.global(window.skinnerReflexMaps.map).items.find(item => item.kind === 'brush'));
+    assert.equal(welded.vertices.length, 7, 'welded corners');
+    assert.ok(welded.faces.every(face => new Set(face.indices).size === face.indices.length && face.indices.length >= 3));
+    await page.screenshot({path: path.join(output, 'vertices.png')});
+    await page.keyboard.press('z');
+    assert.equal(await page.evaluate(() => window.ReflexMap.global(window.skinnerReflexMaps.map).items.find(item => item.kind === 'brush').vertices.length), 8);
+    // The edited map still writes and reads back.
+    const written = await page.evaluate(() => window.ReflexMap.write(window.skinnerReflexMaps.map));
+    assert.equal(M.write(M.parse(written)), written);
+    await page.keyboard.press('Escape');
 
     // An imported map, when there is one, draws something other than the sky.
     const maps = await (await page.request.get(`${base}/reflex-map-data/index.json`)).json().catch(() => []);

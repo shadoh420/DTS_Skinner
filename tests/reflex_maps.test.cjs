@@ -334,3 +334,19 @@ test('every map in REFLEX_MAPS reads, writes back unchanged and places its prefa
     assert.ok(flat.brushes.length, file);
   }
 });
+
+test("a brush belongs to the entity before it: the WorldSpawn's are the world, a Teleporter's its volume", () => {
+  const box = ['\tbrush', '\t\tvertices', '\t\t\t0.000000 0.000000 0.000000', '\t\t\t8.000000 0.000000 0.000000', '\t\t\t0.000000 8.000000 0.000000', '\t\t\t0.000000 0.000000 8.000000',
+    '\t\tfaces', '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 2 1 0x00000000 ', '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 1 3 0x00000000 ',
+    '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 3 2 0x00000000 ', '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 1 2 3 0x00000000 '];
+  // As Aerowalk has them: the world's brushes after its WorldSpawn, a teleporter followed by its volume.
+  const map = M.parse(['reflex map version 8', 'global', '\tentity', '\t\ttype WorldSpawn', ...box, ...box,
+    '\tentity', '\t\ttype Pickup', '\t\tVector3 position 0.000000 0.000000 0.000000',
+    '\tentity', '\t\ttype Teleporter', '\t\tString32 target p1', ...box, ''].join('\r\n'));
+  const owners = M.flatten(map).brushes.map(entry => entry.owner.type);
+  assert.deepEqual(owners, ['WorldSpawn', 'WorldSpawn', 'Teleporter']);
+  assert.deepEqual(M.flatten(map).brushes.map(entry => M.isVolume(entry.owner)), [false, false, true]);
+  // A new world brush goes after the WorldSpawn's run, before the pickup.
+  assert.equal(M.worldInsertAt(M.global(map)), 3);
+  assert.equal(M.worldInsertAt({items: [{kind: 'brush'}, {kind: 'entity', type: 'Effect'}]}), 1);
+});

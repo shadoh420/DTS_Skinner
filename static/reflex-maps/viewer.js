@@ -8,8 +8,11 @@
    adds to the selection, the right button looks; dragging a selected brush moves it on the grid, Alt dragging it up
    and down, and Shift dragging one of its faces pushes or pulls that face; G clones, Backspace deletes, Z and X undo
    and redo, K picks up the material under the cursor and M puts it on the selection (Shift+M on one face). The
-   toolbar's CSG, which the game's editor did not have, works on the selection. Brushes placed by a prefab are drawn
-   but not edited: their prefab holds them. */
+   toolbar's CSG, which the game's editor did not have, works on the selection. As the game's me_createtype, 1 to 8
+   choose what a click makes: 1 a brush, 2 and 3 a teleporter's and a jump pad's volume (each dragged out on a
+   surface), 4 to 8 a target, effect, pickup, point light or player spawn (placed with a click). V shows the corners
+   of the selected brushes to drag, as the game's vertex mode. Entities are selected and moved as brushes are. Brushes
+   placed by a prefab are drawn but not edited: their prefab holds them. */
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
@@ -28,7 +31,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const camera = new THREE.PerspectiveCamera(90, 1, 1, 65536);
   camera.rotation.order = 'YXZ';
   const data = '/reflex-map-data/';
-  let speed = 400, map = null, mapName = '', editing = false, flat = null, entryOfTriangle = [], clipEntryOfTriangle = [], glassEntryOfTriangle = [];
+  let speed = 400, map = null, mapName = '', editing = false, flat = null;
+  const entryOfTriangle = [], clipEntryOfTriangle = [], glassEntryOfTriangle = [], volumeEntryOfTriangle = [];
   const notes = [];
   const showStatus = text => { $('status').textContent = text; };
 
@@ -122,9 +126,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   glassMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);', 'gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), .35);');
   const world = new THREE.Mesh(new THREE.BufferGeometry(), brushMaterial), clips = new THREE.Mesh(new THREE.BufferGeometry(), clipMaterial);
   const glass = new THREE.Mesh(new THREE.BufferGeometry(), glassMaterial);
+  // The brushes that are a teleporter's, jump pad's, race start's or finish's or trigger's volume: shown while editing.
+  const volumes = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({color: 0x3fc8ff, transparent: true, opacity: .2, depthWrite: false, side: THREE.DoubleSide}));
   const selection = new THREE.Group();
-  glass.renderOrder = 1; clips.renderOrder = 2; selection.renderOrder = 3;
-  root.add(world, glass, clips, selection);
+  glass.renderOrder = 1; clips.renderOrder = 2; volumes.renderOrder = 2; selection.renderOrder = 3;
+  root.add(world, glass, clips, volumes, selection);
 
   // Concave faces (a vertex dragged in the game's editor) are cut into triangles by Three's ear clipping.
   function triangulate(points, normal) {
@@ -138,7 +144,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     entries.forEach((entry, index) => {
       const brush = entry.brush;
       for (const face of brush.faces) {
-        if (wanted(face) === false) continue;
+        if (wanted(face, entry) === false) continue;
         const n = B.normalize(B.newell(face.indices.map(i => brush.vertices[i])));
         const {diffuse, specular} = faceShade(face);
         for (const triangle of B.triangles(brush, face, triangulate)) {
@@ -180,21 +186,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (type === 'Effect') return [0x8a949a, 3];
     return null;  // WorldSpawn, Prefab, probes, paths and the rest are not marked.
   }
+  const markers = [];  // {entry, mesh} of every marked entity, for picking.
   function buildEntities() {
     entityLayer.clear();
+    markers.length = 0;
     const byKind = new Map();
-    for (const {entity, position} of flat.entities) {
-      const marker = position && markerOf(entity);
+    for (const entry of flat.entities) {
+      const marker = entry.position && markerOf(entry.entity);
       if (!marker) continue;
       const key = marker.join('|');
-      if (!byKind.has(key)) byKind.set(key, {marker, positions: []});
-      byKind.get(key).positions.push(position);
+      if (!byKind.has(key)) byKind.set(key, {marker, entries: []});
+      byKind.get(key).entries.push(entry);
     }
     const matrix = new THREE.Matrix4();
-    for (const {marker: [colour, size], positions} of byKind.values()) {
-      const mesh = new THREE.InstancedMesh(markerGeometry, new THREE.MeshBasicMaterial({color: colour}), positions.length);
+    for (const {marker: [colour, size], entries} of byKind.values()) {
+      const mesh = new THREE.InstancedMesh(markerGeometry, new THREE.MeshBasicMaterial({color: colour}), entries.length);
       mesh.userData.editOnly = size <= 3;  // Effects: a map can have a thousand; they show while editing.
-      positions.forEach((p, index) => mesh.setMatrixAt(index, matrix.makeScale(size, size * 1.6, size).setPosition(p[0], p[1], p[2])));
+      entries.forEach(({position: p}, index) => mesh.setMatrixAt(index, matrix.makeScale(size, size * 1.6, size).setPosition(p[0], p[1], p[2])));
+      entries.forEach(entry => markers.push({entry, mesh}));
       entityLayer.add(mesh);
     }
   }
@@ -203,10 +212,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   const globalGroup = () => M.global(map);
   function rebuild() {
     flat = M.flatten(map);
-    world.geometry.dispose(); clips.geometry.dispose(); glass.geometry.dispose();
-    world.geometry = buildMesh(flat.brushes, face => !isClip(face) && !isSeeThrough(face), entryOfTriangle);
-    glass.geometry = buildMesh(flat.brushes, face => !isClip(face) && isSeeThrough(face), glassEntryOfTriangle);
-    clips.geometry = buildMesh(flat.brushes, face => isClip(face), clipEntryOfTriangle);
+    ownerOfItem = new Map(flat.brushes.filter(entry => !entry.path.length).map(entry => [entry.source, entry.owner]));
+    for (const mesh of [world, clips, glass, volumes]) mesh.geometry.dispose();
+    const volume = entry => M.isVolume(entry.owner);
+    world.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle);
+    glass.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle);
+    clips.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && isClip(face), clipEntryOfTriangle);
+    volumes.geometry = buildMesh(flat.brushes, (face, entry) => volume(entry), volumeEntryOfTriangle);
     buildEntities();
     for (const mesh of entityLayer.children) if (mesh.userData.editOnly) mesh.visible = editing;
     showSelection();
@@ -252,7 +264,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (bent) parts.push(`${bent} brushes are not convex or have bent faces; they are drawn, and CSG leaves them alone`);
     // Materials some face draws in its material's colour, where that colour is a guess.
     const guessed = new Set();
-    if (flat) for (const {brush} of flat.brushes) for (const face of brush.faces) if (!M.colourOf(face) && !isClip(face) && !(packColours[face.material || ''] || {}).colour) guessed.add(face.material || 'no material');
+    if (flat) for (const {brush, owner} of flat.brushes) if (!M.isVolume(owner)) for (const face of brush.faces) if (!M.colourOf(face) && !isClip(face) && !(packColours[face.material || ''] || {}).colour) guessed.add(face.material || 'no material');
     if (guessed.size) parts.push(`Drawn in a colour guessed from the material's name, as the import found no albedo for it: ${[...guessed].sort().join(', ')}`);
     parts.push(...notes);
     $('mapNotes').textContent = parts.length ? ' This map — ' + parts.join('. ') + '.' : '';
@@ -280,9 +292,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ---- Editing ----
   const selected = new Set(), undoStack = [], redoStack = [];
   const snap = value => Math.round(value / settings.grid) * settings.grid;
-  let lastPoint = null, lastNormal = null;
-  // Fields a new brush takes: those of the selected face's brush if any, else plain concrete.
+  let lastPoint = null, lastNormal = null, createType = 0, vertexMode = false;
+  // Fields new faces take: those K picked up, else plain concrete.
   let template = {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: 'common/materials/stone/concrete'};
+  const say = text => { $('selection').textContent = text; };
+  const isBrush = item => item.kind === 'brush';
+  const selectedBrushes = () => [...selected].filter(isBrush);
+  // The entity each brush of the map belongs to: the entity before it in the list (mapfile.js flatten).
+  let ownerOfItem = new Map();
+  const ownerOf = item => ownerOfItem.get(item) || null;
+  const isWorldBrush = item => isBrush(item) && !M.isVolume(ownerOf(item));
+  const positionOf = entity => M.property(entity, 'position');
+  const withPosition = (entity, position) => ({...entity, properties: entity.properties.map(p => p.name === 'position' ? {...p, value: position.map(v => Math.round(v * 1e6) / 1e6 + 0)} : p)});
 
   // A step of undo is the map's list of items and what was selected, so undoing brings back both.
   const snapshot = () => ({items: globalGroup().items.slice(), selected: [...selected]});
@@ -300,88 +321,156 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const item of step.selected) if (step.items.includes(item)) selected.add(item);
     rebuild(); showReady();
   }
-  // Replaces brushes of the map: `changes` maps an old brush to the brushes standing in its place.
-  function replace(changes, added = [], select = null) {
+  // Changes the map's list, as one step of undo. `changes` maps an item to the items (or brushes) standing in its
+  // place, which so keep its owner; `inserts` adds things at a place: 'world' (in the WorldSpawn's run of brushes, so a
+  // brush is the world's and not that of whatever entity comes last), 'end', or after an item.
+  const asItem = thing => thing.kind ? thing : {kind: 'brush', vertices: thing.vertices, faces: thing.faces};
+  function replace(changes, inserts = [], select = null) {
     remember();
-    const items = [], changed = [];
+    const items = [], changed = [], added = [];
     for (const item of globalGroup().items) {
       if (!changes.has(item)) { items.push(item); continue; }
-      const instead = changes.get(item).map(brush => ({kind: 'brush', vertices: brush.vertices, faces: brush.faces}));
+      const instead = changes.get(item).map(asItem);
       items.push(...instead);
       changed.push(...instead);
     }
-    const fresh = added.map(brush => ({kind: 'brush', vertices: brush.vertices, faces: brush.faces}));
-    items.push(...fresh);
+    for (const {at, things} of inserts) {
+      const fresh = things.map(asItem);
+      const index = at === 'world' ? M.worldInsertAt({items}) : at === 'end' ? items.length : (items.indexOf(at) + 1 || items.length);
+      items.splice(index, 0, ...fresh);
+      added.push(...fresh);
+    }
     globalGroup().items = items;
     selected.clear();
     selection.position.set(0, 0, 0);
-    for (const item of select === 'added' ? fresh : select === 'changed' ? changed : select || []) if (items.includes(item)) selected.add(item);
+    for (const item of select === 'added' ? added : select === 'changed' ? changed : select || []) if (items.includes(item)) selected.add(item);
     rebuild(); showReady();
   }
-  const selectedBrushes = () => [...selected];
-  const say = text => { $('selection').textContent = text; };
 
-  // The selection's overlay; `preview` maps a selected brush to the brush a drag would make of it.
+  // ---- Selection overlay, vertex dots and the shape being drawn ----
+  const ghost = new THREE.Group();
+  root.add(ghost);
+  const dotMaterial = new THREE.PointsMaterial({color: 0xf0c674, size: 9, sizeAttenuation: false, depthTest: false, transparent: true});
+  const hoverMaterial = new THREE.PointsMaterial({color: 0xffffff, size: 14, sizeAttenuation: false, depthTest: false, transparent: true});
+  const hoverDot = new THREE.Points(new THREE.BufferGeometry(), hoverMaterial);
+  hoverDot.renderOrder = 5; hoverDot.visible = false;
+  root.add(hoverDot);
+  let dots = [];  // {item, index, position} of the corners of the selected brushes, in vertex mode.
+  const edgesOf = brush => {
+    const lines = [];
+    for (const face of brush.faces) face.indices.forEach((index, n) => lines.push(...brush.vertices[index], ...brush.vertices[face.indices[(n + 1) % face.indices.length]]));
+    const edges = new THREE.BufferGeometry();
+    edges.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+    return new THREE.LineSegments(edges, selectedEdges);
+  };
+  // `preview` maps a selected brush to the brush a drag would make of it.
   function showSelection(preview = new Map()) {
     selection.clear();
+    dots = [];
     if (!flat) return;
     for (const entry of flat.brushes) {
       if (!selected.has(entry.source) || entry.path.length) continue;
       const brush = preview.get(entry.source) || entry.brush;
-      const geometry = buildMesh([{brush}], () => true, []);
-      selection.add(new THREE.Mesh(geometry, selectedFill));
-      const lines = [];
-      for (const face of brush.faces) face.indices.forEach((index, n) => lines.push(...brush.vertices[index], ...brush.vertices[face.indices[(n + 1) % face.indices.length]]));
-      const edges = new THREE.BufferGeometry();
-      edges.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-      selection.add(new THREE.LineSegments(edges, selectedEdges));
+      selection.add(new THREE.Mesh(buildMesh([{brush}], () => true, []), selectedFill), edgesOf(brush));
+      if (vertexMode) brush.vertices.forEach((position, index) => dots.push({item: entry.source, index, position}));
+    }
+    for (const entry of flat.entities) {
+      if (!selected.has(entry.entity) || entry.path.length || !entry.position) continue;
+      const box = new THREE.Box3Helper(new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...entry.position), new THREE.Vector3(24, 36, 24)), 0xf0c674);
+      box.material.depthTest = false;
+      selection.add(box);
+    }
+    if (dots.length) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(dots.flatMap(dot => dot.position), 3));
+      const points = new THREE.Points(geometry, dotMaterial);
+      points.renderOrder = 4;
+      selection.add(points);
     }
     updateTools();
   }
+  // Labels each create type as the game's me_createtype does; 1 to 3 are dragged out on a surface (a brush, and the
+  // volumes of a teleporter and a jump pad), 4 to 8 are placed with a click.
+  const CREATE = {
+    1: {label: 'brush'}, 2: {type: 'Teleporter', label: 'teleporter'}, 3: {type: 'JumpPad', label: 'jump pad'},
+    4: {type: 'Target', label: 'target'}, 5: {type: 'Effect', label: 'effect'}, 6: {type: 'Pickup', label: 'pickup'},
+    7: {type: 'PointLight', label: 'point light'}, 8: {type: 'PlayerSpawn', label: 'player spawn'},
+  };
   function updateTools() {
     if (!flat) return;
-    const count = selected.size, convex = selectedBrushes().every(B.convex);
-    $('subtract').disabled = !count || !convex;
-    $('hollow').disabled = count !== 1 || !convex;
-    $('merge').disabled = count < 2 || !convex;
-    $('clip').disabled = !count || !convex || !lastPoint;
+    const brushes = selectedBrushes(), count = selected.size, convex = brushes.length > 0 && brushes.every(B.convex);
+    $('subtract').disabled = !convex;
+    $('hollow').disabled = brushes.length !== 1 || !convex;
+    $('merge').disabled = brushes.length < 2 || !convex;
+    $('clip').disabled = !convex || !lastPoint;
     $('duplicate').disabled = $('delete').disabled = !count;
     $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length;
-    if (count) say(`${count} selected · drag to move (Alt up and down), Shift-drag a face to push or pull it · grid ${settings.grid}`);
+    $('mode').textContent = createType ? `Create ${CREATE[createType].label} (${createType}): ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
+      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode';
     $('material').textContent = `${template.material || 'no material'}${template.colour && M.colourOf(template) ? ` · ${template.colour}` : ''}`;
     $('swatch').style.background = '#' + new THREE.Color(...faceShade(template).diffuse.map(c => Math.pow(c, 1 / 2.2))).getHexString();
   }
 
-  // Picks the brush under the mouse. Placed prefab brushes are reported, not selected.
+  // ---- Picking ----
+  // The brush face under the mouse, or a marked entity within 12 pixels of it and not behind a solid face. Placed prefab
+  // brushes and entities are reported, not selected.
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
-  function pick(event) {
+  function pick(event, entities = true) {
     const rect = canvas.getBoundingClientRect();
     pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    const hit = raycaster.intersectObjects([world, glass, clips], false)[0];
+    const hits = raycaster.intersectObjects([world, glass, clips, volumes].filter(mesh => mesh.visible), false);
+    // Only solid faces hide a marker; volumes, clips and glass are seen through.
+    const hit = hits[0], solid = hits.find(candidate => candidate.object === world);
+    let nearest = null;
+    if (entities) {
+      const v = new THREE.Vector3();
+      for (const marker of markers) {
+        if (!marker.mesh.visible) continue;
+        v.set(marker.entry.position[0], marker.entry.position[1], -marker.entry.position[2]);
+        const distance = v.distanceTo(camera.position);
+        v.project(camera);
+        if (v.z > 1) continue;
+        const off = Math.hypot(rect.left + (v.x + 1) / 2 * rect.width - event.clientX, rect.top + (1 - v.y) / 2 * rect.height - event.clientY);
+        if (off < 12 && (!solid || distance < solid.distance + 16) && (!nearest || distance < nearest.distance)) nearest = {entry: marker.entry, distance};
+      }
+    }
+    if (nearest) return {entity: nearest.entry, point: nearest.entry.position, normal: [0, 1, 0]};
     if (!hit) return null;
-    const owners = hit.object === world ? entryOfTriangle : hit.object === glass ? glassEntryOfTriangle : clipEntryOfTriangle;
+    const owners = hit.object === world ? entryOfTriangle : hit.object === glass ? glassEntryOfTriangle : hit.object === clips ? clipEntryOfTriangle : volumeEntryOfTriangle;
     const [index, face] = owners[hit.faceIndex];
     const point = root.worldToLocal(hit.point.clone()).toArray();
     const normal = hit.face.normal.toArray();  // Geometry normals are in the game's axes already.
     return {entry: flat.brushes[index], face, point, normal};
   }
   const adding = event => event.ctrlKey || event.metaKey;
+  // What B.check found, as a sentence: 'has a bent face and is not convex'.
+  const PROBLEM = {'a bent face': 'has a bent face', 'not convex': 'is not convex', 'a face with no area': 'has a face with no area', 'fewer than four faces': 'has fewer than four faces'};
+  const problemText = problems => problems.map(problem => PROBLEM[problem] || problem).join(' and ').replace(/ and (?=.* and )/g, ', ');
+  function describe(item, entry) {
+    if (!isBrush(item)) {
+      const name = M.property(item, 'name') || M.property(item, 'target') || M.property(item, 'effectName') || (item.type === 'Pickup' ? `type ${M.property(item, 'pickupType')}` : '');
+      return `${item.type}${name !== undefined && name !== '' ? ` ${name}` : ''}`;
+    }
+    const owner = entry.owner, problems = B.check(item);
+    const what = M.isVolume(owner) ? `${owner.type} volume${M.property(owner, 'target') ? ` to ${M.property(owner, 'target')}` : ''}` : 'brush';
+    return `${what}${problems.length ? ` · it ${problemText(problems)}, so CSG and dragging its faces leave it alone` : ''}`;
+  }
   function select(event) {
     const hit = pick(event);
     if (!hit) { if (!adding(event)) selected.clear(); say(''); showSelection(); return; }
     lastPoint = hit.point; lastNormal = hit.normal;
-    if (hit.entry.path.length) {
-      say(`Part of prefab "${M.property(hit.entry.path[0], 'prefabName')}", placed by a Prefab entity; edit the prefab in Reflex`);
+    const entry = hit.entity || hit.entry;
+    if (entry.path.length) {
+      say(`Part of prefab "${M.property(entry.path[0], 'prefabName')}", placed by a Prefab entity; edit the prefab in Reflex`);
       if (!adding(event)) selected.clear();
       showSelection();
       return;
     }
-    const item = hit.entry.source;
+    const item = hit.entity ? hit.entity.entity : hit.entry.source;
     if (adding(event)) { if (selected.has(item)) selected.delete(item); else selected.add(item); } else { selected.clear(); selected.add(item); }
-    const problems = B.check(item);
     showSelection();
-    if (problems.length) say(`${selected.size} selected · this brush is ${problems.join(', ')}; CSG and dragging faces leave it alone`);
+    say(`${selected.size} selected · ${describe(item, entry)}`);
   }
   // The fields of a face, without its vertices: what a new brush or M gives faces.
   const fieldsOf = face => { const fields = {...face}; delete fields.indices; return fields; };
@@ -402,14 +491,121 @@ window.addEventListener('DOMContentLoaded', async () => {
     const denominator = a * c - b * b;
     return Math.abs(denominator) < 1e-9 ? 0 : (b * dot(direction, w) - c * dot(along, w)) / denominator;
   }
+  // Where the mouse ray meets the plane square to `axis` at `level`; null when it runs along it or away.
+  function onPlane(mouse, axis, level) {
+    if (Math.abs(mouse.direction[axis]) < 1e-6) return null;
+    const t = (level - mouse.origin[axis]) / mouse.direction[axis];
+    return t > 0 ? mouse.origin.map((o, i) => o + mouse.direction[i] * t) : null;
+  }
+  // A drag on the grid from `point`: across its level, or up and down with Alt. Returns the offset.
+  function gridOffset(event, point) {
+    const mouse = ray(event), grid = settings.grid;
+    if (event.altKey) return [0, Math.round(alongLine(point, [0, 1, 0], mouse) / grid) * grid, 0];
+    const at = onPlane(mouse, 1, point[1]);
+    return at && [Math.round((at[0] - point[0]) / grid) * grid, 0, Math.round((at[2] - point[2]) / grid) * grid];
+  }
+
+  // The corner dot nearest the mouse, within 10 pixels.
+  function nearestDot(event) {
+    const rect = canvas.getBoundingClientRect(), v = new THREE.Vector3();
+    let best = null;
+    for (const candidate of dots) {
+      v.set(candidate.position[0], candidate.position[1], -candidate.position[2]).project(camera);
+      if (v.z > 1) continue;
+      const off = Math.hypot(rect.left + (v.x + 1) / 2 * rect.width - event.clientX, rect.top + (1 - v.y) / 2 * rect.height - event.clientY);
+      if (off < 10 && (!best || off < best.off)) best = {...candidate, off};
+    }
+    return best;
+  }
+  function showHover(position) {
+    hoverDot.visible = !!position;
+    if (position) { hoverDot.geometry.dispose(); hoverDot.geometry = new THREE.BufferGeometry(); hoverDot.geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3)); }
+  }
+  // A brush with one corner moved, as the game's vertex mode moves it: faces may bend. A corner dropped on another
+  // corner becomes it, and faces left with fewer than three corners go; null when fewer than four faces are left.
+  function moveCorner(brush, index, position) {
+    let vertices = brush.vertices.map((v, i) => i === index ? position : v), faces = brush.faces;
+    const same = vertices.findIndex((v, i) => i !== index && Math.hypot(v[0] - position[0], v[1] - position[1], v[2] - position[2]) < 1e-3);
+    if (same >= 0) {
+      faces = faces.map(face => {
+        const ids = face.indices.map(i => i === index ? same : i);
+        return {...face, indices: ids.filter((id, n) => id !== ids[(n + 1) % ids.length])};
+      }).filter(face => new Set(face.indices).size >= 3)
+        .map(face => ({...face, indices: face.indices.map(i => i > index ? i - 1 : i)}));
+      vertices = vertices.filter((_, i) => i !== index);
+    }
+    return faces.length >= 4 ? {vertices, faces} : null;
+  }
+
+  // Where a click of create type 4 to 8 puts an entity: on a floor where it was clicked, against a wall or ceiling
+  // one grid step out from it; on the grid across.
+  function placeAt(point, normal) {
+    if (normal[1] > .7) return [snap(point[0]), Math.round(point[1] * 1000) / 1000, snap(point[2])];
+    return point.map((p, i) => snap(p + normal[i] * settings.grid));
+  }
+  // New entities, with the properties the stock maps give every one of their type (and the most common values).
+  function uniqueName(prefix) {
+    const taken = new Set(flat.entities.map(entry => M.property(entry.entity, 'name')));
+    let n = 1;
+    while (taken.has(prefix + n)) n++;
+    return prefix + n;
+  }
+  function newEntity(type, position) {
+    const yaw = ((Math.round(THREE.MathUtils.radToDeg(-camera.rotation.y) / 45) * 45 % 360) + 540) % 360 - 180;
+    const vector = (name, value) => ({type: 'Vector3', name, value});
+    const properties = {
+      Target: () => [vector('position', position), vector('angles', [yaw, 0, 0]), {type: 'String32', name: 'name', value: uniqueName('target')}],
+      Effect: () => [vector('position', position), {type: 'String64', name: 'effectName', value: 'common/meshes/concrete/concrete_tile_64x64'}],
+      Pickup: () => [vector('position', position), {type: 'UInt8', name: 'pickupType', value: 40}],
+      PointLight: () => [vector('position', position), {type: 'ColourXRGB32', name: 'color', value: 'ffffc400'},
+        {type: 'Float', name: 'nearAttenuation', value: 32}, {type: 'Float', name: 'farAttenuation', value: 160}, {type: 'Float', name: 'intensity', value: 1.5}],
+      PlayerSpawn: () => [vector('position', position), vector('angles', [yaw, 0, 0])],
+    }[type];
+    return {kind: 'entity', type, properties: properties ? properties() : []};
+  }
+  // The box a create drag has drawn: its footprint on the surface, grown out of it by four grid steps.
+  function drawnBox(drag) {
+    const min = [0, 0, 0], max = [0, 0, 0], depth = settings.grid * 4;
+    for (let axis = 0; axis < 3; axis++) {
+      if (axis === drag.axis) {
+        const far = drag.level + drag.sign * depth;
+        min[axis] = Math.min(drag.level, far); max[axis] = Math.max(drag.level, far);
+      } else { min[axis] = Math.min(drag.start[axis], drag.end[axis]); max[axis] = Math.max(drag.start[axis], drag.end[axis]); }
+    }
+    return {min, max, empty: [0, 1, 2].some(axis => axis !== drag.axis && max[axis] - min[axis] < 1e-6)};
+  }
+  function startCreate(event) {
+    const hit = pick(event, false), mouse = ray(event);
+    let point, normal;
+    if (hit) ({point, normal} = hit);
+    else {
+      // Nothing under the mouse: the ground plane, y = 0.
+      point = onPlane(mouse, 1, 0);
+      if (!point) return;
+      normal = [0, 1, 0];
+    }
+    if (createType >= 4) { drag = {kind: 'place', point, normal}; return; }
+    const axis = normal.map(Math.abs).indexOf(Math.max(...normal.map(Math.abs))), sign = Math.sign(normal[axis]) || 1;
+    const level = Math.abs(point[axis] - snap(point[axis])) < .01 ? snap(point[axis]) : point[axis];
+    const start = point.map((p, i) => i === axis ? level : snap(p));
+    drag = {kind: 'create', axis, sign, level, start, end: start};
+  }
+
   let drag = null;
   function startDrag(event) {
+    if (vertexMode) {
+      const corner = nearestDot(event);
+      if (corner) { drag = {kind: 'corner', ...corner, offset: [0, 0, 0], result: null}; return; }
+    }
+    if (createType) { startCreate(event); return; }
     const hit = pick(event);
-    if (!hit || hit.entry.path.length) return;
-    const item = hit.entry.source;
+    if (!hit) return;
+    const entry = hit.entity || hit.entry;
+    if (entry.path.length) return;
+    const item = hit.entity ? hit.entity.entity : hit.entry.source;
     if (event.shiftKey) {
       // Push or pull the face under the mouse of a selected brush along its normal.
-      if (!selected.has(item) || !B.convex(item)) return;
+      if (hit.entity || !selected.has(item) || !B.convex(item)) return;
       const plane = B.planesOf(item).find(candidate => candidate.face === hit.face);
       if (plane) drag = {kind: 'face', item, plane, point: hit.point, offset: 0, result: item};
       return;
@@ -419,24 +615,45 @@ window.addEventListener('DOMContentLoaded', async () => {
     drag = {kind: 'move', point: hit.point, offset: [0, 0, 0]};
   }
   function continueDrag(event) {
-    const mouse = ray(event), grid = settings.grid;
+    const grid = settings.grid;
+    if (drag.kind === 'place') return;
     if (drag.kind === 'move') {
-      let offset;
-      if (event.altKey) offset = [0, Math.round(alongLine(drag.point, [0, 1, 0], mouse) / grid) * grid, 0];
-      else {
-        // Across the level the brush was taken at.
-        if (Math.abs(mouse.direction[1]) < 1e-6) return;
-        const t = (drag.point[1] - mouse.origin[1]) / mouse.direction[1];
-        if (t <= 0) return;
-        offset = [0, 2].reduce((o, axis) => { o[axis] = Math.round((mouse.origin[axis] + mouse.direction[axis] * t - drag.point[axis]) / grid) * grid; return o; }, [0, 0, 0]);
-      }
+      const offset = gridOffset(event, drag.point);
+      if (!offset) return;
       drag.offset = offset.map(x => x + 0);
       selection.position.set(...drag.offset);
       say(`Move ${drag.offset.join(' ')}`);
       return;
     }
+    if (drag.kind === 'corner') {
+      const offset = gridOffset(event, drag.position);
+      if (!offset) return;
+      // The corner lands on the grid along the axes it moves on.
+      const position = drag.position.map((p, i) => (event.altKey ? i === 1 : i !== 1) ? snap(p + offset[i]) : p);
+      const result = moveCorner(drag.item, drag.index, position);
+      if (!result) return;
+      drag.result = result; drag.to = position;
+      showSelection(new Map([[drag.item, result]]));
+      showHover(position);
+      say(`Corner to ${position.map(v => Math.round(v * 1000) / 1000).join(' ')}`);
+      return;
+    }
+    if (drag.kind === 'create') {
+      const at = onPlane(ray(event), drag.axis, drag.level);
+      if (!at) return;
+      drag.end = at.map((p, i) => i === drag.axis ? drag.level : snap(p));
+      const {min, max, empty} = drawnBox(drag);
+      ghost.clear();
+      if (!empty) {
+        const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(...min), new THREE.Vector3(...max)), 0xf0c674);
+        box.material.depthTest = false;
+        ghost.add(box);
+        say(`${CREATE[createType].label}: ${max.map((v, i) => Math.round((v - min[i]) * 1000) / 1000).join(' × ')}`);
+      }
+      return;
+    }
     // A face square to an axis lands on the grid; a slanted one moves by whole grid steps.
-    const {plane} = drag, along = alongLine(drag.point, plane.normal, mouse), square = plane.normal.some(n => Math.abs(Math.abs(n) - 1) < 1e-6);
+    const {plane} = drag, along = alongLine(drag.point, plane.normal, ray(event)), square = plane.normal.some(n => Math.abs(Math.abs(n) - 1) < 1e-6);
     const distance = square ? Math.round((plane.distance + along) / grid) * grid : plane.distance + Math.round(along / grid) * grid;
     if (distance === plane.distance + drag.offset) return;
     const result = B.fromPlanes(B.planesOf(drag.item).map(candidate => candidate === plane || candidate.face === plane.face ? {...candidate, distance} : candidate));
@@ -446,19 +663,49 @@ window.addEventListener('DOMContentLoaded', async () => {
     showSelection(new Map([[drag.item, result]]));
     say(`Face ${drag.offset > 0 ? '+' : ''}${Math.round(drag.offset * 1000) / 1000}`);
   }
-  function endDrag() {
+  // Ends a drag; true when it made an edit. `still` says the mouse did not move: a click.
+  function endDrag(still) {
     const done = drag;
     drag = null;
     selection.position.set(0, 0, 0);
+    ghost.clear();
     if (done.kind === 'move' && done.offset.some(Boolean)) {
-      const items = selectedBrushes();
-      replace(new Map(items.map(item => [item, [B.translate(item, done.offset)]])), [], 'changed');
+      replace(new Map([...selected].map(item => [item, [isBrush(item) ? B.translate(item, done.offset) : withPosition(item, positionOf(item).map((v, i) => v + done.offset[i]))]])), [], 'changed');
       say(`Moved ${done.offset.join(' ')}`);
       return true;
     }
     if (done.kind === 'face' && done.offset) {
       replace(new Map([[done.item, [done.result]]]), [], 'changed');
       say(`Face moved ${Math.round(done.offset * 1000) / 1000}`);
+      return true;
+    }
+    if (done.kind === 'corner' && done.result) {
+      const kept = [...selected].filter(item => item !== done.item);
+      replace(new Map([[done.item, [done.result]]]), [], 'changed');
+      kept.forEach(item => selected.add(item));
+      showSelection();
+      say(`Corner moved${B.check(done.result).length ? ` · the brush now ${problemText(B.check(done.result))}` : ''}`);
+      return true;
+    }
+    if (done.kind === 'create') {
+      const {min, max, empty} = drawnBox(done);
+      if (empty) { showSelection(); return still ? false : true; }
+      const type = CREATE[createType].type;
+      if (!type) {
+        replace(new Map(), [{at: 'world', things: [B.box(min, max, template)]}], 'added');
+        say(`New brush ${max.map((v, i) => v - min[i]).join(' × ')}`);
+      } else {
+        // A volume: its entity, followed by the brush that is the volume (no material, as the stock maps have them).
+        const volume = B.box(min, max, {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: ''});
+        replace(new Map(), [{at: 'end', things: [newEntity(type, null), volume]}], 'added');
+        say(`New ${CREATE[createType].label} volume; give it a target to link it`);
+      }
+      return true;
+    }
+    if (done.kind === 'place' && still) {
+      const type = CREATE[createType].type, entity = newEntity(type, placeAt(done.point, done.normal));
+      replace(new Map(), [{at: 'end', things: [entity]}], 'added');
+      say(`New ${describe(entity)} at ${positionOf(entity).join(' ')}`);
       return true;
     }
     showSelection();
@@ -468,7 +715,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // K and M: the game's me_getmaterial and me_setmaterial.
   let mouseAt = null;
   function pickMaterial() {
-    const hit = mouseAt && pick(mouseAt);
+    const hit = mouseAt && pick(mouseAt, false);
     if (!hit) return;
     template = fieldsOf(hit.face);
     updateTools();
@@ -477,7 +724,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function applyMaterial(oneFace) {
     const paint = face => ({...face, material: template.material, colour: template.colour});
     if (oneFace) {
-      const hit = mouseAt && pick(mouseAt);
+      const hit = mouseAt && pick(mouseAt, false);
       if (!hit || hit.entry.path.length) return;
       const item = hit.entry.source;
       replace(new Map([[item, [{vertices: item.vertices, faces: item.faces.map(face => face === hit.face ? paint(face) : face)}]]]), [], selected.has(item) ? 'changed' : null);
@@ -490,16 +737,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     say(`Material on ${items.length} brushes: ${template.material || 'no material'}`);
   }
 
-  // The brush operations, each one step of undo.
-  function others(of) { return globalGroup().items.filter(item => item.kind === 'brush' && !of.includes(item) && B.convex(item)); }
+  // The toolbar's operations, each one step of undo. CSG works on brushes of the world, not on volumes.
+  function others(of) { return globalGroup().items.filter(item => isWorldBrush(item) && !of.includes(item) && B.convex(item)); }
   const actions = {
     newBrush() {
       const forward = new THREE.Vector3();
       camera.getWorldDirection(forward);
       const at = camera.position.clone().addScaledVector(forward, 256);
       const size = settings.grid * 8, centre = [snap(at.x), snap(at.y), snap(-at.z)];
-      const brush = B.box(centre.map(c => c - size / 2), centre.map(c => c + size / 2), template);
-      replace(new Map(), [brush], 'added');
+      replace(new Map(), [{at: 'world', things: [B.box(centre.map(c => c - size / 2), centre.map(c => c + size / 2), template)]}], 'added');
       say(`New ${size}-unit box`);
     },
     subtract() {
@@ -521,10 +767,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       say(`Hollowed into ${walls.length} walls`);
     },
     merge() {
-      let [first, ...rest] = selectedBrushes(), joined = first;
-      for (const next of rest) { joined = joined && B.merge(joined, next); }
+      const [first, ...rest] = selectedBrushes();
+      let joined = first;
+      for (const next of rest) joined = joined && B.merge(joined, next);
       if (!joined) { say('These brushes do not make one convex brush together'); return; }
-      replace(new Map([[first, [joined]], ...rest.map(item => [item, []])]), [], null);
+      replace(new Map([[first, [joined]], ...rest.map(item => [item, []])]), [], 'changed');
       say('Merged');
     },
     clip() {
@@ -543,15 +790,37 @@ window.addEventListener('DOMContentLoaded', async () => {
       replace(changes, [], null);
       say(`Split at ${'xyz'[axis]} = ${plane.distance}`);
     },
+    // Clones one grid step along x: a brush beside its original (so with the same owner), a volume as a new entity
+    // with its brush, an entity after its original.
     duplicate() {
-      const copies = selectedBrushes().map(item => B.translate(item, [settings.grid, 0, 0]));
-      replace(new Map(), copies, 'added');
-      say(`Copied ${copies.length}`);
+      const step = [settings.grid, 0, 0], inserts = [];
+      for (const item of selected) {
+        if (isBrush(item)) {
+          const owner = ownerOf(item);
+          if (M.isVolume(owner)) inserts.push({at: 'end', things: [{...owner, properties: owner.properties.map(p => ({...p}))}, B.translate(item, step)]});
+          else inserts.push({at: item, things: [B.translate(item, step)]});
+        } else if (!M.VOLUMES.has(item.type)) {
+          const position = positionOf(item);
+          inserts.push({at: item, things: [position ? withPosition(item, position.map((v, i) => v + step[i])) : {...item}]});
+        }
+      }
+      if (!inserts.length) return;
+      replace(new Map(), inserts, 'added');
+      say(`Cloned ${inserts.length}`);
     },
+    // Deletes the selection; a volume's entity goes with the last of its brushes, and a volume entity takes its brushes.
     delete() {
-      const gone = selectedBrushes();
-      replace(new Map(gone.map(item => [item, []])));
-      say(`Deleted ${gone.length}`);
+      const gone = new Set(selected);
+      for (const entry of flat.brushes) {
+        if (entry.path.length || !M.isVolume(entry.owner)) continue;
+        if (gone.has(entry.owner)) gone.add(entry.source);
+      }
+      for (const item of selectedBrushes()) {
+        const owner = ownerOf(item);
+        if (M.isVolume(owner) && flat.brushes.every(entry => entry.owner !== owner || entry.path.length || gone.has(entry.source))) gone.add(owner);
+      }
+      replace(new Map([...gone].map(item => [item, []])));
+      say(`Deleted ${gone.size}`);
     },
     undo() { restore(undoStack, redoStack); },
     redo() { restore(redoStack, undoStack); },
@@ -564,22 +833,37 @@ window.addEventListener('DOMContentLoaded', async () => {
     },
   };
   function move(offset) {
-    const items = selectedBrushes();
-    if (items.length) replace(new Map(items.map(item => [item, [B.translate(item, offset)]])), [], 'changed');
+    if (selected.size) replace(new Map([...selected].map(item => [item, [isBrush(item) ? B.translate(item, offset) : withPosition(item, (positionOf(item) || [0, 0, 0]).map((v, i) => v + offset[i]))]])), [], 'changed');
   }
   for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', event => { action(); event.target.blur(); });
 
+  function setCreate(type) {
+    createType = createType === type ? 0 : type;
+    if (createType) vertexMode = false;
+    showHover(null);
+    updateTools();
+    say(createType ? `${CREATE[createType].label}: ${createType <= 3 ? 'drag a rectangle on a surface' : 'click where it goes'}` : '');
+  }
+  function setVertexMode(on) {
+    vertexMode = on;
+    if (on) createType = 0;
+    showHover(null);
+    showSelection();
+    say(on ? (selectedBrushes().length ? 'Drag a corner; Alt drags it up and down' : 'Select a brush to see its corners') : '');
+  }
   function setEditing(on) {
     editing = on;
     $('tools').hidden = !on;
-    clips.visible = selection.visible = on;
+    clips.visible = volumes.visible = selection.visible = on;
     for (const mesh of entityLayer.children) if (mesh.userData.editOnly) mesh.visible = on;
     uniforms.uGrid.value = on ? settings.grid : 0;
     $('crosshair').hidden = on;
+    if (!on) { createType = 0; vertexMode = false; showHover(null); ghost.clear(); }
     if (on && document.pointerLockElement === canvas) document.exitPointerLock();
     $('help').textContent = on
-      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Right-drag look · WASD QE move · G clone · Backspace delete · Z/X undo/redo · K/M pick/put material · B box · H hollow · C split'
+      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · 1–8 create · V vertices · Right-drag look · WASD QE move · G clone · Backspace delete · Z/X undo/redo · K/M material · H hollow · C split'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints';
+    updateTools();
     requestAnimationFrame(applySettings);  // The toolbar changes the canvas height.
   }
 
@@ -616,8 +900,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   window.addEventListener('mouseup', event => {
     const still = downAt && Math.hypot(event.clientX - downAt[0], event.clientY - downAt[1]) < 5;
-    const dragged = editing && event.button === 0 && drag ? endDrag() : false;
-    if (editing && event.button === 0 && still && !dragged && flat) select(event);
+    const dragged = editing && event.button === 0 && drag ? endDrag(still) : false;
+    if (editing && event.button === 0 && still && !dragged && !createType && flat) select(event);
     if (event.button === 2 || !editing) looking = false;
     downAt = null;
   });
@@ -625,6 +909,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('mousemove', event => {
     if (event.target === canvas) mouseAt = {clientX: event.clientX, clientY: event.clientY};
     if (drag && editing) { continueDrag(event); return; }
+    if (editing && vertexMode && !looking && event.target === canvas) { const corner = nearestDot(event); showHover(corner && corner.position); }
     if (!looking && document.pointerLockElement !== canvas) return;
     camera.rotation.y -= event.movementX * .0025 * (settings.invertX ? -1 : 1);
     camera.rotation.x = Math.max(-1.55, Math.min(1.55, camera.rotation.x - event.movementY * .0025 * (settings.invertY ? -1 : 1)));
@@ -638,8 +923,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (event.target.matches('input:not([type=checkbox]), select')) return;
     const ctrl = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
     if (event.code === 'Tab' || (event.code === 'Digit0' && !ctrl)) { event.preventDefault(); setEditing(!editing); return; }
-    if (/^Digit[1-9]$/.test(event.code) && !ctrl) showViewpoint(Number(event.code.slice(5)) - 1);
+    if (/^Digit[1-9]$/.test(event.code) && !ctrl && !editing) showViewpoint(Number(event.code.slice(5)) - 1);
     if (editing && flat) {
+      if (/^Digit[1-8]$/.test(event.code) && !ctrl) { setCreate(Number(event.code.slice(5))); return; }
+      if (!ctrl && event.code === 'KeyV') { setVertexMode(!vertexMode); return; }
       if (ctrl && key === 'z') { event.preventDefault(); actions[event.shiftKey ? 'redo' : 'undo'](); return; }
       if (ctrl && key === 'y') { event.preventDefault(); actions.redo(); return; }
       if (ctrl && event.shiftKey && key === 's') { event.preventDefault(); if (!$('subtract').disabled) actions.subtract(); return; }
@@ -655,7 +942,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!ctrl && key === 'h' && !$('hollow').disabled) { actions.hollow(); return; }
       if (!ctrl && key === 'c' && !$('clip').disabled) { actions.clip(); return; }
       if ((event.code === 'Delete' || event.code === 'Backspace') && selected.size) { event.preventDefault(); actions.delete(); return; }
-      if (event.code === 'Escape') { if (drag) { drag = null; selection.position.set(0, 0, 0); } selected.clear(); say(''); showSelection(); return; }
+      if (event.code === 'Escape') {
+        if (drag) { drag = null; selection.position.set(0, 0, 0); ghost.clear(); showSelection(); return; }
+        if (createType) { setCreate(createType); return; }
+        if (vertexMode) { setVertexMode(false); return; }
+        selected.clear(); say(''); showSelection(); return;
+      }
       // Arrows move the selection along the horizontal axis nearest to where the camera looks.
       const step = settings.grid, yaw = -camera.rotation.y, along = Math.round(yaw / (Math.PI / 2)) & 3;
       const ahead = [[0, 0, 1], [1, 0, 0], [0, 0, -1], [-1, 0, 0]][along], side = [[1, 0, 0], [0, 0, -1], [-1, 0, 0], [0, 0, 1]][along];
@@ -676,7 +968,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (step.lengthSq()) camera.position.addScaledVector(step.normalize(), speed * delta);
     renderer.render(scene, camera);
   });
-  window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; }, load, actions, selected, setEditing, showViewpoint};
+  window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; },
+    get createType() { return createType; }, get vertexMode() { return vertexMode; }, load, actions, selected, setEditing, showViewpoint};
 
   // ---- Loading ----
   $('open').addEventListener('change', async event => {

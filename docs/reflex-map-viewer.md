@@ -106,7 +106,7 @@ a drag does rather than separate tools.
 | Do | Mouse / key | Game's command (key) |
 | --- | --- | --- |
 | Switch flying / editing | 0 (or Tab) | `toggleeditor` (0), `cl_playerstate 1` (0) |
-| Select a brush | Click | `+editorprimary` (Mouse1) |
+| Select a brush or an entity's marker | Click | `+editorprimary` (Mouse1) |
 | Add or remove one | Ctrl+click | `+editormultiselect` (Ctrl) |
 | Look | Hold the right button | `+editorcameradrag` (Mouse2) |
 | Move the selection on the grid, at the height it was taken | Drag a selected brush | `+editorprimary` |
@@ -115,6 +115,10 @@ a drag does rather than separate tools.
 | Clone | G | `editorclone` (G) |
 | Delete | Backspace (or Delete) | `editordelete` (Backspace) |
 | Undo / redo | Z / X (or Ctrl+Z, Ctrl+Y) | `editorundo` (Z), `editorredo` (X) |
+| Choose what a click makes: brush, teleporter, jump pad, target, effect, pickup, point light, player spawn | 1–8 (again, or Escape, to stop) | `me_createtype` (1–8) |
+| Make a brush, or a teleporter's or jump pad's volume | Drag a rectangle on a surface (or on the ground, y = 0) | `+editorprimary` |
+| Place a target, effect, pickup, point light or player spawn | Click a surface | `+editorprimary` |
+| Show the corners of the selected brushes; drag one (Alt: up and down) | V | `editortogglevertexmode` (V) |
 | Pick up the material and colour under the cursor | K | `me_getmaterial` (K) |
 | Put them on the selection; on the face under the cursor | M; Shift+M | `me_setmaterial` (M) |
 | Clear the selection | Escape | |
@@ -139,6 +143,33 @@ selection with it. While dragging, the yellow outline shows where the
 selection goes; releasing makes the edit. A face pulled through its brush
 stops at the last shape that is one.
 
+**Creating.** A dragged brush or volume stands on the rectangle drawn, on the
+grid, and grows out of the surface by four grid steps; Shift-drag its faces to
+size it. A new brush takes the material K picked (concrete to start with). A
+teleporter or jump pad is an entity followed by the brush that is its volume,
+with no material, as the stock maps have them; it is made without a target,
+which links it to a Target named the same (no property panel yet, so set it in
+the file). Entities clicked onto a floor stand where clicked; onto a wall or
+ceiling, one grid step out from it. Each gets the properties every one of its
+type has in the 18 stock maps, with their most common values: a pickup
+`pickupType 40`, a point light colour `ffffc400`, attenuation 32 to 160 and
+intensity 1.5, an effect `common/meshes/concrete/concrete_tile_64x64`, a
+target a name of its own (`target1`, …), and a player spawn and a target the
+camera's yaw to the nearest 45°.
+
+**Entities** are selected by their markers (within 12 pixels; volumes, clips
+and glass do not hide them), moved, cloned and deleted as brushes are.
+Teleporters and jump pads have no position, so they are selected by their
+volume; deleting the last brush of a volume deletes its entity, and cloning a
+volume makes a new entity with its brush.
+
+**Vertex mode** (V) shows the corners of the selected brushes as dots; the one
+under the mouse is white. Dragging a corner moves it on the grid across, or up
+and down with Alt. Faces may bend, as in the game (33 brushes of the stock
+maps have bent faces or are not convex; the CSG tools leave such brushes
+alone). A corner dropped on another corner of its brush becomes it, and faces
+left with fewer than three corners go.
+
 Brushes placed by a prefab are drawn but not selected: clicking one names its
 prefab. A brush that is not convex or has a bent face (the game's editor can
 make one by moving a vertex; 33 brushes of the stock maps are such) is drawn,
@@ -161,11 +192,12 @@ transcribed from AEon's command document were read as they are):
   selects, drag moves, Alt drags vertically, Shift works on the face under the
   cursor, Ctrl adds to the selection. `editortogglevertexmode` (V) shows the
   corners of a brush to drag one at a time; `editortoggleclipmode` (C) is
-  bound but was listed as unimplemented in 2015. Neither is on the page yet.
+  bound but was listed as unimplemented in 2015. Vertex mode is on the page;
+  the clipper is not.
 - New things are made by choosing a type, `me_createtype` (keys 1–8:
   worldspawn (a brush), teleporter, jumppad, target, effect, pickup,
-  pointlight, playerspawn; others by name), and dragging it out in the world.
-  The page's B makes a fixed box instead.
+  pointlight, playerspawn; others by name), and dragging it out in the world,
+  as on the page; B on the page also makes a fixed box.
 - Snapping: `me_snapdistance` (16) and `me_snapangle`, with `me_rotate_inc` and
   `me_rotate_dec` (numpad + and −) turning the selection.
 - Faces: `me_activematerial` and `me_activealbedo` set the material and colour
@@ -218,9 +250,17 @@ global
 ```
 
 - **Groups.** `prefab <name>` blocks come first, then `global`, the map
-  itself. Each holds entities and brushes in the order they were made,
-  interleaved (Aerowalk's global: 1 entity, 1,596 brushes, 20 entities, 3
-  brushes, …), so the page keeps them as one list per group. Version 6 files
+  itself. Each holds entities and brushes as one list, and **a brush belongs
+  to the entity before it**: the WorldSpawn's run of brushes is the world
+  (Aerowalk's global: its WorldSpawn, 1,596 brushes, 20 entities, 3 brushes,
+  …), and a `Teleporter`, `JumpPad`, `RaceStart`, `RaceFinish` or
+  `TriggerVolume` is followed by the brush that is its volume, mostly without
+  a material. No other type owns brushes in the 18 stock maps (34,788 world
+  brushes; 106 jump pad, 51 teleporter, 49 trigger, 7 race start and 2 race
+  finish volumes). Teleporters and jump pads have no position of their own.
+  So the page keeps the list in order, draws volumes only while editing (light
+  blue), and puts a new world brush at the end of the WorldSpawn's run, not at
+  the end of the list where it would be the last entity's. Version 6 files
   have no group lines: entities and brushes stand at the top level.
 - **Entities**: `type <Type>`, then typed properties, `<Type> <name> <value>`:
   `Vector3` (three numbers), `Float`, `UInt8`, `UInt32`, `Bool8`,
