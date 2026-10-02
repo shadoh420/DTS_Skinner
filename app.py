@@ -19,6 +19,8 @@ import subprocess # For opening folders on Linux/macOS
 import gzip
 import zipfile
 from tools.import_q3 import import_catalog as import_q3_catalog, current_import
+from tools.import_t1_map import import_maps as import_t1_maps
+from tools.import_t2_map import import_maps as import_t2_maps
 
 # --- System Tray Imports ---
 try:
@@ -90,6 +92,98 @@ stop_event = threading.Event() # Used to signal the Flask server to shut down
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route('/maps/')
+def maps_viewer():
+    response = send_from_directory(static_dir / 't2-maps/skinner', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:"
+    return response
+
+
+@app.route('/t2-map-data/<path:filename>')
+def t2_map_data(filename):
+    return send_from_directory(local_data_dir / 't2-maps', filename)
+
+
+def foreign_request():
+    # Local filesystem mutations require same-origin JSON, not a cross-site form.
+    return request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site'
+
+
+@app.route('/import_t2_maps', methods=['POST'])
+def import_t2_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
+        return jsonify(error='Enter your local Tribes 2 folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_t2_maps(payload['game'].strip(), local_data_dir / 't2-maps', payload.get('replace') is True))
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/t2_map_mounts', methods=['POST'])
+def t2_map_mounts():
+    """Keep the mount transforms the viewer read from the pack's shapes, so it reads them once per import."""
+    if foreign_request():
+        return jsonify(error='Mounts must be stored from this Skinner window.'), 403
+    payload = request.get_json(silent=True) if request.is_json and (request.content_length or 0) <= 1 << 20 else None
+    number = lambda values, count: isinstance(values, list) and len(values) == count and all(type(v) in (int, float) for v in values)
+    if not isinstance(payload, dict) or not all(
+            isinstance(shape, str) and isinstance(nodes, dict) and all(
+                isinstance(node, str) and isinstance(at, dict) and set(at) == {'position', 'rotation'}
+                and number(at['position'], 3) and number(at['rotation'], 4) for node, at in nodes.items())
+            for shape, nodes in payload.items()):
+        return jsonify(error='Expected mount transforms.'), 400
+    pack = local_data_dir / 't2-maps'
+    if not (pack / 'manifest.json').is_file():
+        return jsonify(error='No map pack.'), 404
+    (pack / 'mounts.json').write_text(json.dumps(payload), encoding='utf-8')
+    return jsonify(shapes=len(payload))
+
+
+@app.route('/maps/t1/')
+def t1_maps_viewer():
+    response = send_from_directory(static_dir / 't1-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/t1-map-data/<path:filename>')
+def t1_map_data(filename):
+    # Files under textures/ and models/ are named by their content, so a browser need never ask for one twice.
+    shared = filename.startswith(('textures/', 'models/'))
+    response = send_from_directory(local_data_dir / 't1-maps', filename, max_age=31536000 if shared else None)
+    response.cache_control.immutable = shared
+    return response
+
+
+@app.route('/import_t1_maps', methods=['POST'])
+def import_t1_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip() or not isinstance(payload.get('missions', ''), str):
+        return jsonify(error='Enter your local Tribes folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        missions = [payload['missions'].strip()] if payload.get('missions', '').strip() else None
+        return jsonify(import_t1_maps(payload['game'].strip(), local_data_dir / 't1-maps', missions, payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
 
 
 def selected_game():
@@ -417,6 +511,13 @@ def stop_watcher():
 # --- Flask Server Thread Function ---
 def run_flask_app():
     print(f"Flask server thread started. PID: {os.getpid()}, Thread: {threading.get_ident()}")
+    try:
+        # The app is opened as http://localhost, which resolves to IPv6 first: with no listener there every
+        # connection waits about 200 ms before falling back to IPv4, and each request is its own connection.
+        from werkzeug.serving import make_server
+        threading.Thread(target=make_server('::1', server_port, app, threaded=True).serve_forever, daemon=True).start()
+    except OSError:
+        pass  # No IPv6 loopback, or its port is taken: localhost still works over IPv4.
     try:
         socketio.run(app, host="127.0.0.1", port=server_port,
                      use_reloader=False, debug=False, 

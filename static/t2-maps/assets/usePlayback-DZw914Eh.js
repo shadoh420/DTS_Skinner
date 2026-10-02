@@ -1,0 +1,1 @@
+import{t as e}from"./react-SIfiwpqq.js";import{a as t}from"./engineStore-B1MFeo5G.js";e();function n(){return t(e=>e.playback.recording)}export{n as t};

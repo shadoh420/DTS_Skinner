@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — T1 Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/t1-maps/viewer.js"></script>
+</head>
+<body>
+  <header><a href="/">← Models</a><strong>T1 Maps</strong>
+    <select id="map" aria-label="Map"></select>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="110" value="90"></label>
+    <label><input id="fog" type="checkbox" checked> Fog</label>
+    <label><input id="weather" type="checkbox" checked> Weather</label>
+    <label><input id="lights" type="checkbox" checked> Animate lights</label>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+    <details id="importPanel"><summary>Import maps</summary>
+      <div class="import">
+        <label>Tribes folder <input id="gamePath" placeholder="C:\Dynamix\Tribes"></label>
+        <label>Custom mission file or folder (optional) <input id="missionPath" placeholder="C:\Maps\MyMap.mis"></label>
+        <label><input id="replace" type="checkbox"> Re-import existing maps</label>
+        <button id="import">Import</button>
+        <span id="importStatus" role="status">Leave the mission field empty to import every map in the game's missions folder. The game folder is only read.</span>
+      </div>
+    </details>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading map…</span>
+    <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay or audio. Terrain and buildings use the mission's lightmaps, building lights flicker and pulse as in the game, with the mission's sky, suns, moons, stars, lens flare and rain or snow; maps imported before these were added need re-importing to show them.</span></details></footer>
+</body>
+</html>
