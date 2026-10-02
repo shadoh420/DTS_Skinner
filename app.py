@@ -464,6 +464,13 @@ def stop_watcher():
 def run_flask_app():
     print(f"Flask server thread started. PID: {os.getpid()}, Thread: {threading.get_ident()}")
     try:
+        # The app is opened as http://localhost, which resolves to IPv6 first: with no listener there every
+        # connection waits about 200 ms before falling back to IPv4, and each request is its own connection.
+        from werkzeug.serving import make_server
+        threading.Thread(target=make_server('::1', server_port, app, threaded=True).serve_forever, daemon=True).start()
+    except OSError:
+        pass  # No IPv6 loopback, or its port is taken: localhost still works over IPv4.
+    try:
         socketio.run(app, host="127.0.0.1", port=server_port,
                      use_reloader=False, debug=False, 
                      allow_unsafe_werkzeug=True) # allow_unsafe_werkzeug for programmatic shutdown
