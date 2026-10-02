@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const storageKey = 'skinner.t1maps';
-  const settings = {fov: 90, fog: true, invertX: false, invertY: false};
+  const settings = {fov: 90, fog: true, weather: true, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -181,6 +181,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     particles.frustumCulled = false;
     scene.add(particles);
     weather = delta => {
+      particles.visible = settings.weather;
+      if (!settings.weather) return;
       const positions = geometry.attributes.position.array, centre = camera.position.toArray();
       for (let index = 0; index < drops.length; index++) {
         const axis = index % 3, offset = drops[index] + step[axis] * delta - centre[axis] + radius;
@@ -194,7 +196,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   function applySettings() {
-    for (const id of ['fog', 'invertX', 'invertY']) $(id).checked = settings[id];
+    for (const id of ['fog', 'weather', 'invertX', 'invertY']) $(id).checked = settings[id];
     $('fov').value = settings.fov;
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
@@ -218,7 +220,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(110, Number(event.target.value) || 90)); save(); applySettings(); });
-  for (const id of ['fog', 'invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  for (const id of ['fog', 'weather', 'invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
   $('reset').addEventListener('click', () => { speed = 40; showViewpoint(0); if (ready) showReady(); });
   new ResizeObserver(applySettings).observe(canvas.parentElement);
 
@@ -301,6 +303,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     sun.position.set(-Math.sin(azimuth) * Math.cos(elevation), Math.sin(elevation), -Math.cos(azimuth) * Math.cos(elevation));
     scene.add(sun);
     if (map.weather) buildWeather(map.weather);
+    $('weather').disabled = !map.weather;  // Most missions have no rain or snow to switch.
     applySettings();
     showViewpoint(0);
     showStatus('Loading terrain…');

@@ -44,9 +44,10 @@ are converted through the mission's palette. A mission that names `x.vol` finds
 Pick a map from the dropdown. Click the scene to capture the mouse or drag to
 look, WASD moves, Space rises, Shift descends, the wheel changes speed, Escape
 releases the mouse and keys 1–9 jump to the mission's observer viewpoints. FOV,
-Fog, **Invert horizontal** / **Invert vertical** and Reset view are above the
-scene; settings persist in their own browser-storage namespace. Fog on uses the
-mission's haze and visible distance; turn it off to see the whole map. Missions
+Fog, Weather, **Invert horizontal** / **Invert vertical** and Reset view are above
+the scene; settings persist in their own browser-storage namespace. Fog on uses
+the mission's haze and visible distance; turn it off to see the whole map. Weather
+switches the mission's rain or snow and is greyed out on maps that have none. Missions
 without observer cameras (training and many custom maps) start from a generated
 view above the placed objects.
 
@@ -135,7 +136,10 @@ No collision, gameplay, audio or editing. Building lights show their first state
 only (no flicker or pulse) and the mission's `lightParams` are not applied.
 Planets, stars and lens flares are not drawn, and rain and snow also fall indoors.
 Shapes (not buildings) are shaded by the mission sun without shadows, use the
-workshop's static pose, and elevators stay where the mission places them.
+workshop's static pose, and elevators stay where the mission places them. The sun
+direction used for shapes and for buildings without a lit instance follows
+ArenaPrototype's convention; the mission-baked lightmaps agree with it better than
+with the alternatives tried, but only by a small margin.
 Custom shapes (`.dts`) that are not in the catalog are not converted; none occur
 in the 198 maps checked. The in-app import has not been exercised in a packaged
 build.
