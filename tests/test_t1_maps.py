@@ -8,14 +8,16 @@ from pathlib import Path
 import re
 import struct
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
 from PIL import Image
 
 from app import app
-from tools.import_t1_map import (Install, bitmap_png, import_maps, lzh_expand, map_id, open_volume, parse_mission,
-                                 placement, read_palettes, read_terrain_index, walk)
+from tools.import_t1_map import (Install, bake_lightmap, bitmap_png, import_maps, interior_dml, light_colours, lzh_expand, map_id,
+                                 open_volume, parse_mission, placement, read_lighting, read_palettes, read_terrain_block,
+                                 read_terrain_index, walk)
 
 MISSION = '''//--- export object begin ---//
 instant SimGroup "MissionGroup" {
@@ -100,6 +102,51 @@ class T1MapTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'no palette'):
             bitmap_png(bitmap, {})
 
+    def test_raw_terrain_blocks_and_version_2_material_lists_are_read(self):
+        heights, light = struct.pack('<4f', 1, 2, 3, 4), bytes(range(8))
+        block = read_terrain_block(b'GBLK' + struct.pack('<Ii16siiffii', 0, 0, b'block-0', 1, 0, 1, 4, 1, 1) + heights + b'\x00\x07' + light)
+        self.assertEqual((block['heights'], block['materials'], block['lightWidth'], block['light']), (heights, b'\x00\x07', 2, light))
+        with self.assertRaisesRegex(ValueError, 'Truncated'):
+            read_terrain_block(b'GBLK' + struct.pack('<Ii16siiffii', 0, 0, b'block-0', 1, 0, 1, 4, 1, 1) + heights)
+        materials = interior_dml.dml()  # Version 2 records end at the 32-byte name.
+        materials.load_binary(b'PERS' + bytes(4) + struct.pack('<H', 16) + b'TS::MaterialList' + struct.pack('<3i', 2, 1, 2)
+                              + bytes(16) + b'lsky0.BMP'.ljust(32, b'\0') + bytes(16) + b'lsky1.bmp'.ljust(32, b'\0'))
+        self.assertEqual([material.name for material in materials.materials], ['lsky0.BMP', 'lsky1.bmp'])
+
+    def test_lightmap_bake_adds_light_states_and_sun_and_maps_vertices_into_the_atlas(self):
+        def lighting(kind, surfaces, maps, tail, states=b'', state_data=b'', lights=b''):
+            body = (struct.pack('<8i', 77, 0, 1, len(states) // 16, len(state_data) // 8, len(lights) // 24, len(surfaces) // 12, len(maps))
+                    + states + state_data + lights + surfaces + maps + struct.pack('<I', 0) + tail)
+            return b'PERS' + bytes(4) + struct.pack('<H', len(kind)) + kind + bytes(len(kind) & 1) + struct.pack('<i', 7) + body
+
+        # One 2x1 Huffman-coded surface (bit 1 -> leaf 0, bit 0 -> leaf 1) and one light whose state 0 is full red
+        # with an intensity map of 255 and 8: the first texel gains red, the second is below the threshold.
+        base = read_lighting(lighting(
+            b'ITRLighting', struct.pack('<i2h4B', 0x40000000, 1, 0, 2, 1, 0, 0), b'\x01\x00\xff\x08',
+            b'\x01' + struct.pack('<2i', 1, 2) + struct.pack('<2i', -1, -2) + struct.pack('<2I', 0x123, 0x456),
+            states=struct.pack('<4Hf2h', 0xff00, 0, 0, 0, 0, 1, 0), state_data=struct.pack('<2hi', 0, 0, 2),
+            lights=struct.pack('<4ifI', 0, -1, 1, 0, 0, 0)))
+        self.assertEqual((base['replaced'], light_colours(base, 0)), (None, [0x123, 0x456]))
+        mission = read_lighting(lighting(b'ITRMissionLighting', b'', b'', b'\x00' + struct.pack('<i', 0) + b'\x00'))
+        self.assertEqual(mission['replaced'], {})
+        with self.assertRaisesRegex(ValueError, 'Unsupported interior lighting'):
+            read_lighting(b'PERS' + bytes(40))
+
+        surface = SimpleNamespace(num_verts=3, vert_id=0, tsx=1, tsy=0, flags=0xc0, plane_id=0)
+        geometry = SimpleNamespace(build_id=77, surfaces=[surface], verts=[(0, 0), (0, 1), (0, 2)], points2f=[(0, 0), (1, 0), (1, 1)],
+                                   planes=[SimpleNamespace(x=0, y=0, z=1)])
+        normals = []
+        png, coordinates = bake_lightmap(geometry, base, mission, lambda normal: normals.append(normal) or (0, 1, 2))
+        with Image.open(io.BytesIO(png)) as atlas:  # 2x1 map inside a one-texel gutter of its own edge texels.
+            self.assertEqual((atlas.size, atlas.getpixel((1, 1)), atlas.getpixel((2, 1)), atlas.getpixel((0, 0)), atlas.getpixel((3, 2))),
+                             ((4, 3), (255, 3 * 17, 5 * 17), (4 * 17, 6 * 17, 8 * 17), (255, 3 * 17, 5 * 17), (4 * 17, 6 * 17, 8 * 17)))
+        self.assertEqual(normals, [(0, 0, 1)])
+        for actual, expected in zip(struct.unpack('<6f', coordinates), (1.5 / 4, .5, 3.5 / 4, .5, 3.5 / 4, 2.5 / 3)):
+            self.assertAlmostEqual(actual, expected)
+        geometry.build_id = 78
+        with self.assertRaisesRegex(ValueError, 'does not match'):
+            bake_lightmap(geometry, base)
+
     def test_import_reports_bad_input_and_failed_missions_without_writing_maps(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -148,7 +195,16 @@ class T1MapTests(unittest.TestCase):
             self.assertTrue(all(item['model'] for item in scene['objects']))
             self.assertEqual(len(scene['viewpoints']), 7)
             self.assertEqual(json.loads((pack / 'index.json').read_text())[0]['id'], 'raindance')
-            for stored in scene['terrain']['textures'].values():
+            # Every building carries its mission lightmap: an atlas plus two coordinates per model vertex.
+            lit = [item for item in scene['objects'] if 'light' in item]
+            self.assertGreaterEqual(len(lit), 30)
+            for item in lit:
+                with Image.open(pack / 'textures' / item['light']['map']) as atlas:
+                    self.assertEqual(atlas.mode, 'RGB')
+                model = json.loads((Path(app.static_folder) / 'model_json' / (item['model'] + '.json')).read_text())
+                self.assertEqual((pack / 'textures' / item['light']['uv']).stat().st_size, len(model['vertices']) // 3 * 8)
+            self.assertEqual((len(scene['sky']['textures']), scene['weather']['rain']), (16, True))
+            for stored in [*scene['terrain']['textures'].values(), *scene['sky']['textures']]:
                 self.assertTrue((pack / 'textures' / stored).is_file())
             self.assertEqual(import_maps(install.base, pack, [mission_file])['skipped'], ['Raindance'])
             # A custom mission elsewhere that forgets to mount its terrain volume still finds Raindance.ted in the install.

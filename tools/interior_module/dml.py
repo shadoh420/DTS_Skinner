@@ -137,8 +137,8 @@ class dml_material:
         self.rgbf = helper.get_int(data, curr_data_index)
         self.name = data[curr_data_index[0]:curr_data_index[0] + 32].decode('utf8').split("\x00")[0]
         curr_data_index[0] += 32
-        self.type = helper.get_int(data, curr_data_index)
-        if version > 2:
+        if version > 2:  # Version 2 records end at the name (48 bytes); 3 adds these (60), 4 one more (64).
+            self.type = helper.get_int(data, curr_data_index)
             self.elasticity = helper.get_float(data, curr_data_index)
             self.friction = helper.get_float(data, curr_data_index)
         if version > 3:

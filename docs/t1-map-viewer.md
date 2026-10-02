@@ -1,9 +1,10 @@
 # Offline T1 map viewer
 
 Opens Starsiege: Tribes missions from Skinner in free-flight: terrain with its
-stock textures and lightmap, buildings, rocks and placed objects (flags, stations,
-generators, turrets, sensors, items). It covers the stock missions of an install
-and any custom missions you point it at.
+stock textures and lightmap, buildings and rocks with their mission lightmaps,
+placed objects (flags, stations, generators, turrets, sensors, items), the
+mission's sky and its rain or snow. It covers the stock missions of an install and
+any custom missions you point it at.
 
 Unlike the T2 viewer this page needs no build step. It is plain Three.js
 (`static/t1-maps/`) drawing the T1 model JSON the workshop already ships, placed by
@@ -27,9 +28,11 @@ python tools/import_t1_map.py --game-base C:/path/to/Tribes --mission C:/Maps/My
 
 The game folder and mission files are only read. Output goes to
 `local-data/t1-maps` (ignored by Git; next to the executable in a packaged build):
-one folder per map under `maps/`, shared textures under `textures/` named by
-content so identical bitmaps are stored once, buildings exported at import under
-`models/`, and `index.json` listing the maps.
+one folder per map under `maps/`, shared files under `textures/` named by content
+so identical data is stored once (bitmaps, building lightmap atlases and their
+`.uv` coordinates), buildings exported at import under `models/`, and `index.json`
+listing the maps. Packs imported before lightmaps and sky were added still open,
+without them; tick **Re-import existing maps** (or pass `--replace`) to add them.
 
 Both install layouts are read: newer installs with zip volumes and PNG textures,
 and classic installs with `.vol` (PVOL) volumes and palettised PBMP bitmaps, which
@@ -56,15 +59,35 @@ view above the placed objects.
 - A mission that does not mount its own terrain volume still gets `<terrain>.ted`
   from beside the mission or from the install.
 - Terrain is one height block repeated 3×3 (64, 128 or 256 squares). Heights,
-  per-square texture/orientation and the lightmap are LZH-compressed; the decoder
-  and block layout follow ArenaPrototype's Tribes compatibility code, as do the
-  DarkStar rotation matrix, square UV table and PVOL layout. PBMP reading also
-  follows SurfaceLevel2's loader.
+  per-square texture/orientation and the lightmap are LZH-compressed in the game's
+  own blocks (version 5) and stored raw in the version 0 blocks newer editors
+  write; the decoder and block layout follow ArenaPrototype's Tribes compatibility
+  code, as do the DarkStar rotation matrix, square UV table and PVOL layout. PBMP
+  reading also follows SurfaceLevel2's loader.
 - Import checks itself: every compressed block must land exactly on the next
   block's declared size, and decoded heights must match the block's height range.
 - Buildings resolve `name.N.dis` to the catalog model `name`. Buildings the catalog
   lacks, such as those custom maps ship in their own volumes, are exported at
   import with the existing interior exporter.
+- Building lightmaps come from the mission's lighting volume. Each placed
+  `name.N.dis` is a lit instance whose `.dil` replaces the outside-facing maps of
+  the building's own lighting with ones holding the mission sun and shadows; the
+  building's own light sources (state 0 of each) are added on top. Maps are packed
+  into one small atlas per placed building at import (Raindance: 32 buildings,
+  66 KB) and drawn as texture × lightmap, following ArenaPrototype's
+  TribesInteriorLighting and TribesUnityInteriorLightmaps.
+- A building with no lit instance (lighting volume missing, or a building placed
+  without relighting the mission) uses its own lighting plus the mission sun on
+  the faces marked visible from outside, as the game does, so interiors are still
+  lit but nothing casts a shadow on it. If that also fails, or the lighting does
+  not match the preview model's geometry, the building keeps plain sun shading and
+  is listed under Preview notes.
+- The sky is the mission's `Sky` object: sixteen panels around the camera textured
+  from its material list (`dmlName`, `textures[]`), caps above and below, sized by
+  `size` and the terrain's visible distance as in ArenaPrototype's
+  TribesUnityEnvironment. A sky without a material list is its plain `skyColor`.
+  Fog is the palette haze colour, else the first sky texture's bottom-left texel.
+- `Snowfall` objects with rendering enabled draw rain or snow around the camera.
 - Other objects map their datablock to a shape through the `shapeFile` values in
   the install's scripts (and scripts beside a custom mission).
 - Anything still unresolved shows as a magenta box and is listed under Preview
@@ -87,8 +110,8 @@ Known gaps after scanning every archive in those installs (and others on the sam
 machine), including archives stored inside archives:
 
 - `badmoon.vol`, BadMoon's lighting volume. The map loads with every object
-  resolved, because all its buildings are stock; only its building lightmaps are
-  absent.
+  resolved, because all its buildings are stock; they are lit from their own
+  lighting plus the sun, without the mission's cast shadows.
 - Stock interiors `dbridge`, `dcolumn` and `drock` have geometry but no material
   list (`.dml`) in the stock volumes, and no stock mission places them. Custom maps
   that use `dcolumn` or `drock` ship the material list in their own volume
@@ -102,16 +125,17 @@ their missions and absent, but nothing is lost: the buildings they held
 mount, and their lit instances are in the missions' own volumes.
 
 Tests: `python -m unittest tests.test_t1_maps`. Set `T1_GAME_BASE` to a Tribes
-folder to also run the real Raindance import check (every object resolves, spawn
+folder to also run the real Raindance import check (every object resolves, every
+building has a lightmap matching its model, the sky and rain are found, spawn
 points stand on the decoded terrain).
 
 ## Limits
 
-No collision, gameplay, audio or editing. The sky dome and weather are not drawn;
-the background is the palette haze colour, or the sky's colour where the install
-has no palette. Buildings are lit by the mission sun rather than their mission
-lightmaps, so interiors are evenly lit. Shapes use the workshop's static pose and
-elevators stay where the mission places them. The sun direction is approximate.
+No collision, gameplay, audio or editing. Building lights show their first state
+only (no flicker or pulse) and the mission's `lightParams` are not applied.
+Planets, stars and lens flares are not drawn, and rain and snow also fall indoors.
+Shapes (not buildings) are shaded by the mission sun without shadows, use the
+workshop's static pose, and elevators stay where the mission places them.
 Custom shapes (`.dts`) that are not in the catalog are not converted; none occur
 in the 198 maps checked. The in-app import has not been exercised in a packaged
 build.

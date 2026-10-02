@@ -10,6 +10,7 @@ PBMP, SurfaceLevel2's loader.
 """
 import argparse
 import contextlib
+import functools
 import hashlib
 import io
 import json
@@ -203,14 +204,22 @@ def read_block(data, offset, size, compression):
 
 
 def read_terrain_block(data):
-    """GBLK version 5 terrain block: heights, material (flags, index) pairs and 4-bit RGB lightmap."""
+    """GBLK terrain block: heights, material (flags, index) pairs and 4-bit RGB lightmap.
+
+    Version 5 is the game's own (LZH-compressed arrays); version 0, written by newer editors, stores them raw.
+    """
     magic, _, version, _, _, light_scale, lowest, highest, size_x, size_y = struct.unpack_from('<4sIi16siiffii', data)
-    if magic != b'GBLK' or version != 5 or size_x != size_y or light_scale < 0:
+    if magic != b'GBLK' or version not in (0, 5) or size_x != size_y or light_scale < 0:
         raise ValueError('Unsupported terrain block')
     offset = 52
 
     def compressed(expected):
         nonlocal offset
+        if not version:
+            offset += expected
+            if offset > len(data):
+                raise ValueError('Truncated terrain block')
+            return data[offset - expected:offset]
         if struct.unpack_from('<i', data, offset)[0] != expected:
             raise ValueError('Unexpected terrain block layout')
         expanded, consumed = lzh_expand(data, offset + 4, expected)
@@ -222,7 +231,7 @@ def read_terrain_block(data):
     if abs(min(values) - lowest) > .01 or abs(max(values) - highest) > .01:
         raise ValueError('Decoded terrain heights do not match the block height range')
     materials = compressed(size_x ** 2 * 2)
-    for _ in range(11):  # Pin maps: level-of-detail hints, unused here.
+    for _ in range(11 if version else 0):  # Pin maps: level-of-detail hints, unused here.
         offset += 2 + struct.unpack_from('<H', data, offset)[0]
     light_width = (size_x << light_scale) + 1
     return {'size': size_x, 'heights': heights, 'materials': materials,
@@ -283,6 +292,165 @@ def bitmap_png(data, palettes):
     return output.getvalue()
 
 
+@functools.lru_cache(maxsize=64)
+def read_lighting(data):
+    """ITRLighting or ITRMissionLighting (.dil, version 6 or 7), after ArenaPrototype's TribesInteriorLighting."""
+    try:
+        size = struct.unpack_from('<H', data, 8)[0]
+        kind, offset = data[10:10 + size], 10 + size + (size & 1)
+        if data[:4] != b'PERS' or kind not in (b'ITRLighting', b'ITRMissionLighting') or struct.unpack_from('<i', data, offset)[0] not in (6, 7):
+            raise ValueError
+        build, shift, _, *counts = struct.unpack_from('<8i', data, offset + 4)
+        offset += 36
+        tables = []
+        # Light states (colour, time, data range), state data (surface, slot, intensity map), lights, surfaces.
+        for layout, count in zip(('<4Hf2h', '<2hi', '<4ifI', '<i2h4B'), counts):
+            size = struct.calcsize(layout) * count
+            tables.append(list(struct.iter_unpack(layout, data[offset:offset + size])))
+            offset += size
+        maps = data[offset:offset + counts[4]]
+        offset += counts[4]
+        offset += 4 + struct.unpack_from('<I', data, offset)[0]  # Light names.
+        nodes, leaves = [], ()
+        offset += 1
+        if data[offset - 1]:  # Huffman tree for compressed maps: (branch on 1, branch on 0), negative = leaf.
+            node_count, leaf_count = struct.unpack_from('<2i', data, offset)
+            nodes = list(struct.iter_unpack('<2i', data[offset + 8:offset + 8 + node_count * 8]))
+            leaves = struct.unpack_from('<%dI' % leaf_count, data, offset + 8 + node_count * 8)
+            offset += 8 + node_count * 8 + leaf_count * 4
+        replaced = None
+        if kind == b'ITRMissionLighting':  # Base map offset -> this file's map offset, LZH-compressed pairs.
+            count = struct.unpack_from('<i', data, offset)[0]
+            pairs, consumed = lzh_expand(data, offset + 4, count * 8)
+            offset += 4 + consumed + (not count)  # An empty LZH stream is still one byte.
+            replaced = dict(struct.iter_unpack('<2i', pairs))
+        if offset != len(data):
+            raise ValueError
+    except (ValueError, IndexError, struct.error):
+        raise ValueError('Unsupported interior lighting') from None
+    return {'build': build & 0xffffffff, 'shift': shift, 'states': tables[0], 'stateData': tables[1], 'lights': tables[2],
+            'surfaces': tables[3], 'maps': maps, 'nodes': nodes, 'leaves': leaves, 'replaced': replaced}
+
+
+def light_colours(lighting, index):
+    """4:4:4:4 texels of one surface light map: a packed colour, raw words or Huffman-coded words."""
+    value, _, _, width, height, _, _ = lighting['surfaces'][index]
+    if value < 0:
+        return [value & 0xffff] * (width * height)
+    start = value & ~0x40000000
+    if not value & 0x40000000:
+        return list(struct.unpack_from('<%dH' % (width * height), lighting['maps'], start))
+    maps, nodes, leaves, bit, colours = lighting['maps'], lighting['nodes'], lighting['leaves'], start * 8, []
+    for _ in range(width * height):
+        node = 0
+        while node >= 0:
+            node = nodes[node][not maps[bit >> 3] >> (bit & 7) & 1]
+            bit += 1
+        colours.append(leaves[-node - 1] & 0xffff)
+    return colours
+
+
+@functools.lru_cache(maxsize=64)
+def read_geometry(data):
+    geometry = interiorshape.dig()
+    geometry.load_binary(data)
+    return geometry
+
+
+def add_light(colour, red, green, blue):
+    """Saturating add of 4-bit channels to a 4:4:4 light map texel."""
+    return min(15, (colour >> 8 & 15) + red) << 8 | min(15, (colour >> 4 & 15) + green) << 4 | min(15, (colour & 15) + blue)
+
+
+def bake_lightmap(geometry, base, mission=None, sunlight=None):
+    """(atlas PNG, float32 atlas coordinates per exported vertex) for one placed interior.
+
+    As ArenaPrototype's TribesUnityInteriorLightmaps: the mission's replacement maps over the base
+    lighting, state 0 of every authored light added, one-texel gutters, coordinates from the
+    geometry's native UV * texture size + map offset. Vertex order matches export_interior.
+    A building the mission was never relit with has no replacement maps; the game then adds the sun
+    to the faces flagged as visible from outside: sunlight(face normal) gives those 4-bit channels.
+    """
+    if geometry.build_id != base['build'] or mission and mission['build'] != base['build'] or len(geometry.surfaces) != len(base['surfaces']):
+        raise ValueError('Interior lighting does not match its geometry')
+    targets, replaced = {}, mission['replaced'] if mission else {}
+    for index, surface in enumerate(mission['surfaces'] if mission else ()):
+        if surface[0] >= 0:
+            targets.setdefault(surface[0] & ~0x40000000, index)
+    slots = {}  # Later state data replaces earlier in the same light-map slot.
+    for _, _, count, first, _, _ in base['lights']:
+        if count:
+            *colour, _, _, data_count, data_index = base['states'][first]
+            for surface, slot, start in base['stateData'][data_index:data_index + data_count]:
+                slots.setdefault(surface, {})[slot] = ([(value + 128) >> 8 & 255 for value in colour[:3]], start)
+    cells = []
+    for index, surface in enumerate(geometry.surfaces):
+        if surface.num_verts < 3:
+            continue  # Not exported.
+        value, _, _, width, height, _, _ = base['surfaces'][index]
+        if not width * height:  # Surfaces the game does not draw.
+            cells.append((index, 1, 1, [0xfff]))
+            continue
+        source, at = base, index
+        if value >= 0 and value & ~0x40000000 in replaced:
+            source, at = mission, targets[replaced[value & ~0x40000000]]
+            if mission['surfaces'][at][3:5] != (width, height):
+                raise ValueError('Mission light map does not match its surface')
+        colours = light_colours(source, at)
+        for (red, green, blue), start in slots.get(index, {}).values():
+            for pixel, intensity in enumerate(base['maps'][start:start + len(colours)] if start >= 0 else ()):
+                if intensity >= 16:
+                    colours[pixel] = add_light(colours[pixel], red * intensity >> 12, green * intensity >> 12, blue * intensity >> 12)
+        if sunlight and surface.flags & 0x40:
+            plane, side = geometry.planes[surface.plane_id], 1 if surface.flags & 0x80 else -1
+            sun = sunlight((plane.x * side, plane.y * side, plane.z * side))
+            colours = [add_light(colour, *sun) for colour in colours]
+        cells.append((index, width, height, colours))
+    if not cells:
+        raise ValueError('Interior has no surfaces')
+    # Shelf packing, tallest first, into the smallest power-of-two width that is not taller than wide.
+    cells.sort(key=lambda cell: -cell[2])
+    width = 1 << (max(max(cell[1] for cell in cells) + 2, math.isqrt(sum((cell[1] + 2) * (cell[2] + 2) for cell in cells))) - 1).bit_length()
+    while True:
+        x = y = row = 0
+        placed = {}
+        for index, cell_width, cell_height, _ in cells:
+            if x + cell_width + 2 > width:
+                x, y, row = 0, y + row, 0
+            placed[index] = (x + 1, y + 1)
+            x += cell_width + 2
+            row = max(row, cell_height + 2)
+        height = y + row
+        if height <= width:
+            break
+        width *= 2
+    atlas = Image.new('RGB', (width, height))
+    for index, cell_width, cell_height, colours in cells:
+        cell = Image.frombytes('RGB', (cell_width, cell_height), bytes(
+            channel * 17 for colour in colours for channel in (colour >> 8 & 15, colour >> 4 & 15, colour & 15)))
+        # Pasting at the eight neighbours first leaves a gutter of repeated edge texels around the map.
+        for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1), (0, -1), (0, 1), (-1, 0), (1, 0), (0, 0)):
+            atlas.paste(cell, (placed[index][0] + dx, placed[index][1] + dy))
+    scale, coordinates = 1 << base['shift'], []
+    for index, surface in enumerate(geometry.surfaces):
+        if surface.num_verts >= 3:
+            _, _, _, map_width, map_height, left, top = base['surfaces'][index]
+            for _, texture in geometry.verts[surface.vert_id:surface.vert_id + surface.num_verts]:
+                u, v = geometry.points2f[texture]
+                if not map_width * map_height:
+                    u = v = left = top = 0
+                coordinates += [(placed[index][0] + (u * (surface.tsx + 1) + left) / scale + .5) / width,
+                                (placed[index][1] + (v * (surface.tsy + 1) + top) / scale + .5) / height]
+    output = io.BytesIO()
+    atlas.save(output, 'PNG', optimize=True)
+    return output.getvalue(), struct.pack('<%df' % len(coordinates), *coordinates)
+
+
+@functools.lru_cache(maxsize=None)
+def vertex_count(model_path):
+    return len(json.loads(model_path.read_text(encoding='utf-8'))['vertices']) // 3
+
+
 def parse_mission(text):
     """Nested `instant Class "name" { key = "value"; };` objects up to the export end marker.
 
@@ -322,17 +490,22 @@ def floats(text, count=3):
     return values
 
 
+def rotation_rows(rotation):
+    """DarkStar Euler matrix: row k is where the object's k axis points in file space."""
+    sx, sy, sz = (math.sin(value) for value in rotation)
+    cx, cy, cz = (math.cos(value) for value in rotation)
+    return ((cy * cz - sy * sz * sx, cy * sz + sy * cz * sx, -cx * sy),
+            (-cx * sz, cx * cz, sx),
+            (sy * cz + cy * sz * sx, sy * sz - cy * cz * sx, cx * cy))
+
+
 def placement(position, rotation):
     """Three.js column-major matrix for a mission position and DarkStar Euler rotation (radians).
 
     DarkStar multiplies row vectors by its Euler matrix, so the file-space axes are the matrix
     rows. File (x, y, z-up) maps to viewer (x, z, -y), the basis the model JSON already uses.
     """
-    sx, sy, sz = (math.sin(value) for value in rotation)
-    cx, cy, cz = (math.cos(value) for value in rotation)
-    rows = ((cy * cz - sy * sz * sx, cy * sz + sy * cz * sx, -cx * sy),
-            (-cx * sz, cx * cz, sx),
-            (sy * cz + cy * sz * sx, sy * sz - cy * cz * sx, cx * cy))
+    rows = rotation_rows(rotation)
     viewer = lambda v: (v[0], v[2], -v[1])  # noqa: E731
     x_axis, y_axis, z_axis = viewer(rows[0]), viewer(rows[2]), [-value for value in viewer(rows[1])]
     return [*x_axis, 0, *y_axis, 0, *z_axis, 0, *viewer(position), 1]
@@ -421,7 +594,7 @@ def map_id(name):
 
 def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_json'):
     """Write one mission's pack to root/maps/<id>; returns its scene. Shared textures go to root/textures."""
-    mission = parse_mission(mission_path.read_text(encoding='cp1252'))
+    mission = parse_mission(mission_path.read_text(encoding='cp1252', errors='replace'))
     nodes = list(walk(mission))
     folders = [mission_path.parent, install.base / 'missions', install.base]
     resources, provenance, warnings = {}, [], []
@@ -454,18 +627,21 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     except (KeyError, ValueError, struct.error):
         pass  # Installs with PNG textures ship no palette.
 
+    def store(data, suffix):
+        """Shared, content-named file under root/textures, so identical data is stored once."""
+        stored = hashlib.sha1(data).hexdigest()[:20] + suffix
+        (root / 'textures').mkdir(parents=True, exist_ok=True)
+        if not (root / 'textures' / stored).exists():
+            (root / 'textures' / stored).write_bytes(data)
+        return stored
+
     def texture(name):
-        """Shared, content-named PNG for a material bitmap; None when the install has no such bitmap."""
+        """Stored PNG for a material bitmap; None when the install has no such bitmap."""
         for candidate in (Path(name).stem + '.png', Path(name).stem + '.bmp'):
             try:
-                png = bitmap_png(read(candidate), palettes)
+                return store(bitmap_png(read(candidate), palettes), '.png')
             except (ValueError, KeyError, OSError, struct.error):
                 continue
-            stored = hashlib.sha1(png).hexdigest()[:20] + '.png'
-            (root / 'textures').mkdir(parents=True, exist_ok=True)
-            if not (root / 'textures' / stored).exists():
-                (root / 'textures' / stored).write_bytes(png)
-            return stored
         return None
 
     def material_names(name):
@@ -531,9 +707,47 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     pass
         return install.converted[key]
 
+    sun = next((node['fields'] for node, _ in nodes if node['class'] == 'planet' and node['fields'].get('castshadows', '').lower() == 'true'), {})
+    sun = {'azimuth': float(sun.get('azimuth', 0)), 'incidence': float(sun.get('incidence', 45)),
+           'intensity': floats(sun.get('intensity', '0.6 0.6 0.6')), 'ambient': floats(sun.get('ambient', '0.4 0.4 0.4'))}
+    # Toward the sun in file space, as ArenaPrototype's PlanetPosition.
+    turn, climb = math.radians(sun['azimuth'] + 90), math.radians(max(-89, min(89, sun['incidence'])))
+    sun_direction = (math.cos(climb) * math.cos(turn), math.cos(climb) * math.sin(turn), math.sin(climb))
+
+    def lightmap(instance, stem, rotation, model_path):
+        """Atlas and its coordinates for a placed building; None keeps the plain mission-sun shading.
+
+        The mission's lit instance (name.N.dis) carries the sun and shadows. Without one (lighting volume
+        missing, or a building placed without relighting) the building's own lighting plus the sun is used.
+        """
+        def sunlight(normal):
+            rows = rotation_rows(rotation)
+            facing = (1 + sum(sum(normal[k] * rows[k][axis] for k in range(3)) * sun_direction[axis] for axis in range(3))) / 2
+            return [min(15, int(max(0, ambient + intensity * facing) * 16)) if facing > 0 else 0
+                    for ambient, intensity in zip(sun['ambient'], sun['intensity'])]
+
+        for candidate in (instance, stem + '.dis'):
+            try:
+                shape = interiorshape.interiorshape()
+                shape.load_binary(read(candidate))
+                lod = max(shape.lods, key=lambda lod: lod.min_pixels)  # The detail level export_interior draws.
+                name = lambda offset: shape.name_buffer[offset:shape.name_buffer.index(b'\0', offset)].decode('cp1252')  # noqa: E731
+                lit = name(shape.lod_lightstate_offset[lod.light_state_index])
+                base, mission = read_lighting(read(lit)), None
+                if base['replaced'] is not None:
+                    # name-<state><lod><light state>-<instance>.dil replaces maps of the building's own name-<...>.dil.
+                    base, mission = read_lighting(read(re.sub(r'(-\d+)-[^-]*$', r'\1.dil', lit))), base
+                png, coordinates = bake_lightmap(read_geometry(read(name(lod.geometry_file_offset))), base, mission,
+                                                 None if mission or shape.linked_interior else sunlight)
+                if len(coordinates) // 8 == vertex_count(model_path):  # Else the preview model is of other geometry.
+                    return {'map': store(png, '.png'), 'uv': store(coordinates, '.uv')}
+            except Exception:  # The interior readers are tolerant of stock files only; any failure tries the next source.
+                pass
+        return None
+
     models = {path.stem.lower(): path.stem for path in model_dir.glob('*.json')}
     shapes = install.shapes(mission_path.parent)
-    objects, viewpoints, missing = [], [], set()
+    objects, viewpoints, missing, unlit = [], [], set(), set()
     for node, groups in nodes:
         fields = node['fields']
         if 'position' not in fields or node['class'] == 'simterrain':
@@ -555,7 +769,16 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         if not model:
             missing.add('%s %s' % (kind, shape.lower()))
         objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'source': source, 'matrix': matrix})
+        if model and kind == 'interior':
+            light = lightmap(fields['filename'], shape, floats(fields.get('rotation', '0 0 0')),
+                             root / 'models' / model if source == 'pack' else model_dir / (model + '.json'))
+            if light:
+                objects[-1]['light'] = light
+            else:
+                unlit.add(shape.lower())
     warnings += ['No preview model for ' + item for item in sorted(missing)]
+    if unlit:
+        warnings.append('No lightmap, plain sun shading instead: ' + ', '.join(sorted(unlit)))
 
     if not viewpoints:  # Training and some custom missions have no observer cameras: look down on the placed objects.
         centre = first('missioncenterpos')
@@ -565,19 +788,32 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         top = max(struct.unpack('<%df' % (len(block['heights']) // 4), block['heights']))
         viewpoints.append(placement((x, y - 150, top + 60), (-.5, 0, 0)))
 
-    # The sky dome is not drawn. Background and fog use the palette haze colour, else the sky's first texel.
+    # Sky, as ArenaPrototype's TribesUnityEnvironment draws it: sixteen panels of the sky material list's textures
+    # with caps in corner texels of the first one, or a plain sky colour for a mission without a material list.
+    # Fog uses the palette haze colour, else the first texture's bottom-left texel, else the sky colour.
     sky = first('sky')
-    if not haze:
-        try:
-            with Image.open(root / 'textures' / texture(material_names(sky['dmlname'])[0])) as image:
-                haze = list(image.convert('RGB').getpixel((0, 0)))
-        except (KeyError, ValueError, IndexError, TypeError, OSError, struct.error):
-            try:
-                haze = [round(max(0, min(1, value)) * 255) for value in floats(sky.get('skycolor', ''))]
-            except ValueError:
-                haze = [128, 140, 150]
+    try:
+        dome = {'color': [round(max(0, min(1, value)) * 255) for value in floats(sky.get('skycolor', ''))]}
+    except ValueError:
+        dome = {'color': [128, 140, 150]}
+    try:
+        stored = [texture(name) for name in material_names(sky['dmlname'])]
+        with Image.open(root / 'textures' / stored[0]) as image:
+            image = image.convert('RGB')
+            slots = [int(sky.get('textures[%d]' % slot, slot % 2)) for slot in range(16)]
+            dome = {'textures': [None if value < 0 else stored[value % len(stored)] for value in slots],
+                    'size': float(sky.get('size', 600)), 'feature': float(sky.get('featureposition', 0)),
+                    'top': list(image.getpixel((0, 0))), 'bottom': list(image.getpixel((image.width - 1, image.height - 1)))}
+            haze = haze or list(image.getpixel((0, image.height - 1)))
+    except (KeyError, ValueError, IndexError, TypeError, OSError, struct.error):
+        haze = haze or dome['color']
+    weather = first('snowfall')  # Rain or snow; the game leaves it hidden unless the mission says otherwise.
+    try:
+        weather = {'rain': weather.get('rain', '').lower() == 'true', 'intensity': max(0, min(1, float(weather['intensity']))),
+                   'wind': floats(weather.get('wind', '0 0 0'))} if weather.get('suspendrendering', '').lower() == 'false' else None
+    except (KeyError, ValueError):
+        weather = None
 
-    sun = next((node['fields'] for node, _ in nodes if node['class'] == 'planet' and node['fields'].get('castshadows', '').lower() == 'true'), {})
     description = install.find(mission_path.stem + '.dsc', folders)
     kind = re.search(r'\$MDESC::Type\s*=\s*"([^"]*)"', description.read_text(encoding='cp1252', errors='replace')) if description else None
     scene = {
@@ -587,9 +823,8 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     'textures': textures,
                     'visibleDistance': float(terrain_node.get('visibledistance', 500)),
                     'hazeDistance': float(terrain_node.get('hazedistance', 250))},
-        'sun': {'azimuth': float(sun.get('azimuth', 0)), 'incidence': float(sun.get('incidence', 45)),
-                'intensity': floats(sun.get('intensity', '0.6 0.6 0.6')), 'ambient': floats(sun.get('ambient', '0.4 0.4 0.4'))},
-        'haze': haze, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings}
+        'sun': sun,
+        'haze': haze, 'sky': dome, 'weather': weather, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings}
 
     # Build beside the target, then swap, so a failed import never leaves a half-written map.
     target = root / 'maps' / scene['id']
