@@ -80,7 +80,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   // Diffuse colour and the colour of reflections at normal incidence: 4 % for anything not metal, the albedo for metal.
   function faceShade(face) {
-    const material = materialOf(face.material || ''), own = M.colourOf(face);
+    const material = LIBRARY.test(face.material || '') ? {albedo: [1, 1, 1], metallic: 0} : materialOf(face.material || ''), own = M.colourOf(face);
     const albedo = own ? own.slice(0, 3).map(linear) : material.albedo, metallic = material.metallic;
     return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .04 * (1 - metallic) + c * metallic)};
   }
@@ -99,20 +99,30 @@ window.addEventListener('DOMContentLoaded', async () => {
   const brushMaterial = new THREE.ShaderMaterial({
     uniforms,
     extensions: {derivatives: true},
-    vertexShader: `attribute vec3 color; attribute vec3 specular; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth;
+    vertexShader: `attribute vec3 color; attribute vec3 specular; attribute vec2 texcoord; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth; varying vec2 vTex;
       void main() {
-        vColor = color; vSpecular = specular; vNormal = normal; vPos = position;
+        vColor = color; vSpecular = specular; vNormal = normal; vPos = position; vTex = texcoord;
         vec4 view = modelViewMatrix * vec4(position, 1.);
         vDepth = -view.z;
         gl_Position = projectionMatrix * view;
       }`,
     // One fixed sun, light from the sky and a grey surrounding to reflect, as the map's baked light and reflection
-    // probes are not read; while editing, the editor's grid.
-    fragmentShader: `uniform float uGrid; uniform vec3 uSun; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth;
+    // probes are not read; while editing, the editor's grid. A textured face (USE_MAP) multiplies its colour by its
+    // texture, sRGB, repeating every uRepeat units of the texture coordinates brush.js gives.
+    fragmentShader: `uniform float uGrid; uniform vec3 uSun; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth; varying vec2 vTex;
+      #ifdef USE_MAP
+      uniform sampler2D uMap; uniform vec2 uRepeat;
+      #endif
       void main() {
         vec3 n = normalize(vNormal);
         float light = .2 + .6 * max(dot(n, uSun), 0.) + .25 * (n.y * .5 + .5);
-        vec3 c = vColor * light + vSpecular * .9;
+        vec3 albedo = vColor;
+        #ifdef USE_MAP
+        vec4 texel = texture2D(uMap, vTex / uRepeat);
+        if (texel.a < .5) discard;  // Alpha-keyed, as the game's ALPHAKEYED shaders are.
+        albedo *= pow(texel.rgb, vec3(2.2));
+        #endif
+        vec3 c = albedo * light + vSpecular * .9;
         if (uGrid > 0.) {
           vec3 p = vPos / uGrid, w = fwidth(p) + 1e-5;
           vec3 g = abs(fract(p - .5) - .5) / w + abs(n) * 1e3;
@@ -132,7 +142,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   Object.assign(glassMaterial, {transparent: true, depthWrite: false, side: THREE.DoubleSide});
   glassMaterial.uniforms = uniforms;
   glassMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);', 'gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), .35);');
-  const world = new THREE.Mesh(new THREE.BufferGeometry(), brushMaterial), clips = new THREE.Mesh(new THREE.BufferGeometry(), clipMaterial);
+  const world = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), clips = new THREE.Mesh(new THREE.BufferGeometry(), clipMaterial);
   const glass = new THREE.Mesh(new THREE.BufferGeometry(), glassMaterial);
   // The brushes that are a teleporter's, jump pad's, race start's or finish's or trigger's volume: shown while editing.
   const volumes = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({color: 0x3fc8ff, transparent: true, opacity: .2, depthWrite: false, side: THREE.DoubleSide}));
@@ -146,33 +156,81 @@ window.addEventListener('DOMContentLoaded', async () => {
     const [a, b] = [[1, 2], [2, 0], [0, 1]][axis];
     return THREE.ShapeUtils.triangulateShape(points.map(p => new THREE.Vector2(p[a], p[b])), []);
   }
-  function buildMesh(entries, wanted, owners) {
-    const positions = [], normals = [], colours = [], speculars = [];
+  // The faces of `entries` that `wanted` takes, as one geometry; `owners` gets [entry index, face] per triangle. With
+  // `textured`, faces are grouped by texture, the untextured first, and `materials` gets the material of each group.
+  function buildMesh(entries, wanted, owners, textured = false, materials = null) {
+    const buckets = new Map([[null, {positions: [], normals: [], colours: [], speculars: [], coords: [], owners: []}]]);
     owners.length = 0;
     entries.forEach((entry, index) => {
       const brush = entry.brush;
       for (const face of brush.faces) {
         if (wanted(face, entry) === false) continue;
         const n = B.normalize(B.newell(face.indices.map(i => brush.vertices[i])));
-        const {diffuse, specular} = faceShade(face);
+        const {diffuse, specular} = faceShade(face), source = textured ? textureSource(face) : null, key = source && source.key;
+        if (!buckets.has(key)) buckets.set(key, {source, positions: [], normals: [], colours: [], speculars: [], coords: [], owners: []});
+        const bucket = buckets.get(key), uv = B.texcoords(brush, face);
         for (const triangle of B.triangles(brush, face, triangulate)) {
           for (const vertex of triangle) {
-            positions.push(...brush.vertices[vertex]);
-            normals.push(...n);
-            colours.push(...diffuse);
-            speculars.push(...specular);
+            bucket.positions.push(...brush.vertices[vertex]);
+            bucket.normals.push(...n);
+            bucket.colours.push(...diffuse);
+            bucket.speculars.push(...specular);
+            bucket.coords.push(...uv[face.indices.indexOf(vertex)]);
           }
-          owners.push([index, face]);
+          bucket.owners.push([index, face]);
         }
       }
     });
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
-    geometry.setAttribute('specular', new THREE.Float32BufferAttribute(speculars, 3));
+    const geometry = new THREE.BufferGeometry(), all = {positions: [], normals: [], colours: [], speculars: [], coords: []};
+    if (materials) materials.length = 0;
+    let start = 0;
+    for (const [key, bucket] of buckets) {
+      for (const name in all) all[name].push(...bucket[name]);
+      owners.push(...bucket.owners);
+      const count = bucket.positions.length / 3;
+      if (materials && count) { geometry.addGroup(start, count, materials.length); materials.push(key === null ? brushMaterial : texturedMaterial(bucket.source)); }
+      start += count;
+    }
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(all.positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(all.normals, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(all.colours, 3));
+    geometry.setAttribute('specular', new THREE.Float32BufferAttribute(all.speculars, 3));
+    geometry.setAttribute('texcoord', new THREE.Float32BufferAttribute(all.coords, 2));
     geometry.computeBoundingSphere();
     return geometry;
+  }
+
+  // ---- Textures ----
+  // A face's texture: one of the game's, which the import decoded from its material (repeating every 128 units at
+  // scale 1, a guess: the dev grid's lines are then 16 units apart, as its name says), or one of Skinner's texture
+  // libraries, which a material named skinner/<library>/<file> takes (repeating every half its size in pixels, as
+  // Quake 3's default scale of 0.5 has it).
+  const LIBRARY = /^skinner\/(t1|t2|q3|reflex)\/(.+)$/;
+  function textureSource(face) {
+    const name = face.material || '', library = LIBRARY.exec(name);
+    if (library) return {key: name.toLowerCase(), url: `/texture/${encodeURIComponent(library[2] + '.png')}?game=${library[1]}`, repeat: null};
+    const read = packColours[name];
+    return read && read.texture ? {key: 'reflex:' + read.texture, url: `${data}textures/${encodeURIComponent(read.texture)}`, repeat: 128} : null;
+  }
+  const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+  white.needsUpdate = true;
+  const texturedMaterials = new Map(), textureFailures = new Set();
+  function texturedMaterial(source) {
+    if (texturedMaterials.has(source.key)) return texturedMaterials.get(source.key);
+    const material = new THREE.ShaderMaterial({
+      uniforms: {...uniforms, uMap: {value: white}, uRepeat: {value: new THREE.Vector2(source.repeat || 128, source.repeat || 128)}},
+      defines: {USE_MAP: ''}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
+    });
+    texturedMaterials.set(source.key, material);
+    new THREE.TextureLoader().load(source.url, texture => {
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.flipY = false;
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      texture.needsUpdate = true;
+      material.uniforms.uMap.value = texture;
+      if (!source.repeat) material.uniforms.uRepeat.value.set(texture.image.width / 2, texture.image.height / 2);
+    }, undefined, () => { textureFailures.add(source.key); showNotes(); });
+    return material;
   }
 
   // ---- Entities ----
@@ -223,7 +281,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     ownerOfItem = new Map(flat.brushes.filter(entry => !entry.path.length).map(entry => [entry.source, entry.owner]));
     for (const mesh of [world, clips, glass, volumes]) mesh.geometry.dispose();
     const volume = entry => M.isVolume(entry.owner);
-    world.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle);
+    world.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle, true, world.material);
     glass.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle);
     clips.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && isClip(face), clipEntryOfTriangle);
     volumes.geometry = buildMesh(flat.brushes, (face, entry) => volume(entry), volumeEntryOfTriangle);
@@ -272,8 +330,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (bent) parts.push(`${bent} brushes are not convex or have bent faces; they are drawn, and CSG leaves them alone`);
     // Materials some face draws in its material's colour, where that colour is a guess.
     const guessed = new Set();
-    if (flat) for (const {brush, owner} of flat.brushes) if (!M.isVolume(owner)) for (const face of brush.faces) if (!M.colourOf(face) && !isClip(face) && !(packColours[face.material || ''] || {}).colour) guessed.add(face.material || 'no material');
+    if (flat) for (const {brush, owner} of flat.brushes) if (!M.isVolume(owner)) for (const face of brush.faces) if (!M.colourOf(face) && !isClip(face) && !LIBRARY.test(face.material || '') && !(packColours[face.material || ''] || {}).colour) guessed.add(face.material || 'no material');
     if (guessed.size) parts.push(`Drawn in a colour guessed from the material's name, as the import found no albedo for it: ${[...guessed].sort().join(', ')}`);
+    if (textureFailures.size) parts.push(`Textures that could not load: ${[...textureFailures].join(', ')}`);
     parts.push(...notes);
     $('mapNotes').textContent = parts.length ? ' This map — ' + parts.join('. ') + '.' : '';
   }
@@ -424,8 +483,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (vertexMode && !entry.path.length) brush.vertices.forEach((position, index) => dots.push({item: entry.source, index, position}));
     }
     if (shown.length) selection.add(new THREE.Mesh(buildMesh(shown, () => true, []), selectedFill), edgesOf(...shown.map(entry => entry.brush)));
-    if (texturePreview && globalGroup().items.includes(texturePreview.item)) selection.add(textureMesh(texturePreview.item, texturePreview.item.faces[texturePreview.index]));
-    else texturePreview = null;
+    // A face whose material has no texture shows its texture coordinates as a pattern; a textured one shows itself.
+    if (texturePreview && globalGroup().items.includes(texturePreview.item)) {
+      const face = texturePreview.item.faces[texturePreview.index];
+      if (!textureSource(face)) selection.add(textureMesh(texturePreview.item, face));
+    } else texturePreview = null;
     for (const entry of flat.entities) {
       if (!selected.has(entry.entity) || entry.path.length || !entry.position) continue;
       const box = new THREE.Box3Helper(new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...entry.position), new THREE.Vector3(24, 36, 24)), 0xf0c674);
@@ -939,8 +1001,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     panel.hidden = !panelOpen || !editing;
     if (panel.hidden || !flat) return;
     const body = $('propsBody'), target = panelTarget();
+    $('propsTitle').textContent = panelView === 'prefabs' ? 'Prefabs' : panelView === 'materials' ? 'Materials' : 'Properties';
+    if (panelView === 'materials') { showMaterials(body); return; }
+    shownMaterials = '';
     body.replaceChildren();
-    $('propsTitle').textContent = panelView === 'prefabs' ? 'Prefabs' : 'Properties';
     if (panelView === 'prefabs') { showPrefabList(body); return; }
     if (!target) { body.textContent = 'This map has no WorldSpawn.'; return; }
     if (target.many) { body.textContent = `${target.many} selected: select one entity to see its properties.`; return; }
@@ -999,6 +1063,86 @@ window.addEventListener('DOMContentLoaded', async () => {
           showSelection();
           say(`${selected.size} placement${selected.size === 1 ? '' : 's'} of ${prefab} in the map selected`);
         }, 'Select its placements in the map'))))));
+  }
+
+  // ---- The material browser (the game's me_activematerial) ----
+  // The game's materials, with the thumbnails the import read, and the textures of Skinner's libraries, which a face
+  // takes as the material skinner/<library>/<file>. A click makes one the material M puts on; a double click also
+  // puts it on the selection.
+  const LIBRARIES = {reflex: 'Reflex materials', t1: 'Tribes 1 textures', t2: 'Tribes 2 textures', q3: 'Quake 3 textures', 'reflex-textures': 'Reflex textures'};
+  let library = 'reflex', materialSearch = '', shownMaterials = '';
+  const libraryLists = new Map();  // Library → [{name, image, label}], once read.
+  function libraryEntries(which) {
+    if (which === 'reflex') {
+      return Object.entries(packColours).filter(([name, read]) => !/^internal\//.test(name) || flat.brushes.some(entry => entry.brush.faces.some(face => face.material === name)))
+        .map(([name, read]) => ({name, image: read.thumb ? `${data}thumbs/${encodeURIComponent(read.thumb)}` : null, colour: read.colour, label: name}))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+    if (libraryLists.has(which)) return libraryLists.get(which);
+    libraryLists.set(which, null);
+    const game = which === 'reflex-textures' ? 'reflex' : which;
+    fetch(`/list_textures?game=${game}`).then(response => response.ok ? response.json() : []).catch(() => []).then(files => {
+      libraryLists.set(which, (Array.isArray(files) ? files : []).map(file => ({name: `skinner/${game}/${file.replace(/\.png$/i, '')}`, image: `/texture/${encodeURIComponent(file)}?game=${game}`, label: file})));
+      shownMaterials = '';
+      showPanel();
+    });
+    return null;
+  }
+  function chooseMaterial(name, apply) {
+    template = {...template, material: name, colour: '0x00000000'};
+    shownMaterials = '';
+    updateTools();
+    if (apply) applyMaterial(false);
+    else say(`Material ${name}: M puts it on the selection, Shift+M on the face under the cursor`);
+  }
+  // The Skinner library materials the map's faces use (in the map and in its prefabs).
+  function libraryMaterials() {
+    const used = new Set();
+    for (const group of map.groups) for (const item of group.items) if (isBrush(item)) for (const face of item.faces) if (LIBRARY.test(face.material || '')) used.add(face.material);
+    return [...used].sort();
+  }
+  // Writes them into the game folder the import panel names, so the game finds them (see install_library_materials).
+  async function installTextures() {
+    const game = $('gamePath').value.trim(), materials = libraryMaterials();
+    if (!game) { say('Enter your Reflex Arena folder under Import maps first'); $('importPanel').open = true; return; }
+    say(`Putting ${materials.length} textures into the game…`);
+    try {
+      const response = await fetch('/install_reflex_textures', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({game, materials})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Install failed');
+      const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
+      say(`Wrote ${result.written.length} files under base/skinner${failed.length ? `; failed ${failed.join('; ')}` : ''}`);
+    } catch (error) { say(error.message); }
+  }
+  function showMaterials(body) {
+    const used = libraryMaterials();
+    const entries = libraryEntries(library), key = [library, materialSearch, template.material, entries ? entries.length : -1, used.length].join('|');
+    if (key === shownMaterials) return;  // Redrawn only when what it shows changes, not on every selection or drag.
+    shownMaterials = key;
+    body.replaceChildren();
+    const choose = element('select', {onchange: event => { library = event.target.value; showPanel(); }},
+      ...Object.entries(LIBRARIES).map(([value, label]) => element('option', {value, textContent: label, selected: value === library})));
+    const search = element('input', {type: 'search', placeholder: 'Search', value: materialSearch, oninput: event => { materialSearch = event.target.value; const at = event.target.selectionStart; showPanel(); const again = $('propsBody').querySelector('input[type=search]'); again.focus(); again.setSelectionRange(at, at); }});
+    body.append(element('div', {className: 'make'}, choose, search));
+    if (used.length) body.append(element('div', {className: 'actions'}, element('button', {type: 'button', textContent: `Put the map's ${used.length} library texture${used.length > 1 ? 's' : ''} into the game`,
+      title: 'Writes a material and texture for each into base/skinner of the Reflex Arena folder named under Import maps, so the saved map shows them in the game (unconfirmed)', onclick: installTextures})));
+    if (!entries) { body.append(element('p', {textContent: 'Reading the library…'})); return; }
+    const words = materialSearch.toLowerCase().split(/\s+/).filter(Boolean);
+    const found = entries.filter(entry => words.every(word => entry.label.toLowerCase().includes(word)));
+    const grid = element('div', {className: 'materials'});
+    for (const entry of found.slice(0, 240)) {
+      const tile = element('button', {type: 'button', title: entry.name, className: entry.name === template.material ? 'chosen' : '',
+        onclick: () => chooseMaterial(entry.name, false), ondblclick: () => chooseMaterial(entry.name, true)});
+      if (entry.image) tile.append(element('img', {src: entry.image, alt: '', loading: 'lazy'}));
+      else tile.append(element('span', {className: 'colour', style: `background:#${new THREE.Color(...(entry.colour || [.5, .5, .5]).map(c => Math.pow(c, 1 / 2.2))).getHexString()}`}));
+      tile.append(element('span', {textContent: entry.label.split('/').pop().replace(/\.png$/i, '')}));
+      grid.append(tile);
+    }
+    body.append(grid, element('p', {className: 'hint', textContent: found.length > 240 ? `${found.length} found; the first 240 shown: search to narrow` : found.length ? 'Click: M puts it on. Double click: on the selection now.' : 'Nothing found.'}));
+  }
+  function showMaterialBrowser() {
+    if (panelOpen && panelView === 'materials') { panelOpen = false; showPanel(); return; }
+    panelOpen = true; panelView = 'materials'; shownMaterials = ''; showPanel();
   }
 
   // K and M: the game's me_getmaterial and me_setmaterial.
@@ -1291,6 +1435,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (createType !== number) setCreate(number);
     },
     me_showproperties: () => { panelOpen = true; panelView = 'properties'; showPanel(); },
+    me_activematerial: name => { if (name) chooseMaterial(name, false); else showMaterialBrowser(); },
     editortoggleclipmode: () => setClipMode(!clipMode),
     editortogglevertexmode: () => setVertexMode(!vertexMode),
     help: () => say(`Commands: ${Object.keys(COMMANDS).join(', ')}`),
@@ -1408,6 +1553,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', event => { action(); event.target.blur(); });
   $('propsButton').addEventListener('click', event => { togglePanel(); event.target.blur(); });
+  $('materialsButton').addEventListener('click', event => { showMaterialBrowser(); event.target.blur(); });
   $('prefabsButton').addEventListener('click', event => { if (panelOpen && panelView === 'prefabs') { panelOpen = false; showPanel(); } else showPrefabs(); event.target.blur(); });
   $('rotateInc').addEventListener('click', event => { rotateSelection(1); event.target.blur(); });
   $('rotateDec').addEventListener('click', event => { rotateSelection(-1); event.target.blur(); });

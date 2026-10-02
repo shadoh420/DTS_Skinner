@@ -30,6 +30,11 @@ def model_sort_key(name):
     return parts, name.casefold(), name
 
 
+# Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
+# tools/import_reflex_map.py; textures only).
+TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex')
+
+
 def material_texture_refs(data, material_overrides=None):
     """Validate slot references while keeping filenames compatible with old clients."""
     game = data.get('game', 't1')
@@ -63,7 +68,7 @@ def material_texture_refs(data, material_overrides=None):
         names[int(slot)], games[int(slot)] = filename, source_game
         transforms[int(slot)] = transform
     for name, source_game in zip(names, games):
-        if source_game not in ('t1', 't2', 'q3'):
+        if source_game not in TEXTURE_GAMES:
             raise ValueError('Unknown texture game')
         # Imported untextured slots are labels, never filesystem lookups.
         placeholder = isinstance(name, str) and re.fullmatch(r'\[Slot [0-9]+: [A-Za-z0-9 _.-]+\]', name)

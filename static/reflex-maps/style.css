@@ -41,3 +41,8 @@ footer details[open] {flex:1 1 40%;}
 #props .make {display:grid;grid-template-columns:1fr auto;gap:6px;margin:4px 0;}
 #props .actions {display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
 nav button.on {outline:2px solid #f0c674;outline-offset:-2px;}
+#props .materials {display:grid;grid-template-columns:repeat(4, 1fr);gap:4px;margin-top:6px;}
+#props .materials button {display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px;font-size:10px;min-width:0;}
+#props .materials button.chosen {outline:2px solid #f0c674;}
+#props .materials img, #props .materials .colour {width:64px;height:64px;object-fit:cover;border-radius:3px;display:block;}
+#props .materials span:last-child {max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

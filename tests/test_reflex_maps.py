@@ -177,3 +177,118 @@ class ReflexMapsTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def textureset(name, images):
+    """A .textureset file as the game writes one: {image name: (DXGI format, RGBA image)}, one copy of each."""
+    import io
+    from PIL import Image
+    pad = lambda data, size: data + b'\0' * (size - len(data))
+    table, blobs, offset = b'', b'', 2636
+    for image_name, (fmt, image) in images.items():
+        output = io.BytesIO()
+        image.save(output, 'DDS', pixel_format='DXT1')
+        data = output.getvalue()[128:]
+        table += pad(image_name.encode(), 128) + struct.pack('<7I', offset, 0xffffffff, 0xffffffff, 1, 0, *image.size)
+        blob = struct.pack('<11I', *image.size, 1, 1, fmt, 1, 0, 1, 8, 0, 0) + data
+        blobs += blob
+        offset += len(blob)
+    head = b'\x20\x00\x0f\xd0' + pad(name.encode(), 128) + struct.pack('<2I', len(images), 0)
+    return pad(head + table, 2636) + blobs
+
+
+class ReflexTexturesTest(unittest.TestCase):
+    def test_textureset_images_decode_from_their_best_copy(self):
+        from PIL import Image
+        from tools.reflex_textures import decode_textureset_image, textureset_images
+        red = Image.new('RGBA', (8, 8), (255, 0, 0, 255))
+        raw = textureset('structural/dev/test', {'structural/dev/test_albedoSpec': (72, red)})
+        images = textureset_images(raw)
+        self.assertEqual(list(images), ['structural/dev/test_albedoSpec'])
+        # BC1 sRGB (72), which Pillow does not name, is read as plain BC1.
+        self.assertEqual(decode_textureset_image(raw, images['structural/dev/test_albedoSpec']).getpixel((3, 3))[:3], (255, 0, 0))
+        with self.assertRaisesRegex(ValueError, 'not a Reflex textureset'):
+            textureset_images(b'DDS ' + bytes(200))
+
+    def test_import_bakes_material_textures_and_thumbnails(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as directory:
+            game = Path(directory) / 'Reflex Arena'
+            (game / 'maps').mkdir(parents=True)
+            (game / 'maps/Test Walk.map').write_text(MAP, newline='')
+            # The albedo is a flat grey and the meta texture's blue channel darkens it along a line, as the dev grid's.
+            meta = Image.new('RGBA', (8, 8), (161, 0, 255, 255))
+            for y in range(8): meta.putpixel((0, y), (255, 0, 0, 255))
+            (game / 'base').mkdir()
+            with zipfile.ZipFile(game / 'base/structural.pak', 'w') as pak:
+                pak.writestr('structural/dev/dev_grey128.material', material('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED',
+                    (4, 'textureAlbedoSpec', b'dev_grid16_albedospec'), (4, 'textureMeta', b'dev_grid16_meta'), (2, 'tintColor', struct.pack('<3f', .5, .5, .5))))
+                pak.writestr('structural/dev/dev_grid16.textureset', textureset('structural/dev/dev_grid16', {
+                    'structural/dev/dev_grid16_albedoSpec': (72, Image.new('RGBA', (8, 8), (200, 200, 200, 255))), 'structural/dev/dev_grid16_meta': (71, meta)}))
+                pak.writestr('structural/dev/dev_unused.material', CONCRETE)
+            with zipfile.ZipFile(game / 'base/thumbs_material.pak', 'w') as pak:
+                pak.writestr('thumbs_material/structural/dev/dev_grey128.textureset', textureset('thumbs_material/structural/dev/dev_grey128', {
+                    'thumbs_material/structural/dev/dev_grey128': (72, Image.new('RGBA', (16, 16), (0, 0, 255, 255)))}))
+            pack = Path(directory) / 'pack'
+            report = import_maps(game, pack)
+            self.assertEqual((report['textures'], report['thumbs']), (1, 1))
+            colours = json.loads((pack / 'materials.json').read_text())
+            entry = colours['structural/dev/dev_grey128']
+            self.assertEqual((entry['texture'], entry['thumb']), ('dev_grid16_albedospec__dev_grid16_meta.png', 'structural~dev~dev_grey128.png'))
+            baked = Image.open(pack / 'textures' / entry['texture'])
+            # BC1 keeps colours to within a few levels.
+            self.assertEqual(baked.mode, 'RGB')
+            self.assertTrue(all(abs(channel - 200) < 10 for channel in baked.getpixel((4, 4))), baked.getpixel((4, 4)))
+            self.assertLess(baked.getpixel((0, 4))[0], 150)
+            self.assertEqual(Image.open(pack / 'thumbs' / entry['thumb']).size, (128, 128))
+            # Every material of the game is listed for the browser, also those no map names.
+            self.assertIn('structural/dev/dev_unused', colours)
+
+    def test_material_writer_and_library_install(self):
+        from PIL import Image
+        from tools.import_reflex_map import install_library_materials, write_material
+        self.assertEqual(write_material('internal/shaders/deferredPbrStylized', {'albedo': [.37, .38, .35, 1], 'metallic': 0, 'roughness': .8}, 0x11b), CONCRETE)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            game, library = root / 'Reflex Arena', root / 't1'
+            (game / 'base').mkdir(parents=True)
+            library.mkdir()
+            Image.new('RGB', (48, 40), (10, 200, 30)).save(library / 'Gravel Path.png')
+            with self.assertRaisesRegex(ValueError, 'Not a Reflex Arena folder'):
+                install_library_materials(game, ['skinner/t1/Gravel Path'], {'t1': library})
+            (game / 'base/common.pak').write_bytes(b'')
+            result = install_library_materials(game, ['skinner/t1/Gravel Path', 'skinner/t1/absent', 'common/materials/stone/concrete', 'skinner/t1/../x'], {'t1': library})
+            self.assertEqual(result['written'], [str(Path('base/skinner/t1/Gravel Path.material')), str(Path('base/skinner/t1/skinner_t1_gravel_path_c.dds'))])
+            self.assertEqual(sorted(result['failed']), ['common/materials/stone/concrete', 'skinner/t1/../x', 'skinner/t1/absent'])
+            shader, parameters = read_material((game / 'base/skinner/t1/Gravel Path.material').read_bytes())
+            self.assertEqual((shader, parameters['textureAlbedoSpec'], parameters['textureNormals']),
+                             ('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED', 'skinner_t1_gravel_path_c', 'dev_nogrid_normals'))
+            dds = (game / 'base/skinner/t1/skinner_t1_gravel_path_c.dds').read_bytes()
+            # Scaled to powers of two, BC1 with its whole mip chain (64 x 32 down to 1 x 1: 7 levels).
+            self.assertEqual((dds[84:88], struct.unpack_from('<2I', dds, 12), struct.unpack_from('<I', dds, 28)[0]), (b'DXT1', (32, 64), 7))
+            self.assertEqual(len(dds), 128 + sum(max(1, (64 >> level) // 4) * max(1, (32 >> level) // 4) * 8 for level in range(7)))
+            self.assertTrue(all(abs(a - b) < 10 for a, b in zip(Image.open(game / 'base/skinner/t1/skinner_t1_gravel_path_c.dds').convert('RGB').getpixel((5, 5)), (10, 200, 30))))
+            self.assertEqual([path.relative_to(game).parts[:2] for path in game.rglob('*') if path.is_file() and path.name != 'common.pak'], [('base', 'skinner')] * 2)
+
+    def test_reflex_is_a_texture_library_for_models_and_maps(self):
+        from PIL import Image
+        from tools.model_data import material_texture_refs
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'reflex-maps/textures').mkdir(parents=True)
+            Image.new('RGB', (4, 4), (229, 229, 229)).save(root / 'reflex-maps/textures/dev_grid16_albedospec__dev_grid16_meta.png')
+            client = app.test_client()
+            with patch('app.local_data_dir', root):
+                self.assertEqual(client.get('/list_textures?game=reflex').json, ['dev_grid16_albedospec__dev_grid16_meta.png'])
+                with client.get('/texture/dev_grid16_albedospec__dev_grid16_meta.png?game=reflex') as response:
+                    self.assertEqual(response.status_code, 200)
+                self.assertEqual(client.get('/texture_metadata?game=reflex').json[0]['width'], 4)
+                self.assertIn('dev_grid16_albedospec__dev_grid16_meta.png', client.get('/texture_versions?game=reflex').json)
+                # Reflex has textures, not models.
+                self.assertEqual(client.get('/list_models?game=reflex').status_code, 400)
+                self.assertEqual(client.post('/install_reflex_textures', json={'game': str(root), 'materials': []}, headers={'Origin': 'http://elsewhere.example'}).status_code, 403)
+                with client.post('/install_reflex_textures', json={'game': str(root / 'absent'), 'materials': ['skinner/t1/x']}) as response:
+                    self.assertEqual(response.status_code, 422)
+        # A model's slot may take a Reflex texture.
+        names, games, _ = material_texture_refs(dict(game='t1', material_textures=['a.png']), {'0': {'game': 'reflex', 'filename': 'dev_grid16_albedospec__dev_grid16_meta.png'}})
+        self.assertEqual((names, games), (['dev_grid16_albedospec__dev_grid16_meta.png'], ['reflex']))

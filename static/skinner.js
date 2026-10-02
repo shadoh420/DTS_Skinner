@@ -717,7 +717,7 @@ window.addEventListener('DOMContentLoaded', () => {
   async function loadTextureLibrary() {
     const serial = ++textureSerial, gameId = $('textureGame').value;
     const previous = $('skinSelect').value;
-    $('texturePath').textContent = gameId === 'q3' ? 'local-data/q3/textures' : gameId === 't2' ? 'static/textures/t2' : 'static/textures';
+    $('texturePath').textContent = gameId === 'reflex' ? 'local-data/reflex-maps/textures' : gameId === 'q3' ? 'local-data/q3/textures' : gameId === 't2' ? 'static/textures/t2' : 'static/textures';
     textures = []; textureMetadata = new Map(); filterSkins();
     $('textureCount').textContent = 'Reading texture dimensions…';
     try {
@@ -732,7 +732,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
   async function allTextureVersions() {
-    const results = await Promise.all(['t1', 't2', 'q3'].map(async gameId => {
+    const results = await Promise.all(['t1', 't2', 'q3', 'reflex'].map(async gameId => {
       const values = await json(`/texture_versions?${query({}, gameId)}`);
       return Object.entries(values).map(([name, version]) => [textureId(name, gameId), version]);
     }));
