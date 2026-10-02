@@ -3,7 +3,8 @@
 Opens Starsiege: Tribes missions from Skinner in free-flight: terrain with its
 stock textures and lightmap, buildings and rocks with their mission lightmaps,
 placed objects (flags, stations, generators, turrets, sensors, items), the
-mission's sky and its rain or snow. It covers the stock missions of an install and
+mission's sky with its suns, moons, stars and lens flare, and its rain or snow. It
+covers the stock missions of an install and
 any custom missions you point it at.
 
 Unlike the T2 viewer this page needs no build step. It is plain Three.js
@@ -90,6 +91,18 @@ view above the placed objects.
   `size` and the terrain's visible distance as in ArenaPrototype's
   TribesUnityEnvironment. A sky without a material list is its plain `skyColor`.
   Fog is the palette haze colour, else the first sky texture's bottom-left texel.
+- Sky objects follow ArenaPrototype's TribesUnityEnvironment, TribesStarFieldRenderer
+  and TribesPlanetFlare. Each `Planet` with a bitmap is drawn at its azimuth and
+  incidence, as wide as its `size` over `distance`, in front of the sky and behind
+  the world; a planet without a bitmap is only the mission's light. A `StarField`
+  draws the game's 3,000 generated stars above the horizon in its three colours.
+  A planet with `useLensFlare` strings the six `lensflare.dml` bitmaps from the sun
+  through the screen centre with a wash of the sun's colour, fading as the sun
+  leaves the centre and hidden when terrain or an object is in the way.
+- Planet and flare bitmaps keep their transparency: a PNG's own, or for a classic
+  bitmap flagged colour-keyed or translucent, the fourth byte of its palette
+  entries. ArenaPrototype reads only the colour key; the palette rule was checked
+  against the 1.40 PNG planets and flares, which it reproduces exactly.
 - `Snowfall` objects with rendering enabled draw rain or snow around the camera.
 - Other objects map their datablock to a shape through the `shapeFile` values in
   the install's scripts (and scripts beside a custom mission).
@@ -137,14 +150,19 @@ mount, and their lit instances are in the missions' own volumes.
 
 Tests: `python -m unittest tests.test_t1_maps`. Set `T1_GAME_BASE` to a Tribes
 folder to also run the real Raindance import check (every object resolves, every
-building has a lightmap matching its model, the sky and rain are found, spawn
+building has a lightmap matching its model, the sky and rain are found, Blastside's
+sun and flare bitmaps keep their transparency, spawn
 points stand on the decoded terrain).
 
 ## Limits
 
 No collision, gameplay, audio or editing. Building lights show their first state
 only (no flicker or pulse) and the mission's `lightParams` are not applied.
-Planets, stars and lens flares are not drawn, and rain and snow also fall indoors.
+Stars follow the game's generator but not its exact constellation (the game seeds
+it from shared state) and are not snapped to the palette on classic installs. A
+planet bitmap stays upright on screen rather than keeping its top toward the
+zenith, and only the first flared planet has a flare. Rain and snow also fall
+indoors.
 Shapes (not buildings) are shaded by the mission sun without shadows, use the
 workshop's static pose, and elevators stay where the mission places them. The sun
 direction used for shapes and for buildings without a lit instance follows

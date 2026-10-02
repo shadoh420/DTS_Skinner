@@ -257,7 +257,7 @@ def read_terrain_index(data):
 
 
 def read_palettes(data):
-    """PL98 palette set: ({palette id: flat RGB list}, haze RGB or None)."""
+    """PL98 palette set: ({palette id: (flat RGB list, alpha list)}, haze RGB or None)."""
     if data[:4] != b'PL98':
         raise ValueError('Unsupported palette')
     count, _, _, haze = struct.unpack_from('<iiii', data, 4)
@@ -266,15 +266,20 @@ def read_palettes(data):
         record = 52 + number * 1032
         rgba = data[record:record + 1024]
         colours = colours or rgba
-        palettes[struct.unpack_from('<I', data, record + 1024)[0]] = [value for index, value in enumerate(rgba) if index % 4 != 3]
+        palettes[struct.unpack_from('<I', data, record + 1024)[0]] = ([value for index, value in enumerate(rgba) if index % 4 != 3], list(rgba[3::4]))
     return palettes, list(colours[haze * 4:haze * 4 + 3]) if 0 <= haze < 256 and colours else None
 
 
-def bitmap_png(data, palettes):
-    """PNG bytes for a PNG, Windows bitmap or DarkStar PBMP; indexed PBMPs take colours from the mission palette."""
+def bitmap_png(data, palettes, alpha=False):
+    """PNG bytes for a PNG, Windows bitmap or DarkStar PBMP; indexed PBMPs take colours from the mission palette.
+
+    alpha keeps transparency, for sky sprites: a PNG's own, or for a PBMP flagged colour-keyed (1) or translucent (4)
+    the fourth byte of its palette entries. That reproduces the 1.40 PNG planets and lens flares from the classic ones.
+    """
+    mode = 'RGBA' if alpha else 'RGB'
     if data[:4] != b'PBMP':
         with Image.open(io.BytesIO(data)) as source:
-            image = source.convert('RGB')
+            image = source.convert(mode)
     else:
         chunks, offset = {}, 8
         while offset + 8 <= len(data):
@@ -288,9 +293,12 @@ def bitmap_png(data, palettes):
             raise ValueError('Unsupported bitmap: %d-bit%s' % (depth, '' if palette else ', no palette'))
         # Top-down rows padded to four bytes; any further mip levels follow and are ignored.
         stride = (width + 3) & ~3
-        image = Image.frombytes('P', (width, height), chunks[b'data'][:stride * height], 'raw', 'P', stride)
-        image.putpalette(palette)
-        image = image.convert('RGB')
+        pixels = chunks[b'data'][:stride * height]
+        image = Image.frombytes('P', (width, height), pixels, 'raw', 'P', stride)
+        image.putpalette(palette[0])
+        image = image.convert(mode)
+        if alpha and int.from_bytes(chunks[b'head'][16:20], 'little') & 5:
+            image.putalpha(Image.frombytes('L', (width, height), pixels, 'raw', 'L', stride).point(palette[1]))
     output = io.BytesIO()
     image.save(output, 'PNG')
     return output.getvalue()
@@ -639,11 +647,11 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
             (root / 'textures' / stored).write_bytes(data)
         return stored
 
-    def texture(name):
+    def texture(name, alpha=False):
         """Stored PNG for a material bitmap; None when the install has no such bitmap."""
         for candidate in (Path(name).stem + '.png', Path(name).stem + '.bmp'):
             try:
-                return store(bitmap_png(read(candidate), palettes), '.png')
+                return store(bitmap_png(read(candidate), palettes, alpha), '.png')
             except (ValueError, KeyError, OSError, struct.error):
                 continue
         return None
@@ -810,6 +818,29 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
             haze = haze or list(image.getpixel((0, image.height - 1)))
     except (KeyError, ValueError, IndexError, TypeError, OSError, struct.error):
         haze = haze or dome['color']
+    # Sky objects, after ArenaPrototype's TribesUnityEnvironment: each planet that has a bitmap (suns and moons), the
+    # star field's three colours, and the six lens flare bitmaps when a planet asks for a flare.
+    planets, stars, flare = [], None, None
+    for node, _ in nodes:
+        fields = node['fields']
+        if node['class'] == 'starfield':
+            stars = [floats(fields.get('colors[%d]' % shade, default)) for shade, default in enumerate(('1 1 1', '.5 .5 .5', '.25 .25 .25'))]
+        if node['class'] == 'planet' and fields.get('filename'):
+            stored = texture(fields['filename'], True)
+            if not stored:
+                warnings.append('Missing planet bitmap: ' + fields['filename'])
+                continue
+            planets.append({'texture': stored, 'azimuth': float(fields.get('azimuth', 0)), 'incidence': float(fields.get('incidence', 30)),
+                            'size': float(fields.get('size', 2000)), 'distance': float(fields.get('distance', 19000)),
+                            'intensity': floats(fields.get('intensity', '0 0 0')), 'flare': fields.get('uselensflare', '').lower() == 'true'})
+    if any(planet['flare'] for planet in planets):
+        try:
+            flare = [texture(name, True) for name in material_names('lensflare.dml')[:6]]
+        except (ValueError, KeyError, struct.error):
+            pass
+        if not flare or len(flare) < 6 or not all(flare):
+            flare = None
+            warnings.append('Lens flare bitmaps not found')
     weather = first('snowfall')  # Rain or snow; the game leaves it hidden unless the mission says otherwise.
     try:
         weather = {'rain': weather.get('rain', '').lower() == 'true', 'intensity': max(0, min(1, float(weather['intensity']))),
@@ -827,7 +858,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     'visibleDistance': float(terrain_node.get('visibledistance', 500)),
                     'hazeDistance': float(terrain_node.get('hazedistance', 250))},
         'sun': sun,
-        'haze': haze, 'sky': dome, 'weather': weather, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings}
+        'haze': haze, 'sky': dome, 'planets': planets, 'stars': stars, 'flare': flare, 'weather': weather, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings}
 
     # Build beside the target, then swap, so a failed import never leaves a half-written map.
     target = root / 'maps' / scene['id']

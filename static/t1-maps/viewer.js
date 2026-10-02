@@ -84,6 +84,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const mesh = new THREE.Mesh(geometry, materials);
       mesh.position.set(x + column * width, z, -(y + row * width));
       scene.add(mesh);
+      occluders.push(mesh);
     }
   }
 
@@ -132,6 +133,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     mesh.name = object.name;
     mesh.applyMatrix4(new THREE.Matrix4().fromArray(object.matrix));
     scene.add(mesh);
+    occluders.push(mesh);
   }
 
   // Sky: sixteen textured panels around the camera with flat caps above and below, drawn behind everything.
@@ -149,7 +151,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (uvs) geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       geometry.setIndex(indices);
       const mesh = new THREE.Mesh(geometry, Object.assign(material, {depthTest: false, depthWrite: false, fog: false, side: THREE.DoubleSide}));
-      mesh.renderOrder = -1;
+      mesh.renderOrder = -3;
       mesh.frustumCulled = false;
       sky.add(mesh);
     };
@@ -162,8 +164,109 @@ window.addEventListener('DOMContentLoaded', async () => {
       [[0, upper ? dome.size : -dome.size, 0], ...Array.from({length: 16}, (_, slot) => point(slot, upper))], null,
       Array.from({length: 16}, (_, slot) => [0, slot + 1, (slot + 1) % 16 + 1]).flat(),
       new THREE.MeshBasicMaterial({color: `rgb(${(upper ? dome.top : dome.bottom).join(',')})`}));
-    sky.scale.setScalar(10 / Math.max(visible * 1.05, dome.size));
-    scene.add(sky);
+  }
+
+  // Toward a planet: azimuth + 90° from file x, incidence up, as the importer's sun direction.
+  function toward(azimuth, incidence) {
+    const turn = THREE.MathUtils.degToRad(azimuth), climb = THREE.MathUtils.degToRad(Math.max(-89, Math.min(89, incidence)));
+    return new THREE.Vector3(-Math.sin(turn) * Math.cos(climb), Math.sin(climb), -Math.cos(turn) * Math.cos(climb));
+  }
+  const behind = order => ({depthTest: false, depthWrite: false, fog: false, transparent: false, renderOrder: order});
+
+  // Stars and planets ride in the sky group, in front of its panels and behind the world.
+  async function buildSkyObjects(radius) {
+    if (map.stars) {
+      // The game's generator: 3000 points in a ball from a linear congruential sequence, those above the horizon
+      // drawn. 9 in 30 take the first colour, 14 the second, 7 the third, and 1 in 30 is two pixels wide.
+      let state = 1;
+      const next = () => { state = Math.imul(state, 214013) + 2531011 >>> 0; return state >>> 16 & 32767; };
+      const positions = [[], []], colours = [[], []];
+      for (let star = 0; star < 3000; star++) {
+        let x, y, z, length;
+        do { x = next() % 2000 - 1000; y = next() % 2000 - 1000; z = next() % 2000 - 1000; length = Math.hypot(x, y, z); }
+        while ((!x && !y) || length > 1000);
+        const brightness = next() % 30, wide = brightness ? 0 : 1;
+        if (z < 0) continue;
+        positions[wide].push(x / length * radius, z / length * radius, -y / length * radius);
+        colours[wide].push(...map.stars[brightness < 9 ? 0 : brightness < 23 ? 1 : 2]);
+      }
+      positions.forEach((list, wide) => {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(list, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours[wide], 3));
+        const {renderOrder, ...draw} = behind(-2);
+        const points = new THREE.Points(geometry, new THREE.PointsMaterial({size: wide + 1, sizeAttenuation: false, vertexColors: true, ...draw}));
+        points.renderOrder = renderOrder;
+        points.frustumCulled = false;
+        sky.add(points);
+      });
+    }
+    for (const planet of map.planets || []) {
+      const texture = await loadTexture(data + 'textures/' + planet.texture);
+      if (!texture) continue;
+      texture.flipY = true;  // Sprites map the image upright.
+      texture.magFilter = THREE.NearestFilter;  // The game magnifies planet bitmaps unfiltered,
+      const {renderOrder, ...draw} = behind(-1);
+      // ponytail: a sprite stays upright on screen; the game keeps the bitmap's top toward the zenith instead.
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: texture, alphaTest: .65, ...draw}));  // and keys them at 0.65.
+      sprite.position.copy(toward(planet.azimuth, planet.incidence)).multiplyScalar(radius);
+      sprite.scale.setScalar(2 * planet.size * radius / planet.distance);
+      sprite.renderOrder = renderOrder;
+      sky.add(sprite);
+    }
+  }
+
+  // Lens flare, after ArenaPrototype's TribesPlanetFlare: eleven bitmaps strung from the sun through the screen centre
+  // and a wash of the sun's colour, both fading as the sun leaves the centre and gone when something stands in front.
+  const overlay = new THREE.Scene(), overlayCamera = new THREE.OrthographicCamera(0, 1, 1, 0, -1, 1), occluders = [];
+  let flare = null;
+  async function buildFlare(planet, files) {
+    const textures = await Promise.all(files.map(file => loadTexture(data + 'textures/' + file)));
+    if (!textures.every(Boolean)) return;
+    for (const texture of textures) texture.flipY = true;
+    // Bitmap, place along the line (0 the sun, 1 its mirror through the centre), smallest and largest size, turns with the line.
+    const parts = [[1, -.15, .9, .9, 1], [0, 0, .001, .8, 0], [1, .136, 1.2, 1.2, 1], [2, .182, 1, 1, 1], [4, .304, 1, 1, 1], [4, .405, 1, 1, 1],
+      [3, .606, 1, 1, 1], [3, .682, .7, .7, 1], [5, .841, .7, .7, 1], [1, .932, .7, .7, 1], [1, 1, 1, 1, 1]];
+    const quad = new THREE.PlaneGeometry(2, 2);
+    const place = (material, order) => {
+      const mesh = new THREE.Mesh(quad, Object.assign(material, {transparent: true, depthTest: false}));
+      mesh.matrixAutoUpdate = false;
+      mesh.renderOrder = order;
+      overlay.add(mesh);
+      return mesh;
+    };
+    const meshes = parts.map(([bitmap], order) => place(new THREE.MeshBasicMaterial({map: textures[bitmap]}), order));
+    const wash = place(new THREE.MeshBasicMaterial({color: new THREE.Color(...planet.intensity)}), parts.length);
+    const set = (mesh, a, b, c, d, x, y) => { mesh.matrix.set(a, b, 0, x, c, d, 0, y, 0, 0, 1, 0, 0, 0, 0, 1); mesh.matrixWorldNeedsUpdate = true; };
+    const direction = toward(planet.azimuth, planet.incidence), ray = new THREE.Raycaster(), point = new THREE.Vector3();
+    let frame = 0, blocked = false;
+    flare = (width, height) => {
+      overlay.visible = false;
+      if (camera.getWorldDirection(point).dot(direction) <= 0) return;
+      point.copy(camera.position).add(direction).project(camera);
+      const sunX = (point.x + 1) / 2 * width, sunY = (point.y + 1) / 2 * height, dx = width - 2 * sunX, dy = height - 2 * sunY;
+      const fraction = 2 * Math.hypot(dx, dy) / Math.min(width, height);
+      if (fraction >= 1) return;
+      if (frame++ % 15 === 0) {  // The game also checks the line of sight only now and then.
+        ray.set(camera.position, direction);
+        blocked = ray.intersectObjects(occluders, false).length > 0;
+      }
+      if (blocked) return;
+      const angle = Math.atan2(-dy, dx) - Math.PI / 2;
+      parts.forEach(([bitmap, along, least, most, turns], index) => {
+        const half = .5 * (least + (1 - fraction) * (most - least)), image = textures[bitmap].image;
+        const across = image.width * width / 640 * half, up = image.height * height / 480 * half;
+        const cos = turns ? Math.cos(angle) : 1, sin = turns ? Math.sin(angle) : 0;
+        set(meshes[index], across * cos, across * sin, -up * sin, up * cos, sunX + dx * along, sunY + dy * along);
+        meshes[index].material.opacity = .5 * (1 - fraction);
+      });
+      wash.material.opacity = Math.max(0, 3.3 * (.3 - fraction));
+      set(wash, width / 2, 0, 0, height / 2, width / 2, height / 2);
+      overlayCamera.right = width;
+      overlayCamera.top = height;
+      overlayCamera.updateProjectionMatrix();
+      overlay.visible = true;
+    };
   }
 
   // Rain or snow: particles in a box around the camera that wrap as they or the camera leave it. Counts, box size
@@ -261,6 +364,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     sky.position.copy(camera.position);
     if (weather) weather(delta);
     renderer.render(scene, camera);
+    if (flare) flare(canvas.clientWidth, canvas.clientHeight);
+    if (flare && overlay.visible) {
+      renderer.autoClear = false;
+      renderer.render(overlay, overlayCamera);
+      renderer.autoClear = true;
+    }
   });
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
@@ -295,12 +404,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
     document.title = `${map.mission} — T1 Maps`;
     scene.background = haze.set(`rgb(${map.haze.join(',')})`);
-    if (map.sky) await buildSky(map.sky, map.terrain.visibleDistance);  // Packs imported before the sky was added have none.
+    // Packs imported before the sky and its objects were added lack these keys.
+    const radius = map.terrain.visibleDistance * 1.05;
+    if (map.sky) await buildSky(map.sky, map.terrain.visibleDistance);
+    await buildSkyObjects(radius);
+    const flared = (map.planets || []).find(planet => planet.flare);
+    if (flared && map.flare) await buildFlare(flared, map.flare);
+    sky.scale.setScalar(10 / Math.max(radius, map.sky && map.sky.size || 0));
+    scene.add(sky);
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
     const sun = new THREE.DirectionalLight(new THREE.Color(...map.sun.intensity));
-    // Toward the sun as the importer places it (azimuth + 90° from file x, incidence up). Shades only what has no lightmap.
-    const azimuth = THREE.MathUtils.degToRad(map.sun.azimuth), elevation = THREE.MathUtils.degToRad(map.sun.incidence);
-    sun.position.set(-Math.sin(azimuth) * Math.cos(elevation), Math.sin(elevation), -Math.cos(azimuth) * Math.cos(elevation));
+    sun.position.copy(toward(map.sun.azimuth, map.sun.incidence));  // Shades only what has no lightmap.
     scene.add(sun);
     if (map.weather) buildWeather(map.weather);
     $('weather').disabled = !map.weather;  // Most missions have no rain or snow to switch.
