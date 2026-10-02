@@ -13,6 +13,7 @@ from PIL import Image
 
 from app import app
 from tools.import_q3_map import Game, Textures, describe, import_maps, map_id, parse_shaders, read_bsp
+from tests.test_q3 import md3
 
 SCRIPT = '''// Comments and blank lines are skipped.
 textures/test/glow
@@ -141,16 +142,21 @@ class Q3MapTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'No baseq3 folder'):
                 import_maps(root, root / 'pack')
             entities = '{\n"classname" "worldspawn"\n}\n{\n"classname" "info_player_deathmatch"\n"origin" "8 16 24"\n"angle" "90"\n}\n' \
-                '{\n"classname" "func_door"\n"model" "*1"\n"origin" "1 2 3"\n}\n{\n"classname" "weapon_railgun"\n"origin" "0 0 0"\n}\n'
+                '{\n"classname" "func_door"\n"model" "*1"\n"origin" "1 2 3"\n}\n{\n"classname" "weapon_railgun"\n"origin" "0 0 0"\n}\n' \
+                '{\n"classname" "item_health"\n"origin" "4 5 6"\n"spawnflags" "1"\n}\n{\n"classname" "weapon_nailgun"\n"origin" "7 8 9"\n}\n'
             shaders = {'textures/test/glow': 0, 'textures/test/absent': 0, 'textures/common/caulk': 0x80, 'textures/test/unused': 0}
             first = bsp(shaders, [(0, 1, 0), (1, 3, -3), (2, 1, -1), (0, 4, -1)], entities)
             pk3(root / 'baseq3/pak0.pk3', {'maps/first.bsp': first, 'maps/broken.bsp': bsp({}, [], version=47), 'scripts/test.shader': SCRIPT,
-                                           'scripts/arenas.txt': '{\nmap "first"\nlongname "First Map"\n}', 'textures/test/wall.tga': image(), 'textures/test/glow.tga': image()})
+                                           'scripts/arenas.txt': '{\nmap "first"\nlongname "First Map"\n}', 'textures/test/wall.tga': image(), 'textures/test/glow.tga': image(),
+                                           'models/weapons2/railgun/railgun.md3': md3(), 'models/powerups/health/medium_cross.md3': md3()})
             (root / 'baseq3/maps/My Map.bsp').write_bytes(bsp({'textures/test/glow': 0}, [(0, 1, 0)]))
             pk3(root / 'missionpack/pak0.pk3', {'maps/first.bsp': bsp({'textures/test/glow': 0}, [(0, 1, 0)])})
             report = import_maps(root / 'baseq3', root / 'pack')  # The baseq3 folder itself is accepted too. Names are lower case, as the game compares them.
             self.assertEqual((report['imported'], report['skipped'], report['failed']), (['first', 'my map', 'first'], [], {'broken': 'IBSP version 47, not 46'}))
-            self.assertEqual(report['unresolved'], {'first': ['shader textures/test/absent (no script and no texture of that name)']})
+            # A pickup's model and its skin are looked for too; a class only Team Arena has is not missed in the base game.
+            self.assertEqual(report['unresolved'], {'first': [
+                'shader textures/test/absent (no script and no texture of that name)', 'shader models/test/skin (no script and no texture of that name)',
+                'model models/powerups/health/medium_sphere.md3 (item_health)']})
             index = json.loads((root / 'pack/index.json').read_text())
             self.assertEqual([(item['id'], item['group'], item['source'], item['longname']) for item in index], [
                 ('first', 'Quake III Arena', 'pak0.pk3', 'First Map'), ('missionpack__first', 'Team Arena', 'pak0.pk3', 'First Map'),
@@ -160,7 +166,14 @@ class Q3MapTests(unittest.TestCase):
             self.assertEqual([shader and shader['name'] for shader in scene['shaders']], ['textures/test/glow', 'textures/test/absent', None, None])
             self.assertEqual(scene['viewpoints'], [{'origin': [8, 16, 50], 'pitch': 0, 'yaw': 90}])
             self.assertEqual(scene['models'], [{'model': 1, 'origin': [1, 2, 3]}])
-            self.assertEqual(scene['limits'], ['1 light flares', '1 pickups and flags (their models are not placed)'])
+            self.assertEqual(scene['limits'], ['1 light flares'])
+            self.assertEqual(scene['items'], [
+                {'kind': 'weapon', 'origin': [0, 0, 0], 'models': ['models/weapons2/railgun/railgun.md3'], 'suspended': False},
+                {'kind': 'health', 'origin': [4, 5, 6], 'models': ['models/powerups/health/medium_cross.md3'], 'suspended': True}])
+            model = scene['itemModels']['models/weapons2/railgun/railgun.md3']
+            self.assertEqual((model['middle'], model['shaders'][0]['name'], model['shaders'][0]['implicit']), ([.5, .5, 0], 'models/test/skin', True))
+            self.assertEqual(json.loads((root / 'pack' / model['file']).read_text()), [
+                {'vertices': [0, 0, 0, 1, 0, 0, 0, 1, 0], 'normals': [0, 0, 1] * 3, 'uvs': [0, 0, 1, 0, 0, 1], 'indices': [0, 2, 1]}])
             lumps = read_bsp((root / 'pack' / scene['bsp']).read_bytes())
             self.assertEqual((lumps[1], lumps[13], lumps[14], lumps[2]), (*read_bsp(first)[1:2], read_bsp(first)[13], read_bsp(first)[14], b''))
             self.assertEqual(len(list((root / 'pack/textures').iterdir())), 1)  # Both textures hold the same image, stored once.

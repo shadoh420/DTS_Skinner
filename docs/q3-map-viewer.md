@@ -4,8 +4,10 @@ Opens the Quake 3 Arena maps of a local install from Skinner in free-flight:
 the map's surfaces with their lightmaps, curved patches, and the shader
 scripts' stages (blending, alpha test, scrolling, rotating, stretching and
 turbulent textures, pulsing colours, animated textures, environment mapping,
-waving and bulging surfaces), sky boxes and cloud layers. No collision,
-gameplay, audio or map editing. T1 and T2 maps have their own pages, see
+waving and bulging surfaces), sky boxes and cloud layers, and the map's
+pickups (weapons, ammo, armour, health, powerups, holdables and flags) turning
+and bobbing where the game puts them. No collision, gameplay, audio or map
+editing. T1 and T2 maps have their own pages, see
 [t1-map-viewer.md](t1-map-viewer.md) and [t2-map-viewer.md](t2-map-viewer.md).
 
 Like the T1 page this needs no build step: plain Three.js
@@ -32,13 +34,14 @@ Git; next to the executable in a packaged build):
 - `index.json` lists the maps (name, long name from the `.arena` scripts,
   group, the archive each came from, how many things it names that are missing).
 - `maps/<id>/scene.json` holds, for each shader a drawn surface of the map
-  uses, its stages; the map's viewpoints; brush models an entity moves; and
-  the two lists shown under Preview notes.
+  uses, its stages; the map's viewpoints and pickups; brush models an entity
+  moves; and the two lists shown under Preview notes.
+- `models/` holds the first frame of each pickup model the maps place.
 - `bsp/` holds each map file cut down to the lumps the viewer reads (entities,
   shaders, models, vertices, indices, faces, lightmaps), still a valid map
   file, and `textures/` the images, JPEG as they are and TGA as PNG. Both are
-  named by content, so maps that share a file store it once and the browser
-  keeps them.
+  named by content, as the models are, so maps that share a file store it
+  once and the browser keeps them.
 
 The dropdown groups the maps: Quake III Arena (`pak0`–`pak8`), Team Arena and
 other mod folders, Custom maps (any other pk3 in `baseq3`), and Loose files in
@@ -105,6 +108,17 @@ state. Both were read for behaviour; none of their code is in the app.
   placed as `MakeSkyVec` places them.
 - Coordinates stay the game's (x, y, z up) under one rotation to the viewer's
   axes; front faces wind clockwise, as in the game.
+- Pickups are the entities whose class is in the game's item list, with the
+  models ArenaPrototype's `Quake3ItemCatalog` gives each. They are shown as
+  `cg_ents.c` `CG_Item` shows them: one turn in 2.048 seconds (health items
+  twice as fast), bobbing 4 ± 4 units, weapons half as large again and turning
+  about the middle of their bounds, and the second model of a health item or
+  powerup (its sphere or ring) turning the other way, a powerup's 12 units up.
+  An item not marked suspended is dropped to the floor (`g_items.c`
+  `FinishSpawningItem`). Classes the base game does not have (Team Arena's,
+  and the green armour mods add) are placed where the game folder has their
+  models and passed over where it has not, as the base game does not spawn
+  them.
 
 ## Where this departs from the references
 
@@ -129,6 +143,15 @@ state. Both were read for behaviour; none of their code is in the app.
   culls by its visibility data. Lightmap and texture are drawn as two passes,
   as the game does without multitexture.
 - Brush models (doors, lifts) stand where the map places them and do not move.
+- The game drops an item's 30-unit box until it rests on something solid.
+  Here one line from the item's centre down to the nearest opaque drawn
+  surface stands in for that, since the pack keeps no collision data. On
+  `q3dm1` 17 of the 18 items come to rest within 3 units of where the map put
+  them and one 9 units lower.
+- Every pickup is placed, whatever game type its entity is limited to
+  (`notfree`, `notteam`, `gametype`). Pickup models are lit evenly, not from
+  the map's light grid as in the game, and a weapon's separate barrel model is
+  not added.
 
 ## Coverage
 
@@ -136,16 +159,20 @@ Checked on 2026-10-02 against the install at
 `C:\Program Files (x86)\Steam\steamapps\common\Quake 3 Arena`: 306 maps (36 in
 `pak0`–`pak8`, 239 in other archives of `baseq3`, 8 loose `.bsp` files, 21 in
 `missionpack`, 2 in `defrag`). The import takes 43 seconds and the pack is
-1.9 GB: 306 map files (978 MB) and 9,100 images (898 MB).
+1.9 GB: 306 map files (978 MB), 9,100 images (898 MB) and 58 pickup models
+(0.8 MB).
 
 All 306 import. In the browser, each on a fresh page:
 
-- All 306 reach "Map ready" (half of them within 0.27 seconds, the slowest in
-  1.6), every shader compiles and none fails to draw. `radianttest02`, one of
-  the loose files, holds no surfaces and says so.
-- Drawn at two times, 221 maps differ between them (their scrolling, pulsing
-  and animated shaders move); a map drawn twice at one time gives the same
-  pixels.
+- All 306 reach "Map ready" (half of them within 0.39 seconds, three take
+  over 2 and the slowest 3.0, most of that dropping a hundred or more pickups
+  to the floor), every shader compiles and none fails to draw.
+  `radianttest02`, one of the loose files, holds no surfaces and says so.
+- 15,107 pickups are placed on 285 maps; every model the base game's item
+  classes name is in the game files.
+- Drawn at two times, 267 maps differ between them (scrolling, pulsing and
+  animated shaders, and turning pickups); before pickups were added it was
+  221. A map drawn twice at one time gives the same pixels.
 - On `q3dm1` from its intermission camera every pixel is covered; with the
   culling reversed 42.5 % is, which is how the winding was settled. The
   doubled frame's mean is twice the undoubled one's (66.4 against 33.2).
@@ -177,30 +204,38 @@ All 306 import. In the browser, each on a fresh page:
   The full lists are in each map's Preview notes and in the import's output.
 
 What the Preview notes list as not drawn or simplified, by number of maps:
-pickups and flags 286, sprites that turn to the camera 103, fog volumes 100,
-light flares 88, wobbling normals 69, portals and mirrors 29, noise waves 16,
-model lighting 3, entity colours 1. 16 maps list nothing at all.
+sprites that turn to the camera 103, fog volumes 100, light flares 88,
+wobbling normals 69, portals and mirrors 29, noise waves 16, model lighting 3,
+entity colours 1. 88 maps list nothing at all.
 
-Looked at in the browser: `q3dm1`, `q3dm7` (arches and other patches),
+Looked at in the browser: `q3dm1` (also its shards and rocket launcher),
+`q3ctf1` (the red flag at its base), `q3tourney2`, `cpm22`, `q3dm7` (arches and
+other patches),
 `q3dm15` (cloud sky, lava), `q3dm17` (no sky surfaces around it, black as in
 the game), `qc_bloodrun` and `13castle` (custom; sky box, whose sides and top
 meet without a seam at two opposite corners), Team Arena's `mpteam1`, and the
 loose `egypttower01` (unlit, drawn by its vertex colours).
 
-Not checked: any map against the game side by side, every map by eye, and the
-import or the page in a packaged build.
+A packaged build (PyInstaller, the repository's spec, run from its own
+folder) served the page, imported the install through its own import route in
+42 seconds and drew `q3dm7`; its pack was the same as the source run's, file
+for file. That was before pickups were added, which have not been tried in a
+packaged build.
+
+Not checked: any map against the game side by side, and every map by eye.
 
 Tests: `python -m unittest tests.test_q3_maps` covers the script reader, the
 search order and which script wins, stage defaults, the import (draw lumps,
-scenes, unresolved content, skipping, a map file of the wrong version) and the
-local routes. Set `Q3_GAME_BASE` to a Quake 3 folder to also import that
+scenes, pickups and their models, unresolved content, skipping, a map file of
+the wrong version) and the local routes. Set `Q3_GAME_BASE` to a Quake 3 folder to also import that
 install and require its stock maps to resolve completely.
 
 ## Limits
 
 Free-flight only. Not drawn: fog volumes, light flares, portal and mirror
-views (the surface is drawn plain), video textures, inner sky boxes, and the
-models of pickups, flags and players. Simplified: `deformVertexes`
+views (the surface is drawn plain), video textures, inner sky boxes, and
+player models. Map objects other than pickups that the game adds while it runs
+(Team Arena's obelisks and skulls, for one) are not placed. Simplified: `deformVertexes`
 autosprite, normal, text and projection shadow are left out, a `noise` wave
 is drawn as a sine, texture coordinates from vectors and entity colours are
 left at their defaults. A stage that takes lightmap coordinates for an image

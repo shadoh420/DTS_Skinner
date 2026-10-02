@@ -20,7 +20,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 - Restore the default view and materials with **Reset all**.
 - **T2 Maps** opens a free-flight preview of Tribes 2 missions with terrain, buildings, placed objects, sky, water and fog: every stock, Classic and Team Rabbit 2 map of your own install, imported from the page's **Import maps** panel; see [T2 map setup and limitations](docs/t2-map-viewer.md).
 - **T1 Maps** opens a free-flight preview of Starsiege: Tribes missions: every map in your own install plus custom missions, imported from the page's **Import maps** panel; see [T1 map setup and limitations](docs/t1-map-viewer.md).
-- **Q3 Maps** opens a free-flight preview of Quake 3 Arena maps with lightmaps, curved surfaces, shader effects and skies: every map of your own install, stock, Team Arena and custom pk3s, imported from the page's **Import maps** panel; see [Q3 map setup and limitations](docs/q3-map-viewer.md).
+- **Q3 Maps** opens a free-flight preview of Quake 3 Arena maps with lightmaps, curved surfaces, shader effects, skies and pickups: every map of your own install, stock, Team Arena and custom pk3s, imported from the page's **Import maps** panel; see [Q3 map setup and limitations](docs/q3-map-viewer.md).
 
 ## Getting started
 

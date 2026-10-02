@@ -7,7 +7,7 @@ a pack the viewer draws: the map's draw lumps, the shader stages each of its sur
 textures. Format: IBSP version 46 (id Software qfiles.h). The stage model is ArenaPrototype's
 Quake3StaticMaterial; search order, which of two shader scripts with one name wins, and stage defaults are
 ioquake3's (files.c FS_AddGameDirectory, tr_shader.c ScanAndLoadShaderFiles, ParseShader, ParseStage,
-FinishShader, R_FindShader).
+FinishShader, R_FindShader). Pickups get the models of ArenaPrototype's Quake3ItemCatalog.
 """
 import argparse
 import hashlib
@@ -21,9 +21,9 @@ import zipfile
 from PIL import Image
 
 try:
-    from tools.import_q3 import key_name, read_text
+    from tools.import_q3 import key_name, read_md3, read_text
 except ImportError:  # Run as a script.
-    from import_q3 import key_name, read_text
+    from import_q3 import key_name, read_md3, read_text
 
 LUMPS = 17
 KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14)  # Entities, shaders, models, vertices, indices, faces, lightmaps: all the viewer reads.
@@ -31,7 +31,63 @@ SURF_NODRAW = 0x80
 SORT = dict(portal=1, sky=2, opaque=3, decal=4, seethrough=5, banner=6, underwater=8, additive=10, nearest=16)
 BLEND = dict(add=['gl_one', 'gl_one'], filter=['gl_dst_color', 'gl_zero'], blend=['gl_src_alpha', 'gl_one_minus_src_alpha'])
 SKY_SIDES = ('rt', 'bk', 'lf', 'ft', 'up', 'dn')
-PICKUPS = ('weapon_', 'ammo_', 'item_', 'holdable_', 'team_ctf_redflag', 'team_ctf_blueflag', 'team_ctf_neutralflag')
+# Pickups by class name: kind, then the models the game shows for it (under models/, without .md3). Health and
+# powerups show both of theirs; the kind decides how the game turns and sizes them (cg_ents.c CG_Item).
+ITEMS = {row.split()[0]: (kind, row.split()[1:]) for kind, rows in dict(
+    health='''item_health_small powerups/health/small_cross powerups/health/small_sphere
+        item_health powerups/health/medium_cross powerups/health/medium_sphere
+        item_health_large powerups/health/large_cross powerups/health/large_sphere
+        item_health_mega powerups/health/mega_cross powerups/health/mega_sphere''',
+    armor='''item_armor_shard powerups/armor/shard
+        item_armor_combat powerups/armor/armor_yel
+        item_armor_body powerups/armor/armor_red
+        item_armor_jacket powerups/armor/armor_gre''',
+    weapon='''weapon_gauntlet weapons2/gauntlet/gauntlet
+        weapon_shotgun weapons2/shotgun/shotgun
+        weapon_machinegun weapons2/machinegun/machinegun
+        weapon_grenadelauncher weapons2/grenadel/grenadel
+        weapon_rocketlauncher weapons2/rocketl/rocketl
+        weapon_lightning weapons2/lightning/lightning
+        weapon_railgun weapons2/railgun/railgun
+        weapon_plasmagun weapons2/plasma/plasma
+        weapon_bfg weapons2/bfg/bfg
+        weapon_grapplinghook weapons2/grapple/grapple
+        weapon_nailgun weapons/nailgun/nailgun
+        weapon_prox_launcher weapons/proxmine/proxmine
+        weapon_chaingun weapons/vulcan/vulcan''',
+    powerup='''item_quad powerups/instant/quad powerups/instant/quad_ring
+        item_enviro powerups/instant/enviro powerups/instant/enviro_ring
+        item_haste powerups/instant/haste powerups/instant/haste_ring
+        item_invis powerups/instant/invis powerups/instant/invis_ring
+        item_regen powerups/instant/regen powerups/instant/regen_ring
+        item_flight powerups/instant/flight powerups/instant/flight_ring''',
+    other='''ammo_shells powerups/ammo/shotgunam
+        ammo_bullets powerups/ammo/machinegunam
+        ammo_grenades powerups/ammo/grenadeam
+        ammo_cells powerups/ammo/plasmaam
+        ammo_lightning powerups/ammo/lightningam
+        ammo_rockets powerups/ammo/rocketam
+        ammo_slugs powerups/ammo/railgunam
+        ammo_bfg powerups/ammo/bfgam
+        ammo_nails powerups/ammo/nailgunam
+        ammo_mines powerups/ammo/proxmineam
+        ammo_belt powerups/ammo/chaingunam
+        holdable_teleporter powerups/holdable/teleporter
+        holdable_medkit powerups/holdable/medkit
+        holdable_kamikaze powerups/kamikazi
+        holdable_portal powerups/holdable/porter
+        holdable_invulnerability powerups/holdable/invulnerability
+        item_scout powerups/scout
+        item_guard powerups/guard
+        item_doubler powerups/doubler
+        item_ammoregen powerups/ammo
+        team_ctf_redflag flags/r_flag
+        team_ctf_blueflag flags/b_flag
+        team_ctf_neutralflag flags/n_flag''').items() for row in rows.splitlines()}
+# Classes the base game does not have (Team Arena's, and the green armour that mods add): it places none of
+# them, so a map is not short of their models where the game folder has none.
+NOT_IN_BASE = ('item_armor_jacket', 'weapon_nailgun', 'weapon_prox_launcher', 'weapon_chaingun', 'ammo_nails', 'ammo_mines', 'ammo_belt', 'holdable_kamikaze',
+              'holdable_portal', 'holdable_invulnerability', 'item_scout', 'item_guard', 'item_doubler', 'item_ammoregen', 'team_ctf_neutralflag')
 SPAWNS = ('info_player_deathmatch', 'info_player_start', 'team_ctf_redplayer', 'team_ctf_blueplayer', 'team_ctf_redspawn', 'team_ctf_bluespawn')
 
 
@@ -79,7 +135,7 @@ class Game:
                     pairs = {(quoted or bare).lower(): value for quoted, bare, value in re.findall(r'(?:"([^"]*)"|([^\s"]+))\s+"([^"]*)"', block)}
                     if pairs.get('map'):
                         self.arenas.setdefault(pairs['map'].lower(), pairs.get('longname', ''))
-        self.described, self.images = {}, {}
+        self.described, self.images, self.models = {}, {}, {}
 
     def close(self):
         for archive in self.archives:
@@ -296,6 +352,36 @@ class Textures:
         return file
 
 
+def item_model(game, path, textures, output):
+    """One pickup model for the viewer: its first frame under models/, named by content, the shader of each
+    surface, and the middle of its bounds. Returns (model, unresolved), or (None, []) if the game has no such file."""
+    if path in game.models:
+        return game.models[path]
+    result = None, []
+    if path in game.files:
+        raw = game.files[path][1]()
+        try:
+            surfaces = read_md3(raw)['surfaces']
+        except (ValueError, struct.error):
+            surfaces = []
+        if surfaces:
+            file = 'models/' + hashlib.sha256(raw).hexdigest()[:20] + '.json'
+            if not (output / file).exists():
+                short = lambda values, places: [round(value, places) for value in values]
+                (output / file).write_text(json.dumps([dict(vertices=short(surface['vertices'], 3), normals=short(surface['normals'], 3),
+                                                            uvs=short(surface['uvs'], 5), indices=surface['indices']) for surface in surfaces], separators=(',', ':')), encoding='utf-8')
+            shaders, unresolved = [], []
+            for surface in surfaces:
+                shader, missing, _ = describe(game, shader_name(next(iter(surface['shaders']), '')), textures)
+                shaders.append(shader)
+                unresolved += [item for item in missing if item not in unresolved]
+            points = [value for surface in surfaces for value in surface['vertices']]
+            middle = [(min(points[axis::3]) + max(points[axis::3])) / 2 for axis in range(3)]
+            result = dict(file=file, shaders=shaders, middle=middle), unresolved
+    game.models[path] = result
+    return result
+
+
 def read_bsp(raw):
     """Lumps of an IBSP 46 file, each checked to lie inside it."""
     if len(raw) < 8 + LUMPS * 8 or raw[:4] != b'IBSP':
@@ -359,14 +445,28 @@ def import_map(game, name, ident, raw, source, output, textures):
             viewpoints.append(view)
     notes = [f'{label}: {len(found)} shader{"s" if len(found) > 1 else ""} ({", ".join(found[:4])}{"…" if len(found) > 4 else ""})' for label, found in sorted(limits.items())]
     if flares: notes.append(f'{flares} light flares')
-    pickups = sum(thing.get('classname', '').lower().startswith(PICKUPS) for thing in things)
-    if pickups: notes.append(f'{pickups} pickups and flags (their models are not placed)')
+    items, item_models = [], {}
+    for thing in things:
+        classname = thing.get('classname', '').lower()
+        if classname not in ITEMS: continue
+        kind, paths = ITEMS[classname]
+        paths = [f'models/{path}.md3' for path in paths]
+        for path in paths:
+            model, missing = item_model(game, path, textures, output)
+            if model: item_models[path] = model
+            elif classname not in NOT_IN_BASE: missing = [f'model {path} ({classname})']
+            unresolved += [item for item in missing if item not in unresolved]
+        if paths[0] in item_models:
+            # Spawnflag 1 hangs the item where it is; any other is dropped to the floor (g_items.c FinishSpawningItem).
+            items.append(dict(kind=kind, origin=vector(thing.get('origin', '')), models=[path for path in paths if path in item_models],
+                              suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1)))
     file = 'bsp/' + hashlib.sha256(raw).hexdigest()[:20] + '.bsp'
     if not (output / file).exists():
         write_bsp(output / file, lumps)
     folder = output / 'maps' / ident
     folder.mkdir(parents=True, exist_ok=True)
     scene = dict(name=name, longname=game.arenas.get(name.lower(), ''), source=source, bsp=file, shaders=shaders, viewpoints=viewpoints,
+                 items=items, itemModels=item_models,
                  models=[dict(model=int(thing['model'][1:]), origin=vector(thing['origin'])) for thing in things
                          if re.fullmatch(r'\*\d+', thing.get('model', '')) and 'origin' in thing],
                  unresolved=unresolved, limits=notes)
@@ -385,7 +485,8 @@ def import_maps(game, output, replace=False):
     base = next((folder for folder in game.iterdir() if folder.is_dir() and folder.name.lower() == 'baseq3'), None)
     if not base or not any(base.glob('pak*.pk3')):
         raise ValueError('No baseq3 folder with pak0.pk3 here. Enter the Quake 3 Arena folder.')
-    (output / 'bsp').mkdir(parents=True, exist_ok=True)
+    for folder in ('bsp', 'models'):
+        (output / folder).mkdir(parents=True, exist_ok=True)
     textures = Textures(output / 'textures')
     index_path = output / 'index.json'
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}

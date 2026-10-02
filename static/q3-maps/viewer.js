@@ -97,7 +97,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const [kind, ...values] = stage.rgbGen, [alphaKind, ...alphaValues] = stage.alphaGen || ['identity'];
     const rgb = kind === 'identitylighting' ? 'vec3(.5)' : kind === 'vertex' ? 'tint.rgb * .5' : kind === 'exactvertex' ? 'tint.rgb'
       : kind === 'oneminusvertex' ? '(1. - tint.rgb) * .5' : kind === 'wave' ? `vec3(clamp(${waveCall(values)} * .5, 0., 1.))`
-      : kind === 'const' ? `vec3(${values.map(number).join(', ')})` : 'vec3(1.)';
+      : kind === 'const' ? `vec3(${values.map(number).join(', ')})` : kind === 'lightingdiffuse' ? 'vec3(.5)' : 'vec3(1.)';  // Models are lit evenly.
     const alpha = alphaKind === 'vertex' ? 'tint.a' : alphaKind === 'oneminusvertex' ? '1. - tint.a' : alphaKind === 'wave' ? `clamp(${waveCall(alphaValues)}, 0., 1.)`
       : alphaKind === 'const' ? number(alphaValues[0]) : alphaKind === 'lightingspecular' ? 'specular(P, N)'
       : alphaKind === 'portal' ? `clamp(length(P - uView) / ${number(alphaValues[0])}, 0., 1.)` : '1.';
@@ -132,12 +132,14 @@ window.addEventListener('DOMContentLoaded', async () => {
           return min(level * level * level * level, 1.);
         }
         void main() {
-          vec3 P = position, N = normal;
+          // In the game's axes wherever the mesh stands: the world as it is, a pickup turned and lifted.
+          vec4 placed = modelMatrix * vec4(position, 1.);
+          vec3 facing = mat3(modelMatrix) * normal, P = vec3(placed.x, -placed.z, placed.y), N = normalize(vec3(facing.x, -facing.z, facing.y));
           ${deform(shader)}
           ${sky ? '' : st + ' vSt = st;'}
           vColor = ${colour(stage)};
           vDir = P - uView;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(P, 1.);
+          gl_Position = projectionMatrix * viewMatrix * vec4(P.x, P.z, -P.y, 1.);
         }`,
       fragmentShader: `${WAVE}
         uniform sampler2D map; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
@@ -265,10 +267,23 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Stages of a surface without a script, as R_FindShader builds them: the image under the lightmap, or lit by
   // the vertex colours where the surface has no lightmap.
-  const stagesOf = (shader, lit) => !shader.implicit ? shader.stages
+  const stagesOf = (shader, lit, model) => !shader.implicit ? shader.stages
+    : model ? [{map: shader.map, rgbGen: ['lightingdiffuse'], depthWrite: true}]
     : lit ? [{map: '$lightmap', tcGen: 'lightmap', rgbGen: ['identity'], depthWrite: true}, {map: shader.map, rgbGen: ['identity'], blend: ['gl_dst_color', 'gl_zero'], depthWrite: false}]
     : [{map: shader.map, rgbGen: ['exactvertex'], depthWrite: true}];
   const loading = new THREE.MeshBasicMaterial({color: 'rgb(0, 109, 56)', wireframe: true}), magenta = new THREE.MeshBasicMaterial({color: 0xcc00cc, side: THREE.DoubleSide});
+  // The materials of a shader's stages, once their textures are in; nothing for a shader that names none.
+  async function stageMaterials(shader, stages, atlas) {
+    const ready = await Promise.all(stages.map(async stage => {
+      if (stage.map === '$lightmap') return [atlas || white];
+      if (stage.map === '$whiteimage') return [white];
+      return Promise.all((stage.frames || [stage.map]).map(file => loadTexture(file, stage.clamp)));
+    }));
+    return stages.map((stage, index) => ready[index][0] && stageMaterial(shader, stage, ready[index][0], ready[index].filter(Boolean)));
+  }
+  // One mesh of each opaque surface, for dropping pickups to the floor. They are in no scene, so a ray meets them
+  // in the game's own axes.
+  const floors = [], floorMaterial = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
   async function addGroup({shader, lit, indices}, {atlas, attributes}, serial) {
     const geometry = new THREE.BufferGeometry();
     Object.entries(attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
@@ -290,15 +305,56 @@ window.addEventListener('DOMContentLoaded', async () => {
     else {
       if (shader.sky && shader.sky.box) add(boxMaterial(await Promise.all(shader.sky.box.map(file => loadTexture(file, true, true)))), 0);
       // ponytail: one draw per stage, as the game without multitexture; fold lightmap × texture into one pass if maps get heavy.
-      const stages = stagesOf(shader, lit) || [];
-      const ready = await Promise.all(stages.map(async stage => {
-        if (stage.map === '$lightmap') return [lit ? atlas : white];
-        if (stage.map === '$whiteimage') return [white];
-        return Promise.all((stage.frames || [stage.map]).map(file => loadTexture(file, stage.clamp)));
-      }));
-      stages.forEach((stage, index) => { if (ready[index][0]) add(stageMaterial(shader, stage, ready[index][0], ready[index].filter(Boolean)), index + 1); });
+      (await stageMaterials(shader, stagesOf(shader, lit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
     }
     root.remove(placeholder);
+    if (shader.sort === 3 && !shader.sky) floors.push(new THREE.Mesh(geometry, floorMaterial));
+  }
+
+  // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
+  // fast), bobbing 4 ± 4 units, weapons half as large again and turning about their middle, and the second model
+  // of a health item or powerup turning the other way, a powerup's 12 units up.
+  const itemModels = new Map(), pickups = [];
+  function loadItemModel(path) {
+    if (!itemModels.has(path)) itemModels.set(path, (async () => {
+      const model = map.itemModels[path], surfaces = await (await get(data + model.file)).json();
+      return Promise.all(surfaces.map(async (surface, index) => {
+        const geometry = new THREE.BufferGeometry(), shader = model.shaders[index];
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(surface.vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(surface.normals, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(surface.uvs, 2));
+        geometry.setIndex(surface.indices);
+        const materials = shader.implicit && !shader.map ? [magenta] : (await stageMaterials(shader, stagesOf(shader, false, true) || [])).filter(Boolean);
+        return {geometry, materials, sort: shader.sort};
+      }));
+    })());
+    return itemModels.get(path);
+  }
+  async function addItem(item, serial) {
+    const models = await Promise.all(item.models.map(loadItemModel)), holder = new THREE.Group(), weapon = item.kind === 'weapon';
+    const [x, y, z] = item.origin;
+    let height = z;
+    if (!item.suspended) {
+      // The game drops the item's 30-unit box until it rests on something solid; here one line from its centre
+      // down to the nearest opaque surface stands in for that, and its centre comes to rest 15 above it.
+      const hit = new THREE.Raycaster(new THREE.Vector3(x, y, z), new THREE.Vector3(0, 0, -1), 0, 4096).intersectObjects(floors, false)[0];
+      if (hit) height = hit.point.z + 15;
+    }
+    holder.position.set(x, y, height);
+    models.forEach((surfaces, which) => {
+      const part = new THREE.Group();
+      for (const {geometry, materials, sort} of surfaces) materials.forEach((material, stage) => {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = sort * 100000 + 99000 + stage;
+        if (weapon) mesh.position.fromArray(map.itemModels[item.models[which]].middle).negate();
+        part.add(mesh);
+      });
+      if (weapon) part.scale.setScalar(1.5);
+      if (which) part.position.z = item.kind === 'powerup' ? 12 : 0;
+      holder.add(part);
+    });
+    root.add(holder);
+    pickups.push({holder, height, fast: item.kind === 'health', rate: 5 + serial * .01});
   }
 
   function showNotes() {
@@ -379,6 +435,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     uniforms.uTime.value = seconds;
     uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
     for (const {material, frames, fps} of animated) material.uniforms.map.value = frames[Math.floor(seconds * fps) % frames.length];
+    for (const {holder, height, fast, rate} of pickups) {
+      holder.position.z = height + 4 + Math.cos((seconds + 1) * rate) * 4;
+      holder.rotation.z = seconds % 2.048 / 2.048 * 2 * Math.PI * (fast ? 2 : 1);
+      if (holder.children[1]) holder.children[1].rotation.z = -holder.rotation.z - seconds % 1.024 / 1.024 * 2 * Math.PI;  // Its own turn, undoing the holder's.
+    }
     renderer.setRenderTarget(frame);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
@@ -445,6 +506,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!world.groups.length) failures.push('the map file holds no surfaces to draw');
     let loaded = 0;
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));
+    showStatus('Placing pickups…');
+    root.updateMatrixWorld(true);
+    await Promise.all((map.items || []).map(addItem));
     showNotes();
     ready = true;
     showReady();
