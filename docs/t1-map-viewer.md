@@ -79,9 +79,12 @@ view above the placed objects.
   lacks, such as those custom maps ship in their own volumes, are exported at
   import with the existing interior exporter, and shapes (`.dts`) it lacks with
   the existing shape exporter. No mission in the four installs checked (922
-  missions) places such a shape, so this is tested by importing Raindance
-  against an empty catalog: everything is then exported from the install and
-  matches the catalog's models.
+  missions) places such a shape, so this is tested two ways: importing Raindance
+  against an empty catalog, where everything is then exported from the install
+  and matches the catalog's models, and importing a mission folder whose own
+  script places the install's editor shapes, which the catalog lacks. The shape
+  exporter reads no geometry from some of those (`cube8`, `pyrm8`); such a shape
+  stays a placeholder and is listed like any other unresolved object.
 - Building lightmaps come from the mission's lighting volume. Each placed
   `name.N.dis` is a lit instance whose `.dil` replaces the outside-facing maps of
   the building's own lighting with ones holding the mission sun and shadows; the
@@ -185,6 +188,12 @@ their missions and absent, but nothing is lost: the buildings they held
 (`bfstand`, `runout_stand`) are in `opencall2.vol`, which those missions also
 mount, and their lit instances are in the missions' own volumes.
 
+The in-app import was checked in a packaged build (PyInstaller, the repository's
+spec): through the app's own import route it imported Raindance from the zip
+install, a custom map with 79 buildings of its own from a `.vol` install, and a
+mission folder placing uncatalogued shapes. The first two came out identical,
+file for file, to an import run from source.
+
 Raindance's `lrock61` rock is under the ground because the mission puts it there,
 not because of how it is turned: its origin is 5.9 units below the terrain and no
 part of the rock is further than 5.76 from its origin, so no rotation brings it
@@ -214,5 +223,3 @@ workshop's static pose, and elevators stay where the mission places them. The su
 direction used for shapes and for buildings without a lit instance follows
 ArenaPrototype's convention; the mission-baked lightmaps agree with it better than
 with the alternatives tried, but only by a small margin.
-The in-app import has not been exercised in a packaged
-build.

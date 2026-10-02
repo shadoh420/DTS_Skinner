@@ -761,6 +761,8 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                         else:
                             export_model.main(str(work / (stem + suffix)), str(work))
                     model = json.loads((work / (stem + '.json')).read_text(encoding='utf-8'))
+                    if not model.get('vertices'):
+                        raise ValueError('Nothing to draw')  # The shape exporter writes an empty model for meshes it cannot read.
                     # Names in brackets stand for slots without a texture; a texture the install lacks stays empty.
                     model['material_textures'] = [name if name.startswith('[') else texture(name) or ''
                                                   for name in model['material_textures']] or ['[No material]']

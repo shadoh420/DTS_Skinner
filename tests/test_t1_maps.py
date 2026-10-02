@@ -281,6 +281,18 @@ class T1MapTests(unittest.TestCase):
             for name in {item['model'] for item in exported['objects']}:
                 model, twin = (json.loads(path.read_text()) for path in (bare / 'pack/models' / name, catalog[name.rsplit('-', 1)[0]]))
                 self.assertEqual((model['vertices'], all(model['material_textures'])), (twin.get('vertices', twin.get('v')), True))
+            # A custom mission folder whose own script places shapes the catalog lacks: the install's editor arrow is
+            # exported; its cube, which the shape exporter reads no geometry from, is reported and left a placeholder.
+            custom = Path(directory) / 'custom'
+            custom.mkdir()
+            placed = ''.join('instant StaticShape "%s" {\ndataBlock = "%s";\nposition = "0 0 90";\n};\n' % (name, name) for name in ('Arrow', 'Cube'))
+            group = 'instant SimGroup "MissionGroup" {\n'
+            (custom / 'Shapes.mis').write_text(mission_file.read_text(encoding='cp1252').replace(group, group + placed, 1), encoding='cp1252')
+            (custom / 'Shapes.cs').write_text('StaticShapeData Arrow\n{\n\tshapeFile = "arrow50";\n};\nStaticShapeData Cube\n{\n\tshapeFile = "cube8";\n};\n')
+            self.assertEqual(import_maps(install.base, pack, [custom])['warnings'], {'Shapes': ['No preview model for shape cube8']})
+            shapes = {item['name']: item for item in json.loads((pack / 'maps/shapes/scene.json').read_text())['objects']}
+            self.assertEqual((shapes['Arrow']['source'], shapes['Arrow']['model'][:8], shapes['Cube']['model']), ('pack', 'arrow50-', None))
+            self.assertTrue(json.loads((pack / 'models' / shapes['Arrow']['model']).read_text())['vertices'])
             heights = struct.unpack('<66049f', (pack / 'maps/raindance/heights.bin').read_bytes())
             mission = parse_mission(mission_file.read_text(encoding='cp1252'))
             spawns = [[float(value) for value in node['fields']['position'].split()]
