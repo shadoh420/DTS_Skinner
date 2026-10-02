@@ -77,7 +77,11 @@ view above the placed objects.
   block's declared size, and decoded heights must match the block's height range.
 - Buildings resolve `name.N.dis` to the catalog model `name`. Buildings the catalog
   lacks, such as those custom maps ship in their own volumes, are exported at
-  import with the existing interior exporter.
+  import with the existing interior exporter, and shapes (`.dts`) it lacks with
+  the existing shape exporter. No mission in the four installs checked (922
+  missions) places such a shape, so this is tested by importing Raindance
+  against an empty catalog: everything is then exported from the install and
+  matches the catalog's models.
 - Building lightmaps come from the mission's lighting volume. Each placed
   `name.N.dis` is a lit instance whose `.dil` replaces the outside-facing maps of
   the building's own lighting with ones holding the mission sun and shadows; the
@@ -210,6 +214,5 @@ workshop's static pose, and elevators stay where the mission places them. The su
 direction used for shapes and for buildings without a lit instance follows
 ArenaPrototype's convention; the mission-baked lightmaps agree with it better than
 with the alternatives tried, but only by a small margin.
-Custom shapes (`.dts`) that are not in the catalog are not converted; none occur
-in the 198 maps checked. The in-app import has not been exercised in a packaged
+The in-app import has not been exercised in a packaged
 build.

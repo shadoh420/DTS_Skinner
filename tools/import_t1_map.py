@@ -27,6 +27,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import export_interior  # noqa: E402
+import export_model  # noqa: E402
 from interior_module import dml as interior_dml, interiorshape  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -731,10 +732,11 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         else:
             warnings.append('Missing terrain texture: %s' % (terrain_materials[slot] if slot < len(terrain_materials) else 'slot %d' % slot))
 
-    def convert(stem):
-        """Export an interior the catalog lacks (custom map buildings) from the install into root/models."""
+    def convert(stem, kind):
+        """Export a building or shape the catalog lacks (a custom map's own) from the install into root/models."""
+        suffix = '.dis' if kind == 'interior' else '.dts'
         try:
-            source = read(stem + '.dis')
+            source = read(stem + suffix)
         except ValueError:
             return None
         key = (hashlib.sha1(source).hexdigest(), first('simpalette').get('filename', '').lower())
@@ -743,21 +745,25 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
             with tempfile.TemporaryDirectory() as work:
                 work = Path(work)
                 try:
-                    shape = interiorshape.interiorshape()
-                    shape.load_binary(source)
-                    (work / (stem + '.dis')).write_bytes(source)
-                    stored = {}
-                    for name in [item.decode('cp1252') for item in shape.get_dml_list()[:1] + shape.get_dig_list()]:
-                        (work / name).write_bytes(read(name))
-                    for name in material_names(shape.get_dml_list()[0].decode('cp1252')):
-                        png = texture(name) if name.strip() else None
-                        if png:  # The exporter reads texture sizes from PNG files beside the geometry.
-                            stored[Path(name).stem + '.png'] = png
-                            shutil.copyfile(root / 'textures' / png, work / (Path(name).stem + '.png'))
+                    (work / (stem + suffix)).write_bytes(source)
+                    if kind == 'interior':
+                        shape = interiorshape.interiorshape()
+                        shape.load_binary(source)
+                        for name in [item.decode('cp1252') for item in shape.get_dml_list()[:1] + shape.get_dig_list()]:
+                            (work / name).write_bytes(read(name))
+                        for name in material_names(shape.get_dml_list()[0].decode('cp1252')):
+                            png = texture(name) if name.strip() else None
+                            if png:  # The exporter reads texture sizes from PNG files beside the geometry.
+                                shutil.copyfile(root / 'textures' / png, work / (Path(name).stem + '.png'))
                     with contextlib.redirect_stdout(io.StringIO()):
-                        export_interior.main(str(work / (stem + '.dis')), str(work), str(work), str(work))
+                        if kind == 'interior':
+                            export_interior.main(str(work / (stem + suffix)), str(work), str(work), str(work))
+                        else:
+                            export_model.main(str(work / (stem + suffix)), str(work))
                     model = json.loads((work / (stem + '.json')).read_text(encoding='utf-8'))
-                    model['material_textures'] = [name if name.startswith('[') else stored.get(name, '') for name in model['material_textures']]
+                    # Names in brackets stand for slots without a texture; a texture the install lacks stays empty.
+                    model['material_textures'] = [name if name.startswith('[') else texture(name) or ''
+                                                  for name in model['material_textures']] or ['[No material]']
                     data = json.dumps(model).encode()
                     name = '%s-%s.json' % (map_id(stem), hashlib.sha1(data).hexdigest()[:12])
                     (root / 'models').mkdir(parents=True, exist_ok=True)
@@ -844,8 +850,8 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         if not shape:
             continue
         model, source = models.get(shape.lower()), 'catalog'
-        if not model and kind == 'interior':
-            model, source = convert(shape), 'pack'
+        if not model:
+            model, source = convert(shape, kind), 'pack'
         if not model:
             missing.add('%s %s' % (kind, shape.lower()))
         objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'source': source, 'matrix': matrix})

@@ -270,6 +270,17 @@ class T1MapTests(unittest.TestCase):
             custom = Path(directory) / 'Unmounted.mis'
             custom.write_text(re.sub(r'fileName = "Raindance\.ted";', 'fileName = "";', mission_file.read_text(encoding='cp1252'), flags=re.I), encoding='cp1252')
             self.assertEqual(import_maps(install.base, pack, [custom])['imported'], ['Unmounted'])
+            # Against an empty catalog every building and shape is exported from the install instead, as a custom map's
+            # own would be, and comes out as the catalog's model with every texture found.
+            bare = Path(directory) / 'bare'
+            (bare / 'catalog').mkdir(parents=True)
+            self.assertEqual(import_maps(install.base, bare / 'pack', [mission_file], model_dir=bare / 'catalog')['failed'], {})
+            exported = json.loads((bare / 'pack/maps/raindance/scene.json').read_text())
+            self.assertEqual(({item['source'] for item in exported['objects']}, exported['warnings']), ({'pack'}, []))
+            catalog = {path.stem.lower(): path for path in (Path(app.static_folder) / 'model_json').glob('*.json')}
+            for name in {item['model'] for item in exported['objects']}:
+                model, twin = (json.loads(path.read_text()) for path in (bare / 'pack/models' / name, catalog[name.rsplit('-', 1)[0]]))
+                self.assertEqual((model['vertices'], all(model['material_textures'])), (twin.get('vertices', twin.get('v')), True))
             heights = struct.unpack('<66049f', (pack / 'maps/raindance/heights.bin').read_bytes())
             mission = parse_mission(mission_file.read_text(encoding='cp1252'))
             spawns = [[float(value) for value in node['fields']['position'].split()]
