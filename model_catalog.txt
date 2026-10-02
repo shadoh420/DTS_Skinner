@@ -242,6 +242,12 @@ logo2
 logo3
 lookout2
 lookout_flyer
+lrock1
+lrock2
+lrock3
+lrock4
+lrock5
+lrock6
 magcargo
 mainpad
 marmor

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — T1 Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/t1-maps/viewer.js"></script>
+</head>
+<body>
+  <header><a href="/">← Models</a><strong>T1 Maps · Raindance</strong><span>Offline preview · free-flight, no collision or audio</span>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="110" value="90"></label>
+    <label><input id="fog" type="checkbox" checked> Fog</label>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading map…</span>
+    <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–7 viewpoints</span>
+    <details><summary>Preview notes</summary><span id="notes">Raindance CTF only. Terrain uses the stock lightmap; the sky dome, rain and building lightmaps are not drawn, so buildings use the mission sun instead. No gameplay or map editing.</span></details></footer>
+</body>
+</html>

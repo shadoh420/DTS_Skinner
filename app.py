@@ -104,6 +104,18 @@ def t2_map_data(filename):
     return send_from_directory(local_data_dir / 't2-maps', filename)
 
 
+@app.route('/maps/t1/')
+def t1_maps_viewer():
+    response = send_from_directory(static_dir / 't1-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/t1-map-data/<path:filename>')
+def t1_map_data(filename):
+    return send_from_directory(local_data_dir / 't1-maps', filename)
+
+
 def selected_game():
     game = request.args.get("game", "t1")
     if game not in ("t1", "t2", "q3"):

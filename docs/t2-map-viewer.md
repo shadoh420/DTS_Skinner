@@ -80,7 +80,8 @@ Direction check after building: from the pinned upstream checkout, run
 `node --import=tsx/esm skinner/check-mouse-look.ts`.
 
 This first milestone is Katabatic CTF only: free-flight without collision,
-gameplay, audio, map editing or material editing. T1 and Q3 maps are not implemented.
+gameplay, audio, map editing or material editing. Q3 maps are not implemented;
+T1 maps have their own page, see [t1-map-viewer.md](t1-map-viewer.md).
 It runs through local Flask asset routes; CSP blocks external asset/network calls.
 It does not mount upstream live-server, demo or relay interfaces.
 

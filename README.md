@@ -19,6 +19,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 - The expanded texture browser keeps **Apply to slot** visible while its settings and thumbnails scroll.
 - Restore the default view and materials with **Reset all**.
 - **T2 Maps · Katabatic** opens an experimental offline map viewer with terrain, buildings, placed objects, fog and free-flight. Requires the separate local map pack included in the preview package; see [map setup and limitations](docs/t2-map-viewer.md).
+- **T1 Maps · Raindance** opens the same kind of free-flight preview for Starsiege: Tribes, built from your own install with `python tools/import_t1_map.py --game-base <Tribes folder>/base`; see [T1 map setup and limitations](docs/t1-map-viewer.md).
 
 ## Getting started
 
