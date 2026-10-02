@@ -14,7 +14,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 1, .2, 9000);
   camera.rotation.order = 'YXZ';
-  let speed = 40, missing = 0, ready = false, map = null;
+  const data = '/t1-map-data/';
+  let speed = 40, missing = 0, ready = false, map = null, mapId = '';
   const showStatus = text => { $('status').textContent = text; };
   const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing assets` : 'Map ready'} · speed ${Math.round(speed)}`);
 
@@ -36,7 +37,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   async function buildTerrain(terrain) {
     const [heightData, squareData, lightData] = await Promise.all(['heights.bin', 'materials.bin', 'light.bin']
-      .map(async name => (await get('/t1-map-data/' + name)).arrayBuffer()));
+      .map(async name => (await get(`${data}maps/${mapId}/${name}`)).arrayBuffer()));
     const heights = new Float32Array(heightData), squares = new Uint8Array(squareData), light = new Uint16Array(lightData);
     const size = terrain.squares, unit = terrain.unit, lightStep = (terrain.lightWidth - 1) / size;
     // Texture corners (lower-left, lower-right, upper-right, upper-left) for the 3-bit square orientation:
@@ -75,7 +76,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.computeBoundingSphere();
     const materials = await Promise.all(slots.map(async slot => {
-      const texture = terrain.textures[slot] && await loadTexture('/t1-map-data/terrain/' + encodeURIComponent(terrain.textures[slot]));
+      const texture = terrain.textures[slot] && await loadTexture(data + 'textures/' + terrain.textures[slot]);
       return new THREE.MeshBasicMaterial(texture ? {map: texture, vertexColors: true} : {color: 0xcc00cc});
     }));
     const width = size * unit, [x, y, z] = terrain.position;
@@ -87,9 +88,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   const models = new Map();
-  function loadModel(name) {
+  function loadModel(name, pack) {
+    // Catalog models come from the workshop; buildings the catalog lacks were exported into the pack at import.
     if (!models.has(name)) models.set(name, (async () => {
-      const model = await (await get(`/model_json/${encodeURIComponent(name)}?game=t1`)).json();
+      const model = await (await get(pack ? data + 'models/' + name : `/model_json/${encodeURIComponent(name)}?game=t1`)).json();
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(model.vertices, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(model.uvs, 2));
@@ -102,8 +104,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       byMaterial.forEach((list, index) => { if (list.length) geometry.addGroup(start, list.length, index); start += list.length; });
       geometry.computeVertexNormals();
       const materials = await Promise.all(model.material_textures.map(async file => {
-        const texture = file.startsWith('[') ? null : await loadTexture(`/texture/${encodeURIComponent(file)}?game=t1`, true);
-        return new THREE.MeshLambertMaterial({map: texture, color: texture ? 0xffffff : file.startsWith('[') ? 0x999999 : 0xcc00cc, side: THREE.DoubleSide});
+        const blank = file.startsWith('[');
+        const texture = blank || !file ? null : await loadTexture(pack ? data + 'textures/' + file : `/texture/${encodeURIComponent(file)}?game=t1`, true);
+        return new THREE.MeshLambertMaterial({map: texture, color: texture ? 0xffffff : blank ? 0x999999 : 0xcc00cc, side: THREE.DoubleSide});
       }));
       return {geometry, materials};
     })());
@@ -114,7 +117,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     let mesh;
     try {
       if (!object.model) throw new Error('No preview model');
-      const model = await loadModel(object.model);
+      const model = await loadModel(object.model, object.source === 'pack');
       mesh = new THREE.Mesh(model.geometry, model.materials);
     } catch (_) { missing++; mesh = new THREE.Mesh(placeholder, magenta); }
     mesh.name = object.name;
@@ -131,7 +134,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Tribes field of view is horizontal; Three's is vertical.
     camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
     if (map) {
-      scene.fog = settings.fog ? new THREE.Fog(scene.background, map.terrain.hazeDistance, map.terrain.visibleDistance) : null;
+      // Some missions set haze beyond the visible distance: no haze band, just the far limit.
+      const visible = map.terrain.visibleDistance;
+      scene.fog = settings.fog ? new THREE.Fog(scene.background, Math.min(map.terrain.hazeDistance, visible - 1), visible) : null;
       camera.far = settings.fog ? map.terrain.visibleDistance : 9000;
     }
     camera.updateProjectionMatrix();
@@ -169,7 +174,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (ready) showReady();
   }, {passive: false});
   document.addEventListener('keydown', event => {
-    if (event.target === $('fov')) return;
+    if (event.target.matches('input:not([type=checkbox]), select')) return;
     if (/^Digit[1-9]$/.test(event.code)) showViewpoint(Number(event.code.slice(5)) - 1);
     if (/^(Key[WASD]|Space|Shift(Left|Right))$/.test(event.code)) { keys.add(event.code); event.preventDefault(); }
   });
@@ -186,9 +191,37 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderer.render(scene, camera);
   });
 
+  $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
+  $('import').addEventListener('click', async () => {
+    const game = $('gamePath').value.trim();
+    if (!game) { $('importStatus').textContent = 'Enter your Tribes folder.'; return; }
+    $('import').disabled = true;
+    $('importStatus').textContent = 'Importing maps… a full install can take a few minutes.';
+    try {
+      const response = await fetch('/import_t1_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({game, missions: $('missionPath').value.trim(), replace: $('replace').checked})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Import failed');
+      try { localStorage.setItem(storageKey + '.game', game); } catch (_) { /* Path is simply not remembered. */ }
+      const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
+      $('importStatus').textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length} already imported` +
+        (failed.length ? `, failed ${failed.length} (${failed.join('; ')})` : '') + '.';
+      if (result.imported.length && !failed.length) location.search = '?map=' + encodeURIComponent(result.imported[0].toLowerCase().replace(/[^a-z0-9_-]/g, '_'));
+    } catch (error) { $('importStatus').textContent = error.message; }
+    finally { $('import').disabled = false; }
+  });
+  try { $('gamePath').value = localStorage.getItem(storageKey + '.game') || ''; } catch (_) { /* Field stays empty. */ }
+
   try {
-    try { map = await (await get('/t1-map-data/scene.json')).json(); }
-    catch (_) { throw new Error('no local map pack. Run: python tools/import_t1_map.py --game-base <Tribes folder>/base'); }
+    let maps = [];
+    try { maps = await (await get(data + 'index.json')).json(); } catch (_) { /* No pack yet. */ }
+    if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
+    mapId = new URLSearchParams(location.search).get('map') || '';
+    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === 'raindance') || maps[0]).id;
+    $('map').replaceChildren(...maps.map(item => new Option(item.type ? `${item.name} · ${item.type}` : item.name, item.id)));
+    $('map').value = mapId;
+    map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
+    document.title = `${map.mission} — T1 Maps`;
     scene.background = new THREE.Color(`rgb(${map.haze.join(',')})`);
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
     const sun = new THREE.DirectionalLight(new THREE.Color(...map.sun.intensity));
@@ -202,7 +235,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await buildTerrain(map.terrain);
     let loaded = 0;
     await Promise.all(map.objects.map(async object => { await addObject(object); showStatus(`Loading map objects ${++loaded}/${map.objects.length}`); }));
-    if (map.warnings.length) $('notes').textContent += ' ' + map.warnings.join('. ') + '.';
+    $('notes').textContent += map.warnings.length ? ' This map: ' + map.warnings.join('. ') + '.' : '';
     ready = true;
     showReady();
   } catch (error) { showStatus('Map could not load: ' + error.message); }

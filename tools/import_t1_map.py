@@ -1,33 +1,35 @@
-"""Prepare the stock Raindance map pack from a Tribes 1 install; never modify the install.
+"""Import Tribes 1 missions into local map packs for the T1 map viewer; never modifies the install.
 
-python tools/import_t1_map.py --game-base C:/realstocktribe/base
-Format reading follows the DarkStar layouts used by ArenaPrototype's Tribes map
-compatibility layer (TribesLzh, TribesTerrainBlock, TribesMissionRotation).
+python tools/import_t1_map.py --game-base C:/Tribes/base                    # every mission in the install
+python tools/import_t1_map.py --game-base C:/Tribes/base --mission My.mis   # a custom mission file or folder
+
+Reads both zip volumes with PNG textures and classic PVOL volumes with palettised PBMP bitmaps.
+Format reading follows the DarkStar layouts used by ArenaPrototype's Tribes map compatibility
+layer (TribesLzh, TribesTerrainBlock, TribesMissionRotation, TribesResourceCatalog) and, for
+PBMP, SurfaceLevel2's loader.
 """
 import argparse
+import contextlib
 import hashlib
 import io
 import json
 import math
 from pathlib import Path
 import re
+import shutil
 import struct
 import sys
+import tempfile
 import zipfile
 
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from interior_module import dml as interior_dml  # noqa: E402
+import export_interior  # noqa: E402
+from interior_module import dml as interior_dml, interiorshape  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-MISSION = 'Raindance'
-# ponytail: stock base datablocks only; scan the install's scripts for shapeFile when modded maps are added.
-DATABLOCK_SHAPES = {
-    'flag': 'flag', 'repairpack': 'armorPack', 'pulsesensor': 'radar', 'generator': 'generator',
-    'ammostation': 'ammounit', 'commandstation': 'cmdpnl', 'inventorystation': 'inventory_sta',
-    'vehiclestation': 'vehi_pur_pnl', 'vehiclepad': 'vehi_pur_poles', 'plasmaturret': 'hellfiregun',
-    'rocketturret': 'missileturret'}
+
 # LZH static position prefixes: code length -> (first code, last code, subtract for upper 6 bits).
 POSITION_CODES = {3: (0, 0, 0), 4: (2, 4, 1), 5: (10, 17, 6), 6: (36, 47, 24), 7: (96, 119, 72), 8: (240, 255, 192)}
 
@@ -151,6 +153,55 @@ def lzh_expand(data, offset, length):
     return bytes(output), position - offset
 
 
+def open_volume(path):
+    """Members of a zip or PVOL volume as {lowercase file name: function returning its bytes}."""
+    if zipfile.is_zipfile(path):
+        archive = zipfile.ZipFile(path)
+        return {Path(entry.filename).name.lower(): (lambda entry=entry: archive.read(entry))
+                for entry in archive.infolist() if not entry.is_dir()}
+    data = path.read_bytes()
+    try:
+        if data[:4] != b'PVOL':
+            raise ValueError
+        names_at = struct.unpack_from('<I', data, 4)[0]
+        if data[names_at:names_at + 4] != b'vols':
+            raise ValueError
+        names_size = struct.unpack_from('<I', data, names_at + 4)[0]
+        names = data[names_at + 8:names_at + 8 + names_size].split(b'\0')[:-1]
+        index_at = names_at + 8 + names_size + (names_size & 1)
+        if data[index_at:index_at + 4] != b'voli' or struct.unpack_from('<I', data, index_at + 4)[0] != len(names) * 17:
+            raise ValueError
+        members = {}
+        for number, name in enumerate(names):
+            offset, size, compression = struct.unpack_from('<IIB', data, index_at + 8 + number * 17 + 8)
+            if data[offset:offset + 4] != b'VBLK':
+                raise ValueError
+            members[name.decode('cp1252').lower()] = lambda entry=(offset + 8, size, compression): read_block(data, *entry)
+        return members
+    except (ValueError, struct.error):
+        raise ValueError('Unsupported volume: ' + path.name) from None
+
+
+def read_block(data, offset, size, compression):
+    """One PVOL member: stored, run-length or LZH compressed."""
+    if compression == 0:
+        return data[offset:offset + size]
+    if compression == 3:
+        return lzh_expand(data, offset, size)[0]
+    if compression != 1:
+        raise ValueError('Unsupported volume compression %d' % compression)
+    output = bytearray()
+    while len(output) < size:
+        control, count = data[offset], data[offset] & 0x7f
+        if control & 0x80:
+            output += data[offset + 1:offset + 2] * count
+            offset += 2
+        else:
+            output += data[offset + 1:offset + 1 + count]
+            offset += 1 + count
+    return bytes(output)
+
+
 def read_terrain_block(data):
     """GBLK version 5 terrain block: heights, material (flags, index) pairs and 4-bit RGB lightmap."""
     magic, _, version, _, _, light_scale, lowest, highest, size_x, size_y = struct.unpack_from('<4sIi16siiffii', data)
@@ -192,8 +243,51 @@ def read_terrain_index(data):
             'columns': columns, 'rows': rows, 'blockMap': block_map}
 
 
+def read_palettes(data):
+    """PL98 palette set: ({palette id: flat RGB list}, haze RGB or None)."""
+    if data[:4] != b'PL98':
+        raise ValueError('Unsupported palette')
+    count, _, _, haze = struct.unpack_from('<iiii', data, 4)
+    palettes, colours = {}, b''
+    for number in range(count):
+        record = 52 + number * 1032
+        rgba = data[record:record + 1024]
+        colours = colours or rgba
+        palettes[struct.unpack_from('<I', data, record + 1024)[0]] = [value for index, value in enumerate(rgba) if index % 4 != 3]
+    return palettes, list(colours[haze * 4:haze * 4 + 3]) if 0 <= haze < 256 and colours else None
+
+
+def bitmap_png(data, palettes):
+    """PNG bytes for a PNG, Windows bitmap or DarkStar PBMP; indexed PBMPs take colours from the mission palette."""
+    if data[:4] != b'PBMP':
+        with Image.open(io.BytesIO(data)) as source:
+            image = source.convert('RGB')
+    else:
+        chunks, offset = {}, 8
+        while offset + 8 <= len(data):
+            size = struct.unpack_from('<I', data, offset + 4)[0]
+            chunks[data[offset:offset + 4]] = data[offset + 8:offset + 8 + size]
+            offset += 8 + size
+        _, width, height, depth = struct.unpack_from('<4i', chunks[b'head'])
+        palette = palettes.get(struct.unpack('<I', chunks[b'PiDX'])[0]) if b'PiDX' in chunks else None
+        palette = palette or next(iter(palettes.values()), None)
+        if depth != 8 or not palette:
+            raise ValueError('Unsupported bitmap: %d-bit%s' % (depth, '' if palette else ', no palette'))
+        # Top-down rows padded to four bytes; any further mip levels follow and are ignored.
+        stride = (width + 3) & ~3
+        image = Image.frombytes('P', (width, height), chunks[b'data'][:stride * height], 'raw', 'P', stride)
+        image.putpalette(palette)
+        image = image.convert('RGB')
+    output = io.BytesIO()
+    image.save(output, 'PNG')
+    return output.getvalue()
+
+
 def parse_mission(text):
-    """Nested `instant Class "name" { key = "value"; };` objects up to the export end marker."""
+    """Nested `instant Class "name" { key = "value"; };` objects up to the export end marker.
+
+    DarkStar class and field names are case-insensitive, so both are stored lowercase.
+    """
     root = {'class': 'root', 'name': '', 'fields': {}, 'children': []}
     stack = [root]
     for line in text.split('//--- export object end ---//')[0].splitlines():
@@ -201,7 +295,7 @@ def parse_mission(text):
         opened = re.fullmatch(r'instant\s+(\w+)(?:\s+"([^"]*)")?\s*\{', line)
         field = re.fullmatch(r'([\w\[\]]+)\s*=\s*"(.*)";', line)
         if opened:
-            node = {'class': opened[1], 'name': opened[2] or '', 'fields': {}, 'children': []}
+            node = {'class': opened[1].lower(), 'name': opened[2] or '', 'fields': {}, 'children': []}
             stack[-1]['children'].append(node)
             stack.append(node)
         elif line == '};':
@@ -209,7 +303,7 @@ def parse_mission(text):
                 raise ValueError('Unbalanced mission file')
             stack.pop()
         elif field:
-            stack[-1]['fields'][field[1]] = field[2]
+            stack[-1]['fields'][field[1].lower()] = field[2]
     if len(stack) != 1:
         raise ValueError('Unbalanced mission file')
     return root
@@ -218,7 +312,7 @@ def parse_mission(text):
 def walk(node, groups=()):
     yield node, groups
     for item in node['children']:
-        yield from walk(item, groups + (node['name'],))
+        yield from walk(item, groups + (node['name'].lower(),))
 
 
 def floats(text, count=3):
@@ -244,125 +338,318 @@ def placement(position, rotation):
     return [*x_axis, 0, *y_axis, 0, *z_axis, 0, *viewer(position), 1]
 
 
-def import_map(game_base, output, model_dir=ROOT / 'static/model_json'):
-    if output.exists():
-        raise ValueError('Choose a new output directory; existing map packs are never overwritten')
-    folders = [game_base, game_base / 'missions']
-    files = {path.name.lower(): path for folder in folders if folder.is_dir() for path in folder.iterdir() if path.is_file()}
-    mission_path = files.get(MISSION.lower() + '.mis')
-    if not mission_path:
-        raise ValueError('Missing stock mission: %s.mis' % MISSION)
-    mission = parse_mission(mission_path.read_text(encoding='cp1252'))
+class Install:
+    """Read-only view of a Tribes `base` folder: loose files, volumes and script datablocks."""
 
-    # Resources come only from the volumes the mission itself mounts; later volumes win.
-    resources, provenance = {}, []
-    for node, _ in walk(mission):
-        if node['class'] != 'SimVolume':
+    def __init__(self, game_base):
+        game_base = Path(game_base)
+        if (game_base / 'base').is_dir():
+            game_base = game_base / 'base'
+        if not game_base.is_dir():
+            raise ValueError('Game folder not found: %s' % game_base)
+        self.base = game_base
+        self._folders, self._volumes, self._hashes, self._scripts, self._everything = {}, {}, {}, {}, None
+        self.converted = {}  # (interior bytes hash, palette name) -> exported model file
+
+    def files(self, folder):
+        if folder not in self._folders:
+            self._folders[folder] = {path.name.lower(): path for path in sorted(folder.iterdir()) if path.is_file()} if folder.is_dir() else {}
+        return self._folders[folder]
+
+    def find(self, name, folders):
+        """A loose file by case-insensitive name; newer installs ship `.zip` where missions say `.vol`."""
+        name = Path(name).name.lower()
+        swapped = {'.vol': '.zip', '.zip': '.vol'}.get(Path(name).suffix)
+        for folder in folders:
+            for candidate in (name, Path(name).stem + swapped if swapped else name):
+                if candidate in self.files(folder):
+                    return self.files(folder)[candidate]
+        return None
+
+    def volume(self, path):
+        if path not in self._volumes:
+            self._volumes[path] = open_volume(path)
+        return self._volumes[path]
+
+    def sha256(self, path):
+        if path not in self._hashes:
+            with path.open('rb') as stream:
+                self._hashes[path] = hashlib.file_digest(stream, 'sha256').hexdigest()
+        return self._hashes[path]
+
+    def everything(self):
+        """Every member of every volume directly in the base folder, for resources a mission uses without mounting."""
+        if self._everything is None:
+            self._everything = {}
+            for path in self.files(self.base).values():
+                if path.suffix.lower() in ('.vol', '.zip'):
+                    try:
+                        for name, reader in self.volume(path).items():
+                            self._everything.setdefault(name, reader)
+                    except (ValueError, OSError, zipfile.BadZipFile):
+                        pass
+        return self._everything
+
+    def shapes(self, mission_folder):
+        """Datablock name -> shape file, read from every script the install and the mission folder carry."""
+        def scan(text, found):
+            for block in re.finditer(r'^[ \t]*\w+Data[ \t]+(\w+)\s*\{(.*?)^[ \t]*\};', text, re.S | re.M):
+                shape = re.search(r'shapeFile\s*=\s*"([^"]+)"', block[2])
+                if shape:
+                    found[block[1].lower()] = Path(shape[1]).stem
+
+        if self.base not in self._scripts:
+            found = {}
+            for name, reader in self.everything().items():
+                if name.endswith('.cs'):
+                    scan(reader().decode('cp1252', 'replace'), found)
+            for path in sorted(self.base.rglob('*.cs')):
+                scan(path.read_text(encoding='cp1252', errors='replace'), found)
+            self._scripts[self.base] = found
+        if mission_folder not in self._scripts:
+            found = {}
+            if self.base not in mission_folder.parents and mission_folder != self.base:
+                for path in sorted(mission_folder.glob('*.cs')):
+                    scan(path.read_text(encoding='cp1252', errors='replace'), found)
+            self._scripts[mission_folder] = found
+        return {**self._scripts[self.base], **self._scripts[mission_folder]}
+
+
+def map_id(name):
+    return re.sub(r'[^a-z0-9_-]', '_', name.lower())
+
+
+def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_json'):
+    """Write one mission's pack to root/maps/<id>; returns its scene. Shared textures go to root/textures."""
+    mission = parse_mission(mission_path.read_text(encoding='cp1252'))
+    nodes = list(walk(mission))
+    folders = [mission_path.parent, install.base / 'missions', install.base]
+    resources, provenance, warnings = {}, [], []
+    for node, _ in nodes:
+        if node['class'] != 'simvolume' or not node['fields'].get('filename'):
             continue
-        path = files.get(node['fields']['fileName'].lower())
-        if not path or not zipfile.is_zipfile(path):
-            continue  # ponytail: zip volumes only; add a PVOL reader for installs that still ship .vol.
-        with path.open('rb') as stream:
-            provenance.append({'volume': path.name, 'sha256': hashlib.file_digest(stream, 'sha256').hexdigest()})
-        with zipfile.ZipFile(path) as archive:
-            for entry in archive.infolist():
-                if not entry.is_dir():
-                    resources[Path(entry.filename).name.lower()] = (path, entry.filename)
+        path = install.find(node['fields']['filename'], folders)
+        if not path:
+            warnings.append('Volume not found: ' + node['fields']['filename'])
+            continue
+        resources.update(install.volume(path))  # Later volumes win.
+        provenance.append({'volume': path.name, 'sha256': install.sha256(path)})
 
     def read(name):
-        if name.lower() not in resources:
+        name = Path(name).name.lower()
+        reader = resources.get(name) or install.everything().get(name)
+        if reader:
+            return reader()
+        path = install.find(name, folders)
+        if not path:
             raise ValueError('Required map resource missing: ' + name)
-        path, member = resources[name.lower()]
-        with zipfile.ZipFile(path) as archive:
-            return archive.read(member)
+        return path.read_bytes()
 
-    nodes = list(walk(mission))
-    terrain_node = next(node for node, _ in nodes if node['class'] == 'SimTerrain')
-    index = read_terrain_index(read(terrain_node['fields']['tedFileName']))
+    def first(kind):
+        return next((node['fields'] for node, _ in nodes if node['class'] == kind), {})
+
+    palettes, haze = {}, None
+    try:
+        palettes, haze = read_palettes(read(first('simpalette')['filename']))
+    except (KeyError, ValueError, struct.error):
+        pass  # Installs with PNG textures ship no palette.
+
+    def texture(name):
+        """Shared, content-named PNG for a material bitmap; None when the install has no such bitmap."""
+        for candidate in (Path(name).stem + '.png', Path(name).stem + '.bmp'):
+            try:
+                png = bitmap_png(read(candidate), palettes)
+            except (ValueError, KeyError, OSError, struct.error):
+                continue
+            stored = hashlib.sha1(png).hexdigest()[:20] + '.png'
+            (root / 'textures').mkdir(parents=True, exist_ok=True)
+            if not (root / 'textures' / stored).exists():
+                (root / 'textures' / stored).write_bytes(png)
+            return stored
+        return None
+
+    def material_names(name):
+        materials = interior_dml.dml()
+        materials.load_binary(read(name))
+        return [material.name for material in materials.materials]
+
+    terrain_node = first('simterrain')
+    if 'tedfilename' not in terrain_node:
+        raise ValueError('Mission has no terrain')
+    index = read_terrain_index(read(terrain_node['tedfilename']))
     if len(set(index['blockMap'])) != 1:
         raise ValueError('Only terrains that repeat a single block are supported')
-    stem = Path(terrain_node['fields']['tedFileName']).stem
-    block = read_terrain_block(read('%s#%d.dtb' % (stem, index['blockMap'][0])))
+    block = read_terrain_block(read('%s#%d.dtb' % (Path(terrain_node['tedfilename']).stem, index['blockMap'][0])))
     if block['size'] != index['squares']:
         raise ValueError('Terrain block does not match its index')
-    materials = interior_dml.dml()
-    materials.load_binary(read(index['materialList']))
-    used = sorted(set(block['materials'][1::2]))
-    textures, warnings = {}, []
-    for slot in used:
-        name = Path(materials.materials[slot].name).stem.lower() + '.png'
-        if name in resources:
-            textures[slot] = name
+    terrain_materials, textures = material_names(index['materialList']), {}
+    for slot in sorted(set(block['materials'][1::2])):
+        stored = texture(terrain_materials[slot]) if slot < len(terrain_materials) else None
+        if stored:
+            textures[slot] = stored
         else:
-            warnings.append('Missing terrain texture: ' + name)
+            warnings.append('Missing terrain texture: %s' % (terrain_materials[slot] if slot < len(terrain_materials) else 'slot %d' % slot))
+
+    def convert(stem):
+        """Export an interior the catalog lacks (custom map buildings) from the install into root/models."""
+        try:
+            source = read(stem + '.dis')
+        except ValueError:
+            return None
+        key = (hashlib.sha1(source).hexdigest(), first('simpalette').get('filename', '').lower())
+        if key not in install.converted:
+            install.converted[key] = None
+            with tempfile.TemporaryDirectory() as work:
+                work = Path(work)
+                try:
+                    shape = interiorshape.interiorshape()
+                    shape.load_binary(source)
+                    (work / (stem + '.dis')).write_bytes(source)
+                    stored = {}
+                    for name in [item.decode('cp1252') for item in shape.get_dml_list()[:1] + shape.get_dig_list()]:
+                        (work / name).write_bytes(read(name))
+                    for name in material_names(shape.get_dml_list()[0].decode('cp1252')):
+                        png = texture(name) if name.strip() else None
+                        if png:  # The exporter reads texture sizes from PNG files beside the geometry.
+                            stored[Path(name).stem + '.png'] = png
+                            shutil.copyfile(root / 'textures' / png, work / (Path(name).stem + '.png'))
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        export_interior.main(str(work / (stem + '.dis')), str(work), str(work), str(work))
+                    model = json.loads((work / (stem + '.json')).read_text(encoding='utf-8'))
+                    model['material_textures'] = [name if name.startswith('[') else stored.get(name, '') for name in model['material_textures']]
+                    data = json.dumps(model).encode()
+                    name = '%s-%s.json' % (map_id(stem), hashlib.sha1(data).hexdigest()[:12])
+                    (root / 'models').mkdir(parents=True, exist_ok=True)
+                    (root / 'models' / name).write_bytes(data)
+                    install.converted[key] = name
+                except Exception:  # The exporter is tolerant of stock files only; any failure just leaves a placeholder.
+                    pass
+        return install.converted[key]
 
     models = {path.stem.lower(): path.stem for path in model_dir.glob('*.json')}
-    objects, viewpoints = [], []
+    shapes = install.shapes(mission_path.parent)
+    objects, viewpoints, missing = [], [], set()
     for node, groups in nodes:
         fields = node['fields']
-        if 'position' not in fields or node['class'] == 'SimTerrain':
+        if 'position' not in fields or node['class'] == 'simterrain':
             continue
         matrix = placement(floats(fields['position']), floats(fields.get('rotation', '0 0 0')))
-        if node['class'] == 'Marker':
-            if 'ObserverDropPoints' in groups:
+        if node['class'] == 'marker':
+            if 'observerdroppoints' in groups:
                 viewpoints.append(matrix)
             continue
-        if node['class'] == 'InteriorShape':
-            shape = re.sub(r'(\.\d+)?\.dis$', '', fields['fileName'], flags=re.I)
+        if node['class'] == 'interiorshape':
+            shape, kind = re.sub(r'(\.\d+)?\.dis$', '', fields.get('filename', ''), flags=re.I), 'interior'
         else:
-            shape = DATABLOCK_SHAPES.get(fields.get('dataBlock', '').lower())
+            shape, kind = shapes.get(fields.get('datablock', '').lower()), 'shape'
         if not shape:
             continue
-        model = models.get(shape.lower())
+        model, source = models.get(shape.lower()), 'catalog'
+        if not model and kind == 'interior':
+            model, source = convert(shape), 'pack'
         if not model:
-            warnings.append('No preview model for %s (%s)' % (shape, node['name'] or node['class']))
-        objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'matrix': matrix})
+            missing.add('%s %s' % (kind, shape.lower()))
+        objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'source': source, 'matrix': matrix})
+    warnings += ['No preview model for ' + item for item in sorted(missing)]
 
-    # The sky dome is not drawn; its first texel stands in as the haze/background colour.
-    sky = next((node['fields'] for node, _ in nodes if node['class'] == 'Sky'), {})
-    haze = [128, 140, 150]
-    try:
-        sky_list = interior_dml.dml()
-        sky_list.load_binary(read(sky['dmlName']))
-        with Image.open(io.BytesIO(read(Path(sky_list.materials[0].name).stem + '.png'))) as image:
-            haze = list(image.convert('RGB').getpixel((0, 0)))
-    except (KeyError, ValueError, IndexError, OSError):
-        warnings.append('Sky colour unavailable; using neutral haze')
+    if not viewpoints:  # Training and some custom missions have no observer cameras: look down on the placed objects.
+        centre = first('missioncenterpos')
+        x, y = (float(centre.get('x', 0)) + float(centre.get('w', 0)) / 2, float(centre.get('y', 0)) + float(centre.get('h', 0)) / 2)
+        if objects:
+            x, y = (sum(item['matrix'][12] for item in objects) / len(objects), -sum(item['matrix'][14] for item in objects) / len(objects))
+        top = max(struct.unpack('<%df' % (len(block['heights']) // 4), block['heights']))
+        viewpoints.append(placement((x, y - 150, top + 60), (-.5, 0, 0)))
 
-    sun = next((node['fields'] for node, _ in nodes if node['class'] == 'Planet' and node['fields'].get('castShadows') == 'True'), {})
+    # The sky dome is not drawn. Background and fog use the palette haze colour, else the sky's first texel.
+    sky = first('sky')
+    if not haze:
+        try:
+            with Image.open(root / 'textures' / texture(material_names(sky['dmlname'])[0])) as image:
+                haze = list(image.convert('RGB').getpixel((0, 0)))
+        except (KeyError, ValueError, IndexError, TypeError, OSError, struct.error):
+            try:
+                haze = [round(max(0, min(1, value)) * 255) for value in floats(sky.get('skycolor', ''))]
+            except ValueError:
+                haze = [128, 140, 150]
+
+    sun = next((node['fields'] for node, _ in nodes if node['class'] == 'planet' and node['fields'].get('castshadows', '').lower() == 'true'), {})
+    description = install.find(mission_path.stem + '.dsc', folders)
+    kind = re.search(r'\$MDESC::Type\s*=\s*"([^"]*)"', description.read_text(encoding='cp1252', errors='replace')) if description else None
     scene = {
-        'mission': MISSION,
+        'id': map_id(mission_path.stem), 'mission': mission_path.stem, 'type': kind[1] if kind else '',
         'terrain': {'squares': block['size'], 'unit': index['unit'], 'columns': index['columns'], 'rows': index['rows'],
-                    'position': floats(terrain_node['fields']['position']), 'lightWidth': block['lightWidth'],
+                    'position': floats(terrain_node.get('position', '0 0 0')), 'lightWidth': block['lightWidth'],
                     'textures': textures,
-                    'visibleDistance': float(terrain_node['fields']['visibleDistance']),
-                    'hazeDistance': float(terrain_node['fields']['hazeDistance'])},
+                    'visibleDistance': float(terrain_node.get('visibledistance', 500)),
+                    'hazeDistance': float(terrain_node.get('hazedistance', 250))},
         'sun': {'azimuth': float(sun.get('azimuth', 0)), 'incidence': float(sun.get('incidence', 45)),
                 'intensity': floats(sun.get('intensity', '0.6 0.6 0.6')), 'ambient': floats(sun.get('ambient', '0.4 0.4 0.4'))},
         'haze': haze, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings}
 
-    output.mkdir(parents=True)
-    (output / 'heights.bin').write_bytes(block['heights'])
-    (output / 'materials.bin').write_bytes(block['materials'])
-    (output / 'light.bin').write_bytes(block['light'])
-    (output / 'terrain').mkdir()
-    for name in textures.values():
-        (output / 'terrain' / name).write_bytes(read(name))
-    (output / 'scene.json').write_text(json.dumps(scene), encoding='utf-8')
-    (output / 'SOURCES.json').write_text(json.dumps({
-        'mission': MISSION, 'policy': 'Only volumes mounted by the mission; later volumes win. No loose or mod overrides.',
-        'missionFile': {'name': mission_path.name, 'sha256': hashlib.sha256(mission_path.read_bytes()).hexdigest()},
+    # Build beside the target, then swap, so a failed import never leaves a half-written map.
+    target = root / 'maps' / scene['id']
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix='importing-', dir=target.parent))
+    (staging / 'heights.bin').write_bytes(block['heights'])
+    (staging / 'materials.bin').write_bytes(block['materials'])
+    (staging / 'light.bin').write_bytes(block['light'])
+    (staging / 'scene.json').write_text(json.dumps(scene), encoding='utf-8')
+    (staging / 'SOURCES.json').write_text(json.dumps({
+        'mission': {'file': mission_path.name, 'sha256': hashlib.sha256(mission_path.read_bytes()).hexdigest()},
+        'policy': 'Volumes mounted by the mission, later volumes win; then other base volumes; then loose files.',
         'volumes': provenance}, indent=2), encoding='utf-8')
+    if (target / 'scene.json').is_file():
+        shutil.rmtree(target)
+    staging.rename(target)
     return scene
 
 
+def import_maps(game_base, output, missions=None, replace=False, model_dir=ROOT / 'static/model_json'):
+    """Import every mission of an install, or the given mission files/folders. Returns a report."""
+    install = Install(game_base)
+    paths = []
+    for item in [Path(item) for item in missions or [install.base / 'missions']]:
+        found = sorted(item.glob('*.[mM][iI][sS]')) if item.is_dir() else [item] if item.is_file() and item.suffix.lower() == '.mis' else []
+        if not found:
+            raise ValueError('No mission files found: %s' % item)
+        paths += found
+    output = Path(output)
+    report = {'imported': [], 'skipped': [], 'failed': {}, 'warnings': {}}
+    for path in paths:
+        if not replace and (output / 'maps' / map_id(path.stem) / 'scene.json').is_file():
+            report['skipped'].append(path.stem)
+            continue
+        try:
+            scene = import_mission(install, path, output, model_dir)
+        except (ValueError, KeyError, IndexError, OSError, struct.error, zipfile.BadZipFile) as error:
+            report['failed'][path.stem] = str(error) or type(error).__name__
+            for leftover in (output / 'maps').glob('importing-*'):
+                shutil.rmtree(leftover, ignore_errors=True)
+            continue
+        report['imported'].append(path.stem)
+        if scene['warnings']:
+            report['warnings'][path.stem] = scene['warnings']
+    maps = []
+    for scene_path in sorted((output / 'maps').glob('*/scene.json')) if (output / 'maps').is_dir() else []:
+        scene = json.loads(scene_path.read_text(encoding='utf-8'))
+        maps.append({'id': scene['id'], 'name': scene['mission'], 'type': scene['type'], 'warnings': len(scene['warnings'])})
+    output.mkdir(parents=True, exist_ok=True)
+    (output / 'index.json').write_text(json.dumps(sorted(maps, key=lambda item: item['name'].lower())), encoding='utf-8')
+    return report
+
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--game-base', type=Path, required=True)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--game-base', type=Path, required=True, help='Tribes folder or its base folder')
+    parser.add_argument('--mission', type=Path, action='append', help='mission file or folder of missions; default: every mission in the install')
     parser.add_argument('--output', type=Path, default=Path('local-data/t1-maps'))
+    parser.add_argument('--replace', action='store_true', help='re-import maps that already exist in the output')
     args = parser.parse_args()
-    result = import_map(args.game_base, args.output)
-    print('Imported %s: %d objects, %d viewpoints, %d terrain textures into %s' % (
-        MISSION, len(result['objects']), len(result['viewpoints']), len(result['terrain']['textures']), args.output))
-    for warning in result['warnings']:
-        print('Warning:', warning)
+    result = import_maps(args.game_base, args.output, args.mission, args.replace)
+    print('Imported %d, skipped %d existing, failed %d into %s' % (
+        len(result['imported']), len(result['skipped']), len(result['failed']), args.output))
+    for name, reason in result['failed'].items():
+        print('Failed:', name, '-', reason)
+    for name, items in result['warnings'].items():
+        for item in items:
+            print('Warning:', name, '-', item)

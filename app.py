@@ -19,6 +19,7 @@ import subprocess # For opening folders on Linux/macOS
 import gzip
 import zipfile
 from tools.import_q3 import import_catalog as import_q3_catalog, current_import
+from tools.import_t1_map import import_maps as import_t1_maps
 
 # --- System Tray Imports ---
 try:
@@ -114,6 +115,27 @@ def t1_maps_viewer():
 @app.route('/t1-map-data/<path:filename>')
 def t1_map_data(filename):
     return send_from_directory(local_data_dir / 't1-maps', filename)
+
+
+@app.route('/import_t1_maps', methods=['POST'])
+def import_t1_maps_route():
+    # Local filesystem mutations require same-origin JSON, not a cross-site form.
+    if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip() or not isinstance(payload.get('missions', ''), str):
+        return jsonify(error='Enter your local Tribes folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        missions = [payload['missions'].strip()] if payload.get('missions', '').strip() else None
+        return jsonify(import_t1_maps(payload['game'].strip(), local_data_dir / 't1-maps', missions, payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
 
 
 def selected_game():
