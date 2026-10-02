@@ -612,7 +612,9 @@ random convex brushes.
   and sees the other placement follow, and closes it with Escape; walks on a
   floor in play mode, through a teleporter to its Target, and is thrown by a
   jump pad onto its Target; then draws the first imported map and checks it is
-  not blank. Run three times in a row it passed every time.
+  not blank. Run six times in a row it passed every time. (Where it leaves
+  edit mode and comes back only to refresh the view, it does so with no frame
+  between, as play mode would otherwise move the camera.)
 
 Checked on 2026-10-02 with the 18 maps of a stock install (Steam folder
 `reflexfps`): AbandonedShelter, Aerowalk, Ashur, empty, forge, furnace,

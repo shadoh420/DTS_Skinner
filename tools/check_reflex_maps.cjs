@@ -21,6 +21,8 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     const status = () => page.textContent('#status'), said = () => page.textContent('#selection');
     const brushes = () => page.evaluate(() => window.ReflexMap.global(window.skinnerReflexMaps.map).items.filter(item => item.kind === 'brush').length);
     // A click `left` pixels left of the middle of the view.
+    // Leaves edit mode and comes back with no frame between, so play mode does not move the camera.
+    const refresh = () => page.evaluate(() => { window.skinnerReflexMaps.setEditing(false); window.skinnerReflexMaps.setEditing(true); });
     const centre = async (left = 0) => { const box = await page.locator('#c').boundingBox(); await page.mouse.click(box.x + box.width / 2 - left, box.y + box.height / 2); };
 
     // A new map opens in edit mode.
@@ -136,7 +138,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
       m.load(window.ReflexMap.write(m.map), 'untitled');
       m.camera.position.copy(position); m.camera.rotation.copy(rotation);
     });
-    await page.keyboard.press('0'); await page.keyboard.press('0');
+    await refresh();
     // The clone stands 8 along x from the box: the strip of its top beyond the box is its own.
     at = await screen([pulled.max[0] + 4, pulled.max[1], middle[2]]);
     await page.mouse.move(...at);
@@ -275,7 +277,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
       m.load(window.ReflexMap.write(m.map), 'untitled');
       m.camera.position.set(80, 300, 520); m.camera.lookAt(80, 60, 0);
     });
-    await page.keyboard.press('0'); await page.keyboard.press('0');
+    await refresh();
     const brushesBefore = (await items()).filter(item => item.kind === 'brush').length;
     await page.keyboard.down('Shift'); await clickAt([0, 32, 0]); await page.keyboard.up('Shift');
     assert.match(await page.textContent('#selection'), /Face picked \(4 corners\)/);
@@ -310,7 +312,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     await fresh();
     await page.selectOption('#grid', '16');
     await page.selectOption('#angle', '90');
-    await page.keyboard.press('0'); await page.keyboard.press('0');
+    await refresh();
     // A box 64 by 16 and a spawn at its corner, turned a quarter about their middle (32, 8): the turn would leave
     // them 8 off the grid, so they move the rest of the way onto it.
     await page.evaluate(() => {
@@ -334,7 +336,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
 
     // The texture keys work on the face under the cursor: the top of the large box.
     await fresh();
-    await page.keyboard.press('0'); await page.keyboard.press('0');
+    await refresh();
     const topFace = async () => { const brush = await firstBrush(); return brush.faces.find(face => face.indices.every(i => brush.vertices[i][1] === 64)); };
     await page.mouse.move(...await screen([-8, 64, 8]));
     for (const key of ['ArrowRight', 'ArrowUp', 'ArrowUp', 'Home', 'PageUp', 'Period', 'Delete']) await page.keyboard.press(key);
@@ -448,7 +450,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
 
     // Several faces picked (Ctrl+Shift-click adds): the texture keys and Shift+M work on all of them.
     await fresh();
-    await page.keyboard.press('0'); await page.keyboard.press('0');
+    await refresh();
     await page.keyboard.down('Shift'); await clickAt([0, 64, 0]); await page.keyboard.up('Shift');
     await page.keyboard.down('Control'); await page.keyboard.down('Shift'); await clickAt([0, 32, -32]); await page.keyboard.up('Shift'); await page.keyboard.up('Control');
     assert.match(await said(), /2 faces picked/);
@@ -481,7 +483,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
       m.camera.position.set(0, 384, 512); m.camera.lookAt(0, 0, 0);
       m.selected.add(window.ReflexMap.global(m.map).items[2]);
     });
-    await page.keyboard.press('0'); await page.keyboard.press('0');
+    await refresh();
     const wedgeBefore = await page.evaluate(() => { const [item] = window.skinnerReflexMaps.selected; return item.vertices.filter(v => v[1] === 48).map(v => v[0]); });
     await page.click('#mirror');
     const wedgeAfter = await page.evaluate(() => { const [item] = window.skinnerReflexMaps.selected; return {top: item.vertices.filter(v => v[1] === 48).map(v => v[0]), problems: window.ReflexBrush.check(item), bounds: window.ReflexBrush.bounds(item)}; });
