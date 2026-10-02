@@ -276,6 +276,17 @@
     if (yaw && turnable.has(item.type) && !properties.some(p => p.name === 'angles')) properties.push({type: 'Vector3', name: 'angles', value: [turned(0), 0, 0]});
     return {...item, properties};
   }
+  /* A copy of a brush or entity mirrored across the plane square to `axis` (0 x, 1 y, 2 z) through `centre`. A
+     brush's faces are wound the other way round, so they still face out; an entity's yaw is mirrored (across x it
+     turns the other way, across z it also turns half round). A Prefab entity's prefab cannot be mirrored by its
+     placement: only its position and yaw are. */
+  function mirrorItem(item, axis, centre) {
+    const flip = point => point.map((value, i) => i === axis ? tidy(2 * centre - value) : value);
+    if (item.kind === 'brush') return {kind: 'brush', vertices: item.vertices.map(flip), faces: item.faces.map(face => ({...face, indices: [...face.indices].reverse()}))};
+    const yaw = value => tidy((((axis === 0 ? -value : axis === 2 ? 180 - value : value) % 360) + 360) % 360);
+    return {...item, properties: item.properties.map(p => p.name === 'position' && p.type === 'Vector3' ? {...p, value: flip(p.value)}
+      : p.name === 'angles' && p.type === 'Vector3' && axis !== 1 ? {...p, value: [yaw(p.value[0]), p.value[1], p.value[2]]} : {...p})};
+  }
   // How a Prefab entity places its prefab: the group, the transform into the map and the yaw.
   function placement(map, entity) {
     const group = prefab(map, property(entity, 'prefabName'));
@@ -331,5 +342,5 @@
   }
 
   exports.ReflexMap = {parse, write, empty, global, prefab, property, colourOf, flatten, compose, apply, fixed, isVolume, worldInsertAt, VOLUMES, MapError,
-    invert, moveItem, placement, parts, breakPrefab, setPrefab, prefabUses};
+    invert, moveItem, mirrorItem, placement, parts, breakPrefab, setPrefab, prefabUses};
 })(typeof module !== 'undefined' ? module.exports : window);

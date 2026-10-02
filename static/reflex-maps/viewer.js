@@ -19,7 +19,9 @@
    cursor (me_texcoords_*), and Shift with the arrows nudges the selection instead. C is clip mode: two or three points
    make a plane, Enter clips and Shift+Enter splits. A click on anything a prefab places selects its Prefab entity;
    the console (`) breaks, updates, makes and lists prefabs (me_breakprefab, me_updateprefab, me_createprefab,
-   me_listprefabs), so a prefab is edited by breaking a placement and updating it from the pieces. */
+   me_listprefabs), and a double click on a placement edits its prefab in place. Ctrl+Shift-click picks more faces;
+   Mirror mirrors the selection. Faces are textured from the game's materials or any of Skinner's texture libraries
+   (the material browser). 0 plays: a player walks through the map (movement.js); F flies instead. */
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
@@ -280,6 +282,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function rebuild() {
     flat = M.flatten(map);
     playWorld = null; player = null;
+    if (openPrefab && !globalGroup().items.some(item => brokenFrom.get(item) === openPrefab.from)) openPrefab = null;
     ownerOfItem = new Map(flat.brushes.filter(entry => !entry.path.length).map(entry => [entry.source, entry.owner]));
     for (const mesh of [world, clips, glass, volumes]) mesh.geometry.dispose();
     const volume = entry => M.isVolume(entry.owner);
@@ -364,7 +367,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const snap = value => Math.round(value / settings.grid) * settings.grid;
   let lastPoint = null, lastNormal = null, createType = 0, vertexMode = false;
   // The bridge tool: the face Shift-click picked, whether B is aiming from it, the steps, and what a click would make.
-  let bridgeFrom = null, bridging = false, segments = 4, bridgePreview = null;
+  let bridging = false, segments = 4, bridgePreview = null;
+  // Faces Shift-click picked, {item, index} (Ctrl+Shift-click adds and removes): the texture keys and Shift+M work on
+  // them, and B bridges from the last.
+  let picked = [];
+  const bridgeFace = () => { const last = picked[picked.length - 1]; return last ? pickFace({entry: {source: last.item}, face: last.item.faces[last.index]}) : null; };
   // Fields new faces take: those K picked up, else plain concrete.
   let template = {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: 'common/materials/stone/concrete'};
   const say = text => { $('selection').textContent = text; };
@@ -410,6 +417,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const item of globalGroup().items) {
       if (!changes.has(item)) { items.push(item); continue; }
       const instead = changes.get(item).map(asItem);
+      if (instead.length === 1 && instead[0].kind === 'brush' && instead[0].faces.length === (item.faces || []).length) for (const face of picked) if (face.item === item) face.item = instead[0];
       if (brokenFrom.has(item)) for (const next of instead) if (!brokenFrom.has(next)) brokenFrom.set(next, brokenFrom.get(item));
       items.push(...instead);
       changed.push(...instead);
@@ -417,10 +425,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const {at, things} of inserts) {
       const fresh = things.map(asItem);
       if (brokenFrom.has(at)) for (const next of fresh) if (!brokenFrom.has(next)) brokenFrom.set(next, brokenFrom.get(at));
+      // While a prefab is open, what is made goes into it.
+      if (openPrefab && (at === 'world' || at === 'end')) for (const next of fresh) if (!brokenFrom.has(next)) brokenFrom.set(next, openPrefab.from);
       const index = at === 'world' ? M.worldInsertAt({items}) : at === 'end' ? items.length : (items.indexOf(at) + 1 || items.length);
       items.splice(index, 0, ...fresh);
       added.push(...fresh);
     }
+    if (openPrefab) syncPrefab(items);
     globalGroup().items = items;
     selected.clear();
     selection.position.set(0, 0, 0);
@@ -431,6 +442,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ---- Selection overlay, vertex dots and the shape being drawn ----
   const ghost = new THREE.Group();
   root.add(ghost);
+  const pickedOutline = new THREE.LineBasicMaterial({color: 0x3fc8ff, depthTest: false, transparent: true});
   const dotMaterial = new THREE.PointsMaterial({color: 0xf0c674, size: 9, sizeAttenuation: false, depthTest: false, transparent: true});
   const hoverMaterial = new THREE.PointsMaterial({color: 0xffffff, size: 14, sizeAttenuation: false, depthTest: false, transparent: true});
   const hoverDot = new THREE.Points(new THREE.BufferGeometry(), hoverMaterial);
@@ -497,10 +509,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       box.material.depthTest = false;
       selection.add(box);
     }
-    if (bridgeFrom && !globalGroup().items.includes(bridgeFrom.item)) { bridgeFrom = null; bridging = false; }
-    if (bridgeFrom) {
-      const outline = new THREE.LineLoop(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(bridgeFrom.points.flat(), 3)),
-        new THREE.LineBasicMaterial({color: 0x3fc8ff, depthTest: false, transparent: true}));
+    const items = new Set(globalGroup().items);
+    picked = picked.filter(face => items.has(face.item) && face.item.faces[face.index]);
+    if (!picked.length) bridging = false;
+    for (const {item, index} of picked) {
+      const outline = new THREE.LineLoop(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(item.faces[index].indices.flatMap(i => item.vertices[i]), 3)), pickedOutline);
       outline.renderOrder = 4;
       selection.add(outline);
     }
@@ -529,13 +542,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('merge').disabled = brushes.length < 2 || !convex;
     $('split').disabled = !convex || !lastPoint;
     $('clipButton').classList.toggle('on', clipMode);
-    $('rotateInc').disabled = $('rotateDec').disabled = !count;
+    $('rotateInc').disabled = $('rotateDec').disabled = $('mirror').disabled = !count;
     $('duplicate').disabled = $('delete').disabled = !count;
     $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length;
-    $('mode').title = ($('mode').textContent = bridging ? `Bridge (B): aim at a face · wheel ${segments} step${segments > 1 ? 's' : ''} · click makes · Esc stops`
+    $('mode').title = $('mode').textContent = (bridging ? `Bridge (B): aim at a face · wheel ${segments} step${segments > 1 ? 's' : ''} · click makes · Esc stops`
       : clipMode ? `Clip (C): ${clipPoints.length} of 3 points · Enter clips · Shift+Enter splits · wheel flips · Esc`
       : createType ? `Create ${createLabel()}${createType <= 8 ? ` (${createType})` : ''}: ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
-      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode');
+      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode') + (openPrefab ? ` · prefab ${openPrefab.name} open (Esc with nothing selected closes)` : '');
     showPanel();
     $('material').textContent = `${template.material || 'no material'}${template.colour && M.colourOf(template) ? ` · ${template.colour}` : ''}`;
     $('swatch').style.background = '#' + new THREE.Color(...faceShade(template).diffuse.map(c => Math.pow(c, 1 / 2.2))).getHexString();
@@ -598,9 +611,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (event.shiftKey) {
       const hit = pick(event, false);
       if (hit && !hit.entry.path.length) {
-        bridgeFrom = pickFace(hit);
+        const face = {item: hit.entry.source, index: hit.entry.source.faces.indexOf(hit.face)};
+        const at = picked.findIndex(other => other.item === face.item && other.index === face.index);
+        if (adding(event)) { if (at >= 0) picked.splice(at, 1); else picked.push(face); } else picked = [face];
         showSelection();
-        say(bridgeFrom ? `Face picked (${bridgeFrom.points.length} corners) · B bridges it to another face` : '');
+        say(picked.length === 1 ? `Face picked (${hit.face.indices.length} corners) · the texture keys and Shift+M work on it · B bridges it to another face`
+          : picked.length ? `${picked.length} faces picked · the texture keys and Shift+M work on them · B bridges from the last` : '');
       }
       return;
     }
@@ -888,7 +904,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // ---- The bridge tool ----
   function startBridge() {
-    if (!bridgeFrom) { say('Shift-click a face first; B then bridges it to the face you aim at'); return; }
+    if (!picked.length) { say('Shift-click a face first; B then bridges it to the face you aim at'); return; }
     bridging = true; createType = 0; vertexMode = false; clipMode = false; clipPoints = []; ghost.clear();
     showHover(null);
     updateTools();
@@ -899,7 +915,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   function aimBridge(event) {
     ghost.clear();
     bridgePreview = null;
-    const hit = pick(event, false);
+    const hit = pick(event, false), bridgeFrom = bridgeFace();
+    if (!bridgeFrom) { stopBridge(); return; }
     if (!hit || hit.entry.path.length || (hit.entry.source === bridgeFrom.item && hit.face === bridgeFrom.face)) { say('Aim at the face to bridge to'); return; }
     const to = pickFace(hit);
     if (!to) return;
@@ -915,7 +932,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function makeBridge() {
     if (!bridgePreview) return;
     const brushes = bridgePreview;
-    bridging = false; bridgePreview = null; bridgeFrom = null; ghost.clear();
+    bridging = false; bridgePreview = null; picked = []; ghost.clear();
     replace(new Map(), [{at: 'world', things: brushes}], 'added');
     say(`Bridged with ${brushes.length} brush${brushes.length > 1 ? 'es' : ''}`);
   }
@@ -1053,6 +1070,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     body.append(element('div', {className: 'make'}, name, button('Make from selection', () => createPrefab(prefabDraft.trim()), 'me_createprefab <name>')),
       element('div', {className: 'actions'},
         button('Break selected', breakPrefabs, 'me_breakprefab: the selected placements become what their prefab holds'),
+        openPrefab ? button(`Close ${openPrefab.name}`, closePrefab, 'me_closeprefab: put the open prefab back as its placement') : button('Edit selected in place', editPrefabInPlace, 'me_editprefab (or double click a placement): its other placements change as you edit'),
         button('Update from selection', () => updatePrefab(prefabDraft.trim() || undefined), 'me_updateprefab [name]: the selection becomes what the prefab holds, in every placement')));
     const uses = M.prefabUses(map);
     if (!uses.length) { body.append(element('p', {textContent: 'This map has no prefabs.'})); return; }
@@ -1160,11 +1178,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   function applyMaterial(oneFace) {
     const paint = face => ({...face, material: template.material, colour: template.colour});
     if (oneFace) {
-      const hit = mouseAt && pick(mouseAt, false);
-      if (!hit || hit.entry.path.length) return;
-      const item = hit.entry.source;
-      replace(new Map([[item, [{vertices: item.vertices, faces: item.faces.map(face => face === hit.face ? paint(face) : face)}]]]), [], selected.has(item) ? 'changed' : null);
-      say(`Material on one face: ${template.material || 'no material'}`);
+      const targets = faceTargets();
+      if (!targets.length || targets[0].placed) return;
+      editFaces(targets, paint);
+      say(`Material on ${targets.length === 1 ? 'one face' : `${targets.length} faces`}: ${template.material || 'no material'}`);
       return;
     }
     const items = selectedBrushes();
@@ -1180,31 +1197,43 @@ window.addEventListener('DOMContentLoaded', async () => {
   const SCALE_STEP = .25;  // The stock maps' scales other than 1 are mostly quarters (0.25, 0.75, 1.25).
   const TEXTURE_KEYS = {ArrowLeft: ['u', -1], ArrowRight: ['u', 1], ArrowUp: ['v', 1], ArrowDown: ['v', -1], Home: ['scaleU', 1], Insert: ['scaleU', -1],
     End: ['scaleV', 1], Delete: ['scaleV', -1], PageUp: ['scaleU', 0], PageDown: ['scaleV', 0], Comma: ['rotation', -1], Period: ['rotation', 1]};
-  function textureTarget() {
-    if (bridgeFrom && globalGroup().items.includes(bridgeFrom.item)) return {item: bridgeFrom.item, face: bridgeFrom.face};
+  // The faces the texture keys and Shift+M work on: those picked, else the one under the cursor ({placed} when that
+  // is a prefab's).
+  function faceTargets() {
+    if (picked.length) return picked;
     const hit = mouseAt && pick(mouseAt, false);
-    if (!hit) return null;
-    return hit.entry.path.length ? {placed: hit.entry.path[0]} : {item: hit.entry.source, face: hit.face};
+    if (!hit) return [];
+    return hit.entry.path.length ? [{placed: hit.entry.path[0]}] : [{item: hit.entry.source, index: hit.entry.source.faces.indexOf(hit.face)}];
+  }
+  // Changes faces as one step of undo, keeping the selection and the picked faces.
+  function editFaces(targets, change) {
+    targets = targets.map(target => ({...target}));
+    const byItem = new Map();
+    for (const {item, index} of targets) byItem.set(item, [...(byItem.get(item) || []), index]);
+    const fresh = new Map([...byItem].map(([item, indices]) => [item, {kind: 'brush', vertices: item.vertices, faces: item.faces.map((face, index) => indices.includes(index) ? change(face) : face)}]));
+    replace(new Map([...fresh].map(([item, made]) => [item, [made]])), [], [...selected].map(item => fresh.get(item) || item));
+    return fresh;
   }
   function moveTexture(code) {
-    const target = textureTarget();
-    if (!target) { say('Aim at a face, or Shift-click one, to move its texture'); return; }
-    if (target.placed) { say(`That face is prefab ${M.property(target.placed, 'prefabName')}'s: break the prefab (me_breakprefab) to change it`); return; }
-    const [field, sign] = TEXTURE_KEYS[code], {item, face} = target, value = Number(face[field]) || 0;
-    let next;
-    if (field === 'u' || field === 'v') next = value + sign * settings.grid;
-    else if (field === 'rotation') next = ((value + sign * settings.angle) % 360 + 360) % 360;
-    else if (!sign) next = -(value || 1);
-    else next = (value < 0 ? -1 : 1) * Math.max(SCALE_STEP, (Math.abs(value) || 1) + sign * SCALE_STEP);
-    next = Math.round(next * 1e6) / 1e6 + 0;
-    const index = item.faces.indexOf(face), picked = bridgeFrom && bridgeFrom.item === item;
-    const fresh = {kind: 'brush', vertices: item.vertices, faces: item.faces.map(other => other === face ? {...other, [field]: next} : other)};
-    replace(new Map([[item, [fresh]]]), [], [...selected].map(other => other === item ? fresh : other));
-    if (picked) bridgeFrom = pickFace({entry: {source: fresh}, face: fresh.faces[index]});
-    texturePreview = {item: fresh, index};
+    const targets = faceTargets();
+    if (!targets.length) { say('Aim at a face, or Shift-click one, to move its texture'); return; }
+    if (targets[0].placed) { say(`That face is prefab ${M.property(targets[0].placed, 'prefabName')}'s: break the prefab (me_breakprefab) to change it`); return; }
+    const [field, sign] = TEXTURE_KEYS[code];
+    const change = face => {
+      const value = Number(face[field]) || 0;
+      let next;
+      if (field === 'u' || field === 'v') next = value + sign * settings.grid;
+      else if (field === 'rotation') next = ((value + sign * settings.angle) % 360 + 360) % 360;
+      else if (!sign) next = -(value || 1);
+      else next = (value < 0 ? -1 : 1) * Math.max(SCALE_STEP, (Math.abs(value) || 1) + sign * SCALE_STEP);
+      return {...face, [field]: Math.round(next * 1e6) / 1e6 + 0};
+    };
+    // The picked faces follow their brushes into the new ones, so the first is noted before the edit.
+    const {item: before, index} = targets[0], fresh = editFaces(targets, change), item = fresh.get(before);
+    texturePreview = {item, index};
     showSelection();
-    const f = fresh.faces[index];
-    say(`Texture offset ${f.u} ${f.v} · scale ${f.scaleU} ${f.scaleV} · rotation ${f.rotation}°`);
+    const f = item.faces[index];
+    say(`Texture${targets.length > 1 ? ` of ${targets.length} faces` : ''}: offset ${f.u} ${f.v} · scale ${f.scaleU} ${f.scaleV} · rotation ${f.rotation}°`);
   }
 
   // ---- Turning (numpad + and −, the game's me_rotate_inc and me_rotate_dec, by me_snapangle) ----
@@ -1248,16 +1277,32 @@ window.addEventListener('DOMContentLoaded', async () => {
     say(`Turned ${degrees > 0 ? '+' : ''}${degrees}° about ${Math.round(centre[0] * 1000) / 1000} ${Math.round(centre[2] * 1000) / 1000}`);
   }
 
+  // ---- Mirroring (the toolbar's Mirror, or me_mirror x|y|z; the game's editor had none) ----
+  // Mirrors the selection across the plane through its middle square to `axis`; without one, left to right as the
+  // camera sees it (the horizontal axis nearest the view's right).
+  function mirrorSelection(axis) {
+    const items = withVolumes([...selected]), box = items.length && extent(items, true);
+    if (!box) { say('Select something to mirror'); return; }
+    if (axis === undefined) {
+      const side = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      axis = Math.abs(side.x) >= Math.abs(side.z) ? 0 : 2;
+    }
+    const centre = (box.min[axis] + box.max[axis]) / 2, mirrored = items.map(item => M.mirrorItem(item, axis, centre));
+    replace(new Map(items.map((item, i) => [item, [mirrored[i]]])), [], mirrored.filter((_, i) => selected.has(items[i])));
+    const placements = items.filter(item => !isBrush(item) && item.type === 'Prefab').length;
+    say(`Mirrored across ${'xyz'[axis]} = ${Math.round(centre * 1000) / 1000}${placements ? ` · ${placements} prefab placement${placements > 1 ? 's' : ''} moved and turned, not mirrored inside` : ''}`);
+  }
+
   // ---- Prefabs (the game's me_createprefab, me_breakprefab, me_updateprefab, me_listprefabs) ----
   const PREFAB_NAME = /^[A-Za-z0-9_.-]+$/;
   // Selected items as a prefab holds them: the world's brushes, then the entities, a volume entity followed by its
   // brushes. A WorldSpawn is never taken in; the prefab has its own.
-  function prefabParts(items) {
-    const world = items.filter(item => isBrush(item) && !M.isVolume(ownerOf(item))), rest = [];
+  function prefabParts(items, owner = ownerOf) {
+    const world = items.filter(item => isBrush(item) && !M.isVolume(owner(item))), rest = [];
     for (const item of items) {
       if (isBrush(item) || item.type === 'WorldSpawn') continue;
       rest.push(item);
-      if (M.isVolume(item)) rest.push(...items.filter(other => isBrush(other) && ownerOf(other) === item));
+      if (M.isVolume(item)) rest.push(...items.filter(other => isBrush(other) && owner(other) === item));
     }
     return {world, rest};
   }
@@ -1336,6 +1381,46 @@ window.addEventListener('DOMContentLoaded', async () => {
     const uses = M.prefabUses(map).find(entry => entry.group === M.prefab(map, group.name));
     say(`Prefab ${group.name} now holds ${counted(local)}, in its ${uses ? uses.uses : 1} placement${uses && uses.uses === 1 ? '' : 's'}`);
   }
+  // ---- Editing a prefab in place (double click a placement, or me_editprefab; me_closeprefab or Escape) ----
+  // The placement is broken into the map as me_breakprefab breaks it, and while it is open every edit is also written
+  // into the prefab, so its other placements show it at once; what is made meanwhile goes into the prefab too.
+  // Closing puts the pieces back as the placement (me_updateprefab).
+  let openPrefab = null;  // {name, from: the record its pieces share in brokenFrom}
+  function editPrefabInPlace() {
+    const placements = [...selected].filter(item => !isBrush(item) && item.type === 'Prefab');
+    if (placements.length !== 1) { say('Select one placed prefab (click any part of it) to edit it in place'); return; }
+    if (openPrefab) closePrefab();
+    const entity = placements[0], parts = M.breakPrefab(map, entity);
+    if (!parts) { say(`This map has no prefab named ${M.property(entity, 'prefabName')}`); return; }
+    const from = {name: M.placement(map, entity).group.name, position: positionOf(entity) || [0, 0, 0], angles: M.property(entity, 'angles') || [0, 0, 0]};
+    for (const item of [...parts.world, ...parts.rest]) brokenFrom.set(item, from);
+    replace(new Map([[entity, parts.rest]]), parts.world.length ? [{at: 'world', things: parts.world}] : [], []);
+    openPrefab = {name: from.name, from};
+    updateTools();
+    const others = (M.prefabUses(map).find(entry => entry.name === from.name) || {uses: 1}).uses;
+    say(`Editing prefab ${from.name} in place${others ? ` · its ${others} other placement${others > 1 ? 's' : ''} change with it` : ''} · Escape when nothing is selected, or me_closeprefab, puts it back`);
+  }
+  // Writes the open prefab's pieces among `items` into the prefab, in its placement's frame.
+  function syncPrefab(items) {
+    const {from} = openPrefab, inside = items.filter(item => brokenFrom.get(item) === from);
+    if (!inside.length) return;  // Every piece deleted: the prefab is left as it was, and closing does nothing.
+    const owners = new Map();
+    let owner = null;
+    for (const item of items) { if (isBrush(item)) owners.set(item, owner); else owner = item; }
+    const parts = prefabParts(inside, item => owners.get(item) || null);
+    if (holds(from.name, parts.rest)) return;
+    M.setPrefab(map, from.name, moveParts(parts, M.invert(M.compose(from.position, from.angles)), -from.angles[0]));
+  }
+  function closePrefab() {
+    if (!openPrefab) { say('No prefab is open: double click a placement, or me_editprefab, to open one'); return; }
+    const {from} = openPrefab, inside = globalGroup().items.filter(item => brokenFrom.get(item) === from);
+    openPrefab = null;
+    if (!inside.length) { updateTools(); say(`Closed prefab ${from.name}; its pieces were all deleted, so it is as it was`); return; }
+    selected.clear();
+    inside.forEach(item => selected.add(item));
+    updatePrefab(from.name);
+  }
+
   // me_listprefabs: the panel's list of the map's prefabs.
   function showPrefabs() { panelOpen = true; panelView = 'prefabs'; showPanel(); say(''); }
   let placeName = '';  // The prefab create type 9 places (Place in the list).
@@ -1427,9 +1512,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     me_breakprefab: () => breakPrefabs(),
     me_updateprefab: name => updatePrefab(name),
     me_listprefabs: () => showPrefabs(),
+    me_editprefab: () => editPrefabInPlace(),
+    me_closeprefab: () => closePrefab(),
     me_rotate_inc: () => rotateSelection(1),
     me_rotate_dec: () => rotateSelection(-1),
     me_snapangle: value => setStep('angle', value),
+    me_mirror: (axis = '') => { const index = 'xyz'.indexOf(axis.toLowerCase()); mirrorSelection(index >= 0 && axis ? index : undefined); },
     me_snapdistance: value => setStep('grid', value),
     me_createtype: (type = '', name = '') => {
       const number = TYPES[type.toLowerCase()];
@@ -1559,6 +1647,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('materialsButton').addEventListener('click', event => { showMaterialBrowser(); event.target.blur(); });
   $('prefabsButton').addEventListener('click', event => { if (panelOpen && panelView === 'prefabs') { panelOpen = false; showPanel(); } else showPrefabs(); event.target.blur(); });
   $('rotateInc').addEventListener('click', event => { rotateSelection(1); event.target.blur(); });
+  $('mirror').addEventListener('click', event => { mirrorSelection(event.shiftKey ? 1 : undefined); event.target.blur(); });
   $('rotateDec').addEventListener('click', event => { rotateSelection(-1); event.target.blur(); });
   $('clipButton').addEventListener('click', event => { setClipMode(!clipMode); event.target.blur(); });
   $('angle').addEventListener('change', event => { settings.angle = Number(event.target.value); event.target.blur(); save(); updateTools(); });
@@ -1617,6 +1706,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   const keys = new Set();
   let looking = false, downAt = null;
   canvas.addEventListener('contextmenu', event => event.preventDefault());
+  canvas.addEventListener('dblclick', event => {
+    if (!editing || !flat || createType || clipMode || bridging || vertexMode) return;
+    const hit = pick(event);
+    const entry = hit && (hit.entity || hit.entry);
+    if (!entry || !entry.path.length) return;
+    selected.clear(); selected.add(entry.path[0]);
+    editPrefabInPlace();
+  });
   canvas.addEventListener('mousedown', event => {
     if (editing) {
       if (event.button === 2) looking = true;
@@ -1640,7 +1737,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (editing && vertexMode && !looking && event.target === canvas) { const corner = nearestDot(event); showHover(corner && corner.position); }
     if (editing && bridging && !looking && event.target === canvas) aimBridge(event);
     // The texture preview stays while the mouse is on its face (or the face is the one Shift-click picked).
-    if (editing && texturePreview && !looking && event.target === canvas && !(bridgeFrom && bridgeFrom.item === texturePreview.item)) {
+    if (editing && texturePreview && !looking && event.target === canvas && !picked.some(face => face.item === texturePreview.item)) {
       const hit = pick(event, false);
       if (!hit || hit.entry.source !== texturePreview.item || hit.face !== texturePreview.item.faces[texturePreview.index]) { texturePreview = null; showSelection(); }
     }
@@ -1692,10 +1789,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (drag) { drag = null; selection.position.set(0, 0, 0); ghost.clear(); showSelection(); if (clipMode) showClip(); return; }
         if (clipMode) { if (clipPoints.length) { clipPoints = []; showClip(); say(''); } else setClipMode(false); return; }
         if (bridging) { stopBridge(); return; }
-        if (bridgeFrom) { bridgeFrom = null; showSelection(); say(''); return; }
+        if (picked.length) { picked = []; showSelection(); say(''); return; }
         if (createType) { setCreate(createType); return; }
         if (vertexMode) { setVertexMode(false); return; }
         if (texturePreview) { texturePreview = null; showSelection(); say(''); return; }
+        if (!selected.size && openPrefab) { closePrefab(); return; }
         selected.clear(); say(''); showSelection(); return;
       }
       // Shift and the arrows (or PgUp and PgDn) move the selection a grid step along the horizontal axis nearest to
@@ -1791,7 +1889,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; },
     get createType() { return createType; }, get vertexMode() { return vertexMode; }, get bridging() { return bridging; }, get segments() { return segments; }, get clipMode() { return clipMode; }, get clipPoints() { return clipPoints; },
-    get player() { return player; }, get walking() { return walking; }, settings, run, load, actions, selected, setEditing, setWalking, showViewpoint};
+    get player() { return player; }, get openPrefab() { return openPrefab; }, get walking() { return walking; }, settings, run, load, actions, selected, setEditing, setWalking, showViewpoint};
 
   // ---- Loading ----
   $('open').addEventListener('change', async event => {

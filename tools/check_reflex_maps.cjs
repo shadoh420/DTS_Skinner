@@ -340,7 +340,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     for (const key of ['ArrowRight', 'ArrowUp', 'ArrowUp', 'Home', 'PageUp', 'Period', 'Delete']) await page.keyboard.press(key);
     const textured = await topFace();
     assert.deepEqual([textured.u, textured.v, textured.scaleU, textured.scaleV, textured.rotation], [16, 32, -1.25, 0.75, 90], 'arrows move, Home and Delete scale, PgUp flips, . turns');
-    assert.match(await said(), /Texture offset 16 32 · scale -1.25 0.75 · rotation 90°/);
+    assert.match(await said(), /Texture: offset 16 32 · scale -1.25 0.75 · rotation 90°/);
     assert.ok(await page.evaluate(() => { let found = false; window.skinnerReflexMaps.scene.traverse(o => { if (o.geometry && o.geometry.getAttribute('texcoord')) found = true; }); return found; }), 'the face shows its texture coordinates');
     await page.screenshot({path: path.join(output, 'texture.png')});
     await page.keyboard.press('Comma');
@@ -445,6 +445,82 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     const prefabMap = M.parse(await page.evaluate(() => window.ReflexMap.write(window.skinnerReflexMaps.map)));
     assert.equal(M.flatten(prefabMap).brushes.length, 3);
     assert.equal(M.prefab(prefabMap, 'block').items.length, 2);
+
+    // Several faces picked (Ctrl+Shift-click adds): the texture keys and Shift+M work on all of them.
+    await fresh();
+    await page.keyboard.press('0'); await page.keyboard.press('0');
+    await page.keyboard.down('Shift'); await clickAt([0, 64, 0]); await page.keyboard.up('Shift');
+    await page.keyboard.down('Control'); await page.keyboard.down('Shift'); await clickAt([0, 32, -32]); await page.keyboard.up('Shift'); await page.keyboard.up('Control');
+    assert.match(await said(), /2 faces picked/);
+    await page.keyboard.press('ArrowRight');
+    const shifted = await firstBrush();
+    assert.deepEqual(shifted.faces.map(face => face.u).sort((a, b) => a - b), [0, 0, 0, 0, 16, 16], 'the arrow moved the texture of both picked faces');
+    // The material browser: the game's materials and Skinner's libraries; a click chooses, Shift+M puts it on the picked faces.
+    await page.click('#materialsButton');
+    assert.match(await page.textContent('#propsTitle'), /Materials/);
+    await page.selectOption('#props select', 't1');
+    await page.waitForSelector('#props .materials button');
+    const chosen = await page.getAttribute('#props .materials button', 'title');
+    assert.match(chosen, /^skinner\/t1\//);
+    await page.click('#props .materials button');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.template.material), chosen);
+    await page.keyboard.press('Shift+M');
+    assert.equal((await firstBrush()).faces.filter(face => face.material === chosen).length, 2, 'Shift+M painted the two picked faces');
+    assert.ok(await page.evaluate(() => window.skinnerReflexMaps.scene.children[0].children[0].material.length) >= 2, 'the library texture is drawn in a group of its own');
+    await page.waitForTimeout(500);
+    await page.screenshot({path: path.join(output, 'materials.png')});
+    await page.click('#materialsButton');
+    await page.keyboard.press('Escape');
+
+    // Mirror: left to right as the camera sees it (across x here), about the selection's middle; Shift+click upside down.
+    await page.evaluate(() => {
+      const m = window.skinnerReflexMaps, g = window.ReflexMap.global(m.map);
+      g.items.splice(window.ReflexMap.worldInsertAt(g), 0, {kind: 'brush', ...window.ReflexBrush.rebuild({vertices: [[64, 0, 0], [128, 0, 0], [64, 0, 32], [128, 0, 32], [64, 48, 0], [64, 48, 32]],
+        faces: [[0, 1, 3, 2], [0, 2, 5, 4], [0, 4, 1], [2, 3, 5], [1, 4, 5, 3]].map(indices => ({...m.template, indices}))})});
+      m.load(window.ReflexMap.write(m.map), 'untitled');
+      m.camera.position.set(0, 384, 512); m.camera.lookAt(0, 0, 0);
+      m.selected.add(window.ReflexMap.global(m.map).items[2]);
+    });
+    await page.keyboard.press('0'); await page.keyboard.press('0');
+    const wedgeBefore = await page.evaluate(() => { const [item] = window.skinnerReflexMaps.selected; return item.vertices.filter(v => v[1] === 48).map(v => v[0]); });
+    await page.click('#mirror');
+    const wedgeAfter = await page.evaluate(() => { const [item] = window.skinnerReflexMaps.selected; return {top: item.vertices.filter(v => v[1] === 48).map(v => v[0]), problems: window.ReflexBrush.check(item), bounds: window.ReflexBrush.bounds(item)}; });
+    assert.deepEqual([wedgeBefore, wedgeAfter.top, wedgeAfter.problems, wedgeAfter.bounds], [[64, 64], [128, 128], [], {min: [64, 0, 0], max: [128, 48, 32]}], 'the wedge leans the other way');
+    await page.click('#mirror', {modifiers: ['Shift']});
+    assert.deepEqual(await page.evaluate(() => { const [item] = window.skinnerReflexMaps.selected; return item.vertices.filter(v => v[1] === 0).length; }), 2, 'Shift+Mirror turns it upside down');
+    await page.keyboard.press('z'); await page.keyboard.press('z');
+
+    // Editing a prefab in place: a double click opens a placement, and its other placement changes as it is edited.
+    await page.keyboard.press('Escape');
+    await clickAt([0, 64, 0]);
+    await run('me_createprefab slab');
+    await page.keyboard.press('g');
+    for (let i = 0; i < 9; i++) await page.keyboard.press('Shift+ArrowLeft');
+    now = await items();
+    const slabs = now.filter(item => item.type === 'Prefab');
+    assert.equal(slabs.length, 2);
+    const other = slabs[0].properties.position, opened = slabs[1].properties.position;
+    await page.mouse.dblclick(...await screen([opened[0], 64, opened[2]]));
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.openPrefab && window.skinnerReflexMaps.openPrefab.name), 'slab');
+    assert.match(await page.textContent('#mode'), /prefab slab open/);
+    // Pull the open copy's top up; the other copy's top follows at once.
+    await clickAt([opened[0], 64, opened[2]]);
+    at = await screen([opened[0], 64, opened[2]]);
+    await dragFrom(at, [at[0], at[1] - 60], 'Shift');
+    // The slab's copies (the wedge from the mirror step stands apart, beyond x 64).
+    const liveTops = await page.evaluate(() => window.skinnerReflexMaps.flat.brushes.filter(entry => window.ReflexBrush.bounds(entry.brush).max[0] <= 64)
+      .map(entry => ({placed: entry.path.length > 0, top: Math.max(...entry.brush.vertices.map(v => v[1]))})));
+    const openTop = liveTops.find(entry => !entry.placed).top;
+    assert.ok(openTop > 64, `pulled to ${openTop}`);
+    assert.deepEqual(liveTops.filter(entry => entry.placed).map(entry => entry.top), [openTop], 'the other placement changed with it');
+    await page.screenshot({path: path.join(output, 'prefab-in-place.png')});
+    // Escape clears the selection, then closes the prefab: the pieces go back into a placement where they were.
+    await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.openPrefab), null);
+    now = await items();
+    assert.deepEqual(now.map(item => item.type || item.kind), ['WorldSpawn', 'brush', 'Prefab', 'Prefab']);
+    assert.deepEqual(now.filter(item => item.type === 'Prefab').map(item => item.properties.position).sort((a, b) => a[0] - b[0]), [opened, other].sort((a, b) => a[0] - b[0]));
+    assert.deepEqual(await page.evaluate(() => window.skinnerReflexMaps.flat.brushes.filter(entry => entry.path.length).map(entry => Math.max(...entry.brush.vertices.map(v => v[1])))), [openTop, openTop]);
 
     // Play mode (0): walking from where the camera is, a teleporter to its Target, a jump pad onto its Target; F flies.
     await page.evaluate(() => {

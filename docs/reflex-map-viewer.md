@@ -1,14 +1,17 @@
 # Reflex map viewer and brush editor
 
-Opens Reflex Arena maps from Skinner in free-flight, and edits their brushes:
-the map's brushes coloured by their faces' colours and materials, prefabs
-placed where the map places them, and its entities marked. **Tab** switches
-between flying and editing, as the game's editor switches between playing and
-editing a map. While editing, brushes of the map are selected, made, carved,
-hollowed, merged, split, clipped, moved, turned, copied and deleted, their
-textures moved, scaled and turned, prefabs made, broken and updated, with
-undo, and the map is saved back as a Reflex `.map` file. No collision, movement physics, gameplay,
-audio or baked lighting. Q3, T1 and T2 maps have their own pages, see
+Opens Reflex Arena maps from Skinner to walk through, and edits their
+brushes: the map's brushes coloured by their faces' colours and materials and
+textured where their material is, prefabs placed where the map places them,
+and its entities marked. **0** (or Tab) switches between playing and editing,
+as the game's editor does. Playing, a player box walks, jumps and climbs
+stairs through the map as Quake 3 moves one, and teleporters and jump pads
+work. While editing, brushes of the map are selected, made, carved, hollowed,
+merged, split, clipped, mirrored, moved, turned, copied and deleted, their
+textures chosen from the game's materials or any of Skinner's texture
+libraries, moved, scaled and turned, prefabs made, broken, updated and edited
+in place, with undo, and the map is saved back as a Reflex `.map` file. No
+weapons, items, gameplay, audio or baked lighting. Q3, T1 and T2 maps have their own pages, see
 [q3-map-viewer.md](q3-map-viewer.md), [t1-map-viewer.md](t1-map-viewer.md)
 and [t2-map-viewer.md](t2-map-viewer.md).
 
@@ -86,18 +89,112 @@ pickup and powerup glows, and water. Their own effects (fresnel, clouds,
 refraction) are not drawn. The import keeps every material it finds with its
 shader for this, also those it finds no colour for.
 
+### Textures
+
+The game keeps its textures in `.textureset` files and `.dds` files in the
+same archives, and a material names them by bare name: `dev_grey128` has
+`textureAlbedoSpec dev_grid16_albedospec`, `textureMeta dev_grid16_meta` and
+`textureNormals dev_grid16_normals`, which are images of
+`structural/dev/dev_grid16.textureset`; ivy's `textureDiffuse ivy_leaf_1_c` is
+`environment/veg/ivy/ivy_leaf_1_c.dds`. So the game finds a texture by that
+name wherever it lies, and the import does the same
+(`tools/reflex_textures.py`).
+
+A `.textureset` (little-endian): `20 00 0f d0`, its name (128 bytes), the
+image count, a zero, then a table of 16 entries of 156 bytes from offset 140:
+the image's name (128 bytes), the offsets of up to three copies of it
+(`0xffffffff` for none), a mip count, a format number, width and height. The
+copies are the same picture compressed for different quality settings:
+`dev_grid16_albedoSpec` is there as BC1 sRGB and as BC7 sRGB. Each copy starts
+with eleven 32-bit words (width, height, mip count, 1, its DXGI format, 1, 0,
+1, bytes per 4 × 4 block, 0, 0) and its mips follow, largest first. Every one
+of the 129 material thumbnails of `thumbs_material.pak` is one 256 × 256 BC1
+image of the material on a sphere. The import decodes the best copy Pillow can
+read (BC7, BC3, BC2, then BC1; sRGB formats Pillow does not name are the same
+blocks under the plain name).
+
+Most world materials of the stock packs are not textured at all: concrete,
+gunmetal and the rest of `common` are a shader with an albedo, metallic and
+roughness (`deferredPbrStylized`). The textured ones in the packs checked are
+the 72 dev materials of `structural` (one grey albedo tinted by the
+material's colour, with the grid in the meta texture), ivy, leaves and the
+vegetation atlas; 69 materials in all, of which the 18 stock maps use 7, all
+dev materials, on 221 faces. The theme packs (`ancient_japan`, `gothic`, `industrial`,
+…) were not available to check and may hold more.
+
+For each textured material the import writes one picture into
+`local-data/reflex-maps/textures`: the albedo, darkened by the meta texture's
+blue channel where there is one. In the dev grids that channel is 1 with 0.6
+along the grid lines (and the normal map bevels them), so it is taken as
+ambient occlusion; what the game's shader does with it is not known. A diffuse
+texture keeps its alpha (ivy is alpha-keyed); an albedoSpec's alpha is its
+specular level and is left out. Thumbnails go to `thumbs`, 128 pixels. The
+page draws a textured face in its texture times its colour (the material's
+tint, or the face's own colour), repeating every 128 units at scale 1 for the
+game's textures: the dev grid's eight cells across are then 16 units, as
+`dev_grid16` says. That scale, like the projection of the texture onto the
+face (see the texture keys below), is a guess.
+
+**Skinner's texture libraries.** The textures the import decodes are a
+fourth library beside the T1, T2 and Q3 ones: on the model page, *Reflex
+textures* reskins any model with them, and its exports include them. The
+other way round, a brush face can take any texture of any library: the
+Reflex page's material browser (Materials, or `me_activematerial`) lists the
+game's materials with their thumbnails and each library's textures, and a
+face that takes one gets the material `skinner/<library>/<file>`
+(`skinner/t1/alientree`). The page draws it at its size in pixels over two
+units, as Quake 3's default scale of 0.5 has it.
+
+The game does not know `skinner/t1/alientree`. **Put the map's library
+textures into the game** (in the material browser, when the map uses some)
+writes, for each, `base/skinner/<library>/<file>.material` and the texture
+beside it, into the Reflex Arena folder named under Import maps, and nowhere
+else. The material is a stock dev material's: its shader
+(`deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED`, flags
+`0x11b`), its flat normals and meta (`dev_nogrid_normals`, `dev_nogrid_meta`),
+a white tint, and the library picture as its albedo, named
+`skinner_<library>_<file>_c` because the game finds textures by bare name. The
+texture is a `.dds` as the game's own are (BC1, or BC3 where the picture has
+see-through pixels), scaled to powers of two up to 1024, with its mips. The
+material writer gives back 446 of the 456 stock material files byte for byte.
+**Not confirmed:** whether the game reads materials and textures from loose
+files under `base` (its `myskins` folder holds loose `.dds` weapon skins, so
+it reads some), and whether such a material then draws as intended. Try one
+in the game before relying on it.
+
 Faces of the editor's clip materials (`internal/editor/textures/editor_clip`,
 `editor_fullclip`, `editor_weaponclip`) are not drawn while flying, as the game
 does not draw them; while editing they show as purple glass.
 
 ## Controls
 
-Flying: click the scene to capture the mouse or drag to look, WASD moves,
-Space or E rises, Shift or Q descends, the wheel changes speed, Escape releases
-the mouse and keys 1–9 jump between viewpoints: the camera the map ends on
-(the Target its WorldSpawn names as `targetGameOverCamera`) first, then the
-spawn points at eye height. FOV (horizontal, as in the game), invert and Reset
-view are above the scene.
+Playing (the page opens a map so): click the scene to capture the mouse or
+drag to look, WASD walks, Space jumps, Escape releases the mouse, and keys
+1–9 put the player at the map's spawn points. The player starts where the
+camera is (as the game's play mode starts where the editor's camera was), or
+at the first spawn point when a map opens, and comes back there after falling
+out of the map. **F** flies instead (WASD, Space or E up, Shift or Q down, the
+wheel for speed, and 1–9 also the camera the map ends on, the Target its
+WorldSpawn names as `targetGameOverCamera`); F again walks. FOV (horizontal,
+as in the game), invert and Reset view are above the scene.
+
+**Movement** (`static/reflex-maps/movement.js`) is Quake 3's, not Reflex's
+(which is CPMA's, with air control and more): a box 30 wide and 56 tall with
+the eye 26 above its middle, 320 units a second, ground acceleration 10 and
+friction 6, air acceleration 1, gravity 800, a jump of 270 units a second,
+steps up to 18 units and slopes up to about 45 degrees, run 125 times a
+second. Collision is Quake 3's box trace: each brush is its face planes,
+pushed out by the box along each normal, plus a plane square to each axis
+where it has none (its axial bevels; the edge bevels Quake 3's compiler adds
+are not, so a box can catch slightly on the outside of a slanted edge), and
+the player slides along what it meets. A brush is passed through when it is a
+volume, has a liquid face (`liquids/`) or is all weapon clip; player clip and
+full clip stop the player, as in the game. A teleporter puts the player at its
+Target, facing the Target's yaw, at the speed it had; a jump pad throws it so
+it lands on its Target at the top of its arc (Quake 3's `AimAtTarget`). On
+Hieratic, the largest stock map, a step of movement takes about 0.05 ms and
+the collision grid about 60 ms to build, which happens when play starts after
+an edit.
 
 Editing (**0**, as in the game, or Tab) follows the game's editor binds, read
 from `game_default.cfg` of the install (its `bind me …` lines): the same
@@ -120,7 +217,7 @@ a drag does rather than separate tools.
 | Make a brush, or a teleporter's or jump pad's volume | Drag a rectangle on a surface (or on the ground, y = 0) | `+editorprimary` |
 | Place a target, effect, pickup, point light or player spawn | Click a surface | `+editorprimary` |
 | Show the corners of the selected brushes; drag one (Alt: up and down) | V | `editortogglevertexmode` (V) |
-| Pick a face (for the bridge) | Shift+click | `+editorfacemode` (Shift) |
+| Pick a face (for the texture keys, Shift+M and the bridge); add or remove one | Shift+click; Ctrl+Shift+click | `+editorfacemode` (Shift) |
 | Bridge the picked face to the face aimed at; steps; make it | B, then the wheel, then click | `me_startbridge` (B), `me_segments_inc/dec` (wheel) |
 | Properties of the selection, or of the map | N | `me_showproperties 1` (N) |
 | Turn the selection about the vertical through its middle, by the angle step | Numpad + / − | `me_rotate_inc` / `me_rotate_dec` (numpad + / −), `me_snapangle` |
@@ -131,9 +228,11 @@ a drag does rather than separate tools.
 | Clip mode: click two or three points of a plane; Enter clips, Shift+Enter splits, the wheel (or Ctrl+Enter) flips the side kept | C | `editortoggleclipmode` (C) |
 | The console, for commands with no key (prefabs and the rest below) | ` | the game's console |
 | Pick up the material and colour under the cursor | K | `me_getmaterial` (K) |
-| Put them on the selection; on the face under the cursor | M; Shift+M | `me_setmaterial` (M) |
+| Put them on the selection; on the picked faces, or else the face under the cursor | M; Shift+M | `me_setmaterial` (M) |
+| Edit a placed prefab in place | Double click it | |
 | Leave a mode, or clear the selection | Escape | |
 | Fly | WASD, Q / E down and up | |
+| Play | 0 | `cl_playerstate 1` (0) |
 
 The toolbar shows the material K picked (or that of the face clicked last)
 and holds what the game's editor did not have:
@@ -143,6 +242,7 @@ and holds what the game's editor did not have:
 | Grid | | Snap and step size, 1 to 64 units, 16 to start with as the game's `me_snapdistance`; drawn on every surface while editing, with a heavier line every 8 steps |
 | Angle | | The step numpad + and − turn the selection by and `,` and `.` turn a texture by (the game's `me_snapangle`): 1 to 90 degrees, 45 to start with (the game's own default is not known; 45 is the step most angles of the stock maps are on) |
 | ⟲ ⟳ | Numpad − + | Turn the selection |
+| Mirror | | Mirrors the selection left to right as the camera sees it (across x or z, whichever is nearer the view's right), about its middle; Shift+click, upside down; `me_mirror x\|y\|z` |
 | New box | | A box 8 grid steps wide, 256 units in front of the camera, on the grid, with the picked material (1 and a drag on a surface makes one where wanted) |
 | Properties | N | Opens the property panel |
 | Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap; the selection stays |
@@ -150,7 +250,8 @@ and holds what the game's editor did not have:
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
 | Split | | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
 | Clip | C | Clip mode, as below |
-| Prefabs | | The map's prefabs, with how many placements each has: make one from the selection, break the selected placements, update a prefab from the selection, place one or select its placements |
+| Materials | | The material browser: the game's materials (with their thumbnails) and the textures of Skinner's libraries, with a search; a click chooses what M puts on, a double click also puts it on the selection |
+| Prefabs | | The map's prefabs, with how many placements each has: make one from the selection, break the selected placements, edit one in place, update a prefab from the selection, place one or select its placements |
 | Console | ` | Runs editor commands, below |
 | Nudge | Shift+arrows, Shift+PgUp/PgDn | Moves the selection one grid step along the horizontal axis nearest the view, or up and down (without Shift, as in the game, these keys move a face's texture) |
 | Save .map | Ctrl+S | Downloads the map as a Reflex map file |
@@ -217,14 +318,16 @@ turn of a selection whose corner is on the grid can leave it half a step off
 stays on the grid. Other angles leave corners off the grid, as the game's do.
 
 **Texture keys**, as the game binds them: on the face under the cursor, or on
-the face Shift-click picked while one is (outlined in light blue), the arrows
+the faces Shift-click picked while there are some (outlined in light blue;
+Ctrl+Shift-click adds and removes faces), the arrows
 move the texture a grid step (left and right along u, up and down along v),
 Home and Insert scale it up and down along u by a quarter, End and Delete
 along v, PgUp and PgDn flip it along u and v (the scale's sign), and `,` and
-`.` turn it by the angle step. Each press is a step of undo. Textures are not
-drawn, so the face changed shows its texture coordinates as a pattern: tiles
-of 64 units shaded red along u and green along v, chequered every 16. Those
-coordinates are a guess at the game's mapping (`texcoords` in `brush.js`):
+`.` turn it by the angle step. Each press is a step of undo, for all the faces
+at once. A textured face shows the change in its texture; one whose material
+has none shows its texture coordinates as a pattern: tiles of 64 units shaded
+red along u and green along v, chequered every 16. Those coordinates are a
+guess at the game's mapping (`texcoords` in `brush.js`):
 Quake 3's, projecting the face on the axis plane it faces most, turning by
 the rotation, dividing by the scale and adding the offset, which is what
 [Q3ToReflex](https://github.com/chronokun/Q3ToReflex) assumes when it
@@ -262,8 +365,16 @@ has a button for each:
 | `me_updateprefab [name]` | The selection becomes what the prefab holds, in every placement of it, and is replaced by a placement where it stood. Without a name, the prefab the selection was broken from (an edited, cloned or carved piece remembers it); it goes back by the inverse of that placement's position and turn, so every other placement shows the change in its own place. A prefab named but not broken from takes the selection about a new origin, as `me_createprefab` would |
 | `me_listprefabs` | Opens the Prefabs panel: each prefab with how many Prefab entities name it (in the map and in other prefabs, as the game's `meGetPrefabList` gives `refCount`), Place (the next click on a surface places one, turned to the view, as `me_createtype prefab <name>`) and Select (its placements in the map) |
 
-So editing a prefab is: click one of its placements, `me_breakprefab`, change
-the pieces, select them, `me_updateprefab`. Undo undoes a prefab change as one
+**Editing a prefab in place**: double click one of its placements (or select
+it and `me_editprefab`, or Edit selected in place in the Prefabs panel). The
+placement is broken into the map as `me_breakprefab` breaks it, and while it
+is open every edit of its pieces is also written into the prefab, so its other
+placements change as it is edited; anything made meanwhile (a brush, a bridge,
+an entity) goes into the prefab too. Escape with nothing selected (or
+`me_closeprefab`) closes it: the pieces become its placement again where they
+were. The mode line says which prefab is open. By hand, the same is: click a
+placement, `me_breakprefab`, change the pieces, select them,
+`me_updateprefab`. Undo undoes a prefab change as one
 step, with the map's. New prefabs are written before `global`, each starting
 with a WorldSpawn, as every prefab of the stock maps does. Breaking every
 placement in the 18 stock maps gives exactly the brushes the page draws for
@@ -274,7 +385,8 @@ not carry to the angles of the entities inside when it is broken; no stock
 map tilts a prefab that holds entities with angles.
 
 The console also takes `me_rotate_inc`, `me_rotate_dec`, `me_snapangle <n>`,
-`me_snapdistance <n>`, `me_createtype <type> [prefab name]`,
+`me_snapdistance <n>`, `me_createtype <type> [prefab name]`, `me_mirror
+[x|y|z]`, `me_activematerial [name]`, `me_editprefab`, `me_closeprefab`,
 `me_showproperties`, `editortoggleclipmode`, `editortogglevertexmode` and
 `help`.
 
@@ -451,31 +563,33 @@ random convex brushes.
 
 ## Limits and what comes next
 
-- **Textures**: faces are drawn flat in their colour, lit by one fixed sun and
-  the sky, with the editor's grid while editing. How the game maps the face's
-  offset, scale and rotation to texture coordinates has not been checked: the
-  texture keys set those values, and the preview of a changed face shows
-  Quake 3's mapping of them, a guess.
+- **Textures**: lit by one fixed sun and the sky, with the editor's grid
+  while editing; normal maps, specular and the game's own shaders are not
+  drawn. How the game maps a face's offset, scale and rotation to texture
+  coordinates, and how many units one repeat of a texture covers, have not
+  been checked against the game: the page uses Quake 3's projection and 128
+  units. Whether library textures put into the game work there is not
+  confirmed.
 - **Effects** (the game's models, by `effectName`) are marked as small grey
   points while editing, not drawn. Sky, fog and the baked light are not drawn;
   the background is the WorldSpawn's horizon colour.
-- **Editing** works on the map (`global`): a prefab is edited by breaking a
-  placement and updating the prefab from the pieces, not in place. One face
-  at a time is picked (Shift-click), not a selection of faces.
-- **Play mode**: flying stands in for the game's play mode. Movement with
-  collision against the brushes (the planes `brush.js` keeps are what a
-  Quake-style player trace needs) is the next step toward it.
+- **Play mode** moves as Quake 3 does, not as Reflex (CPMA) does; no weapons,
+  pickups, damage, race timing or crouching. Mirroring a prefab placement
+  moves and turns it but cannot mirror what it places.
 - Viewpoint pitch is taken to look down when positive; no map checked uses
   one.
 
 ## Checks
 
-- `node --test tests/reflex_maps.test.cjs`: brush CSG and the map file reader
-  and writer. Set `REFLEX_MAPS` to a folder of `.map` files to also read each,
+- `node --test tests/reflex_maps.test.cjs`: brush CSG, the map file reader
+  and writer, texture coordinates, prefabs, mirroring and movement (landing,
+  walking speed, walls, sliding, jump height, steps). Set `REFLEX_MAPS` to a folder of `.map` files to also read each,
   write it back unchanged and place its prefabs, and to break every placement
   of its prefabs and put each back.
-- `python -m unittest tests.test_reflex_maps`: the import, the routes, and the
-  Node tests when Node is installed. Set `REFLEX_GAME_BASE` to a Reflex Arena
+- `python -m unittest tests.test_reflex_maps`: the import (with textures and
+  thumbnails from made-up `.textureset` files), the material writer, putting
+  library textures into a game folder, the Reflex texture library's routes,
+  the routes, and the Node tests when Node is installed. Set `REFLEX_GAME_BASE` to a Reflex Arena
   folder to import that install and run the Node tests over its maps.
 - `node tools/check_reflex_maps.cjs http://127.0.0.1:5000 build/reflex-review`:
   in a hidden browser, with the keyboard and mouse: makes boxes in a new map,
@@ -492,8 +606,13 @@ random convex brushes.
   makes a prefab from the console, selects it by clicking it, clones and
   drags it, breaks the clone, pulls its top up and updates the prefab, which
   changes both placements, undoes that, and places a third from the Prefabs
-  list; then draws the first imported map and checks it is not blank. Run
-  five times in a row it passed every time.
+  list; picks two faces and moves both textures, chooses a Tribes 1 texture in
+  the material browser and puts it on them; mirrors a wedge left to right and
+  upside down; opens a prefab placement with a double click, pulls its top up
+  and sees the other placement follow, and closes it with Escape; walks on a
+  floor in play mode, through a teleporter to its Target, and is thrown by a
+  jump pad onto its Target; then draws the first imported map and checks it is
+  not blank. Run three times in a row it passed every time.
 
 Checked on 2026-10-02 with the 18 maps of a stock install (Steam folder
 `reflexfps`): AbandonedShelter, Aerowalk, Ashur, empty, forge, furnace,

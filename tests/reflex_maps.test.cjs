@@ -550,3 +550,18 @@ test('a trace reports what it hit; a box inside a brush starts solid; free finds
   const velocity = P.launch([0, 24, 0], [400, 280, 0]), time = velocity[1] / P.GRAVITY;
   near(velocity[0] * time, 400, 'across'); near(velocity[1] * time - P.GRAVITY * time * time / 2, 256, 'up');
 });
+
+test('mirroring a brush keeps it convex and wound outward, and mirrors an entity place and yaw', () => {
+  const wedge = B.rebuild({vertices: [[0, 0, 0], [64, 0, 0], [0, 0, 32], [64, 0, 32], [0, 48, 0], [0, 48, 32]],
+    faces: [[0, 1, 3, 2], [0, 2, 5, 4], [0, 4, 1], [2, 3, 5], [1, 4, 5, 3]].map(indices => ({indices, material: 'm'}))});
+  assertConvexSolid(B.rebuild(wedge));
+  const mirrored = M.mirrorItem({kind: 'brush', ...wedge}, 0, 64);
+  assertConvexSolid(mirrored);
+  assert.deepEqual(B.bounds(mirrored), {min: [64, 0, 0], max: [128, 48, 32]});
+  near(B.volume(mirrored), B.volume(wedge));
+  const spawn = {kind: 'entity', type: 'PlayerSpawn', properties: [{type: 'Vector3', name: 'position', value: [16, 0, 8]}, {type: 'Vector3', name: 'angles', value: [30, 0, 0]}]};
+  const across = (axis, centre) => { const e = M.mirrorItem(spawn, axis, centre); return [M.property(e, 'position'), M.property(e, 'angles')[0]]; };
+  assert.deepEqual(across(0, 0), [[-16, 0, 8], 330]);
+  assert.deepEqual(across(2, 0), [[16, 0, -8], 150]);
+  assert.deepEqual(across(1, 8), [[16, 16, 8], 30]);
+});
