@@ -78,6 +78,13 @@ of Aerowalk is, a dark grey as in the game. Where the import found no albedo
 for a material the page guesses a colour from the name and lists those
 materials under Preview notes.
 
+Faces of see-through materials are drawn faintly, after everything else and
+from both sides: those whose shader is a light beam (`alphaFresnel`, as
+`internal/effects/lights/fx_light_beam`), glass, race start and finish,
+pickup and powerup glows, and water. Their own effects (fresnel, clouds,
+refraction) are not drawn. The import keeps every material it finds with its
+shader for this, also those it finds no colour for.
+
 Faces of the editor's clip materials (`internal/editor/textures/editor_clip`,
 `editor_fullclip`, `editor_weaponclip`) are not drawn while flying, as the game
 does not draw them; while editing they show as purple glass.
@@ -255,7 +262,8 @@ five training stages. Every one reads and writes back identical and places
 every prefab it names (Hieratic, the largest: 8,539 brushes, 4,192 of them
 from prefabs, drawn in about a second in headless Chromium). The import ran
 against a stand-in install with those maps and the stock `common.pak`, which
-and `common.pak`, `environment.pak` and `structural.pak`, which gave 46 of the
-55 materials the maps name; the other 9 are in `internal.pak`, which was not
-at hand. Not
+and `common.pak`, `environment.pak`, `structural.pak` and the material files of
+`internal.pak`, which gave a colour to 50 of the 55 materials the maps name.
+The other five have none to give: the three clip materials (a texture) and
+race start and finish (an effect shader). Not
 checked: any map against the game side by side.

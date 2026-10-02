@@ -91,6 +91,8 @@ class ReflexMapsTest(unittest.TestCase):
                 pak.writestr('common/materials/stone/', b'')
                 pak.writestr('common/materials/stone/concrete.material', CONCRETE)
                 pak.writestr('common/materials/wood/bare.material', material('x', (3, 'albedo', struct.pack('<4f', 1, 1, 1, 1))))
+            with zipfile.ZipFile(game / 'base/internal.pak', 'w') as pak:
+                pak.writestr('internal/editor/textures/editor_clip.material', material('internal/shaders/standard_TEXTUREDIFFUSE', (4, 'textureDiffuse', b'editor_clip_c')))
             with zipfile.ZipFile(game / 'base/structural.pak', 'w') as pak:
                 pak.writestr('structural/dev/dev_grey128.material', material('tinted', (4, 'textureAlbedoSpec', b'dev_grid16_albedospec'),
                                                                              (2, 'tintColor', struct.pack('<3f', .5, .5, .5))))
@@ -113,6 +115,8 @@ class ReflexMapsTest(unittest.TestCase):
             self.assertEqual(colours['structural/dev/dev_grey128'],
                              dict(colour=[.5, .5, .5], shader='tinted', source='structural.pak', tints='dev_grid16_albedospec'))
             self.assertEqual(report['materials'], 3)
+            # A material without a colour is still kept with its shader, which says whether it is see-through.
+            self.assertEqual(colours['internal/editor/textures/editor_clip'], dict(shader='internal/shaders/standard_TEXTUREDIFFUSE', source='internal.pak'))
             self.assertEqual(report['uncoloured'], ['internal/editor/textures/editor_clip'])
             self.assertEqual(import_maps(game, pack)['skipped'], ['Test Walk', 'other'])
             # A changed map replaces its old copy.

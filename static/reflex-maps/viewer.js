@@ -24,7 +24,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const camera = new THREE.PerspectiveCamera(90, 1, 1, 65536);
   camera.rotation.order = 'YXZ';
   const data = '/reflex-map-data/';
-  let speed = 400, map = null, mapName = '', editing = false, flat = null, entryOfTriangle = [], clipEntryOfTriangle = [];
+  let speed = 400, map = null, mapName = '', editing = false, flat = null, entryOfTriangle = [], clipEntryOfTriangle = [], glassEntryOfTriangle = [];
   const notes = [];
   const showStatus = text => { $('status').textContent = text; };
 
@@ -68,6 +68,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     const albedo = own ? own.slice(0, 3).map(linear) : material.albedo, metallic = material.metallic;
     return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .04 * (1 - metallic) + c * metallic)};
   }
+  // See-through materials, by shader (light beams, glass, race start and finish, pickup and powerup glows) or by
+  // name for water, whose fluid shader lava and slime share; drawn after everything else, faintly.
+  const SEE_THROUGH = /alphaFresnel|GLASS|raceStartFinish|glowPickup|powerup/;
+  const isSeeThrough = face => {
+    const name = face.material || '', read = packColours[name];
+    return read ? SEE_THROUGH.test(read.shader || '') || /liquids\/water/.test(name) : /fx_light_beam|race_(start|finish)|glass|liquids\/water/.test(name);
+  };
   // Faces the game does not draw: the editor's clip materials (player, weapon and full clip).
   const isClip = face => /^internal\/editor\/textures\/editor_.*clip/.test(face.material || '');
 
@@ -105,10 +112,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   const clipMaterial = new THREE.MeshBasicMaterial({color: 0xb04cff, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide});
   const selectedFill = new THREE.MeshBasicMaterial({color: 0xf0c674, transparent: true, opacity: .25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1});
   const selectedEdges = new THREE.LineBasicMaterial({color: 0xf0c674, transparent: true, opacity: .9, depthTest: false});
+  const glassMaterial = brushMaterial.clone();
+  Object.assign(glassMaterial, {transparent: true, depthWrite: false, side: THREE.DoubleSide});
+  glassMaterial.uniforms = uniforms;
+  glassMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);', 'gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), .35);');
   const world = new THREE.Mesh(new THREE.BufferGeometry(), brushMaterial), clips = new THREE.Mesh(new THREE.BufferGeometry(), clipMaterial);
+  const glass = new THREE.Mesh(new THREE.BufferGeometry(), glassMaterial);
   const selection = new THREE.Group();
-  clips.renderOrder = 1; selection.renderOrder = 2;
-  root.add(world, clips, selection);
+  glass.renderOrder = 1; clips.renderOrder = 2; selection.renderOrder = 3;
+  root.add(world, glass, clips, selection);
 
   // Concave faces (a vertex dragged in the game's editor) are cut into triangles by Three's ear clipping.
   function triangulate(points, normal) {
@@ -187,8 +199,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   const globalGroup = () => M.global(map);
   function rebuild() {
     flat = M.flatten(map);
-    world.geometry.dispose(); clips.geometry.dispose();
-    world.geometry = buildMesh(flat.brushes, face => !isClip(face), entryOfTriangle);
+    world.geometry.dispose(); clips.geometry.dispose(); glass.geometry.dispose();
+    world.geometry = buildMesh(flat.brushes, face => !isClip(face) && !isSeeThrough(face), entryOfTriangle);
+    glass.geometry = buildMesh(flat.brushes, face => !isClip(face) && isSeeThrough(face), glassEntryOfTriangle);
     clips.geometry = buildMesh(flat.brushes, face => isClip(face), clipEntryOfTriangle);
     buildEntities();
     for (const mesh of entityLayer.children) if (mesh.userData.editOnly) mesh.visible = editing;
@@ -235,7 +248,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (bent) parts.push(`${bent} brushes are not convex or have bent faces; they are drawn, and CSG leaves them alone`);
     // Materials some face draws in its material's colour, where that colour is a guess.
     const guessed = new Set();
-    if (flat) for (const {brush} of flat.brushes) for (const face of brush.faces) if (!M.colourOf(face) && !isClip(face) && !packColours[face.material || '']) guessed.add(face.material || 'no material');
+    if (flat) for (const {brush} of flat.brushes) for (const face of brush.faces) if (!M.colourOf(face) && !isClip(face) && !(packColours[face.material || ''] || {}).colour) guessed.add(face.material || 'no material');
     if (guessed.size) parts.push(`Drawn in a colour guessed from the material's name, as the import found no albedo for it: ${[...guessed].sort().join(', ')}`);
     parts.push(...notes);
     $('mapNotes').textContent = parts.length ? ' This map — ' + parts.join('. ') + '.' : '';
@@ -330,10 +343,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     const rect = canvas.getBoundingClientRect();
     pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    const targets = [world, clips];
-    const hit = raycaster.intersectObjects(targets, false)[0];
+    const hit = raycaster.intersectObjects([world, glass, clips], false)[0];
     if (!hit) return null;
-    const owners = hit.object === world ? entryOfTriangle : clipEntryOfTriangle, entry = flat.brushes[owners[hit.faceIndex]];
+    const owners = hit.object === world ? entryOfTriangle : hit.object === glass ? glassEntryOfTriangle : clipEntryOfTriangle;
+    const entry = flat.brushes[owners[hit.faceIndex]];
     const point = root.worldToLocal(hit.point.clone()).toArray();
     const normal = hit.face.normal.toArray();  // Geometry normals are in the game's axes already.
     return {entry, point, normal};

@@ -131,7 +131,8 @@ def material_files(game):
 
 
 def material_colours(game, names):
-    """The albedo and shader of each named material the game folder has; and the names it has no colour for."""
+    """The shader, and the colour where there is one, of each named material the game folder has; and the names
+    with no colour."""
     files, colours = material_files(game), {}
     for name in sorted(name for name in names if name):
         if name.lower() not in files:
@@ -141,12 +142,14 @@ def material_colours(game, names):
             shader, parameters = read_material(read())
         except (OSError, ValueError, struct.error, zipfile.BadZipFile):
             continue
+        # Every material found is kept with its shader, which tells the page what is see-through; a colour where it has one.
+        entry = colours[name] = dict(shader=shader, source=source,
+                                     **{key: round(parameters[key], 4) for key in ('metallic', 'roughness') if isinstance(parameters.get(key), float)})
         key = next((key for key in ('albedo', 'diffuseColour', 'tintColor') if isinstance(parameters.get(key), list) and len(parameters[key]) >= 3), None)
         if key:
-            colours[name] = dict(colour=[round(channel, 4) for channel in parameters[key][:3]], shader=shader, source=source,
-                                 **{key: round(parameters[key], 4) for key in ('metallic', 'roughness') if isinstance(parameters.get(key), float)},
-                                 **({'tints': parameters.get('textureAlbedoSpec') or parameters.get('textureDiffuse') or ''} if key == 'tintColor' else {}))
-    return colours, sorted(name for name in names if name and name not in colours)
+            entry['colour'] = [round(channel, 4) for channel in parameters[key][:3]]
+            if key == 'tintColor': entry['tints'] = parameters.get('textureAlbedoSpec') or parameters.get('textureDiffuse') or ''
+    return colours, sorted(name for name in names if name and 'colour' not in colours.get(name, {}))
 
 
 def import_maps(game, output, replace=False):
@@ -187,7 +190,7 @@ def import_maps(game, output, replace=False):
         result['imported'].append(name)
         used.update(materials)
     colours, result['uncoloured'] = material_colours(game, used)
-    result['materials'] = len(colours)
+    result['materials'] = sum('colour' in entry for entry in colours.values())
     (output / 'materials.json').write_text(json.dumps(colours, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     temporary = index_path.with_suffix('.tmp')
     rank = {'Reflex Arena': 0, 'Steam Workshop': 1}
