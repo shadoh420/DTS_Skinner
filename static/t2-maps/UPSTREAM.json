@@ -3,5 +3,5 @@
   "revision": "e9b6332aaa48bc79535655d644bacc7e22b6ac79",
   "author": "Brian Beck (exogen)",
   "declaredLicense": "MIT",
-  "scope": "Offline Katabatic map viewer; Skinner adapter in map-client"
+  "scope": "Offline map viewer for the missions of a local install; Skinner adapter in map-client"
 }

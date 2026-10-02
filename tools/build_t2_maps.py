@@ -14,21 +14,19 @@ REVISION = 'e9b6332aaa48bc79535655d644bacc7e22b6ac79'
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def build(source, map_data=None):
-    revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
+def build(source):
+    git = ['git', '-c', 'safe.directory=' + source.as_posix()]  # The checkout may belong to another Windows account.
+    revision = subprocess.check_output(git + ['rev-parse', 'HEAD'], cwd=source, text=True).strip()
     if revision != REVISION:
         raise ValueError('Expected upstream revision ' + REVISION)
-    if subprocess.check_output(['git', 'diff', 'HEAD', '--', 'src', 'generated', 'scripts', 'public', 'package.json', 'package-lock.json'], cwd=source):
+    if subprocess.check_output(git + ['diff', 'HEAD', '--', 'src', 'generated', 'scripts', 'public', 'package.json', 'package-lock.json'], cwd=source):
         raise ValueError('Upstream tracked inputs must be unchanged')
     npm = shutil.which('npm.cmd') or shutil.which('npm')
     if not (source / 'node_modules/vite').exists():
         subprocess.run([npm, 'ci', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=source, check=True)
-    adapter = source / 'skinner'
-    adapter.mkdir(exist_ok=True)
-    for file in (ROOT / 'map-client').iterdir():
-        shutil.copy2(file, adapter / file.name)
-    if map_data:
-        subprocess.run([shutil.which('node'), '--import=tsx/esm', 'skinner/mounts.ts', str(map_data)], cwd=source, check=True)
+    # skinner/ is ours alone in the checkout: a copy of map-client, without files since removed from it.
+    shutil.rmtree(source / 'skinner', ignore_errors=True)
+    shutil.copytree(ROOT / 'map-client', source / 'skinner')
     output = ROOT / 'static/t2-maps'
     # Vite may remove only this generated bundle directory, never a linked target.
     if output.resolve() != ROOT.resolve() / 'static/t2-maps' or output.is_symlink():
@@ -37,7 +35,7 @@ def build(source, map_data=None):
     subprocess.run([npm, 'exec', '--', 'vite', 'build', '--config', 'skinner/vite.config.ts'], cwd=source, env=env, check=True)
     for name in ('white.png', 'black.png', 'magenta.png'):
         shutil.copy2(source / 'public' / name, output / name)
-    (output / 'UPSTREAM.json').write_text(json.dumps({'repository': 'https://github.com/exogen/t2-mapper', 'revision': REVISION, 'author': 'Brian Beck (exogen)', 'declaredLicense': 'MIT', 'scope': 'Offline Katabatic map viewer; Skinner adapter in map-client'}, indent=2), encoding='utf-8')
+    (output / 'UPSTREAM.json').write_text(json.dumps({'repository': 'https://github.com/exogen/t2-mapper', 'revision': REVISION, 'author': 'Brian Beck (exogen)', 'declaredLicense': 'MIT', 'scope': 'Offline map viewer for the missions of a local install; Skinner adapter in map-client'}, indent=2), encoding='utf-8')
     notices = ['T2 Maps uses exogen/t2-mapper by Brian Beck <exogen@gmail.com>.',
                'https://github.com/exogen/t2-mapper/tree/' + REVISION,
                'Upstream package.json declares MIT; this revision has no root LICENSE file.',
@@ -61,6 +59,4 @@ def build(source, map_data=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, required=True)
-    parser.add_argument('--map-data', type=Path, help='Imported pack to enrich with authored DTS mounts')
-    args = parser.parse_args()
-    build(args.source.resolve(), args.map_data.resolve() if args.map_data else None)
+    build(parser.parse_args().source.resolve())

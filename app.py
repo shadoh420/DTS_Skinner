@@ -20,6 +20,7 @@ import gzip
 import zipfile
 from tools.import_q3 import import_catalog as import_q3_catalog, current_import
 from tools.import_t1_map import import_maps as import_t1_maps
+from tools.import_t2_map import import_maps as import_t2_maps
 
 # --- System Tray Imports ---
 try:
@@ -105,6 +106,50 @@ def t2_map_data(filename):
     return send_from_directory(local_data_dir / 't2-maps', filename)
 
 
+def foreign_request():
+    # Local filesystem mutations require same-origin JSON, not a cross-site form.
+    return request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site'
+
+
+@app.route('/import_t2_maps', methods=['POST'])
+def import_t2_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
+        return jsonify(error='Enter your local Tribes 2 folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_t2_maps(payload['game'].strip(), local_data_dir / 't2-maps', payload.get('replace') is True))
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/t2_map_mounts', methods=['POST'])
+def t2_map_mounts():
+    """Keep the mount transforms the viewer read from the pack's shapes, so it reads them once per import."""
+    if foreign_request():
+        return jsonify(error='Mounts must be stored from this Skinner window.'), 403
+    payload = request.get_json(silent=True) if request.is_json and (request.content_length or 0) <= 1 << 20 else None
+    number = lambda values, count: isinstance(values, list) and len(values) == count and all(type(v) in (int, float) for v in values)
+    if not isinstance(payload, dict) or not all(
+            isinstance(shape, str) and isinstance(nodes, dict) and all(
+                isinstance(node, str) and isinstance(at, dict) and set(at) == {'position', 'rotation'}
+                and number(at['position'], 3) and number(at['rotation'], 4) for node, at in nodes.items())
+            for shape, nodes in payload.items()):
+        return jsonify(error='Expected mount transforms.'), 400
+    pack = local_data_dir / 't2-maps'
+    if not (pack / 'manifest.json').is_file():
+        return jsonify(error='No map pack.'), 404
+    (pack / 'mounts.json').write_text(json.dumps(payload), encoding='utf-8')
+    return jsonify(shapes=len(payload))
+
+
 @app.route('/maps/t1/')
 def t1_maps_viewer():
     response = send_from_directory(static_dir / 't1-maps', 'index.html')
@@ -119,8 +164,7 @@ def t1_map_data(filename):
 
 @app.route('/import_t1_maps', methods=['POST'])
 def import_t1_maps_route():
-    # Local filesystem mutations require same-origin JSON, not a cross-site form.
-    if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+    if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
     if not request.is_json or request.content_length is None or request.content_length > 8192:
         return jsonify(error='Expected a small JSON import request.'), 400

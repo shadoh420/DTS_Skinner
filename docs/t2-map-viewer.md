@@ -1,93 +1,175 @@
-# Offline T2 map viewer milestone
+# Offline T2 map viewer
 
-Goal: open one stock Katabatic CTF mission from Skinner, render terrain,
-interiors and placed shapes, and verify free-flight in the packaged application.
-No collision walking, map editing, T1/Q3 maps, demos, live servers or relay.
+Opens the Tribes 2 missions of a local install from Skinner in free-flight:
+terrain, interiors, placed shapes, sky, water and force fields, drawn by a
+compiled build of [exogen/t2-mapper](https://github.com/exogen/t2-mapper) that
+also runs the game's own mission scripts. No collision walking, gameplay, audio
+or map editing. T1 maps have their own page, see [t1-map-viewer.md](t1-map-viewer.md).
 
 Upstream: https://github.com/exogen/t2-mapper
 Pinned source: e9b6332aaa48bc79535655d644bacc7e22b6ac79.
 Source checkout: C:/tmp/t2-mapper-skinner-reference (sparse source, no game assets).
-Game input: C:/Dynamix/Tribes2/GameData/base, read-only stock archive allowlist.
-Existing workshop checkpoint: a7987ac on codex/texture-workshop.
 
-Approach: separate compiled map page served by Flask. Preserve the upstream
-renderer and script runtime; a small local entry mounts only the map view.
-Keep source assets in ignored local-data/t2-maps; do not commit game archives.
-Keep build dependencies and upstream checkout outside the tracked source.
-Retain exact source revision and attribution alongside the compiled viewer.
+## Importing maps
 
-Current state: source build displays terrain, bases and placed shapes. All five
-stock biome archives are included because building textures cross biome boundaries.
-The local pack has 3736 resources. Authored DTS mounts are extracted with upstream's
-helper (including vehicle_pad/mount0); the stock empty xorg2.dts is skipped.
-The Windows package now renders both the snow-covered exterior and the lower
-generator room, including lightmapped interior surfaces and placed generators.
-Verified WASD movement, drag-to-look, observer camera selection, FOV, fog, reset,
-and navigation to/from the existing rendered T1 model workshop. Browser inspection
-found no map-page errors in the packaged smoke check. Embedded-browser mouse capture
-is unavailable; its drag-to-look fallback is verified. Native browser pointer-lock
-feel still needs user review.
+In the app: **T2 Maps** in the model sidebar, then **Import maps**. Enter your
+Tribes 2 folder (`GameData` or its `base` folder). Every mission in the archives
+below is imported in one go, about 500 MB and a few seconds on a local disk. A
+pack that already exists is kept unless **Re-import existing maps** is ticked.
+From a checkout the same import runs as:
 
-Validation: 57 Python tests passed (including import scope, archive traversal,
-encoding/precedence, no-overwrite, and confined local routes), production viewer
-build and PyInstaller succeeded, Git LFS fsck passed. The packaged check used
-local port 5088. No Unity files or game-install files were modified.
+```powershell
+python tools/import_t2_map.py --game-base C:/Dynamix/Tribes2/GameData [--replace]
+```
 
-Launch: dist/texture-workshop/SkinnerApp.exe. Portable archive:
-dist/DTS-Skinner-T2-Katabatic-preview-Windows.zip, with adjacent SHA-256 file.
-Next expansion should begin with user review of this map, then a small stock-map
-selection. T1/Q3 loaders and collision walking remain separate future work.
+The game folder is only read. Output goes to `local-data/t2-maps` (ignored by
+Git; next to the executable in a packaged build). Only these archives are read,
+in this order, later ones winning; loose files and other archives are not:
 
-## Reproduce
+`base`, `scripts`, `missions`, `shapes`, `interiors`, `textures`, `skins`,
+`badlands`, `desert`, `ice`, `lava`, `lush` (all required), then
+`Classic_maps_v1`, `TR2final105-client` and `TR2final105-server` where present.
 
-The checked-in static/t2-maps bundle works without Node at runtime. Game assets
-are intentionally excluded from Git. To prepare a new local pack and rebuild:
+The TR2 server archive holds no maps: it has `TR2Game.cs` and the datablocks the
+eight Team Rabbit 2 missions run. `T2csri`, `zz_Classic_client_v1` (client and
+login scripts), `TR2final093-extras`, `audio` and `voice` are left out.
+
+Unlike the T1 pack, which has a folder per map, this is one shared pack, as
+upstream's is: the missions share nearly all their scripts, shapes, interiors
+and textures. `manifest.json` lists every resource and the missions (name,
+display name, mission types, source archive); `SOURCES.json` records the
+archive hashes. Replacing a pack builds the new one beside it and swaps them;
+a folder that is not a map pack is never replaced.
+
+## Controls
+
+Pick a map from the dropdown (grouped Official, Classic, Team Rabbit 2) and,
+for a mission with several game types, the type beside it; the type decides
+which of the mission's objects are placed. The choice is kept in the address as
+`?mission=Name~Type`, upstream's form. Click the scene to capture the mouse or
+drag to look, WASD moves, Space rises, Shift descends, the wheel changes speed,
+Escape releases the mouse and keys 1–9 select the mission's observer
+viewpoints. FOV, Fog, **Invert horizontal** / **Invert vertical** and Reset view
+are above the scene; settings persist in their own browser-storage namespace.
+Missions without observer cameras (the Training missions) open at the map
+origin.
+
+**Preview notes** lists what the renderer could not resolve on the map in
+view: files a mission, shape or material list names that the pack does not
+hold (upstream draws a fallback), shapes that failed to load, script errors,
+and a mission whose scripts have not reported ready after 90 seconds.
+
+## Where this departs from upstream
+
+- The pack is flattened to one lowercase tree with later archives overwriting
+  earlier ones, where upstream keeps a folder per archive and the game's order
+  (by archive name). On the install checked the two orders pick identical
+  content for every path, and the three added archives override nothing.
+- Mission names and types are read at import in Python, and mount points by the
+  viewer when it first opens a pack (stored as `mounts.json`), with upstream's
+  own `parseDTS` and `extractMountTransforms`; upstream does both in its Node
+  manifest build. This is what lets a packaged build import without Node.
+- A plain dropdown replaces upstream's search box, and choosing a map loads a
+  fresh page, as the T1 viewer does. Upstream switches in place, but its caches
+  keep every map's textures (1.6 GB of script memory after opening all 84) and
+  report an unresolved file only the first time it is asked for.
+- One shader line is patched at build time. Upstream's reflection lookup for
+  shapes reads `transformedNormal`, which Three declares for an unlit material
+  only when it is skinned, so the instanced glowing parts of shapes whose
+  datablock has an environment map did not compile and were not drawn. Upstream's
+  main branch has the same line.
+- As before: audio off, settings and skins kept local, mouse-look inversion,
+  no live-server, demo or relay interfaces. CSP blocks external requests.
+
+## Coverage
+
+Checked on 2026-10-02 against the install at `C:\Dynamix\Tribes2\GameData`:
+84 missions (52 in `missions.vl2`, 24 in `Classic_maps_v1.vl2`, 8 in
+`TR2final105-client.vl2`), 6,927 resources, 503 MB, mount points on 89 shapes.
+The 79 shapes of the earlier Katabatic pack get the same mount points as the
+Node build step gave them; the other ten are TR2 armors and weapons.
+
+All 84 import, with a terrain for each. Counting every mission type there are
+133 combinations, and each was loaded twice:
+
+- Headless, by `check-pack.ts` (below): all 133 become ready, with every
+  terrain, interior, sky material list and shape file they place in the pack,
+  and the importer's names and types equal to upstream's parser.
+- In the browser, each on a fresh page: all 133 reach "Map ready", the slowest
+  in 13 seconds. 53 missions list nothing under Preview notes; 30 list one or
+  more of the following, all of them files the stock archives name but do not
+  hold (upstream draws its white fallback):
+
+| Unresolved | Missions |
+| --- | --- |
+| `textures/skins/axe` (a shape skin) | Archipelago, DeathBirdsFly, DesertofDeath_nef, Hillside, IceBound, IceRidge_nef, JacobsLadder, Katabatic, Lakefront, Magmatic, Overreach, Quagmire, Rollercoaster_nef, Sandstorm (CTF, DnD), Starfallen, Stonehenge_nef, Surreal (CTF), Titan, Training3, WhiteDwarf |
+| `textures/desert/skies/ice_blue_emap` (sky environment map; the file is under `ice/skies`) | IceBound, IceRidge_nef, Katabatic, Rimehold, SubZero, ThinIce, Whiteout |
+| `textures/ice/skies/icebound_emap_cloudsground` | IceBound, ShockRidge, ThinIce, WhiteDwarf |
+| `textures/lava/skies/volcanic_starrynite_v5_dn` | FrozenFury, GodsRift, SkinnyDip, SolsDescent |
+| `textures/lava/tlite1t` | Surreal |
+| `textures/special/lush_env` | Raindance_nef |
+
+Training2 and Training3 also list a line each that their own scripts print
+through `error()` ("Running Mission 2 Script", "Effective Turret Range is:
+150"); `check-pack.ts` reports the same two and exits non-zero for them.
+
+Looked at in the browser: Katabatic (ice), Riverdance (lush, both types),
+Desiccator (desert), Recalescence (lava), Minotaur (badlands), Raindance
+(Classic), Crater 71 and Treasure Island (Team Rabbit 2) and Training1. Before
+the shader patch above, 13 or more maps, the Hunters maps among them, logged
+the compile error; none does now.
+
+The in-app import was checked from an empty state in a source run: the page
+imported the install, reloaded, read the mount points and drew Katabatic, and
+the pack was identical, file for file, to one imported from the command line.
+It has not been checked in a packaged build.
+
+Not checked: every map by eye, the look of each map against the game, and
+anything that needs the scripts to run on (see Limits).
+
+## Build
+
+The checked-in `static/t2-maps` bundle works without Node at runtime. To rebuild:
 
 ```powershell
 git clone --depth 1 --filter=blob:none --sparse https://github.com/exogen/t2-mapper C:/tmp/t2-mapper-skinner-reference
 git -C C:/tmp/t2-mapper-skinner-reference fetch origin e9b6332aaa48bc79535655d644bacc7e22b6ac79
 git -C C:/tmp/t2-mapper-skinner-reference checkout e9b6332aaa48bc79535655d644bacc7e22b6ac79
 git -C C:/tmp/t2-mapper-skinner-reference sparse-checkout set src generated public scripts relay
-python tools/import_t2_map.py --game-base C:/Dynamix/Tribes2/GameData/base
-python tools/build_t2_maps.py --source C:/tmp/t2-mapper-skinner-reference --map-data local-data/t2-maps
-python app.py
+python tools/build_t2_maps.py --source C:/tmp/t2-mapper-skinner-reference
 ```
 
-Import refuses to overwrite an existing pack. The stock archive allowlist and
-order are explicit; no loose files or mods override it. SOURCES.json records
-the input archive hashes. Build requires Node/npm, installs the pinned lockfile
-when dependencies are absent, validates upstream source revision/cleanliness,
-and replaces only the generated static/t2-maps bundle. Keep the upstream source
-checkout outside Skinner. UPSTREAM.json and THIRD-PARTY-NOTICES.txt ship with the
-bundle. Upstream package.json declares MIT and this revision has no root LICENSE.
+Build requires Node/npm, installs the pinned lockfile when dependencies are
+absent, validates the upstream revision and that its tracked inputs are
+unchanged, copies `map-client/` into the checkout as `skinner/` and replaces
+only the generated `static/t2-maps` bundle. The build does not touch the map
+pack. `UPSTREAM.json` and `THIRD-PARTY-NOTICES.txt` ship with the bundle.
+Upstream `package.json` declares MIT and this revision has no root LICENSE.
 
-## Controls and limits
+## Checks
 
-Click **T2 Maps · Katabatic** in the model sidebar. Click the scene to capture the
-mouse, WASD moves, Space rises, Shift descends, wheel changes movement speed,
-and Escape releases the mouse. Keys 1–9 select authored observer viewpoints.
-Drag to look also works when an embedded browser cannot capture the mouse.
-FOV, fog, and Reset view are available above the scene. Models returns to Skinner.
-Map settings use a separate browser-storage namespace.
-**Invert horizontal** and **Invert vertical** independently reverse mouse-look
-axes, for both captured mouse movement and drag-to-look. Both default off (mouse
-right looks right, mouse up looks up) and persist across reloads and Reset view.
-This fixes the initial preview's reversed drag-to-look direction.
-Mouse-controls validation: all four axis combinations passed the direction check;
-the rebuilt executable verified normal/reversed drag and independent persistence
-across reloads, with no browser errors. Captured input uses the same axis function.
-Direction check after building: from the pinned upstream checkout, run
-`node --import=tsx/esm skinner/check-mouse-look.ts`.
+`python -m unittest tests.test_t2_maps` covers the importer (every mission,
+encoding, precedence, replace, traversal, missing archives) and the local
+routes. Two checks run from the upstream checkout after a build:
 
-This first milestone is Katabatic CTF only: free-flight without collision,
-gameplay, audio, map editing or material editing. Q3 maps are not implemented;
-T1 maps have their own page, see [t1-map-viewer.md](t1-map-viewer.md).
-It runs through local Flask asset routes; CSP blocks external asset/network calls.
-It does not mount upstream live-server, demo or relay interfaces.
+```powershell
+$env:LOG_LEVEL = 'error'; $env:TSX_TSCONFIG_PATH = 'tsconfig.node.json'
+node --import=tsx/esm skinner/check-pack.ts C:/path/to/local-data/t2-maps
+node --import=tsx/esm skinner/check-mouse-look.ts
+```
 
-Known source limitations: the stock sky_ice_blue.dml refers to an absent
-desert/skies/ice_blue_emap (the file exists under ice/skies), and a stock shape
-references the absent axe texture. Upstream's fallbacks remain; these are disclosed
-in Preview notes. The script interpreter also logs unsupported gameplay functions;
-this preview is not a gameplay simulator. A rendered smoke check is not a claim
-of full native map fidelity.
+`check-pack.ts` needs a pack the viewer has opened once (for `mounts.json`). It
+loads every mission in each of its types through upstream's script runtime, as
+upstream's own mission-load test does for one map, and reports missions that
+fail or do not become ready, terrain, interior, sky and shape files the pack
+lacks, script errors, and any mission whose name or types the importer read
+differently from upstream's parser. It does not draw anything.
+
+## Limits
+
+Free-flight only. The script runtime does not simulate gameplay: upstream skips
+the AI, admin and single-player dialogue scripts and logs the engine functions
+it does not implement, so scripted events (Training missions, Siege gates,
+TR2 play) do not happen. A rendered check is not a claim of full native map
+fidelity. Embedded-browser mouse capture is unavailable; drag-to-look is the
+fallback there.

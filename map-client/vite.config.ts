@@ -24,6 +24,17 @@ export default defineConfig({
       }
       return 'import {mouseDelta, useMouseLook} from "../../skinner/mouse-look";\n' + source;
     }
+    if(id.endsWith('/shapeMaterial.ts')) {
+      // Three declares transformedNormal for an unlit material only when it is skinned or has Three's own envMap, so
+      // upstream's reflection lookup does not compile for the instanced glowing parts of shapes and they are not drawn.
+      // The instanced normal is computed here as Three's defaultnormal_vertex does.
+      const before = '#elif defined(USE_SKINNING) || defined(USE_INSTANCING)';
+      if(!source.includes(before)) throw new Error('Upstream shape reflection shader changed: ' + before);
+      return source.replace(before, `#elif defined(USE_INSTANCING) && !defined(USE_SKINNING)
+    mat3 _im = mat3(instanceMatrix);
+    vec3 _eyeN = normalize(normalMatrix * (_im * (normal / vec3(dot(_im[0], _im[0]), dot(_im[1], _im[1]), dot(_im[2], _im[2])))));
+  #elif defined(USE_SKINNING)`);
+    }
   }}],
   build:{target:'esnext',outDir:process.env.SKINNER_MAP_OUTPUT,emptyOutDir:true,rollupOptions:{input:path.resolve('skinner/index.html')}},
 });
