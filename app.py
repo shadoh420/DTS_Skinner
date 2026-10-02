@@ -196,8 +196,8 @@ def q3_maps_viewer():
 
 @app.route('/q3-map-data/<path:filename>')
 def q3_map_data(filename):
-    # Files under textures/ and bsp/ are named by their content, so a browser need never ask for one twice.
-    shared = filename.startswith(('textures/', 'bsp/'))
+    # Files under textures/, bsp/ and models/ are named by their content, so a browser need never ask for one twice.
+    shared = filename.startswith(('textures/', 'bsp/', 'models/'))
     response = send_from_directory(local_data_dir / 'q3-maps', filename, max_age=31536000 if shared else None)
     response.cache_control.immutable = shared
     return response

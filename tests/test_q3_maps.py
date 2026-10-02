@@ -186,6 +186,8 @@ class Q3MapTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'q3-maps/bsp').mkdir(parents=True)
+            (root / 'q3-maps/models').mkdir()
+            (root / 'q3-maps/models/0123456789abcdef0123.json').write_text('[]')
             (root / 'q3-maps/index.json').write_text('[]')
             (root / 'q3-maps/bsp/0123456789abcdef0123.bsp').write_bytes(b'IBSP')
             (root / 'secret.txt').write_text('outside pack')
@@ -197,8 +199,9 @@ class Q3MapTests(unittest.TestCase):
                 with client.get('/q3-map-data/index.json') as response:
                     self.assertEqual(response.json, [])
                     self.assertNotIn('immutable', response.headers.get('Cache-Control', ''))
-                with client.get('/q3-map-data/bsp/0123456789abcdef0123.bsp') as response:
-                    self.assertIn('immutable', response.headers['Cache-Control'])
+                for file in ('bsp/0123456789abcdef0123.bsp', 'models/0123456789abcdef0123.json'):
+                    with client.get('/q3-map-data/' + file) as response:
+                        self.assertIn('immutable', response.headers['Cache-Control'])
                 with client.get('/q3-map-data/../secret.txt') as response:
                     self.assertEqual(response.status_code, 404)
                 self.assertEqual(client.post('/import_q3_maps', json={'game': str(root)}, headers={'Origin': 'http://elsewhere.example'}).status_code, 403)

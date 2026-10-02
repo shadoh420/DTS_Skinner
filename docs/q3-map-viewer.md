@@ -211,8 +211,8 @@ entity colours 1. 88 maps list nothing at all.
 Looked at in the browser: `q3dm1` (also its shards and rocket launcher),
 `q3ctf1` (the red flag at its base), `q3tourney2`, `cpm22`, `q3dm7` (arches and
 other patches),
-`q3dm15` (cloud sky, lava), `q3dm17` (no sky surfaces around it, black as in
-the game), `qc_bloodrun` and `13castle` (custom; sky box, whose sides and top
+`q3dm15` (cloud sky, lava), `q3dm17` (no sky surfaces around it, so black
+beyond the platforms), `qc_bloodrun` and `13castle` (custom; sky box, whose sides and top
 meet without a seam at two opposite corners), Team Arena's `mpteam1`, and the
 loose `egypttower01` (unlit, drawn by its vertex colours).
 
