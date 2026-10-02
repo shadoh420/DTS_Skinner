@@ -55,7 +55,10 @@ maps that have none. Animate lights off holds the buildings' flickering and
 pulsing lights where they are (in their first state if it was off when the map
 loaded); it is greyed out on maps without such lights. Missions
 without observer cameras (training and many custom maps) start from a generated
-view above the placed objects.
+view above the placed objects. While a map loads, its terrain is in view at once
+as a green wireframe and turns textured as each terrain texture arrives, the
+look t2-mapper's terrain has while loading (unlit here); locally that is a
+tenth to half a second, longer the first time a map is opened.
 
 ## How a mission is resolved
 

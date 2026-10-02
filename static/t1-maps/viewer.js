@@ -76,10 +76,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.computeBoundingSphere();
-    const materials = await Promise.all(slots.map(async slot => {
-      const texture = terrain.textures[slot] && await loadTexture(data + 'textures/' + terrain.textures[slot]);
-      return new THREE.MeshBasicMaterial(texture ? {map: texture, vertexColors: true} : {color: 0xcc00cc});
-    }));
+    // The terrain is in view at once, as the green wireframe t2-mapper's terrain shows until its textures load.
+    // Unlit here: this geometry carries the terrain lightmap as vertex colours and has no normals to light.
+    const materials = slots.map(() => new THREE.MeshBasicMaterial({color: 'rgb(0, 109, 56)', wireframe: true}));
     const width = size * unit, [x, y, z] = terrain.position;
     highest = z + heights.reduce((most, height) => Math.max(most, height), -Infinity);
     ground = (worldX, worldZ) => {  // The game's terrain repeats without end, so this wraps.
@@ -92,6 +91,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       mesh.position.set(x + column * width, z, -(y + row * width));
       scene.add(mesh);
     }
+    // The tiles share the material list, so each slot turns textured on all of them as its texture arrives.
+    await Promise.all(slots.map(async (slot, index) => {
+      const texture = terrain.textures[slot] && await loadTexture(data + 'textures/' + terrain.textures[slot]);
+      materials[index].dispose();
+      materials[index] = new THREE.MeshBasicMaterial(texture ? {map: texture, vertexColors: true} : {color: 0xcc00cc});
+    }));
   }
 
   const models = new Map();
