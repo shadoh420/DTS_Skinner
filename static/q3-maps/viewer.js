@@ -38,6 +38,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   const loader = new THREE.TextureLoader(), textures = new Map();
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   white.needsUpdate = true;
+  // CNQ3's default image, drawn where a shader cannot be built: dark grey with a red line along s, a green one
+  // along t and a yellow diagonal (tr_image.cpp R_CreateDefaultImage).
+  const fallbackTexels = new Uint8Array(16 * 16 * 4).fill(32);
+  for (let i = 0; i < 16; i++) {
+    const level = 64 + 8 * i;
+    fallbackTexels.set([level, 32, 32, 255], i * 4);
+    fallbackTexels.set([32, level, 32, 255], i * 64);
+    fallbackTexels.set([level, level, 32, 255], i * 68);
+  }
+  const fallback = new THREE.DataTexture(fallbackTexels, 16, 16);
+  fallback.wrapS = fallback.wrapT = THREE.RepeatWrapping;
+  fallback.generateMipmaps = true;
+  fallback.minFilter = THREE.LinearMipmapLinearFilter;
+  fallback.magFilter = THREE.LinearFilter;
+  fallback.needsUpdate = true;
   function loadTexture(file, clamp, plain) {
     const key = file + (clamp ? '|clamp' : '') + (plain ? '|plain' : '');
     if (!textures.has(key)) textures.set(key, new Promise(resolve => loader.load(data + 'textures/' + file, texture => {
@@ -267,16 +282,18 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Stages of a surface without a script, as R_FindShader builds them: the image under the lightmap, or lit by
   // the vertex colours where the surface has no lightmap.
-  const stagesOf = (shader, lit, model) => !shader.implicit ? shader.stages
+  const stagesOf = (shader, lit, model) => shader.default ? [{map: '$default', rgbGen: ['identitylighting'], depthWrite: true}]
+    : !shader.implicit ? shader.stages
     : model ? [{map: shader.map, rgbGen: ['lightingdiffuse'], depthWrite: true}]
     : lit ? [{map: '$lightmap', tcGen: 'lightmap', rgbGen: ['identity'], depthWrite: true}, {map: shader.map, rgbGen: ['identity'], blend: ['gl_dst_color', 'gl_zero'], depthWrite: false}]
     : [{map: shader.map, rgbGen: ['exactvertex'], depthWrite: true}];
-  const loading = new THREE.MeshBasicMaterial({color: 'rgb(0, 109, 56)', wireframe: true}), magenta = new THREE.MeshBasicMaterial({color: 0xcc00cc, side: THREE.DoubleSide});
+  const loading = new THREE.MeshBasicMaterial({color: 'rgb(0, 109, 56)', wireframe: true});
   // The materials of a shader's stages, once their textures are in; nothing for a shader that names none.
   async function stageMaterials(shader, stages, atlas) {
     const ready = await Promise.all(stages.map(async stage => {
       if (stage.map === '$lightmap') return [atlas || white];
       if (stage.map === '$whiteimage') return [white];
+      if (stage.map === '$default') return [fallback];
       return Promise.all((stage.frames || [stage.map]).map(file => loadTexture(file, stage.clamp)));
     }));
     return stages.map((stage, index) => ready[index][0] && stageMaterial(shader, stage, ready[index][0], ready[index].filter(Boolean)));
@@ -301,8 +318,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       mesh.name = shader.name;
       root.add(mesh);
     };
-    if (shader.implicit && !shader.map) add(magenta, 0);
-    else {
+    {
       if (shader.sky && shader.sky.box) add(boxMaterial(await Promise.all(shader.sky.box.map(file => loadTexture(file, true, true)))), 0);
       // ponytail: one draw per stage, as the game without multitexture; fold lightmap × texture into one pass if maps get heavy.
       (await stageMaterials(shader, stagesOf(shader, lit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
@@ -324,7 +340,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         geometry.setAttribute('normal', new THREE.Float32BufferAttribute(surface.normals, 3));
         geometry.setAttribute('uv', new THREE.Float32BufferAttribute(surface.uvs, 2));
         geometry.setIndex(surface.indices);
-        const materials = shader.implicit && !shader.map ? [magenta] : (await stageMaterials(shader, stagesOf(shader, false, true) || [])).filter(Boolean);
+        const materials = (await stageMaterials(shader, stagesOf(shader, false, true) || [])).filter(Boolean);
         return {geometry, materials, sort: shader.sort};
       }));
     })());
@@ -360,7 +376,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function showNotes() {
     if (!map) return;
     const parts = [];
-    if (map.unresolved.length) parts.push('Not in the game files: ' + map.unresolved.join('; '));
+    if (map.unresolved.length) parts.push("Not in the game files, so drawn with the game's dark default image as the game draws them: " + map.unresolved.join('; '));
     if ((map.outside || []).length) parts.push('Filled in from your extras folder, not the game files: ' + map.outside.join('; '));
     if (map.limits.length) parts.push('Not drawn or simplified: ' + map.limits.join('; '));
     if (missing) parts.push(`${missing} textures of the pack did not load`);

@@ -74,9 +74,10 @@ scene. While a map loads, each surface is a green wireframe until its textures
 have arrived, as the T1 terrain is.
 
 **Preview notes** lists, for the map in view: what it names that the game
-files do not hold (a shader with neither script nor image, drawn magenta; a
-stage's texture, that stage left out), what was filled in from the extras
-folder, what is not drawn or is simplified, and
+files do not hold (a shader with neither script nor image, or a stage's
+texture; either way the surface is drawn with the game's dark default image,
+as the game draws it), what was filled in from the extras folder, what is not
+drawn or is simplified, and
 anything that failed while loading (a texture, a shader the graphics driver
 rejected, a map file with no surfaces).
 
@@ -85,15 +86,27 @@ rejected, a map file with no surfaces).
 References: ArenaPrototype's Quake 3 code first (`Quake3BspReader`,
 `Quake3StaticWorldScene`, `Quake3StaticMaterial` and its
 `Quake3StaticStage.shader`), and ioquake3 at `67e4fa9` for rules it does not
-state. Both were read for behaviour; none of their code is in the app.
+state. Where engines differ, CNQ3 (at `ef32da8`) decides, since that is the
+engine the install checked here runs. All were read for behaviour; none of
+their code is in the app.
 
-- Files are searched as ioquake3 searches them: loose files of a folder, then
-  its archives from the last name to the first, then the same for `baseq3`
-  under a mod folder (`FS_AddGameDirectory`).
-- Of two scripts that define one shader, the one from the lower source wins,
-  unless the two script files share a name; inside a file the first definition
-  wins (`ScanAndLoadShaderFiles`, `FindShaderInShaderText`). A custom pk3
-  therefore cannot replace a `pak0` shader from a script of another name.
+- Files are searched as CNQ3 and the original game search them: a folder's
+  archives from the last name to the first, then its loose files, then the
+  same for `baseq3` under a mod folder (`FS_AddGameDirectory`). ioquake3 looks
+  at loose files first.
+- Of script files with one name only the first found is read. Of two scripts
+  that define one shader the one from the higher source wins, and inside a
+  file the first definition (CNQ3's `ScanAndLoadShaderFiles`, which joins the
+  scripts in the order found). ioquake3 and the original game join them last
+  to first, so there the lower source wins and a custom pk3 cannot replace a
+  `pak0` shader. On this install the two rules give 25 shaders a different
+  definition, on 47 maps.
+- A shader the game cannot build gets its default shader: one with neither a
+  script nor an image of its name, and one whose script names a stage image
+  that is missing, whatever its other stages (`R_FindShader`,
+  `ShaderForShaderNum`). The default image drawn is CNQ3's: 16 × 16, dark
+  grey, with a red line along one edge, a green one along the other and a
+  yellow diagonal. From any distance it is a dark surface.
 - A surface whose shader has no script gets the image of that name: under the
   lightmap, or coloured by its vertices where the surface has no lightmap
   (`R_FindShader`). Surfaces of a shader flagged no-draw in the map file are
@@ -139,9 +152,6 @@ state. Both were read for behaviour; none of their code is in the app.
 - ArenaPrototype refuses a map with a shader directive it does not support or
   a missing resource. Here the map is drawn with what resolves and the rest is
   listed under Preview notes.
-- The game gives up on a whole shader when one stage's image is missing and
-  draws its default image; here the other stages are still drawn. A shader
-  with neither script nor image is magenta, not the game's grey default.
 - The game subdivides a patch by its curvature (`r_subdivisions`) and drops
   detail with distance; here every span is 4 × 4.
 - All lightmaps of a map are packed into one texture, so a shader is one draw
@@ -151,8 +161,6 @@ state. Both were read for behaviour; none of their code is in the app.
 - The sky is drawn on the map's sky surfaces where they stand; the game draws
   it at the far limit of depth, so there geometry beyond a sky surface can
   show in front of the sky.
-- Loose files are found before archives, ioquake3's order. The original 1.32
-  game looks in archives first.
 - The whole map is drawn, culled only by the view per shader; the game also
   culls by its visibility data. Lightmap and texture are drawn as two passes,
   as the game does without multitexture.
@@ -178,7 +186,7 @@ Checked on 2026-10-02 against the install at
 All 306 import. In the browser, each on a fresh page:
 
 - All 306 reach "Map ready" (half of them within 0.3 to 0.4 seconds, the
-  slowest in 2.3 to 3.0 over two sweeps, most of that dropping a hundred or
+  slowest in 2.2 to 3.0 over three sweeps, most of that dropping a hundred or
   more pickups to the floor), every shader compiles and none fails to draw.
   `radianttest02`, one of the loose files, holds no surfaces and says so.
 - 15,107 pickups are placed on 285 maps; every model the base game's item
@@ -234,6 +242,18 @@ same file name in another folder of the install (`textures/steven/…` beside
 stock shaders, `textures/bus_ca4/…` beside `textures/bus_ca1/…`); none of
 those is used, since nothing says they are the same thing.
 
+`pukka3tourney2` and `b0_beta6` were looked at closely, being maps that play
+without any visible fault. Both do lack a file. `pukka3tourney2.pk3` has
+`yellowtech1_l1_5a`, `_l3_4a` and `_l3_c1a` but nothing named
+`yellowtech1_l1_8a`, in an image or a script, and nor has any archive on the
+drive; 24 faces use it, strips 4 units high around the ceiling lights, which
+under the default image are as dark as the trim beside them. In
+`b0_beta6.pk3` the script's `textures/b0_final/b0_beam_blue.tga` is in the
+archive as `textures/sfx/b0_beam_blue.jpg`, so the shader of five upward
+faces fails and they get the default image. CNQ3 handles both cases as the
+other engines do; what differed was the viewer, which drew magenta for the
+first and nothing for the second.
+
 Three faults in the importer were found by this and fixed, which is what took
 the count from 31 maps to 23 before any extras:
 
@@ -270,7 +290,8 @@ packaged build.
 Not checked: any map against the game side by side, and every map by eye.
 
 Tests: `python -m unittest tests.test_q3_maps` covers the script reader, the
-search order and which script wins, stage defaults, the import (draw lumps,
+search order and which script wins, stage defaults, the default shader for
+what cannot be built, the import (draw lumps,
 scenes, pickups and their models, unresolved content, the extras folder,
 skipping, a map file of the wrong version), the TGA and empty-file cases above
 and the local routes. Set `Q3_GAME_BASE` to a Quake 3 folder to also import that

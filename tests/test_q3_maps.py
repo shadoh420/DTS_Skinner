@@ -40,6 +40,12 @@ textures/test/sky
 {
 	surfaceparm sky
 	skyparms full 256 -
+	{ map textures/test/wall.tga }
+}
+textures/test/broken
+{
+	cull none
+	{ map textures/test/wall.tga }
 	{ map textures/test/missing.tga }
 }
 '''
@@ -80,7 +86,7 @@ class Q3MapTests(unittest.TestCase):
         self.assertEqual(stages[2], [['map', 'textures/test/glow.tga'], ['blendfunc', 'add'],
                                      ['rgbgen', 'wave', 'sin', '0.5', '0.25', '0', '2'], ['tcmod', 'scroll', '1', '-0.5']])
         self.assertEqual(len(stages), 3)  # Not the one-stage definition further down.
-        self.assertEqual(shaders['textures/test/sky'][1], [[['map', 'textures/test/missing.tga']]])
+        self.assertEqual(shaders['textures/test/sky'][1], [[['map', 'textures/test/wall.tga']]])
 
     def test_search_order_and_which_of_two_scripts_wins(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -91,13 +97,14 @@ class Q3MapTests(unittest.TestCase):
             pk3(root / 'baseq3/zmap.pk3', {'textures/b.tga': b'zmap', 'Textures\\C.TGA': b'zmap',
                                            'scripts/custom.shader': 'x { { map textures/custom.tga } }', 'scripts/same.shader': 'y { { map textures/custom.tga } }'})
             (root / 'baseq3/textures/c.tga').write_bytes(b'loose')
+            (root / 'baseq3/textures/d.tga').write_bytes(b'loose')
             game = Game([root / 'baseq3'])
             try:
-                # A loose file is found before any archive, and of two archives the later name.
-                self.assertEqual([game.files[f'textures/{name}.tga'][1]() for name in 'abc'], [b'pak0', b'zmap', b'loose'])
-                self.assertEqual([label for label, _ in game.sources], ['baseq3 folder', 'zmap.pk3', 'pak0.pk3'])
-                # Two scripts defining one shader: the lower source wins, unless the files share a name.
-                self.assertEqual(game.shaders['x'][1], [[['map', 'textures/base.tga']]])
+                # Of two archives the later name is found first, and any archive before a loose file (CNQ3's order).
+                self.assertEqual([game.files[f'textures/{name}.tga'][1]() for name in 'abcd'], [b'pak0', b'zmap', b'zmap', b'loose'])
+                self.assertEqual([label for label, _ in game.sources], ['zmap.pk3', 'pak0.pk3', 'baseq3 folder'])
+                # Two scripts defining one shader: the higher source wins, whether or not the files share a name.
+                self.assertEqual(game.shaders['x'][1], [[['map', 'textures/custom.tga']]])
                 self.assertEqual(game.shaders['y'][1], [[['map', 'textures/custom.tga']]])
             finally:
                 game.close()
@@ -122,10 +129,15 @@ class Q3MapTests(unittest.TestCase):
                 self.assertTrue(wall['map'].endswith('.png') and glow['map'].endswith('.jpg'))  # The .tga name finds the .jpg.
                 self.assertEqual((glow['blend'], glow['rgbGen'], glow['tcMods']), (['gl_one', 'gl_one'], ['wave', 'sin', .5, .25, 0, 2], [['scroll', 1, -.5]]))
                 self.assertEqual((unresolved, limits), ([], []))
-                # A box of which no side exists is not drawn by the game either; a missing stage image is reported.
+                # A box of which no side exists is not drawn by the game either, and is not reported.
                 sky, unresolved, _ = describe(game, 'textures/test/sky', textures)
-                self.assertEqual((sky['sky'], sky['sort'], sky['stages']), ({'cloudHeight': 256}, 2, []))
-                self.assertEqual(unresolved, ['texture textures/test/missing.tga (shader textures/test/sky)'])
+                self.assertEqual((sky['sky'], sky['sort'], len(sky['stages']), unresolved), ({'cloudHeight': 256}, 2, 1, []))
+                # One stage's image missing: the game gives up on the shader and draws its default one, as it does
+                # for a shader with neither script nor image.
+                fallback = {'default': True, 'cull': 'front', 'sort': 3, 'outside': []}
+                self.assertEqual(describe(game, 'textures/test/broken', textures), (
+                    {'name': 'textures/test/broken', **fallback}, ['texture textures/test/missing.tga (shader textures/test/broken)'], []))
+                self.assertEqual(describe(game, 'textures/test/absent', textures)[0], {'name': 'textures/test/absent', **fallback})
                 plain, unresolved, _ = describe(game, 'textures/test/plain', textures)
                 self.assertEqual((plain['implicit'], plain['map'][-4:], unresolved), (True, '.png', []))
                 self.assertEqual(describe(game, '/textures/test/plain', textures)[0]['map'], plain['map'])  # A leading slash is dropped.
@@ -134,7 +146,7 @@ class Q3MapTests(unittest.TestCase):
                 self.assertEqual(describe(game, 'textures/test/absent', textures)[1], ['shader textures/test/absent (no script and no texture of that name)'])
                 # A .tga Pillow refuses is read as the game reads it.
                 with Image.open(root / 'out' / describe(game, 'textures/test/run', textures)[0]['map']) as run:
-                    self.assertEqual((run.mode, run.size, set(run.getdata())), ('RGB', (2, 2), {(1, 2, 3)}))
+                    self.assertEqual((run.mode, run.size, run.tobytes()), ('RGB', (2, 2), bytes([1, 2, 3]) * 4))
                 # An empty .tga, as Team Arena has over some base images, is passed over for the .jpg of that name.
                 self.assertEqual(describe(game, 'textures/test/emptied', textures), (
                     {'name': 'textures/test/emptied', 'implicit': True, 'map': glow['map'], 'cull': 'front', 'sort': 3, 'outside': []}, [], []))
@@ -180,7 +192,7 @@ class Q3MapTests(unittest.TestCase):
                 {'kind': 'weapon', 'origin': [0, 0, 0], 'models': ['models/weapons2/railgun/railgun.md3'], 'suspended': False},
                 {'kind': 'health', 'origin': [4, 5, 6], 'models': ['models/powerups/health/medium_cross.md3'], 'suspended': True}])
             model = scene['itemModels']['models/weapons2/railgun/railgun.md3']
-            self.assertEqual((model['middle'], model['shaders'][0]['name'], model['shaders'][0]['implicit']), ([.5, .5, 0], 'models/test/skin', True))
+            self.assertEqual((model['middle'], model['shaders'][0]['name'], model['shaders'][0]['default']), ([.5, .5, 0], 'models/test/skin', True))
             self.assertEqual(json.loads((root / 'pack' / model['file']).read_text()), [
                 {'vertices': [0, 0, 0, 1, 0, 0, 0, 1, 0], 'normals': [0, 0, 1] * 3, 'uvs': [0, 0, 1, 0, 0, 1], 'indices': [0, 2, 1]}])
             lumps = read_bsp((root / 'pack' / scene['bsp']).read_bytes())

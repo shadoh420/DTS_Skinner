@@ -5,9 +5,11 @@ python tools/import_q3_map.py --game-base "C:/Games/Quake 3 Arena" [--replace] [
 Reads every maps/*.bsp of baseq3 and of the mod folders beside it (pk3 archives and loose files) and writes
 a pack the viewer draws: the map's draw lumps, the shader stages each of its surfaces uses, and their
 textures. Format: IBSP version 46 (id Software qfiles.h). The stage model is ArenaPrototype's
-Quake3StaticMaterial; search order, which of two shader scripts with one name wins, and stage defaults are
-ioquake3's (files.c FS_AddGameDirectory, tr_shader.c ScanAndLoadShaderFiles, ParseShader, ParseStage,
-FinishShader, R_FindShader). Pickups get the models of ArenaPrototype's Quake3ItemCatalog.
+Quake3StaticMaterial and stage defaults are the game's (tr_shader.c ParseShader, ParseStage, FinishShader,
+R_FindShader). Where engines differ this follows CNQ3, which the install it was written against runs: search
+order (files.cpp FS_AddGameDirectory), which of two shader scripts with one name wins (tr_shader.cpp
+ScanAndLoadShaderFiles; ioquake3 picks the other one) and the default shader for what is missing. Pickups get
+the models of ArenaPrototype's Quake3ItemCatalog.
 
 What a map names and the game folder lacks can be supplied from an extras folder laid out like baseq3
 (textures/..., scripts/..., or whole pk3 archives): local-data/q3-extra beside the pack unless --extra names
@@ -101,9 +103,9 @@ def map_id(name):
 
 
 class Game:
-    """One game folder over the ones it builds on, searched as the game does: loose files, then archives
-    from the last name to the first, then the same for the folder beneath (baseq3 under a mod). Extras folders
-    come after all of them and never replace what the game has."""
+    """One game folder over the ones it builds on, searched as CNQ3 and the original game search: archives from
+    the last name to the first, then loose files, then the same for the folder beneath (baseq3 under a mod).
+    ioquake3 looks at loose files first. Extras folders come after all of them and never replace what the game has."""
 
     def __init__(self, folders, extras=()):
         self.archives, self.sources = [], []  # Sources: (label, {key: read}), first found wins.
@@ -111,9 +113,6 @@ class Game:
         for number, folder in enumerate([*folders, *extras]):
             self.own = self.own or len(self.sources)
             prefix = EXTRA if number >= len(folders) else ''
-            loose = {key_name(path.relative_to(folder)): path.read_bytes for path in sorted(folder.rglob('*'))
-                     if path.is_file() and path.suffix.lower() != '.pk3'}
-            self.sources.append((prefix + folder.name + ' folder', loose))
             for path in sorted(folder.glob('*.pk3'), key=lambda p: p.name.lower().replace('\\', '/'), reverse=True):
                 try:
                     archive = zipfile.ZipFile(path)
@@ -125,15 +124,19 @@ class Game:
                     if not entry.is_dir() and entry.file_size <= 256 * 1024 * 1024:
                         files.setdefault(key_name(entry.filename), lambda z=archive, n=entry.filename: z.read(n))
                 self.sources.append((prefix + path.name, files))
+            loose = {key_name(path.relative_to(folder)): path.read_bytes for path in sorted(folder.rglob('*'))
+                     if path.is_file() and path.suffix.lower() != '.pk3'}
+            self.sources.append((prefix + folder.name + ' folder', loose))
         self.files = {}
         for label, files in reversed(self.sources):
             self.files.update({key: (label, read) for key, read in files.items()})
-        # The game joins the scripts from the last listed to the first and takes the first definition of a
-        # name, so of two scripts defining one shader the lower source wins unless the files share a name.
+        # Of script files with one name only the first found is read. CNQ3 joins the scripts in the order found
+        # and takes the first definition of a name, so of two scripts defining one shader the higher source wins.
+        # (ioquake3 and the original game join them last to first, so there the lower source wins.)
         script = lambda key: re.fullmatch(r'scripts/[^/]+\.shader', key)
         listed = list(dict.fromkeys(key for label, files in self.sources if not label.startswith(EXTRA) for key in files if script(key)))
         self.shaders = {}
-        for key in reversed(listed):
+        for key in listed:
             for name, body in parse_shaders(read_text(self.files[key][1]())).items():
                 self.shaders.setdefault(name, body)
         # Scripts of the extras define only shaders the game has none for.
@@ -219,10 +222,14 @@ def describe(game, name, textures):
     if name in game.described:
         return game.described[name]
     unresolved, limits, outside = [], set(), ['shader script ' + name] if name in game.outside else []
+    # What the game draws for a shader it cannot build, one with no script or image or with a stage whose image
+    # is missing: its built-in default shader (R_FindShader, ShaderForShaderNum).
+    default = dict(name=name, default=True, cull='front', sort=SORT['opaque'], outside=outside)
 
     def image(path):
         file = textures.resolve(game, path)
         if not file:
+            default['broken'] = True
             unresolved.append(f'texture {path} (shader {name})')
         elif key_name(path).lstrip('/') in game.outside:
             outside.append(f'texture {path}')
@@ -233,7 +240,8 @@ def describe(game, name, textures):
         file = image(name)
         if not file:
             unresolved[:] = [f'shader {name} (no script and no texture of that name)']
-        result = dict(name=name, implicit=True, map=file, cull='front', sort=SORT['opaque'], outside=outside), unresolved, []
+        default.pop('broken', None)
+        result = (dict(name=name, implicit=True, map=file, cull='front', sort=SORT['opaque'], outside=outside) if file else default), unresolved, []
         game.described[name] = result
         return result
     body, stage_lines = game.shaders[name]
@@ -315,7 +323,7 @@ def describe(game, name, textures):
                 else:
                     limits.add('texture movement ' + kind)
         if not stage.get('map'):
-            continue  # Reported above. The game gives up on the whole shader here; the other stages are still drawn.
+            continue  # A stage that names no image is left out by the game too.
         blend = stage.get('blend')
         if stage['rgbGen'] is None:
             stage['rgbGen'] = ['identitylighting'] if not blend or blend[0] in ('gl_one', 'gl_src_alpha') else ['identity']
@@ -335,7 +343,7 @@ def describe(game, name, textures):
     shader['sort'] = sort
     if shader.get('fog'): limits.add('fog volumes')
     shader['outside'] = outside
-    result = shader, unresolved, sorted(limits)
+    result = (default, unresolved, []) if default.pop('broken', False) else (shader, unresolved, sorted(limits))
     game.described[name] = result
     return result
 
