@@ -491,6 +491,22 @@ def bake_lightmap(geometry, base, mission=None, sunlight=None):
     return output.getvalue(), struct.pack('<%df' % len(coordinates), *coordinates), animation
 
 
+def pack_shelter(geometry, linked):
+    """What keeps precipitation out of a building, for the test in DarkStar's InteriorShape::getWeatherDistance.
+
+    Little-endian: bounding box (6f), plane and node counts (2i), planes (4f), BSP nodes (plane H, then front and back
+    2h, where a negative number is -(leaf + 1)) and one byte per leaf: the faces of the box seen from it, 0x80 >> face
+    for min x, y, z, max x, y, z. A linked interior has no nodes: the game draws no precipitation inside its box.
+    """
+    solid, planes, nodes = len(geometry.leaves_solid), [] if linked else geometry.planes, [] if linked else geometry.bsp_nodes
+    # Leaf numbers under 43 are the reserved leaves outside the box, then come the solid leaves, then the other empty ones.
+    leaves = [0 if 43 <= number < 43 + solid else (lambda leaf: geometry.pvs_bits[leaf.pvs_id] & 0xfc if leaf.flags >> 1 else 0)(
+        geometry.leaves_empty[number if number < 43 else number - solid]) for number in range(solid + len(geometry.leaves_empty))]
+    return b''.join([struct.pack('<6f2i', *geometry.min_point, *geometry.max_point, len(planes), len(nodes)),
+                     *(struct.pack('<4f', plane.x, plane.y, plane.z, plane.d) for plane in planes),
+                     *(struct.pack('<H2h', node.plane_id & 0xffff, node.front, node.back) for node in nodes), bytes(leaves)])
+
+
 @functools.lru_cache(maxsize=None)
 def vertex_count(model_path):
     return len(json.loads(model_path.read_text(encoding='utf-8'))['vertices']) // 3
@@ -758,6 +774,13 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     turn, climb = math.radians(sun['azimuth'] + 90), math.radians(max(-89, min(89, sun['incidence'])))
     sun_direction = (math.cos(climb) * math.cos(turn), math.cos(climb) * math.sin(turn), math.sin(climb))
 
+    def detail(candidate):
+        """A placed interior's shape, the detail level export_interior draws and a reader of the file names it holds."""
+        shape = interiorshape.interiorshape()
+        shape.load_binary(read(candidate))
+        return (shape, max(shape.lods, key=lambda lod: lod.min_pixels),
+                lambda offset: shape.name_buffer[offset:shape.name_buffer.index(b'\0', offset)].decode('cp1252'))
+
     def lightmap(instance, stem, rotation, model_path):
         """Atlas and its coordinates for a placed building; None keeps the plain mission-sun shading.
 
@@ -772,10 +795,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
 
         for candidate in (instance, stem + '.dis'):
             try:
-                shape = interiorshape.interiorshape()
-                shape.load_binary(read(candidate))
-                lod = max(shape.lods, key=lambda lod: lod.min_pixels)  # The detail level export_interior draws.
-                name = lambda offset: shape.name_buffer[offset:shape.name_buffer.index(b'\0', offset)].decode('cp1252')  # noqa: E731
+                shape, lod, name = detail(candidate)
                 lit = name(shape.lod_lightstate_offset[lod.light_state_index])
                 base, mission = read_lighting(read(lit)), None
                 if base['replaced'] is not None:
@@ -789,6 +809,22 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                 pass
         return None
 
+    def shelter(instance, stem):
+        """Stored pack_shelter data for a placed building, so rain and snow stay out of it; None lets them through."""
+        for candidate in (instance, stem + '.dis'):
+            try:
+                shape, lod, name = detail(candidate)
+                return store(pack_shelter(read_geometry(read(name(lod.geometry_file_offset))), shape.linked_interior), '.bsp')
+            except Exception:  # As for the lightmap: any failure tries the next source.
+                pass
+        return None
+
+    weather = first('snowfall')  # Rain or snow; the game leaves it hidden unless the mission says otherwise.
+    try:
+        weather = {'rain': weather.get('rain', '').lower() == 'true', 'intensity': max(0, min(1, float(weather['intensity']))),
+                   'wind': floats(weather.get('wind', '0 0 0'))} if weather.get('suspendrendering', '').lower() == 'false' else None
+    except (KeyError, ValueError):
+        weather = None
     models = {path.stem.lower(): path.stem for path in model_dir.glob('*.json')}
     shapes = install.shapes(mission_path.parent)
     objects, viewpoints, missing, unlit = [], [], set(), set()
@@ -820,6 +856,9 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                 objects[-1]['light'] = light
             else:
                 unlit.add(shape.lower())
+            cover = weather and shelter(fields['filename'], shape)
+            if cover:
+                objects[-1]['shelter'] = cover
     warnings += ['No preview model for ' + item for item in sorted(missing)]
     if unlit:
         warnings.append('No lightmap, plain sun shading instead: ' + ', '.join(sorted(unlit)))
@@ -874,12 +913,6 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         if not flare or len(flare) < 6 or not all(flare):
             flare = None
             warnings.append('Lens flare bitmaps not found')
-    weather = first('snowfall')  # Rain or snow; the game leaves it hidden unless the mission says otherwise.
-    try:
-        weather = {'rain': weather.get('rain', '').lower() == 'true', 'intensity': max(0, min(1, float(weather['intensity']))),
-                   'wind': floats(weather.get('wind', '0 0 0'))} if weather.get('suspendrendering', '').lower() == 'false' else None
-    except (KeyError, ValueError):
-        weather = None
 
     description = install.find(mission_path.stem + '.dsc', folders)
     kind = re.search(r'\$MDESC::Type\s*=\s*"([^"]*)"', description.read_text(encoding='cp1252', errors='replace')) if description else None

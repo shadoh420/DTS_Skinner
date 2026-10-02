@@ -31,11 +31,11 @@ The game folder and mission files are only read. Output goes to
 `local-data/t1-maps` (ignored by Git; next to the executable in a packaged build):
 one folder per map under `maps/`, shared files under `textures/` named by content
 so identical data is stored once (bitmaps, building lightmap atlases, their `.uv`
-coordinates and `.anim` light animations), buildings exported at import under
-`models/`, and `index.json` listing the maps. Packs imported before lightmaps, sky
-or animated lights were added still open, without them (older lightmaps hold every
-light in its first state); tick **Re-import existing maps** (or pass `--replace`)
-to add them.
+coordinates, `.anim` light animations and `.bsp` weather shelters), buildings
+exported at import under `models/`, and `index.json` listing the maps. Packs
+imported before lightmaps, sky, animated lights or weather shelters were added
+still open, without them (older lightmaps hold every light in its first state);
+tick **Re-import existing maps** (or pass `--replace`) to add them.
 
 Both install layouts are read: newer installs with zip volumes and PNG textures,
 and classic installs with `.vol` (PVOL) volumes and palettised PBMP bitmaps, which
@@ -128,6 +128,15 @@ view above the placed objects.
   entries. ArenaPrototype has no rule for the translucent ones; this one was
   checked against the 1.40 PNG lens flares, which it reproduces exactly.
 - `Snowfall` objects with rendering enabled draw rain or snow around the camera.
+  Buildings keep it out as in the game (`Snowfall::processQuery` and
+  `InteriorShape::getWeatherDistance`, which ArenaPrototype's
+  TribesWeatherInterior ports the same way): the test is on the camera, not on
+  each drop. With the camera inside a building's bounding box, nothing falls
+  unless the part of the building it is in can see out, and then only beyond the
+  opening it looks toward. For this each placed building of a mission with
+  weather gets a small `.bsp` file at import (its box, BSP tree and which faces
+  of the box each leaf sees). The game's distance arithmetic is kept as it is,
+  slips included.
 - Other objects map their datablock to a shape through the `shapeFile` values in
   the install's scripts (and scripts beside a custom mission).
 - Anything still unresolved shows as a magenta box and is listed under Preview
@@ -188,8 +197,8 @@ the CPU for every building of the map, in view or not.
 Stars follow the game's generator but not its exact constellation (the game seeds
 it from shared state) and are not snapped to the palette on classic installs. A
 planet bitmap stays upright on screen rather than keeping its top toward the
-zenith, and only the first flared planet has a flare. Rain and snow also fall
-indoors.
+zenith, and only the first flared planet has a flare. Seen from outside, rain and
+snow still fall through a building's roof, as in the game: only depth hides them.
 Shapes (not buildings) are shaded by the mission sun without shadows, use the
 workshop's static pose, and elevators stay where the mission places them. The sun
 direction used for shapes and for buildings without a lit instance follows

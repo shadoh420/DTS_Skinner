@@ -16,8 +16,8 @@ from PIL import Image
 
 from app import app
 from tools.import_t1_map import (Install, bake_lightmap, bitmap_png, import_maps, interior_dml, light_colours, lzh_expand, map_id,
-                                 open_volume, parse_mission, placement, read_lighting, read_palettes, read_terrain_block,
-                                 read_terrain_index, walk)
+                                 open_volume, pack_shelter, parse_mission, placement, read_lighting, read_palettes,
+                                 read_terrain_block, read_terrain_index, walk)
 
 MISSION = '''//--- export object begin ---//
 instant SimGroup "MissionGroup" {
@@ -173,6 +173,16 @@ class T1MapTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'does not match'):
             bake_lightmap(geometry, base)
 
+    def test_shelter_holds_the_box_the_bsp_and_the_outside_faces_each_leaf_sees(self):
+        # Leaves 0-42 are reserved, 43 is the one solid leaf and 44 the one real empty leaf, which sees the min-x face.
+        empty = [SimpleNamespace(flags=0, pvs_id=0)] * 43 + [SimpleNamespace(flags=1 << 1, pvs_id=1)]
+        geometry = SimpleNamespace(min_point=(0, 0, 0), max_point=(1, 2, 3), leaves_solid=[None], leaves_empty=empty, pvs_bits=[0xff, 0x83],
+                                   planes=[SimpleNamespace(x=0, y=0, z=1, d=-1.5)], bsp_nodes=[SimpleNamespace(plane_id=0, front=-45, back=-44)])
+        leaves = bytes(44) + b'\x80'
+        self.assertEqual(pack_shelter(geometry, False), struct.pack('<6f2i4fH2h', 0, 0, 0, 1, 2, 3, 1, 1, 0, 0, 1, -1.5, 0, -45, -44) + leaves)
+        # A linked interior keeps precipitation out of its whole box: no tree to walk.
+        self.assertEqual(pack_shelter(geometry, True), struct.pack('<6f2i', 0, 0, 0, 1, 2, 3, 0, 0) + leaves)
+
     def test_import_reports_bad_input_and_failed_missions_without_writing_maps(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -238,6 +248,13 @@ class T1MapTests(unittest.TestCase):
                     for x, y, width, height in struct.iter_unpack('<4H', animation[8:8 + struct.unpack_from('<i', animation, 4)[0] * 8]):
                         self.assertTrue(0 < x and x + width < atlas.width and 0 < y and y + height < atlas.height)
             self.assertEqual((len(scene['sky']['textures']), scene['weather']['rain']), (16, True))
+            # It rains here, so every building carries what keeps the rain out: its box, its BSP and a byte per leaf.
+            for item in lit:
+                cover = (pack / 'textures' / item['shelter']).read_bytes()
+                planes, nodes = struct.unpack_from('<2i', cover, 24)
+                tree = list(struct.iter_unpack('<H2h', cover[32 + planes * 16:32 + planes * 16 + nodes * 6]))
+                self.assertTrue(all(plane < planes and -leaf - 1 < len(cover) - 32 - planes * 16 - nodes * 6 and max(front, back) < nodes
+                                    for plane, front, back in tree for leaf in (front, back) if leaf < 0))
             # Raindance's sun has no bitmap and it has no star field; Blastside's sun has one, with a lens flare.
             self.assertEqual((scene['planets'], scene['stars'], scene['flare']), ([], None, None))
             self.assertEqual(import_maps(install.base, pack, [install.find('Blastside.mis', [install.base / 'missions'])])['failed'], {})

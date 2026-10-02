@@ -236,6 +236,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     mesh.applyMatrix4(new THREE.Matrix4().fromArray(object.matrix));
     scene.add(mesh);
     occluders.push(mesh);
+    if (weather && object.shelter) try {
+      if (!shelterFiles.has(object.shelter)) shelterFiles.set(object.shelter, get(data + 'textures/' + object.shelter).then(response => response.arrayBuffer()));
+      // The layout is in the importer's pack_shelter: box, plane and node counts, planes, nodes, a byte per leaf.
+      const buffer = await shelterFiles.get(object.shelter), [planes, nodes] = new Int32Array(buffer, 24, 2);
+      shelters.push({inverse: new THREE.Matrix4().fromArray(object.matrix).invert(), box: new Float32Array(buffer, 0, 6),
+        planes: new Float32Array(buffer, 32, planes * 4), nodes: new Int16Array(buffer, 32 + planes * 16, nodes * 3),
+        leaves: new Uint8Array(buffer, 32 + planes * 16 + nodes * 6)});
+    } catch (_) { /* Rain simply falls through this building. */ }
   }
 
   // Sky: sixteen textured panels around the camera with flat caps above and below, drawn behind everything.
@@ -378,8 +386,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Rain or snow: particles in a box around the camera that wrap as they or the camera leave it. Counts, box size
-  // and fall speeds follow ArenaPrototype's precipitation. Buildings do not shelter from it.
+  // and fall speeds follow ArenaPrototype's precipitation.
   let weather = null;
+  const shelters = [], shelterFiles = new Map();  // Placed buildings that keep it out, and their files by name.
   function buildWeather({rain, intensity, wind}) {
     const count = Math.floor(intensity * (rain ? 2048 : 1024)), radius = rain ? 110 : 200, size = radius * 2;
     const step = [wind[0] * (rain ? 2 : 1), rain ? -150 : -35, -wind[1] * (rain ? 2 : 1)];
@@ -391,16 +400,48 @@ window.addEventListener('DOMContentLoaded', async () => {
       : new THREE.Points(geometry, new THREE.PointsMaterial({color: 0xffffff, size: .5}));
     particles.frustumCulled = false;
     scene.add(particles);
+    const local = new THREE.Vector3(), ahead = new THREE.Vector3();
     weather = delta => {
-      particles.visible = settings.weather;
-      if (!settings.weather) return;
+      // Buildings keep it out as in the game (Snowfall::processQuery and InteriorShape::getWeatherDistance, which
+      // ArenaPrototype's TribesWeatherInterior ports): with the camera inside a building's box, nothing falls unless the
+      // BSP leaf it is in sees a face of the box, and then only from `near` ahead, the way out the camera looks toward.
+      let near = 2;
+      const view = camera.getWorldDirection(ahead).toArray();
+      for (const {inverse, box, planes, nodes, leaves} of shelters) {
+        const [x, up, back] = local.copy(camera.position).applyMatrix4(inverse).toArray(), point = [x, -back, up];  // The building's own axes, z up.
+        if (point.some((value, axis) => value < box[axis] || value > box[axis + 3])) continue;
+        let node = nodes.length ? 0 : 1;
+        for (let visits = nodes.length; node >= 0 && visits; visits--) {
+          const plane = (nodes[node * 3] & 0xffff) * 4;
+          node = nodes[node * 3 + (planes[plane] * point[0] + planes[plane + 1] * point[1] + planes[plane + 2] * point[2] > -planes[plane + 3] ? 1 : 2)];
+        }
+        const faces = node < 0 && leaves[-node - 1];
+        if (!faces) { near = Infinity; break; }
+        const [turnX, turnUp, turnBack] = local.copy(ahead).transformDirection(inverse).toArray(), facing = [turnX, -turnBack, turnUp];
+        // The game's own arithmetic, slips included: it measures from the box's minimum x on every axis.
+        let reach = -1;
+        for (let axis = 0; axis < 3; axis++) {
+          if (faces & 0x80 >> axis && facing[axis] <= 0 && point[axis] - box[axis] > reach) reach = point[axis] - box[0];
+          if (faces & 0x10 >> axis && facing[axis] >= 0 && box[axis] - point[axis] > reach) reach = box[axis + 3] - point[axis];
+        }
+        if (reach > 0) near = Math.max(near, reach);
+      }
+      particles.visible = settings.weather && near < radius;
+      if (!particles.visible) return;
       const positions = geometry.attributes.position.array, centre = camera.position.toArray();
-      for (let index = 0; index < drops.length; index++) {
-        const axis = index % 3, offset = drops[index] + step[axis] * delta - centre[axis] + radius;
-        drops[index] = centre[axis] + (offset % size + size) % size - radius;
-        const at = rain ? (index - axis) * 2 + axis : index;
-        positions[at] = drops[index];
-        if (rain) positions[at + 3] = drops[index] - step[axis] * .03;
+      for (let drop = 0; drop < count; drop++) {
+        let depth = 0;
+        for (let axis = 0; axis < 3; axis++) {
+          const index = drop * 3 + axis, offset = drops[index] + step[axis] * delta - centre[axis] + radius;
+          drops[index] = centre[axis] + (offset % size + size) % size - radius;
+          depth += (drops[index] - centre[axis]) * view[axis];
+        }
+        for (let axis = 0; axis < 3; axis++) {
+          // A drop nearer than that is not drawn: it is put behind the camera.
+          const at = rain ? drop * 6 + axis : drop * 3 + axis;
+          positions[at] = depth < near ? centre[axis] - view[axis] : drops[drop * 3 + axis];
+          if (rain) positions[at + 3] = positions[at] - (depth < near ? 0 : step[axis] * .03);
+        }
       }
       geometry.attributes.position.needsUpdate = true;
     };
