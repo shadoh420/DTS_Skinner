@@ -350,3 +350,61 @@ test("a brush belongs to the entity before it: the WorldSpawn's are the world, a
   assert.equal(M.worldInsertAt(M.global(map)), 3);
   assert.equal(M.worldInsertAt({items: [{kind: 'brush'}, {kind: 'entity', type: 'Effect'}]}), 1);
 });
+
+// ---- The bridge tool ----
+const faceOf = (brush, predicate) => { const face = brush.faces.find(f => predicate(f.indices.map(i => brush.vertices[i]))); return face.indices.map(i => brush.vertices[i]); };
+
+test('a bridge between faces looking at each other is one straight convex brush filling the gap', () => {
+  const left = B.box([0, 0, 0], [32, 32, 32], wall), right = B.box([96, 0, 0], [128, 32, 32], wall);
+  const a = faceOf(left, points => points.every(p => p[0] === 32)), b = faceOf(right, points => points.every(p => p[0] === 96));
+  const [run] = B.bridge(a, [1, 0, 0], b, [-1, 0, 0], 1, cutter);
+  assertConvexSolid(run);
+  assert.deepEqual(B.bounds(run), {min: [32, 0, 0], max: [96, 32, 32]});
+  near(B.volume(run), 64 * 32 * 32);
+  assert.ok(run.faces.every(face => face.material === 'cut'));
+  // Split into steps, the pieces fill the same gap without overlapping.
+  const steps = B.bridge(a, [1, 0, 0], b, [-1, 0, 0], 4, cutter);
+  assert.equal(steps.length, 4);
+  steps.forEach(assertConvexSolid);
+  assertDisjoint(steps);
+  near(totalVolume(steps), 64 * 32 * 32);
+});
+
+test('a bridge between faces at a right angle is an arch whose steps meet end to end', () => {
+  // The top of a block and the side of a higher one: the run leaves upward and comes into the side going +x.
+  const low = B.box([0, 0, 0], [32, 32, 32], wall), high = B.box([160, 96, 0], [192, 128, 32], wall);
+  const a = faceOf(low, points => points.every(p => p[1] === 32)), b = faceOf(high, points => points.every(p => p[0] === 160));
+  const steps = B.bridge(a, [0, 1, 0], b, [-1, 0, 0], 6, cutter);
+  assert.equal(steps.length, 6);
+  for (const step of steps) assert.ok(B.volume(step) > 100, 'every step has volume');
+  // It starts on the top face and ends on the side face, corner for corner.
+  const key = p => p.map(v => Math.round(v * 1000) / 1000).join();
+  const first = new Set(steps[0].vertices.map(key)), last = new Set(steps.at(-1).vertices.map(key));
+  assert.ok(a.every(p => first.has(key(p))) && b.every(p => last.has(key(p))));
+  // Consecutive steps share their joining section, so the run has no gaps.
+  for (let k = 0; k + 1 < steps.length; k++) {
+    const shared = steps[k].vertices.filter(p => steps[k + 1].vertices.some(q => key(q) === key(p)));
+    assert.equal(shared.length, 4, `steps ${k} and ${k + 1} share a section`);
+  }
+  // Every face of every step is wound outward (Newell normal away from the middle of its step).
+  for (const step of steps) {
+    const middle = step.vertices.reduce((s, v) => s.map((x, i) => x + v[i] / step.vertices.length), [0, 0, 0]);
+    for (const face of step.faces) {
+      const points = face.indices.map(i => step.vertices[i]), n = B.newell(points), c = points.reduce((s, v) => s.map((x, i) => x + v[i] / points.length), [0, 0, 0]);
+      assert.ok(n[0] * (c[0] - middle[0]) + n[1] * (c[1] - middle[1]) + n[2] * (c[2] - middle[2]) > 0);
+    }
+  }
+  // Corner for corner as the run turns: the edge of the top facing the high block (x = 32) becomes the underside of
+  // the arch, so meets the bottom of the side (y = 96); the far edge (x = 0) meets its top (y = 128). Each step keeps
+  // its sections' corners in order, the first section's then the next's.
+  const index = corner => steps[0].vertices.findIndex(p => key(p) === key(corner));
+  for (const [from, to] of [[[32, 32, 0], [160, 96, 0]], [[32, 32, 32], [160, 96, 32]], [[0, 32, 0], [160, 128, 0]], [[0, 32, 32], [160, 128, 32]]]) {
+    assert.deepEqual(steps.at(-1).vertices[index(from) + 4].map(Math.round), to, `${from} runs to ${to}`);
+  }
+});
+
+test('a bridge refuses faces of different corner counts', () => {
+  const box = B.box([0, 0, 0], [32, 32, 32], wall);
+  const quad = faceOf(box, points => points.every(p => p[0] === 32));
+  assert.equal(B.bridge(quad, [1, 0, 0], [[64, 0, 0], [64, 32, 0], [64, 0, 32]], [-1, 0, 0], 2, cutter), null);
+});

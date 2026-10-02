@@ -259,8 +259,66 @@
     return hit && near >= 0 ? {distance: near, face: hit} : null;
   }
 
+  // Faces wound outward: each face whose normal points into the brush is turned round. For brushes built corner by
+  // corner, whose faces may be bent.
+  function orient(brush) {
+    const middle = centroid(brush.vertices);
+    return {vertices: brush.vertices, faces: brush.faces.map(face => {
+      const points = polygonOf(brush, face);
+      return dot(newell(points), sub(centroid(points), middle)) < 0 ? {...face, indices: [...face.indices].reverse()} : face;
+    })};
+  }
+  // The turn taking unit vector u onto unit vector v (Rodrigues); half a turn when they are opposite.
+  function rotation(u, v) {
+    let axis = cross(u, v), s = length(axis);
+    const c = dot(u, v);
+    if (s < 1e-9) {
+      if (c > 0) return x => x;
+      axis = normalize(cross(u, Math.abs(u[0]) < .9 ? [1, 0, 0] : [0, 1, 0]));
+      return x => sub(scale(axis, 2 * dot(axis, x)), x);
+    }
+    const k = scale(axis, 1 / s);
+    return x => add(add(scale(x, c), scale(cross(k, x), s)), scale(k, dot(k, x) * (1 - c)));
+  }
+  /* The game's bridge tool (me_startbridge): brushes joining face a to face b in `segments` steps. a and b are the
+     faces' corners, wound outward, with their outward normals; they must have as many corners. Each corner of a runs
+     to its corner of b along a cubic curve that leaves a along a's normal and comes into b against b's, so faces
+     looking at each other make a straight run and faces at an angle an arch or a curved ramp. Which corner of b is
+     which corner of a's is found by turning b round as the curve turns, then taking the nearest match. The cross
+     sections between are not on the grid, and the side faces of a curved run may bend slightly, as the game allows.
+     Every face takes `fields`. Null when the faces cannot be joined. */
+  function bridge(a, normalA, b, normalB, segments, fields) {
+    const n = a.length;
+    if (b.length !== n || n < 3 || segments < 1) return null;
+    const ca = centroid(a), cb = centroid(b), back = [...b].reverse();
+    const turn = rotation(scale(normalB, -1), normalA);
+    let best = 0, cost = Infinity;
+    for (let shift = 0; shift < n; shift++) {
+      let total = 0;
+      for (let i = 0; i < n; i++) total += length(sub(sub(a[i], ca), turn(sub(back[(i + shift) % n], cb))));
+      if (total < cost - 1e-9) { cost = total; best = shift; }
+    }
+    const to = a.map((_, i) => back[(i + best) % n]);
+    const reach = length(sub(cb, ca)) * .45;
+    const along = (p0, p3, t) => {
+      const p1 = add(p0, scale(normalA, reach)), p2 = add(p3, scale(normalB, reach)), u = 1 - t;
+      return [0, 1, 2].map(k => tidy(u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]));
+    };
+    const sections = [];
+    for (let k = 0; k <= segments; k++) sections.push(a.map((p, i) => k === 0 ? p : k === segments ? to[i] : along(p, to[i], k / segments)));
+    const brushes = [], ring = [...Array(n).keys()];
+    for (let k = 0; k < segments; k++) {
+      const faces = [{...fields, indices: ring}, {...fields, indices: ring.map(i => i + n)}];
+      for (let i = 0; i < n; i++) faces.push({...fields, indices: [i, (i + 1) % n, (i + 1) % n + n, i + n]});
+      const brush = orient({vertices: [...sections[k], ...sections[k + 1]], faces});
+      if (volume(brush) <= MIN_VOLUME) return null;
+      brushes.push(brush);
+    }
+    return brushes;
+  }
+
   exports.ReflexBrush = {
     EPSILON, planesOf, planeFromPoints, fromPlanes, rebuild, volume, bounds, check, convex, box, translate, clone, offset,
-    split, clip, intersection, intersects, subtract, hollow, hull, merge, triangles, raycast, newell, normalize,
+    split, clip, intersection, intersects, subtract, hollow, hull, merge, triangles, raycast, newell, normalize, orient, bridge,
   };
 })(typeof module !== 'undefined' ? module.exports : window);

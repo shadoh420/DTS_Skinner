@@ -29,13 +29,13 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     await page.selectOption('#grid', '8');
 
     // B makes a box in front of the camera; a click on it selects it.
-    await page.keyboard.press('b');
+    await page.click('#newBrush');
     assert.equal(await brushes(), 1);
     await centre();
     assert.match(await said(), /1 selected/);
 
     // A second box, moved along by the arrows, is carved out of the first (Ctrl+Shift+S).
-    await page.keyboard.press('b');
+    await page.click('#newBrush');
     for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
     await page.keyboard.press('PageUp');
     const before = await page.evaluate(() => { const g = window.skinnerReflexMaps.map.groups.find(g => g.kind === 'global'); return g.items.filter(i => i.kind === 'brush').map(b => b.vertices); });
@@ -87,11 +87,13 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     // The game's editor gestures on a fresh box: drag moves it on the grid, Alt-drag lifts it, Shift-drag on its top
     // face pulls that face up; Z and X undo and redo; G clones; K picks up a material and M puts it on.
     await page.evaluate(() => { const m = window.skinnerReflexMaps; m.selected.clear(); });
-    await page.keyboard.press('b');
+    await page.click('#newBrush');
     const boxOf = () => page.evaluate(() => { const m = window.skinnerReflexMaps; const [item] = m.selected; return item && window.ReflexBrush.bounds(item); });
     // Where a point of the game's axes is on the page.
     const screen = point => page.evaluate(([x, y, z]) => {
-      const {camera, renderer} = window.skinnerReflexMaps, v = new THREE.Vector3(x, y, -z).project(camera), rect = renderer.domElement.getBoundingClientRect();
+      const {camera, renderer} = window.skinnerReflexMaps;
+      camera.updateMatrixWorld();  // As the page does before it picks: a pose set since the last frame counts.
+      const v = new THREE.Vector3(x, y, -z).project(camera), rect = renderer.domElement.getBoundingClientRect();
       return [rect.left + (v.x + 1) / 2 * rect.width, rect.top + (1 - v.y) / 2 * rect.height];
     }, point);
     const dragFrom = async (from, to, modifier) => {
@@ -182,7 +184,7 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     // Escape leaves create mode; B's box goes into the WorldSpawn's brushes, ahead of the entities, so it is the world's.
     await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => window.skinnerReflexMaps.createType), 0);
-    await page.keyboard.press('b');
+    await page.click('#newBrush');
     now = await items();
     assert.deepEqual(now.map(item => item.kind === 'brush' ? `brush:${item.owner}` : item.type),
       ['WorldSpawn', 'brush:WorldSpawn', 'brush:WorldSpawn', 'Pickup', 'PlayerSpawn', 'Teleporter', 'brush:Teleporter']);
@@ -223,6 +225,77 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     await page.screenshot({path: path.join(output, 'vertices.png')});
     await page.keyboard.press('z');
     assert.equal(await page.evaluate(() => window.ReflexMap.global(window.skinnerReflexMaps.map).items.find(item => item.kind === 'brush').vertices.length), 8);
+    // N shows the properties of what is selected; with nothing selected, the map's WorldSpawn. A change is one step
+    // of undo.
+    await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    await page.keyboard.press('n');
+    assert.equal(await page.isVisible('#props'), true);
+    assert.match(await page.textContent('#props h3'), /WorldSpawn \(the map\)/);
+    await page.selectOption('#props .add select', {label: 'title (String256)'});
+    await page.click('#props .add button');
+    await page.fill('#props label[title="String256 title"] input', 'Test Walk');
+    await page.press('#props label[title="String256 title"] input', 'Enter');
+    now = await items();
+    assert.equal(now[0].properties.title, 'Test Walk');
+    // A pickup's type from the labelled list.
+    await clickAt(dropped);
+    assert.match(await page.textContent('#props h3'), /Pickup/);
+    await page.screenshot({path: path.join(output, 'properties.png')});
+    await page.selectOption('#props label[title="UInt8 pickupType"] select', '4');
+    now = await items();
+    assert.equal(now.find(item => item.type === 'Pickup').properties.pickupType, 4);
+    await page.keyboard.press('z');
+    now = await items();
+    assert.equal(now.find(item => item.type === 'Pickup').properties.pickupType, 40, 'Z undoes a property');
+    // A target, and a teleporter linked to it by choosing its name: the teleporter's volume shows its entity's properties.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('4');
+    await clickAt([24, 32, 24]);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('2');
+    await dragFrom(await screen([-24, 32, -24]), await screen([24, 32, -8]));
+    await page.keyboard.press('Escape');
+    assert.match(await page.textContent('#props h3'), /Teleporter/);
+    assert.match(await page.textContent('#props'), /Set target to the name of a Target/);
+    await page.selectOption('#props .add select', {label: 'target (String32)'});
+    await page.click('#props .add button');
+    now = await items();
+    assert.equal(now.find(item => item.type === 'Teleporter').properties.target, 'target1', 'target starts as the map\'s Target');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('n');
+    assert.equal(await page.isVisible('#props'), false);
+
+    // The bridge tool: Shift-click a face, B, aim at another face, the wheel for steps, a click makes the brushes.
+    // Two blocks: the low box's top bridged to the side of a high one, an arch.
+    await page.evaluate(() => {
+      const m = window.skinnerReflexMaps, g = window.ReflexMap.global(m.map);
+      g.items.splice(window.ReflexMap.worldInsertAt(g), 0, {kind: 'brush', ...window.ReflexBrush.box([160, 96, -32], [192, 160, 32], m.template)});
+      m.load(window.ReflexMap.write(m.map), 'untitled');
+      m.camera.position.set(80, 300, 520); m.camera.lookAt(80, 60, 0);
+    });
+    await page.keyboard.press('0'); await page.keyboard.press('0');
+    const brushesBefore = (await items()).filter(item => item.kind === 'brush').length;
+    await page.keyboard.down('Shift'); await clickAt([0, 32, 0]); await page.keyboard.up('Shift');
+    assert.match(await page.textContent('#selection'), /Face picked \(4 corners\)/);
+    await page.keyboard.press('b');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.bridging), true);
+    await page.mouse.move(...await screen([160, 128, 0]));
+    assert.match(await page.textContent('#selection'), /Bridge of 4 steps/);
+    await page.mouse.wheel(0, -100);
+    await page.mouse.wheel(0, -100);
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.segments), 6);
+    assert.match(await page.textContent('#mode'), /wheel 6 steps/);
+    await page.screenshot({path: path.join(output, 'bridge.png')});
+    await page.mouse.down(); await page.mouse.up();
+    now = await items();
+    const bridged = now.filter(item => item.kind === 'brush');
+    assert.equal(await page.evaluate(() => window.skinnerReflexMaps.selected.size), 6, 'the new bridge is selected, not the brush under the click');
+    assert.equal(bridged.length, brushesBefore + 6, 'six bridge brushes');
+    assert.ok(bridged.every(item => item.owner === 'WorldSpawn'), 'bridge brushes are the world\'s');
+    await page.screenshot({path: path.join(output, 'bridged.png')});
+    await page.keyboard.press('z');
+    assert.equal((await items()).filter(item => item.kind === 'brush').length, brushesBefore);
+
     // The edited map still writes and reads back.
     const written = await page.evaluate(() => window.ReflexMap.write(window.skinnerReflexMaps.map));
     assert.equal(M.write(M.parse(written)), written);

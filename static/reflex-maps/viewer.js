@@ -11,8 +11,10 @@
    toolbar's CSG, which the game's editor did not have, works on the selection. As the game's me_createtype, 1 to 8
    choose what a click makes: 1 a brush, 2 and 3 a teleporter's and a jump pad's volume (each dragged out on a
    surface), 4 to 8 a target, effect, pickup, point light or player spawn (placed with a click). V shows the corners
-   of the selected brushes to drag, as the game's vertex mode. Entities are selected and moved as brushes are. Brushes
-   placed by a prefab are drawn but not edited: their prefab holds them. */
+   of the selected brushes to drag, as the game's vertex mode. Entities are selected and moved as brushes are. Shift
+   and a click picks a face; B then bridges it to the face aimed at, as the game's bridge tool (me_startbridge), the
+   wheel setting the steps. N shows the properties of the selected entity, or of the map's WorldSpawn
+   (me_showproperties). Brushes placed by a prefab are drawn but not edited: their prefab holds them. */
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
@@ -293,6 +295,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const selected = new Set(), undoStack = [], redoStack = [];
   const snap = value => Math.round(value / settings.grid) * settings.grid;
   let lastPoint = null, lastNormal = null, createType = 0, vertexMode = false;
+  // The bridge tool: the face Shift-click picked, whether B is aiming from it, the steps, and what a click would make.
+  let bridgeFrom = null, bridging = false, segments = 4, bridgePreview = null;
   // Fields new faces take: those K picked up, else plain concrete.
   let template = {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: 'common/materials/stone/concrete'};
   const say = text => { $('selection').textContent = text; };
@@ -380,6 +384,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       box.material.depthTest = false;
       selection.add(box);
     }
+    if (bridgeFrom && !globalGroup().items.includes(bridgeFrom.item)) { bridgeFrom = null; bridging = false; }
+    if (bridgeFrom) {
+      const outline = new THREE.LineLoop(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(bridgeFrom.points.flat(), 3)),
+        new THREE.LineBasicMaterial({color: 0x3fc8ff, depthTest: false, transparent: true}));
+      outline.renderOrder = 4;
+      selection.add(outline);
+    }
     if (dots.length) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(dots.flatMap(dot => dot.position), 3));
@@ -405,8 +416,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('clip').disabled = !convex || !lastPoint;
     $('duplicate').disabled = $('delete').disabled = !count;
     $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length;
-    $('mode').textContent = createType ? `Create ${CREATE[createType].label} (${createType}): ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
-      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode';
+    $('mode').title = ($('mode').textContent = bridging ? `Bridge (B): aim at a face · wheel ${segments} step${segments > 1 ? 's' : ''} · click makes · Esc stops`
+      : createType ? `Create ${CREATE[createType].label} (${createType}): ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
+      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode');
+    showPanel();
     $('material').textContent = `${template.material || 'no material'}${template.colour && M.colourOf(template) ? ` · ${template.colour}` : ''}`;
     $('swatch').style.background = '#' + new THREE.Color(...faceShade(template).diffuse.map(c => Math.pow(c, 1 / 2.2))).getHexString();
   }
@@ -418,6 +431,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function pick(event, entities = true) {
     const rect = canvas.getBoundingClientRect();
     pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
+    camera.updateMatrixWorld();  // The camera may have moved since the last frame drew.
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObjects([world, glass, clips, volumes].filter(mesh => mesh.visible), false);
     // Only solid faces hide a marker; volumes, clips and glass are seen through.
@@ -456,7 +470,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     const what = M.isVolume(owner) ? `${owner.type} volume${M.property(owner, 'target') ? ` to ${M.property(owner, 'target')}` : ''}` : 'brush';
     return `${what}${problems.length ? ` · it ${problemText(problems)}, so CSG and dragging its faces leave it alone` : ''}`;
   }
+  // The face a Shift-click picked: its brush, the face, its corners and outward normal, for the bridge tool.
+  function pickFace(hit) {
+    const item = hit.entry.source, plane = B.planesOf(item).find(candidate => candidate.face === hit.face);
+    if (!plane) return null;
+    return {item, face: hit.face, points: hit.face.indices.map(i => item.vertices[i]), normal: plane.normal};
+  }
   function select(event) {
+    if (event.shiftKey) {
+      const hit = pick(event, false);
+      if (hit && !hit.entry.path.length) {
+        bridgeFrom = pickFace(hit);
+        showSelection();
+        say(bridgeFrom ? `Face picked (${bridgeFrom.points.length} corners) · B bridges it to another face` : '');
+      }
+      return;
+    }
     const hit = pick(event);
     if (!hit) { if (!adding(event)) selected.clear(); say(''); showSelection(); return; }
     lastPoint = hit.point; lastNormal = hit.normal;
@@ -480,6 +509,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function ray(event) {
     const rect = canvas.getBoundingClientRect();
     pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
+    camera.updateMatrixWorld();  // The camera may have moved since the last frame drew.
     raycaster.setFromCamera(pointer, camera);
     const {origin, direction} = raycaster.ray;
     return {origin: [origin.x, origin.y, -origin.z], direction: [direction.x, direction.y, -direction.z]};
@@ -593,6 +623,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   let drag = null;
   function startDrag(event) {
+    if (bridging) { makeBridge(); drag = {kind: 'done'}; return; }  // The click is the bridge's, not a selection.
     if (vertexMode) {
       const corner = nearestDot(event);
       if (corner) { drag = {kind: 'corner', ...corner, offset: [0, 0, 0], result: null}; return; }
@@ -667,6 +698,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function endDrag(still) {
     const done = drag;
     drag = null;
+    if (done.kind === 'done') return true;
     selection.position.set(0, 0, 0);
     ghost.clear();
     if (done.kind === 'move' && done.offset.some(Boolean)) {
@@ -711,6 +743,154 @@ window.addEventListener('DOMContentLoaded', async () => {
     showSelection();
     return false;
   }
+
+  // ---- The bridge tool ----
+  function startBridge() {
+    if (!bridgeFrom) { say('Shift-click a face first; B then bridges it to the face you aim at'); return; }
+    bridging = true; createType = 0; vertexMode = false;
+    showHover(null);
+    updateTools();
+    say('Aim at the face to bridge to; the wheel sets the steps');
+    if (mouseAt) aimBridge(mouseAt);
+  }
+  function stopBridge() { bridging = false; bridgePreview = null; ghost.clear(); updateTools(); say(''); }
+  function aimBridge(event) {
+    ghost.clear();
+    bridgePreview = null;
+    const hit = pick(event, false);
+    if (!hit || hit.entry.path.length || (hit.entry.source === bridgeFrom.item && hit.face === bridgeFrom.face)) { say('Aim at the face to bridge to'); return; }
+    const to = pickFace(hit);
+    if (!to) return;
+    if (to.points.length !== bridgeFrom.points.length) { say(`That face has ${to.points.length} corners, the picked one ${bridgeFrom.points.length}: a bridge needs as many`); return; }
+    const brushes = B.bridge(bridgeFrom.points, bridgeFrom.normal, to.points, to.normal, segments, fieldsOf(bridgeFrom.face));
+    if (!brushes) { say('These faces cannot be joined'); return; }
+    bridgePreview = brushes;
+    for (const brush of brushes) { const edges = edgesOf(brush); edges.material = bridgeEdges; ghost.add(edges); }
+    const bent = brushes.filter(brush => !B.convex(brush)).length;
+    say(`Bridge of ${segments} step${segments > 1 ? 's' : ''}${bent ? `; ${bent} bend slightly, as the game allows` : ''} · click makes it`);
+  }
+  const bridgeEdges = new THREE.LineBasicMaterial({color: 0x3fc8ff, depthTest: false, transparent: true});
+  function makeBridge() {
+    if (!bridgePreview) return;
+    const brushes = bridgePreview;
+    bridging = false; bridgePreview = null; bridgeFrom = null; ghost.clear();
+    replace(new Map(), [{at: 'world', things: brushes}], 'added');
+    say(`Bridged with ${brushes.length} brush${brushes.length > 1 ? 'es' : ''}`);
+  }
+
+  // ---- The property panel (N, the game's me_showproperties) ----
+  // What the stock maps give each type, for adding: [type, name, default]. Names an entity of the map has are added too.
+  const SCHEMA = {
+    WorldSpawn: [['String256', 'title', ''], ['String256', 'ownerString', ''], ['String32', 'targetGameOverCamera', ''], ['UInt8', 'playersMin', 1], ['UInt8', 'playersMax', 16],
+      ['Bool8', 'modeFFA', 1], ['Bool8', 'mode1v1', 1], ['Bool8', 'mode2v2', 1], ['Bool8', 'modeTDM', 1], ['Bool8', 'modeCTF', 0], ['Bool8', 'modeRace', 0],
+      ['ColourXRGB32', 'fogColor', 'ff000000'], ['Float', 'fogDistanceStart', 0], ['Float', 'fogDistanceEnd', 0], ['ColourXRGB32', 'sky.horizonColor', 'ff000000'],
+      ['ColourXRGB32', 'sky.skyTopColor', 'ff000000'], ['ColourXRGB32', 'sky.sunColor', 'ffffffff'], ['Float', 'sky.timeOfDay', 12]],
+    Teleporter: [['String32', 'target', ''], ['String32', 'linkOutOnUsed', '']],
+    JumpPad: [['String32', 'target', '']],
+    Target: [['Vector3', 'position', [0, 0, 0]], ['Vector3', 'angles', [0, 0, 0]], ['String32', 'name', ''], ['String32', 'nameNext', ''], ['Float', 'speed', 160]],
+    Pickup: [['Vector3', 'position', [0, 0, 0]], ['UInt8', 'pickupType', 40], ['Vector3', 'angles', [0, 0, 0]], ['UInt8', 'tokenIndex', 1], ['String32', 'linkOutOnPickedUp', '']],
+    PlayerSpawn: [['Vector3', 'position', [0, 0, 0]], ['Vector3', 'angles', [0, 0, 0]], ['Bool8', 'teamA', 0], ['Bool8', 'teamB', 0], ['Bool8', 'initialSpawn', 0],
+      ['Bool8', 'modeFFA', 0], ['Bool8', 'mode1v1', 0], ['Bool8', 'modeTDM', 0], ['Bool8', 'modeCTF', 0], ['Bool8', 'modeRace', 0]],
+    PointLight: [['Vector3', 'position', [0, 0, 0]], ['ColourXRGB32', 'color', 'ffffc400'], ['Float', 'nearAttenuation', 32], ['Float', 'farAttenuation', 160], ['Float', 'intensity', 1.5]],
+    Effect: [['Vector3', 'position', [0, 0, 0]], ['String64', 'effectName', ''], ['Float', 'effectScale', 1], ['Vector3', 'angles', [0, 0, 0]],
+      ['String256', 'material0Name', ''], ['ColourARGB32', 'material0Albedo', 'ffffffff']],
+  };
+  // pickupType: the numbers reflex-map's converter names; 20, 70, 71 and 80 are guesses from where the stock maps use them.
+  const PICKUPS = {1: 'Shotgun', 2: 'Grenade launcher', 3: 'Plasma rifle', 4: 'Rocket launcher', 5: 'Ion cannon', 6: 'Bolt rifle', 7: 'Stake gun',
+    20: 'Burst gun ammo (guess)', 21: 'Shotgun ammo', 22: 'Grenades', 23: 'Plasma ammo', 24: 'Rockets', 25: 'Ion ammo', 26: 'Bolts',
+    40: 'Health 5', 41: 'Health 25', 42: 'Health 50', 43: 'Mega health', 50: 'Armour shard', 51: 'Light armour', 52: 'Medium armour', 53: 'Heavy armour',
+    60: 'Carnage (quad damage)', 70: 'Flag, team A (guess)', 71: 'Flag, team B (guess)', 80: 'Race token (guess)'};
+  const NAMES_OF = {target: 'Target', nameNext: 'Target', targetGameOverCamera: 'Target'};
+  let panelOpen = false;
+  // The entity the panel shows: the selected one, the entity a selected volume belongs to, or with nothing selected
+  // the map's WorldSpawn.
+  // A volume and its entity are one thing here: a teleporter just made selects both.
+  function panelTarget() {
+    if (!selected.size) return worldSpawn() || null;
+    const subjects = new Set([...selected].map(item => isBrush(item) && M.isVolume(ownerOf(item)) ? ownerOf(item) : item));
+    if (subjects.size > 1) return {many: subjects.size};
+    const [subject] = subjects;
+    return isBrush(subject) ? {brush: subject} : subject;
+  }
+  function element(tag, properties = {}, ...children) {
+    const made = Object.assign(document.createElement(tag), properties);
+    made.append(...children);
+    return made;
+  }
+  // Suggestions for a text property: the map's Target names, effects or materials.
+  function suggestions(name) {
+    if (NAMES_OF[name]) return flat.entities.filter(entry => entry.entity.type === 'Target').map(entry => M.property(entry.entity, 'name')).filter(Boolean);
+    if (name === 'effectName') return flat.entities.filter(entry => entry.entity.type === 'Effect').map(entry => M.property(entry.entity, 'effectName')).filter(Boolean);
+    if (/^material\dName$/.test(name)) return Object.keys(packColours);
+    return [];
+  }
+  // Writes one property (or removes it when `value` is undefined) as a step of undo, keeping the selection.
+  function setProperty(entity, index, value) {
+    const properties = value === undefined ? entity.properties.filter((_, i) => i !== index)
+      : index >= entity.properties.length ? [...entity.properties, value] : entity.properties.map((p, i) => i === index ? {...p, value} : p);
+    const fresh = {...entity, properties}, keep = [...selected].map(item => item === entity ? fresh : item);
+    replace(new Map([[entity, [fresh]]]), [], keep);
+  }
+  function input(property, index, entity) {
+    const {type, name, value} = property, change = next => setProperty(entity, index, next);
+    const number = (current, step, apply) => element('input', {type: 'number', step, value: String(current), onchange: event => { const read = Number(event.target.value); if (Number.isFinite(read)) apply(read); }});
+    if (type === 'Vector3') return element('span', {className: 'vector'}, ...value.map((v, axis) => number(v, 'any', read => change(value.map((old, i) => i === axis ? read : old)))));
+    if (type === 'Float') return number(value, 'any', change);
+    if (type === 'Bool8') return element('input', {type: 'checkbox', checked: !!value, onchange: event => change(event.target.checked ? 1 : 0)});
+    if (name === 'pickupType') {
+      const list = {...PICKUPS};
+      if (!(value in list)) list[value] = `Type ${value}`;
+      return element('select', {onchange: event => change(Number(event.target.value))},
+        ...Object.entries(list).map(([n, label]) => element('option', {value: n, selected: Number(n) === value, textContent: `${n} · ${label}`})));
+    }
+    if (/^U?Int\d+$/.test(type)) return number(value, 1, read => change(Math.max(0, Math.round(read))));
+    if (/^Colour/.test(type)) {
+      const hex = String(value).padStart(8, '0').slice(-8), text = element('input', {type: 'text', value: hex, maxLength: 8, className: 'hex',
+        onchange: event => { if (/^[0-9a-fA-F]{8}$/.test(event.target.value)) change(event.target.value.toLowerCase()); }});
+      return element('span', {className: 'colour'}, element('input', {type: 'color', value: '#' + hex.slice(2), onchange: event => change(hex.slice(0, 2) + event.target.value.slice(1))}), text);
+    }
+    // Strings: an empty one is removed rather than written empty.
+    const length = Number((/\d+$/.exec(type) || [256])[0]), options = [...new Set(suggestions(name))].sort();
+    const field = element('input', {type: 'text', value, maxLength: length, onchange: event => change(event.target.value === '' ? undefined : event.target.value)});
+    if (options.length) { field.setAttribute('list', 'list-' + name); return element('span', {}, field, element('datalist', {id: 'list-' + name}, ...options.map(o => element('option', {value: o})))); }
+    return field;
+  }
+  function showPanel() {
+    const panel = $('props');
+    panel.hidden = !panelOpen || !editing;
+    if (panel.hidden || !flat) return;
+    const body = $('propsBody'), target = panelTarget();
+    body.replaceChildren();
+    if (!target) { body.textContent = 'This map has no WorldSpawn.'; return; }
+    if (target.many) { body.textContent = `${target.many} selected: select one entity to see its properties.`; return; }
+    if (target.brush) {
+      const materials = [...new Set(target.brush.faces.map(face => face.material || 'no material'))];
+      body.append(element('p', {textContent: `A brush of the world: ${target.brush.faces.length} faces, ${target.brush.vertices.length} corners; ${materials.join(', ')}. Brushes have no properties; K and M set their material.`}));
+      return;
+    }
+    const entity = target;
+    body.append(element('h3', {textContent: entity.type === 'WorldSpawn' && !selected.size ? 'WorldSpawn (the map)' : entity.type}));
+    const rows = element('div', {className: 'rows'});
+    entity.properties.forEach((property, index) => rows.append(element('label', {title: `${property.type} ${property.name}`},
+      element('span', {textContent: property.name}), input(property, index, entity),
+      element('button', {type: 'button', textContent: '×', title: `Remove ${property.name}`, onclick: () => setProperty(entity, index, undefined)}))));
+    body.append(rows);
+    // Adding: what the stock maps give this type, and what entities of this map of the type have, not yet set.
+    const seen = new Map((SCHEMA[entity.type] || []).map(([type, name, value]) => [name, {type, name, value}]));
+    for (const entry of flat.entities) if (entry.entity.type === entity.type) for (const p of entry.entity.properties) if (!seen.has(p.name)) seen.set(p.name, {...p});
+    const missing = [...seen.values()].filter(p => !entity.properties.some(own => own.name === p.name));
+    if (missing.length) {
+      const choose = element('select', {}, ...missing.map((p, i) => element('option', {value: i, textContent: `${p.name} (${p.type})`})));
+      body.append(element('div', {className: 'add'}, choose, element('button', {type: 'button', textContent: 'Add', onclick: () => {
+        const p = missing[Number(choose.value)];
+        // A string starts as the first suggestion (a Target's name for a target), else its own name, never empty.
+        const value = Array.isArray(p.value) ? [...p.value] : p.value === '' ? suggestions(p.name)[0] || p.name : p.value;
+        setProperty(entity, entity.properties.length, {type: p.type, name: p.name, value});
+      }})));
+    }
+    if (M.VOLUMES.has(entity.type) && !M.property(entity, 'target') && /Teleporter|JumpPad/.test(entity.type)) body.append(element('p', {className: 'hint', textContent: 'Set target to the name of a Target to link it.'}));
+  }
+  function togglePanel() { panelOpen = !panelOpen; showPanel(); say(panelOpen ? 'Properties: N closes' : ''); }
 
   // K and M: the game's me_getmaterial and me_setmaterial.
   let mouseAt = null;
@@ -836,17 +1016,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (selected.size) replace(new Map([...selected].map(item => [item, [isBrush(item) ? B.translate(item, offset) : withPosition(item, (positionOf(item) || [0, 0, 0]).map((v, i) => v + offset[i]))]])), [], 'changed');
   }
   for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', event => { action(); event.target.blur(); });
+  $('propsButton').addEventListener('click', event => { togglePanel(); event.target.blur(); });
+  $('propsClose').addEventListener('click', () => { panelOpen = false; showPanel(); });
 
   function setCreate(type) {
     createType = createType === type ? 0 : type;
-    if (createType) vertexMode = false;
+    if (createType) { vertexMode = false; bridging = false; bridgePreview = null; ghost.clear(); }
     showHover(null);
     updateTools();
     say(createType ? `${CREATE[createType].label}: ${createType <= 3 ? 'drag a rectangle on a surface' : 'click where it goes'}` : '');
   }
   function setVertexMode(on) {
     vertexMode = on;
-    if (on) createType = 0;
+    if (on) { createType = 0; bridging = false; bridgePreview = null; ghost.clear(); }
     showHover(null);
     showSelection();
     say(on ? (selectedBrushes().length ? 'Drag a corner; Alt drags it up and down' : 'Select a brush to see its corners') : '');
@@ -858,13 +1040,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const mesh of entityLayer.children) if (mesh.userData.editOnly) mesh.visible = on;
     uniforms.uGrid.value = on ? settings.grid : 0;
     $('crosshair').hidden = on;
-    if (!on) { createType = 0; vertexMode = false; showHover(null); ghost.clear(); }
+    if (!on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; showHover(null); ghost.clear(); }
     if (on && document.pointerLockElement === canvas) document.exitPointerLock();
     $('help').textContent = on
-      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · 1–8 create · V vertices · Right-drag look · WASD QE move · G clone · Backspace delete · Z/X undo/redo · K/M material · H hollow · C split'
+      ? '0 fly · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · N properties · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints';
     updateTools();
-    requestAnimationFrame(applySettings);  // The toolbar changes the canvas height.
+    applySettings();  // The toolbar changes the scene's height; reading it lays the page out now, not a frame later.
   }
 
   // ---- View ----
@@ -910,12 +1092,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (event.target === canvas) mouseAt = {clientX: event.clientX, clientY: event.clientY};
     if (drag && editing) { continueDrag(event); return; }
     if (editing && vertexMode && !looking && event.target === canvas) { const corner = nearestDot(event); showHover(corner && corner.position); }
+    if (editing && bridging && !looking && event.target === canvas) aimBridge(event);
     if (!looking && document.pointerLockElement !== canvas) return;
     camera.rotation.y -= event.movementX * .0025 * (settings.invertX ? -1 : 1);
     camera.rotation.x = Math.max(-1.55, Math.min(1.55, camera.rotation.x - event.movementY * .0025 * (settings.invertY ? -1 : 1)));
   });
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
+    if (editing && bridging) {
+      segments = Math.max(1, Math.min(32, segments + (event.deltaY < 0 ? 1 : -1)));
+      updateTools();
+      if (mouseAt) aimBridge(mouseAt);
+      return;
+    }
     speed = Math.max(20, Math.min(20000, speed * (event.deltaY < 0 ? 1.2 : 1 / 1.2)));
     if (flat) showReady();
   }, {passive: false});
@@ -938,12 +1127,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!ctrl && event.code === 'KeyG') { if (selected.size) actions.duplicate(); return; }
       if (!ctrl && event.code === 'KeyK') { pickMaterial(); return; }
       if (!ctrl && event.code === 'KeyM') { applyMaterial(event.shiftKey); return; }
-      if (!ctrl && key === 'b') { actions.newBrush(); return; }
+      if (!ctrl && key === 'b') { if (bridging) stopBridge(); else startBridge(); return; }
+      if (!ctrl && event.code === 'KeyN') { togglePanel(); return; }
       if (!ctrl && key === 'h' && !$('hollow').disabled) { actions.hollow(); return; }
       if (!ctrl && key === 'c' && !$('clip').disabled) { actions.clip(); return; }
       if ((event.code === 'Delete' || event.code === 'Backspace') && selected.size) { event.preventDefault(); actions.delete(); return; }
       if (event.code === 'Escape') {
         if (drag) { drag = null; selection.position.set(0, 0, 0); ghost.clear(); showSelection(); return; }
+        if (bridging) { stopBridge(); return; }
+        if (bridgeFrom) { bridgeFrom = null; showSelection(); say(''); return; }
         if (createType) { setCreate(createType); return; }
         if (vertexMode) { setVertexMode(false); return; }
         selected.clear(); say(''); showSelection(); return;
@@ -969,7 +1161,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderer.render(scene, camera);
   });
   window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; },
-    get createType() { return createType; }, get vertexMode() { return vertexMode; }, load, actions, selected, setEditing, showViewpoint};
+    get createType() { return createType; }, get vertexMode() { return vertexMode; }, get bridging() { return bridging; }, get segments() { return segments; }, load, actions, selected, setEditing, showViewpoint};
 
   // ---- Loading ----
   $('open').addEventListener('change', async event => {

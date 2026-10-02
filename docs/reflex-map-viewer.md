@@ -119,6 +119,9 @@ a drag does rather than separate tools.
 | Make a brush, or a teleporter's or jump pad's volume | Drag a rectangle on a surface (or on the ground, y = 0) | `+editorprimary` |
 | Place a target, effect, pickup, point light or player spawn | Click a surface | `+editorprimary` |
 | Show the corners of the selected brushes; drag one (Alt: up and down) | V | `editortogglevertexmode` (V) |
+| Pick a face (for the bridge) | Shift+click | `+editorfacemode` (Shift) |
+| Bridge the picked face to the face aimed at; steps; make it | B, then the wheel, then click | `me_startbridge` (B), `me_segments_inc/dec` (wheel) |
+| Properties of the selection, or of the map | N | `me_showproperties 1` (N) |
 | Pick up the material and colour under the cursor | K | `me_getmaterial` (K) |
 | Put them on the selection; on the face under the cursor | M; Shift+M | `me_setmaterial` (M) |
 | Clear the selection | Escape | |
@@ -130,7 +133,8 @@ and holds what the game's editor did not have:
 | Tool | Key | What it does |
 | --- | --- | --- |
 | Grid | | Snap and step size, 1 to 64 units, 16 to start with as the game's `me_snapdistance`; drawn on every surface while editing, with a heavier line every 8 steps |
-| New box | B | A box 8 grid steps wide, 256 units in front of the camera, on the grid, with the picked material |
+| New box | | A box 8 grid steps wide, 256 units in front of the camera, on the grid, with the picked material (1 and a drag on a surface makes one where wanted) |
+| Properties | N | Opens the property panel |
 | Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap; the selection stays |
 | Hollow | H | Turns the selected brush into walls one grid step thick that do not overlap |
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
@@ -148,14 +152,47 @@ grid, and grows out of the surface by four grid steps; Shift-drag its faces to
 size it. A new brush takes the material K picked (concrete to start with). A
 teleporter or jump pad is an entity followed by the brush that is its volume,
 with no material, as the stock maps have them; it is made without a target,
-which links it to a Target named the same (no property panel yet, so set it in
-the file). Entities clicked onto a floor stand where clicked; onto a wall or
+which links it to a Target named the same: set it in the property panel. Entities clicked onto a floor stand where clicked; onto a wall or
 ceiling, one grid step out from it. Each gets the properties every one of its
 type has in the 18 stock maps, with their most common values: a pickup
 `pickupType 40`, a point light colour `ffffc400`, attenuation 32 to 160 and
 intensity 1.5, an effect `common/meshes/concrete/concrete_tile_64x64`, a
 target a name of its own (`target1`, …), and a player spawn and a target the
 camera's yaw to the nearest 45°.
+
+**The bridge tool**, as the game's (0.48): Shift-click a face of a brush of the
+map (it is outlined in light blue), press B and aim at another face; a
+wireframe shows the brushes that would join them, the wheel sets how many
+steps (1 to 32, 4 to start with), and a click makes them, as brushes of the
+world, selected. Escape stops. Each corner of the first face runs to its
+corner of the second along a curve that leaves the first face along its normal
+and comes into the second against its own, so two faces looking at each other
+give a straight run (convex, filling the gap exactly) and faces at an angle an
+arch or a curved ramp. Which corner meets which is found by turning the second
+face as the run turns. The faces must have as many corners; the steps are not
+on the grid, and the sides of a curved step may bend slightly, which the game
+allows (the status says how many do). The bridge takes the material and colour
+of the first face. The game's own tool may shape its curve otherwise; only its
+controls are known.
+
+**The property panel** (N, or Properties) shows the selected entity's
+properties, or with nothing selected the map's WorldSpawn (title, owner,
+modes, fog, sky). A selected volume shows its teleporter's or jump pad's.
+Each property is edited as its type: three numbers for a `Vector3`, a tick
+for `Bool8`, a colour picker and its eight hex digits for `ColourXRGB32` and
+`ColourARGB32`, text for the strings, with the map's Target names offered for
+`target`, `nameNext` and `targetGameOverCamera` and the map's effects for
+`effectName`; `pickupType` is a list named from reflex-map's converter (20,
+70, 71 and 80, which the stock maps use and it does not name, are marked as
+guesses). A change is made on Enter or leaving the field, as one step of
+undo; × removes a property, and a string left empty is removed rather than
+written empty. Add offers the properties every entity of the type has in the
+stock maps, and any other the map's entities of that type have; a string
+added starts as the first suggestion (a Target's name for `target`).
+
+The mode (create, vertex, bridge) and the status stand over the scene, and
+the footer keeps one line, so the scene never changes size under the mouse
+while working.
 
 **Entities** are selected by their markers (within 12 pixels; volumes, clips
 and glass do not hide them), moved, cloned and deleted as brushes are.
@@ -205,12 +242,13 @@ transcribed from AEon's command document were read as they are):
   flip and turn a face's texture (`me_texcoords_*`).
 - The bridge tool (B, `me_startbridge`, added in 0.48): Shift-select a face,
   press B, aim at another face, and brushes joining the two are shown; the
-  wheel (`me_segments_inc`/`_dec`) sets how many; a click makes them.
+  wheel (`me_segments_inc`/`_dec`) sets how many; a click makes them. On the
+  page, as above.
 - Prefabs (0.40): `me_createprefab <name>` from the selection,
   `me_breakprefab`, `me_updateprefab`, `me_listprefabs`; placed as Prefab
   entities that can nest.
 - `me_showproperties 1` (N) opens the selection's properties; teleporters and
-  jump pads name their Target there.
+  jump pads name their Target there. On the page, as above.
 - Light is baked with `r_lm_build` (F4) into light probes on a 64-unit grid
   (the map's `.light` file); until then edited geometry is drawn fullbright.
   `savemap` saves; the stock MapAutoSave widget saves numbered copies.
@@ -355,9 +393,16 @@ random convex brushes.
   Node tests when Node is installed. Set `REFLEX_GAME_BASE` to a Reflex Arena
   folder to import that install and run the Node tests over its maps.
 - `node tools/check_reflex_maps.cjs http://127.0.0.1:5000 build/reflex-review`:
-  in a hidden browser, makes boxes in a new map, carves, deletes, undoes,
-  redoes and hollows with the keyboard and mouse, saves and reads the download
-  back; then draws the first imported map and checks it is not blank.
+  in a hidden browser, with the keyboard and mouse: makes boxes in a new map,
+  carves, deletes, undoes, redoes and hollows them, saves and reads the
+  download back; drags, lifts and pulls a face, clones, picks up and puts on a
+  material; drags out a brush and a teleporter, places a pickup, a player spawn
+  and a target, moves the pickup by its marker, deletes the teleporter by its
+  volume; drags and welds corners in vertex mode; sets the map's title, a
+  pickup's type and a teleporter's target in the property panel; bridges a
+  face to another at a right angle in six steps; then draws the first imported
+  map and checks it is not blank. Run eight times in a row it passed every
+  time.
 
 Checked on 2026-10-02 with the 18 maps of a stock install (Steam folder
 `reflexfps`): AbandonedShelter, Aerowalk, Ashur, empty, forge, furnace,
