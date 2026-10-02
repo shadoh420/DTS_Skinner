@@ -24,6 +24,13 @@ export default defineConfig({
       }
       return 'import {mouseDelta, useMouseLook} from "../../skinner/mouse-look";\n' + source;
     }
+    if(id.endsWith('/WaterBlock.tsx')) {
+      // A water block's environment map that is not in the game files added upstream's white fallback texture to
+      // the water, at full strength. It adds nothing instead, as upstream's sky does with a missing environment map.
+      const before = 'textureToUrl(envMapTexture ?? "special/lush_env")';
+      if(!source.includes(before)) throw new Error('Upstream water environment map changed: ' + before);
+      return source.replace(before, 'textureToUrl(envMapTexture ?? "special/lush_env", process.env.BASE_PATH + "black.png")');
+    }
     if(id.endsWith('/shapeMaterial.ts')) {
       // Three declares transformedNormal for an unlit material only when it is skinned or has Three's own envMap, so
       // upstream's reflection lookup does not compile for the instanced glowing parts of shapes and they are not drawn.

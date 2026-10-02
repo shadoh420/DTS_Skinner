@@ -51,8 +51,9 @@ drag to look, WASD moves, Space rises, Shift descends, the wheel changes speed,
 Escape releases the mouse and keys 1–9 select the mission's observer
 viewpoints. FOV, Fog, **Invert horizontal** / **Invert vertical** and Reset view
 are above the scene; settings persist in their own browser-storage namespace.
-Missions without observer cameras (the Training missions) open at the map
-origin.
+Every mission of the install has observer cameras; a map opens at its first.
+A mission whose display name is not its file name is listed with both
+("Training1 · Newblood").
 
 **Preview notes** lists what the renderer could not resolve on the map in
 view: files a mission, shape or material list names that the pack does not
@@ -78,6 +79,10 @@ and a mission whose scripts have not reported ready after 90 seconds.
   only when it is skinned, so the instanced glowing parts of shapes whose
   datablock has an environment map did not compile and were not drawn. Upstream's
   main branch has the same line.
+- A water block whose environment map is not in the game files (the five maps
+  in the table below with a water entry) had upstream's white fallback texture
+  added to its water. It now adds nothing, the rule upstream's sky already
+  follows for a missing environment map. Patched at build time as well.
 - As before: audio off, settings and skins kept local, mouse-look inversion,
   no live-server, demo or relay interfaces. CSP blocks external requests.
 
@@ -102,16 +107,17 @@ All 84 import, with a terrain for each. Counting every mission type there are
 
 | Unresolved | Missions |
 | --- | --- |
-| `textures/skins/axe` (a shape skin) | Archipelago, DeathBirdsFly, DesertofDeath_nef, Hillside, IceBound, IceRidge_nef, JacobsLadder, Katabatic, Lakefront, Magmatic, Overreach, Quagmire, Rollercoaster_nef, Sandstorm (CTF, DnD), Starfallen, Stonehenge_nef, Surreal (CTF), Titan, Training3, WhiteDwarf |
-| `textures/desert/skies/ice_blue_emap` (sky environment map; the file is under `ice/skies`) | IceBound, IceRidge_nef, Katabatic, Rimehold, SubZero, ThinIce, Whiteout |
-| `textures/ice/skies/icebound_emap_cloudsground` | IceBound, ShockRidge, ThinIce, WhiteDwarf |
-| `textures/lava/skies/volcanic_starrynite_v5_dn` | FrozenFury, GodsRift, SkinnyDip, SolsDescent |
-| `textures/lava/tlite1t` | Surreal |
-| `textures/special/lush_env` | Raindance_nef |
+| `textures/skins/axe` (named by five turret and barrel shapes) | Archipelago, DeathBirdsFly, DesertofDeath_nef, Hillside, IceBound, IceRidge_nef, JacobsLadder, Katabatic, Lakefront, Magmatic, Overreach, Quagmire, Rollercoaster_nef, Sandstorm (CTF, DnD), Starfallen, Stonehenge_nef, Surreal (CTF), Titan, Training3, WhiteDwarf |
+| `textures/desert/skies/ice_blue_emap` (sky environment map, the file is under `ice/skies`; shapes get no reflection) | IceBound, IceRidge_nef, Katabatic, Rimehold, SubZero, ThinIce, Whiteout |
+| `textures/ice/skies/icebound_emap_cloudsground` (water environment map, the file is under `liquidTiles`) | IceBound, ShockRidge, ThinIce, WhiteDwarf |
+| `textures/lava/skies/volcanic_starrynite_v5_dn` (the sky box's bottom face, below the horizon; the file is `starrynite_v5_DN`) | FrozenFury, GodsRift, SkinnyDip, SolsDescent |
+| `textures/lava/tlite1t` (a building texture) | Surreal |
+| `textures/special/lush_env` (the default water environment map) | Raindance_nef |
 
-Training2 and Training3 also list a line each that their own scripts print
-through `error()` ("Running Mission 2 Script", "Effective Turret Range is:
-150"); `check-pack.ts` reports the same two and exits non-zero for them.
+None of these files is anywhere in the install under that name, so the game
+itself lacks them. Training2 and Training3 also list a line each that their
+own scripts print through `error()` ("Running Mission 2 Script", "Effective
+Turret Range is: 150"); `check-pack.ts` lists the same two as script output.
 
 Looked at in the browser: Katabatic (ice), Riverdance (lush, both types),
 Desiccator (desert), Recalescence (lava), Minotaur (badlands), Raindance
@@ -162,7 +168,7 @@ node --import=tsx/esm skinner/check-mouse-look.ts
 loads every mission in each of its types through upstream's script runtime, as
 upstream's own mission-load test does for one map, and reports missions that
 fail or do not become ready, terrain, interior, sky and shape files the pack
-lacks, script errors, and any mission whose name or types the importer read
+lacks, runtime errors, and any mission whose name or types the importer read
 differently from upstream's parser. It does not draw anything.
 
 ## Limits

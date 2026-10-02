@@ -13,7 +13,12 @@ import manifest from './manifest';
 
 type Mission = {displayName: string | null; missionTypes: string[]; source?: string};
 const missions: Record<string, Mission> = manifest.missions;
-const label = (name: string) => missions[name].displayName || name;
+// A display name that is not the file name (the Training missions: "Newblood") is shown after it.
+const flat = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+function label(name: string) {
+  const display = missions[name].displayName;
+  return !display ? name : flat(name).startsWith(flat(display)) ? display : `${name} · ${display}`;
+}
 const names = Object.keys(missions).sort((a, b) => label(a).localeCompare(label(b)));
 // Upstream's group names for these archives; any other archive is listed under its own name.
 const groupNames: Record<string, string> = {'missions.vl2': 'Official', 'Classic_maps_v1.vl2': 'Classic', 'TR2final105-client.vl2': 'Team Rabbit 2'};

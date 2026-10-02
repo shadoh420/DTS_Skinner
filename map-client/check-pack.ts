@@ -28,7 +28,7 @@ const report: Record<string, string[]> = {};
 let runs = 0;
 
 for (const [name, mission] of Object.entries<any>(manifest.missions).sort()) {
-  const problems: string[] = [];
+  const problems: string[] = [], printed: string[] = [];
   // The importer reads names and types in Python; upstream's parser is the reference.
   const parsed = parseMissionScript(readFileSync(path.join(pack, 'base', mission.resourcePath), 'utf8'));
   if (parsed.displayName !== mission.displayName || parsed.missionTypes.join() !== mission.missionTypes.join())
@@ -67,9 +67,11 @@ for (const [name, mission] of Object.entries<any>(manifest.missions).sort()) {
       problems.push(`${type}: ${(error as Error).message}`);
     }
     Object.assign(console, quiet);
-    for (const error of errors) problems.push(`${type}: ${error}`);
+    // The runtime's own errors are failures; anything else here is a mission script calling error() to print.
+    for (const error of errors) (/^(schedule: error calling|exec: invalid)/.test(error) ? problems : printed).push(`${type}: ${error}`);
   }
-  console.log(problems.length ? `FAIL ${name}\n  ${problems.join('\n  ')}` : `ok   ${name} [${mission.missionTypes}]`);
+  console.log((problems.length ? `FAIL ${name}\n  ${problems.join('\n  ')}` : `ok   ${name} [${mission.missionTypes}]`)
+    + printed.map(line => `\n  script printed, ${line}`).join(''));
   if (problems.length) report[name] = problems;
 }
 console.log(`${Object.keys(manifest.missions).length} missions, ${runs} mission/type loads, ${Object.keys(report).length} with problems`);
