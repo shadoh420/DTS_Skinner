@@ -128,7 +128,8 @@ the compile error; none does now.
 The in-app import was checked from an empty state in a source run: the page
 imported the install, reloaded, read the mount points and drew Katabatic, and
 the pack was identical, file for file, to one imported from the command line.
-It has not been checked in a packaged build.
+The same was then done in a packaged build (PyInstaller, the repository's
+spec, run from its own folder): same result, same pack.
 
 Not checked: every map by eye, the look of each map against the game, and
 anything that needs the scripts to run on (see Limits).
