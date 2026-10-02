@@ -14,6 +14,8 @@ the models of ArenaPrototype's Quake3ItemCatalog.
 What a map names and the game folder lacks can be supplied from an extras folder laid out like baseq3
 (textures/..., scripts/..., or whole pk3 archives): local-data/q3-extra beside the pack unless --extra names
 another. It is searched after everything of the game and only fills gaps; what came from it is listed per map.
+What is still missing after that is guessed from a shader or image of the same file name in another folder,
+and listed per map as a guess.
 """
 import argparse
 import hashlib
@@ -35,6 +37,7 @@ LUMPS = 17
 KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14)  # Entities, shaders, models, vertices, indices, faces, lightmaps: all the viewer reads.
 SURF_NODRAW = 0x80
 EXTRA = 'extras: '  # Starts the label of every source that is not the game's own.
+IMAGES = ('.tga', '.jpg', '.jpeg', '.png')
 SORT = dict(portal=1, sky=2, opaque=3, decal=4, seethrough=5, banner=6, underwater=8, additive=10, nearest=16)
 BLEND = dict(add=['gl_one', 'gl_one'], filter=['gl_dst_color', 'gl_zero'], blend=['gl_src_alpha', 'gl_one_minus_src_alpha'])
 SKY_SIDES = ('rt', 'bk', 'lf', 'ft', 'up', 'dn')
@@ -135,17 +138,18 @@ class Game:
         # (ioquake3 and the original game join them last to first, so there the lower source wins.)
         script = lambda key: re.fullmatch(r'scripts/[^/]+\.shader', key)
         listed = list(dict.fromkeys(key for label, files in self.sources if not label.startswith(EXTRA) for key in files if script(key)))
-        self.shaders = {}
+        self.shaders, self.shader_label = {}, {}  # And the source each definition came from.
         for key in listed:
             for name, body in parse_shaders(read_text(self.files[key][1]())).items():
-                self.shaders.setdefault(name, body)
+                if name not in self.shaders:
+                    self.shaders[name], self.shader_label[name] = body, self.files[key][0]
         # Scripts of the extras define only shaders the game has none for.
         self.outside = set()  # Shader names and file keys that were found in the extras.
         for label, files in self.sources:
             for key in files if label.startswith(EXTRA) else ():
                 for name, body in parse_shaders(read_text(files[key]())).items() if script(key) else ():
                     if name not in self.shaders:
-                        self.shaders[name] = body
+                        self.shaders[name], self.shader_label[name] = body, label
                         self.outside.add(name)
         self.arenas = {}
         for key in self.files:
@@ -154,7 +158,7 @@ class Game:
                     pairs = {(quoted or bare).lower(): value for quoted, bare, value in re.findall(r'(?:"([^"]*)"|([^\s"]+))\s+"([^"]*)"', block)}
                     if pairs.get('map'):
                         self.arenas.setdefault(pairs['map'].lower(), pairs.get('longname', ''))
-        self.described, self.images, self.models = {}, {}, {}
+        self.described, self.images, self.models, self.same_name = {}, {}, {}, None
 
     def close(self):
         for archive in self.archives:
@@ -216,23 +220,74 @@ def wave(tokens):
     return [tokens[0].lower() if tokens else 'sin'] + numbers(tokens[1:], 4)
 
 
-def describe(game, name, textures):
-    """What the viewer needs of one shader: stages in ArenaPrototype's terms, with ioquake3's defaults.
-    Returns (shader, unresolved, limits); the lists say what is missing and what is not reproduced."""
-    if name in game.described:
-        return game.described[name]
+def describe(game, name, textures, source=''):
+    """What the viewer needs of one shader, as (shader, unresolved, limits); the lists say what is missing and
+    what is not reproduced. A shader the game cannot build is guessed where `guess` finds something, which can
+    depend on `source`, the archive of the map that asks."""
+    for key in ((name, source), name):
+        if key in game.described:
+            return game.described[key]
+    result, key = build(game, name, textures), name
+    if result[0].get('default'):
+        guessed = guess(game, name, result, textures, source)
+        if guessed:
+            result, key = guessed, (name, source)
+    game.described[key] = result
+    return result
+
+
+def guess(game, name, result, textures, source):
+    """For a shader the game cannot build: stand-ins of the same file name from another folder under the same top
+    folder, a script before an image, the map's own archive first, then the stock paks, then any other. Returns
+    the result with what was guessed listed in the shader's `guessed`, or None. Nothing says the stand-in is the
+    same thing, which is why it is always reported as a guess."""
+    if game.same_name is None:
+        game.same_name = {}
+        for other, label in game.shader_label.items():
+            game.same_name.setdefault(other.rsplit('/', 1)[-1], []).append(('shader', other, label))
+        for key, (label, _) in game.files.items():
+            if key.endswith(IMAGES):
+                game.same_name.setdefault(re.sub(r'\.[^/.]*$', '', key).rsplit('/', 1)[-1], []).append(('image', key, label))
+
+    def candidates(path, kinds):
+        stem = re.sub(r'\.[^/.]*$', '', key_name(path).lstrip('/'))
+        found = [(kind, other, label) for kind, other, label in game.same_name.get(stem.rsplit('/', 1)[-1], ())
+                 if kind in kinds and other.split('/')[0] == stem.split('/')[0] and re.sub(r'\.[^/.]*$', '', other) != stem]
+        return sorted(found, key=lambda item: (0 if item[2] == source else 1 if re.fullmatch(r'pak\d\.pk3', item[2]) else 2, item[0] != 'shader', item[1]))
+
+    if name not in game.shaders:
+        for kind, other, _ in candidates(name, ('shader', 'image')):
+            found = build(game, other, textures) if kind == 'shader' else build(game, name, textures, {name: other})
+            if not found[0].get('default'):
+                return dict(found[0], name=name, guessed=[f'shader {name} drawn as {other}']), [], found[2]
+        return None
+    swap, notes = {}, []
+    for item in result[1]:  # 'texture <path> (shader <name>)'
+        path = item[len('texture '):].rsplit(' (shader', 1)[0]
+        found = candidates(path, ('image',))
+        if found:
+            swap[key_name(path).lstrip('/')] = found[0][1]
+            notes.append(f'texture {path} taken from {found[0][1]}')
+    found = build(game, name, textures, swap) if swap else result
+    return None if found[0].get('default') else (dict(found[0], guessed=notes), found[1], found[2])
+
+
+def build(game, name, textures, swap=None):
+    """One shader for the viewer: stages in ArenaPrototype's terms, with the game's defaults. `swap` names
+    images to use in place of ones the shader asks for."""
     unresolved, limits, outside = [], set(), ['shader script ' + name] if name in game.outside else []
     # What the game draws for a shader it cannot build, one with no script or image or with a stage whose image
     # is missing: its built-in default shader (R_FindShader, ShaderForShaderNum).
     default = dict(name=name, default=True, cull='front', sort=SORT['opaque'], outside=outside)
 
     def image(path):
-        file = textures.resolve(game, path)
+        used = (swap or {}).get(key_name(path).lstrip('/'), path)
+        file = textures.resolve(game, used)
         if not file:
             default['broken'] = True
             unresolved.append(f'texture {path} (shader {name})')
-        elif key_name(path).lstrip('/') in game.outside:
-            outside.append(f'texture {path}')
+        elif key_name(used).lstrip('/') in game.outside:
+            outside.append(f'texture {used}')
         return file
 
     if name not in game.shaders:
@@ -241,9 +296,7 @@ def describe(game, name, textures):
         if not file:
             unresolved[:] = [f'shader {name} (no script and no texture of that name)']
         default.pop('broken', None)
-        result = (dict(name=name, implicit=True, map=file, cull='front', sort=SORT['opaque'], outside=outside) if file else default), unresolved, []
-        game.described[name] = result
-        return result
+        return (dict(name=name, implicit=True, map=file, cull='front', sort=SORT['opaque'], outside=outside) if file else default), unresolved, []
     body, stage_lines = game.shaders[name]
     shader = dict(name=name, cull='front', stages=[])
     sort = 0
@@ -343,9 +396,7 @@ def describe(game, name, textures):
     shader['sort'] = sort
     if shader.get('fog'): limits.add('fog volumes')
     shader['outside'] = outside
-    result = (default, unresolved, []) if default.pop('broken', False) else (shader, unresolved, sorted(limits))
-    game.described[name] = result
-    return result
+    return (default, unresolved, []) if default.pop('broken', False) else (shader, unresolved, sorted(limits))
 
 
 def read_tga(raw):
@@ -389,7 +440,7 @@ class Textures:
         if key in game.images:
             return game.images[key]
         stem = re.sub(r'\.[^/.]*$', '', key)
-        named = [candidate for candidate in dict.fromkeys([key] + [stem + ext for ext in ('.tga', '.jpg', '.jpeg', '.png')]) if candidate in game.files]
+        named = [candidate for candidate in dict.fromkeys([key] + [stem + ext for ext in IMAGES]) if candidate in game.files]
         # The game goes on to the next extension when a file will not load: Team Arena's pak0 holds empty .tga files
         # over images the base game has as .jpg. Every name is tried among the game's own files before the extras.
         for found in sorted(named, key=lambda candidate: game.files[candidate][0].startswith(EXTRA)):
@@ -490,7 +541,7 @@ def import_map(game, name, ident, raw, source, output, textures):
         elif 0 <= shader < len(names) and not names[shader][1] & SURF_NODRAW: used.add(shader)  # tr_bsp.c skips these too.
     shaders, unresolved, limits = [None] * len(names), [], {}
     for index in sorted(used):
-        shader, missing, effects = describe(game, names[index][0], textures)
+        shader, missing, effects = describe(game, names[index][0], textures, source)
         shaders[index] = shader
         unresolved += [item for item in missing if item not in unresolved]
         for effect in effects:
@@ -532,8 +583,8 @@ def import_map(game, name, ident, raw, source, output, textures):
     folder.mkdir(parents=True, exist_ok=True)
     scene = dict(name=name, longname=game.arenas.get(name.lower(), ''), source=source, bsp=file, shaders=shaders, viewpoints=viewpoints,
                  items=items, itemModels=item_models,
-                 outside=list(dict.fromkeys(item for shader in [*shaders, *(shader for model in item_models.values() for shader in model['shaders'])]
-                                            if shader for item in shader['outside'])),
+                 **{kind: list(dict.fromkeys(item for shader in [*shaders, *(shader for model in item_models.values() for shader in model['shaders'])]
+                                             if shader for item in shader.get(kind, []))) for kind in ('outside', 'guessed')},
                  models=[dict(model=int(thing['model'][1:]), origin=vector(thing['origin'])) for thing in things
                          if re.fullmatch(r'\*\d+', thing.get('model', '')) and 'origin' in thing],
                  unresolved=unresolved, limits=notes)
@@ -559,7 +610,7 @@ def import_maps(game, output, replace=False, extra=None):
     textures = Textures(output / 'textures')
     index_path = output / 'index.json'
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}
-    result = dict(imported=[], skipped=[], failed={}, unresolved={}, outside={})
+    result = dict(imported=[], skipped=[], failed={}, unresolved={}, outside={}, guessed={})
     folders = [base] + sorted(folder for folder in game.iterdir() if folder.is_dir() and folder != base and any(folder.glob('*.pk3')))
     for folder in folders:
         mounted = Game([folder] if folder == base else [folder, base], extras)
@@ -587,6 +638,7 @@ def import_maps(game, output, replace=False, extra=None):
                 result['imported'].append(name)
                 if scene['unresolved']: result['unresolved'][name] = scene['unresolved']
                 if scene['outside']: result['outside'][name] = scene['outside']
+                if scene['guessed']: result['guessed'][name] = scene['guessed']
         finally:
             mounted.close()
     temporary = index_path.with_suffix('.tmp')
@@ -610,3 +662,4 @@ if __name__ == '__main__':
     for name, reason in done['failed'].items(): print('FAILED', name, reason)
     for name, items in done['unresolved'].items(): print('UNRESOLVED', name, '; '.join(items))
     for name, items in done['outside'].items(): print('FROM EXTRAS', name, '; '.join(items))
+    for name, items in done['guessed'].items(): print('GUESSED', name, '; '.join(items))

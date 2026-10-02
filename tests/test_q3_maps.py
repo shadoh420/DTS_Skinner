@@ -48,6 +48,14 @@ textures/test/broken
 	{ map textures/test/wall.tga }
 	{ map textures/test/missing.tga }
 }
+textures/test/mended
+{
+	{ map textures/test/gone.tga }
+}
+textures/other/renamed
+{
+	{ map textures/test/wall.tga }
+}
 '''
 
 
@@ -115,6 +123,7 @@ class Q3MapTests(unittest.TestCase):
             (root / 'baseq3').mkdir()
             pk3(root / 'baseq3/pak0.pk3', {'scripts/test.shader': SCRIPT, 'textures/test/wall.tga': image(), 'textures/test/glow.jpg': image(kind='JPEG'),
                                            'textures/test/plain.tga': image('RGBA'), 'textures/test/emptied.tga': b'', 'textures/test/emptied.jpg': image(kind='JPEG'),
+                                           'models/test/absent.tga': image(), 'textures/other/moved.jpg': image(kind='JPEG'), 'textures/other/gone.jpg': image(kind='JPEG'),
                                            # Two rows of two pixels in one run of four, with an id field ten bytes long.
                                            'textures/test/run.tga': struct.pack('<BBBHHBHHHHBB', 10, 0, 10, 0, 0, 0, 0, 0, 2, 2, 24, 0) + bytes(10) + bytes([0x83, 3, 2, 1])})
             game = Game([root / 'baseq3'])
@@ -138,6 +147,17 @@ class Q3MapTests(unittest.TestCase):
                 self.assertEqual(describe(game, 'textures/test/broken', textures), (
                     {'name': 'textures/test/broken', **fallback}, ['texture textures/test/missing.tga (shader textures/test/broken)'], []))
                 self.assertEqual(describe(game, 'textures/test/absent', textures)[0], {'name': 'textures/test/absent', **fallback})
+                # What cannot be built is guessed from the same file name in another folder under the same top folder,
+                # which models/test/absent.tga is not: a script first, else an image, and an image for a stage.
+                renamed, unresolved, _ = describe(game, 'textures/test/renamed', textures)
+                self.assertEqual((renamed['name'], renamed['stages'][0]['map'], renamed['guessed'], unresolved),
+                                 ('textures/test/renamed', wall['map'], ['shader textures/test/renamed drawn as textures/other/renamed'], []))
+                moved, unresolved, _ = describe(game, 'textures/test/moved', textures)
+                self.assertEqual((moved['implicit'], moved['map'], moved['guessed'], unresolved),
+                                 (True, glow['map'], ['shader textures/test/moved drawn as textures/other/moved.jpg'], []))
+                mended, unresolved, _ = describe(game, 'textures/test/mended', textures)
+                self.assertEqual((mended['stages'][0]['map'], mended['guessed'], unresolved),
+                                 (glow['map'], ['texture textures/test/gone.tga taken from textures/other/gone.jpg'], []))
                 plain, unresolved, _ = describe(game, 'textures/test/plain', textures)
                 self.assertEqual((plain['implicit'], plain['map'][-4:], unresolved), (True, '.png', []))
                 self.assertEqual(describe(game, '/textures/test/plain', textures)[0]['map'], plain['map'])  # A leading slash is dropped.

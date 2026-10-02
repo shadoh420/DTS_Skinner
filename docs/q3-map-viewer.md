@@ -56,6 +56,16 @@ maps**) after adding to it. What a map took from it is listed under that map's
 Preview notes as filled in from the extras folder, and in the import's output,
 so it stays clear what is the game's and what is not.
 
+What is still missing after that is guessed, where there is something to guess
+from: a shader the game cannot build is drawn as the shader, or else the
+image, of the same file name in another folder under the same top folder
+(`textures/steven/flame2` as `textures/sfx/flame2`), and a stage's missing
+image is taken from an image of the same file name. Of several the map's own
+archive is preferred, then the stock paks. Nothing says such a stand-in is the
+same thing, so each is listed under that map's Preview notes as a guess, and
+as `GUESSED` in the import's output. The game makes no such guess: it draws
+its default image there.
+
 The dropdown groups the maps: Quake III Arena (`pak0`–`pak8`), Team Arena and
 other mod folders, Custom maps (any other pk3 in `baseq3`), and Loose files in
 maps folder (a `.bsp` lying in `baseq3/maps`, which is anything you compiled
@@ -76,8 +86,8 @@ have arrived, as the T1 terrain is.
 **Preview notes** lists, for the map in view: what it names that the game
 files do not hold (a shader with neither script nor image, or a stage's
 texture; either way the surface is drawn with the game's dark default image,
-as the game draws it), what was filled in from the extras folder, what is not
-drawn or is simplified, and
+as the game draws it), what was filled in from the extras folder, what was
+guessed from a same-named file, what is not drawn or is simplified, and
 anything that failed while loading (a texture, a shader the graphics driver
 rejected, a map file with no surfaces).
 
@@ -237,10 +247,19 @@ Live's `pak00.pk3`, ArenaPrototype's extracted map scripts, TrenchBroom's and
 NetRadiant's editor textures): five images, and twelve shader definitions
 with the one stage texture they needed. With them 14 maps take something from
 the extras and 13 still name something unresolved: 62 names found nowhere on
-the drive under their own path. 28 of those have a shader or image of the
-same file name in another folder of the install (`textures/steven/…` beside
-stock shaders, `textures/bus_ca4/…` beside `textures/bus_ca1/…`); none of
-those is used, since nothing says they are the same thing.
+the drive under their own path.
+
+26 of those 62 have a shader or image of the same file name in another folder
+and are drawn as that, as guesses, on five maps: all eight `textures/steven/…`
+shaders of `ghosttown2` (as stock shaders of `liquids`, `sfx`, `common` and
+others), fifteen `textures/bus_ca4/…` shaders of `reactor` (fourteen as
+`textures/bus_ca1/…`), `rock_grey2` of `cpm32_b1` and the beam texture of
+`b0_beta6` (each from another folder of the map's own archive), and
+`small_light` of `q3ctfchnu01`. That leaves 10 maps naming 35 shaders and one
+texture that nothing stands in for: `absmidair`, `bones_fkd_b1`, `caustic`,
+`painless`, `pukka3tourney2`, `q3ctfchnu01`, `ql_harvest`, `reactor` (23),
+`runtfest` and `xcm_ctf4`. None of the 35 shaders is defined in any script of
+the install, read or hidden.
 
 `pukka3tourney2` and `b0_beta6` were looked at closely, being maps that play
 without any visible fault. Both do lack a file. `pukka3tourney2.pk3` has
@@ -250,9 +269,10 @@ drive; 24 faces use it, strips 4 units high around the ceiling lights, which
 under the default image are as dark as the trim beside them. In
 `b0_beta6.pk3` the script's `textures/b0_final/b0_beam_blue.tga` is in the
 archive as `textures/sfx/b0_beam_blue.jpg`, so the shader of five upward
-faces fails and they get the default image. CNQ3 handles both cases as the
-other engines do; what differed was the viewer, which drew magenta for the
-first and nothing for the second.
+faces fails and the game gives them its default image. CNQ3 handles both cases
+as the other engines do; what differed was the viewer, which drew magenta for
+the first and nothing for the second. With the guess above the beams are drawn
+blue from the `sfx` image.
 
 Three faults in the importer were found by this and fixed, which is what took
 the count from 31 maps to 23 before any extras:
@@ -291,7 +311,7 @@ Not checked: any map against the game side by side, and every map by eye.
 
 Tests: `python -m unittest tests.test_q3_maps` covers the script reader, the
 search order and which script wins, stage defaults, the default shader for
-what cannot be built, the import (draw lumps,
+what cannot be built and the guesses for it, the import (draw lumps,
 scenes, pickups and their models, unresolved content, the extras folder,
 skipping, a map file of the wrong version), the TGA and empty-file cases above
 and the local routes. Set `Q3_GAME_BASE` to a Quake 3 folder to also import that
