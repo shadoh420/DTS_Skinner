@@ -91,11 +91,15 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
       const colours = await page.evaluate(() => {
         const {renderer, scene, camera} = window.skinnerReflexMaps, gl = renderer.getContext();
         renderer.render(scene, camera);
-        const pixels = new Uint8Array(4 * 64 * 64);
-        gl.readPixels(gl.drawingBufferWidth / 2 - 32, gl.drawingBufferHeight / 2 - 32, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-        return new Set(Array.from({length: 64 * 64}, (_, i) => pixels.slice(i * 4, i * 4 + 3).join())).size;
+        // A 16 × 16 grid of pixels over the whole view.
+        const seen = new Set(), pixel = new Uint8Array(4);
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+          gl.readPixels(Math.floor((x + .5) * gl.drawingBufferWidth / 16), Math.floor((y + .5) * gl.drawingBufferHeight / 16), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+          seen.add(pixel.slice(0, 3).join());
+        }
+        return seen.size;
       });
-      assert.ok(colours > 4, `the middle of ${maps[0].id} shows ${colours} colours`);
+      assert.ok(colours > 8, `${maps[0].id} shows ${colours} colours`);
       console.log(`${maps[0].name}: ${await status()}`);
     }
     assert.deepEqual(errors, []);

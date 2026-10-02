@@ -4,15 +4,15 @@ import json
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
-
-from PIL import Image
+import zipfile
 
 from app import app
-from tools.import_reflex_map import describe, import_maps, map_id
+from tools.import_reflex_map import describe, import_maps, map_id, read_material
 
 MAP = '\r\n'.join([
     'reflex map version 8',
@@ -37,7 +37,33 @@ MAP = '\r\n'.join([
 ])
 
 
+def material(shader, *parameters):
+    """A material file as the game writes one: (type, name, value bytes) per parameter."""
+    pad = lambda data, size: data + b'\0' * (size - len(data))
+    raw = b'\x14\x00\x0e\xd0' + pad(shader.encode(), 128) + struct.pack('<3I', 0x11b, len(parameters), 0)
+    for kind, name, value in parameters:
+        raw += struct.pack('<I', kind) + pad(name.encode(), 128) + pad(value, 128)
+    return raw
+
+
+CONCRETE = material('internal/shaders/deferredPbrStylized', (3, 'albedo', struct.pack('<4f', .37, .38, .35, 1)),
+                    (0, 'metallic', struct.pack('<f', 0)), (0, 'roughness', struct.pack('<f', .8)))
+
+
 class ReflexMapsTest(unittest.TestCase):
+    def test_material_files_are_read_by_their_parameter_table(self):
+        self.assertEqual(len(CONCRETE), 924)  # The size of the stock concrete.material.
+        shader, parameters = read_material(CONCRETE)
+        self.assertEqual(shader, 'internal/shaders/deferredPbrStylized')
+        self.assertEqual([round(value, 4) for value in parameters['albedo']], [.37, .38, .35, 1])
+        self.assertAlmostEqual(parameters['roughness'], .8, 6)
+        _, lava = read_material(material('internal/shaders/fluid', (4, 'textureDiffuse', b'internal/effects/litspheres/water_c')))
+        self.assertEqual(lava, {'textureDiffuse': 'internal/effects/litspheres/water_c'})
+        with self.assertRaisesRegex(ValueError, 'not a Reflex material'):
+            read_material(b'PK\x03\x04' + bytes(200))
+        with self.assertRaisesRegex(ValueError, 'cut short'):
+            read_material(CONCRETE[:600])
+
     def test_describe_reads_the_global_title_author_and_face_materials(self):
         title, author, materials = describe(MAP)
         self.assertEqual((title, author), ('Test Walk', 'Someone + Someone Else'))
@@ -51,9 +77,15 @@ class ReflexMapsTest(unittest.TestCase):
             (game / 'maps').mkdir(parents=True)
             (game / 'maps/Test Walk.map').write_text(MAP, newline='')
             (game / 'maps/readme.map').write_text('not a map')
-            (game / 'base/materials/common/materials/wood').mkdir(parents=True)
-            Image.new('RGB', (2, 2), (255, 0, 0)).save(game / 'base/materials/common/materials/wood/bare_albedo.png')
-            Image.new('RGB', (2, 2), (0, 255, 0)).save(game / 'base/materials/common/materials/wood/bare.png')
+            # Materials are in zip archives named .pak in base; a loose material file there comes first.
+            (game / 'base/common/materials/wood').mkdir(parents=True)
+            (game / 'base/common/materials/wood/bare.material').write_bytes(
+                material('internal/shaders/deferredPbrStylized', (3, 'albedo', struct.pack('<4f', .5, .25, 0, 1)), (0, 'metallic', struct.pack('<f', 1))))
+            with zipfile.ZipFile(game / 'base/common.pak', 'w') as pak:
+                pak.writestr('common/materials/stone/', b'')
+                pak.writestr('common/materials/stone/concrete.material', CONCRETE)
+                pak.writestr('common/materials/wood/bare.material', material('x', (3, 'albedo', struct.pack('<4f', 1, 1, 1, 1))))
+            (game / 'base/broken.pak').write_bytes(b'not a zip')
             workshop = root / 'steamapps/workshop/content/328070/42'
             workshop.mkdir(parents=True)
             (workshop / 'other.map').write_text(MAP.replace('Test Walk', 'Other'), newline='')
@@ -65,10 +97,12 @@ class ReflexMapsTest(unittest.TestCase):
                              [('test_walk', 'Reflex Arena', 'Test Walk'), ('workshop__42__other', 'Steam Workshop', 'Other')])
             # The map is copied as it is, CR LF and all, under a name that changes with its content.
             self.assertEqual((pack / 'maps' / index[0]['file']).read_bytes(), MAP.encode())
-            # A plain image of the material's name is preferred to a suffixed one.
             colours = json.loads((pack / 'materials.json').read_text())
-            self.assertEqual(colours, {'common/materials/wood/bare': [0.0, 1.0, 0.0]})
-            self.assertIn('common/materials/stone/concrete', report['uncoloured'])
+            self.assertEqual(colours['common/materials/stone/concrete'],
+                             dict(colour=[.37, .38, .35], metallic=0.0, roughness=.8, shader='internal/shaders/deferredPbrStylized', source='common.pak'))
+            self.assertEqual((colours['common/materials/wood/bare']['colour'], colours['common/materials/wood/bare']['metallic']), ([.5, .25, 0], 1))
+            self.assertEqual(report['materials'], 2)
+            self.assertEqual(report['uncoloured'], ['internal/editor/textures/editor_clip'])
             self.assertEqual(import_maps(game, pack)['skipped'], ['Test Walk', 'other'])
             # A changed map replaces its old copy.
             (game / 'maps/Test Walk.map').write_text(MAP.replace('Someone Else', 'Nobody'), newline='')

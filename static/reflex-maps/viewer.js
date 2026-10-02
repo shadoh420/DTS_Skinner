@@ -29,35 +29,45 @@ window.addEventListener('DOMContentLoaded', async () => {
   const showStatus = text => { $('status').textContent = text; };
 
   // ---- Colours ----
-  // A face with a colour of its own (alpha above zero) is that colour; otherwise its material's. Until a pack from
-  // the game's materials says otherwise, a material's colour is guessed from its name.
+  // Shading is linear, as the game's physically based materials are, and the frame is encoded as sRGB. A face with a
+  // colour of its own (alpha above zero) is that colour, taken as the sRGB bytes a colour picker gives; otherwise its
+  // material's albedo, read from the game's material files by the import (materials.json) and linear already, with
+  // its metallic value. Without one, a material's colour is guessed from its name.
   const GUESSED = {
     'metal/gunmetal': [.30, .31, .33], 'metal/steel_stained': [.42, .40, .37], 'metal/aluminum': [.70, .71, .72], 'metal/p_metal': [.40, .40, .42],
     'metal/gold': [.80, .64, .30], 'metal/steel': [.55, .56, .58], 'stone/concrete': [.55, .55, .52], 'stone/stone': [.50, .48, .45],
     'stone/brick': [.52, .32, .25], 'wood/bare': [.45, .32, .20], 'fabric/silk': [.80, .78, .76], 'fabric/cotton': [.74, .73, .70],
     'fabric/leather': [.36, .23, .15], 'lava/lava': [1, .45, .10], 'slime/slime': [.30, .75, .20], 'veg/ivy': [.25, .40, .20],
-    'dev_grey128': [.50, .50, .50], 'dev_grey192': [.75, .75, .75], 'race/race_finish': [.85, .85, .85],
+    'dev_grey128': [.50, .50, .50], 'dev_grey192': [.75, .75, .75], 'dev_grey64': [.25, .25, .25], 'race/race_finish': [.85, .85, .85],
   };
+  const linear = channel => Math.pow(channel, 2.2);
   let packColours = {};
-  const materialColours = new Map();
-  function materialColour(name) {
-    if (!materialColours.has(name)) {
-      let colour = packColours[name];
-      if (!colour) {
+  const materials = new Map();
+  // {albedo (linear), metallic} of a material.
+  function materialOf(name) {
+    if (!materials.has(name)) {
+      const read = packColours[name];
+      if (read && read.colour) materials.set(name, {albedo: read.colour, metallic: read.metallic || 0});
+      else {
         const known = Object.keys(GUESSED).find(key => name.includes(key));
-        if (known) colour = GUESSED[known];
-        else {
+        let colour = known && GUESSED[known];
+        if (!colour) {
           // Anything else is a pale colour of its own, so neighbouring materials stay apart.
           let hash = 0;
           for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
           colour = new THREE.Color().setHSL((hash % 360) / 360, .25, .55).toArray();
         }
+        materials.set(name, {albedo: colour.map(linear), metallic: 0});
       }
-      materialColours.set(name, colour);
     }
-    return materialColours.get(name);
+    return materials.get(name);
   }
-  const faceColour = face => { const own = M.colourOf(face); return own ? own.slice(0, 3) : materialColour(face.material || ''); };
+  // Diffuse colour and the colour of reflections at normal incidence: 4 % for anything not metal, the albedo for metal.
+  function faceShade(face) {
+    const material = materialOf(face.material || ''), own = M.colourOf(face);
+    const albedo = own ? own.slice(0, 3).map(linear) : material.albedo, metallic = material.metallic;
+    return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .04 * (1 - metallic) + c * metallic)};
+  }
   // Faces the game does not draw: the editor's clip materials (player, weapon and full clip).
   const isClip = face => /^internal\/editor\/textures\/editor_.*clip/.test(face.material || '');
 
@@ -66,19 +76,20 @@ window.addEventListener('DOMContentLoaded', async () => {
   const brushMaterial = new THREE.ShaderMaterial({
     uniforms,
     extensions: {derivatives: true},
-    vertexShader: `attribute vec3 color; varying vec3 vColor; varying vec3 vNormal; varying vec3 vPos; varying float vDepth;
+    vertexShader: `attribute vec3 color; attribute vec3 specular; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth;
       void main() {
-        vColor = color; vNormal = normal; vPos = position;
+        vColor = color; vSpecular = specular; vNormal = normal; vPos = position;
         vec4 view = modelViewMatrix * vec4(position, 1.);
         vDepth = -view.z;
         gl_Position = projectionMatrix * view;
       }`,
-    // One fixed sun and light from the sky, as the map's baked light is not read; while editing, the editor's grid.
-    fragmentShader: `uniform float uGrid; uniform vec3 uSun; varying vec3 vColor; varying vec3 vNormal; varying vec3 vPos; varying float vDepth;
+    // One fixed sun, light from the sky and a grey surrounding to reflect, as the map's baked light and reflection
+    // probes are not read; while editing, the editor's grid.
+    fragmentShader: `uniform float uGrid; uniform vec3 uSun; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth;
       void main() {
         vec3 n = normalize(vNormal);
-        float light = .42 + .38 * max(dot(n, uSun), 0.) + .2 * (n.y * .5 + .5);
-        vec3 c = vColor * light;
+        float light = .2 + .6 * max(dot(n, uSun), 0.) + .25 * (n.y * .5 + .5);
+        vec3 c = vColor * light + vSpecular * .9;
         if (uGrid > 0.) {
           vec3 p = vPos / uGrid, w = fwidth(p) + 1e-5;
           vec3 g = abs(fract(p - .5) - .5) / w + abs(n) * 1e3;
@@ -86,9 +97,9 @@ window.addEventListener('DOMContentLoaded', async () => {
           vec3 q = vPos / (uGrid * 8.), wq = fwidth(q) + 1e-5;
           vec3 gq = abs(fract(q - .5) - .5) / wq + abs(n) * 1e3;
           float major = 1. - min(min(min(gq.x, gq.y), gq.z), 1.);
-          c = mix(c, c * .55, max(line * .5, major) * clamp(1. - vDepth / 3000., 0., 1.));
+          c = mix(c, c * .45 + .004, max(line * .5, major) * clamp(1. - vDepth / 3000., 0., 1.));
         }
-        gl_FragColor = vec4(pow(c, vec3(1. / 1.6)), 1.);
+        gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);
       }`,
   });
   const clipMaterial = new THREE.MeshBasicMaterial({color: 0xb04cff, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide});
@@ -106,19 +117,20 @@ window.addEventListener('DOMContentLoaded', async () => {
     return THREE.ShapeUtils.triangulateShape(points.map(p => new THREE.Vector2(p[a], p[b])), []);
   }
   function buildMesh(entries, wanted, owners) {
-    const positions = [], normals = [], colours = [];
+    const positions = [], normals = [], colours = [], speculars = [];
     owners.length = 0;
     entries.forEach((entry, index) => {
       const brush = entry.brush;
       for (const face of brush.faces) {
         if (wanted(face) === false) continue;
         const n = B.normalize(B.newell(face.indices.map(i => brush.vertices[i])));
-        const colour = faceColour(face);
+        const {diffuse, specular} = faceShade(face);
         for (const triangle of B.triangles(brush, face, triangulate)) {
           for (const vertex of triangle) {
             positions.push(...brush.vertices[vertex]);
             normals.push(...n);
-            colours.push(...colour);
+            colours.push(...diffuse);
+            speculars.push(...specular);
           }
           owners.push(index);
         }
@@ -128,6 +140,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+    geometry.setAttribute('specular', new THREE.Float32BufferAttribute(speculars, 3));
     geometry.computeBoundingSphere();
     return geometry;
   }
@@ -223,7 +236,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Materials some face draws in its material's colour, where that colour is a guess.
     const guessed = new Set();
     if (flat) for (const {brush} of flat.brushes) for (const face of brush.faces) if (!M.colourOf(face) && !isClip(face) && !packColours[face.material || '']) guessed.add(face.material || 'no material');
-    if (guessed.size) parts.push(`Drawn in a colour guessed from the material's name, as no image of it was imported: ${[...guessed].sort().join(', ')}`);
+    if (guessed.size) parts.push(`Drawn in a colour guessed from the material's name, as the import found no albedo for it: ${[...guessed].sort().join(', ')}`);
     parts.push(...notes);
     $('mapNotes').textContent = parts.length ? ' This map — ' + parts.join('. ') + '.' : '';
   }
@@ -560,7 +573,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setEditing(false);
   let maps = [];
   try { maps = await (await fetch(data + 'index.json')).json(); } catch (_) { /* No pack yet, or the page is served without Skinner. */ }
-  try { packColours = await (await fetch(data + 'materials.json')).json(); } catch (_) { /* Colours stay guessed. */ }
+  try { packColours = await (await fetch(data + 'materials.json')).json() || {}; } catch (_) { /* Colours stay guessed. */ }
   if (!Array.isArray(maps)) maps = [];
   const byGroup = new Map();
   for (const item of maps) byGroup.set(item.group, [...(byGroup.get(item.group) || []), item]);

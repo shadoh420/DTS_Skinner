@@ -7,23 +7,27 @@ the browser by static/reflex-maps/mapfile.js. A file is taken as a map when its 
 version N", wherever it lies in the game folder; Steam Workshop maps are read from the workshop folder beside the
 install (steamapps/workshop/content/328070), when there is one.
 
-Material colours: for each material the maps name (common/materials/stone/concrete) an image whose path ends in
-that name, plus an optional _albedo/_diffuse/_d/_col suffix, is looked for in the game folder and its mean colour
-written to materials.json. A face with no colour of its own is drawn in it. Materials with no such image keep the
-page's guess from their name.
+Material colours: the game's materials are in the zip archives of its base folder (base/common.pak holds
+common/materials/stone/concrete.material). A material file names its shader and holds typed parameters; the
+colour of each material the maps name is its albedo parameter, written to materials.json with its shader. A face
+with no colour of its own is drawn in it. Materials without one keep the page's guess from their name.
+
+Material file (version 0x14, magic 0xd00e; little-endian): u16 version, u16 magic, shader name (128 bytes), u32
+flags, u32 parameter count, u32 0, then per parameter 260 bytes: u32 type, name (128 bytes), value (128 bytes).
+Types seen: 0 a float, 3 four floats (a colour), 4 a texture path.
 """
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import re
-
-from PIL import Image
+import struct
+import zipfile
 
 WORKSHOP_APP = '328070'
 HEADER = re.compile(rb'reflex map version (\d+)\s*$')
-IMAGES = ('.png', '.tga', '.jpg', '.jpeg', '.dds')
-SUFFIXES = ('', '_albedo', '_diffuse', '_diff', '_d', '_col', '_color', '_colour', '_basecolor')
+MATERIAL_MAGIC = b'\x14\x00\x0e\xd0'
+PARAMETER = 260
 
 
 def map_id(name):
@@ -88,30 +92,58 @@ def find_maps(game):
     return found
 
 
-def material_colours(game, names):
-    """Mean colour of an image for each material name, where the game folder has one; and the names without."""
-    wanted = {name.lower(): name for name in names if name}
-    images = {}
-    for path in game.rglob('*'):
-        if path.suffix.lower() not in IMAGES or not path.is_file():
-            continue
-        stem = path.with_suffix('').as_posix().lower()
-        for suffix in SUFFIXES:
-            if suffix and not stem.endswith(suffix):
-                continue
-            key = stem[:len(stem) - len(suffix)] if suffix else stem
-            for lowered, name in wanted.items():
-                if key.endswith('/' + lowered) and (name not in images or SUFFIXES.index(suffix) < images[name][1]):
-                    images[name] = (path, SUFFIXES.index(suffix))
-    colours = {}
-    for name, (path, _) in images.items():
+def read_material(raw):
+    """A material file's shader and parameters: {name: float, [r, g, b, a] or texture path}."""
+    if len(raw) < 144 or raw[:4] != MATERIAL_MAGIC:
+        raise ValueError('not a Reflex material file')
+    text = lambda chunk: chunk.split(b'\0', 1)[0].decode('latin-1')
+    count = struct.unpack_from('<I', raw, 136)[0]
+    if len(raw) < 144 + count * PARAMETER:
+        raise ValueError('material file is cut short')
+    parameters = {}
+    for index in range(count):
+        at = 144 + index * PARAMETER
+        kind = struct.unpack_from('<I', raw, at)[0]
+        name, value = text(raw[at + 4:at + 132]), raw[at + 132:at + 260]
+        parameters[name] = (struct.unpack_from('<f', value)[0] if kind == 0 else list(struct.unpack_from('<4f', value)) if kind == 3
+                            else text(value) if kind == 4 else value.rstrip(b'\0').hex())
+    return text(raw[4:132]), parameters
+
+
+def material_files(game):
+    """Readers of every material of the game folder by lower-case name (common/materials/stone/concrete): loose
+    .material files under base first, then those in its .pak archives."""
+    base = next((folder for folder in game.iterdir() if folder.is_dir() and folder.name.lower() == 'base'), game)
+    found = {}
+    for path in sorted(base.rglob('*.material')):
+        found.setdefault(path.relative_to(base).with_suffix('').as_posix().lower(), (path.read_bytes, str(path.relative_to(game))))
+    for pak in sorted(base.glob('*.pak')):
         try:
-            with Image.open(path) as image:
-                pixel = image.convert('RGB').resize((1, 1), Image.Resampling.BOX).getpixel((0, 0))
-        except (OSError, ValueError):
+            archive = zipfile.ZipFile(pak)
+        except (OSError, zipfile.BadZipFile):
             continue
-        colours[name] = [round(channel / 255, 4) for channel in pixel]
-    return colours, sorted(name for name in wanted.values() if name not in colours)
+        for entry in archive.namelist():
+            if entry.lower().endswith('.material'):
+                found.setdefault(entry[:-len('.material')].lower(), (lambda archive=archive, entry=entry: archive.read(entry), pak.name))
+    return found
+
+
+def material_colours(game, names):
+    """The albedo and shader of each named material the game folder has; and the names it has no colour for."""
+    files, colours = material_files(game), {}
+    for name in sorted(name for name in names if name):
+        if name.lower() not in files:
+            continue
+        read, source = files[name.lower()]
+        try:
+            shader, parameters = read_material(read())
+        except (OSError, ValueError, struct.error, zipfile.BadZipFile):
+            continue
+        albedo = parameters.get('albedo')
+        if isinstance(albedo, list):
+            colours[name] = dict(colour=[round(channel, 4) for channel in albedo[:3]], shader=shader, source=source,
+                                 **{key: round(parameters[key], 4) for key in ('metallic', 'roughness') if isinstance(parameters.get(key), float)})
+    return colours, sorted(name for name in names if name and name not in colours)
 
 
 def import_maps(game, output, replace=False):
@@ -172,4 +204,4 @@ if __name__ == '__main__':
     print(f"Imported {len(done['imported'])}, skipped {len(done['skipped'])}, failed {len(done['failed'])}; "
           f"{done['materials']} material colours read")
     for name, reason in done['failed'].items(): print('FAILED', name, reason)
-    if done['uncoloured']: print('NO IMAGE FOR', ', '.join(done['uncoloured']))
+    if done['uncoloured']: print('NO ALBEDO FOR', ', '.join(done['uncoloured']))

@@ -25,8 +25,9 @@ below is compiled in.
 - **Import maps** copies the maps of your install into
   `local-data/reflex-maps` (ignored by Git; next to the executable in a
   packaged build) so the dropdown lists them. Enter the Reflex Arena folder.
-  A file is taken as a map when its first line is `reflex map version N`,
-  wherever it lies in that folder; Steam Workshop maps are read from
+  (`steamapps/common/reflexfps` in a Steam install). A file is taken as a map
+  when its first line is `reflex map version N`, wherever it lies in that
+  folder (the stock maps are in `maps`); Steam Workshop maps are read from
   `steamapps/workshop/content/328070` beside the install when there is one.
   From a checkout:
 
@@ -36,21 +37,43 @@ below is compiled in.
 
   The game folder is only read. The pack holds `index.json` (name, title and
   author from the map's WorldSpawn, group, source), `maps/` (the map files as
-  they are, named by content) and `materials.json`.
+  they are, named by content) and `materials.json` (each material's albedo,
+  metallic and roughness, shader and archive). All 18 maps of a stock install
+  import in under a second.
 - With no map chosen the page opens a new, empty map in edit mode.
 
-### Material colours
+### Materials and colours
 
-A face whose colour has alpha above zero is drawn in that colour, which is what
-most faces of stock maps carry (Furnace: 18 colours over 13 materials). A face
-with colour `0x00000000`, or none, is drawn in its material's colour. The
-import looks, for each material the maps name
-(`common/materials/stone/concrete`), for an image in the game folder whose path
-ends in that name with or without an `_albedo`, `_diffuse`, `_d` or `_col`
-suffix, and keeps its mean colour. Where there is none the page guesses a
-colour from the name (gunmetal dark grey, wood brown, lava orange…) and lists
-those materials under Preview notes. How the install lays out its materials
-has not been seen yet, so this lookup is a guess at the layout.
+The game's content is in zip archives named `.pak` in its `base` folder, one
+per top folder of the names inside: `common.pak` holds
+`common/materials/stone/concrete.material`, `structural.pak` the `structural/`
+materials, `internal.pak` the editor's and effects'. The import reads the
+material files the maps name from them (a loose `.material` under `base`
+first) and keeps each one's shader, albedo, metallic and roughness. A stock
+material is mostly constants, not images: `concrete` is shader
+`internal/shaders/deferredPbrStylized` with albedo (0.37, 0.38, 0.35),
+metallic 0 and roughness 0.8.
+
+Material file, little-endian: `14 00 0e d0`, the shader name (128 bytes), a
+32-bit flags word, the parameter count, a zero word, then 260 bytes per
+parameter: its type (32 bits), name (128 bytes) and value (128 bytes). Types
+seen: 0 a float (`metallic`, `roughness`, `albedoIntensity`), 3 four floats
+(`albedo`, `fresnelColour`), 4 a texture path (`textureDiffuse`). Every stock
+material file in `common.pak` is 144 + 260 × count bytes. Other types appear
+(`uvScale`, two floats) and are kept as hex.
+
+A face whose colour has alpha above zero is drawn in that colour, which is
+what most faces of stock maps carry (Furnace: 18 colours over 13 materials),
+taken as the sRGB bytes of a colour picker. A face with colour `0x00000000`,
+or none, is drawn in its material's albedo, which is linear, as the game's
+physically based materials are. Shading is linear and the frame is encoded as
+sRGB: diffuse light from one fixed sun and the sky, and a grey surrounding
+reflected at 4 % (or in the albedo's colour for a metallic material, which
+then has no diffuse colour). That is what keeps `gunmetal`, whose albedo is
+almost black (0.015, 0.02, 0.02, not metallic, roughness 0.4) and which most
+of Aerowalk is, a dark grey as in the game. Where the import found no albedo
+for a material the page guesses a colour from the name and lists those
+materials under Preview notes.
 
 Faces of the editor's clip materials (`internal/editor/textures/editor_clip`,
 `editor_fullclip`, `editor_weaponclip`) are not drawn while flying, as the game
@@ -85,8 +108,8 @@ move. The toolbar and keys:
 
 Brushes placed by a prefab are drawn but not selected: clicking one names its
 prefab. A brush that is not convex or has a bent face (the game's editor can
-make one by moving a vertex; Aerowalk has one) is drawn, and the CSG tools
-leave it alone.
+make one by moving a vertex; 33 brushes of the stock maps are such) is drawn,
+and the CSG tools leave it alone.
 
 ## The map file
 
@@ -141,22 +164,31 @@ global
   material. The material may be empty: the line then ends in a space after the
   colour. Version 6 has no colour.
 - **Numbers** are written with six decimals, a negative zero with its sign
-  (`-0.000000` appears in both maps). The page writes what it read back byte
-  for byte: both stock maps come back identical.
+  (`-0.000000` appears in most maps), and from 10¹⁷ up with 17 significant
+  digits and then zeros, as the game's C runtime writes them (AbandonedShelter
+  has a face turned by `1602806319568810500000000.000000` degrees). The page
+  writes what it read back byte for byte: all 18 stock maps come back
+  identical.
 - **Axes**: y is up. The converters to Quake swap y and z and the result is not
   mirrored, so the game's axes are left-handed; the page shows them under a root
   mirrored on z. Faces are wound counter-clockwise seen from outside, taking the
   right-hand rule on the numbers as written (outward normal
   `(b − a) × (c − b)`), which is the winding the page writes new faces in.
 - **Prefabs** are placed by a Prefab entity's `prefabName`, `position` and
-  `angles`, recursively. Angles are degrees, yaw first, about y. The sign of
+  `angles`, recursively. Names are matched without regard to case, as the
+  game matches them: SkyTemples defines `tower_1` and places `Tower_1`, and
+  Hieratic six more like it. Angles are degrees, yaw first, about y. The sign of
   yaw was settled on Aerowalk: with yaw turning +z toward +x its `panel_tall`
   copies at −90° meet their wall at 66 of 160 vertices and none sink into it,
-  against 18 and 8 the other way. Both stock maps turn prefabs by yaw only, so
-  the order of pitch and roll (taken from reflex-map's `export-prefab`) is
-  unconfirmed.
-- Every brush of both stock maps is convex with flat faces but one, on
-  Aerowalk.
+  against 18 and 8 the other way. Pitch and roll are applied as reflex-map's
+  `export-prefab` applies them (yaw, then roll, then pitch), which is
+  unconfirmed: Ashur, Fusion and Hieratic tilt 30 placements, but scoring all
+  six orders and four sign pairs by how their 3,818 vertices meet the map's
+  brushes separates none, as most of them are rocks and props sunk into the
+  ground whichever way they turn.
+- 33 brushes of the 18 stock maps are not convex or have bent faces (30 on
+  Ironguard, 2 on AbandonedShelter, 1 on Aerowalk, the rest none), and 3 on
+  Ironguard have a face with no area.
 
 Beside each map the game keeps `<map>.light` (version 2; a grid of 64-unit
 cells over the map's bounds, 42 × 16 × 27 on Aerowalk with about 85 bytes per
@@ -213,10 +245,13 @@ random convex brushes.
   redoes and hollows with the keyboard and mouse, saves and reads the download
   back; then draws the first imported map and checks it is not blank.
 
-Checked on 2026-10-02 with Aerowalk and Furnace from a stock install, imported
-from a stand-in install folder (the two maps, one in a Workshop folder): both
-read and write back identical, place every prefab they name (Aerowalk 2,756
-brushes, 1,152 of them from prefabs; Furnace 1,701 and 41) and draw in
-headless Chromium, Aerowalk in about one second. Not checked: the import
-against a real install's folder layout, or any map against the game side by
-side.
+Checked on 2026-10-02 with the 18 maps of a stock install (Steam folder
+`reflexfps`): AbandonedShelter, Aerowalk, Ashur, empty, forge, furnace,
+Fusion, Hieratic, ironguard, Phobos, Ruin, SkyTemples, TheCatalyst and the
+five training stages. Every one reads and writes back identical and places
+every prefab it names (Hieratic, the largest: 8,539 brushes, 4,192 of them
+from prefabs, drawn in about a second in headless Chromium). The import ran
+against a stand-in install with those maps and the stock `common.pak`, which
+gave 35 material colours; materials of `environment`, `internal` and
+`structural` were not checked, as those archives were not at hand. Not
+checked: any map against the game side by side.

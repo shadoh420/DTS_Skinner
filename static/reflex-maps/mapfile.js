@@ -34,9 +34,16 @@
     Int32: {read: words => Number(words[0]), write: String},
     Bool8: {read: words => Number(words[0]), write: String},
   };
-  // Numbers are written as the game writes them: six places, keeping the sign of a negative zero.
+  // Numbers are written as the game writes them: six places, keeping the sign of a negative zero. From 10^17 up the
+  // game's C runtime gives 17 significant digits and then zeros (AbandonedShelter has a face turned by
+  // 1602806319568810500000000.000000 degrees), where toFixed would give every digit or, past 10^21, an exponent.
   function fixed(value) {
-    const text = Number(value).toFixed(6);
+    value = Number(value);
+    if (Math.abs(value) >= 1e17 && Number.isFinite(value)) {
+      const [digits, exponent] = Math.abs(value).toExponential(16).split('e');
+      return (value < 0 ? '-' : '') + digits.replace('.', '').padEnd(Number(exponent) + 1, '0') + '.000000';
+    }
+    const text = value.toFixed(6);
     return Object.is(value, -0) && text[0] !== '-' ? '-' + text : text;
   }
 
@@ -168,7 +175,12 @@
   }
 
   const global = map => map.groups.find(group => group.kind === 'global');
-  const prefab = (map, name) => map.groups.find(group => group.kind === 'prefab' && group.name === name);
+  // Prefabs are named without regard to case, as the game finds them: SkyTemples defines tower_1 and places Tower_1.
+  const prefab = (map, name) => {
+    const wanted = String(name).toLowerCase();
+    return map.groups.find(group => group.kind === 'prefab' && group.name === name) ||
+      map.groups.find(group => group.kind === 'prefab' && group.name.toLowerCase() === wanted);
+  };
   const property = (entity, name) => { const found = entity.properties.find(p => p.name === name); return found ? found.value : undefined; };
   // A face colour as [r, g, b, a] from 0 to 1; null when the face has none or its alpha is zero (the material's own).
   function colourOf(face) {

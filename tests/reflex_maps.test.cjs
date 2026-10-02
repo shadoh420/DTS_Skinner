@@ -241,6 +241,18 @@ test('properties are typed, strings keep their spaces and a negative zero keeps 
   assert.equal(M.property(world, 'fogColor'), 'ff67ba88');
   assert.ok(Object.is(M.property(placed, 'angles')[1], -0));
   assert.equal(M.fixed(-0), '-0.000000');
+  // From 10^17 up, 17 significant digits then zeros, as the game's C runtime writes them (AbandonedShelter).
+  assert.equal(M.fixed(Number('1602806319568810500000000.000000')), '1602806319568810500000000.000000');
+  assert.equal(M.fixed(-123456789012345678901), '-123456789012345680000.000000');
+  assert.equal(M.fixed(99999999999999984), '99999999999999984.000000');
+});
+
+test('prefabs are found whatever the case of their name, as the game finds them', () => {
+  const text = SAMPLE.replace('\t\tString64 prefabName step\r\n\tentity\r\n\t\ttype Pickup', '\t\tString64 prefabName STEP\r\n\tentity\r\n\t\ttype Pickup');
+  assert.notEqual(text, SAMPLE);
+  const map = M.parse(text);
+  assert.equal(M.flatten(map).brushes.length, 2);
+  assert.equal(M.prefab(map, 'Step').name, 'step');
 });
 
 test('flatten places prefabs where Prefab entities put them, turned by yaw about y', () => {
