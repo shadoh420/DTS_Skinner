@@ -22,6 +22,7 @@ from tools.import_q3 import import_catalog as import_q3_catalog, current_import
 from tools.import_t1_map import import_maps as import_t1_maps
 from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
+from tools.import_reflex_map import import_maps as import_reflex_maps
 
 # --- System Tray Imports ---
 try:
@@ -217,6 +218,41 @@ def import_q3_maps_route():
     try:
         return jsonify(import_q3_maps(payload['game'].strip(), local_data_dir / 'q3-maps', payload.get('replace') is True))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/reflex/')
+def reflex_maps_viewer():
+    response = send_from_directory(static_dir / 'reflex-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/reflex-map-data/<path:filename>')
+def reflex_map_data(filename):
+    # Map files are named by their content, so a browser need never ask for one twice.
+    shared = filename.startswith('maps/')
+    response = send_from_directory(local_data_dir / 'reflex-maps', filename, max_age=31536000 if shared else None)
+    response.cache_control.immutable = shared
+    return response
+
+
+@app.route('/import_reflex_maps', methods=['POST'])
+def import_reflex_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
+        return jsonify(error='Enter your local Reflex Arena folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_reflex_maps(payload['game'].strip(), local_data_dir / 'reflex-maps', payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
         import_lock.release()
