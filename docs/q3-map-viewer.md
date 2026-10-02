@@ -302,10 +302,11 @@ meet without a seam at two opposite corners), Team Arena's `mpteam1`, and the
 loose `egypttower01` (unlit, drawn by its vertex colours).
 
 A packaged build (PyInstaller, the repository's spec, run from its own
-folder) served the page, imported the install through its own import route in
-42 seconds and drew `q3dm7`; its pack was the same as the source run's, file
-for file. That was before pickups were added, which have not been tried in a
-packaged build.
+folder with no extras folder) served the page, imported all 306 maps through
+its own import route with none failing, and drew `q3dm1` with its 18 pickups
+and every pixel covered, and `pukka3tourney2` with its 27. An earlier build,
+from before pickups were added, wrote a pack that was the same as the source
+run's, file for file; that comparison was not repeated.
 
 Not checked: any map against the game side by side, and every map by eye.
 
