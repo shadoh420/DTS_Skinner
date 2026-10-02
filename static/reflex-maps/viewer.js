@@ -1116,28 +1116,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (apply) applyMaterial(false);
     else say(`Material ${name}: M puts it on the selection, Shift+M on the face under the cursor`);
   }
-  // The Skinner library materials the map's faces use (in the map and in its prefabs).
-  function libraryMaterials() {
-    const used = new Set();
-    for (const group of map.groups) for (const item of group.items) if (isBrush(item)) for (const face of item.faces) if (LIBRARY.test(face.material || '')) used.add(face.material);
-    return [...used].sort();
-  }
-  // Writes them into the game folder the import panel names, so the game finds them (see install_library_materials).
-  async function installTextures() {
-    const game = $('gamePath').value.trim(), materials = libraryMaterials();
-    if (!game) { say('Enter your Reflex Arena folder under Import maps first'); $('importPanel').open = true; return; }
-    say(`Putting ${materials.length} textures into the game…`);
-    try {
-      const response = await fetch('/install_reflex_textures', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({game, materials})});
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Install failed');
-      const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
-      say(`Wrote ${result.written.length} files under base/skinner${failed.length ? `; failed ${failed.join('; ')}` : ''}`);
-    } catch (error) { say(error.message); }
-  }
   function showMaterials(body) {
-    const used = libraryMaterials();
-    const entries = libraryEntries(library), key = [library, materialSearch, template.material, entries ? entries.length : -1, used.length].join('|');
+    const entries = libraryEntries(library), key = [library, materialSearch, template.material, entries ? entries.length : -1].join('|');
     if (key === shownMaterials) return;  // Redrawn only when what it shows changes, not on every selection or drag.
     shownMaterials = key;
     body.replaceChildren();
@@ -1145,8 +1125,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       ...Object.entries(LIBRARIES).map(([value, label]) => element('option', {value, textContent: label, selected: value === library})));
     const search = element('input', {type: 'search', placeholder: 'Search', value: materialSearch, oninput: event => { materialSearch = event.target.value; const at = event.target.selectionStart; showPanel(); const again = $('propsBody').querySelector('input[type=search]'); again.focus(); again.setSelectionRange(at, at); }});
     body.append(element('div', {className: 'make'}, choose, search));
-    if (used.length) body.append(element('div', {className: 'actions'}, element('button', {type: 'button', textContent: `Put the map's ${used.length} library texture${used.length > 1 ? 's' : ''} into the game`,
-      title: 'Writes a material and texture for each into base/skinner of the Reflex Arena folder named under Import maps, so the saved map shows them in the game (unconfirmed)', onclick: installTextures})));
     if (!entries) { body.append(element('p', {textContent: 'Reading the library…'})); return; }
     const words = materialSearch.toLowerCase().split(/\s+/).filter(Boolean);
     const found = entries.filter(entry => words.every(word => entry.label.toLowerCase().includes(word)));

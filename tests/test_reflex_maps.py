@@ -244,32 +244,6 @@ class ReflexTexturesTest(unittest.TestCase):
             # Every material of the game is listed for the browser, also those no map names.
             self.assertIn('structural/dev/dev_unused', colours)
 
-    def test_material_writer_and_library_install(self):
-        from PIL import Image
-        from tools.import_reflex_map import install_library_materials, write_material
-        self.assertEqual(write_material('internal/shaders/deferredPbrStylized', {'albedo': [.37, .38, .35, 1], 'metallic': 0, 'roughness': .8}, 0x11b), CONCRETE)
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            game, library = root / 'Reflex Arena', root / 't1'
-            (game / 'base').mkdir(parents=True)
-            library.mkdir()
-            Image.new('RGB', (48, 40), (10, 200, 30)).save(library / 'Gravel Path.png')
-            with self.assertRaisesRegex(ValueError, 'Not a Reflex Arena folder'):
-                install_library_materials(game, ['skinner/t1/Gravel Path'], {'t1': library})
-            (game / 'base/common.pak').write_bytes(b'')
-            result = install_library_materials(game, ['skinner/t1/Gravel Path', 'skinner/t1/absent', 'common/materials/stone/concrete', 'skinner/t1/../x'], {'t1': library})
-            self.assertEqual(result['written'], [str(Path('base/skinner/t1/Gravel Path.material')), str(Path('base/skinner/t1/skinner_t1_gravel_path_c.dds'))])
-            self.assertEqual(sorted(result['failed']), ['common/materials/stone/concrete', 'skinner/t1/../x', 'skinner/t1/absent'])
-            shader, parameters = read_material((game / 'base/skinner/t1/Gravel Path.material').read_bytes())
-            self.assertEqual((shader, parameters['textureAlbedoSpec'], parameters['textureNormals']),
-                             ('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED', 'skinner_t1_gravel_path_c', 'dev_nogrid_normals'))
-            dds = (game / 'base/skinner/t1/skinner_t1_gravel_path_c.dds').read_bytes()
-            # Scaled to powers of two, BC1 with its whole mip chain (64 x 32 down to 1 x 1: 7 levels).
-            self.assertEqual((dds[84:88], struct.unpack_from('<2I', dds, 12), struct.unpack_from('<I', dds, 28)[0]), (b'DXT1', (32, 64), 7))
-            self.assertEqual(len(dds), 128 + sum(max(1, (64 >> level) // 4) * max(1, (32 >> level) // 4) * 8 for level in range(7)))
-            self.assertTrue(all(abs(a - b) < 10 for a, b in zip(Image.open(game / 'base/skinner/t1/skinner_t1_gravel_path_c.dds').convert('RGB').getpixel((5, 5)), (10, 200, 30))))
-            self.assertEqual([path.relative_to(game).parts[:2] for path in game.rglob('*') if path.is_file() and path.name != 'common.pak'], [('base', 'skinner')] * 2)
-
     def test_reflex_is_a_texture_library_for_models_and_maps(self):
         from PIL import Image
         from tools.model_data import material_texture_refs
@@ -286,9 +260,6 @@ class ReflexTexturesTest(unittest.TestCase):
                 self.assertIn('dev_grid16_albedospec__dev_grid16_meta.png', client.get('/texture_versions?game=reflex').json)
                 # Reflex has textures, not models.
                 self.assertEqual(client.get('/list_models?game=reflex').status_code, 400)
-                self.assertEqual(client.post('/install_reflex_textures', json={'game': str(root), 'materials': []}, headers={'Origin': 'http://elsewhere.example'}).status_code, 403)
-                with client.post('/install_reflex_textures', json={'game': str(root / 'absent'), 'materials': ['skinner/t1/x']}) as response:
-                    self.assertEqual(response.status_code, 422)
         # A model's slot may take a Reflex texture.
         names, games, _ = material_texture_refs(dict(game='t1', material_textures=['a.png']), {'0': {'game': 'reflex', 'filename': 'dev_grid16_albedospec__dev_grid16_meta.png'}})
         self.assertEqual((names, games), (['dev_grid16_albedospec__dev_grid16_meta.png'], ['reflex']))

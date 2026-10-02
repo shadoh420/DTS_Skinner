@@ -14,7 +14,6 @@ mip count, 1, DXGI format, 1, 0, 1, bytes per 4 x 4 block, 0, 0) and its mips fo
 stock structural.pak and thumbs_material.pak (every material's 256 x 256 thumbnail, BC1 sRGB).
 """
 import io
-import math
 import struct
 
 TEXTURESET_MAGIC = b'\x20\x00\x0f\xd0'
@@ -101,30 +100,3 @@ def bake(albedo, meta=None, size=1024, alpha=False):
     if alpha and albedo.getchannel('A').getextrema()[0] < 255:
         colour.putalpha(albedo.getchannel('A').resize(colour.size, Image.Resampling.BILINEAR))
     return colour
-
-
-def encode_dds(image):
-    """A .dds file of `image` as the game's own surface textures are kept (BC1, as slime_c.dds, or BC3 where it has
-    see-through pixels), with its mip chain; its sides are scaled to powers of two up to 1024 first."""
-    from PIL import Image
-    image = image.convert('RGBA')
-    side = lambda n: min(1024, max(4, 1 << round(math.log2(n))))  # The nearest power of two.
-    width, height = side(image.width), side(image.height)
-    if (width, height) != image.size:
-        image = image.resize((width, height), Image.Resampling.LANCZOS)
-    fmt = 'DXT5' if image.getchannel('A').getextrema()[0] < 255 else 'DXT1'
-    levels, header = [], None
-    while True:
-        output = io.BytesIO()
-        image.save(output, 'DDS', pixel_format=fmt)
-        data = output.getvalue()
-        header = header or bytearray(data[:128])
-        levels.append(data[128:])
-        if image.width == 1 and image.height == 1:
-            break
-        image = image.resize((max(1, image.width // 2), max(1, image.height // 2)), Image.Resampling.BOX)
-    flags, = struct.unpack_from('<I', header, 8)
-    struct.pack_into('<I', header, 8, flags | 0x20000)                   # DDSD_MIPMAPCOUNT
-    struct.pack_into('<I', header, 28, len(levels))                       # mip count
-    struct.pack_into('<I', header, 108, 0x1000 | 0x8 | 0x400000)          # DDSCAPS_TEXTURE, COMPLEX, MIPMAP
-    return bytes(header) + b''.join(levels)

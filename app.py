@@ -22,7 +22,7 @@ from tools.import_q3 import import_catalog as import_q3_catalog, current_import
 from tools.import_t1_map import import_maps as import_t1_maps
 from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
-from tools.import_reflex_map import import_maps as import_reflex_maps, install_library_materials
+from tools.import_reflex_map import import_maps as import_reflex_maps
 
 # --- System Tray Imports ---
 try:
@@ -252,28 +252,6 @@ def import_reflex_maps_route():
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
         return jsonify(import_reflex_maps(payload['game'].strip(), local_data_dir / 'reflex-maps', payload.get('replace') is True))
-    except (OSError, ValueError) as exc:
-        return jsonify(error=str(exc)), 422
-    finally:
-        import_lock.release()
-
-
-@app.route('/install_reflex_textures', methods=['POST'])
-def install_reflex_textures_route():
-    """Writes the Skinner library textures a Reflex map uses into the game folder (base/skinner only)."""
-    if foreign_request():
-        return jsonify(error='Textures must be installed from this Skinner window.'), 403
-    if not request.is_json or request.content_length is None or request.content_length > 65536:
-        return jsonify(error='Expected a small JSON request.'), 400
-    payload = request.get_json(silent=True)
-    if (not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip()
-            or not isinstance(payload.get('materials'), list) or not all(isinstance(name, str) for name in payload['materials'])
-            or len(payload['materials']) > 1024):
-        return jsonify(error='Expected the Reflex Arena folder and the material names.'), 400
-    if not import_lock.acquire(blocking=False):
-        return jsonify(error='An import is running. Wait for it to finish.'), 409
-    try:
-        return jsonify(install_library_materials(payload['game'].strip(), payload['materials'], all_texture_dirs()))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:

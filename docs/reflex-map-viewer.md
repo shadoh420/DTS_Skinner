@@ -145,22 +145,16 @@ face that takes one gets the material `skinner/<library>/<file>`
 (`skinner/t1/alientree`). The page draws it at its size in pixels over two
 units, as Quake 3's default scale of 0.5 has it.
 
-The game does not know `skinner/t1/alientree`. **Put the map's library
-textures into the game** (in the material browser, when the map uses some)
-writes, for each, `base/skinner/<library>/<file>.material` and the texture
-beside it, into the Reflex Arena folder named under Import maps, and nowhere
-else. The material is a stock dev material's: its shader
-(`deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED`, flags
-`0x11b`), its flat normals and meta (`dev_nogrid_normals`, `dev_nogrid_meta`),
-a white tint, and the library picture as its albedo, named
-`skinner_<library>_<file>_c` because the game finds textures by bare name. The
-texture is a `.dds` as the game's own are (BC1, or BC3 where the picture has
-see-through pixels), scaled to powers of two up to 1024, with its mips. The
-material writer gives back 446 of the 456 stock material files byte for byte.
-**Not confirmed:** whether the game reads materials and textures from loose
-files under `base` (its `myskins` folder holds loose `.dds` weapon skins, so
-it reads some), and whether such a material then draws as intended. Try one
-in the game before relying on it.
+The game does not know `skinner/t1/alientree`: such a face draws in Reflex as
+its grey grid fallback, and only Skinner draws the library texture. Skinner
+does not write anything into the game folder. An earlier version of the page
+put a material and a `.dds` for each library texture under `base/skinner`. The
+game reads every loose file under `base` when it starts, and it refuses any
+`.material` there that is not one of its own, even a byte-for-byte copy of a
+stock one. It then stops with "Failed to load asset … from disk" and will not
+start until the file is removed. The shipped game compiles custom content only
+for weapon skins (`.skintxt` and `.texturesettxt` sources under
+`assets/base/myskins`).
 
 Faces of the editor's clip materials (`internal/editor/textures/editor_clip`,
 `editor_fullclip`, `editor_weaponclip`) are not drawn while flying, as the game
@@ -568,8 +562,7 @@ random convex brushes.
   drawn. How the game maps a face's offset, scale and rotation to texture
   coordinates, and how many units one repeat of a texture covers, have not
   been checked against the game: the page uses Quake 3's projection and 128
-  units. Whether library textures put into the game work there is not
-  confirmed.
+  units. Library textures show in Skinner only.
 - **Effects** (the game's models, by `effectName`) are marked as small grey
   points while editing, not drawn. Sky, fog and the baked light are not drawn;
   the background is the WorldSpawn's horizon colour.
@@ -587,9 +580,8 @@ random convex brushes.
   write it back unchanged and place its prefabs, and to break every placement
   of its prefabs and put each back.
 - `python -m unittest tests.test_reflex_maps`: the import (with textures and
-  thumbnails from made-up `.textureset` files), the material writer, putting
-  library textures into a game folder, the Reflex texture library's routes,
-  the routes, and the Node tests when Node is installed. Set `REFLEX_GAME_BASE` to a Reflex Arena
+  thumbnails from made-up `.textureset` files), the Reflex texture library's
+  routes, the routes, and the Node tests when Node is installed. Set `REFLEX_GAME_BASE` to a Reflex Arena
   folder to import that install and run the Node tests over its maps.
 - `node tools/check_reflex_maps.cjs http://127.0.0.1:5000 build/reflex-review`:
   in a hidden browser, with the keyboard and mouse: makes boxes in a new map,

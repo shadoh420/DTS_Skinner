@@ -27,9 +27,9 @@ import struct
 import zipfile
 
 try:
-    from tools.reflex_textures import bake, decode_dds, decode_textureset_image, encode_dds, textureset_images
+    from tools.reflex_textures import bake, decode_dds, decode_textureset_image, textureset_images
 except ImportError:  # Run as a script from tools/.
-    from reflex_textures import bake, decode_dds, decode_textureset_image, encode_dds, textureset_images
+    from reflex_textures import bake, decode_dds, decode_textureset_image, textureset_images
 
 WORKSHOP_APP = '328070'
 HEADER = re.compile(rb'reflex map version (\d+)\s*$')
@@ -137,62 +137,6 @@ def game_files(game, suffix):
 
 def material_files(game):
     return game_files(game, '.material')
-
-
-def write_material(shader, parameters, flags=0):
-    """A material file of `shader` and `parameters` ({name: float, list of 2 to 4 floats, or texture name}), as
-    read_material reads them. What the flags word means is not known; the stock dev materials have 0x11b."""
-    out = bytearray(MATERIAL_MAGIC) + shader.encode('latin-1').ljust(128, b'\0')[:128] + struct.pack('<III', flags, len(parameters), 0)
-    for name, value in parameters.items():
-        if isinstance(value, str):
-            kind, raw = 4, value.encode('latin-1')
-        else:
-            values = [float(value)] if isinstance(value, (int, float)) else [float(v) for v in value]
-            kind, raw = len(values) - 1, struct.pack(f'<{len(values)}f', *values)
-        out += struct.pack('<I', kind) + name.encode('latin-1').ljust(128, b'\0')[:128] + raw.ljust(128, b'\0')[:128]
-    return bytes(out)
-
-
-LIBRARY_MATERIAL = re.compile(r'^skinner/(t1|t2|q3|reflex)/([^/\\:*?"<>|\r\n]+)$')
-
-
-def install_library_materials(game, names, texture_dirs):
-    """Writes into the Reflex Arena folder `game` a material for each material name of a Skinner texture library
-    (skinner/<library>/<file>) that a map's faces use, so the game can find it: base/skinner/<library>/<file>.material
-    and its texture beside it as <file>_c.dds. The material is the stock dev materials' (their shader, their flat
-    normals and meta textures) with the library's picture as its albedo and a white tint; the texture is named
-    skinner_<library>_<file>_c, as the game finds textures by bare name. Only ever writes under base/skinner.
-    Whether the game reads materials and textures from loose files in base is not confirmed. Returns the files
-    written and the names it could not."""
-    game = Path(game).expanduser()
-    base = next((folder for folder in game.iterdir() if folder.is_dir() and folder.name.lower() == 'base'), None) if game.is_dir() else None
-    if base is None or not any(base.glob('*.pak')):
-        raise ValueError('Not a Reflex Arena folder: it has no base folder of .pak files')
-    written, failed = [], {}
-    for name in sorted(set(names)):
-        match = LIBRARY_MATERIAL.match(name)
-        if not match:
-            failed[name] = 'not a Skinner library material'
-            continue
-        library, file = match.groups()
-        source = Path(texture_dirs[library]) / (file + '.png')
-        if not source.is_file():
-            failed[name] = 'the library has no such texture'
-            continue
-        folder = base / 'skinner' / library
-        texture = re.sub(r'[^a-z0-9_]', '_', f'skinner_{library}_{file}'.lower()) + '_c'
-        try:
-            from PIL import Image
-            with Image.open(source) as image:
-                dds = encode_dds(image.convert('RGB').convert('RGBA'))
-            folder.mkdir(parents=True, exist_ok=True)
-            (folder / f'{texture}.dds').write_bytes(dds)
-            (folder / f'{file}.material').write_bytes(write_material('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED', {
-                'textureAlbedoSpec': texture, 'textureNormals': 'dev_nogrid_normals', 'textureMeta': 'dev_nogrid_meta', 'tintColor': [1.0, 1.0, 1.0]}, 0x11b))
-            written += [str((folder / f'{file}.material').relative_to(game)), str((folder / f'{texture}.dds').relative_to(game))]
-        except (OSError, ValueError) as exc:
-            failed[name] = str(exc)
-    return dict(written=written, failed=failed)
 
 
 def material_colours(game, names, files=None):
