@@ -4,7 +4,7 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs
+from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, TEXTURE_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
 import io
@@ -22,6 +22,7 @@ from tools.import_q3 import import_catalog as import_q3_catalog, current_import
 from tools.import_t1_map import import_maps as import_t1_maps
 from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
+from tools.import_reflex_map import import_maps as import_reflex_maps
 
 # --- System Tray Imports ---
 try:
@@ -222,6 +223,41 @@ def import_q3_maps_route():
         import_lock.release()
 
 
+@app.route('/maps/reflex/')
+def reflex_maps_viewer():
+    response = send_from_directory(static_dir / 'reflex-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/reflex-map-data/<path:filename>')
+def reflex_map_data(filename):
+    # Map files are named by their content, so a browser need never ask for one twice.
+    shared = filename.startswith('maps/')
+    response = send_from_directory(local_data_dir / 'reflex-maps', filename, max_age=31536000 if shared else None)
+    response.cache_control.immutable = shared
+    return response
+
+
+@app.route('/import_reflex_maps', methods=['POST'])
+def import_reflex_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
+        return jsonify(error='Enter your local Reflex Arena folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_reflex_maps(payload['game'].strip(), local_data_dir / 'reflex-maps', payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
 def selected_game():
     game = request.args.get("game", "t1")
     if game not in ("t1", "t2", "q3"):
@@ -229,8 +265,22 @@ def selected_game():
     return game
 
 
+def texture_game():
+    """The texture library a request names: a game's models' library, or Reflex's (textures only: no models)."""
+    game = request.args.get("game", "t1")
+    if game not in TEXTURE_GAMES:
+        abort(400, "Unknown texture library")
+    return game
+
+
 def game_textures(game):
+    if game == 'reflex':
+        return local_data_dir / 'reflex-maps' / 'textures'
     return q3_dir / 'textures' if game == 'q3' else textures_dir / "t2" if game == "t2" else textures_dir
+
+
+def all_texture_dirs():
+    return {source: game_textures(source) for source in TEXTURE_GAMES}
 
 
 def model_path(name):
@@ -262,12 +312,12 @@ def material_overrides():
 
 @app.route("/list_textures")
 def list_textures():
-    return jsonify(sorted((p.name for p in game_textures(selected_game()).glob("*.png")), key=model_sort_key))
+    return jsonify(sorted((p.name for p in game_textures(texture_game()).glob("*.png")), key=model_sort_key))
 
 
 @app.route('/texture_metadata')
 def get_texture_metadata():
-    game = selected_game()
+    game = texture_game()
     include_hue = request.args.get('details') != 'dimensions'
     try:
         tags = read_tags(local_data_dir / 'texture-tags.json').get(game, {})
@@ -294,10 +344,10 @@ def set_texture_tags():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or set(payload) != {'filename', 'tags'}:
         return jsonify(error='Expected filename and tags.'), 400
-    game = selected_game()
+    game = texture_game()
     try:
         filename = payload['filename']
-        material_texture_refs(dict(game=game, material_textures=[filename]))
+        material_texture_refs(dict(game='t1', material_textures=[filename], material_texture_games=[game]))
         if not filename.lower().endswith('.png'):
             raise ValueError('Tags require a PNG texture filename')
         if not (game_textures(game) / filename).is_file():
@@ -312,7 +362,7 @@ def set_texture_tags():
 def texture_versions():
     # Local polling keeps reloads available when offline, including atomic saves/deletes.
     versions = {}
-    for path in game_textures(selected_game()).glob("*.png"):
+    for path in game_textures(texture_game()).glob("*.png"):
         try:
             stat = path.stat()
             versions[path.name] = [stat.st_mtime_ns, stat.st_size, str(stat.st_ino)]
@@ -403,7 +453,7 @@ def export_glb(model_name):
         data['material_texture_games'] = preview['material_texture_games']
         data['material_texture_transforms'] = preview['material_texture_transforms']
         output = io.BytesIO(model_to_glb(data, game_textures(game),
-                                       texture_dirs={source: game_textures(source) for source in ('t1', 't2', 'q3')}))
+                                       texture_dirs=all_texture_dirs()))
         response = send_file(output, as_attachment=True, download_name=f'{game}_{model_name}.glb', mimetype='model/gltf-binary')
         response.headers['X-Skinner-Animation-Clips'] = str(len(data.get('animation_clips', [])))
         response.headers['X-Skinner-Animation-Status'] = data.get('animation_status', 'available')
@@ -429,7 +479,7 @@ def get_model_json(model_name):
 @app.route("/texture/<texture_filename>")
 def get_texture(texture_filename):
     if ".." in texture_filename or any(c in texture_filename for c in '/\\:\r\n\0'): abort(400)
-    directory = game_textures(selected_game())
+    directory = game_textures(texture_game())
     try:
         for key in ('flip_x', 'flip_y'):
             if request.args.get(key, '0') not in ('0', '1'):
@@ -489,7 +539,7 @@ def export_obj(model_name):
         output = io.BytesIO()
         json_to_obj_zip(json_path, game_textures(selected_game()), output, model_name,
                         fallback_texture=request.args.get("texture"), material_overrides=overrides,
-                        texture_dirs={source: game_textures(source) for source in ('t1', 't2', 'q3')})
+                        texture_dirs=all_texture_dirs())
         output.seek(0)
         return send_file(output, as_attachment=True,
                          download_name=f"{model_name}_export.zip",
