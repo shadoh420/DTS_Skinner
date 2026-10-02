@@ -107,6 +107,13 @@ give its file as the custom mission and the install that has its volumes as the
 Tribes folder. That is how maps whose extras volume is missing from one install
 are completed from another.
 
+A fourth, larger install (Modern Tribes V30, zip volumes, 550 missions) was
+imported as a coverage check: 549 import, with a lightmap on every one of their
+21,554 placed buildings. `CanyonRemixLT` does not import (its terrain block is 128
+squares where its index says 256). `Superbowl` and `Superbowl2` name a
+`STADIUM.vol` that is absent, which leaves the `hlfpstd1` building of `Superbowl2`
+as the one unresolved object.
+
 Known gaps after scanning every archive in those installs (and others on the same
 machine), including archives stored inside archives:
 
