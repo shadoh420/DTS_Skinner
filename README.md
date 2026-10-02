@@ -1,6 +1,6 @@
 # DTS Skinner
 
-Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 3**. Runs on Windows with a 3D viewer in your browser.
+Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 3**, and view and edit Reflex Arena maps. Runs on Windows with a 3D viewer in your browser.
 
 **[Download the latest release](https://github.com/shadoh420/DTS_Skinner/releases/latest)**
 
@@ -21,6 +21,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 - **T2 Maps** opens a free-flight preview of Tribes 2 missions with terrain, buildings, placed objects, sky, water and fog: every stock, Classic and Team Rabbit 2 map of your own install, imported from the page's **Import maps** panel; see [T2 map setup and limitations](docs/t2-map-viewer.md).
 - **T1 Maps** opens a free-flight preview of Starsiege: Tribes missions: every map in your own install plus custom missions, imported from the page's **Import maps** panel; see [T1 map setup and limitations](docs/t1-map-viewer.md).
 - **Q3 Maps** opens a free-flight preview of Quake 3 Arena maps with lightmaps, curved surfaces, shader effects, skies and pickups: every map of your own install, stock, Team Arena and custom pk3s, imported from the page's **Import maps** panel; see [Q3 map setup and limitations](docs/q3-map-viewer.md).
+- **Reflex Maps** opens Reflex Arena maps in free-flight and edits their brushes: **Tab** switches to edit mode, where brushes are made, carved, hollowed, merged, split and moved with undo, and the map is saved back as a `.map` file. Import your install's maps (and Workshop maps) from the page, or open a `.map` file directly; see [Reflex map viewer and brush editor](docs/reflex-map-viewer.md).
 
 ## Getting started
 
