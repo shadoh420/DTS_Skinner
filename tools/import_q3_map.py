@@ -1,6 +1,6 @@
 """Local Quake 3 map import for the Q3 Maps page. Retail data stays outside source and builds.
 
-python tools/import_q3_map.py --game-base "C:/Games/Quake 3 Arena" [--replace]
+python tools/import_q3_map.py --game-base "C:/Games/Quake 3 Arena" [--replace] [--extra folder]
 
 Reads every maps/*.bsp of baseq3 and of the mod folders beside it (pk3 archives and loose files) and writes
 a pack the viewer draws: the map's draw lumps, the shader stages each of its surfaces uses, and their
@@ -8,6 +8,10 @@ textures. Format: IBSP version 46 (id Software qfiles.h). The stage model is Are
 Quake3StaticMaterial; search order, which of two shader scripts with one name wins, and stage defaults are
 ioquake3's (files.c FS_AddGameDirectory, tr_shader.c ScanAndLoadShaderFiles, ParseShader, ParseStage,
 FinishShader, R_FindShader). Pickups get the models of ArenaPrototype's Quake3ItemCatalog.
+
+What a map names and the game folder lacks can be supplied from an extras folder laid out like baseq3
+(textures/..., scripts/..., or whole pk3 archives): local-data/q3-extra beside the pack unless --extra names
+another. It is searched after everything of the game and only fills gaps; what came from it is listed per map.
 """
 import argparse
 import hashlib
@@ -28,6 +32,7 @@ except ImportError:  # Run as a script.
 LUMPS = 17
 KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14)  # Entities, shaders, models, vertices, indices, faces, lightmaps: all the viewer reads.
 SURF_NODRAW = 0x80
+EXTRA = 'extras: '  # Starts the label of every source that is not the game's own.
 SORT = dict(portal=1, sky=2, opaque=3, decal=4, seethrough=5, banner=6, underwater=8, additive=10, nearest=16)
 BLEND = dict(add=['gl_one', 'gl_one'], filter=['gl_dst_color', 'gl_zero'], blend=['gl_src_alpha', 'gl_one_minus_src_alpha'])
 SKY_SIDES = ('rt', 'bk', 'lf', 'ft', 'up', 'dn')
@@ -97,16 +102,18 @@ def map_id(name):
 
 class Game:
     """One game folder over the ones it builds on, searched as the game does: loose files, then archives
-    from the last name to the first, then the same for the folder beneath (baseq3 under a mod)."""
+    from the last name to the first, then the same for the folder beneath (baseq3 under a mod). Extras folders
+    come after all of them and never replace what the game has."""
 
-    def __init__(self, folders):
+    def __init__(self, folders, extras=()):
         self.archives, self.sources = [], []  # Sources: (label, {key: read}), first found wins.
         self.own = 0  # How many of them are the first folder's.
-        for folder in folders:
+        for number, folder in enumerate([*folders, *extras]):
             self.own = self.own or len(self.sources)
+            prefix = EXTRA if number >= len(folders) else ''
             loose = {key_name(path.relative_to(folder)): path.read_bytes for path in sorted(folder.rglob('*'))
                      if path.is_file() and path.suffix.lower() != '.pk3'}
-            self.sources.append((folder.name + ' folder', loose))
+            self.sources.append((prefix + folder.name + ' folder', loose))
             for path in sorted(folder.glob('*.pk3'), key=lambda p: p.name.lower().replace('\\', '/'), reverse=True):
                 try:
                     archive = zipfile.ZipFile(path)
@@ -117,17 +124,26 @@ class Game:
                 for entry in archive.infolist():
                     if not entry.is_dir() and entry.file_size <= 256 * 1024 * 1024:
                         files.setdefault(key_name(entry.filename), lambda z=archive, n=entry.filename: z.read(n))
-                self.sources.append((path.name, files))
+                self.sources.append((prefix + path.name, files))
         self.files = {}
         for label, files in reversed(self.sources):
             self.files.update({key: (label, read) for key, read in files.items()})
         # The game joins the scripts from the last listed to the first and takes the first definition of a
         # name, so of two scripts defining one shader the lower source wins unless the files share a name.
-        listed = list(dict.fromkeys(key for _, files in self.sources for key in files if re.fullmatch(r'scripts/[^/]+\.shader', key)))
+        script = lambda key: re.fullmatch(r'scripts/[^/]+\.shader', key)
+        listed = list(dict.fromkeys(key for label, files in self.sources if not label.startswith(EXTRA) for key in files if script(key)))
         self.shaders = {}
         for key in reversed(listed):
             for name, body in parse_shaders(read_text(self.files[key][1]())).items():
                 self.shaders.setdefault(name, body)
+        # Scripts of the extras define only shaders the game has none for.
+        self.outside = set()  # Shader names and file keys that were found in the extras.
+        for label, files in self.sources:
+            for key in files if label.startswith(EXTRA) else ():
+                for name, body in parse_shaders(read_text(files[key]())).items() if script(key) else ():
+                    if name not in self.shaders:
+                        self.shaders[name] = body
+                        self.outside.add(name)
         self.arenas = {}
         for key in self.files:
             if re.fullmatch(r'scripts/([^/]+\.arena|arenas\.txt)', key):
@@ -202,20 +218,22 @@ def describe(game, name, textures):
     Returns (shader, unresolved, limits); the lists say what is missing and what is not reproduced."""
     if name in game.described:
         return game.described[name]
-    unresolved, limits = [], set()
+    unresolved, limits, outside = [], set(), ['shader script ' + name] if name in game.outside else []
 
     def image(path):
         file = textures.resolve(game, path)
         if not file:
             unresolved.append(f'texture {path} (shader {name})')
+        elif key_name(path).lstrip('/') in game.outside:
+            outside.append(f'texture {path}')
         return file
 
     if name not in game.shaders:
         # No script: the game draws the image of that name under the lightmap, or with the vertex colours.
-        file = textures.resolve(game, name)
+        file = image(name)
         if not file:
-            unresolved.append(f'shader {name} (no script and no texture of that name)')
-        result = dict(name=name, implicit=True, map=file, cull='front', sort=SORT['opaque']), unresolved, []
+            unresolved[:] = [f'shader {name} (no script and no texture of that name)']
+        result = dict(name=name, implicit=True, map=file, cull='front', sort=SORT['opaque'], outside=outside), unresolved, []
         game.described[name] = result
         return result
     body, stage_lines = game.shaders[name]
@@ -230,6 +248,7 @@ def describe(game, name, textures):
             if args and args[0] != '-':
                 # A box of which no side exists ("full", "half", "512" in many scripts) is not drawn by the game either.
                 sides = [textures.resolve(game, f'{row[1]}_{side}.tga') for side in SKY_SIDES]
+                outside += [f'texture {row[1]}_{side}.tga' for side in SKY_SIDES if key_name(f'{row[1]}_{side}.tga') in game.outside]
                 if all(sides): sky['box'] = sides
                 elif any(sides): unresolved.extend(f'texture {row[1]}_{side}.tga (shader {name})' for side, file in zip(SKY_SIDES, sides) if not file)
             if len(args) > 2 and args[2] != '-': limits.add('inner sky boxes')
@@ -315,9 +334,39 @@ def describe(game, name, textures):
             SORT['opaque'] if not blended or not stages[0].get('blend') else SORT['seethrough'] if blended[0]['depthWrite'] else 9)
     shader['sort'] = sort
     if shader.get('fog'): limits.add('fog volumes')
+    shader['outside'] = outside
     result = shader, unresolved, sorted(limits)
     game.described[name] = result
     return result
+
+
+def read_tga(raw):
+    """A TGA as the game reads it (tr_image_tga.c): plain or run-length colour, or plain grey, 8, 24 or 32 bits.
+    For the files Pillow refuses: a run that crosses the end of a row, or an id field that makes the file look
+    like another format."""
+    if len(raw) < 18:
+        raise ValueError('TGA header cut short')
+    id_length, colour_map, kind, _, _, _, _, _, width, height, bits, attributes = struct.unpack_from('<BBBHHBHHHHBB', raw)
+    if kind not in (2, 3, 10) or colour_map or bits not in (8, 24, 32) or not (0 < width <= 8192 and 0 < height <= 8192):
+        raise ValueError('TGA of a kind the game does not read')
+    size, at, wanted = bits // 8, 18 + id_length, width * height * (bits // 8)
+    if kind == 10:
+        data = bytearray()
+        while len(data) < wanted and at < len(raw):
+            run = (raw[at] & 127) + 1
+            if raw[at] & 128:
+                data += raw[at + 1:at + 1 + size] * run
+                at += 1 + size
+            else:
+                data += raw[at + 1:at + 1 + size * run]
+                at += 1 + size * run
+        data = bytes(data[:wanted])
+    else:
+        data = raw[at:at + wanted]
+    if len(data) < wanted:
+        raise ValueError('TGA data cut short')
+    return Image.frombytes({1: 'L', 3: 'RGB', 4: 'RGBA'}[size], (width, height), data, 'raw', {1: 'L', 3: 'BGR', 4: 'BGRA'}[size], 0,
+                           1 if attributes & 0x20 else -1)  # Rows run bottom to top unless the header says otherwise.
 
 
 class Textures:
@@ -328,13 +377,14 @@ class Textures:
         output.mkdir(parents=True, exist_ok=True)
 
     def resolve(self, game, path):
-        key = key_name(path)
+        key = key_name(path).lstrip('/')  # The game's file system drops a leading slash, which some maps' shader names have.
         if key in game.images:
             return game.images[key]
         stem = re.sub(r'\.[^/.]*$', '', key)
-        found = next((candidate for candidate in [key] + [stem + ext for ext in ('.tga', '.jpg', '.jpeg', '.png')] if candidate in game.files), None)
-        file = None
-        if found:
+        named = [candidate for candidate in dict.fromkeys([key] + [stem + ext for ext in ('.tga', '.jpg', '.jpeg', '.png')]) if candidate in game.files]
+        # The game goes on to the next extension when a file will not load: Team Arena's pak0 holds empty .tga files
+        # over images the base game has as .jpg. Every name is tried among the game's own files before the extras.
+        for found in sorted(named, key=lambda candidate: game.files[candidate][0].startswith(EXTRA)):
             raw = game.files[found][1]()
             jpeg = raw[:2] == b'\xff\xd8'
             file = hashlib.sha256(raw).hexdigest()[:20] + ('.jpg' if jpeg else '.png')
@@ -344,12 +394,19 @@ class Textures:
                         Image.open(io.BytesIO(raw)).verify()
                         (self.output / file).write_bytes(raw)
                     else:
-                        with Image.open(io.BytesIO(raw)) as source:
-                            source.convert('RGBA' if source.mode in ('RGBA', 'LA', 'P', 'PA') or 'transparency' in source.info else 'RGB').save(self.output / file)
-                except (OSError, ValueError, SyntaxError):
-                    file = None  # Reported as unresolved by the caller.
-        game.images[key] = file
-        return file
+                        try:
+                            source = Image.open(io.BytesIO(raw))
+                            source.load()
+                        except (OSError, ValueError, SyntaxError):
+                            source = read_tga(raw)
+                        source.convert('RGBA' if source.mode in ('RGBA', 'LA', 'P', 'PA') or 'transparency' in source.info else 'RGB').save(self.output / file)
+                except (OSError, ValueError, SyntaxError, struct.error):
+                    continue
+            if game.files[found][0].startswith(EXTRA): game.outside.add(key)
+            game.images[key] = file
+            return file
+        game.images[key] = None  # Reported as unresolved by the caller.
+        return None
 
 
 def item_model(game, path, textures, output):
@@ -467,6 +524,8 @@ def import_map(game, name, ident, raw, source, output, textures):
     folder.mkdir(parents=True, exist_ok=True)
     scene = dict(name=name, longname=game.arenas.get(name.lower(), ''), source=source, bsp=file, shaders=shaders, viewpoints=viewpoints,
                  items=items, itemModels=item_models,
+                 outside=list(dict.fromkeys(item for shader in [*shaders, *(shader for model in item_models.values() for shader in model['shaders'])]
+                                            if shader for item in shader['outside'])),
                  models=[dict(model=int(thing['model'][1:]), origin=vector(thing['origin'])) for thing in things
                          if re.fullmatch(r'\*\d+', thing.get('model', '')) and 'origin' in thing],
                  unresolved=unresolved, limits=notes)
@@ -474,10 +533,12 @@ def import_map(game, name, ident, raw, source, output, textures):
     return scene
 
 
-def import_maps(game, output, replace=False):
+def import_maps(game, output, replace=False, extra=None):
     """Import every map of the Quake 3 folder `game`. Returns imported, skipped and failed maps and, for
-    each imported map with any, what it names that the game files do not hold."""
+    each imported map with any, what it names that the game files do not hold and what the extras filled in."""
     game, output = Path(game).expanduser(), Path(output)
+    extra = Path(extra) if extra else output.parent / 'q3-extra'
+    extras = [extra] if extra.is_dir() else []
     if not game.is_dir():
         raise ValueError('Quake 3 folder does not exist')
     if game.name.lower() == 'baseq3':
@@ -490,10 +551,10 @@ def import_maps(game, output, replace=False):
     textures = Textures(output / 'textures')
     index_path = output / 'index.json'
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}
-    result = dict(imported=[], skipped=[], failed={}, unresolved={})
+    result = dict(imported=[], skipped=[], failed={}, unresolved={}, outside={})
     folders = [base] + sorted(folder for folder in game.iterdir() if folder.is_dir() and folder != base and any(folder.glob('*.pk3')))
     for folder in folders:
-        mounted = Game([folder] if folder == base else [folder, base])
+        mounted = Game([folder] if folder == base else [folder, base], extras)
         try:
             maps = {}
             for label, files in mounted.sources[:mounted.own or len(mounted.sources)]:
@@ -517,6 +578,7 @@ def import_maps(game, output, replace=False):
                 index[ident] = dict(id=ident, name=name, longname=scene['longname'], group=group, source=label, unresolved=len(scene['unresolved']))
                 result['imported'].append(name)
                 if scene['unresolved']: result['unresolved'][name] = scene['unresolved']
+                if scene['outside']: result['outside'][name] = scene['outside']
         finally:
             mounted.close()
     temporary = index_path.with_suffix('.tmp')
@@ -533,8 +595,10 @@ if __name__ == '__main__':
     parser.add_argument('--game-base', type=Path, required=True)
     parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1] / 'local-data/q3-maps')
     parser.add_argument('--replace', action='store_true')
+    parser.add_argument('--extra', type=Path, help='folder of files the game lacks (default: q3-extra beside the pack)')
     args = parser.parse_args()
-    done = import_maps(args.game_base, args.output, args.replace)
+    done = import_maps(args.game_base, args.output, args.replace, args.extra)
     print(f"Imported {len(done['imported'])}, skipped {len(done['skipped'])}, failed {len(done['failed'])}")
     for name, reason in done['failed'].items(): print('FAILED', name, reason)
     for name, items in done['unresolved'].items(): print('UNRESOLVED', name, '; '.join(items))
+    for name, items in done['outside'].items(): print('FROM EXTRAS', name, '; '.join(items))

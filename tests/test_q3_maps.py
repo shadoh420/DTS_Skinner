@@ -107,7 +107,9 @@ class Q3MapTests(unittest.TestCase):
             root = Path(directory)
             (root / 'baseq3').mkdir()
             pk3(root / 'baseq3/pak0.pk3', {'scripts/test.shader': SCRIPT, 'textures/test/wall.tga': image(), 'textures/test/glow.jpg': image(kind='JPEG'),
-                                           'textures/test/plain.tga': image('RGBA')})
+                                           'textures/test/plain.tga': image('RGBA'), 'textures/test/emptied.tga': b'', 'textures/test/emptied.jpg': image(kind='JPEG'),
+                                           # Two rows of two pixels in one run of four, with an id field ten bytes long.
+                                           'textures/test/run.tga': struct.pack('<BBBHHBHHHHBB', 10, 0, 10, 0, 0, 0, 0, 0, 2, 2, 24, 0) + bytes(10) + bytes([0x83, 3, 2, 1])})
             game = Game([root / 'baseq3'])
             try:
                 textures = Textures(root / 'out')
@@ -126,9 +128,16 @@ class Q3MapTests(unittest.TestCase):
                 self.assertEqual(unresolved, ['texture textures/test/missing.tga (shader textures/test/sky)'])
                 plain, unresolved, _ = describe(game, 'textures/test/plain', textures)
                 self.assertEqual((plain['implicit'], plain['map'][-4:], unresolved), (True, '.png', []))
+                self.assertEqual(describe(game, '/textures/test/plain', textures)[0]['map'], plain['map'])  # A leading slash is dropped.
                 with Image.open(root / 'out' / plain['map']) as converted:
                     self.assertEqual(converted.mode, 'RGBA')
                 self.assertEqual(describe(game, 'textures/test/absent', textures)[1], ['shader textures/test/absent (no script and no texture of that name)'])
+                # A .tga Pillow refuses is read as the game reads it.
+                with Image.open(root / 'out' / describe(game, 'textures/test/run', textures)[0]['map']) as run:
+                    self.assertEqual((run.mode, run.size, set(run.getdata())), ('RGB', (2, 2), {(1, 2, 3)}))
+                # An empty .tga, as Team Arena has over some base images, is passed over for the .jpg of that name.
+                self.assertEqual(describe(game, 'textures/test/emptied', textures), (
+                    {'name': 'textures/test/emptied', 'implicit': True, 'map': glow['map'], 'cull': 'front', 'sort': 3, 'outside': []}, [], []))
             finally:
                 game.close()
 
@@ -180,6 +189,18 @@ class Q3MapTests(unittest.TestCase):
             again = import_maps(root, root / 'pack')
             self.assertEqual((again['imported'], sorted(again['skipped'])), ([], ['first', 'first', 'my map']))
             self.assertEqual(len(import_maps(root, root / 'pack', replace=True)['imported']), 3)
+            # An extras folder beside the pack fills gaps and is said to have: its image for the shader the game
+            # has nothing for, and its script only for a name the game does not define.
+            (root / 'q3-extra/textures/test').mkdir(parents=True)
+            (root / 'q3-extra/scripts').mkdir()
+            (root / 'q3-extra/textures/test/absent.jpg').write_bytes(image(kind='JPEG'))
+            (root / 'q3-extra/textures/test/wall.tga').write_bytes(image('RGBA'))
+            (root / 'q3-extra/scripts/more.shader').write_text('textures/test/glow { { map textures/test/absent.jpg } }\nmodels/test/skin { { map $whiteimage } }')
+            filled = import_maps(root, root / 'pack', replace=True)
+            self.assertEqual(filled['outside']['first'], ['texture textures/test/absent', 'shader script models/test/skin'])
+            self.assertEqual(filled['unresolved'], {'first': ['model models/powerups/health/medium_sphere.md3 (item_health)']})
+            scene = json.loads((root / 'pack/maps/first/scene.json').read_text())
+            self.assertEqual((len(scene['shaders'][0]['stages']), scene['shaders'][0]['outside'], scene['shaders'][1]['map'][-4:]), (3, [], '.jpg'))
             self.assertEqual(map_id('My Map'), 'my_map')
 
     def test_routes_are_local_and_confined_to_pack(self):

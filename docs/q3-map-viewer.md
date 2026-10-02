@@ -43,6 +43,19 @@ Git; next to the executable in a packaged build):
   named by content, as the models are, so maps that share a file store it
   once and the browser keeps them.
 
+### Filling in what the game folder lacks
+
+A map can name a texture or shader that is in no archive of the install: a
+custom map shipped without it, or a stock gap. Such files can be supplied from
+an extras folder, `local-data/q3-extra` beside the pack (or `--extra folder`
+on the command line), laid out like `baseq3`: `textures/...`, `scripts/...`,
+or whole pk3 archives. It is searched after everything of the game and only
+fills gaps: a file the game has is never replaced, and a script there defines
+only shaders the game has none for. Re-import (tick **Re-import existing
+maps**) after adding to it. What a map took from it is listed under that map's
+Preview notes as filled in from the extras folder, and in the import's output,
+so it stays clear what is the game's and what is not.
+
 The dropdown groups the maps: Quake III Arena (`pak0`–`pak8`), Team Arena and
 other mod folders, Custom maps (any other pk3 in `baseq3`), and Loose files in
 maps folder (a `.bsp` lying in `baseq3/maps`, which is anything you compiled
@@ -62,7 +75,8 @@ have arrived, as the T1 terrain is.
 
 **Preview notes** lists, for the map in view: what it names that the game
 files do not hold (a shader with neither script nor image, drawn magenta; a
-stage's texture, that stage left out), what is not drawn or is simplified, and
+stage's texture, that stage left out), what was filled in from the extras
+folder, what is not drawn or is simplified, and
 anything that failed while loading (a texture, a shader the graphics driver
 rejected, a map file with no surfaces).
 
@@ -159,14 +173,13 @@ Checked on 2026-10-02 against the install at
 `C:\Program Files (x86)\Steam\steamapps\common\Quake 3 Arena`: 306 maps (36 in
 `pak0`–`pak8`, 239 in other archives of `baseq3`, 8 loose `.bsp` files, 21 in
 `missionpack`, 2 in `defrag`). The import takes 43 seconds and the pack is
-1.9 GB: 306 map files (978 MB), 9,100 images (898 MB) and 58 pickup models
-(0.8 MB).
+1.9 GB: 306 map files (978 MB), 9,244 images and 58 pickup models (0.8 MB).
 
 All 306 import. In the browser, each on a fresh page:
 
-- All 306 reach "Map ready" (half of them within 0.39 seconds, three take
-  over 2 and the slowest 3.0, most of that dropping a hundred or more pickups
-  to the floor), every shader compiles and none fails to draw.
+- All 306 reach "Map ready" (half of them within 0.3 to 0.4 seconds, the
+  slowest in 2.3 to 3.0 over two sweeps, most of that dropping a hundred or
+  more pickups to the floor), every shader compiles and none fails to draw.
   `radianttest02`, one of the loose files, holds no surfaces and says so.
 - 15,107 pickups are placed on 285 maps; every model the base game's item
   classes name is in the game files.
@@ -176,32 +189,64 @@ All 306 import. In the browser, each on a fresh page:
 - On `q3dm1` from its intermission camera every pixel is covered; with the
   culling reversed 42.5 % is, which is how the winding was settled. The
   doubled frame's mean is twice the undoubled one's (66.4 against 33.2).
-- All 36 stock Quake III Arena maps list nothing unresolved. 31 maps name
-  things that are in no archive of the install under that name:
+- All 36 stock Quake III Arena maps and all 21 Team Arena maps list nothing
+  unresolved. From the game folder alone, 23 maps name things that are in no
+  archive of it under that name, or that the game cannot reach there:
 
-| Map | Not in the game files |
-| --- | --- |
-| Team Arena `mpq3tourney6`, `mpteam2`, `mpteam5`, `mpteam7` | shader `textures/base_trim/pewter` |
-| Team Arena `mpq3ctf4`, `mpteam7` | texture `textures/base_light/light2.tga` (three light shaders) |
-| `firstrebirth`, `hektik`, `ospdm6`, `pukka3tourney4`, `q3wcp6`, `reactor`, `ump3ctf7` | shader `textures/radiant/notex` (the editor's "no texture") |
-| `absmidair` | five `textures/proto2/…` and `cos1` shaders |
-| `b0_beta6` | texture `textures/b0_final/b0_beam_blue.tga` |
-| `bones_fkd_b1` | shader `textures/bones/pipe_test` |
-| `caustic` | texture `textures/sfx/powerupshit.tga` (the teleporter shader) |
-| `cpm32_b1` | shaders `/textures/cpm32_b1/cthulu_v2`, `textures/terblend_soc/rock_grey2` |
-| `ghosttown2` | eight `textures/steven/…` shaders |
-| `ospctf1` | `textures/wnoise/…` textures of several shaders |
-| `painless` | six shaders (`jk_tourney1`, `mine`, `ad_content`, `liquids`) |
-| `pukka3tourney2` | shader `textures/pukka3tourney2/yellowtech1_l1_8a` |
-| `q3ctfchnu01` | three shaders, among them `textures/__tb_empty` |
-| `q3wcp15` | `textures/revolution_ctf/…` textures of several shaders |
-| `q3wcp2`, `q3wcp3` | shader `textures/ssctf/s_scan`, `textures/ssctf2/s_scan` |
-| `q3wcp20`, `spikedm9`, `xcm_ctf4` | shaders of map models (`o3-coffin`, `cake_plate`, `dm_statue`) |
-| `ql_harvest` | shader `textures/null` |
-| `quarantine` | four shaders (`skies/meth_clouds4`, `sfx/white`, two walls) |
-| `runtfest` | shader `textures/nh/nh_floorplank` |
+| Map | Not in the game files | Filled from extras |
+| --- | --- | --- |
+| `firstrebirth`, `hektik`, `ospdm6`, `pukka3tourney4`, `q3wcp6`, `ump3ctf7` | shader `textures/radiant/notex` (the editor's "no texture") | yes |
+| `q3wcp2`, `q3wcp3` | shader `textures/ssctf/s_scan`, `textures/ssctf2/s_scan` | yes |
+| `spikedm9` | shader `models/mapobjects/spikedm9/cake_plate` | yes |
+| `quarantine` | four shaders (`skies/meth_clouds4`, `sfx/white`, two walls) | yes |
+| `absmidair` | four `textures/proto2/…` shaders and `textures/cos1/cretebase5` | all but `cretebase5` |
+| `painless` | six shaders (`jk_tourney1`, `ad_content`, `mine`, `liquids`) | three; `mine/glass_mio` and two `liquids/protolava_mio…` are left |
+| `q3ctfchnu01` | three shaders, among them `textures/__tb_empty` | `__tb_empty`; `ctfchnu/small_light` and `ctfchnu/porctrim8seamless-_blue` are left |
+| `reactor` | 41 shaders, 38 of them `textures/bus_ca4/…` | `notex` and two Quake Live shaders; the 38 are left |
+| `b0_beta6` | texture `textures/b0_final/b0_beam_blue.tga` | no |
+| `bones_fkd_b1` | shader `textures/bones/pipe_test` | no |
+| `caustic` | texture `textures/sfx/powerupshit.tga` (the teleporter shader) | no |
+| `cpm32_b1` | shader `textures/terblend_soc/rock_grey2` | no |
+| `ghosttown2` | eight `textures/steven/…` shaders | no |
+| `pukka3tourney2` | shader `textures/pukka3tourney2/yellowtech1_l1_8a` | no |
+| `ql_harvest` | shader `textures/null` | no |
+| `runtfest` | shader `textures/nh/nh_floorplank` | no |
+| `xcm_ctf4` | three `models/mapobjects/dm_statue/…` shaders | no |
 
   The full lists are in each map's Preview notes and in the import's output.
+
+Two of these are conflicts inside the install, which the game has too:
+`q3wpak0.pk3` and `q3wpak1.pk3` each hold a `scripts/q3wcp2.shader` and a
+`scripts/q3wcp3.shader`, and five archives hold a `scripts/cake.shader`. Of
+script files with one name only the last archive's is read, so `s_scan` and
+`spikedm9`'s cake shaders are defined in a file the game never opens.
+
+For the 79 names missing from the game folder the drive was searched for a
+file of exactly that path, loose or inside a pk3 archive anywhere outside the
+install, and for a script defining the shader. 17 were found and copied into
+`local-data/q3-extra` (its `SOURCES.json` says where each came from: Quake
+Live's `pak00.pk3`, ArenaPrototype's extracted map scripts, TrenchBroom's and
+NetRadiant's editor textures): five images, and twelve shader definitions
+with the one stage texture they needed. With them 14 maps take something from
+the extras and 13 still name something unresolved: 62 names found nowhere on
+the drive under their own path. 28 of those have a shader or image of the
+same file name in another folder of the install (`textures/steven/…` beside
+stock shaders, `textures/bus_ca4/…` beside `textures/bus_ca1/…`); none of
+those is used, since nothing says they are the same thing.
+
+Three faults in the importer were found by this and fixed, which is what took
+the count from 31 maps to 23 before any extras:
+
+- A file that will not load is passed over for the next extension, as in the
+  game. Team Arena's `pak0` holds empty `.tga` files over images the base game
+  has as `.jpg` (`base_trim/pewter`, `base_light/light2`); five Team Arena
+  maps listed those as missing.
+- Pillow refuses some TGA files the game reads: a run-length run that crosses
+  the end of a row (`ospctf1`, `q3wcp15`) and an id field ten bytes long, which
+  makes the file look like a PCX (`q3wcp20`). Those are now read as
+  `tr_image_tga.c` reads them.
+- A shader name with a leading slash (`/textures/cpm32_b1/cthulu_v2`) finds
+  its image, as the game's file system drops the slash.
 
 What the Preview notes list as not drawn or simplified, by number of maps:
 sprites that turn to the camera 103, fog volumes 100, light flares 88,
@@ -226,8 +271,9 @@ Not checked: any map against the game side by side, and every map by eye.
 
 Tests: `python -m unittest tests.test_q3_maps` covers the script reader, the
 search order and which script wins, stage defaults, the import (draw lumps,
-scenes, pickups and their models, unresolved content, skipping, a map file of
-the wrong version) and the local routes. Set `Q3_GAME_BASE` to a Quake 3 folder to also import that
+scenes, pickups and their models, unresolved content, the extras folder,
+skipping, a map file of the wrong version), the TGA and empty-file cases above
+and the local routes. Set `Q3_GAME_BASE` to a Quake 3 folder to also import that
 install and require its stock maps to resolve completely.
 
 ## Limits

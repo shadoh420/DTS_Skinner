@@ -361,6 +361,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!map) return;
     const parts = [];
     if (map.unresolved.length) parts.push('Not in the game files: ' + map.unresolved.join('; '));
+    if ((map.outside || []).length) parts.push('Filled in from your extras folder, not the game files: ' + map.outside.join('; '));
     if (map.limits.length) parts.push('Not drawn or simplified: ' + map.limits.join('; '));
     if (missing) parts.push(`${missing} textures of the pack did not load`);
     if (failures.length) parts.push(failures.join('; '));
