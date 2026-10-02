@@ -10,7 +10,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
   const canvas = $('c');
-  const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+  const renderer = new THREE.WebGLRenderer({canvas});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   const scene = new THREE.Scene(), root = new THREE.Group();
   root.rotation.x = -Math.PI / 2;
@@ -60,7 +60,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Shader time and the camera in the game's axes, shared by every stage material.
   const uniforms = {uTime: {value: 0}, uView: {value: new THREE.Vector3()}};
-  const number = value => { const text = String(Number(value) || 0); return /[.e]/.test(text) ? text : text + '.0'; };
+  const number = value => { const text = String(Number(value) || 0), float = /[.e]/.test(text) ? text : text + '.0'; return value < 0 ? `(${float})` : float; };
   const WAVES = {sin: 0, triangle: 1, square: 2, sawtooth: 3, inversesawtooth: 4};
   const waveCall = ([func, base, amplitude, phase, frequency]) => `wave(${WAVES[func] || 0}, ${[base, amplitude, phase, frequency].map(number).join(', ')})`;
   const WAVE = `uniform float uTime;
@@ -99,7 +99,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       : kind === 'oneminusvertex' ? '(1. - tint.rgb) * .5' : kind === 'wave' ? `vec3(clamp(${waveCall(values)} * .5, 0., 1.))`
       : kind === 'const' ? `vec3(${values.map(number).join(', ')})` : 'vec3(1.)';
     const alpha = alphaKind === 'vertex' ? 'tint.a' : alphaKind === 'oneminusvertex' ? '1. - tint.a' : alphaKind === 'wave' ? `clamp(${waveCall(alphaValues)}, 0., 1.)`
-      : alphaKind === 'const' ? number(alphaValues[0]) : alphaKind === 'lightingspecular' ? '0.' : '1.';  // No highlight is added.
+      : alphaKind === 'const' ? number(alphaValues[0]) : alphaKind === 'lightingspecular' ? 'specular(P, N)'
+      : alphaKind === 'portal' ? `clamp(length(P - uView) / ${number(alphaValues[0])}, 0., 1.)` : '1.';
     return `vec4(${rgb}, ${alpha})`;
   }
   const FACTORS = {gl_one: THREE.OneFactor, gl_zero: THREE.ZeroFactor, gl_src_color: THREE.SrcColorFactor, gl_one_minus_src_color: THREE.OneMinusSrcColorFactor,
@@ -108,6 +109,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     gl_src_alpha_saturate: THREE.SrcAlphaSaturateFactor};
   // The game's front faces wind clockwise, Three's the other way.
   const SIDES = {front: THREE.BackSide, back: THREE.FrontSide, none: THREE.DoubleSide};
+  // deformVertexes wave, move and bulge (RB_CalcDeformVertexes, RB_CalcMoveVertexes, RB_CalcBulgeVertexes), applied
+  // as the game applies them: before the stages' texture coordinates and colours are worked out.
+  const deform = shader => (shader.deforms || []).map(([kind, ...values]) => {
+    if (kind === 'bulge') return `P += N * sin(uv.x * ${number(values[0])} + uTime * ${number(values[2])}) * ${number(values[1])};`;
+    if (kind === 'move') return `P += vec3(${values.slice(0, 3).map(number).join(', ')}) * ${waveCall(values.slice(3))};`;
+    const [spread, func, base, amplitude, phase, frequency] = values;  // A wave that does not move is one height everywhere.
+    return `P += N * wave(${WAVES[func] || 0}, ${number(base)}, ${number(amplitude)}, ${number(phase)}${frequency ? ` + (P.x + P.y + P.z) * ${number(spread)}` : ''}, ${number(frequency)});`;
+  }).join(' ');
   const animated = [];
   function stageMaterial(shader, stage, texture, frames) {
     const sky = shader.sky, st = coordinates(stage, sky);
@@ -117,12 +126,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       vertexShader: `invariant gl_Position;
         ${WAVE}
         uniform vec3 uView; attribute vec2 lm; attribute vec4 tint; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
+        float specular(vec3 P, vec3 N) {  // RB_CalcSpecularAlpha, with the game's one fixed light.
+          vec3 light = normalize(vec3(-960., 1980., 96.) - P), turned = N * 2. * dot(N, light) - light;
+          float level = max(dot(turned, normalize(uView - P)), 0.);
+          return min(level * level * level * level, 1.);
+        }
         void main() {
           vec3 P = position, N = normal;
+          ${deform(shader)}
           ${sky ? '' : st + ' vSt = st;'}
           vColor = ${colour(stage)};
-          vDir = position - uView;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+          vDir = P - uView;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(P, 1.);
         }`,
       fragmentShader: `${WAVE}
         uniform sampler2D map; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
@@ -302,6 +317,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('fov').value = settings.fov;
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
+    frame.setSize(...renderer.getDrawingBufferSize(new THREE.Vector2()).toArray());
     camera.aspect = aspect;
     // The game's field of view is horizontal; Three's is vertical.
     camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
@@ -352,18 +368,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.addEventListener('keyup', event => keys.delete(event.code));
 
-  // The game's gamma table doubles what the stages drew (r_overBrightBits 1): one quad adds the frame to itself.
-  const double = new THREE.Scene(), doubleCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  double.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({depthTest: false, depthWrite: false,
-    blending: THREE.CustomBlending, blendSrc: THREE.DstColorFactor, blendDst: THREE.OneFactor})));
+  // Stages are drawn into a frame that keeps alpha, which some blends read back (GL_ONE_MINUS_DST_ALPHA), and the
+  // frame is shown doubled, as the game's gamma table doubles what the stages drew (r_overBrightBits 1).
+  const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4}), shown = new THREE.Scene(), shownCamera = new THREE.Camera();
+  shown.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({uniforms: {frame: {value: frame.texture}}, depthTest: false, depthWrite: false,
+    vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+    fragmentShader: 'uniform sampler2D frame; varying vec2 at; void main() { gl_FragColor = vec4(texture2D(frame, at).rgb * 2., 1.); }'})));
+  shown.children[0].frustumCulled = false;
   function draw(seconds) {
     uniforms.uTime.value = seconds;
     uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
     for (const {material, frames, fps} of animated) material.uniforms.map.value = frames[Math.floor(seconds * fps) % frames.length];
-    renderer.autoClear = true;
+    renderer.setRenderTarget(frame);
     renderer.render(scene, camera);
-    renderer.autoClear = false;
-    renderer.render(double, doubleCamera);
+    renderer.setRenderTarget(null);
+    renderer.render(shown, shownCamera);
   }
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   let shaderTime = 0;
@@ -423,6 +442,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     showViewpoint(0);
     showStatus('Loading map…');
     const world = buildWorld(await (await get(data + map.bsp)).arrayBuffer());
+    if (!world.groups.length) failures.push('the map file holds no surfaces to draw');
     let loaded = 0;
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));
     showNotes();

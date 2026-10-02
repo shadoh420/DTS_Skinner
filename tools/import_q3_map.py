@@ -168,7 +168,6 @@ def describe(game, name, textures):
     for row in body:
         word, args = row[0], [arg.lower() for arg in row[1:]]
         if word == 'surfaceparm' and args:
-            if args[0] == 'nodraw': shader['nodraw'] = True
             if args[0] == 'fog': shader['fog'] = True
         elif word == 'skyparms':
             sky = dict(cloudHeight=numbers(args[1:2], 1)[0] or 512)
@@ -189,9 +188,15 @@ def describe(game, name, textures):
             sort = SORT['portal']
             limits.add('portals and mirrors (drawn as plain surfaces)')
         elif word == 'deformvertexes' and args:
-            limits.add({'wave': 'waving surfaces', 'bulge': 'bulging surfaces', 'move': 'moving surfaces', 'normal': 'wobbling normals',
-                        'autosprite': 'sprites that turn to the camera', 'autosprite2': 'sprites that turn to the camera',
-                        'projectionshadow': 'projected shadows'}.get(args[0], 'text sprites' if args[0].startswith('text') else 'vertex deformation ' + args[0]))
+            if args[0] == 'wave':  # Spread is one over the first number; then a wave along the normal.
+                shader.setdefault('deforms', []).append(['wave', 1 / (numbers(args[1:2], 1)[0] or 100)] + wave(args[2:]))
+            elif args[0] == 'move':
+                shader.setdefault('deforms', []).append(['move'] + numbers(args[1:4], 3) + wave(args[4:]))
+            elif args[0] == 'bulge':
+                shader.setdefault('deforms', []).append(['bulge'] + numbers(args[1:], 3))
+            else:
+                limits.add({'normal': 'wobbling normals', 'autosprite': 'sprites that turn to the camera', 'autosprite2': 'sprites that turn to the camera',
+                            'projectionshadow': 'projected shadows'}.get(args[0], 'text sprites' if args[0].startswith('text') else 'vertex deformation ' + args[0]))
         elif word == 'fogparms':
             limits.add('fog volumes')
     for lines in stage_lines:
@@ -221,7 +226,8 @@ def describe(game, name, textures):
             elif word == 'rgbgen' and args:
                 stage['rgbGen'] = ['wave'] + wave(args[1:]) if args[0] == 'wave' else ['const'] + numbers(args[1:], 3) if args[0] == 'const' else [args[0]]
             elif word == 'alphagen' and args:
-                stage['alphaGen'] = ['wave'] + wave(args[1:]) if args[0] == 'wave' else ['const'] + numbers(args[1:], 1) if args[0] == 'const' else [args[0]]
+                stage['alphaGen'] = ['wave'] + wave(args[1:]) if args[0] == 'wave' else ['const'] + numbers(args[1:], 1) if args[0] == 'const' else \
+                    ['portal', numbers(args[1:], 1)[0] or 256] if args[0] == 'portal' else [args[0]]
             elif word in ('tcgen', 'texgen') and args:
                 stage['tcGen'] = 'base' if args[0] == 'texture' else args[0]
                 if args[0] == 'vector': limits.add('texture coordinates from vectors')
@@ -240,8 +246,8 @@ def describe(game, name, textures):
             stage['rgbGen'] = ['identitylighting'] if not blend or blend[0] in ('gl_one', 'gl_src_alpha') else ['identity']
         if stage['map'] == '$lightmap': stage.setdefault('tcGen', 'lightmap')
         for kind, value in (('rgbGen', stage['rgbGen'][0]), ('alphaGen', stage['alphaGen'][0])):
-            if value in ('entity', 'oneminusentity', 'lightingdiffuse', 'lightingspecular', 'portal'):
-                limits.add({'lightingspecular': 'specular highlights', 'portal': 'portal fade', 'lightingdiffuse': 'model lighting'}.get(value, 'entity colours'))
+            if value in ('entity', 'oneminusentity', 'lightingdiffuse'):
+                limits.add('model lighting' if value == 'lightingdiffuse' else 'entity colours')
         if stage['rgbGen'][0] == 'wave' and stage['rgbGen'][1] == 'noise' or stage['alphaGen'][0] == 'wave' and stage['alphaGen'][1] == 'noise':
             limits.add('noise waves')
         shader['stages'].append({key: value for key, value in stage.items() if value not in (None, False, [])
@@ -396,7 +402,7 @@ def import_maps(game, output, replace=False):
             for name, label in sorted(maps.items()):
                 loose = label.endswith(' folder')
                 stock = folder == base and re.fullmatch(r'pak\d\.pk3', label.lower())
-                group = ('Quake III Arena' if stock else 'Your own maps' if loose else 'Custom maps') if folder == base else \
+                group = ('Quake III Arena' if stock else 'Loose files in maps folder' if loose else 'Custom maps') if folder == base else \
                     'Team Arena' if folder.name.lower() == 'missionpack' else folder.name
                 ident = map_id(name if folder == base else folder.name + '__' + name)
                 if ident in index and (output / 'maps' / ident / 'scene.json').is_file() and not replace:
@@ -413,7 +419,10 @@ def import_maps(game, output, replace=False):
         finally:
             mounted.close()
     temporary = index_path.with_suffix('.tmp')
-    temporary.write_text(json.dumps(sorted(index.values(), key=lambda item: (item['group'], item['name'].lower())), separators=(',', ':')), encoding='utf-8')
+    # The game's own maps first, then mods, then what was added to baseq3.
+    rank = {'Quake III Arena': 0, 'Team Arena': 1, 'Custom maps': 3, 'Loose files in maps folder': 4}
+    listed = sorted(index.values(), key=lambda item: (rank.get(item['group'], 2), item['group'], item['name'].lower()))
+    temporary.write_text(json.dumps(listed, separators=(',', ':')), encoding='utf-8')
     temporary.replace(index_path)
     return result
 

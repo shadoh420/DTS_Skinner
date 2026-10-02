@@ -154,7 +154,7 @@ class Q3MapTests(unittest.TestCase):
             index = json.loads((root / 'pack/index.json').read_text())
             self.assertEqual([(item['id'], item['group'], item['source'], item['longname']) for item in index], [
                 ('first', 'Quake III Arena', 'pak0.pk3', 'First Map'), ('missionpack__first', 'Team Arena', 'pak0.pk3', 'First Map'),
-                ('my_map', 'Your own maps', 'baseq3 folder', '')])
+                ('my_map', 'Loose files in maps folder', 'baseq3 folder', '')])
             scene = json.loads((root / 'pack/maps/first/scene.json').read_text())
             # Only shaders a drawn surface uses are described: not the no-draw one, nor one no face names.
             self.assertEqual([shader and shader['name'] for shader in scene['shaders']], ['textures/test/glow', 'textures/test/absent', None, None])
