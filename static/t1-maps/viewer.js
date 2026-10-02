@@ -227,7 +227,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   const placeholder = new THREE.BoxGeometry(4, 4, 4).translate(0, 2, 0), magenta = new THREE.MeshBasicMaterial({color: 0xcc00cc});
+  // Until its model arrives each placed object is the orange wireframe box t2-mapper shows for a loading interior.
+  const loadingBox = new THREE.BoxGeometry(10, 10, 10), loadingMaterial = new THREE.MeshStandardMaterial({color: 'orange', wireframe: true});
   async function addObject(object) {
+    const matrix = new THREE.Matrix4().fromArray(object.matrix), loading = new THREE.Mesh(loadingBox, loadingMaterial);
+    loading.applyMatrix4(matrix);
+    if (object.model) scene.add(loading);
     let mesh;
     try {
       if (!object.model) throw new Error('No preview model');
@@ -238,14 +243,15 @@ window.addEventListener('DOMContentLoaded', async () => {
         {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap})));
     } catch (_) { missing++; mesh = new THREE.Mesh(placeholder, magenta); }
     mesh.name = object.name;
-    mesh.applyMatrix4(new THREE.Matrix4().fromArray(object.matrix));
+    mesh.applyMatrix4(matrix);
+    scene.remove(loading);
     scene.add(mesh);
     occluders.push(mesh);
     if (weather && object.shelter) try {
       if (!shelterFiles.has(object.shelter)) shelterFiles.set(object.shelter, get(data + 'textures/' + object.shelter).then(response => response.arrayBuffer()));
       // The layout is in the importer's pack_shelter: box, plane and node counts, planes, nodes, a byte per leaf.
       const buffer = await shelterFiles.get(object.shelter), [planes, nodes] = new Int32Array(buffer, 24, 2);
-      shelters.push({inverse: new THREE.Matrix4().fromArray(object.matrix).invert(), box: new Float32Array(buffer, 0, 6),
+      shelters.push({inverse: matrix.clone().invert(), box: new Float32Array(buffer, 0, 6),
         planes: new Float32Array(buffer, 32, planes * 4), nodes: new Int16Array(buffer, 32 + planes * 16, nodes * 3),
         leaves: new Uint8Array(buffer, 32 + planes * 16 + nodes * 6)});
     } catch (_) { /* Rain simply falls through this building. */ }

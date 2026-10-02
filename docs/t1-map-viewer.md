@@ -58,7 +58,9 @@ without observer cameras (training and many custom maps) start from a generated
 view above the placed objects. While a map loads, its terrain is in view at once
 as a green wireframe and turns textured as each terrain texture arrives, the
 look t2-mapper's terrain has while loading (unlit here); locally that is a
-tenth to half a second, longer the first time a map is opened.
+tenth to half a second, longer the first time a map is opened. Each placed
+building and object is likewise an orange wireframe box, t2-mapper's loading
+interior, until its model has loaded (0.3 to 0.9 seconds on the larger maps).
 
 ## How a mission is resolved
 
