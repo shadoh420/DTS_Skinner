@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const storageKey = 'skinner.t1maps';
-  const settings = {fov: 90, fog: true, weather: true, invertX: false, invertY: false};
+  const settings = {fov: 90, fog: true, weather: true, lights: true, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -407,7 +407,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   function applySettings() {
-    for (const id of ['fog', 'weather', 'invertX', 'invertY']) $(id).checked = settings[id];
+    for (const id of ['fog', 'weather', 'lights', 'invertX', 'invertY']) $(id).checked = settings[id];
     $('fov').value = settings.fov;
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
@@ -431,7 +431,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(110, Number(event.target.value) || 90)); save(); applySettings(); });
-  for (const id of ['fog', 'weather', 'invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  for (const id of ['fog', 'weather', 'lights', 'invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
   $('reset').addEventListener('click', () => { speed = 40; showViewpoint(0); if (ready) showReady(); });
   new ResizeObserver(applySettings).observe(canvas.parentElement);
 
@@ -465,8 +465,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   let lightTime = 0;
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
-    // The game steps building lights 67 ms at a time (InteriorShape::sm_minLightUpdateMS).
-    for (lightTime += delta; lightTime >= .067; lightTime -= .067) for (const step of lightSteps) step(.067);
+    // The game steps building lights 67 ms at a time (InteriorShape::sm_minLightUpdateMS); switched off, they hold still.
+    if (settings.lights) for (lightTime += delta; lightTime >= .067; lightTime -= .067) for (const step of lightSteps) step(.067);
     camera.getWorldDirection(forward);
     right.crossVectors(forward, camera.up).normalize();
     move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
@@ -535,6 +535,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await buildTerrain(map.terrain);
     let loaded = 0;
     await Promise.all(map.objects.map(async object => { await addObject(object); showStatus(`Loading map objects ${++loaded}/${map.objects.length}`); }));
+    $('lights').disabled = !lightSteps.length;  // Most buildings have no lights that change.
     $('notes').textContent += map.warnings.length ? ' This map: ' + map.warnings.join('. ') + '.' : '';
     ready = true;
     showReady();
