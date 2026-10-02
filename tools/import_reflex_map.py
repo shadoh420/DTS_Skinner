@@ -9,12 +9,14 @@ install (steamapps/workshop/content/328070), when there is one.
 
 Material colours: the game's materials are in the zip archives of its base folder (base/common.pak holds
 common/materials/stone/concrete.material). A material file names its shader and holds typed parameters; the
-colour of each material the maps name is its albedo parameter, written to materials.json with its shader. A face
-with no colour of its own is drawn in it. Materials without one keep the page's guess from their name.
+colour of each material the maps name is its albedo parameter (diffuseColour in some, and for a textured
+material its tintColor, which tints the texture: structural/dev/dev_grey128 is a grid texture tinted 0.5 grey),
+written to materials.json with its shader. A face with no colour of its own is drawn in it. Materials without
+one keep the page's guess from their name.
 
 Material file (version 0x14, magic 0xd00e; little-endian): u16 version, u16 magic, shader name (128 bytes), u32
 flags, u32 parameter count, u32 0, then per parameter 260 bytes: u32 type, name (128 bytes), value (128 bytes).
-Types seen: 0 a float, 3 four floats (a colour), 4 a texture path.
+Types: 0 to 3 are one to four floats (roughness; uvScale; tintColor; albedo), 4 a texture path.
 """
 import argparse
 import hashlib
@@ -93,7 +95,7 @@ def find_maps(game):
 
 
 def read_material(raw):
-    """A material file's shader and parameters: {name: float, [r, g, b, a] or texture path}."""
+    """A material file's shader and parameters: {name: a float, a list of 2 to 4 floats, or a texture path}."""
     if len(raw) < 144 or raw[:4] != MATERIAL_MAGIC:
         raise ValueError('not a Reflex material file')
     text = lambda chunk: chunk.split(b'\0', 1)[0].decode('latin-1')
@@ -105,8 +107,8 @@ def read_material(raw):
         at = 144 + index * PARAMETER
         kind = struct.unpack_from('<I', raw, at)[0]
         name, value = text(raw[at + 4:at + 132]), raw[at + 132:at + 260]
-        parameters[name] = (struct.unpack_from('<f', value)[0] if kind == 0 else list(struct.unpack_from('<4f', value)) if kind == 3
-                            else text(value) if kind == 4 else value.rstrip(b'\0').hex())
+        parameters[name] = (struct.unpack_from('<f', value)[0] if kind == 0 else list(struct.unpack_from(f'<{kind + 1}f', value)) if kind < 4
+                            else text(value) if kind == 4 else value.hex())
     return text(raw[4:132]), parameters
 
 
@@ -139,10 +141,11 @@ def material_colours(game, names):
             shader, parameters = read_material(read())
         except (OSError, ValueError, struct.error, zipfile.BadZipFile):
             continue
-        albedo = parameters.get('albedo')
-        if isinstance(albedo, list):
-            colours[name] = dict(colour=[round(channel, 4) for channel in albedo[:3]], shader=shader, source=source,
-                                 **{key: round(parameters[key], 4) for key in ('metallic', 'roughness') if isinstance(parameters.get(key), float)})
+        key = next((key for key in ('albedo', 'diffuseColour', 'tintColor') if isinstance(parameters.get(key), list) and len(parameters[key]) >= 3), None)
+        if key:
+            colours[name] = dict(colour=[round(channel, 4) for channel in parameters[key][:3]], shader=shader, source=source,
+                                 **{key: round(parameters[key], 4) for key in ('metallic', 'roughness') if isinstance(parameters.get(key), float)},
+                                 **({'tints': parameters.get('textureAlbedoSpec') or parameters.get('textureDiffuse') or ''} if key == 'tintColor' else {}))
     return colours, sorted(name for name in names if name and name not in colours)
 
 

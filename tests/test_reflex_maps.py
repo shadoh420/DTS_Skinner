@@ -27,6 +27,7 @@ MAP = '\r\n'.join([
     '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 2 1 0x00000000 common/materials/wood/bare',
     '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 1 3 0xff332805 common/materials/stone/concrete',
     '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 3 2 0x00000000 ',
+    '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 3 2 0x00000000 structural/dev/dev_grey128',
     '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 1 2 3 0x00000000 internal/editor/textures/editor_clip',
     'global',
     '\tentity',
@@ -59,6 +60,11 @@ class ReflexMapsTest(unittest.TestCase):
         self.assertAlmostEqual(parameters['roughness'], .8, 6)
         _, lava = read_material(material('internal/shaders/fluid', (4, 'textureDiffuse', b'internal/effects/litspheres/water_c')))
         self.assertEqual(lava, {'textureDiffuse': 'internal/effects/litspheres/water_c'})
+        # Types 1 and 2 are two and three floats: a dev material is a texture tinted by a colour.
+        _, dev = read_material(material('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED',
+                                        (4, 'textureAlbedoSpec', b'dev_nogrid_albedospec'), (2, 'tintColor', struct.pack('<3f', 1, 0, 0)),
+                                        (1, 'uvScale', struct.pack('<2f', .01, .01))))
+        self.assertEqual((dev['tintColor'], [round(v, 4) for v in dev['uvScale']]), ([1, 0, 0], [.01, .01]))
         with self.assertRaisesRegex(ValueError, 'not a Reflex material'):
             read_material(b'PK\x03\x04' + bytes(200))
         with self.assertRaisesRegex(ValueError, 'cut short'):
@@ -68,7 +74,7 @@ class ReflexMapsTest(unittest.TestCase):
         title, author, materials = describe(MAP)
         self.assertEqual((title, author), ('Test Walk', 'Someone + Someone Else'))
         # A face with no material names none; the prefab's title is not the map's.
-        self.assertEqual(materials, {'common/materials/wood/bare', 'common/materials/stone/concrete', 'internal/editor/textures/editor_clip'})
+        self.assertEqual(materials, {'common/materials/wood/bare', 'common/materials/stone/concrete', 'internal/editor/textures/editor_clip', 'structural/dev/dev_grey128'})
 
     def test_import_finds_maps_by_their_first_line_and_workshop_maps_beside_the_install(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -85,6 +91,9 @@ class ReflexMapsTest(unittest.TestCase):
                 pak.writestr('common/materials/stone/', b'')
                 pak.writestr('common/materials/stone/concrete.material', CONCRETE)
                 pak.writestr('common/materials/wood/bare.material', material('x', (3, 'albedo', struct.pack('<4f', 1, 1, 1, 1))))
+            with zipfile.ZipFile(game / 'base/structural.pak', 'w') as pak:
+                pak.writestr('structural/dev/dev_grey128.material', material('tinted', (4, 'textureAlbedoSpec', b'dev_grid16_albedospec'),
+                                                                             (2, 'tintColor', struct.pack('<3f', .5, .5, .5))))
             (game / 'base/broken.pak').write_bytes(b'not a zip')
             workshop = root / 'steamapps/workshop/content/328070/42'
             workshop.mkdir(parents=True)
@@ -101,7 +110,9 @@ class ReflexMapsTest(unittest.TestCase):
             self.assertEqual(colours['common/materials/stone/concrete'],
                              dict(colour=[.37, .38, .35], metallic=0.0, roughness=.8, shader='internal/shaders/deferredPbrStylized', source='common.pak'))
             self.assertEqual((colours['common/materials/wood/bare']['colour'], colours['common/materials/wood/bare']['metallic']), ([.5, .25, 0], 1))
-            self.assertEqual(report['materials'], 2)
+            self.assertEqual(colours['structural/dev/dev_grey128'],
+                             dict(colour=[.5, .5, .5], shader='tinted', source='structural.pak', tints='dev_grid16_albedospec'))
+            self.assertEqual(report['materials'], 3)
             self.assertEqual(report['uncoloured'], ['internal/editor/textures/editor_clip'])
             self.assertEqual(import_maps(game, pack)['skipped'], ['Test Walk', 'other'])
             # A changed map replaces its old copy.

@@ -56,11 +56,14 @@ metallic 0 and roughness 0.8.
 
 Material file, little-endian: `14 00 0e d0`, the shader name (128 bytes), a
 32-bit flags word, the parameter count, a zero word, then 260 bytes per
-parameter: its type (32 bits), name (128 bytes) and value (128 bytes). Types
-seen: 0 a float (`metallic`, `roughness`, `albedoIntensity`), 3 four floats
-(`albedo`, `fresnelColour`), 4 a texture path (`textureDiffuse`). Every stock
-material file in `common.pak` is 144 + 260 × count bytes. Other types appear
-(`uvScale`, two floats) and are kept as hex.
+parameter: its type (32 bits), name (128 bytes) and value (128 bytes). Types 0
+to 3 are one to four floats (`roughness`; `uvScale`; `tintColor`; `albedo`,
+`diffuseColour`), 4 a texture path (`textureAlbedoSpec`). Every stock material
+file in `common`, `environment` and `structural` is 144 + 260 × count bytes.
+A material's colour is its `albedo`, else its `diffuseColour` (ivy), else its
+`tintColor`: the dev materials of `structural` are a grid texture tinted by it
+(`dev_grey128` 0.5 grey, `dev_nogrid_red` red), so the tint stands in for the
+textured colour.
 
 A face whose colour has alpha above zero is drawn in that colour, which is
 what most faces of stock maps carry (Furnace: 18 colours over 13 materials),
@@ -252,6 +255,7 @@ five training stages. Every one reads and writes back identical and places
 every prefab it names (Hieratic, the largest: 8,539 brushes, 4,192 of them
 from prefabs, drawn in about a second in headless Chromium). The import ran
 against a stand-in install with those maps and the stock `common.pak`, which
-gave 35 material colours; materials of `environment`, `internal` and
-`structural` were not checked, as those archives were not at hand. Not
+and `common.pak`, `environment.pak` and `structural.pak`, which gave 46 of the
+55 materials the maps name; the other 9 are in `internal.pak`, which was not
+at hand. Not
 checked: any map against the game side by side.
