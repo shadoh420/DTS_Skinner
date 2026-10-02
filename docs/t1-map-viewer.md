@@ -53,6 +53,8 @@ view above the placed objects.
   any other volume in `base`, then from loose files beside the mission or in
   `base`. `SOURCES.json` in each map folder records the volumes and their hashes.
 - Mission class and field names are matched case-insensitively, as the game does.
+- A mission that does not mount its own terrain volume still gets `<terrain>.ted`
+  from beside the mission or from the install.
 - Terrain is one height block repeated 3×3 (64, 128 or 256 squares). Heights,
   per-square texture/orientation and the lightmap are LZH-compressed; the decoder
   and block layout follow ArenaPrototype's Tribes compatibility code, as do the
@@ -70,20 +72,34 @@ view above the placed objects.
 
 ## Coverage
 
-Checked against two installs: a 1.40-style install with zip volumes (46 missions)
-and a classic 1.11 install with `.vol` volumes (194 missions, most of them custom).
-All import. 28 stock desert, ice and ruin interiors were added to the T1 model
-catalog for this; about 60 custom buildings are exported at import.
+Checked against three installs: a 1.40-style install with zip volumes (46
+missions) and two classic installs with `.vol` volumes (194 and 132 missions,
+most of them custom). All 232 distinct maps import. 28 stock desert, ice and ruin
+interiors were added to the T1 model catalog for this; custom buildings are
+exported at import.
 
-Known gaps, all of them files absent from those installs:
+A mission can be imported against a different install than the one it sits in:
+give its file as the custom mission and the install that has its volumes as the
+Tribes folder. That is how maps whose extras volume is missing from one install
+are completed from another.
 
-- FleetCommand: `FC_extras.vol` (buildings `fc_fireblade`, `fc_logopanel`,
-  `fc_thunderwolf`).
-- Mission volumes `badmoon.vol` (BadMoon), `opencall2.vol` (Velocity) and
-  `3_vehicle.vol` (3_Vehicle). These maps still load; the volumes would matter for
-  mission lighting.
+Known gaps after scanning every archive in those installs (and others on the same
+machine), including archives stored inside archives:
+
+- `badmoon.vol`, BadMoon's lighting volume. The map loads with every object
+  resolved, because all its buildings are stock; only its building lightmaps are
+  absent.
 - Stock interiors `dbridge`, `dcolumn` and `drock` have geometry but no material
-  list (`.dml`) in either install; no mission places them.
+  list (`.dml`) in the stock volumes, and no stock mission places them. Custom maps
+  that use `dcolumn` or `drock` ship the material list in their own volume
+  (`Desert_Rain.zip` and `Forsaken_Deserts.zip` in jcmolnar/Tribes-Repack do), so
+  those buildings convert when such a map is imported. `dbridge.dml` was not found
+  anywhere, including the archives of Tribes-Repack and Tribes-Asset-Store.
+
+`BFstand.vol` (Bastard_Forge_Day) and `stand2.vol` (Runout) are also named by
+their missions and absent, but nothing is lost: the buildings they held
+(`bfstand`, `runout_stand`) are in `opencall2.vol`, which those missions also
+mount, and their lit instances are in the missions' own volumes.
 
 Tests: `python -m unittest tests.test_t1_maps`. Set `T1_GAME_BASE` to a Tribes
 folder to also run the real Raindance import check (every object resolves, spawn

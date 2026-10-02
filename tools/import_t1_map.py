@@ -476,6 +476,11 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     terrain_node = first('simterrain')
     if 'tedfilename' not in terrain_node:
         raise ValueError('Mission has no terrain')
+    # Missions mount their terrain volume by convention; one that does not still gets <terrain>.ted from beside it.
+    terrain_volume = install.find(Path(terrain_node['tedfilename']).stem + '.ted', folders)
+    if Path(terrain_node['tedfilename']).name.lower() not in resources and terrain_volume:
+        resources.update(install.volume(terrain_volume))
+        provenance.append({'volume': terrain_volume.name, 'sha256': install.sha256(terrain_volume)})
     index = read_terrain_index(read(terrain_node['tedfilename']))
     if len(set(index['blockMap'])) != 1:
         raise ValueError('Only terrains that repeat a single block are supported')

@@ -5,6 +5,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import struct
 import tempfile
 import unittest
@@ -150,6 +151,10 @@ class T1MapTests(unittest.TestCase):
             for stored in scene['terrain']['textures'].values():
                 self.assertTrue((pack / 'textures' / stored).is_file())
             self.assertEqual(import_maps(install.base, pack, [mission_file])['skipped'], ['Raindance'])
+            # A custom mission elsewhere that forgets to mount its terrain volume still finds Raindance.ted in the install.
+            custom = Path(directory) / 'Unmounted.mis'
+            custom.write_text(re.sub(r'fileName = "Raindance\.ted";', 'fileName = "";', mission_file.read_text(encoding='cp1252'), flags=re.I), encoding='cp1252')
+            self.assertEqual(import_maps(install.base, pack, [custom])['imported'], ['Unmounted'])
             heights = struct.unpack('<66049f', (pack / 'maps/raindance/heights.bin').read_bytes())
             mission = parse_mission(mission_file.read_text(encoding='cp1252'))
             spawns = [[float(value) for value in node['fields']['position'].split()]
