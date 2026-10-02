@@ -167,3 +167,158 @@ test('subtract conserves volume for random convex brushes: a = pieces + (a ∩ b
   }
   assert.ok(checked > 20, `only ${checked} rounds overlapped`);
 });
+
+// ---- Map files ----
+const fs = require('node:fs');
+const {ReflexMap: M} = require(path.join(__dirname, '../static/reflex-maps/mapfile.js'));
+// Written as the game writes a map (laid out as the stock maps are): a prefab with an entity and a brush whose
+// second face has no material, a global placing it twice, a property with spaces and a negative zero.
+const SAMPLE = [
+  'reflex map version 8',
+  'prefab step',
+  '\tentity',
+  '\t\ttype WorldSpawn',
+  '\tbrush',
+  '\t\tvertices',
+  '\t\t\t0.000000 0.000000 0.000000', '\t\t\t16.000000 0.000000 0.000000', '\t\t\t16.000000 0.000000 32.000000', '\t\t\t0.000000 0.000000 32.000000',
+  '\t\t\t0.000000 8.000000 0.000000', '\t\t\t16.000000 8.000000 0.000000', '\t\t\t16.000000 8.000000 32.000000', '\t\t\t0.000000 8.000000 32.000000',
+  '\t\tfaces',
+  '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 1 2 3 0xff332805 common/materials/wood/bare',
+  '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 7 6 5 4 0x00000000 ',
+  '\t\t\t0.000000 0.000000 1.000000 1.000000 90.000008 0 4 5 1 0xff332805 common/materials/wood/bare',
+  '\t\t\t0.000000 -64.000000 1.000000 0.750000 0.000000 2 6 7 3 0xff332805 common/materials/wood/bare',
+  '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 1 5 6 2 0xff332805 common/materials/wood/bare',
+  '\t\t\t0.000000 0.000000 1.000000 1.000000 0.000000 3 7 4 0 0xff332805 common/materials/wood/bare',
+  'global',
+  '\tentity',
+  '\t\ttype WorldSpawn',
+  '\t\tString32 targetGameOverCamera end',
+  '\t\tString256 ownerString Someone + Someone Else',
+  '\t\tColourXRGB32 fogColor ff67ba88',
+  '\tentity',
+  '\t\ttype Prefab',
+  '\t\tVector3 position 100.000000 0.000000 0.000000',
+  '\t\tVector3 angles 90.000000 -0.000000 0.000000',
+  '\t\tString64 prefabName step',
+  '\tentity',
+  '\t\ttype Prefab',
+  '\t\tVector3 position -100.000000 0.000000 0.000000',
+  '\t\tString64 prefabName step',
+  '\tentity',
+  '\t\ttype Pickup',
+  '\t\tVector3 position 0.000000 16.000000 0.000000',
+  '\t\tUInt8 pickupType 4',
+  '\tentity',
+  '\t\ttype Prefab',
+  '\t\tString64 prefabName nowhere',
+  '',
+].join('\r\n');
+
+test('a map written back is the file read, byte for byte', () => {
+  const map = M.parse(SAMPLE);
+  assert.equal(M.write(map), SAMPLE);
+  assert.equal(map.version, 8);
+  assert.deepEqual(map.groups.map(group => [group.kind, group.name, group.items.map(item => item.kind)]),
+    [['prefab', 'step', ['entity', 'brush']], ['global', '', ['entity', 'entity', 'entity', 'entity', 'entity']]]);
+});
+
+test('faces keep offset, scale, rotation, colour and an empty material', () => {
+  const brush = M.prefab(M.parse(SAMPLE), 'step').items[1];
+  assert.deepEqual(brush.faces[0], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, indices: [0, 1, 2, 3], colour: '0xff332805', material: 'common/materials/wood/bare'});
+  assert.equal(brush.faces[1].material, '');
+  assert.equal(brush.faces[2].rotation, 90.000008);
+  assert.deepEqual([brush.faces[3].v, brush.faces[3].scaleV], [-64, 0.75]);
+  assert.deepEqual(M.colourOf(brush.faces[0]).map(c => Math.round(c * 255)), [0x33, 0x28, 0x05, 255]);
+  assert.equal(M.colourOf(brush.faces[1]), null, 'zero alpha means the material colour');
+  // The brush as stored is a convex solid wound outward.
+  assertConvexSolid(B.rebuild(brush));
+  assert.deepEqual(B.check(brush), []);
+});
+
+test('properties are typed, strings keep their spaces and a negative zero keeps its sign', () => {
+  const [world, placed] = M.global(M.parse(SAMPLE)).items;
+  assert.equal(M.property(world, 'ownerString'), 'Someone + Someone Else');
+  assert.equal(M.property(world, 'fogColor'), 'ff67ba88');
+  assert.ok(Object.is(M.property(placed, 'angles')[1], -0));
+  assert.equal(M.fixed(-0), '-0.000000');
+});
+
+test('flatten places prefabs where Prefab entities put them, turned by yaw about y', () => {
+  const flat = M.flatten(M.parse(SAMPLE));
+  assert.equal(flat.brushes.length, 2);
+  assert.deepEqual(flat.missing, ['nowhere']);
+  const [turned, plain] = flat.brushes.map(entry => B.bounds(entry.brush));
+  // Yaw 90 takes +z to +x: the step's 32-long side now runs along x.
+  assert.deepEqual(turned.min.map(Math.round), [100, 0, -16]);
+  assert.deepEqual(turned.max.map(Math.round), [132, 8, 0]);
+  assert.deepEqual(plain, {min: [-100, 0, 0], max: [-84, 8, 32]});
+  // Placed copies share the stored faces; only the vertices move.
+  assert.equal(flat.brushes[0].brush.faces, flat.brushes[0].source.faces);
+  assert.deepEqual(flat.entities.map(entry => entry.entity.type), ['WorldSpawn', 'Prefab', 'WorldSpawn', 'Prefab', 'WorldSpawn', 'Pickup', 'Prefab']);
+});
+
+test('a prefab that places itself stops instead of recursing forever', () => {
+  const map = M.parse(['reflex map version 8', 'prefab loop', '\tentity', '\t\ttype Prefab', '\t\tString64 prefabName loop',
+    'global', '\tentity', '\t\ttype Prefab', '\t\tString64 prefabName loop', ''].join('\n'));
+  assert.ok(M.flatten(map).entities.length <= 20);
+  assert.equal(M.write(map), ['reflex map version 8', 'prefab loop', '\tentity', '\t\ttype Prefab', '\t\tString64 prefabName loop',
+    'global', '\tentity', '\t\ttype Prefab', '\t\tString64 prefabName loop', ''].join('\n'), 'LF files stay LF');
+});
+
+test('version 6 maps have no groups and no face colours', () => {
+  const text = ['reflex map version 6', 'entity', '\ttype WorldSpawn', 'brush', '\tvertices',
+    '\t\t0.000000 0.000000 0.000000', '\t\t8.000000 0.000000 0.000000', '\t\t0.000000 8.000000 0.000000', '\t\t0.000000 0.000000 8.000000',
+    '\tfaces',
+    '\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 2 1 internal/editor/textures/grid',
+    '\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 1 3 internal/editor/textures/grid',
+    '\t\t0.000000 0.000000 1.000000 1.000000 0.000000 0 3 2 internal/editor/textures/grid',
+    '\t\t0.000000 0.000000 1.000000 1.000000 0.000000 1 2 3 internal/editor/textures/grid', ''].join('\r\n');
+  const map = M.parse(text);
+  assert.equal(M.write(map), text);
+  const brush = M.global(map).items[1];
+  assert.equal(brush.faces[0].colour, null);
+  assert.equal(brush.faces[0].material, 'internal/editor/textures/grid');
+  assertConvexSolid(B.rebuild(brush));
+});
+
+test('a damaged file names the line at fault', () => {
+  assert.throws(() => M.parse('not a map'), /line 1/);
+  assert.throws(() => M.parse(SAMPLE.replace('0 1 2 3 0xff332805', '0 1 2 99 0xff332805')), /vertex the brush does not have/);
+  assert.throws(() => M.parse(SAMPLE.replace('\t\t\t16.000000 0.000000 0.000000', '\t\t\t16.000000 zero 0.000000')), /line 8: bad vertex/);
+  assert.throws(() => M.parse(SAMPLE.replace('\tbrush', '\tbrsh')), /expected entity or brush/);
+});
+
+test('a new map is a valid version 8 map with a WorldSpawn', () => {
+  const text = M.write(M.empty());
+  assert.equal(M.write(M.parse(text)), text);
+  assert.equal(M.global(M.parse(text)).items[0].type, 'WorldSpawn');
+});
+
+test('edited brushes write back as a map the reader accepts', () => {
+  const map = M.parse(SAMPLE), group = M.global(map);
+  const room = B.box([0, 0, 0], [256, 128, 256], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0xff80827a', material: 'common/materials/stone/stone'});
+  for (const wall of B.hollow(room, 16)) group.items.push({kind: 'brush', ...wall});
+  const again = M.parse(M.write(map));
+  const walls = M.global(again).items.filter(item => item.kind === 'brush');
+  assert.equal(walls.length, 6);
+  walls.forEach(wall => assertConvexSolid(B.rebuild(wall)));
+  near(totalVolume(walls), 256 * 128 * 256 - 224 * 96 * 224);
+});
+
+// Maps of your own: REFLEX_MAPS=folder (searched for .map files) reads each, writes it back and compares.
+test('every map in REFLEX_MAPS reads, writes back unchanged and places its prefabs', {skip: !process.env.REFLEX_MAPS && 'set REFLEX_MAPS to a folder of .map files'}, () => {
+  const files = [];
+  const walk = folder => { for (const entry of fs.readdirSync(folder, {withFileTypes: true})) {
+    const full = path.join(folder, entry.name);
+    if (entry.isDirectory()) walk(full); else if (/\.map$/i.test(entry.name)) files.push(full);
+  } };
+  walk(process.env.REFLEX_MAPS);
+  assert.ok(files.length, 'no .map files found');
+  for (const file of files) {
+    const text = fs.readFileSync(file, 'utf8'), map = M.parse(text);
+    assert.equal(M.write(map), text, file);
+    const flat = M.flatten(map);
+    assert.deepEqual(flat.missing, [], file);
+    assert.ok(flat.brushes.length, file);
+  }
+});
