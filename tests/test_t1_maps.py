@@ -103,11 +103,14 @@ class T1MapTests(unittest.TestCase):
             bitmap_png(bitmap, {})
 
     def test_raw_terrain_blocks_and_version_2_material_lists_are_read(self):
-        heights, light = struct.pack('<4f', 1, 2, 3, 4), bytes(range(8))
+        heights, light = struct.pack('<4f', 1, 2, 3, 4), struct.pack('<4H', 255, 128, 16, 0)  # One 8-bit light level per word.
         block = read_terrain_block(b'GBLK' + struct.pack('<Ii16siiffii', 0, 0, b'block-0', 1, 0, 1, 4, 1, 1) + heights + b'\x00\x07' + light)
-        self.assertEqual((block['heights'], block['materials'], block['lightWidth'], block['light']), (heights, b'\x00\x07', 2, light))
+        self.assertEqual((block['heights'], block['materials'], block['lightWidth'], block['light']),
+                         (heights, b'\x00\x07', 2, struct.pack('<4H', 0xffff, 0x8888, 0x1111, 0)))
         with self.assertRaisesRegex(ValueError, 'Truncated'):
             read_terrain_block(b'GBLK' + struct.pack('<Ii16siiffii', 0, 0, b'block-0', 1, 0, 1, 4, 1, 1) + heights)
+        with self.assertRaisesRegex(ValueError, 'Unexpected terrain block layout'):  # A size the data does not fill exactly.
+            read_terrain_block(b'GBLK' + struct.pack('<Ii16siiffii', 0, 0, b'block-0', 1, 0, 1, 4, 1, 1) + heights + b'\x00\x07' + light + b'\x00')
         materials = interior_dml.dml()  # Version 2 records end at the 32-byte name.
         materials.load_binary(b'PERS' + bytes(4) + struct.pack('<H', 16) + b'TS::MaterialList' + struct.pack('<3i', 2, 1, 2)
                               + bytes(16) + b'lsky0.BMP'.ljust(32, b'\0') + bytes(16) + b'lsky1.bmp'.ljust(32, b'\0'))

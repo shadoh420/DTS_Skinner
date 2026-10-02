@@ -234,8 +234,12 @@ def read_terrain_block(data):
     for _ in range(11 if version else 0):  # Pin maps: level-of-detail hints, unused here.
         offset += 2 + struct.unpack_from('<H', data, offset)[0]
     light_width = (size_x << light_scale) + 1
-    return {'size': size_x, 'heights': heights, 'materials': materials,
-            'lightWidth': light_width, 'light': compressed(light_width ** 2 * 2)}
+    light = compressed(light_width ** 2 * 2)
+    if not version and offset != len(data):  # A raw block is exactly its three arrays.
+        raise ValueError('Unexpected terrain block layout')
+    if not version and not any(light[1::2]):  # Raw blocks light with one 8-bit level per word; widen it to 4:4:4:4 grey.
+        light = b''.join(struct.pack('<H', (level >> 4) * 0x1111) for level in light[::2])
+    return {'size': size_x, 'heights': heights, 'materials': materials, 'lightWidth': light_width, 'light': light}
 
 
 def read_terrain_index(data):
@@ -661,8 +665,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     if len(set(index['blockMap'])) != 1:
         raise ValueError('Only terrains that repeat a single block are supported')
     block = read_terrain_block(read('%s#%d.dtb' % (Path(terrain_node['tedfilename']).stem, index['blockMap'][0])))
-    if block['size'] != index['squares']:
-        raise ValueError('Terrain block does not match its index')
+    # The block's own size is used: its arrays prove it, while some editors write a wrong detail count in the index.
     terrain_materials, textures = material_names(index['materialList']), {}
     for slot in sorted(set(block['materials'][1::2])):
         stored = texture(terrain_materials[slot]) if slot < len(terrain_materials) else None

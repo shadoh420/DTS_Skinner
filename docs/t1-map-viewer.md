@@ -62,7 +62,9 @@ view above the placed objects.
 - Terrain is one height block repeated 3×3 (64, 128 or 256 squares). Heights,
   per-square texture/orientation and the lightmap are LZH-compressed in the game's
   own blocks (version 5) and stored raw in the version 0 blocks newer editors
-  write; the decoder and block layout follow ArenaPrototype's Tribes compatibility
+  write, whose lightmap is one 8-bit grey level per word rather than 4-bit RGB.
+  The block's own size is used even where the index disagrees. The decoder and
+  block layout follow ArenaPrototype's Tribes compatibility
   code, as do the DarkStar rotation matrix, square UV table and PVOL layout. PBMP
   reading also follows SurfaceLevel2's loader.
 - Import checks itself: every compressed block must land exactly on the next
@@ -108,11 +110,12 @@ Tribes folder. That is how maps whose extras volume is missing from one install
 are completed from another.
 
 A fourth, larger install (Modern Tribes V30, zip volumes, 550 missions) was
-imported as a coverage check: 549 import, with a lightmap on every one of their
-21,554 placed buildings. `CanyonRemixLT` does not import (its terrain block is 128
-squares where its index says 256). `Superbowl` and `Superbowl2` name a
-`STADIUM.vol` that is absent, which leaves the `hlfpstd1` building of `Superbowl2`
-as the one unresolved object.
+imported as a coverage check: all 550 import, with a lightmap on every placed
+building (21,554 across the 549 checked in one pass; `CanyonRemixLT` was added
+afterwards, once the block's own size was trusted over its index, which says 256
+squares for a 128-square block). `Superbowl` and `Superbowl2` name a `STADIUM.vol`
+that is absent, which leaves the `hlfpstd1` building of `Superbowl2` as the one
+unresolved object.
 
 Known gaps after scanning every archive in those installs (and others on the same
 machine), including archives stored inside archives:
