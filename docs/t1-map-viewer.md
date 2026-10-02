@@ -181,6 +181,12 @@ their missions and absent, but nothing is lost: the buildings they held
 (`bfstand`, `runout_stand`) are in `opencall2.vol`, which those missions also
 mount, and their lit instances are in the missions' own volumes.
 
+Raindance's `lrock61` rock is under the ground because the mission puts it there,
+not because of how it is turned: its origin is 5.9 units below the terrain and no
+part of the rock is further than 5.76 from its origin, so no rotation brings it
+above. The placement matrix is the one in DarkStar's `RMat3F::set(EulerF)`, and
+the map's other rocks turned on three axes sit as expected.
+
 Tests: `python -m unittest tests.test_t1_maps`. Set `T1_GAME_BASE` to a Tribes
 folder to also run the real Raindance import check (every object resolves, every
 building has a lightmap matching its model, animated lights land inside their
