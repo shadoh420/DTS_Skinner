@@ -30,10 +30,12 @@ python tools/import_t1_map.py --game-base C:/path/to/Tribes --mission C:/Maps/My
 The game folder and mission files are only read. Output goes to
 `local-data/t1-maps` (ignored by Git; next to the executable in a packaged build):
 one folder per map under `maps/`, shared files under `textures/` named by content
-so identical data is stored once (bitmaps, building lightmap atlases and their
-`.uv` coordinates), buildings exported at import under `models/`, and `index.json`
-listing the maps. Packs imported before lightmaps and sky were added still open,
-without them; tick **Re-import existing maps** (or pass `--replace`) to add them.
+so identical data is stored once (bitmaps, building lightmap atlases, their `.uv`
+coordinates and `.anim` light animations), buildings exported at import under
+`models/`, and `index.json` listing the maps. Packs imported before lightmaps, sky
+or animated lights were added still open, without them (older lightmaps hold every
+light in its first state); tick **Re-import existing maps** (or pass `--replace`)
+to add them.
 
 Both install layouts are read: newer installs with zip volumes and PNG textures,
 and classic installs with `.vol` (PVOL) volumes and palettised PBMP bitmaps, which
@@ -80,6 +82,24 @@ view above the placed objects.
   into one small atlas per placed building at import (Raindance: 32 buildings,
   66 KB) and drawn as texture × lightmap, following ArenaPrototype's
   TribesInteriorLighting and TribesUnityInteriorLightmaps.
+- Building lights that flicker, pulse or chase are animated. ArenaPrototype stops
+  at state 0 of every light, so this part follows the DarkStar source instead
+  (`ITRInstance::stepLightTime`, `updateLight`, `updateSpecialLight` and `merge`,
+  `InteriorShape::clientProcess`). Lights the building's lighting flags auto-start
+  loop for ever in 67 ms steps: the colour runs from each state's to the next
+  one's, or, for flicker lights, a state is drawn at random every flicker
+  interval. Each state has its own intensity map per surface, so a light can also
+  move. Other lights stay in state 0, baked into the atlas. At import the animated
+  lights are kept out of the atlas and written to one `.anim` file per building
+  (states, colours, intensity maps and where each lands in the atlas); the viewer
+  adds them back with the game's 4-bit saturating arithmetic whenever a light's
+  state or colour changes. Of 229 stock interiors, 56 have such lights.
+- `lightParams` on an `InteriorShape` is not read, as in the game: the field's
+  setter there is empty (`setDataTypeLightAnimParam`) and `InteriorShape::onAdd`
+  rebuilds the values from the building's lighting. The values in mission files
+  are that lighting's own duration and auto-start flag per light, written back
+  out on save: the 5,183 placed buildings checked in two installs all carry
+  exactly them.
 - A building with no lit instance (lighting volume missing, or a building placed
   without relighting the mission) uses its own lighting plus the mission sun on
   the faces marked visible from outside, as the game does, so interiors are still
@@ -151,14 +171,17 @@ mount, and their lit instances are in the missions' own volumes.
 
 Tests: `python -m unittest tests.test_t1_maps`. Set `T1_GAME_BASE` to a Tribes
 folder to also run the real Raindance import check (every object resolves, every
-building has a lightmap matching its model, the sky and rain are found, Blastside's
+building has a lightmap matching its model, animated lights land inside their
+atlas, the sky and rain are found, Blastside's
 sun and flare bitmaps keep their transparency, spawn
 points stand on the decoded terrain).
 
 ## Limits
 
-No collision, gameplay, audio or editing. Building lights show their first state
-only (no flicker or pulse) and the mission's `lightParams` are not applied.
+No collision, gameplay, audio or editing. Building lights that only scripts switch
+(`Interior::switchOnLight` and the like) stay in their first state. Placements
+that share one lightmap animate in step, and animated lightmaps are blended on
+the CPU for every building of the map, in view or not.
 Stars follow the game's generator but not its exact constellation (the game seeds
 it from shared state) and are not snapped to the palette on classic installs. A
 planet bitmap stays upright on screen rather than keeping its top toward the

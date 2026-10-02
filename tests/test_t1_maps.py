@@ -149,13 +149,26 @@ class T1MapTests(unittest.TestCase):
         geometry = SimpleNamespace(build_id=77, surfaces=[surface], verts=[(0, 0), (0, 1), (0, 2)], points2f=[(0, 0), (1, 0), (1, 1)],
                                    planes=[SimpleNamespace(x=0, y=0, z=1)])
         normals = []
-        png, coordinates = bake_lightmap(geometry, base, mission, lambda normal: normals.append(normal) or (0, 1, 2))
+        png, coordinates, animation = bake_lightmap(geometry, base, mission, lambda normal: normals.append(normal) or (0, 1, 2))
+        self.assertIsNone(animation)
         with Image.open(io.BytesIO(png)) as atlas:  # 2x1 map inside a one-texel gutter of its own edge texels.
             self.assertEqual((atlas.size, atlas.getpixel((1, 1)), atlas.getpixel((2, 1)), atlas.getpixel((0, 0)), atlas.getpixel((3, 2))),
                              ((4, 3), (255, 3 * 17, 5 * 17), (4 * 17, 6 * 17, 8 * 17), (255, 3 * 17, 5 * 17), (4 * 17, 6 * 17, 8 * 17)))
         self.assertEqual(normals, [(0, 0, 1)])
         for actual, expected in zip(struct.unpack('<6f', coordinates), (1.5 / 4, .5, 3.5 / 4, .5, 3.5 / 4, 2.5 / 3)):
             self.assertAlmostEqual(actual, expected)
+        # A light flagged auto-start (1) with two states is animated by the game: it stays out of the atlas and is
+        # returned as one cell (the surface's place in the atlas) and, per state, a colour and that cell's intensity map.
+        moving = read_lighting(lighting(
+            b'ITRLighting', struct.pack('<i2h4B', 0x40000000, 1, 0, 2, 1, 0, 0), b'\x01\x00\xff\x08\x10\x20',
+            b'\x01' + struct.pack('<2i', 1, 2) + struct.pack('<2i', -1, -2) + struct.pack('<2I', 0x123, 0x456),
+            states=struct.pack('<4Hf2h', 0xff00, 0, 0, 0, 0, 1, 0) + struct.pack('<4Hf2h', 0, 0x8000, 0, 0, .5, 1, 1),
+            state_data=struct.pack('<2hi', 0, 0, 2) + struct.pack('<2hi', 0, 0, 4), lights=struct.pack('<4ifI', 0, -1, 2, 0, 1.5, 1)))
+        png, _, animation = bake_lightmap(geometry, moving)
+        with Image.open(io.BytesIO(png)) as atlas:
+            self.assertEqual((atlas.getpixel((1, 1)), atlas.getpixel((2, 1))), ((17, 2 * 17, 3 * 17), (4 * 17, 5 * 17, 6 * 17)))
+        self.assertEqual(animation, struct.pack('<2i4HIfi', 1, 1, 1, 1, 2, 1, 1, 1.5, 2)
+                         + struct.pack('<f3H2xi2i', 0, 0xff00, 0, 0, 1, 0, 0) + struct.pack('<f3H2xi2i', .5, 0, 0x8000, 0, 1, 0, 2) + b'\xff\x08\x10\x20')
         geometry.build_id = 78
         with self.assertRaisesRegex(ValueError, 'does not match'):
             bake_lightmap(geometry, base)
@@ -216,6 +229,14 @@ class T1MapTests(unittest.TestCase):
                     self.assertEqual(atlas.mode, 'RGB')
                 model = json.loads((Path(app.static_folder) / 'model_json' / (item['model'] + '.json')).read_text())
                 self.assertEqual((pack / 'textures' / item['light']['uv']).stat().st_size, len(model['vertices']) // 3 * 8)
+            # Buildings with lights the game animates carry them apart from the atlas, each cell inside the atlas gutter.
+            moving = [item['light'] for item in lit if 'anim' in item['light']]
+            self.assertTrue(moving)
+            for light in moving:
+                animation = (pack / 'textures' / light['anim']).read_bytes()
+                with Image.open(pack / 'textures' / light['map']) as atlas:
+                    for x, y, width, height in struct.iter_unpack('<4H', animation[8:8 + struct.unpack_from('<i', animation, 4)[0] * 8]):
+                        self.assertTrue(0 < x and x + width < atlas.width and 0 < y and y + height < atlas.height)
             self.assertEqual((len(scene['sky']['textures']), scene['weather']['rain']), (16, True))
             # Raindance's sun has no bitmap and it has no star field; Blastside's sun has one, with a lens flare.
             self.assertEqual((scene['planets'], scene['stars'], scene['flare']), ([], None, None))

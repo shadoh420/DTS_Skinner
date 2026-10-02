@@ -378,13 +378,20 @@ def add_light(colour, red, green, blue):
 
 
 def bake_lightmap(geometry, base, mission=None, sunlight=None):
-    """(atlas PNG, float32 atlas coordinates per exported vertex) for one placed interior.
+    """(atlas PNG, float32 atlas coordinates per exported vertex, light animation or None) for one placed interior.
 
     As ArenaPrototype's TribesUnityInteriorLightmaps: the mission's replacement maps over the base
     lighting, state 0 of every authored light added, one-texel gutters, coordinates from the
     geometry's native UV * texture size + map offset. Vertex order matches export_interior.
     A building the mission was never relit with has no replacement maps; the game then adds the sun
     to the faces flagged as visible from outside: sunlight(face normal) gives those 4-bit channels.
+
+    Unlike ArenaPrototype, lights the game animates are left out of the atlas and returned for the viewer
+    to add as they change. DarkStar's InteriorShape runs every light flagged auto-start (1) and leaves the
+    rest in state 0. The animation is little-endian: light and cell counts (2i); each cell's atlas rectangle
+    (4H: x, y, width, height); per light flags, duration and state count (Ifi); per state its start time,
+    16-bit colour and entry count (f3H2xi) and per entry a cell and the offset of its intensity map (2i) in
+    the bytes that follow, one byte per texel.
     """
     if geometry.build_id != base['build'] or mission and mission['build'] != base['build'] or len(geometry.surfaces) != len(base['surfaces']):
         raise ValueError('Interior lighting does not match its geometry')
@@ -392,10 +399,14 @@ def bake_lightmap(geometry, base, mission=None, sunlight=None):
     for index, surface in enumerate(mission['surfaces'] if mission else ()):
         if surface[0] >= 0:
             targets.setdefault(surface[0] & ~0x40000000, index)
-    slots = {}  # Later state data replaces earlier in the same light-map slot.
-    for _, _, count, first, _, _ in base['lights']:
-        if count:
-            *colour, _, _, data_count, data_index = base['states'][first]
+    slots, animated = {}, []  # Later state data replaces earlier in the same light-map slot.
+    for _, _, count, first, duration, flags in base['lights']:
+        states = base['states'][first:first + count]
+        # A flicker light (4) redraws its state every states[1] time; the game cannot run one where that is zero.
+        if flags & 1 and count > 1 and duration > 0 and (not flags & 4 or states[1][4] > 0):
+            animated.append((flags, duration, states))
+        elif count:
+            *colour, _, _, data_count, data_index = states[0]
             for surface, slot, start in base['stateData'][data_index:data_index + data_count]:
                 slots.setdefault(surface, {})[slot] = ([(value + 128) >> 8 & 255 for value in colour[:3]], start)
     cells = []
@@ -458,7 +469,26 @@ def bake_lightmap(geometry, base, mission=None, sunlight=None):
                                 (placed[index][1] + (v * (surface.tsy + 1) + top) / scale + .5) / height]
     output = io.BytesIO()
     atlas.save(output, 'PNG', optimize=True)
-    return output.getvalue(), struct.pack('<%df' % len(coordinates), *coordinates)
+    sizes = {index: (cell_width, cell_height) for index, cell_width, cell_height, _ in cells if math.prod(base['surfaces'][index][3:5])}
+    used, offsets, intensities, lights = {}, {}, bytearray(), []  # Cell number per surface, offset per distinct intensity map.
+    for flags, duration, states in animated:
+        packed = []
+        for red, green, blue, _, time, data_count, data_index in states:
+            entries = []
+            for surface, _, start in base['stateData'][data_index:data_index + data_count]:
+                texels = base['maps'][start:start + math.prod(sizes[surface])] if start >= 0 and surface in sizes else b''
+                # The game adds nothing for an intensity under 16.
+                if texels and len(texels) == math.prod(sizes[surface]) and max(texels) >= 16:
+                    if texels not in offsets:
+                        offsets[texels] = len(intensities)
+                        intensities += texels
+                    entries.append(struct.pack('<2i', used.setdefault(surface, len(used)), offsets[texels]))
+            packed.append((struct.pack('<f3H2xi', time, red, green, blue, len(entries)), entries))
+        if any(entries for _, entries in packed):
+            lights.append(struct.pack('<Ifi', flags, duration, len(packed)) + b''.join(state + b''.join(entries) for state, entries in packed))
+    animation = b''.join([struct.pack('<2i', len(lights), len(used)), *(struct.pack('<4H', *placed[surface], *sizes[surface]) for surface in used),
+                          *lights, intensities]) if lights else None
+    return output.getvalue(), struct.pack('<%df' % len(coordinates), *coordinates), animation
 
 
 @functools.lru_cache(maxsize=None)
@@ -751,10 +781,10 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                 if base['replaced'] is not None:
                     # name-<state><lod><light state>-<instance>.dil replaces maps of the building's own name-<...>.dil.
                     base, mission = read_lighting(read(re.sub(r'(-\d+)-[^-]*$', r'\1.dil', lit))), base
-                png, coordinates = bake_lightmap(read_geometry(read(name(lod.geometry_file_offset))), base, mission,
-                                                 None if mission or shape.linked_interior else sunlight)
+                png, coordinates, animation = bake_lightmap(read_geometry(read(name(lod.geometry_file_offset))), base, mission,
+                                                            None if mission or shape.linked_interior else sunlight)
                 if len(coordinates) // 8 == vertex_count(model_path):  # Else the preview model is of other geometry.
-                    return {'map': store(png, '.png'), 'uv': store(coordinates, '.uv')}
+                    return {'map': store(png, '.png'), 'uv': store(coordinates, '.uv'), **({'anim': store(animation, '.anim')} if animation else {})}
             except Exception:  # The interior readers are tolerant of stock files only; any failure tries the next source.
                 pass
         return None

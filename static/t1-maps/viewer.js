@@ -124,14 +124,110 @@ window.addEventListener('DOMContentLoaded', async () => {
     })());
     return models.get(key);
   }
+  // Building lightmaps. The atlas holds the mission's light and the lights that never change; lights the game animates
+  // come in the building's animation file (layout in the importer's bake_lightmap) and are blended in here, after
+  // DarkStar's ITRInstance (stepLightTime, updateLight, updateSpecialLight, merge): a light loops through its states,
+  // each state naming an intensity map per surface, and colour × intensity is added to the 4-bit lightmap, saturating.
+  // ponytail: blended on the CPU and each changed atlas uploaded whole, every light of the map whether in view or not;
+  // blend in a shader, or skip distant buildings, if a map with many animated buildings stutters.
+  const lightMaps = new Map(), lightSteps = [];
+  function loadLightMap({map: file, anim}) {
+    const key = file + '|' + (anim || '');
+    if (!lightMaps.has(key)) lightMaps.set(key, (async () => {
+      const [texture, buffer] = await Promise.all([loadTexture(data + 'textures/' + file),
+        anim && get(data + 'textures/' + anim).then(response => response.arrayBuffer()).catch(() => null)]);
+      if (texture) { texture.generateMipmaps = false; texture.minFilter = THREE.LinearFilter; }  // Mip levels would bleed between atlas cells.
+      if (!texture || !buffer) return texture;
+      const {width, height} = texture.image, context = Object.assign(document.createElement('canvas'), {width, height}).getContext('2d');
+      context.drawImage(texture.image, 0, 0);
+      const base = context.getImageData(0, 0, width, height).data, pixels = new Uint8Array(base);
+      const lit = new THREE.DataTexture(pixels, width, height);
+      lit.magFilter = lit.minFilter = THREE.LinearFilter;
+      lit.needsUpdate = true;
+      const view = new DataView(buffer);
+      let at = 0;
+      const int = () => view.getInt32((at += 4) - 4, true), float = () => view.getFloat32((at += 4) - 4, true), short = () => view.getUint16((at += 2) - 2, true);
+      const lightCount = int(), cells = Array.from({length: int()}, () => ({x: short(), y: short(), w: short(), h: short(), lights: []}));
+      const lights = Array.from({length: lightCount}, () => {
+        const light = {flags: int(), duration: float(), time: 0, state: -1, colour: [0, 0, 0]};
+        light.states = Array.from({length: int()}, () => {
+          const state = {time: float(), colour: [short(), short(), short()], maps: new Map()};
+          at += 2;
+          for (let entries = int(); entries; entries--) {
+            const cell = cells[int()];
+            state.maps.set(cell, int());
+            if (!cell.lights.includes(light)) cell.lights.push(light);
+          }
+          return state;
+        });
+        return light;
+      });
+      const intensity = new Uint8Array(buffer, at), changed = new Set();
+      const step = seconds => {
+        for (const light of lights) {
+          const states = light.states, last = states.length - 1;
+          light.time += seconds;
+          while (light.time > light.duration) light.time -= light.duration;
+          let index = 0, mix = 0;
+          if (light.flags & 4) {
+            // A flicker light: every states[1].time a state is drawn at random, weighted by how long it lasts.
+            if (light.state >= 0) {
+              if (light.time < states[1].time) continue;
+              light.time %= states[1].time;
+              const pick = Math.random() * light.duration;
+              index = states.findIndex((state, number) => number && state.time > pick) - 1;
+              if (index < 0) index = last;
+            }
+          } else {
+            // Any other: the colour runs from each state's to the next one's, and from the last back to the first.
+            while (index < last && light.time > states[index + 1].time) index++;
+            const span = (index < last ? states[index + 1].time : light.duration) - states[index].time;
+            mix = span ? (light.time - states[index].time) / span : 1;
+          }
+          const from = states[index].colour, to = states[index < last ? index + 1 : 0].colour;
+          const colour = from.map((value, channel) => Math.floor((value + (to[channel] - value) * mix) / 256 + .5) & 255);
+          if (index === light.state && colour.every((value, channel) => value === light.colour[channel])) continue;
+          for (const state of [states[Math.max(light.state, 0)], states[index]]) for (const cell of state.maps.keys()) changed.add(cell);
+          light.state = index;
+          light.colour = colour;
+        }
+        for (const cell of changed) {
+          const sources = cell.lights.map(light => [light.colour, light.states[light.state].maps.get(cell)])
+            .filter(([colour, start]) => start !== undefined && colour.some(Boolean));
+          // One texel beyond each edge is the gutter, which repeats the edge.
+          for (let v = -1; v <= cell.h; v++) for (let u = -1; u <= cell.w; u++) {
+            const s = Math.max(0, Math.min(cell.w - 1, u)), t = Math.max(0, Math.min(cell.h - 1, v));
+            const source = ((cell.y + t) * width + cell.x + s) * 4, target = ((cell.y + v) * width + cell.x + u) * 4;
+            let red = base[source] / 17, green = base[source + 1] / 17, blue = base[source + 2] / 17;
+            for (const [colour, start] of sources) {
+              const level = intensity[start + t * cell.w + s];
+              if (level < 16) continue;
+              red += colour[0] * level >> 12;
+              green += colour[1] * level >> 12;
+              blue += colour[2] * level >> 12;
+            }
+            pixels[target] = Math.min(15, red) * 17;
+            pixels[target + 1] = Math.min(15, green) * 17;
+            pixels[target + 2] = Math.min(15, blue) * 17;
+          }
+        }
+        if (changed.size) lit.needsUpdate = true;
+        changed.clear();
+      };
+      step(0);
+      lightSteps.push(step);
+      return lit;
+    })());
+    return lightMaps.get(key);
+  }
+
   const placeholder = new THREE.BoxGeometry(4, 4, 4).translate(0, 2, 0), magenta = new THREE.MeshBasicMaterial({color: 0xcc00cc});
   async function addObject(object) {
     let mesh;
     try {
       if (!object.model) throw new Error('No preview model');
       const model = await loadModel(object.model, object.source === 'pack', object.light && object.light.uv);
-      const lightMap = object.light && await loadTexture(data + 'textures/' + object.light.map);
-      if (lightMap) { lightMap.generateMipmaps = false; lightMap.minFilter = THREE.LinearFilter; }  // Mip levels would bleed between atlas cells.
+      const lightMap = object.light && await loadLightMap(object.light);
       // The mission lightmap already holds the sun and the building's own lights: texture × lightmap, no scene lights.
       mesh = new THREE.Mesh(model.geometry, !lightMap ? model.materials : model.materials.map(material => new THREE.MeshBasicMaterial(
         {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap})));
@@ -366,8 +462,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keyup', event => keys.delete(event.code));
 
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
+  let lightTime = 0;
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
+    // The game steps building lights 67 ms at a time (InteriorShape::sm_minLightUpdateMS).
+    for (lightTime += delta; lightTime >= .067; lightTime -= .067) for (const step of lightSteps) step(.067);
     camera.getWorldDirection(forward);
     right.crossVectors(forward, camera.up).normalize();
     move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
