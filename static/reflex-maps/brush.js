@@ -317,19 +317,20 @@
     return brushes;
   }
 
-  /* Texture coordinates of a face's corners, [u, v] in world units, as a guess at the game's mapping: the face is
-     projected on the axis plane it faces most (Quake 3's TextureAxisFromPlane, in the game's y-up axes), the
-     projection turned by `rotation` degrees and divided by the scale, and the offset added. Q3ToReflex converts Quake 3
-     faces so (its scale times two, Quake 3's 0.5 being the game's 1), with a note that it may not be right; how the
-     game itself maps them is unconfirmed. A scale of zero is taken as one. */
+  /* Texture coordinates of a face's corners, [u, v] in world units, as the game maps them (measured in the game):
+     u = (p · U + offset u / 16) / scaleU, the same for v, so the texture is anchored to the world and an offset of 16
+     moves it one unit toward −U whatever the scale. The frame comes from the face's outward normal n by the axis n is
+     nearest: U = (0, 0, 1) × n and V = n × U, except on faces looking mostly along z, where U = +x × n looking along −z
+     and +y × n along +z (U = +y, V = +x on a −z face; U = +x, V = +y on +z). So U flips where the nearest axis
+     changes (+y on a −z face turned 44° toward −x, −y at 46°), as it does in the game. `rotation` degrees turn both
+     right-handed about n. A scale of zero is taken as one. */
   function texcoords(brush, face) {
-    const points = polygonOf(brush, face), n = newell(points).map(Math.abs);
-    const [s, t] = n[1] >= n[0] && n[1] >= n[2] ? [[1, 0, 0], [0, 0, -1]] : n[0] >= n[2] ? [[0, 0, 1], [0, -1, 0]] : [[1, 0, 0], [0, -1, 0]];
-    const radians = (face.rotation || 0) * Math.PI / 180, c = Math.cos(radians), sn = Math.sin(radians);
-    return points.map(p => {
-      const a = dot(p, s), b = dot(p, t);
-      return [(a * c - b * sn) / (face.scaleU || 1) + (face.u || 0), (a * sn + b * c) / (face.scaleV || 1) + (face.v || 0)];
-    });
+    const points = polygonOf(brush, face), n = normalize(newell(points));
+    const reference = Math.abs(n[2]) >= Math.abs(n[0]) && Math.abs(n[2]) >= Math.abs(n[1]) ? (n[2] < 0 ? [1, 0, 0] : [0, 1, 0]) : [0, 0, 1];
+    const U0 = normalize(cross(reference, n)), V0 = cross(n, U0);
+    const radians = (face.rotation || 0) * Math.PI / 180, c = Math.cos(radians), s = Math.sin(radians);
+    const U = add(scale(U0, c), scale(V0, s)), V = add(scale(V0, c), scale(U0, -s));  // n × U0 = V0, n × V0 = −U0.
+    return points.map(p => [(dot(p, U) + (face.u || 0) / 16) / (face.scaleU || 1), (dot(p, V) + (face.v || 0) / 16) / (face.scaleV || 1)]);
   }
 
   exports.ReflexBrush = {

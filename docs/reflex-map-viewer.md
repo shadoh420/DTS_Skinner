@@ -71,7 +71,10 @@ textured colour.
 
 A face whose colour has alpha above zero is drawn in that colour, which is
 what most faces of stock maps carry (Furnace: 18 colours over 13 materials),
-taken as the sRGB bytes of a colour picker. A face with colour `0x00000000`,
+taken as the sRGB bytes of a colour picker. The dev materials are the
+exception: their shader (`…_TINTED`, which no other stock material uses) takes
+the material's tint, and in the game a face colour on them changes nothing, so
+the page leaves it off too. A face with colour `0x00000000`,
 or none, is drawn in its material's albedo, which is linear, as the game's
 physically based materials are. Shading is linear and the frame is encoded as
 sRGB: diffuse light from one fixed sun and the sky, and a grey surrounding
@@ -123,17 +126,19 @@ dev materials, on 221 faces. The theme packs (`ancient_japan`, `gothic`, `indust
 …) were not available to check and may hold more.
 
 For each textured material the import writes one picture into
-`local-data/reflex-maps/textures`: the albedo, darkened by the meta texture's
-blue channel where there is one. In the dev grids that channel is 1 with 0.6
-along the grid lines (and the normal map bevels them), so it is taken as
-ambient occlusion; what the game's shader does with it is not known. A diffuse
+`local-data/reflex-maps/textures`: the albedo, divided by the meta texture's
+blue channel where there is one. Only the dev grid's meta has that channel
+below 1 (0.6 along the grid lines), and in the game those lines are lighter
+than the face, almost white; the dev albedo is a flat light grey, so the
+page's lines are lighter but clip at white. (Imports from before this change
+darkened the lines; import again with "Re-import existing maps" ticked to
+bake them anew.) A diffuse
 texture keeps its alpha (ivy is alpha-keyed); an albedoSpec's alpha is its
 specular level and is left out. Thumbnails go to `thumbs`, 128 pixels. The
 page draws a textured face in its texture times its colour (the material's
 tint, or the face's own colour), repeating every 128 units at scale 1 for the
-game's textures: the dev grid's eight cells across are then 16 units, as
-`dev_grid16` says. That scale, like the projection of the texture onto the
-face (see the texture keys below), is a guess.
+game's textures, as in the game: the dev grid's eight cells across are 16
+units, as `dev_grid16` says.
 
 **Skinner's texture libraries.** The textures the import decodes are a
 fourth library beside the T1, T2 and Q3 ones: on the model page, *Reflex
@@ -314,23 +319,46 @@ stays on the grid. Other angles leave corners off the grid, as the game's do.
 **Texture keys**, as the game binds them: on the face under the cursor, or on
 the faces Shift-click picked while there are some (outlined in light blue;
 Ctrl+Shift-click adds and removes faces), the arrows
-move the texture a grid step (left and right along u, up and down along v),
+move the texture a grid step (left and right along u, up and down along v;
+the offset changes by 16 times the grid, as offsets are 1/16 unit),
 Home and Insert scale it up and down along u by a quarter, End and Delete
 along v, PgUp and PgDn flip it along u and v (the scale's sign), and `,` and
 `.` turn it by the angle step. Each press is a step of undo, for all the faces
 at once. A textured face shows the change in its texture; one whose material
 has none shows its texture coordinates as a pattern: tiles of 64 units shaded
-red along u and green along v, chequered every 16. Those coordinates are a
-guess at the game's mapping (`texcoords` in `brush.js`):
-Quake 3's, projecting the face on the axis plane it faces most, turning by
-the rotation, dividing by the scale and adding the offset, which is what
-[Q3ToReflex](https://github.com/chronokun/Q3ToReflex) assumes when it
-converts Quake 3 faces (with its scale doubled, and a note that offsets,
-scales and rotations may not come out right). The values written are what
-the keys set either way; only the preview may differ from the game. The
-steps (a grid step, a quarter, the angle step) are the page's choice: the
-stock maps' offsets are mostly multiples of 16, their scales other than 1
-mostly quarters and their rotations mostly multiples of 45.
+red along u and green along v, chequered every 16.
+
+Those coordinates follow the game's mapping as measured on test maps in the
+game (`texcoords` in `brush.js`): u = (p · U + offset u / 16) / scale u in
+world units, the same for v, so the texture is anchored to the world, one
+repeat is 128 units at scale 1 and an offset of 16 moves it one unit toward
+−U whatever the scale (64 moved it 4 units at scales 2, 0.5 and −1). U and V
+come from the face's outward normal n (in the map file's coordinates):
+
+| Face looks along | u grows toward | v grows toward |
+| --- | --- | --- |
+| −z | +y | +x |
+| +z | +x | +y |
+| +x | +y | +z |
+| −x | −y | +z |
+| +y (a floor) | −x | +z |
+| −y (a ceiling) | +x | +z |
+
+In general U and V come from the axis n is nearest: U = (0, 0, 1) × n and
+V = n × U, except when n is nearest ±z, where U = (1, 0, 0) × n looking
+along −z and (0, 1, 0) × n along +z. So slopes keep square cells, and u flips
+where the nearest axis changes: a face turned 44° from −z toward −x has u
+growing up, at 46° down. That was checked in the game on 30 tilted faces
+(walls turned up to 46°, slopes of 25 to 60°, floors and ceilings tilted
+toward each side, both sides of each 45° boundary), by the way an offset moved
+the texture across the seam with a plain twin. A rotation turns U and V
+right-handed about n (+90 on a face looking along −z turns u from +y to +x). The
+arrows step as the game's do (Right adds 256 with a Snap Distance of 16). Two
+things differ on purpose: the game's `,` and `.` turn by 90 whatever the
+Angle, and its keys change every face of the selected brush; the page keeps
+the angle step and the face under the cursor or picked.
+The stock maps' scales other than 1 are mostly quarters and their rotations
+mostly multiples of 45.
 
 **The clipper** (C, as the game's `editortoggleclipmode`, which was bound but
 listed as unimplemented in 2015, so this is Radiant's clipper in the game's
@@ -559,10 +587,9 @@ random convex brushes.
 
 - **Textures**: lit by one fixed sun and the sky, with the editor's grid
   while editing; normal maps, specular and the game's own shaders are not
-  drawn. How the game maps a face's offset, scale and rotation to texture
-  coordinates, and how many units one repeat of a texture covers, have not
-  been checked against the game: the page uses Quake 3's projection and 128
-  units. Library textures show in Skinner only.
+  drawn. The texture mapping was measured in the game; on slopes the
+  direction of v is taken from u × v = n, as on the axis faces, not measured
+  by itself. Library textures show in Skinner only.
 - **Effects** (the game's models, by `effectName`) are marked as small grey
   points while editing, not drawn. Sky, fog and the baked light are not drawn;
   the background is the WorldSpawn's horizon colour.

@@ -85,15 +85,17 @@ def decode_dds(raw):
 
 def bake(albedo, meta=None, size=1024, alpha=False):
     """The colour of a surface as the page draws it: the albedo's colour (its alpha, the specular level of an
-    albedoSpec texture, left out unless `alpha`: a diffuse texture's alpha is how see-through it is), darkened by the
-    meta texture's blue channel where there is one. In the dev grid materials that channel is 1 with 0.6 along the
-    grid lines, so it is taken as ambient occlusion; what the game's shader does with it is not known. Scaled down
-    to `size` at most."""
-    from PIL import Image, ImageChops
+    albedoSpec texture, left out unless `alpha`: a diffuse texture's alpha is how see-through it is), divided by the
+    meta texture's blue channel where there is one. Only the dev grid's meta has that channel below 1 (0.6 along the
+    grid lines), and the game draws those lines about 1/0.6 times lighter than the face (in linear light); the dev
+    albedo is a flat 0.9, so here they clip at white. Scaled down to `size` at most."""
+    import numpy as np
+    from PIL import Image
     colour = albedo.convert('RGB')
     if meta is not None:
-        shade = meta.getchannel('B').resize(colour.size, Image.Resampling.BILINEAR)
-        colour = ImageChops.multiply(colour, Image.merge('RGB', (shade, shade, shade)))
+        shade = np.asarray(meta.getchannel('B').resize(colour.size, Image.Resampling.BILINEAR), dtype=np.float32) / 255
+        lit = np.asarray(colour, dtype=np.float32) / np.maximum(shade, 1 / 255)[..., None] ** (1 / 2.2)
+        colour = Image.fromarray(np.clip(np.rint(lit), 0, 255).astype(np.uint8), 'RGB')
     if max(colour.size) > size:
         scale = size / max(colour.size)
         colour = colour.resize((max(1, round(colour.width * scale)), max(1, round(colour.height * scale))), Image.Resampling.LANCZOS)

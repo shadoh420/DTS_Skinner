@@ -216,9 +216,10 @@ class ReflexTexturesTest(unittest.TestCase):
             game = Path(directory) / 'Reflex Arena'
             (game / 'maps').mkdir(parents=True)
             (game / 'maps/Test Walk.map').write_text(MAP, newline='')
-            # The albedo is a flat grey and the meta texture's blue channel darkens it along a line, as the dev grid's.
+            # The albedo is a flat grey and the meta texture's blue channel is 0.6 along a line, as the dev grid's: the game
+            # draws that line lighter.
             meta = Image.new('RGBA', (8, 8), (161, 0, 255, 255))
-            for y in range(8): meta.putpixel((0, y), (255, 0, 0, 255))
+            for y in range(8): meta.putpixel((0, y), (255, 0, 153, 255))
             (game / 'base').mkdir()
             with zipfile.ZipFile(game / 'base/structural.pak', 'w') as pak:
                 pak.writestr('structural/dev/dev_grey128.material', material('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED',
@@ -239,7 +240,7 @@ class ReflexTexturesTest(unittest.TestCase):
             # BC1 keeps colours to within a few levels.
             self.assertEqual(baked.mode, 'RGB')
             self.assertTrue(all(abs(channel - 200) < 10 for channel in baked.getpixel((4, 4))), baked.getpixel((4, 4)))
-            self.assertLess(baked.getpixel((0, 4))[0], 150)
+            self.assertGreater(baked.getpixel((0, 4))[0], 240)
             self.assertEqual(Image.open(pack / 'thumbs' / entry['thumb']).size, (128, 128))
             # Every material of the game is listed for the browser, also those no map names.
             self.assertIn('structural/dev/dev_unused', colours)
