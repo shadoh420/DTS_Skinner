@@ -66,7 +66,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function materialOf(name) {
     if (!materials.has(name)) {
       const read = packColours[name];
-      if (read && read.colour) materials.set(name, {albedo: read.colour.map(linear), metallic: read.metallic || 0, roughness: read.roughness ?? .8});
+      if (read && read.colour) materials.set(name, {albedo: read.colour.map(linear), metallic: read.metallic || 0, roughness: read.roughness ?? .8, sss: read.sss || 0});
       else {
         const known = Object.keys(GUESSED).find(key => name.includes(key));
         let colour = known && GUESSED[known];
@@ -82,14 +82,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     return materials.get(name);
   }
   // Glowing materials (common/materials/effects/glow: shader standard_ALBEDOCOLOUR_ALBEDOINTENSITY) are not lit: they
-  // shine their colour times their intensity.
+  // shine (colour × intensity)^2.2, as that shader has it; so do the other forward (standard_…) shaders the game draws
+  // solid (their material's flags lack 0x200), at intensity 1. What this gives is the factor on the raised colour.
   const GLOWS = /standard_ALBEDOCOLOUR_ALBEDOINTENSITY/;
+  const isForward = read => /^internal\/shaders\/standard_/.test(read.shader || '');
   function glowOf(name) {
     const read = packColours[name];
-    return read && GLOWS.test(read.shader || '') ? read.intensity ?? 1 : 0;
+    if (!read) return 0;
+    if (GLOWS.test(read.shader || '')) return (read.intensity ?? 1) ** 2.2;
+    // Water, lava and slime (internal/shaders/fluid): unlit, (colour × 3.3)^2.2; water is added (isSeeThrough).
+    if (/^internal\/shaders\/fluid/.test(read.shader || '')) return 3.3 ** 2.2;
+    return isForward(read) && read.flags !== undefined && !(read.flags & 0x200) ? 1 : 0;
   }
   // Diffuse colour, the colour of reflections at normal incidence (1.54 % for anything not metal, as the game's
-  // lighting shader has it, the albedo for metal) and roughness; for a glowing material its light (emit 1).
+  // lighting shader has it, the albedo for metal) and roughness; for a glowing material its light (emit 1). A
+  // translucent one (…_SSS shaders: paper, cloth) carries its sss as a negative emit.
   function faceShade(face) {
     const material = LIBRARY.test(face.material || '') ? {albedo: [1, 1, 1], metallic: 0, roughness: .8} : materialOf(face.material || ''), own = M.colourOf(face);
     // The game leaves a face's colour off the dev materials, whose shader (…_TINTED) takes the material's own tint.
@@ -97,10 +104,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     const albedo = own && !tinted ? own.slice(0, 3).map(linear) : material.albedo, metallic = material.metallic;
     const glow = glowOf(face.material || '');
     if (glow) return {diffuse: albedo.map(c => c * glow), specular: [0, 0, 0], roughness: 1, emit: 1};
-    return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .015395 * (1 - metallic) + c * metallic), roughness: material.roughness, emit: 0};
+    return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .015395 * (1 - metallic) + c * metallic), roughness: material.roughness, emit: -(material.sss || 0)};
   }
   // See-through materials, by shader (light beams, glass, race start and finish, pickup and powerup glows) or by
-  // name for water, whose fluid shader lava and slime share; drawn after everything else, faintly.
+  // name for water, whose fluid shader lava and slime share; drawn after everything else, added (ADDED).
   const SEE_THROUGH = /alphaFresnel|GLASS|raceStartFinish|glowPickup|powerup/;
   const isSeeThrough = face => {
     const name = face.material || '', read = packColours[name];
@@ -125,7 +132,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     uProbeIndex: {value: empty3D}, uCube: {value: emptyArray},
     uLightCount: {value: 0}, uLightCell: {value: 128}, uLightOrigin: {value: new THREE.Vector3()}, uLightSize: {value: [1, 1, 1]},
     uLights: {value: null}, uLightList: {value: null}, uLightCells: {value: empty3D},
-    uSun: {value: new THREE.Vector3(0, 1, 0)}, uSunColour: {value: new THREE.Vector3()}, uSunMatrix: {value: new THREE.Matrix4()}, uSunDepth: {value: null}, uSunTexel: {value: 0}};
+    uSun: {value: new THREE.Vector3(0, 1, 0)}, uSunColour: {value: new THREE.Vector3()}, uSunMatrix: {value: new THREE.Matrix4()}, uSunDepth: {value: null}, uSunTexel: {value: 0},
+    uSunBias: {value: 0}, uNearMatrix: {value: new THREE.Matrix4().makeTranslation(9, 9, 9)}, uNearDepth: {value: null}, uNearBias: {value: 0}};
   for (let i = 0; i < 7; i++) uniforms['uSH' + i] = {value: empty3D};
   scene.onBeforeRender = (_, __, view) => uniforms.uEye.value.set(view.position.x, view.position.y, -view.position.z);
   const LIGHTING = `precision highp sampler3D; precision highp sampler2DArray;
@@ -133,22 +141,40 @@ window.addEventListener('DOMContentLoaded', async () => {
     uniform sampler3D uSH0, uSH1, uSH2, uSH3, uSH4, uSH5, uSH6, uProbeIndex; uniform sampler2DArray uCube;
     uniform float uLightCount, uLightCell; uniform vec3 uLightOrigin; uniform ivec3 uLightSize;
     uniform sampler2D uLights, uLightList; uniform sampler3D uLightCells;
-    uniform vec3 uSun, uSunColour; uniform mat4 uSunMatrix; uniform sampler2D uSunDepth; uniform float uSunTexel;
-    // The sun (gbuffer_light_directional): the lights' BRDF from its direction, where its shadow map sees the point
-    // (3 × 3 samples; the game filters its cascades about as softly).
-    vec3 sunLight(vec3 p, vec3 n, vec3 v, vec3 diffuse, vec3 f0, float rough) {
-      float nl = clamp(dot(n, uSun), 0., 1.);
-      if (uSunTexel <= 0. || nl <= 0.) return vec3(0.);
-      vec4 s = uSunMatrix * vec4(p.x, p.y, -p.z, 1.);
+    uniform vec3 uSun, uSunColour; uniform mat4 uSunMatrix, uNearMatrix; uniform sampler2D uSunDepth, uNearDepth; uniform float uSunTexel, uSunBias, uNearBias;
+    // How much of the sun reaches the point in one shadow map: a 3 × 3 texel box, each compare weighted bilinearly, so
+    // edges ramp instead of stepping (the game's cascades are about as soft). -1 outside the map.
+    float sunShadow(sampler2D depth, mat4 matrix, float bias, vec3 p) {
+      vec4 s = matrix * vec4(p.x, p.y, -p.z, 1.);
       vec3 q = s.xyz / s.w * .5 + .5;
-      float bias = uSunTexel * 2. * (1. + 3. * sqrt(1. - nl * nl) / max(nl, .05)), lit = 0.;
-      for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++)
-        lit += q.z - bias <= texture(uSunDepth, q.xy + vec2(x, y) * uSunTexel).r ? 1. : 0.;
-      if (any(lessThan(q, vec3(0.))) || any(greaterThan(q, vec3(1.)))) lit = 9.;
+      if (any(lessThan(q, vec3(.002))) || any(greaterThan(q, vec3(.998)))) return -1.;
+      vec2 t = q.xy / uSunTexel - .5, f = fract(t), at = (floor(t) + .5) * uSunTexel;
+      float lit = 0.;
+      for (int y = -1; y <= 2; y++) for (int x = -1; x <= 2; x++) {
+        float w = (x == -1 ? 1. - f.x : x == 2 ? f.x : 1.) * (y == -1 ? 1. - f.y : y == 2 ? f.y : 1.);
+        lit += w * (q.z - bias <= texture(depth, at + vec2(x, y) * uSunTexel).r ? 1. : 0.);
+      }
+      return lit / 9.;
+    }
+    // Light through a translucent surface (the _SSS shaders' sss times the albedo's red, s): 2 s (t + s (w − t)) of
+    // the diffuse light whichever way the surface faces, t = sat(v · −l)⁴ toward the viewer, w = sat(0.6 (−n · l) + 0.4).
+    vec3 through(vec3 n, vec3 v, vec3 l, float s, vec3 diffuse, vec3 light) {
+      float t = clamp(dot(v, -l), 0., 1.); t *= t; t *= t;
+      return 2. * s * (t + s * (clamp(dot(-n, l) * .6 + .4, 0., 1.) - t)) * diffuse * light;
+    }
+    // The sun (gbuffer_light_directional): the lights' BRDF from its direction, where its shadow maps see the point:
+    // the fine one around the viewer, else the one of the whole map.
+    vec3 sunLight(vec3 p, vec3 n, vec3 v, vec3 diffuse, vec3 f0, float rough, float s) {
+      float nl = clamp(dot(n, uSun), 0., 1.);
+      if (uSunTexel <= 0. || (nl <= 0. && s <= 0.)) return vec3(0.);
+      float slope = 2. * (1. + 3. * sqrt(1. - nl * nl) / max(nl, .05));
+      float lit = sunShadow(uNearDepth, uNearMatrix, uNearBias * slope, p);
+      if (lit < 0.) lit = sunShadow(uSunDepth, uSunMatrix, uSunBias * slope, p);
+      if (lit < 0.) lit = 1.;
       float a2 = rough * rough; a2 *= a2;
       float nh = max(clamp(dot(n, normalize(v + uSun)), 0., 1.), .01), den = nh * nh * (a2 - 1.) + 1.;
-      vec3 light = uSunColour * nl * lit / 9.;
-      return (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * light + a2 / (3.14159265 * den * den) * f0 * light * 2.;
+      vec3 light = uSunColour * nl * lit;
+      return (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, uSun, s, diffuse, uSunColour * lit)) + a2 / (3.14159265 * den * den) * f0 * light * 2.;
     }
     vec3 probeLight(vec3 p, vec3 n) {
       if (uLit < .5) return uAmbient;
@@ -171,7 +197,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     // The map's point and spot lights (light.js lightGrid), as gbuffer_light_point and gbuffer_light_spot light a
     // surface: Lambert diffuse and a GGX highlight, twice; only the lights of the point's grid cell (at most 64).
-    vec3 dynamicLight(vec3 p, vec3 n, vec3 v, vec3 diffuse, vec3 f0, float rough) {
+    vec3 dynamicLight(vec3 p, vec3 n, vec3 v, vec3 diffuse, vec3 f0, float rough, float s) {
       if (uLightCount < .5) return vec3(0.);
       ivec3 c = ivec3(floor((p - uLightOrigin) / uLightCell));
       if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, uLightSize))) return vec3(0.);
@@ -188,20 +214,20 @@ window.addEventListener('DOMContentLoaded', async () => {
         float fall = clamp(1. - (distance - a.w) / max(b.w - a.w, 1e-3), 0., 1.); fall *= fall;
         if (e.y > .5) { float edge = clamp((dot(-l, d.xyz) - d.w) * e.x, 0., 1.); fall *= edge * edge; }
         float nl = clamp(dot(n, l), 0., 1.);
-        if (fall * nl <= 0.) continue;
+        if (fall <= 0. || (nl <= 0. && s <= 0.)) continue;
         float nh = max(clamp(dot(n, normalize(v + l)), 0., 1.), .01), den = nh * nh * (a2 - 1.) + 1.;
         vec3 light = b.rgb * fall * nl;
-        sum += (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * light + a2 / (3.14159265 * den * den) * f0 * light * 2.;
+        sum += (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, l, s, diffuse, b.rgb * fall)) + a2 / (3.14159265 * den * den) * f0 * light * 2.;
       }
       return sum;
     }
-    vec3 shade(vec3 diffuse, vec3 f0, float rough, vec3 p, vec3 n) {
+    vec3 shade(vec3 diffuse, vec3 f0, float rough, vec3 p, vec3 n, float s) {
       vec3 v = normalize(uEye - p); float nv = dot(n, v);
       vec4 k = rough * vec4(-1., -.0275, -.572, .022) + vec4(1., .0425, 1.04, -.04);
       float a004 = min(k.x * k.x, exp2(-9.28 * clamp(nv, 0., 1.))) * k.x + k.y;
       vec2 ab = vec2(-1.04, 1.04) * a004 + k.zw;
       vec3 spec = reflected(p, 2. * nv * n - v, rough) * (f0 * ab.x + ab.y);
-      return (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * probeLight(p, n) + spec + dynamicLight(p, n, v, diffuse, f0, rough) + sunLight(p, n, v, diffuse, f0, rough);
+      return (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * probeLight(p, n) + spec + dynamicLight(p, n, v, diffuse, f0, rough, s) + sunLight(p, n, v, diffuse, f0, rough, s);
     }`;
   const brushMaterial = new THREE.ShaderMaterial({
     uniforms,
@@ -228,7 +254,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (texel.a < .5) discard;  // Alpha-keyed, as the game's ALPHAKEYED shaders are.
         albedo *= pow(texel.rgb, vec3(2.2));
         #endif
-        vec3 c = vEmit > .5 ? albedo : shade(albedo, vSpecular, vRough, vPos, n);
+        vec3 c = vEmit > .5 ? albedo : shade(albedo, vSpecular, vRough, vPos, n, max(-vEmit, 0.) * vColor.r);
         if (uGrid > 0.) {
           vec3 p = vPos / uGrid, w = fwidth(p) + 1e-5;
           vec3 g = abs(fract(p - .5) - .5) / w + abs(n) * 1e3;
@@ -238,18 +264,27 @@ window.addEventListener('DOMContentLoaded', async () => {
           float major = 1. - min(min(min(gq.x, gq.y), gq.z), 1.);
           c = mix(c, c * .45 + .004, max(line * .5, major) * clamp(1. - vDepth / 3000., 0., 1.));
         }
-        gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);
+        gl_FragColor = vec4(c, 1.);
       }`,
   });
   const clipMaterial = new THREE.MeshBasicMaterial({color: 0xb04cff, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide});
   const selectedFill = new THREE.MeshBasicMaterial({color: 0xf0c674, transparent: true, opacity: .25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1});
   const selectedEdges = new THREE.LineBasicMaterial({color: 0xf0c674, transparent: true, opacity: .9, depthTest: false});
-  const glassMaterial = brushMaterial.clone();
-  Object.assign(glassMaterial, {transparent: true, depthWrite: false, side: THREE.DoubleSide});
+  // See-through forward shaders (teleporter rings, glass, water, light strips) add their colour to the frame, in linear
+  // light: the game's material flags give them its additive blends (assumed from the flags of its materials, the same
+  // for its particles called …ADDITIVE; ponytail: its alpha and premultiplied blends are drawn added too). Front faces
+  // only: none of these shaders is …DOUBLESIDED, and the game culls back faces.
+  const ADDED = {transparent: true, depthWrite: false, side: THREE.FrontSide, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor};
+  const glassMaterial = Object.assign(brushMaterial.clone(), ADDED);
   glassMaterial.uniforms = uniforms;
-  glassMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);', 'gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), .35);');
+  // Light beams, race starts and finishes, pickup and powerup glows on brush faces (Phobos, Aerowalk, TheCatalyst):
+  // their own shaders are not drawn; they stay faint, a third over what is behind them, from both sides.
+  const FAINT = /alphaFresnel|raceStartFinish|glowPickup|powerup/, faint = {key: 'faint'};
+  const faintMaterial = Object.assign(brushMaterial.clone(), {transparent: true, depthWrite: false, side: THREE.DoubleSide});
+  faintMaterial.uniforms = uniforms;
+  faintMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(c, 1.);', 'gl_FragColor = vec4(c, .35);');
   const world = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), clips = new THREE.Mesh(new THREE.BufferGeometry(), clipMaterial);
-  const glass = new THREE.Mesh(new THREE.BufferGeometry(), glassMaterial);
+  const glass = new THREE.Mesh(new THREE.BufferGeometry(), [glassMaterial]);
   // The brushes that are a teleporter's, jump pad's, race start's or finish's or trigger's volume: shown while editing.
   const volumes = new THREE.Mesh(new THREE.BufferGeometry(), []);
   // The edges of the volumes the game's editor does not draw (race starts and finishes), faint, so they can be found;
@@ -338,7 +373,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       uniforms: {...uniforms, uMap: {value: white}, uRepeat: {value: new THREE.Vector2(source.repeat || 128, source.repeat || 128)}},
       defines: {USE_MAP: ''}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
     });
-    if (source.shine) Object.assign(material, {transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending});
+    if (source.shine) Object.assign(material, ADDED);
     texturedMaterials.set(source.key, material);
     new THREE.TextureLoader().load(source.url, texture => {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -347,6 +382,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       texture.needsUpdate = true;
       material.uniforms.uMap.value = texture;
       if (!source.repeat) material.uniforms.uRepeat.value.set(texture.image.width / 2, texture.image.height / 2);
+      sunStale = true;  // its cut-out shadow, from the next frame
     }, undefined, () => { textureFailures.add(source.key); showNotes(); });
     return material;
   }
@@ -425,17 +461,40 @@ window.addEventListener('DOMContentLoaded', async () => {
   // (ponytail: every model again on each change; cache per entity if large maps edit slowly).
   let packEffects = {effects: {}, pickups: {}, entities: {}};
   const meshes = new Map();  // model file -> its parts once loaded (null when it could not load)
-  // Holograms (pickups) shine through their many layers, drawn over what is behind them at 60 % (added, they would
-  // sum to white); textured ones (teleporter ribbons) add to it (texturedMaterial).
-  const shineMaterial = brushMaterial.clone();
-  Object.assign(shineMaterial, {transparent: true, depthWrite: false, side: THREE.DoubleSide});
-  shineMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);', 'gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), .6);');
+  // Models' see-through forward shaders add as the brushes' do (ADDED); textured ones through texturedMaterial.
+  const shineMaterial = Object.assign(brushMaterial.clone(), ADDED);
   shineMaterial.uniforms = uniforms;
+  // Pickup holograms and ammo glows, as the game's hologram and glowPickup shaders shade them (read from its compiled
+  // shaders; ponytail: their noise, scan lines and movement are left out, the scan lines as their average): vColor is
+  // the material's colour as it is, vTex.x the height up the model over the material's vSize, vTex.y its gradMul.
+  // Holograms are brightest facing the viewer and glows at their rim; either is bright enough to bloom.
+  const forwardShade = body => Object.assign(new THREE.ShaderMaterial({uniforms, vertexShader: brushMaterial.vertexShader,
+    fragmentShader: `uniform vec3 uEye; varying vec3 vColor; varying vec3 vNormal; varying vec3 vPos; varying vec2 vTex;
+      float wrap(float x) { return sign(x) * fract(abs(x)); }
+      void main() { vec3 n = normalize(vNormal); float facing = clamp(dot(n, normalize(uEye - vPos)), 0., 1.); ${body} }`}), ADDED);
+  const FORWARD_SHADES = {
+    hologram: forwardShade(`vec3 b = (vColor + .09) * clamp(1. - vTex.x, 0., 1.) * vTex.y + .4 * clamp(wrap(vTex.x * .5) + .5, 0., 1.);
+      float f = pow(facing, 8.);
+      vec3 x = b * b * (1. + 3.2 * f) + .2 * f;
+      x *= (1. + 4. * clamp(-n.y, 0., 1.)) * (1. + 2. * clamp(n.y, 0., 1.));
+      gl_FragColor = vec4(pow(1.5 * x, vec3(1.5)) * 1.5, 1.);`),  // × its alpha, 1.5
+    glowPickup: forwardShade(`float f = pow(1. - facing, 3.), s = clamp(wrap(vTex.x * .666667) * .75 + .5, 0., 1.);
+      float r = 10.24 * f * s * s + .32 * f;
+      gl_FragColor = vec4(((.8 * s * vColor + 1.) * r + .05 * s) * vColor, 1.);`),
+    // Light beams and pads' glows: sat(sat(n · v)^pow × mul) of their colour (× intensityMul), n turned to the viewer
+    // (both sides drawn); mul and pow ride in the texture coordinates.
+    alphaFresnel: Object.assign(forwardShade(`float f = clamp(pow(abs(dot(n, normalize(uEye - vPos))), vTex.y) * vTex.x, 0., 1.);
+      gl_FragColor = vec4(f * vColor, 1.);`), {side: THREE.DoubleSide}),
+  };
   const models = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), modelShine = new THREE.Mesh(new THREE.BufferGeometry(), [shineMaterial]);
   // What the game shows in its editor only (a reflection probe's sphere).
   const editorModels = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]);
   modelShine.renderOrder = 1;
-  root.add(models, modelShine, editorModels);
+  // The models' shadow meshes, drawn only into the sun's shadow maps (layer 1). Written by the import as a part of
+  // material slot 255.
+  const SHADOW_PART = 255, modelShadow = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial());
+  modelShadow.layers.set(1);
+  root.add(models, modelShine, editorModels, modelShadow);
   let modelBuild = 0;
   function readModel(buffer) {
     const view = new DataView(buffer), parts = [];
@@ -505,6 +564,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const build = ++modelBuild, placed = modelInstances();
     const wanted = [...new Set(placed.flatMap(({effect}) => effect.meshes.map(record => record.file)))].filter(file => !meshes.has(file));
     buildLights(placed.filter(item => !item.editorOnly));
+    buildParticles(placed.filter(item => !item.editorOnly));
     if (wanted.length) {
       Promise.all(wanted.map(file => fetch(`${data}models/${encodeURIComponent(file)}`).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null)
         .then(buffer => meshes.set(file, buffer && readModel(buffer))))).then(() => { if (build === modelBuild) buildModels(); });
@@ -515,39 +575,50 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (drawn !== modelsDrawn) { modelsDrawn = drawn; mergeModels(placed); }
     editorModels.visible = editing;
     updateSun();
+    applySky();
   }
   // Every placed mesh part into the geometry of where it goes: lit (per texture, untextured first), shining, or the
   // editor's; planned first (material, colour, count), then written into arrays of their final size.
   function mergeModels(placed) {
     const lit = new Map([[null, {source: null, plans: [], count: 0}]]), shine = new Map([[null, {source: null, plans: [], count: 0}]]), editor = {source: null, plans: [], count: 0};
+    const shadowPlans = [];
     for (const {effect, matrix, entity, editorOnly} of placed) {
       for (const record of effect.meshes) {
         const parts = meshes.get(record.file);
         if (!parts) continue;
+        const ownShadow = parts.some(part => part.material === SHADOW_PART);
         for (const part of parts) {
+          if (part.material === SHADOW_PART || (!ownShadow && !editorOnly)) {
+            if (!editorOnly) shadowPlans.push({part, matrix, scale: record.scale || 1});
+            if (part.material === SHADOW_PART) continue;
+          }
           // The material: the entity's (materialNName), else the effect's, else the mesh's; the colour: the entity's
           // (materialNAlbedo), else the effect's, else the material's, raised to 2.2 as the game does. Parts given a
           // clip material are not drawn, as the game draws no clip faces.
           const slot = part.material, name = M.property(entity, `material${slot}Name`) || record.materials[slot] || '';
           // God rays and light beams fade with the view in the game; they are left out.
           const read = packColours[name] || {};
-          if (isClip({material: name}) || /godrays|alphaFresnel/.test(read.shader || '')) continue;
+          if (isClip({material: name}) || /godrays/.test(read.shader || '')) continue;
           const own = M.property(entity, `material${slot}Albedo`), ownColour = own !== undefined && hexColour(own);
           const set = record.colours[slot], material = materialOf(name), glow = glowOf(name);
           const given = ownColour && ownColour[0] > 0 ? ownColour.slice(1) : set ? set.slice(0, 3) : null;
-          // Holograms and the forward shaders (standard_…: ribbons, glass) shine their colour; glows are solid and shine.
-          const shines = !glow && (/hologram|^internal\/shaders\/standard_/.test(read.shader || '') || SEE_THROUGH.test(read.shader || ''));
+          // Holograms, pickup glows and the see-through forward shaders (standard_…: rings, ribbons, glass) add their
+          // colour to the frame; glows and solid forward shaders are solid and shine.
+          const shader = read.shader || '', kind = (/hologram|glowPickup|alphaFresnel/.exec(shader) || [])[0], fresnel = kind === 'alphaFresnel' && (read.fresnel || [.1, 4, .075]);
+          const shines = !glow && Boolean(kind || isForward(read) || SEE_THROUGH.test(shader));
           let out = editorOnly ? editor : null;
           if (!out) {
-            const texture = read.texture, key = texture ? (shines ? 'shine:' : 'model:') + texture : null, into = shines ? shine : lit;
-            if (!into.has(key)) into.set(key, {source: {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines}, plans: [], count: 0});
+            const texture = !kind && read.texture, key = kind || (texture ? (shines ? 'shine:' : 'model:') + texture : null), into = shines ? shine : lit;
+            if (!into.has(key)) into.set(key, {source: kind ? null : {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines}, material: kind && FORWARD_SHADES[kind], plans: [], count: 0});
             out = into.get(key);
           }
-          // A hologram's colour is drawn bright, as it glows in the game (ponytail: its own shader, with its fresnel and
-          // scan lines, is not drawn: its colour, unraised, over what is behind it looks alike).
-          const shown = shines ? (given || read.colour || [1, 1, 1]) : given ? given.map(linear) : material.albedo;
+          // Holograms and glows shade their colour as it is; the standard_ shaders raise it to 2.2, and take the
+          // mesh's vertex colours only where their name says VERTEXCOLOUR.
+          const forward = shines && isForward(read), colour = given || read.colour || [1, 1, 1];
+          const shown = fresnel ? colour.map(c => c * fresnel[2]) : kind ? colour : forward ? colour.map(linear) : shines ? colour : given ? given.map(linear) : material.albedo;
           out.plans.push({part, matrix, scale: record.scale || 1, shown, glow, metallic: glow || shines ? 0 : material.metallic,
-            emit: glow || shines ? 1 : 0, roughness: material.roughness});
+            emit: glow || shines ? 1 : -(material.sss || 0), roughness: material.roughness, vertexColours: Boolean(fresnel) || (!kind && !(forward && !/VERTEXCOLOUR/.test(shader))),
+            gradient: kind && !fresnel && (read.gradient || (kind === 'hologram' ? [56, .75] : [24, .025])), fresnel});
           out.count += part.indices.length;
         }
       }
@@ -560,8 +631,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (materials) materials.length = 0;
       let at = 0;
       for (const bucket of buckets) {
-        if (materials && bucket.count) { geometry.addGroup(at, bucket.count, materials.length); materials.push(bucket.source ? texturedMaterial(bucket.source) : mesh === modelShine ? shineMaterial : brushMaterial); }
-        for (const {part, matrix: m, scale: s, shown, glow, metallic, emit: shining, roughness: rough} of bucket.plans) {
+        if (materials && bucket.count) { geometry.addGroup(at, bucket.count, materials.length); materials.push(bucket.material || (bucket.source ? texturedMaterial(bucket.source) : mesh === modelShine ? shineMaterial : brushMaterial)); }
+        for (const {part, matrix: m, scale: s, shown, glow, metallic, emit: shining, roughness: rough, vertexColours, gradient, fresnel} of bucket.plans) {
           const {positions, normals, uvs, colours, indices} = part;
           for (const index of indices) {
             const x = positions[index * 3] * s, y = positions[index * 3 + 1] * s, z = positions[index * 3 + 2] * s;
@@ -569,10 +640,13 @@ window.addEventListener('DOMContentLoaded', async () => {
             for (let r = 0; r < 3; r++) position[at * 3 + r] = m[r][0] * x + m[r][1] * y + m[r][2] * z + m[r][3];
             const tx = m[0][0] * nx + m[0][1] * ny + m[0][2] * nz, ty = m[1][0] * nx + m[1][1] * ny + m[1][2] * nz, tz = m[2][0] * nx + m[2][1] * ny + m[2][2] * nz, l = Math.hypot(tx, ty, tz) || 1;
             normal[at * 3] = tx / l; normal[at * 3 + 1] = ty / l; normal[at * 3 + 2] = tz / l;
-            texcoord[at * 2] = uvs[index * 2]; texcoord[at * 2 + 1] = uvs[index * 2 + 1];
+            // A hologram's or glow's shading runs up the mesh as it is (before its scale), over its material's height.
+            if (gradient) { texcoord[at * 2] = positions[index * 3 + 1] / gradient[0]; texcoord[at * 2 + 1] = gradient[1]; }
+            else if (fresnel) { texcoord[at * 2] = fresnel[0]; texcoord[at * 2 + 1] = fresnel[1]; }
+            else { texcoord[at * 2] = uvs[index * 2]; texcoord[at * 2 + 1] = uvs[index * 2 + 1]; }
             // The mesh's vertex colour (BGRA) multiplies the albedo (2.2 too), as the game's stylized shader has it.
             for (let k = 0; k < 3; k++) {
-              const base = shown[k] * LINEAR_BYTE[colours[index * 4 + 2 - k]];  // BGRA
+              const base = shown[k] * (vertexColours ? LINEAR_BYTE[colours[index * 4 + 2 - k]] : 1);  // BGRA
               color[at * 3 + k] = glow ? base * glow : base * (1 - metallic);
               specular[at * 3 + k] = shining ? 0 : .015395 * (1 - metallic) + base * metallic;
             }
@@ -585,7 +659,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       geometry.computeBoundingSphere();
     };
     fill(models, [...lit.values()], models.material);
-    models.layers.enable(1);
+    // The sun's shadows of models: each mesh's shadow mesh (the game casts with it: trees and shrubs by their solid
+    // hull, not their leaf cards); a mesh from a pack imported without them casts with what it shows.
+    const shadow = [];
+    for (const {part, matrix: m, scale: s} of shadowPlans) {
+      const {positions, indices} = part;
+      for (const index of indices) {
+        const x = positions[index * 3] * s, y = positions[index * 3 + 1] * s, z = positions[index * 3 + 2] * s;
+        for (let r = 0; r < 3; r++) shadow.push(m[r][0] * x + m[r][1] * y + m[r][2] * z + m[r][3]);
+      }
+    }
+    modelShadow.geometry.dispose();
+    modelShadow.geometry = new THREE.BufferGeometry();
+    modelShadow.geometry.setAttribute('position', new THREE.Float32BufferAttribute(shadow, 3));
     fill(modelShine, [...shine.values()], modelShine.material);
     fill(editorModels, [editor], editorModels.material);
   }
@@ -594,6 +680,44 @@ window.addEventListener('DOMContentLoaded', async () => {
   // intensity 2 four times). A PointLight without them has near 16, far 128 and intensity 1 (measured, ±4).
   const lightColour = (colour, intensity) => colour.map(c => .87 * (c * intensity) ** 2);
   let lightTextures2 = [];
+  // Particles (ponytail: one still sprite per emitter, where the game streams them; bloom does the rest): an
+  // additive emitter (its material's flags have 0x40: flames, sparks) as a sprite of the first frame of its
+  // texture's flipbook, its birth size wide, in its birth colour^2.2 times the material's albedoIntensity (or its
+  // colour^2.2, standard_ shaders), times how many the game keeps alive at once (rate × mean lifetime), at the bone
+  // it emits from. Smoke (blended, not added) is left out.
+  const particles = new THREE.Group(), particleHeight = {value: 1};
+  root.add(particles);
+  function buildParticles(placed) {
+    for (const points of particles.children.splice(0)) { points.geometry.dispose(); points.material.dispose(); }
+    const byTexture = new Map();
+    for (const {effect, matrix} of placed) for (const particle of effect.particles || []) {
+      const read = packColours[particle.material];
+      if (!read || !read.texture || !(read.flags & 0x40)) continue;
+      const scale = Math.hypot(matrix[0][0], matrix[1][0], matrix[2][0]), p = particle.position || [0, 0, 0];
+      const at = [0, 1, 2].map(r => matrix[r][0] * p[0] + matrix[r][1] * p[1] + matrix[r][2] * p[2] + matrix[r][3]);
+      at[1] += particle.size * scale / 2;  // ponytail: flames rise from the emitter; half a sprite up, a guess
+      const tint = (read.colour || [1, 1, 1]).map(c => c ** 2.2), gain = read.intensity ?? 1, [r, g, b, a] = particle.colour;
+      if (!byTexture.has(read.texture)) byTexture.set(read.texture, {frames: read.flipbook || [1, 1], position: [], colour: [], size: []});
+      const into = byTexture.get(read.texture);
+      into.position.push(...at);
+      into.colour.push(...[r, g, b].map((c, i) => Math.max(c, 0) ** 2.2 * gain * tint[i] * a * (particle.alive || 1)));
+      into.size.push(particle.size * scale);
+    }
+    for (const [texture, {frames, position, colour, size}] of byTexture) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+      geometry.setAttribute('colour', new THREE.Float32BufferAttribute(colour, 3));
+      geometry.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
+      const material = new THREE.ShaderMaterial({...ADDED, uniforms: {uMap: {value: white}, uFrame: {value: new THREE.Vector2(1 / frames[1], 1 / frames[0])}, uHeight: particleHeight},
+        vertexShader: `attribute vec3 colour; attribute float size; uniform float uHeight; varying vec3 vColour;
+          void main() { vColour = colour; vec4 view = modelViewMatrix * vec4(position, 1.); gl_Position = projectionMatrix * view;
+            gl_PointSize = size * projectionMatrix[1][1] * uHeight * .5 / max(-view.z, 1.); }`,
+        fragmentShader: `uniform sampler2D uMap; uniform vec2 uFrame; varying vec3 vColour;
+          void main() { vec4 t = texture2D(uMap, gl_PointCoord * uFrame); gl_FragColor = vec4(pow(t.rgb, vec3(2.2)) * t.a * vColour, 1.); }`});
+      new THREE.TextureLoader().load(`${data}textures/${encodeURIComponent(texture)}`, map => { map.flipY = false; map.needsUpdate = true; material.uniforms.uMap.value = map; });
+      particles.add(new THREE.Points(geometry, material));
+    }
+  }
   function buildLights(placed) {
     const lights = [];
     for (const {entity, position} of flat.entities) {
@@ -610,7 +734,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         const colourHex = own && M.property(entity, prefix + 'Color');
         const colour = colourHex !== undefined && colourHex !== false ? hexColour(colourHex).slice(1) : light.colour;
         const p = light.position || [0, 0, 0], at = [0, 1, 2].map(r => matrix[r][0] * p[0] + matrix[r][1] * p[1] + matrix[r][2] * p[2] + matrix[r][3]);
-        const entry = {position: at, colour: lightColour(colour, value('Intensity', light.intensity)), near: value('Near', light.near), far: value('Far', light.far)};
+        // The effect's scale (effectScale, and its prefab's) scales the light's reach too, overridden or not.
+        const scale = Math.hypot(matrix[0][0], matrix[1][0], matrix[2][0]);
+        const entry = {position: at, colour: lightColour(colour, value('Intensity', light.intensity)), near: value('Near', light.near) * scale, far: value('Far', light.far) * scale};
         if (spot) {
           const along = light.direction || [0, -1, 0], d = [0, 1, 2].map(r => matrix[r][0] * along[0] + matrix[r][1] * along[1] + matrix[r][2] * along[2]), l = Math.hypot(...d) || 1;
           entry.direction = d.map(c => c / l);
@@ -641,7 +767,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const mesh of [world, clips, glass, volumes]) mesh.geometry.dispose();
     const volume = entry => M.isVolume(entry.owner);
     world.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle, true, world.material);
-    glass.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle);
+    glass.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle,
+      face => FAINT.test((packColours[face.material || ''] || {}).shader || '') ? faint : null, glass.material, source => source ? faintMaterial : glassMaterial);
     clips.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && isClip(face), clipEntryOfTriangle);
     volumes.geometry = buildMesh(flat.brushes, (face, entry) => volume(entry), volumeEntryOfTriangle, volumeSource, volumes.material, volumeMaterial);
     volumes.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(volumes.geometry.attributes.texcoord.array.map(v => v / 16), 2));
@@ -664,13 +791,46 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 9 and 12 turned 90°); a map that gives neither is at 14:00 turned 30° (measured: Aerowalk and Phobos give no
   // angle); its light (2.94, 2.65, 2.13) at full incidence on a grey floor (measured at noon). Clip brushes cast no
   // shadow (measured). Its
-  // shadows from one depth map of the brushes and models over the whole map (ponytail: 4096², one cascade; the game
-  // has four).
+  // shadows from two depth maps of the brushes and models: one of the whole map, and a finer one of the 2048 units
+  // around the viewer, drawn again when the viewer has moved 256 (ponytail: two cascades; the game has four).
   const SUN_LIGHT = [2.94, 2.65, 2.13];
-  const sunTarget = new THREE.WebGLRenderTarget(4096, 4096, {depthTexture: new THREE.DepthTexture(4096, 4096), depthBuffer: true});
+  const shadowMap = () => new THREE.WebGLRenderTarget(4096, 4096, {depthTexture: new THREE.DepthTexture(4096, 4096), depthBuffer: true});
+  const sunTarget = shadowMap(), nearTarget = shadowMap();
   const sunCamera = new THREE.OrthographicCamera(), shadowCaster = new THREE.MeshBasicMaterial();
+  // A textured material casts through its texture where the brush shader keeps it (alpha ≥ ½): leaves and other
+  // alpha-keyed cards cast their shape, not their card.
+  const cutCasters = new WeakMap();
+  const casterOf = material => {
+    if (!material || !material.defines || material.defines.USE_MAP === undefined) return shadowCaster;
+    if (!cutCasters.has(material)) cutCasters.set(material, new THREE.ShaderMaterial({uniforms: {uMap: material.uniforms.uMap, uRepeat: material.uniforms.uRepeat}, side: material.side,
+      vertexShader: 'attribute vec2 texcoord; varying vec2 vTex; void main() { vTex = texcoord; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+      fragmentShader: 'uniform sampler2D uMap; uniform vec2 uRepeat; varying vec2 vTex; void main() { if (texture2D(uMap, vTex / uRepeat).a < .5) discard; gl_FragColor = vec4(1.); }'}));
+    return cutCasters.get(material);
+  };
+  let sunStale = false;
   sunCamera.layers.set(1);
   world.layers.enable(1);
+  let sunReach = 0, nearAt = null;
+  // One shadow map: Three's coordinates (z mirrored), looking down the sun's way at `middle`, `half` wide each way,
+  // deep enough for all of the map; the bias of a texel in its depth.
+  function sunPass(target, matrix, middle, half) {
+    const toward = new THREE.Vector3(uniforms.uSun.value.x, uniforms.uSun.value.y, -uniforms.uSun.value.z);
+    sunCamera.position.copy(middle).addScaledVector(toward, sunReach * 2);
+    sunCamera.lookAt(middle);
+    Object.assign(sunCamera, {left: -half, right: half, top: half, bottom: -half, near: 0, far: sunReach * 4});
+    sunCamera.updateProjectionMatrix(); sunCamera.updateMatrixWorld();
+    matrix.multiplyMatrices(sunCamera.projectionMatrix, sunCamera.matrixWorldInverse);
+    const was = {target: renderer.getRenderTarget(), background: scene.background}, materials = world.material;
+    world.material = [].concat(world.material).map(casterOf);
+    scene.background = null;
+    renderer.setRenderTarget(target);
+    renderer.clear();
+    renderer.render(scene, sunCamera);
+    renderer.setRenderTarget(was.target);
+    world.material = materials;
+    scene.background = was.background;
+    return half / 2048 / (sunReach * 4);
+  }
   function updateSun() {
     const spawn = worldSpawn(), hour = Number((spawn && M.property(spawn, 'sky.timeOfDay')) ?? 14), turn = Number((spawn && M.property(spawn, 'sky.skyAngle')) ?? 30) * Math.PI / 180;
     const height = (hour - 6) * 15 * Math.PI / 180, enabled = !spawn || M.property(spawn, 'sky.sunEnabled') !== 0;
@@ -678,32 +838,134 @@ window.addEventListener('DOMContentLoaded', async () => {
     uniforms.uSun.value.copy(sun);
     uniforms.uSunColour.value.fromArray(SUN_LIGHT);
     uniforms.uSunTexel.value = 0;
+    nearAt = null; sunReach = 0;
     if (!enabled || sun.y <= 0) return;
     const box = new THREE.Box3().setFromObject(world).union(new THREE.Box3().setFromObject(models));
     if (box.isEmpty()) return;
-    // Three's coordinates (z mirrored), looking down the sun's way at the middle of the map, wide enough for all of it.
-    const middle = box.getCenter(new THREE.Vector3()), reach = box.getSize(new THREE.Vector3()).length() / 2 + 16;
-    const toward = new THREE.Vector3(sun.x, sun.y, -sun.z);
-    sunCamera.position.copy(middle).addScaledVector(toward, reach * 2);
-    sunCamera.lookAt(middle);
-    Object.assign(sunCamera, {left: -reach, right: reach, top: reach, bottom: -reach, near: reach, far: reach * 3});
-    sunCamera.updateProjectionMatrix(); sunCamera.updateMatrixWorld();
-    uniforms.uSunMatrix.value.multiplyMatrices(sunCamera.projectionMatrix, sunCamera.matrixWorldInverse);
-    const was = {target: renderer.getRenderTarget(), override: scene.overrideMaterial, background: scene.background};
-    Object.assign(scene, {overrideMaterial: shadowCaster, background: null});
-    renderer.setRenderTarget(sunTarget);
-    renderer.clear();
-    renderer.render(scene, sunCamera);
-    renderer.setRenderTarget(was.target);
-    Object.assign(scene, {overrideMaterial: was.override, background: was.background});
+    sunReach = box.getSize(new THREE.Vector3()).length() / 2 + 16;
+    uniforms.uSunBias.value = sunPass(sunTarget, uniforms.uSunMatrix.value, box.getCenter(new THREE.Vector3()), sunReach);
     uniforms.uSunDepth.value = sunTarget.depthTexture;
     uniforms.uSunTexel.value = 1 / 4096;
+    followSun();
   }
+  // Before each frame: the fine shadow map again where the viewer has gone.
+  function followSun() {
+    if (sunStale) { sunStale = false; updateSun(); return; }
+    if (!sunReach || (nearAt && nearAt.distanceTo(camera.position) < 256)) return;
+    nearAt = camera.position.clone();
+    uniforms.uNearBias.value = sunPass(nearTarget, uniforms.uNearMatrix.value, nearAt, 1024);
+    uniforms.uNearDepth.value = nearTarget.depthTexture;
+  }
+  // ---- Sky ----
+  // The game's sky, from its compiled shaders (internal/shaders/sky2 and clouds) and, where the WorldSpawn gives no
+  // value, the defaults its WorldSpawn starts with (read from reflex.exe; its 14:00 and 30° are the sun's measured
+  // defaults). A dome of directions d: above sky.horizonLine the horizon colour toward the top colour (all of it from
+  // d.y 1/2 up), below it the bottom colour toward the horizon's (from d.y −1/2), each times its intensity; a halo
+  // (max(1 − |line − d.y|, 0) × horizonColor)^haloExponent × horizonIntensity; above the line the sun, s^(sharpness ×
+  // 100) × sunColor × sunIntensitySize, and its halo s^haloExponentSun × horizonColor × haloExponentSunIntensity, s
+  // the cosine to the sun. Colours are the bytes / 255 as they are (no 2.2: the default blue so matches the game's).
+  // Stars: the sky material's star texture (sky_stars_c) seen along d's three axes, each weighted by that axis^6, times
+  // starsIntensity, faded out toward the horizon line (by its halo^(haloExponent / 10)).
+  // The clouds: the game's cloud dome (sky_clouds1, mesh and texture from the import) in cloudsColor, as covered as
+  // its texture's red twice (once ½ along), plus bias, says, ((n − ½) × roughness + ½)^((1 − coverage) × multiplier)
+  // × density × thickness, faded by the dome's vertex colour; drifting with time × cloudsSpeed.
+  const SKY_DEFAULTS = {skyTopColor: 'ff1a6bd4', skyHorizonColor: 'ff599dff', skyBottomColor: 'ffb1d4f2', skyTopColorIntensity: .5,
+    skyHorizonColorIntensity: .5, skyBottomColorIntensity: .5, sunColor: 'ffffe6b9', sunIntensitySize: 16, sunSharpness: 32, horizonColor: 'ffffb644',
+    horizonIntensity: .2, horizonHaloExponent: 3, horizonHaloExponentSun: 4, horizonHaloExponentSunIntensity: .2, horizonLine: -.1,
+    cloudsColor: 'ffb2b2b2', cloudsCoverage: .8, 'cloudsSpeed.x': 1, 'cloudsSpeed.y': .01, cloudsCoverageMultiplier: 16, cloudsBias: .1, cloudsRoughness: .1,
+    cloudsDensity: .8, cloudsThickness: .8, starsIntensity: 0};
+  // The fog a map leaves out: WorldSpawn's defaults in reflex.exe (.data 0x1409858d8, after the sky's), faint at map scale.
+  const FOG_DEFAULTS = {fogColor: 'ffb4e1ff', fogDistanceStart: 512, fogDistanceEnd: 8192, fogHeightTop: 0, fogHeightBottom: -8192};
+  const skyUniforms = {uSun: uniforms.uSun, uTop: {value: new THREE.Vector3()}, uHorizon: {value: new THREE.Vector3()}, uBottom: {value: new THREE.Vector3()},
+    uSunColour: {value: new THREE.Vector3()}, uHalo: {value: new THREE.Vector3()}, uHaloIntensity: {value: 0}, uHaloExponent: {value: 1}, uHaloSun: {value: 1},
+    uHaloSunIntensity: {value: 0}, uSharpness: {value: 1}, uLine: {value: 0},
+    uStars: {value: white}, uStarsIntensity: {value: 0}, uTime: {value: 0}, uCloudSpeed: {value: new THREE.Vector2()},
+    uClouds: {value: white}, uCloudColour: {value: new THREE.Vector3()}, uCloud: {value: new THREE.Vector4()}, uCloudLook: {value: new THREE.Vector2()}};
+  const skyVertex = `attribute vec2 texcoord; attribute float fade; varying vec3 vDir; varying vec2 vTex; varying float vFade;
+    void main() { vDir = position; vTex = texcoord; vFade = fade; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`;
+  const skyMaterial = new THREE.ShaderMaterial({uniforms: skyUniforms, side: THREE.DoubleSide, depthWrite: false, vertexShader: skyVertex,
+    fragmentShader: `uniform vec3 uSun, uTop, uHorizon, uBottom, uSunColour, uHalo; uniform float uHaloIntensity, uHaloExponent, uHaloSun, uHaloSunIntensity, uSharpness, uLine;
+      uniform sampler2D uStars; uniform float uStarsIntensity; varying vec3 vDir;
+      float star(vec2 at) { return pow(texture2D(uStars, at).r, 2.2); }
+      void main() {
+        vec3 d = normalize(vDir); float s = clamp(dot(uSun, d), 0., 1.), above = d.y > uLine ? 1. : 0.;
+        vec3 c = mix(mix(uBottom, uHorizon, clamp(2. * d.y + 1., 0., 1.)), mix(uHorizon, uTop, clamp(2. * d.y - 1., 0., 1.)), above);
+        c += pow(max(1. - abs(uLine - d.y), 0.) * uHalo, vec3(uHaloExponent)) * uHaloIntensity;
+        c += above * (pow(s, uHaloSun) * uHalo * uHaloSunIntensity + pow(s, uSharpness * 100.) * uSunColour);
+        vec3 w = pow(abs(d), vec3(6.));
+        float stars = (star(d.xy) * w.z + star(d.xz) * w.y + star(d.zy) * w.x) * uStarsIntensity;
+        c += stars * (1. - min(pow(abs(1. - abs(uLine - d.y)), uHaloExponent * .1), 1.));
+        gl_FragColor = vec4(c, 1.);
+      }`});
+  const cloudMaterial = new THREE.ShaderMaterial({uniforms: skyUniforms, side: THREE.DoubleSide, transparent: true, depthWrite: false, vertexShader: skyVertex,
+    fragmentShader: `uniform sampler2D uClouds; uniform vec3 uCloudColour; uniform vec4 uCloud; uniform vec2 uCloudLook, uCloudSpeed; uniform float uTime; varying vec2 vTex; varying float vFade;
+      void main() {
+        vec2 s = uTime * uCloudSpeed, grow = 1. + s.yx * .00005;
+        float n = pow(texture2D(uClouds, vTex * grow + s * .0001).r, 2.2) + pow(texture2D(uClouds, (vTex + .5 + s * .0002) * grow + s * .0001).r, 2.2) + uCloudLook.x;
+        float m = (n - .5) * uCloudLook.y + .5;
+        float a = clamp(clamp(min(pow(abs(m), (1. - uCloud.x) * uCloud.y), 1.) * uCloud.z, 0., 1.) * uCloud.w, 0., 1.) * vFade;
+        gl_FragColor = vec4(uCloudColour, a);
+      }`});
+  // Both domes (radius 5 in the game's files) around the viewer, far off, in the game's coordinates (z mirrored).
+  const skyDome = new THREE.Group(), skyMesh = new THREE.Mesh(new THREE.SphereGeometry(5, 48, 24), skyMaterial), cloudMesh = new THREE.Mesh(new THREE.BufferGeometry(), cloudMaterial);
+  skyMesh.geometry.setAttribute('fade', new THREE.Float32BufferAttribute(new Float32Array(skyMesh.geometry.attributes.position.count), 1));
+  skyMesh.geometry.setAttribute('texcoord', skyMesh.geometry.attributes.uv);
+  skyDome.add(skyMesh, cloudMesh);
+  skyDome.scale.set(6000, 6000, -6000);
+  skyMesh.renderOrder = -2; cloudMesh.renderOrder = -1;
+  for (const mesh of [skyMesh, cloudMesh]) { mesh.frustumCulled = false; mesh.raycast = () => {}; }
+  scene.add(skyDome);
+  skyMesh.onBeforeRender = (_, __, view) => { skyDome.position.copy(view.position); skyDome.updateMatrixWorld(); };
+  let cloudsDrawn = null;
   function applySky() {
-    const spawn = worldSpawn(), hex = spawn && (M.property(spawn, 'sky.horizonColor') || M.property(spawn, 'sky.skyTopColor') || M.property(spawn, 'fogColor'));
-    const colour = hex ? new THREE.Color(`#${String(hex).slice(-6)}`) : new THREE.Color(0x2a3b47);
-    if (colour.getHSL({}).l < .05) colour.setHex(0x2a3b47);  // A black horizon (night skies) still shows the map's edges.
-    scene.background = colour;
+    const spawn = worldSpawn(), value = name => (spawn && M.property(spawn, 'sky.' + name)) ?? SKY_DEFAULTS[name];
+    const colour = name => new THREE.Vector3(...hexColour(value(name)).slice(1));
+    const u = skyUniforms;
+    u.uTop.value.copy(colour('skyTopColor')).multiplyScalar(value('skyTopColorIntensity'));
+    u.uHorizon.value.copy(colour('skyHorizonColor')).multiplyScalar(value('skyHorizonColorIntensity'));
+    u.uBottom.value.copy(colour('skyBottomColor')).multiplyScalar(value('skyBottomColorIntensity'));
+    u.uSunColour.value.copy(colour('sunColor')).multiplyScalar(value('sunIntensitySize'));
+    u.uHalo.value.copy(colour('horizonColor'));
+    Object.assign(u.uHaloIntensity, {value: value('horizonIntensity')}); Object.assign(u.uHaloExponent, {value: value('horizonHaloExponent')});
+    Object.assign(u.uHaloSun, {value: value('horizonHaloExponentSun')}); Object.assign(u.uHaloSunIntensity, {value: value('horizonHaloExponentSunIntensity')});
+    Object.assign(u.uSharpness, {value: value('sunSharpness')}); Object.assign(u.uLine, {value: value('horizonLine')});
+    u.uCloudColour.value.copy(colour('cloudsColor'));
+    u.uCloud.value.set(value('cloudsCoverage'), value('cloudsCoverageMultiplier'), value('cloudsDensity'), value('cloudsThickness'));
+    u.uCloudLook.value.set(value('cloudsBias'), value('cloudsRoughness'));
+    u.uCloudSpeed.value.set(value('cloudsSpeed.x'), value('cloudsSpeed.y'));
+    u.uStarsIntensity.value = value('starsIntensity');
+    const stars = (packColours['internal/world/skies/sky2'] || {}).texture;
+    if (stars && u.uStars.value === white) new THREE.TextureLoader().load(`${data}textures/${encodeURIComponent(stars)}`, texture => {
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.flipY = false; texture.needsUpdate = true;
+      u.uStars.value = texture;
+    });
+    // The fog (the frame's composite pass), as reflex.exe hands it over: start kept below end, bottom below top.
+    const fogged = (name, fallback) => (spawn && M.property(spawn, name)) ?? FOG_DEFAULTS[name] ?? fallback;
+    fog.uFogColour.value.fromArray(hexColour(fogged('fogColor')).slice(1));
+    const end = fogged('fogDistanceEnd'), top = fogged('fogHeightTop');
+    fog.uFog.value.set(Math.min(fogged('fogDistanceStart'), end - .001), end, top, Math.min(fogged('fogHeightBottom'), top - .001));
+    scene.background = null;
+    // The cloud dome, once its mesh has loaded (packs from before it have none: no clouds).
+    const effect = packEffects.effects[(packEffects.sky || {}).clouds], record = effect && effect.meshes[0];
+    if (!record || cloudsDrawn === record.file) return;
+    if (!meshes.has(record.file)) {
+      fetch(`${data}models/${encodeURIComponent(record.file)}`).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null)
+        .then(buffer => { meshes.set(record.file, buffer && readModel(buffer)); applySky(); });
+      return;
+    }
+    const part = (meshes.get(record.file) || [])[0], read = packColours[record.materials[0]] || {};
+    if (!part) return;
+    cloudsDrawn = record.file;
+    const geometry = new THREE.BufferGeometry(), count = part.positions.length / 3;
+    geometry.setAttribute('position', new THREE.BufferAttribute(part.positions, 3));
+    geometry.setAttribute('texcoord', new THREE.BufferAttribute(part.uvs, 2));
+    geometry.setAttribute('fade', new THREE.Float32BufferAttribute(Float32Array.from({length: count}, (_, i) => LINEAR_BYTE[part.colours[i * 4 + 2]]), 1));
+    geometry.setIndex(new THREE.BufferAttribute(part.indices, 1));
+    cloudMesh.geometry.dispose(); cloudMesh.geometry = geometry;
+    if (read.texture) new THREE.TextureLoader().load(`${data}textures/${encodeURIComponent(read.texture)}`, texture => {
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.flipY = false; texture.needsUpdate = true;
+      u.uClouds.value = texture;
+    });
   }
 
   // Viewpoints: the camera the map ends on (its WorldSpawn's targetGameOverCamera) first, then the spawn points.
@@ -785,7 +1047,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!M.global(parsed)) parsed.groups.push({kind: 'global', name: '', items: []});
     map = parsed; mapName = name; selected.clear(); undoStack.length = 0; redoStack.length = 0;
     rebuild();
-    applySky();
     showViewpoint(0);
     showNotes();
     document.title = `${name} — Reflex Maps`;
@@ -1378,7 +1639,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const SCHEMA = {
     WorldSpawn: [['String256', 'title', ''], ['String256', 'ownerString', ''], ['String32', 'targetGameOverCamera', ''], ['UInt8', 'playersMin', 1], ['UInt8', 'playersMax', 16],
       ['Bool8', 'modeFFA', 1], ['Bool8', 'mode1v1', 1], ['Bool8', 'mode2v2', 1], ['Bool8', 'modeTDM', 1], ['Bool8', 'modeCTF', 0], ['Bool8', 'modeRace', 0],
-      ['ColourXRGB32', 'fogColor', 'ff000000'], ['Float', 'fogDistanceStart', 0], ['Float', 'fogDistanceEnd', 0], ['ColourXRGB32', 'sky.horizonColor', 'ff000000'],
+      ['ColourXRGB32', 'fogColor', 'ffb4e1ff'], ['Float', 'fogDistanceStart', 512], ['Float', 'fogDistanceEnd', 8192], ['ColourXRGB32', 'sky.horizonColor', 'ff000000'],
       ['ColourXRGB32', 'sky.skyTopColor', 'ff000000'], ['ColourXRGB32', 'sky.sunColor', 'ffffffff'], ['Float', 'sky.timeOfDay', 12]],
     Teleporter: [['String32', 'target', ''], ['String32', 'linkOutOnUsed', '']],
     JumpPad: [['String32', 'target', '']],
@@ -2292,20 +2553,116 @@ window.addEventListener('DOMContentLoaded', async () => {
     : walking ? '0 edit · Click to capture / drag to look · WASD walk · Space jump · F fly · Esc release · 1–9 viewpoints'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · F walk · Esc release · 1–9 viewpoints';
 
+  // ---- The frame ----
+  // As the game makes it (its compiled shaders and reflex.exe): the scene in linear light into a half-float target,
+  // where added glows run past 1; bloom (bloomHighPass: what is brighter than 2.2 in luma, half the excess; five
+  // targets of half the size each, bloomBlur across and down; upsample adds each into the next larger with a 9-tap tent
+  // of radius .02 down to .0015 of the frame's width, weighted 1, 1, 1.5, .5 and .2 into the scene); the map's fog
+  // (postEffects_FOG); then r_gamma's 2.2. The editor's volumes, markers and outlines are drawn after that, straight
+  // onto the frame as before, against the scene's depth.
+  const sceneTarget = (w, h) => new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: 4, depthTexture: new THREE.DepthTexture(w, h)});
+  const blurTarget = (w, h) => new THREE.WebGLRenderTarget(Math.max(1, w), Math.max(1, h), {type: THREE.HalfFloatType, depthBuffer: false});
+  let hdr = null, bright = null, levels = [];
+  const quadScene = new THREE.Scene(), quadCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+  quad.frustumCulled = false; quadScene.add(quad);
+  const pass = (fragmentShader, uniforms, more) => new THREE.ShaderMaterial({uniforms, depthTest: false, depthWrite: false, ...more, fragmentShader,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }'});
+  const TENT = `vec3 tent(sampler2D t, vec2 at, vec2 r) {
+      vec2 d = r * .707;
+      return texture2D(t, at).rgb * .25 + (texture2D(t, at + vec2(r.x, 0.)).rgb + texture2D(t, at - vec2(r.x, 0.)).rgb + texture2D(t, at + vec2(0., r.y)).rgb + texture2D(t, at - vec2(0., r.y)).rgb) * .125
+        + (texture2D(t, at + d).rgb + texture2D(t, at - d).rgb + texture2D(t, at + vec2(d.x, -d.y)).rgb + texture2D(t, at - vec2(d.x, -d.y)).rgb) * .0625;
+    }`;
+  const highPass = pass(`uniform sampler2D uInput; varying vec2 vUv;
+    void main() { vec3 c = max(texture2D(uInput, vUv).rgb, 0.); gl_FragColor = vec4(c * clamp((dot(c, vec3(.299, .587, .114)) - 2.2) * .5, 0., 1.), 1.); }`, {uInput: {value: null}});
+  const blurPass = pass(`uniform sampler2D uInput; uniform vec2 uStep; varying vec2 vUv;
+    void main() {
+      vec3 c = texture2D(uInput, vUv).rgb * .227027;
+      float w[4] = float[](.194595, .121622, .054054, .016216);
+      for (int i = 0; i < 4; i++) c += (texture2D(uInput, vUv + uStep * float(i + 1)).rgb + texture2D(uInput, vUv - uStep * float(i + 1)).rgb) * w[i];
+      gl_FragColor = vec4(c, 1.);
+    }`, {uInput: {value: null}, uStep: {value: new THREE.Vector2()}});
+  const upsamplePass = pass(`${TENT} uniform sampler2D uInput; uniform vec2 uRadius; uniform float uIntensity; varying vec2 vUv;
+    void main() { gl_FragColor = vec4(tent(uInput, vUv, uRadius) * uIntensity, 1.); }`, {uInput: {value: null}, uRadius: {value: new THREE.Vector2()}, uIntensity: {value: 1}},
+  {transparent: true, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor});
+  // Fog where the scene has depth (not the sky): f = max(h², d²) of the way through [start, end] by distance and down
+  // through [top, bottom] by height (top waving 4 up and down), toward fogColor (its bytes / 255).
+  const fog = {uFogColour: {value: new THREE.Vector3()}, uFog: {value: new THREE.Vector4(0, 1e9, -1e9, -2e9)}};
+  const compositePass = pass(`${TENT} uniform sampler2D uScene, uBloom, uDepth; uniform vec2 uRadius; uniform mat4 uInverse; uniform vec3 uViewer, uFogColour; uniform vec4 uFog; uniform float uTime; varying vec2 vUv;
+    void main() {
+      vec3 c = texture2D(uScene, vUv).rgb + tent(uBloom, vUv, uRadius) * .2;
+      float depth = texture2D(uDepth, vUv).r;
+      if (depth < 1.) {
+        vec4 w = uInverse * vec4(vUv * 2. - 1., depth * 2. - 1., 1.);
+        vec3 p = w.xyz / w.w;
+        float d = clamp((distance(p, uViewer) - uFog.x) / (uFog.y - uFog.x), 0., 1.);
+        float h = clamp((uFog.z - (p.y + 4. * sin(p.x / 48. + .8 * uTime - p.z / 48.))) / (uFog.z - uFog.w), 0., 1.);
+        c = mix(c, uFogColour, max(h * h, d * d));
+      }
+      gl_FragColor = vec4(pow(max(c, 0.), vec3(1. / 2.2)), 1.);
+      gl_FragDepth = depth;
+    }`, {uScene: {value: null}, uBloom: {value: null}, uDepth: {value: null}, uRadius: {value: new THREE.Vector2()}, uInverse: {value: new THREE.Matrix4()}, uViewer: {value: new THREE.Vector3()}, uTime: {value: 0}, ...fog},
+  {depthTest: true, depthWrite: true, depthFunc: THREE.AlwaysDepth});
+  const BLOOM_RADII = [.0015, .003, .006, .0125, .02], BLOOM_WEIGHTS = [.2, .5, 1.5, 1, 1];
+  function runPass(material, values, target, clear = true) {
+    for (const [name, value] of Object.entries(values)) material.uniforms[name].value = value;
+    quad.material = material;
+    renderer.setRenderTarget(target);
+    renderer.autoClear = clear;
+    renderer.render(quadScene, quadCamera);
+    renderer.autoClear = true;
+  }
+  const overlays = [clips, volumes, selection, entityLayer, ghost, hoverDot], drawingSize = new THREE.Vector2(), aspect = new THREE.Vector2();
+  function draw(view = camera) {
+    renderer.getDrawingBufferSize(drawingSize);
+    const [w, h] = [drawingSize.x, drawingSize.y];
+    particleHeight.value = h;
+    if (!hdr || hdr.width !== w || hdr.height !== h) {
+      for (const target of [hdr, bright, ...levels.flat()]) if (target) { if (target.depthTexture) target.depthTexture.dispose(); target.dispose(); }
+      hdr = sceneTarget(w, h); bright = blurTarget(w, h);
+      levels = BLOOM_RADII.map((_, i) => [blurTarget(w >> (i + 1), h >> (i + 1)), blurTarget(w >> (i + 1), h >> (i + 1))]);
+    }
+    skyUniforms.uTime.value = clock.elapsedTime;
+    const shown = overlays.map(object => object.visible);
+    for (const object of overlays) object.visible = false;
+    renderer.setRenderTarget(hdr);
+    renderer.render(scene, view);
+    runPass(highPass, {uInput: hdr.texture}, bright);
+    let from = bright;
+    for (const [across, down] of levels) {
+      runPass(blurPass, {uInput: from.texture, uStep: new THREE.Vector2(1 / across.width, 0)}, across);
+      runPass(blurPass, {uInput: across.texture, uStep: new THREE.Vector2(0, 1 / down.height)}, down);
+      from = down;
+    }
+    const radius = r => new THREE.Vector2(r, r * w / h);
+    for (let i = levels.length - 1; i > 0; i--) runPass(upsamplePass, {uInput: levels[i][1].texture, uRadius: radius(BLOOM_RADII[i]), uIntensity: BLOOM_WEIGHTS[i]}, levels[i - 1][1], false);
+    view.updateMatrixWorld();
+    runPass(compositePass, {uScene: hdr.texture, uBloom: levels[0][1].texture, uDepth: hdr.depthTexture, uRadius: radius(BLOOM_RADII[0]),
+      uInverse: new THREE.Matrix4().multiplyMatrices(view.matrixWorld, view.projectionMatrixInverse), uViewer: view.position, uTime: clock.elapsedTime}, null);
+    // The overlays, alone, onto the frame.
+    const rest = [...root.children.filter(object => !overlays.includes(object)), skyDome], restShown = rest.map(object => object.visible);
+    for (const object of rest) object.visible = false;
+    overlays.forEach((object, i) => { object.visible = shown[i]; });
+    renderer.autoClear = false;
+    renderer.render(scene, view);
+    renderer.autoClear = true;
+    rest.forEach((object, i) => { object.visible = restShown[i]; });
+  }
+
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), step = new THREE.Vector3();
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
-    if (!editing && walking && flat) { playStep(delta); renderer.render(scene, camera); return; }
+    if (!editing && walking && flat) { playStep(delta); followSun(); draw(); return; }
     camera.getWorldDirection(forward);
     right.crossVectors(forward, camera.up).normalize();
     step.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
     step.y += held('Space') + held('KeyE') - held('KeyQ') - (editing ? 0 : held('ShiftLeft') + held('ShiftRight'));
     if (step.lengthSq()) camera.position.addScaledVector(step.normalize(), speed * delta);
-    renderer.render(scene, camera);
+    followSun();
+    draw();
   });
   window.skinnerReflexMaps = {renderer, scene, camera, root, get map() { return map; }, get flat() { return flat; }, get template() { return template; },
     get createType() { return createType; }, get vertexMode() { return vertexMode; }, get bridging() { return bridging; }, get segments() { return segments; }, get clipMode() { return clipMode; }, get clipPoints() { return clipPoints; },
-    get player() { return player; }, get openPrefab() { return openPrefab; }, get walking() { return walking; }, settings, run, load, actions, selected, setEditing, setWalking, showViewpoint};
+    get player() { return player; }, get openPrefab() { return openPrefab; }, get walking() { return walking; }, settings, run, load, actions, selected, setEditing, setWalking, showViewpoint, beforeShot: followSun, draw};
 
   // ---- Loading ----
   $('open').addEventListener('change', async event => {

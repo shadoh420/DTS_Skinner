@@ -228,7 +228,9 @@
     const rotateY = [[Math.cos(yaw), 0, Math.sin(yaw)], [0, 1, 0], [-Math.sin(yaw), 0, Math.cos(yaw)]];
     const rotateX = [[1, 0, 0], [0, Math.cos(pitch), -Math.sin(pitch)], [0, Math.sin(pitch), Math.cos(pitch)]];
     const rotateZ = [[Math.cos(roll), -Math.sin(roll), 0], [Math.sin(roll), Math.cos(roll), 0], [0, 0, 1]];
-    const turn = times(times(rotateX, rotateZ), rotateY);
+    // Roll, then pitch, then yaw, each about the thing's own axes (seen in the game: Ruin's pads at angles 180 90 0 lie
+    // flat as at 0 90 0).
+    const turn = times(times(rotateY, rotateX), rotateZ);
     return turn.map((row, index) => [...row.map(snap), position[index]]);
   }
   // Right angles give exact zeros and ones, so grid-aligned prefabs stay on the grid.

@@ -91,14 +91,17 @@ of Aerowalk is, shows only what it reflects. Where the import found no albedo
 for a material the page guesses a colour from the name and lists those
 materials under Preview notes. Glowing materials
 (`common/materials/effects/glow*`, shader `standard_ALBEDOCOLOUR_ALBEDOINTENSITY`)
-are not lit: they shine their colour times their `albedoIntensity`.
+are not lit: they shine (colour × `albedoIntensity`)^2.2, as that shader has
+it; so do lava and slime ((colour × 3.3)^2.2, `fluid`) and the other forward
+shaders the game draws solid (their flags lack 0x200).
 
-Faces of see-through materials are drawn faintly, after everything else and
-from both sides: those whose shader is a light beam (`alphaFresnel`, as
-`internal/effects/lights/fx_light_beam`), glass, race start and finish,
-pickup and powerup glows, and water. Their own effects (fresnel, clouds,
-refraction) are not drawn. The import keeps every material it finds with its
-shader for this, also those it finds no colour for.
+Faces of see-through materials are drawn after everything else: glass and
+water are added to the frame (The frame, below); light beams (`alphaFresnel`,
+as `internal/effects/lights/fx_light_beam`), race starts and finishes, and
+pickup and powerup glows (Phobos, Aerowalk and TheCatalyst have such faces)
+stay faint, a third over what is behind them, as their own shaders are not
+drawn. Refraction is not drawn. The import keeps every material it finds with
+its shader and flags for this, also those it finds no colour for.
 
 ### Textures
 
@@ -210,11 +213,29 @@ light is (colour × intensity)² × 0.87 (grey 0x80 gives a quarter, intensity 2
 four times); without them near is 16, far 128 and intensity 1 (±4). An
 effect's light hangs from a bone of its mesh (`b_light`) and a spot shines
 along the bone's x axis; an Effect entity overrides them with
-`pointLight…`/`spotLight…` properties where `…Overridden` is set. Not
-measured, and taken so because Aerowalk then matches: a spot's angles are
-half the cone, and the overrides need `…Overridden`. The page
+`pointLight…`/`spotLight…` properties where `…Overridden` is set. Measured
+in the game with braziers and a torch in a closed room: a brazier given Ruin's
+override (near 40, far 84) lights a pool as small as the page's, a plain one
+the effect's own (far 160), and a torch with `pointLightColor ff000000` but no
+`pointLightOverridden` lights as if it had none. An effect's scale
+(`effectScale`, times its prefab's) scales its lights' near and far as well as
+where they hang: Ruin's braziers are placed at 1.5, and only so does the page
+light the walls and floor around them as the game does (within about 30 %,
+where they were 5 to 30 times too dark). Measured in the game with three
+braziers in a closed room, plain, at 1.5 and at 1.5 with Ruin's override (near
+40, far 84): both scaled pools reach 1.5 times as far, and the page's floor
+matches the game's within 3 % across all three. Not measured, and taken so because Aerowalk then matches: a spot's
+angles are half the cone. The page
 keeps the lights in a grid of 128-unit cells and sums, per point, only those
 of its cell (ironguard has 362 lights).
+
+**Light through paper and cloth.** Materials drawn with the `…_SSS` shaders
+(paper, whose `sss` is 0.8, which the import keeps) let light through, as
+`gbuffer_light_point`, `_spot` and `_directional` do: with s the material's
+`sss` times its albedo's red (linear), 2 s (t + s (w − t)) of the diffuse
+light whichever way the face is turned, t = sat(v · −l)⁴ (toward the viewer)
+and w = sat(0.6 (−n · l) + 0.4). SkyTemples' hanging lanterns, lit by the
+light inside them, glow so as in the game (both peak near white).
 
 **The sun** rises at +z turned by `sky.skyAngle` at 6:00 (`sky.timeOfDay`), is
 overhead at 12:00 and sets on the far side at 18:00, 15° an hour; a map that
@@ -222,9 +243,88 @@ gives neither is at 14:00, 30°. Its light at full incidence is (2.94, 2.65,
 2.13). All measured in the game with a pole and a tower on an open floor (at
 6, 9, 12, 15 and 18, at 9 and 12 turned 90°, and with neither given); the
 page's shadows match the game's there. Not measured: whether `sky.sunColor`
-or another sky property changes the sun's light (the page keeps it constant). The page shades it with one 4096²
-shadow map of the brushes and models over the whole map (the game has four
-cascades); clip brushes cast no shadow (measured).
+or another sky property changes the sun's light (the page keeps it constant). The page shades it with two 4096²
+shadow maps of the brushes and models: one over the whole map and a finer one
+over the 2048 units around the viewer, drawn again each time the viewer has
+moved 256 (the game has four cascades), each compare weighted bilinearly so
+edges ramp; clip brushes cast no shadow (measured). Models cast with their
+mesh's shadow mesh (the positions-only block after its levels of detail,
+which the import writes as part 255 of the model): a shrub or tree by its
+solid hull, not its leaf cards; a mesh from a pack imported before that casts
+with what it shows. A textured brush face casts only where its texture is
+kept (alpha ½ or more). Checked on SkyTemples, where the game's floor by the
+pool is sunlit (the page's lay in the shadow of the shrubs' leaf cards), and
+ironguard, whose door frame keeps the game's shadow.
+
+**The sky** follows the game's compiled sky shaders (`sky2`, `clouds`): a dome
+from `sky.skyBottomColor` through `sky.skyHorizonColor` to `sky.skyTopColor`
+(each times its intensity), a halo around `sky.horizonLine` in
+`sky.horizonColor`, the sun's disc and halo above the line, and the game's
+cloud dome (`internal/world/skies/sky_clouds1`, which the import brings with
+its texture) in `sky.cloudsColor`. What a map leaves out takes the defaults
+the game's WorldSpawn starts with, read from `reflex.exe` (blue top 1a6bd4,
+horizon 599dff, bottom b1d4f2, each at 0.5; sun ffe6b9 × 16, sharpness 32;
+halo ffb644 × 0.2, exponents 3 and 4, line −0.1; clouds b2b2b2, coverage 0.8,
+multiplier 16, bias 0.1, roughness 0.1, density and thickness 0.8; and the
+sun's 14:00 and 30° measured above). Colours are taken as bytes / 255 without
+2.2 (the default sky then matches the game's on an empty map); the cloud
+texture is decoded from sRGB. Its red channel is read twice, the second time
+half a texture along (the shader's swizzle; not red and green), and both
+drift with time × `sky.cloudsSpeed` (default 1 and 0.01). Stars are the sky
+material's `sky_stars_c` (the import brings it) seen along the three axes of
+the view direction, each weighted by that axis to the sixth, times
+`sky.starsIntensity` (default 0), fading out toward the horizon line.
+
+### The frame
+
+The page draws the frame as the game does (its compiled shaders and
+`reflex.exe`): the scene in linear light into a half-float target, then
+bloom, fog and r_gamma's 2.2; the editor's volumes, markers and outlines are
+drawn after that, against the scene's depth, as before.
+
+- **Bloom** (`bloomHighPass`, `bloomBlur`, `upsample`, `bloomAddToScene`): of
+  what is brighter than 2.2 in luma, half the excess (`c × sat((luma − 2.2) ×
+  0.5)`); five targets of half the size each, each blurred across and down
+  (9 taps); each added into the next larger through a 9-tap tent of radius
+  0.02, 0.0125, 0.006, 0.003 and 0.0015 of the frame's width, weighted 1, 1,
+  1.5, 0.5 and 0.2 into the scene. Threshold, radii and weights are
+  `reflex.exe`'s defaults; its bloom intensity is 1 in play.
+- **Fog** (`postEffects_FOG`), where the scene has depth (not the sky): f =
+  max(h², d²), d the way through `fogDistanceStart` … `fogDistanceEnd` by
+  distance, h the way down `fogHeightTop` … `fogHeightBottom` (the top waving
+  4 up and down, 4 sin(x/48 + 0.8 t + z/48)), toward `fogColor` (bytes / 255);
+  the game keeps the start below the end and the bottom below the top. What
+  a map leaves out takes WorldSpawn's defaults in `reflex.exe` (its default
+  entity in `.data`, after the sky's): colour b4e1ff, start 512, end 8192, top
+  0, bottom −8192, so a map without fog settings has a faint haze far off and
+  below 0. Measured with Ruin copies: one with only a red colour and an end of
+  1000 (clear up to 512, then red), one with only an end of 400 (pale blue);
+  the page matches both within a level.
+- **Forward shaders** add in linear light, front faces only: the `standard_…`
+  shaders (the teleporter ring, light strips, glass), water (`fluid`, unlit,
+  (colour × 3.3)^2.2) and pickup holograms and glows. Their colours are raised
+  to 2.2 as their shaders do, and vertex colours count only where the shader's
+  name says `VERTEXCOLOUR`. A material's flags (the u32 after its shader name,
+  which the import keeps) say whether the game draws it see-through (0x200);
+  solid forward shaders, lava and slime shine their colour unlit. That the
+  see-through ones add is taken from the flags of the game's particles called
+  `…ADDITIVE` and how the ring looks (Ruin's portals give the ring
+  `glass_simple` in b92d09: added in linear light it turns the game's orange),
+  not measured.
+- **Light beams and pads' glows** (`alphaFresnel`, models only): sat(sat(n ·
+  v)^pow × mul) of the material's `diffuseColour` × `intensityMul` × the
+  mesh's vertex colour (2.2), added, both sides drawn with n turned to the
+  viewer (`fresnelMulPow` and `intensityMul`, which the import keeps). A pad's
+  glow cylinder fades up its height by its vertex colours.
+- **Holograms** (`hologram`) and **ammo glows** (`glowPickup`) follow their
+  shaders without their noise, scan lines and movement: a hologram is
+  brightest facing the viewer (its colour plus 0.09, times a gradient up the
+  model over the material's `vSize_gradMul`, squared, then (1.5 x)^1.5 × 1.5),
+  a glow at its rim. Both bloom; Ruin's yellow armour's halo then matches the
+  game's within a few levels.
+- The game also grades colour through a 16³ lookup (`ColourGradingLUT_g`,
+  which is the identity: nothing to draw) and darkens the frame's corners
+  (`r_postfx_vignette`, 1 − 4 r⁵); the page leaves the vignette out.
 
 Measured on Aerowalk from a spawn (the camera fitted from the geometry: eye
 58 above the spawn point, r_fov 110 on a 4:3 frame): with every effect of the
@@ -243,7 +343,10 @@ mesh into the pack (`tools/reflex_models.py`, where both formats are set out:
 materials and colours per mesh slot, lights on bones, levels of detail, rest
 poses of skinned meshes). The page merges every placement into the map's
 geometry, in the map's coordinates (position, angles, `effectScale` and any
-prefab placement around them), and lights it as the brushes are.
+prefab placement around them), and lights it as the brushes are. Angles are
+yaw, pitch and roll, turned roll first, then pitch, then yaw, each about the
+thing's own axes (seen in the game: Ruin's pads at 180 90 0 lie flat as at
+0 90 0).
 
 - A mesh slot's material is the entity's (`material0Name` …), else the
   effect's, else the mesh's (often a placeholder, `MaterialA`); its colour the
@@ -254,8 +357,8 @@ prefab placement around them), and lights it as the brushes are.
   with the view).
 - Pickups stand on their pads (health, armour, powerups, weapons) and float
   30 units above them (measured on a Furnace health; taken for the others too;
-  the game bobs and turns them). Holograms (pickups) are drawn in their colour,
-  unraised, at 60 % over what is behind them (looked alike, not measured). A
+  the game bobs and turns them). Holograms and glows are drawn as their
+  shaders shade them (The frame, above). A
   skinned mesh (the teleporter's portal) is posed by its bones. A Teleporter
   shows nothing of its own (seen in the game); the stock maps place their
   portals as Effects.
@@ -275,6 +378,20 @@ prefab placement around them), and lights it as the brushes are.
   ceilings not measured); race starts and finishes, which the game's editor
   does not draw, by a faint outline of their edges (they are clicked as the
   others). Measured with test maps in the game's editor.
+
+### Particles
+
+An effect's particle emitters (record 2 of the `.effect`, set out in
+`tools/reflex_models.py`) come with the import: material, size and colour at
+birth, the bone they emit from and how many are alive at once (particles a
+second × mean lifetime); their materials (`particle…` shaders) with their
+texture, flags, `albedoIntensity` and flipbook rows and columns. The page
+draws an emitter whose material adds (flags 0x40: flames, sparks; not smoke,
+0x20) as one sprite of the first frame of its flipbook, its birth size wide,
+half its size above the bone (a guess: flames rise), in its birth colour^2.2 ×
+`albedoIntensity` (the `particleFlipbook` shader's colour) times the number
+alive, added in linear light so that bloom spreads it. A brazier then glows
+about as brightly as the game's; the game's flames are taller and move.
 
 ## Controls
 
@@ -697,22 +814,64 @@ random convex brushes.
 
 ## Limits and what comes next
 
-- **Textures**: normal maps and the game's special shaders (hologram fresnel,
-  clouds, refraction, glass reflections) are not drawn. The texture mapping was
+- **Textures**: normal maps and the game's special shaders (refraction, glass
+  reflections, the holograms' noise and scan lines) are not drawn. The texture mapping was
   measured in the game; on slopes the direction of v is taken from u × v = n,
   as on the axis faces, not measured by itself. Library textures show in
   Skinner only.
 - **Light**: spot lights cast no shadows (the game's do: Aerowalk's right wall
-  is about 30 % too bright); the sun has one shadow map, so its edges are
-  coarser than the game's and alpha-cut leaves shadow as solid; reflection
-  probes are taken from the point's cell only, where the game blends the
-  eight around it; bloom, SSAO and fog are not drawn.
+  is about 30 % too bright); the sun has two shadow maps where the game has
+  four cascades, and alpha-cut leaves shadow as solid; reflection probes are
+  taken from the point's cell only, where the game blends the eight around
+  it; SSAO and the vignette are not drawn.
+- **Open from the 2026-10-03 comparison** (14 spawn views of AbandonedShelter,
+  Ruin, SkyTemples, ironguard, TheCatalyst, Hieratic and Ashur, game against
+  page):
+  - Done since: bloom, fog, holograms, ammo glows, the teleporter ring
+    (orange, as in the game), water (SkyTemples' floor is a 4-unit pool: blue
+    now, its shaded parts matching the game's within a few levels), stars and
+    cloud drift. The grey veil over the top of Ruin's first spawn (taken for
+    sky above the pillar) is gone in the new frame; its cause was not found.
+  - Ruin's warmth near the braziers was their scale (1.5), which the game
+    applies to their lights' reach (see Lights); overrides, measured since,
+    were right. Where only the probes light Ruin's floor it is still about a
+    third less red than the game's (game (1, 0.21, 0.02) against the page's
+    (1, 0.35, 0.10) in linear light), cause not found: the probe shader is
+    the same and the SH planes read as the game's names say.
+  - Pickup holograms (Ruin's weapons and armour) come out as white blobs,
+    where the game shows their shape with a glow: too bright before bloom.
+  - A map without a `.light` (a test map) is lit evenly on the page; the game
+    lights its walls and ceiling darker and bluer than its floors (floor 100,
+    walls 65 to 85, ceiling 66 to 71 on screen in a grey room).
+  - SkyTemples' floor under the water had no sun on the page: the shrubs'
+    leaf cards shadowed it whole. Models now cast with their shadow meshes
+    (see The sun) and the floor is sunlit as in the game. Its paper lanterns glow now (see
+    Lights: light through paper); the game's are a little whiter and even,
+    the page's show their ribs.
+  - Light beams and the pickup pads' glows (`alphaFresnel`) are drawn on
+    models (see The frame); beams on brush faces (Phobos) keep the faint
+    look. A pad's glow is faint in the game too; Ruin's 25 health pad adds
+    about (0.017, 0.013, 0.001) at its foot in the game and a quarter of that
+    on the page.
+  - Sky colours other than the defaults were checked on AbandonedShelter and
+    SkyTemples only; the cloud colour may be dimmed by the time of day in
+    the game (SkyTemples' clouds look darker there).
+  - Fire and sparks are drawn as one still sprite per emitter (see
+    Particles); the game's flames are taller and move. Smoke and steam are
+    not drawn.
+  - The rotation order (roll, pitch, yaw about the thing's own axes) was
+    checked on pitched props (Ruin's pads, AbandonedShelter's floor lights);
+    a prop with all three angles was not checked on its own.
 - **Models**: animations are not played (fans, items' bob and turn); a skinned
-  mesh shows its rest pose. Particles (steam, sparks, the jump pad's green
-  glow) are not drawn. Entities the game's editor has no model for (a camera
+  mesh shows its rest pose. Particles are still sprites, smoke and steam not
+  drawn (see Particles). Entities the game's editor has no model for (a camera
   path) show as coloured markers while editing.
-- **Sky**: the background is the WorldSpawn's horizon colour; the game's sky
-  (gradient, sun, stars, clouds) is not drawn.
+- **Sky**: packs imported before the cloud dome and the star texture were
+  imported have neither until imported again; packs imported before material
+  flags draw every forward shader added and holograms with a guessed
+  gradient. Packs imported before shadow meshes, particles and `sss` cast
+  model shadows with what the models show (leaf cards too), draw no flames
+  and leave paper unlit from behind until imported again.
 - **Play mode** moves as Quake 3 does, not as Reflex (CPMA) does; no weapons,
   pickups, damage, race timing or crouching. Mirroring a prefab placement
   moves and turns it but cannot mirror what it places.

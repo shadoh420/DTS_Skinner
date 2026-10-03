@@ -1,7 +1,7 @@
 """Reflex Arena models for the Reflex Maps page: the game's .effect files (what an Effect entity or a pickup places)
 and the .mesh files they name, read from the zip archives of its base folder and written for the page as
 effects.json and one small binary per mesh (models/<mesh>.bin). Only what the page draws is kept: each mesh's
-finest level of detail, and the lights an effect carries.
+finest level of detail, and the lights and particle emitters an effect carries.
 
 .mesh (version 0x23, magic 0xd00a; little-endian): u16 version, u16 magic, u32 material count, f32 bounds (min xyz,
 max xyz), u32 bone count, u32 (0 or 1), u32 level-of-detail bits (9: one level, 11: two, 15: three: the count is the
@@ -15,8 +15,10 @@ b_light2 …, which lights hang from), then every bone's pose as a 4 x 4 matrix 
 
 .effect (version 0x33, magic 0xd00c): u16 version, u16 magic, u32 0x945893a8, three record counts and the offsets
 of three lists of records (the same effect for three quality settings; the first is read). A record's first byte
-is its type and fixes its length: 1 mesh (2141 bytes), 3 point light (169), 4 spot light (185); 0, 2 and 5 to 9
-are particles and the like. A mesh record: its mesh at +1 (128 bytes, without .mesh); a material for the whole mesh
+is its type and fixes its length: 1 mesh (2141 bytes), 2 particle emitter (525), 3 point light (169), 4 spot light
+(185); 0 and 5 to 9 are ribbons and the like. A particle emitter: its material at +1 (128 bytes), lifetime (least,
+most) at +261, particles a second at +301, size at birth (least, most) at +309 and at death at +317, colour (four
+floats) at birth at +333 and at death at +349, the bone it emits from at +389 (128 bytes). A mesh record: its mesh at +1 (128 bytes, without .mesh); a material for the whole mesh
 at +385 (pickup holograms, pads' glow); per material of the mesh, eight of each: a colour at +769 (four floats, alpha
 0 for none; a glow's), a colour at +897 (the albedo the game draws its material in, as a face's colour: p_metal is
 a paint, green until given one) and the material at +1025 (128 bytes, empty to keep the mesh's: its names are often
@@ -31,6 +33,7 @@ import struct
 MESH_MAGIC = b'\x23\x00\x0a\xd0'
 EFFECT_MAGIC = b'\x33\x00\x0c\xd0'
 STRIDE = {0x1d: 52, 0x3d: 72, 0x15: 44, 0x20: 32, 0: 12}
+SHADOW_PART = 255  # The material slot the page's binary gives a mesh's shadow mesh.
 RECORD = {0: 361, 1: 2141, 2: 525, 3: 169, 4: 185, 5: 285, 6: 321, 7: 433, 8: 165, 9: 2}
 
 # The effect each pickup type draws (pickupType: the numbers the page names them by).
@@ -48,6 +51,8 @@ ENTITY_EFFECTS = {'ReflectionProbe': 'internal/misc/reflectionprobe'}
 EDITOR_EFFECTS = {'PlayerSpawn': 'internal/editor/playerspawn', 'Target': 'internal/editor/target', 'PointLight': 'internal/editor/light',
                   'Effect': 'internal/editor/mesh', 'WorkshopScreenshot': 'internal/editor/workshophcreenshot',
                   'NavLink': 'internal/editor/nav_offmesh_start', 'NavLinkEnd': 'internal/editor/nav_offmesh_target'}
+# The game's sky: its cloud dome (a mesh; the page draws the sky's colours itself).
+SKY_MESHES = {'clouds': 'internal/world/skies/sky_clouds1'}
 # The material the game's editor draws a volume with (race starts and finishes it does not draw).
 VOLUME_MATERIALS = {'Teleporter': 'internal/editor/textures/editor_teleport', 'JumpPad': 'internal/editor/textures/editor_jumppad',
                     'TriggerVolume': 'internal/editor/textures/editor_trigger'}
@@ -110,6 +115,14 @@ def read_mesh(raw):
                 if fmt & 0x20:  # Skinned: four bone weights and four bone numbers end each vertex.
                     part['skin'] = [struct.unpack_from('<4f4B', raw, body + v * stride + stride - 20) for v in range(vertices)]
                 parts.append(part)
+            if level == levels and material == 0:
+                # The shadow mesh (positions, and bone weights where skinned): what the game casts sun shadows with.
+                positions = [c for v in range(vertices) for c in struct.unpack_from('<3f', raw, body + v * stride)]
+                part = dict(material=SHADOW_PART, positions=positions, normals=[0.0] * (3 * vertices), colours=bytes(4 * vertices),
+                            uvs=[0.0] * (2 * vertices), indices=list(struct.unpack_from(f'<{indices}H', raw, body + vertices * stride)))
+                if fmt & 0x20:
+                    part['skin'] = [struct.unpack_from('<4f4B', raw, body + v * stride + stride - 20) for v in range(vertices)]
+                parts.append(part)
             at = end
     # Bones: every parent (i32), then every name, then a 4 x 4 matrix each (bind), then a 4 x 4 matrix each (its
     # pose: rows, the place in the last; a light shines along the bone's x axis, its first row).
@@ -150,7 +163,7 @@ def read_effect(raw):
         raise ValueError('not a Reflex effect')
     count = struct.unpack_from('<I', raw, 8)[0]
     at = struct.unpack_from('<I', raw, 20)[0]
-    meshes, lights = [], []
+    meshes, lights, particles = [], [], []
     for _ in range(count):
         kind = raw[at]
         if kind not in RECORD or at + RECORD[kind] > len(raw):
@@ -161,6 +174,11 @@ def read_effect(raw):
             whole = _name(record, 385)
             meshes.append(dict(mesh=_name(record, 1), materials=[whole or _name(record, 1025 + 128 * k) for k in range(8)],
                                colours=[colour(897 + 16 * k) or colour(769 + 16 * k) for k in range(8)], scale=struct.unpack_from('<f', record, 2117)[0] or 1))
+        elif kind == 2:
+            # How many are alive at once: particles a second times their mean lifetime.
+            particles.append(dict(material=_name(record, 1), size=sum(struct.unpack_from('<2f', record, 309)) / 2,
+                                  alive=struct.unpack_from('<f', record, 301)[0] * sum(struct.unpack_from('<2f', record, 261)) / 2,
+                                  colour=list(struct.unpack_from('<4f', record, 333)), bone=_name(record, 389)))
         elif kind in (3, 4):
             colour = list(struct.unpack_from('<3f', record, 1))
             intensity, near, far = struct.unpack_from('<3f', record, 17)
@@ -171,7 +189,7 @@ def read_effect(raw):
                 light['bone'] = _name(record, 33)
             lights.append(light)
         at += RECORD[kind]
-    return dict(meshes=meshes, lights=lights)
+    return dict(meshes=meshes, lights=lights, particles=particles)
 
 
 def mesh_file(name):
@@ -180,7 +198,8 @@ def mesh_file(name):
 
 def write_mesh(mesh, path):
     """The page's binary of a mesh: u32 part count, then per part u32 material slot, vertex count, index count and
-    its float32 positions, float32 normals, float32 texture coordinates, BGRA bytes and u32 indices."""
+    its float32 positions, float32 normals, float32 texture coordinates, BGRA bytes and u32 indices. The shadow mesh
+    is the part of slot 255 (no normals, texture coordinates or colours to speak of; empty where it casts none)."""
     out = bytearray(struct.pack('<I', len(mesh['parts'])))
     for part in mesh['parts']:
         vertices = len(part['positions']) // 3
@@ -206,7 +225,7 @@ def export_models(find, names, output, resolve=lambda name: name):
             continue
         try:
             # A map may name a mesh where an effect goes; the game draws the mesh.
-            effect = read_effect(raw) if raw is not None else dict(meshes=[dict(mesh=name, materials=[''] * 8, colours=[None] * 8, scale=1)], lights=[])
+            effect = read_effect(raw) if raw is not None else dict(meshes=[dict(mesh=name, materials=[''] * 8, colours=[None] * 8, scale=1)], lights=[], particles=[])
         except (ValueError, struct.error) as exc:
             failed[name] = str(exc)
             continue
@@ -240,11 +259,18 @@ def export_models(find, names, output, resolve=lambda name: name):
                     if light['kind'] == 'spot':
                         length = sum(c * c for c in bone['axis']) ** .5
                         light['direction'] = [c / length for c in bone['axis']] if length else [0, -1, 0]
+            # Particle emitters too.
+            for particle in effect['particles']:
+                if known and particle.get('bone') in known['bones']:
+                    particle['position'] = known['bones'][particle['bone']]['position']
+        for particle in effect['particles']:
+            particle['material'] = resolve(particle['material'])
+            materials.add(particle['material'])
         effect['meshes'] = [record for record in effect['meshes'] if meshes.get(record['mesh'])]
         for record in effect['meshes']:
             record['file'] = meshes[record['mesh']]['file']
         effects[name] = effect
     (output / 'effects.json').write_text(json.dumps(dict(effects=effects, pickups=PICKUP_EFFECTS, entities=ENTITY_EFFECTS, editor=EDITOR_EFFECTS,
-                                                    volumes=VOLUME_MATERIALS),
+                                                    volumes=VOLUME_MATERIALS, sky=SKY_MESHES),
                                                     separators=(',', ':')), encoding='utf-8')
     return materials, failed
