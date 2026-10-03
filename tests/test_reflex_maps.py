@@ -82,6 +82,7 @@ class ReflexMapsTest(unittest.TestCase):
             game = root / 'steamapps/common/Reflex Arena'
             (game / 'maps').mkdir(parents=True)
             (game / 'maps/Test Walk.map').write_text(MAP, newline='')
+            (game / 'maps/Test Walk.light').write_bytes(b'baked light')
             (game / 'maps/readme.map').write_text('not a map')
             # Materials are in zip archives named .pak in base; a loose material file there comes first.
             (game / 'base/common/materials/wood').mkdir(parents=True)
@@ -106,8 +107,10 @@ class ReflexMapsTest(unittest.TestCase):
             index = json.loads((pack / 'index.json').read_text())
             self.assertEqual([(item['id'], item['group'], item['title']) for item in index],
                              [('test_walk', 'Reflex Arena', 'Test Walk'), ('workshop__42__other', 'Steam Workshop', 'Other')])
-            # The map is copied as it is, CR LF and all, under a name that changes with its content.
+            # The map is copied as it is, CR LF and all, under a name that changes with its content; its baked light too.
             self.assertEqual((pack / 'maps' / index[0]['file']).read_bytes(), MAP.encode())
+            self.assertEqual((pack / 'maps' / index[0]['light']).read_bytes(), b'baked light')
+            self.assertNotIn('light', index[1])
             colours = json.loads((pack / 'materials.json').read_text())
             self.assertEqual(colours['common/materials/stone/concrete'],
                              dict(colour=[.37, .38, .35], metallic=0.0, roughness=.8, shader='internal/shaders/deferredPbrStylized', source='common.pak'))
@@ -115,8 +118,10 @@ class ReflexMapsTest(unittest.TestCase):
             self.assertEqual(colours['structural/dev/dev_grey128'],
                              dict(colour=[.5, .5, .5], shader='tinted', source='structural.pak', tints='dev_grid16_albedospec'))
             self.assertEqual(report['materials'], 3)
-            # A material without a colour is still kept with its shader, which says whether it is see-through.
-            self.assertEqual(colours['internal/editor/textures/editor_clip'], dict(shader='internal/shaders/standard_TEXTUREDIFFUSE', source='internal.pak'))
+            # A material without a colour is still kept with its shader, which says whether it is see-through; its
+            # texture is looked for too (models' glowing materials use theirs), and this made-up install has none.
+            self.assertEqual(colours['internal/editor/textures/editor_clip'],
+                             dict(shader='internal/shaders/standard_TEXTUREDIFFUSE', source='internal.pak', textureError="KeyError: 'editor_clip_c'"))
             self.assertEqual(report['uncoloured'], ['internal/editor/textures/editor_clip'])
             self.assertEqual(import_maps(game, pack)['skipped'], ['Test Walk', 'other'])
             # A changed map replaces its old copy.
@@ -264,3 +269,55 @@ class ReflexTexturesTest(unittest.TestCase):
         # A model's slot may take a Reflex texture.
         names, games, _ = material_texture_refs(dict(game='t1', material_textures=['a.png']), {'0': {'game': 'reflex', 'filename': 'dev_grid16_albedospec__dev_grid16_meta.png'}})
         self.assertEqual((names, games), (['dev_grid16_albedospec__dev_grid16_meta.png'], ['reflex']))
+
+
+def mesh_file_bytes():
+    """A one-triangle .mesh as the game writes one: one material, one level of detail, a bone b_light posed 2 below
+    the origin with its x axis down."""
+    head = b'\x23\x00\x0a\xd0' + struct.pack('<I6f3I', 1, 0, 0, 0, 8, 8, 0, 1, 0, 9) + b'MaterialA\0'
+    vertex = lambda x, y, z: struct.pack('<3f4B3f2f4f', x, y, z, 255, 255, 255, 255, 0, 0, -1, 0, 0, 1, 0, 0, 1)
+    block = struct.pack('<4I', 3, 3, 0x1d, 4) + vertex(0, 0, 0) + vertex(8, 0, 0) + vertex(0, 0, 8) + struct.pack('<3H', 0, 1, 2)
+    shadow = struct.pack('<4I', 0, 0, 0, 4)
+    identity = (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+    pose = (0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, -2, 0, 1)
+    return head + block + shadow + struct.pack('<i', -1) + b'b_light\0' + struct.pack('<16f', *identity) + struct.pack('<16f', *pose)
+
+
+def effect_file_bytes():
+    """An .effect with a mesh record (its material and colour set, scale 2) and a spot light on b_light."""
+    mesh = bytearray(2141)
+    mesh[0] = 1
+    mesh[1:10] = b'test/mesh'
+    mesh[1025:1025 + 28] = b'common/materials/stone/stone'
+    struct.pack_into('<4f', mesh, 897, .5, .5, .5, 1)
+    struct.pack_into('<f', mesh, 2117, 2)
+    spot = bytearray(185)
+    spot[0] = 4
+    struct.pack_into('<4f4f', spot, 1, 1, .9, .7, 1, 2.5, 16, 192, 0)
+    struct.pack_into('<2f', spot, 37, 5, 40)
+    spot[45:52] = b'b_light'
+    records = bytes(mesh + spot)
+    return b'\x33\x00\x0c\xd0' + struct.pack('<10I', 0x945893a8, 2, 2, 2, 44, 44 + len(records), 44 + 2 * len(records), 0, 0, 0) + records * 3
+
+
+class ReflexModelsTest(unittest.TestCase):
+    def test_effects_and_meshes_are_read_and_written_for_the_page(self):
+        from tools.reflex_models import export_models, read_effect, read_mesh
+        mesh = read_mesh(mesh_file_bytes())
+        self.assertEqual((mesh['materials'], len(mesh['parts']), mesh['parts'][0]['indices']), (['MaterialA'], 1, [0, 1, 2]))
+        self.assertEqual(mesh['bones']['b_light'], dict(position=[0, -2, 0], axis=[0, -1, 0]))
+        effect = read_effect(effect_file_bytes())
+        self.assertEqual(effect['meshes'][0]['materials'][0], 'common/materials/stone/stone')
+        self.assertEqual((effect['meshes'][0]['colours'][0], effect['meshes'][0]['colours'][1], effect['meshes'][0]['scale']), ([.5, .5, .5, 1], None, 2))
+        self.assertEqual({k: effect['lights'][0][k] for k in ('kind', 'intensity', 'near', 'far', 'inner', 'outer', 'bone')},
+                         dict(kind='spot', intensity=2.5, near=16, far=192, inner=5, outer=40, bone='b_light'))
+        files = {'test/effect.effect': effect_file_bytes(), 'test/mesh.mesh': mesh_file_bytes()}
+        with tempfile.TemporaryDirectory() as directory:
+            materials, failed = export_models(files.get, {'test/effect', 'test/missing'}, Path(directory))
+            self.assertEqual((materials, failed), ({'common/materials/stone/stone'}, {'test/missing': 'no such effect'}))
+            written = json.loads((Path(directory) / 'effects.json').read_text())['effects']['test/effect']
+            # A spot light hangs from its bone and shines along the bone's x axis.
+            self.assertEqual((written['lights'][0]['position'], written['lights'][0]['direction']), ([0, -2, 0], [0, -1, 0]))
+            raw = (Path(directory) / 'models' / written['meshes'][0]['file']).read_bytes()
+            self.assertEqual(struct.unpack_from('<4I', raw), (1, 0, 3, 3))
+            self.assertEqual(len(raw), 16 + 3 * (12 + 12 + 8 + 4) + 3 * 4)

@@ -447,6 +447,19 @@ test('texture coordinates follow the axes, offsets and rotation measured in the 
   near(u, 64); near(v, -32);
 });
 
+test("a volume's texture stands upright on every wall, as the game's editor draws it", () => {
+  const box = B.box([0, 0, 0], [64, 32, 16], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0});
+  // [normal, U, V]: U = n × +y and V = n × U (measured on the +z and +x faces), so v grows downward everywhere.
+  for (const [normal, U, V] of [[[0, 0, 1], [-1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, -1], [1, 0, 0], [0, -1, 0]], [[-1, 0, 0], [0, 0, -1], [0, -1, 0]]]) {
+    const axis = normal.findIndex(x => x), face = box.faces.find(f => f.indices.every(i => box.vertices[i][axis] === (normal[axis] > 0 ? [64, 32, 16][axis] : 0)));
+    B.texcoords(box, face, true).forEach(([u, v], k) => {
+      const p = box.vertices[face.indices[k]];
+      near(u, U[0] * p[0] + U[1] * p[1] + U[2] * p[2]);
+      near(v, V[0] * p[0] + V[1] * p[1] + V[2] * p[2]);
+    });
+  }
+});
+
 test('breaking a placement gives what flatten draws, and the inverse of its placement gives the prefab back', () => {
   const map = M.parse(SAMPLE), flat = M.flatten(map);
   const turned = M.global(map).items.find(item => item.type === 'Prefab' && M.property(item, 'angles'));
@@ -585,4 +598,66 @@ test('mirroring a brush keeps it convex and wound outward, and mirrors an entity
   assert.deepEqual(across(0, 0), [[-16, 0, 8], 330]);
   assert.deepEqual(across(2, 0), [[16, 0, -8], 150]);
   assert.deepEqual(across(1, 8), [[16, 16, 8], 30]);
+});
+
+const {ReflexLight: L} = require(path.join(__dirname, '../static/reflex-maps/light.js'));
+
+// A .light file of two probes (2 × 1 × 1, 64 apart) and one 4 × 4 reflection probe, as the editor writes one.
+function lightFile() {
+  const halves = values => values.map(v => v === 1 ? 0x3c00 : v === .5 ? 0x3800 : 0);
+  const count = 2, header = Buffer.alloc(60);
+  header.writeUInt16LE(2, 0); header.writeUInt16LE(0x1323, 2); header.writeFloatLE(64, 4);
+  [2, 1, 1].forEach((n, i) => header.writeUInt32LE(n, 8 + i * 4));
+  [-32, 0, 0].forEach((v, i) => header.writeFloatLE(v, 24 + i * 4));
+  [1 / 128, 1 / 64, 1 / 64].forEach((v, i) => header.writeFloatLE(v, 36 + i * 4));
+  [.5, .5, .5].forEach((v, i) => header.writeFloatLE(v, 48 + i * 4));
+  // Plane cAr: probe 0 sends red 1 from every way (the constant term), probe 1 red 0.5 from +x only.
+  const planes = [];
+  for (let plane = 0; plane < 7; plane++) {
+    const data = Buffer.alloc(count * 8);
+    if (plane === 0) halves([0, 0, 0, 1, .5, 0, 0, 0]).forEach((h, i) => data.writeUInt16LE(h, i * 2));
+    planes.push(data);
+  }
+  const cubes = Buffer.alloc(16 + 13 + 6 * 8);
+  cubes.writeUInt16LE(2, 0); cubes.writeUInt16LE(0x1324, 2); cubes.writeUInt32LE(1, 4); cubes.writeUInt32LE(4, 8); cubes.writeUInt32LE(1, 12);
+  [0, 64, 0].forEach((v, i) => cubes.writeFloatLE(v, 16 + i * 4));
+  cubes[28] = 1;
+  for (let face = 0; face < 6; face++) cubes.writeUInt16LE(0xf800, 29 + face * 8);  // BC1: colour 0 pure red, every texel colour 0
+  return Buffer.concat([header, ...planes, Buffer.from([1, 1]), cubes]);
+}
+
+test('a .light file gives its probe grid, the light each probe sends a surface, and its reflection probes', () => {
+  const light = L.parse(lightFile());
+  assert.deepEqual([light.size, light.origin, light.cell], [[2, 1, 1], [-32, 0, 0], 64]);
+  assert.equal(light.planes.length, 7);
+  assert.deepEqual([...light.indices], [1, 1]);
+  assert.deepEqual(L.irradiance(light, 0, [0, 1, 0]), [1, 0, 0]);
+  assert.deepEqual(L.irradiance(light, 1, [1, 0, 0]), [.5, 0, 0]);
+  assert.deepEqual(L.irradiance(light, 1, [-1, 0, 0]), [-.5, 0, 0]);
+  assert.equal(light.cubes.length, 1);
+  assert.deepEqual(light.cubes[0].position, [0, 64, 0]);
+  assert.deepEqual([...L.decodeBC1(light.cubes[0].faces[2][0].data, 4).slice(0, 4)], [255, 0, 0, 255]);
+  assert.throws(() => L.parse(Buffer.alloc(80)), /not a Reflex light file/);
+});
+
+test('the light grid lists in each cell the lights that reach it, and packs a spot light\'s cone', () => {
+  const grid = L.lightGrid([{position: [0, 0, 0], colour: [1, 1, 1], near: 0, far: 100},
+    {position: [1000, 0, 0], colour: [1, 0, 0], near: 16, far: 64, direction: [0, -1, 0], cosInner: Math.cos(.1), cosOuter: Math.cos(.5)}]);
+  const cellOf = p => p.map((v, k) => Math.floor((v - grid.origin[k]) / grid.cell));
+  const listed = p => { const [x, y, z] = cellOf(p), i = x + grid.size[0] * (y + grid.size[1] * z); return [...grid.list.slice(grid.cells[i * 2], grid.cells[i * 2] + grid.cells[i * 2 + 1])]; };
+  assert.deepEqual(listed([0, 0, 0]), [0]);
+  assert.deepEqual(listed([1000, 0, 0]), [1]);
+  assert.deepEqual(listed([500, 0, 0]), []);
+  assert.deepEqual([...grid.data.slice(16, 28)].map(v => Math.round(v * 1000) / 1000), [1000, 0, 0, 16, 1, 0, 0, 64, 0, -1, 0, Math.round(Math.cos(.5) * 1000) / 1000]);
+  assert.equal(grid.data[29], 1);  // a spot
+});
+
+test('flatten gives each entity the transform of the prefab placement it is in', () => {
+  const map = M.parse(['reflex map version 8', 'prefab lamp', '\tentity', '\t\ttype WorldSpawn', '\tentity', '\t\ttype Effect',
+    '\t\tVector3 position 8.000000 0.000000 0.000000', 'global', '\tentity', '\t\ttype WorldSpawn', '\tentity', '\t\ttype Prefab',
+    '\t\tVector3 position 0.000000 64.000000 0.000000', '\t\tVector3 angles 90.000000 0.000000 0.000000', '\t\tString64 prefabName lamp', ''].join('\r\n'));
+  const effect = M.flatten(map).entities.find(entry => entry.entity.type === 'Effect');
+  assert.deepEqual(effect.position.map(v => Math.round(v)), [0, 64, -8]);
+  assert.deepEqual(M.apply(effect.transform, [8, 0, 0]).map(v => Math.round(v)), [0, 64, -8]);
+  assert.equal(M.flatten(map).entities[0].transform, null);
 });

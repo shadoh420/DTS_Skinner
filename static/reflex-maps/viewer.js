@@ -25,10 +25,10 @@
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
-  const B = window.ReflexBrush, M = window.ReflexMap;
+  const B = window.ReflexBrush, M = window.ReflexMap, L = window.ReflexLight;
   const storageKey = 'skinner.reflexmaps';
   // The game's me_snapdistance is 16; its me_snapangle default is not known, and 45 is the step most stock angles are on.
-  const settings = {fov: 100, invertX: false, invertY: false, grid: 16, angle: 45};
+  const settings = {fov: 110, invertX: false, invertY: false, grid: 16, angle: 45};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -49,8 +49,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ---- Colours ----
   // Shading is linear, as the game's physically based materials are, and the frame is encoded as sRGB. A face with a
   // colour of its own (alpha above zero) is that colour, taken as the sRGB bytes a colour picker gives; otherwise its
-  // material's albedo, read from the game's material files by the import (materials.json) and linear already, with
-  // its metallic value. Without one, a material's colour is guessed from its name.
+  // material's albedo, read from the game's material files by the import (materials.json), with its metallic value
+  // and roughness. The game raises the albedo to the power 2.2, as it does a face's colour (its shaders do; measured:
+  // concrete's 0.37 draws 0.107 of what a white face does). Without one, a material's colour is guessed from its name.
   const GUESSED = {
     'metal/gunmetal': [.30, .31, .33], 'metal/steel_stained': [.42, .40, .37], 'metal/aluminum': [.70, .71, .72], 'metal/p_metal': [.40, .40, .42],
     'metal/gold': [.80, .64, .30], 'metal/steel': [.55, .56, .58], 'stone/concrete': [.55, .55, .52], 'stone/stone': [.50, .48, .45],
@@ -61,11 +62,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const linear = channel => Math.pow(channel, 2.2);
   let packColours = {};
   const materials = new Map();
-  // {albedo (linear), metallic} of a material.
+  // {albedo (linear), metallic, roughness} of a material.
   function materialOf(name) {
     if (!materials.has(name)) {
       const read = packColours[name];
-      if (read && read.colour) materials.set(name, {albedo: read.colour, metallic: read.metallic || 0});
+      if (read && read.colour) materials.set(name, {albedo: read.colour.map(linear), metallic: read.metallic || 0, roughness: read.roughness ?? .8});
       else {
         const known = Object.keys(GUESSED).find(key => name.includes(key));
         let colour = known && GUESSED[known];
@@ -75,18 +76,28 @@ window.addEventListener('DOMContentLoaded', async () => {
           for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
           colour = new THREE.Color().setHSL((hash % 360) / 360, .25, .55).toArray();
         }
-        materials.set(name, {albedo: colour.map(linear), metallic: 0});
+        materials.set(name, {albedo: colour.map(linear), metallic: 0, roughness: .8});
       }
     }
     return materials.get(name);
   }
-  // Diffuse colour and the colour of reflections at normal incidence: 4 % for anything not metal, the albedo for metal.
+  // Glowing materials (common/materials/effects/glow: shader standard_ALBEDOCOLOUR_ALBEDOINTENSITY) are not lit: they
+  // shine their colour times their intensity.
+  const GLOWS = /standard_ALBEDOCOLOUR_ALBEDOINTENSITY/;
+  function glowOf(name) {
+    const read = packColours[name];
+    return read && GLOWS.test(read.shader || '') ? read.intensity ?? 1 : 0;
+  }
+  // Diffuse colour, the colour of reflections at normal incidence (1.54 % for anything not metal, as the game's
+  // lighting shader has it, the albedo for metal) and roughness; for a glowing material its light (emit 1).
   function faceShade(face) {
-    const material = LIBRARY.test(face.material || '') ? {albedo: [1, 1, 1], metallic: 0} : materialOf(face.material || ''), own = M.colourOf(face);
+    const material = LIBRARY.test(face.material || '') ? {albedo: [1, 1, 1], metallic: 0, roughness: .8} : materialOf(face.material || ''), own = M.colourOf(face);
     // The game leaves a face's colour off the dev materials, whose shader (…_TINTED) takes the material's own tint.
     const tinted = /_TINTED/.test((packColours[face.material || ''] || {}).shader || '');
     const albedo = own && !tinted ? own.slice(0, 3).map(linear) : material.albedo, metallic = material.metallic;
-    return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .04 * (1 - metallic) + c * metallic)};
+    const glow = glowOf(face.material || '');
+    if (glow) return {diffuse: albedo.map(c => c * glow), specular: [0, 0, 0], roughness: 1, emit: 1};
+    return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .015395 * (1 - metallic) + c * metallic), roughness: material.roughness, emit: 0};
   }
   // See-through materials, by shader (light beams, glass, race start and finish, pickup and powerup glows) or by
   // name for water, whose fluid shader lava and slime share; drawn after everything else, faintly.
@@ -99,34 +110,125 @@ window.addEventListener('DOMContentLoaded', async () => {
   const isClip = face => /^internal\/editor\/textures\/editor_.*clip/.test(face.material || '');
 
   // ---- Drawing brushes ----
-  const uniforms = {uGrid: {value: 0}, uSun: {value: new THREE.Vector3(.35, .8, .5).normalize()}};
+  // ---- Light ----
+  // The map's baked light (light.js), as the game's lighting shader (gbuffer_light_fullscreen) applies it in play:
+  // diffuse light from the probe grid at the point, for its normal, and reflections from the reflection probe its
+  // grid cell names, blurred by roughness and weighted by the split-sum lookup (here Karis' fit of it); diffuse less
+  // what the surface reflects. Positions and normals are the game's (the geometry is in its coordinates). A map
+  // without baked light is lit as the game lights one: evenly, about 0.55 (measured on white faces in play).
+  const empty3D = new THREE.Data3DTexture(new Uint16Array(4), 1, 1, 1);
+  Object.assign(empty3D, {type: THREE.HalfFloatType, needsUpdate: true});
+  const emptyArray = new THREE.DataArrayTexture(new Uint8Array(4), 1, 1, 1);
+  emptyArray.needsUpdate = true;
+  const uniforms = {uGrid: {value: 0}, uLit: {value: 0}, uEye: {value: new THREE.Vector3()}, uAmbient: {value: new THREE.Vector3(.55, .55, .5)},
+    uProbeScale: {value: new THREE.Vector3()}, uProbeOffset: {value: new THREE.Vector3()}, uGain: {value: 1}, uCubes: {value: 0}, uCubeMips: {value: 5},
+    uProbeIndex: {value: empty3D}, uCube: {value: emptyArray},
+    uLightCount: {value: 0}, uLightCell: {value: 128}, uLightOrigin: {value: new THREE.Vector3()}, uLightSize: {value: [1, 1, 1]},
+    uLights: {value: null}, uLightList: {value: null}, uLightCells: {value: empty3D},
+    uSun: {value: new THREE.Vector3(0, 1, 0)}, uSunColour: {value: new THREE.Vector3()}, uSunMatrix: {value: new THREE.Matrix4()}, uSunDepth: {value: null}, uSunTexel: {value: 0}};
+  for (let i = 0; i < 7; i++) uniforms['uSH' + i] = {value: empty3D};
+  scene.onBeforeRender = (_, __, view) => uniforms.uEye.value.set(view.position.x, view.position.y, -view.position.z);
+  const LIGHTING = `precision highp sampler3D; precision highp sampler2DArray;
+    uniform float uLit, uGain, uCubes, uCubeMips; uniform vec3 uEye, uAmbient, uProbeScale, uProbeOffset;
+    uniform sampler3D uSH0, uSH1, uSH2, uSH3, uSH4, uSH5, uSH6, uProbeIndex; uniform sampler2DArray uCube;
+    uniform float uLightCount, uLightCell; uniform vec3 uLightOrigin; uniform ivec3 uLightSize;
+    uniform sampler2D uLights, uLightList; uniform sampler3D uLightCells;
+    uniform vec3 uSun, uSunColour; uniform mat4 uSunMatrix; uniform sampler2D uSunDepth; uniform float uSunTexel;
+    // The sun (gbuffer_light_directional): the lights' BRDF from its direction, where its shadow map sees the point
+    // (3 × 3 samples; the game filters its cascades about as softly).
+    vec3 sunLight(vec3 p, vec3 n, vec3 v, vec3 diffuse, vec3 f0, float rough) {
+      float nl = clamp(dot(n, uSun), 0., 1.);
+      if (uSunTexel <= 0. || nl <= 0.) return vec3(0.);
+      vec4 s = uSunMatrix * vec4(p.x, p.y, -p.z, 1.);
+      vec3 q = s.xyz / s.w * .5 + .5;
+      float bias = uSunTexel * 2. * (1. + 3. * sqrt(1. - nl * nl) / max(nl, .05)), lit = 0.;
+      for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++)
+        lit += q.z - bias <= texture(uSunDepth, q.xy + vec2(x, y) * uSunTexel).r ? 1. : 0.;
+      if (any(lessThan(q, vec3(0.))) || any(greaterThan(q, vec3(1.)))) lit = 9.;
+      float a2 = rough * rough; a2 *= a2;
+      float nh = max(clamp(dot(n, normalize(v + uSun)), 0., 1.), .01), den = nh * nh * (a2 - 1.) + 1.;
+      vec3 light = uSunColour * nl * lit / 9.;
+      return (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * light + a2 / (3.14159265 * den * den) * f0 * light * 2.;
+    }
+    vec3 probeLight(vec3 p, vec3 n) {
+      if (uLit < .5) return uAmbient;
+      vec3 uvw = p * uProbeScale + uProbeOffset; vec4 a = vec4(n, 1.), b = n.xyzz * n.yzzx;
+      vec3 c = vec3(dot(texture(uSH0, uvw), a), dot(texture(uSH1, uvw), a), dot(texture(uSH2, uvw), a));
+      c += vec3(dot(texture(uSH3, uvw), b), dot(texture(uSH4, uvw), b), dot(texture(uSH5, uvw), b));
+      return (c + texture(uSH6, uvw).rgb * (n.x * n.x - n.y * n.y)) * uGain;
+    }
+    // The reflection probe of the point's grid cell (counted from 1; ponytail: nearest cell only, where the game blends
+    // the eight around the point when they differ), looked up as a cube map: +x, -x, +y, -y, +z, -z, rows top down.
+    vec3 reflected(vec3 p, vec3 r, float rough) {
+      if (uCubes < .5) return uAmbient;
+      float index = floor(texture(uProbeIndex, p * uProbeScale + uProbeOffset).r * 255. + .5);
+      vec3 a = abs(r); vec2 st; float face;
+      if (a.x >= a.y && a.x >= a.z) { face = r.x > 0. ? 0. : 1.; st = vec2(r.x > 0. ? -r.z : r.z, -r.y) / a.x; }
+      else if (a.y >= a.z) { face = r.y > 0. ? 2. : 3.; st = vec2(r.x, r.y > 0. ? r.z : -r.z) / a.y; }
+      else { face = r.z > 0. ? 4. : 5.; st = vec2(r.z > 0. ? r.x : -r.x, -r.y) / a.z; }
+      vec3 c = textureLod(uCube, vec3(st * .5 + .5, clamp(index - 1., 0., uCubes - 1.) * 6. + face), min(rough * uCubeMips, uCubeMips - 1.)).rgb;
+      return pow(c, vec3(2.2));
+    }
+    // The map's point and spot lights (light.js lightGrid), as gbuffer_light_point and gbuffer_light_spot light a
+    // surface: Lambert diffuse and a GGX highlight, twice; only the lights of the point's grid cell (at most 64).
+    vec3 dynamicLight(vec3 p, vec3 n, vec3 v, vec3 diffuse, vec3 f0, float rough) {
+      if (uLightCount < .5) return vec3(0.);
+      ivec3 c = ivec3(floor((p - uLightOrigin) / uLightCell));
+      if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, uLightSize))) return vec3(0.);
+      vec2 entry = texelFetch(uLightCells, c, 0).rg;
+      int first = int(entry.x), count = int(entry.y);
+      float a2 = rough * rough; a2 *= a2;
+      vec3 sum = vec3(0.);
+      for (int k = 0; k < 64; k++) {
+        if (k >= count) break;
+        int at = first + k, i = int(texelFetch(uLightList, ivec2(at % 4096, at / 4096), 0).r);
+        vec4 a = texelFetch(uLights, ivec2(0, i), 0), b = texelFetch(uLights, ivec2(1, i), 0);
+        vec4 d = texelFetch(uLights, ivec2(2, i), 0), e = texelFetch(uLights, ivec2(3, i), 0);
+        vec3 toLight = a.xyz - p; float distance = length(toLight); vec3 l = toLight / distance;
+        float fall = clamp(1. - (distance - a.w) / max(b.w - a.w, 1e-3), 0., 1.); fall *= fall;
+        if (e.y > .5) { float edge = clamp((dot(-l, d.xyz) - d.w) * e.x, 0., 1.); fall *= edge * edge; }
+        float nl = clamp(dot(n, l), 0., 1.);
+        if (fall * nl <= 0.) continue;
+        float nh = max(clamp(dot(n, normalize(v + l)), 0., 1.), .01), den = nh * nh * (a2 - 1.) + 1.;
+        vec3 light = b.rgb * fall * nl;
+        sum += (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * light + a2 / (3.14159265 * den * den) * f0 * light * 2.;
+      }
+      return sum;
+    }
+    vec3 shade(vec3 diffuse, vec3 f0, float rough, vec3 p, vec3 n) {
+      vec3 v = normalize(uEye - p); float nv = dot(n, v);
+      vec4 k = rough * vec4(-1., -.0275, -.572, .022) + vec4(1., .0425, 1.04, -.04);
+      float a004 = min(k.x * k.x, exp2(-9.28 * clamp(nv, 0., 1.))) * k.x + k.y;
+      vec2 ab = vec2(-1.04, 1.04) * a004 + k.zw;
+      vec3 spec = reflected(p, 2. * nv * n - v, rough) * (f0 * ab.x + ab.y);
+      return (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * probeLight(p, n) + spec + dynamicLight(p, n, v, diffuse, f0, rough) + sunLight(p, n, v, diffuse, f0, rough);
+    }`;
   const brushMaterial = new THREE.ShaderMaterial({
     uniforms,
     extensions: {derivatives: true},
-    vertexShader: `attribute vec3 color; attribute vec3 specular; attribute vec2 texcoord; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth; varying vec2 vTex;
+    vertexShader: `attribute vec3 color; attribute vec3 specular; attribute float roughness; attribute float emit; attribute vec2 texcoord; varying vec3 vColor; varying vec3 vSpecular; varying float vRough; varying float vEmit; varying vec3 vNormal; varying vec3 vPos; varying float vDepth; varying vec2 vTex;
       void main() {
-        vColor = color; vSpecular = specular; vNormal = normal; vPos = position; vTex = texcoord;
+        vColor = color; vSpecular = specular; vRough = roughness; vEmit = emit; vNormal = normal; vPos = position; vTex = texcoord;
         vec4 view = modelViewMatrix * vec4(position, 1.);
         vDepth = -view.z;
         gl_Position = projectionMatrix * view;
       }`,
-    // One fixed sun, light from the sky and a grey surrounding to reflect, as the map's baked light and reflection
-    // probes are not read; while editing, the editor's grid. A textured face (USE_MAP) multiplies its colour by its
-    // texture, sRGB, repeating every uRepeat units of the texture coordinates brush.js gives.
-    fragmentShader: `uniform float uGrid; uniform vec3 uSun; varying vec3 vColor; varying vec3 vSpecular; varying vec3 vNormal; varying vec3 vPos; varying float vDepth; varying vec2 vTex;
+    // The map's light (LIGHTING); while editing, the editor's grid. A textured face (USE_MAP) multiplies its colour by
+    // its texture, sRGB, repeating every uRepeat units of the texture coordinates brush.js gives.
+    fragmentShader: `${LIGHTING}
+      uniform float uGrid; varying vec3 vColor; varying vec3 vSpecular; varying float vRough; varying float vEmit; varying vec3 vNormal; varying vec3 vPos; varying float vDepth; varying vec2 vTex;
       #ifdef USE_MAP
       uniform sampler2D uMap; uniform vec2 uRepeat;
       #endif
       void main() {
         vec3 n = normalize(vNormal);
-        float light = .2 + .6 * max(dot(n, uSun), 0.) + .25 * (n.y * .5 + .5);
         vec3 albedo = vColor;
         #ifdef USE_MAP
         vec4 texel = texture2D(uMap, vTex / uRepeat);
         if (texel.a < .5) discard;  // Alpha-keyed, as the game's ALPHAKEYED shaders are.
         albedo *= pow(texel.rgb, vec3(2.2));
         #endif
-        vec3 c = albedo * light + vSpecular * .9;
+        vec3 c = vEmit > .5 ? albedo : shade(albedo, vSpecular, vRough, vPos, n);
         if (uGrid > 0.) {
           vec3 p = vPos / uGrid, w = fwidth(p) + 1e-5;
           vec3 g = abs(fract(p - .5) - .5) / w + abs(n) * 1e3;
@@ -149,7 +251,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const world = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), clips = new THREE.Mesh(new THREE.BufferGeometry(), clipMaterial);
   const glass = new THREE.Mesh(new THREE.BufferGeometry(), glassMaterial);
   // The brushes that are a teleporter's, jump pad's, race start's or finish's or trigger's volume: shown while editing.
-  const volumes = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({color: 0x3fc8ff, transparent: true, opacity: .2, depthWrite: false, side: THREE.DoubleSide}));
+  const volumes = new THREE.Mesh(new THREE.BufferGeometry(), []);
+  // The edges of the volumes the game's editor does not draw (race starts and finishes), faint, so they can be found;
+  // a child of volumes, so shown while editing only and not picked by itself.
+  const volumeOutlines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({color: 0x3fc8ff, transparent: true, opacity: .4, depthWrite: false}));
+  volumes.add(volumeOutlines);
   const selection = new THREE.Group();
   glass.renderOrder = 1; clips.renderOrder = 2; volumes.renderOrder = 2; selection.renderOrder = 3;
   root.add(world, glass, clips, volumes, selection);
@@ -162,30 +268,34 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   // The faces of `entries` that `wanted` takes, as one geometry; `owners` gets [entry index, face] per triangle. With
   // `textured`, faces are grouped by texture, the untextured first, and `materials` gets the material of each group.
-  function buildMesh(entries, wanted, owners, textured = false, materials = null) {
-    const buckets = new Map([[null, {positions: [], normals: [], colours: [], speculars: [], coords: [], owners: []}]]);
+  // `textured` true takes a face's texture from its material; a function (face, entry) gives it instead. A group's
+  // material is `materialOf` its texture (none: null).
+  function buildMesh(entries, wanted, owners, textured = false, materials = null, materialOf = source => source ? texturedMaterial(source) : brushMaterial) {
+    const buckets = new Map([[null, {positions: [], normals: [], colours: [], speculars: [], roughness: [], emits: [], coords: [], owners: []}]]);
     owners.length = 0;
     entries.forEach((entry, index) => {
       const brush = entry.brush;
       for (const face of brush.faces) {
         if (wanted(face, entry) === false) continue;
         const n = B.normalize(B.newell(face.indices.map(i => brush.vertices[i])));
-        const {diffuse, specular} = faceShade(face), source = textured ? textureSource(face) : null, key = source && source.key;
-        if (!buckets.has(key)) buckets.set(key, {source, positions: [], normals: [], colours: [], speculars: [], coords: [], owners: []});
-        const bucket = buckets.get(key), uv = B.texcoords(brush, face);
+        const {diffuse, specular, roughness, emit} = faceShade(face), source = !textured ? null : textured === true ? textureSource(face) : textured(face, entry), key = source && source.key;
+        if (!buckets.has(key)) buckets.set(key, {source, positions: [], normals: [], colours: [], speculars: [], roughness: [], emits: [], coords: [], owners: []});
+        const bucket = buckets.get(key), uv = B.texcoords(brush, face, M.isVolume(entry.owner));
         for (const triangle of B.triangles(brush, face, triangulate)) {
           for (const vertex of triangle) {
             bucket.positions.push(...brush.vertices[vertex]);
             bucket.normals.push(...n);
             bucket.colours.push(...diffuse);
             bucket.speculars.push(...specular);
+            bucket.roughness.push(roughness);
+            bucket.emits.push(emit);
             bucket.coords.push(...uv[face.indices.indexOf(vertex)]);
           }
           bucket.owners.push([index, face]);
         }
       }
     });
-    const geometry = new THREE.BufferGeometry(), all = {positions: [], normals: [], colours: [], speculars: [], coords: []};
+    const geometry = new THREE.BufferGeometry(), all = {positions: [], normals: [], colours: [], speculars: [], roughness: [], emits: [], coords: []};
     if (materials) materials.length = 0;
     let start = 0;
     for (const [key, bucket] of buckets) {
@@ -193,13 +303,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       for (const name in all) { const from = bucket[name], to = all[name]; for (let i = 0; i < from.length; i++) to.push(from[i]); }
       for (const owner of bucket.owners) owners.push(owner);
       const count = bucket.positions.length / 3;
-      if (materials && count) { geometry.addGroup(start, count, materials.length); materials.push(key === null ? brushMaterial : texturedMaterial(bucket.source)); }
+      if (materials && count) { geometry.addGroup(start, count, materials.length); materials.push(materialOf(bucket.source)); }
       start += count;
     }
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(all.positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(all.normals, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(all.colours, 3));
     geometry.setAttribute('specular', new THREE.Float32BufferAttribute(all.speculars, 3));
+    geometry.setAttribute('roughness', new THREE.Float32BufferAttribute(all.roughness, 1));
+    geometry.setAttribute('emit', new THREE.Float32BufferAttribute(all.emits, 1));
     geometry.setAttribute('texcoord', new THREE.Float32BufferAttribute(all.coords, 2));
     geometry.computeBoundingSphere();
     return geometry;
@@ -226,6 +338,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       uniforms: {...uniforms, uMap: {value: white}, uRepeat: {value: new THREE.Vector2(source.repeat || 128, source.repeat || 128)}},
       defines: {USE_MAP: ''}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
     });
+    if (source.shine) Object.assign(material, {transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending});
     texturedMaterials.set(source.key, material);
     new THREE.TextureLoader().load(source.url, texture => {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -235,6 +348,29 @@ window.addEventListener('DOMContentLoaded', async () => {
       material.uniforms.uMap.value = texture;
       if (!source.repeat) material.uniforms.uRepeat.value.set(texture.image.width / 2, texture.image.height / 2);
     }, undefined, () => { textureFailures.add(source.key); showNotes(); });
+    return material;
+  }
+
+  // A volume as the game's editor draws it (effects.json's volumes): its kind's texture, unlit, 41 % opaque (the
+  // texture's alpha), repeating every 16 units at the face's scale 1; race starts and finishes not at all (still
+  // picked; the page outlines them faintly). Measured in the game. Packs from before that draw every volume pale blue.
+  const volumeSource = (face, entry) => {
+    const name = (packEffects.volumes || {})[entry.owner.type], read = name && packColours[name];
+    return read && read.texture ? {key: name, url: `${data}textures/${encodeURIComponent(read.texture)}`} : null;
+  };
+  const volumeMaterials = new Map([[null, new THREE.MeshBasicMaterial({color: 0x3fc8ff, transparent: true, opacity: .2, depthWrite: false, side: THREE.DoubleSide})]]);
+  function volumeMaterial(source) {
+    if (!source && packEffects.volumes) return volumeMaterials.get('hidden') || volumeMaterials.set('hidden', new THREE.MeshBasicMaterial({visible: false})).get('hidden');
+    if (volumeMaterials.has(source && source.key)) return volumeMaterials.get(source && source.key);
+    const material = new THREE.MeshBasicMaterial({transparent: true, depthWrite: false, visible: false});  // 41 %: the texture's alpha
+    volumeMaterials.set(source.key, material);
+    new THREE.TextureLoader().load(source.url, texture => {
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.flipY = false;
+      material.map = texture;
+      material.visible = true;
+      material.needsUpdate = true;
+    });
     return material;
   }
 
@@ -271,12 +407,228 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     const matrix = new THREE.Matrix4();
     for (const {marker: [colour, size], entries} of byKind.values()) {
-      const mesh = new THREE.InstancedMesh(markerGeometry, new THREE.MeshBasicMaterial({color: colour}), entries.length);
-      mesh.userData.editOnly = size <= 3;  // Effects: a map can have a thousand; they show while editing.
+      // Not drawn where a model shows the entity (the game's editor models, effects, pickups); still picked by.
+      const modelled = packEffects.editor && ['PlayerSpawn', 'Target', 'PointLight', 'Effect', 'Pickup', 'WorkshopScreenshot', 'NavLink', 'ReflectionProbe'].includes(entries[0].entity.type);
+      const mesh = new THREE.InstancedMesh(markerGeometry, new THREE.MeshBasicMaterial({color: colour, visible: !modelled}), entries.length);
+      // Marked while editing only, as the game's play mode shows none (models show effects and pickups).
+      mesh.userData.editOnly = true;
       entries.forEach(({position: p}, index) => mesh.setMatrixAt(index, matrix.makeScale(size, size * 1.6, size).setPosition(p[0], p[1], p[2])));
       entries.forEach(entry => markers.push({entry, mesh}));
       entityLayer.add(mesh);
     }
+  }
+
+  // ---- Models and lights ----
+  // What Effect entities, pickups and teleporters place (effects.json and models/*.bin, written by the import from the
+  // game's .effect and .mesh files: tools/reflex_models.py), merged into geometry in the map's coordinates and lit as
+  // the brushes are; and the map's lights: PointLight entities and the lights effects carry. Rebuilt with the map
+  // (ponytail: every model again on each change; cache per entity if large maps edit slowly).
+  let packEffects = {effects: {}, pickups: {}, entities: {}};
+  const meshes = new Map();  // model file -> its parts once loaded (null when it could not load)
+  // Holograms (pickups) shine through their many layers, drawn over what is behind them at 60 % (added, they would
+  // sum to white); textured ones (teleporter ribbons) add to it (texturedMaterial).
+  const shineMaterial = brushMaterial.clone();
+  Object.assign(shineMaterial, {transparent: true, depthWrite: false, side: THREE.DoubleSide});
+  shineMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), 1.);', 'gl_FragColor = vec4(pow(c, vec3(1. / 2.2)), .6);');
+  shineMaterial.uniforms = uniforms;
+  const models = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), modelShine = new THREE.Mesh(new THREE.BufferGeometry(), [shineMaterial]);
+  // What the game shows in its editor only (a reflection probe's sphere).
+  const editorModels = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]);
+  modelShine.renderOrder = 1;
+  root.add(models, modelShine, editorModels);
+  let modelBuild = 0;
+  function readModel(buffer) {
+    const view = new DataView(buffer), parts = [];
+    let at = 4;
+    for (let i = view.getUint32(0, true); i > 0; i--) {
+      const material = view.getUint32(at, true), vertices = view.getUint32(at + 4, true), indices = view.getUint32(at + 8, true);
+      at += 12;
+      const positions = new Float32Array(buffer, at, vertices * 3); at += vertices * 12;
+      const normals = new Float32Array(buffer, at, vertices * 3); at += vertices * 12;
+      const uvs = new Float32Array(buffer, at, vertices * 2); at += vertices * 8;
+      const colours = new Uint8Array(buffer, at, vertices * 4); at += vertices * 4;
+      parts.push({material, positions, normals, uvs, colours, indices: new Uint32Array(buffer, at, indices)}); at += indices * 4;
+    }
+    return parts;
+  }
+  const hexColour = value => { const hex = String(value).replace(/^0x/, '').padStart(8, '0'); return [1, 3, 5, 7].map(i => parseInt(hex.slice(i - 1, i + 1), 16) / 255); };
+  const EDITOR_ONLY = /^internal\/misc\/reflectionprobe$/;
+  // Each model to draw: {effect, matrix (3 × 4 rows, the map's coordinates), entity, editorOnly}.
+  function modelInstances() {
+    const placed = [];
+    for (const {entity, transform} of flat.entities) {
+      const name = entity.type === 'Effect' ? M.property(entity, 'effectName') : entity.type === 'Pickup' ? packEffects.pickups[M.property(entity, 'pickupType') ?? 0]
+        : (packEffects.entities || {})[entity.type];
+      const effect = name && packEffects.effects[name];
+      if (!effect) continue;
+      const scale = entity.type === 'Effect' ? M.property(entity, 'effectScale') ?? 1 : 1;
+      const at = (lift = 0) => {
+        const position = M.property(entity, 'position') || [0, 0, 0];
+        const local = M.compose([position[0], position[1] + lift, position[2]], M.property(entity, 'angles') || [0, 0, 0]).map(row => row.map((v, k) => k < 3 ? v * scale : v));
+        return transform ? M.multiply(transform, local) : local;
+      };
+      // A pickup with a pad (health, armour, powerups, weapons) floats above it: 30 units, measured (the game bobs
+      // and turns it); ammunition lies on the floor.
+      const pad = entity.type === 'Pickup' && packEffects.effects[name.replace(/_pickup$/, '') + '_pad'];
+      if (pad) placed.push({effect: pad, matrix: at(), entity, editorOnly: false});
+      placed.push({effect, matrix: at(pad ? 30 : 0), entity, editorOnly: EDITOR_ONLY.test(name) || entity.type === 'ReflectionProbe'});
+    }
+    // While editing, what the game's editor shows for an entity (effects.json's editor list): a spawn, target, point
+    // light, screenshot camera or nav link its model, an effect with no model of its own a red "!", and a reflection
+    // probe a mirror sphere 16 in radius (the game draws one; measured on screen).
+    const shown = packEffects.editor || {};
+    for (const {entity, transform} of flat.entities) {
+      const position = M.property(entity, 'position');
+      if (!position) continue;
+      const placeAt = scale => { const local = M.compose(position, M.property(entity, 'angles') || [0, 0, 0]).map(row => row.map((v, k) => k < 3 ? v * scale : v)); return transform ? M.multiply(transform, local) : local; };
+      const effectName = entity.type === 'Effect' && M.property(entity, 'effectName');
+      if (entity.type === 'ReflectionProbe' || EDITOR_ONLY.test(effectName || '')) { placed.push({effect: PROBE_SPHERE, matrix: placeAt(1), entity, editorOnly: true}); continue; }
+      const own = effectName && packEffects.effects[effectName];
+      if (own && own.meshes.length) continue;
+      const end = entity.type === 'NavLink' && [0, false].includes(M.property(entity, 'isStart'));
+      const effect = packEffects.effects[shown[end ? 'NavLinkEnd' : entity.type]];
+      if (effect) placed.push({effect, matrix: placeAt(1), entity, editorOnly: true});
+    }
+    return placed;
+  }
+  // The reflection probe's sphere: a mirror (metal, white, smooth) that shows the probe it stands in.
+  const PROBE_SPHERE = {meshes: [{file: '#sphere', materials: ['#mirror'], colours: [null], scale: 16}], lights: []};
+  {
+    const sphere = new THREE.SphereGeometry(1, 24, 16), count = sphere.attributes.position.count;
+    meshes.set('#sphere', [{material: 0, positions: sphere.attributes.position.array, normals: sphere.attributes.normal.array,
+      uvs: sphere.attributes.uv.array, colours: new Uint8Array(count * 4).fill(255), indices: Uint32Array.from(sphere.index.array)}]);
+  }
+  const LINEAR_BYTE = Array.from({length: 256}, (_, i) => linear(i / 255));
+  const ATTRIBUTES = {position: 3, normal: 3, color: 3, specular: 3, roughness: 1, emit: 1, texcoord: 2};
+  let modelsDrawn = '';  // what the model geometry was last built from
+  function buildModels() {
+    const build = ++modelBuild, placed = modelInstances();
+    const wanted = [...new Set(placed.flatMap(({effect}) => effect.meshes.map(record => record.file)))].filter(file => !meshes.has(file));
+    buildLights(placed.filter(item => !item.editorOnly));
+    if (wanted.length) {
+      Promise.all(wanted.map(file => fetch(`${data}models/${encodeURIComponent(file)}`).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null)
+        .then(buffer => meshes.set(file, buffer && readModel(buffer))))).then(() => { if (build === modelBuild) buildModels(); });
+    }
+    // An edit that moves no model (most change brushes) keeps the merged geometry.
+    const drawn = placed.map(({effect, matrix, entity, editorOnly}) => effect.meshes.map(record => record.file + (meshes.get(record.file) ? '' : '?')).join() +
+      JSON.stringify(matrix) + JSON.stringify(entity.properties) + editorOnly).join('|');
+    if (drawn !== modelsDrawn) { modelsDrawn = drawn; mergeModels(placed); }
+    editorModels.visible = editing;
+    updateSun();
+  }
+  // Every placed mesh part into the geometry of where it goes: lit (per texture, untextured first), shining, or the
+  // editor's; planned first (material, colour, count), then written into arrays of their final size.
+  function mergeModels(placed) {
+    const lit = new Map([[null, {source: null, plans: [], count: 0}]]), shine = new Map([[null, {source: null, plans: [], count: 0}]]), editor = {source: null, plans: [], count: 0};
+    for (const {effect, matrix, entity, editorOnly} of placed) {
+      for (const record of effect.meshes) {
+        const parts = meshes.get(record.file);
+        if (!parts) continue;
+        for (const part of parts) {
+          // The material: the entity's (materialNName), else the effect's, else the mesh's; the colour: the entity's
+          // (materialNAlbedo), else the effect's, else the material's, raised to 2.2 as the game does. Parts given a
+          // clip material are not drawn, as the game draws no clip faces.
+          const slot = part.material, name = M.property(entity, `material${slot}Name`) || record.materials[slot] || '';
+          // God rays and light beams fade with the view in the game; they are left out.
+          const read = packColours[name] || {};
+          if (isClip({material: name}) || /godrays|alphaFresnel/.test(read.shader || '')) continue;
+          const own = M.property(entity, `material${slot}Albedo`), ownColour = own !== undefined && hexColour(own);
+          const set = record.colours[slot], material = materialOf(name), glow = glowOf(name);
+          const given = ownColour && ownColour[0] > 0 ? ownColour.slice(1) : set ? set.slice(0, 3) : null;
+          // Holograms and the forward shaders (standard_…: ribbons, glass) shine their colour; glows are solid and shine.
+          const shines = !glow && (/hologram|^internal\/shaders\/standard_/.test(read.shader || '') || SEE_THROUGH.test(read.shader || ''));
+          let out = editorOnly ? editor : null;
+          if (!out) {
+            const texture = read.texture, key = texture ? (shines ? 'shine:' : 'model:') + texture : null, into = shines ? shine : lit;
+            if (!into.has(key)) into.set(key, {source: {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines}, plans: [], count: 0});
+            out = into.get(key);
+          }
+          // A hologram's colour is drawn bright, as it glows in the game (ponytail: its own shader, with its fresnel and
+          // scan lines, is not drawn: its colour, unraised, over what is behind it looks alike).
+          const shown = shines ? (given || read.colour || [1, 1, 1]) : given ? given.map(linear) : material.albedo;
+          out.plans.push({part, matrix, scale: record.scale || 1, shown, glow, metallic: glow || shines ? 0 : material.metallic,
+            emit: glow || shines ? 1 : 0, roughness: material.roughness});
+          out.count += part.indices.length;
+        }
+      }
+    }
+    const fill = (mesh, buckets, materials) => {
+      mesh.geometry.dispose();
+      const geometry = mesh.geometry = new THREE.BufferGeometry(), total = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
+      const arrays = Object.fromEntries(Object.entries(ATTRIBUTES).map(([name, size]) => [name, new Float32Array(total * size)]));
+      const {position, normal, color, specular, roughness, emit, texcoord} = arrays;
+      if (materials) materials.length = 0;
+      let at = 0;
+      for (const bucket of buckets) {
+        if (materials && bucket.count) { geometry.addGroup(at, bucket.count, materials.length); materials.push(bucket.source ? texturedMaterial(bucket.source) : mesh === modelShine ? shineMaterial : brushMaterial); }
+        for (const {part, matrix: m, scale: s, shown, glow, metallic, emit: shining, roughness: rough} of bucket.plans) {
+          const {positions, normals, uvs, colours, indices} = part;
+          for (const index of indices) {
+            const x = positions[index * 3] * s, y = positions[index * 3 + 1] * s, z = positions[index * 3 + 2] * s;
+            const nx = normals[index * 3], ny = normals[index * 3 + 1], nz = normals[index * 3 + 2];
+            for (let r = 0; r < 3; r++) position[at * 3 + r] = m[r][0] * x + m[r][1] * y + m[r][2] * z + m[r][3];
+            const tx = m[0][0] * nx + m[0][1] * ny + m[0][2] * nz, ty = m[1][0] * nx + m[1][1] * ny + m[1][2] * nz, tz = m[2][0] * nx + m[2][1] * ny + m[2][2] * nz, l = Math.hypot(tx, ty, tz) || 1;
+            normal[at * 3] = tx / l; normal[at * 3 + 1] = ty / l; normal[at * 3 + 2] = tz / l;
+            texcoord[at * 2] = uvs[index * 2]; texcoord[at * 2 + 1] = uvs[index * 2 + 1];
+            // The mesh's vertex colour (BGRA) multiplies the albedo (2.2 too), as the game's stylized shader has it.
+            for (let k = 0; k < 3; k++) {
+              const base = shown[k] * LINEAR_BYTE[colours[index * 4 + 2 - k]];  // BGRA
+              color[at * 3 + k] = glow ? base * glow : base * (1 - metallic);
+              specular[at * 3 + k] = shining ? 0 : .015395 * (1 - metallic) + base * metallic;
+            }
+            roughness[at] = rough; emit[at] = shining;
+            at++;
+          }
+        }
+      }
+      for (const [name, size] of Object.entries(ATTRIBUTES)) geometry.setAttribute(name, new THREE.BufferAttribute(arrays[name], size));
+      geometry.computeBoundingSphere();
+    };
+    fill(models, [...lit.values()], models.material);
+    models.layers.enable(1);
+    fill(modelShine, [...shine.values()], modelShine.material);
+    fill(editorModels, [editor], editorModels.material);
+  }
+  // A light's colour as the game's lighting shader gets it: (colour × intensity)², times 0.87 (measured: a white
+  // PointLight of intensity 1 over a grey floor, near 0 and far 200, and inside near 100; grey 0x80 gives a quarter,
+  // intensity 2 four times). A PointLight without them has near 16, far 128 and intensity 1 (measured, ±4).
+  const lightColour = (colour, intensity) => colour.map(c => .87 * (c * intensity) ** 2);
+  let lightTextures2 = [];
+  function buildLights(placed) {
+    const lights = [];
+    for (const {entity, position} of flat.entities) {
+      if (entity.type !== 'PointLight' || !position) continue;
+      const colour = hexColour(M.property(entity, 'color') ?? 'ffffffff').slice(1);
+      lights.push({position, colour: lightColour(colour, M.property(entity, 'intensity') ?? 1), near: M.property(entity, 'nearAttenuation') ?? 16, far: M.property(entity, 'farAttenuation') ?? 128});
+    }
+    // An effect's own lights, where its mesh's bone puts them (a spot shining along the bone's x axis), unless the
+    // entity overrides them (pointLightOverridden, spotLightOverridden with the values it gives).
+    for (const {effect, matrix, entity} of placed) {
+      for (const light of effect.lights) {
+        const spot = light.kind === 'spot', prefix = spot ? 'spotLight' : 'pointLight', own = M.property(entity, prefix + 'Overridden');
+        const value = (name, fallback) => own ? M.property(entity, prefix + name) ?? fallback : fallback;
+        const colourHex = own && M.property(entity, prefix + 'Color');
+        const colour = colourHex !== undefined && colourHex !== false ? hexColour(colourHex).slice(1) : light.colour;
+        const p = light.position || [0, 0, 0], at = [0, 1, 2].map(r => matrix[r][0] * p[0] + matrix[r][1] * p[1] + matrix[r][2] * p[2] + matrix[r][3]);
+        const entry = {position: at, colour: lightColour(colour, value('Intensity', light.intensity)), near: value('Near', light.near), far: value('Far', light.far)};
+        if (spot) {
+          const along = light.direction || [0, -1, 0], d = [0, 1, 2].map(r => matrix[r][0] * along[0] + matrix[r][1] * along[1] + matrix[r][2] * along[2]), l = Math.hypot(...d) || 1;
+          entry.direction = d.map(c => c / l);
+          entry.cosInner = Math.cos(value('InnerAnglesDegrees', light.inner) * Math.PI / 180);
+          entry.cosOuter = Math.cos(value('OuterAnglesDegrees', light.outer) * Math.PI / 180);
+        }
+        if (entry.far > entry.near && Math.max(...entry.colour) > 0) lights.push(entry);
+      }
+    }
+    for (const texture of lightTextures2.splice(0)) texture.dispose();
+    const grid = L.lightGrid(lights);
+    const texture = (tex, more) => { Object.assign(tex, {type: THREE.FloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, needsUpdate: true}, more); lightTextures2.push(tex); return tex; };
+    uniforms.uLights.value = texture(new THREE.DataTexture(grid.data, 4, Math.max(1, grid.count)), {format: THREE.RGBAFormat});
+    uniforms.uLightList.value = texture(new THREE.DataTexture(grid.list, Math.min(4096, grid.list.length), Math.ceil(grid.list.length / 4096)), {format: THREE.RedFormat});
+    if (grid.list.length > 4096) uniforms.uLightList.value.image.data = Float32Array.from({length: 4096 * Math.ceil(grid.list.length / 4096)}, (_, i) => grid.list[i] || 0);
+    uniforms.uLightCells.value = texture(new THREE.Data3DTexture(grid.cells, ...grid.size), {format: THREE.RGFormat});
+    uniforms.uLightOrigin.value.fromArray(grid.origin); uniforms.uLightSize.value = grid.size; uniforms.uLightCell.value = grid.cell;
+    uniforms.uLightCount.value = grid.count;
   }
 
   // ---- The map ----
@@ -291,13 +643,62 @@ window.addEventListener('DOMContentLoaded', async () => {
     world.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle, true, world.material);
     glass.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle);
     clips.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && isClip(face), clipEntryOfTriangle);
-    volumes.geometry = buildMesh(flat.brushes, (face, entry) => volume(entry), volumeEntryOfTriangle);
+    volumes.geometry = buildMesh(flat.brushes, (face, entry) => volume(entry), volumeEntryOfTriangle, volumeSource, volumes.material, volumeMaterial);
+    volumes.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(volumes.geometry.attributes.texcoord.array.map(v => v / 16), 2));
+    volumeOutlines.geometry.dispose();
+    const unseen = volumes.geometry.groups.filter(group => volumes.material[group.materialIndex] === volumeMaterials.get('hidden')), corners = [];
+    for (const {start, count} of unseen) corners.push(...volumes.geometry.attributes.position.array.subarray(start * 3, (start + count) * 3));
+    const outlined = new THREE.BufferGeometry();
+    outlined.setAttribute('position', new THREE.Float32BufferAttribute(corners, 3));
+    volumeOutlines.geometry = new THREE.EdgesGeometry(outlined);
+    outlined.dispose();
     buildEntities();
     for (const mesh of entityLayer.children) if (mesh.userData.editOnly) mesh.visible = editing;
+    buildModels();
     showSelection();
   }
 
   function worldSpawn() { return (globalGroup().items || []).find(item => item.kind === 'entity' && item.type === 'WorldSpawn'); }
+  // The sun: up from the horizon in the direction sky.skyAngle turns +z by at 6:00 (sky.timeOfDay), overhead at
+  // 12:00, down on the far side at 18:00, 15° an hour (measured with a pole's shadow at 6, 9, 12, 15 and 18, and at
+  // 9 and 12 turned 90°); a map that gives neither is at 14:00 turned 30° (measured: Aerowalk and Phobos give no
+  // angle); its light (2.94, 2.65, 2.13) at full incidence on a grey floor (measured at noon). Clip brushes cast no
+  // shadow (measured). Its
+  // shadows from one depth map of the brushes and models over the whole map (ponytail: 4096², one cascade; the game
+  // has four).
+  const SUN_LIGHT = [2.94, 2.65, 2.13];
+  const sunTarget = new THREE.WebGLRenderTarget(4096, 4096, {depthTexture: new THREE.DepthTexture(4096, 4096), depthBuffer: true});
+  const sunCamera = new THREE.OrthographicCamera(), shadowCaster = new THREE.MeshBasicMaterial();
+  sunCamera.layers.set(1);
+  world.layers.enable(1);
+  function updateSun() {
+    const spawn = worldSpawn(), hour = Number((spawn && M.property(spawn, 'sky.timeOfDay')) ?? 14), turn = Number((spawn && M.property(spawn, 'sky.skyAngle')) ?? 30) * Math.PI / 180;
+    const height = (hour - 6) * 15 * Math.PI / 180, enabled = !spawn || M.property(spawn, 'sky.sunEnabled') !== 0;
+    const sun = new THREE.Vector3(Math.sin(turn) * Math.cos(height), Math.sin(height), Math.cos(turn) * Math.cos(height)).normalize();
+    uniforms.uSun.value.copy(sun);
+    uniforms.uSunColour.value.fromArray(SUN_LIGHT);
+    uniforms.uSunTexel.value = 0;
+    if (!enabled || sun.y <= 0) return;
+    const box = new THREE.Box3().setFromObject(world).union(new THREE.Box3().setFromObject(models));
+    if (box.isEmpty()) return;
+    // Three's coordinates (z mirrored), looking down the sun's way at the middle of the map, wide enough for all of it.
+    const middle = box.getCenter(new THREE.Vector3()), reach = box.getSize(new THREE.Vector3()).length() / 2 + 16;
+    const toward = new THREE.Vector3(sun.x, sun.y, -sun.z);
+    sunCamera.position.copy(middle).addScaledVector(toward, reach * 2);
+    sunCamera.lookAt(middle);
+    Object.assign(sunCamera, {left: -reach, right: reach, top: reach, bottom: -reach, near: reach, far: reach * 3});
+    sunCamera.updateProjectionMatrix(); sunCamera.updateMatrixWorld();
+    uniforms.uSunMatrix.value.multiplyMatrices(sunCamera.projectionMatrix, sunCamera.matrixWorldInverse);
+    const was = {target: renderer.getRenderTarget(), override: scene.overrideMaterial, background: scene.background};
+    Object.assign(scene, {overrideMaterial: shadowCaster, background: null});
+    renderer.setRenderTarget(sunTarget);
+    renderer.clear();
+    renderer.render(scene, sunCamera);
+    renderer.setRenderTarget(was.target);
+    Object.assign(scene, {overrideMaterial: was.override, background: was.background});
+    uniforms.uSunDepth.value = sunTarget.depthTexture;
+    uniforms.uSunTexel.value = 1 / 4096;
+  }
   function applySky() {
     const spawn = worldSpawn(), hex = spawn && (M.property(spawn, 'sky.horizonColor') || M.property(spawn, 'sky.skyTopColor') || M.property(spawn, 'fogColor'));
     const colour = hex ? new THREE.Color(`#${String(hex).slice(-6)}`) : new THREE.Color(0x2a3b47);
@@ -346,7 +747,40 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   $('notes').after(Object.assign(document.createElement('span'), {id: 'mapNotes'}));
 
+  // The baked light of an imported map (light.js) as textures: the seven probe planes as half floats, the reflection
+  // probe of each cell, and every reflection probe's six faces as layers of one texture (mips made by the GPU).
+  const lightTextures = [];
+  function useLight(light) {
+    for (const texture of lightTextures.splice(0)) texture.dispose();
+    uniforms.uLit.value = uniforms.uCubes.value = 0;
+    for (let i = 0; i < 7; i++) uniforms['uSH' + i].value = empty3D;
+    uniforms.uProbeIndex.value = empty3D; uniforms.uCube.value = emptyArray;
+    if (!light) return;
+    const [nx, ny, nz] = light.size, grid = data => {
+      const texture = new THREE.Data3DTexture(data, nx, ny, nz);
+      Object.assign(texture, {minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, needsUpdate: true});
+      lightTextures.push(texture);
+      return texture;
+    };
+    light.planes.forEach((plane, i) => { uniforms['uSH' + i].value = Object.assign(grid(plane), {type: THREE.HalfFloatType}); });
+    uniforms.uProbeIndex.value = Object.assign(grid(light.indices), {format: THREE.RedFormat, unpackAlignment: 1, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
+    uniforms.uProbeScale.value.fromArray(light.scale); uniforms.uProbeOffset.value.fromArray(light.offset);
+    uniforms.uLit.value = 1;
+    // As many probes as the GPU's array textures hold (WebGL 2 promises 256 layers, 42 probes; Phobos has 49); a cell
+    // naming one beyond takes the last.
+    const gl = renderer.getContext(), kept = light.cubes.slice(0, Math.floor(gl.getParameter(gl.MAX_ARRAY_TEXTURE_LAYERS) / 6));
+    const side = light.cubeSize, layer = side * side * 4, faces = new Uint8Array(layer * 6 * kept.length);
+    kept.forEach((cube, i) => cube.faces.forEach((levels, face) => faces.set(L.decodeBC1(levels[0].data, side), (i * 6 + face) * layer)));
+    if (kept.length) {
+      const cubes = new THREE.DataArrayTexture(faces, side, side, kept.length * 6);
+      Object.assign(cubes, {minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: true, needsUpdate: true});
+      lightTextures.push(cubes);
+      uniforms.uCube.value = cubes; uniforms.uCubes.value = kept.length; uniforms.uCubeMips.value = light.cubeMips;
+    }
+  }
+
   function load(text, name) {
+    useLight(null);
     const parsed = M.parse(text);
     if (!M.global(parsed)) parsed.groups.push({kind: 'global', name: '', items: []});
     map = parsed; mapName = name; selected.clear(); undoStack.length = 0; redoStack.length = 0;
@@ -1652,6 +2086,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('tools').hidden = !on;
     clips.visible = volumes.visible = selection.visible = on;
     for (const mesh of entityLayer.children) if (mesh.userData.editOnly) mesh.visible = on;
+    editorModels.visible = on;
     uniforms.uGrid.value = on ? settings.grid : 0;
     $('crosshair').hidden = on;
     if (!on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; texturePreview = null; showHover(null); ghost.clear(); }
@@ -1672,11 +2107,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
     camera.aspect = aspect;
-    // The game's field of view is horizontal; Three's is vertical.
-    camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
+    // The game's field of view (r_fov, 110 by default) is horizontal on a 4:3 frame, whatever the window's shape (measured:
+    // 110 shows 124° across at 16:9); Three's is vertical.
+    camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) * 3 / 4));
     camera.updateProjectionMatrix();
   }
-  $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 100)); save(); applySettings(); });
+  $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 110)); save(); applySettings(); });
   for (const id of ['invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
   $('grid').addEventListener('change', event => { settings.grid = Number(event.target.value); event.target.blur(); save(); setEditing(editing); updateTools(); });
   $('reset').addEventListener('click', () => { speed = 400; showViewpoint(0); if (flat) showReady(); });
@@ -1904,6 +2340,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   let maps = [];
   try { maps = await (await fetch(data + 'index.json')).json(); } catch (_) { /* No pack yet, or the page is served without Skinner. */ }
   try { packColours = await (await fetch(data + 'materials.json')).json() || {}; } catch (_) { /* Colours stay guessed. */ }
+  packColours['#mirror'] = {colour: [1, 1, 1], metallic: 1, roughness: 0, shader: 'internal/shaders/deferredPbr'};  // the reflection probe's sphere
+  try { packEffects = await (await fetch(data + 'effects.json')).json() || packEffects; } catch (_) { /* No models are drawn. */ }
   if (!Array.isArray(maps)) maps = [];
   const byGroup = new Map();
   for (const item of maps) byGroup.set(item.group, [...(byGroup.get(item.group) || []), item]);
@@ -1920,6 +2358,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       const response = await fetch(`${data}maps/${entry.file}`);
       if (!response.ok) throw new Error(`${entry.file} (${response.status})`);
       load(await response.text(), entry.name);
+      if (entry.light) {
+        const light = await fetch(`${data}maps/${entry.light}`);
+        try { useLight(L.parse(await light.arrayBuffer())); } catch (error) { notes.push(`Its baked light could not be read (${error.message})`); showNotes(); }
+      }
     } else {
       if (!maps.length) $('importPanel').open = true;
       load(M.write(M.empty()), 'untitled');

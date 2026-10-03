@@ -41,8 +41,10 @@ below is compiled in.
 
   The game folder is only read. The pack holds `index.json` (name, title and
   author from the map's WorldSpawn, group, source), `maps/` (the map files as
-  they are, named by content) and `materials.json` (each material's albedo,
-  metallic and roughness, shader and archive). All 18 maps of a stock install
+  they are, named by content, with each map's baked `.light`),
+  `materials.json` (each material's albedo, metallic and roughness, shader and
+  archive), `effects.json` and `models/` (the models and lights the maps
+  place). All 18 maps of a stock install
   import in under a second.
 - With no map chosen the page opens a new, empty map in edit mode.
 
@@ -75,15 +77,21 @@ taken as the sRGB bytes of a colour picker. The dev materials are the
 exception: their shader (`…_TINTED`, which no other stock material uses) takes
 the material's tint, and in the game a face colour on them changes nothing, so
 the page leaves it off too. A face with colour `0x00000000`,
-or none, is drawn in its material's albedo, which is linear, as the game's
-physically based materials are. Shading is linear and the frame is encoded as
-sRGB: diffuse light from one fixed sun and the sky, and a grey surrounding
-reflected at 4 % (or in the albedo's colour for a metallic material, which
-then has no diffuse colour). That is what keeps `gunmetal`, whose albedo is
-almost black (0.015, 0.02, 0.02, not metallic, roughness 0.4) and which most
-of Aerowalk is, a dark grey as in the game. Where the import found no albedo
+or none, is drawn in its material's albedo. The game raises both to the power
+2.2, as its shaders do (`deferredPbrStylized` takes albedo and vertex colour
+to 2.2): measured on plates in the game, a white face draws the same on
+concrete, gunmetal and stone (the face's colour replaces the material's),
+concrete's own 0.37 draws 0.107 of a white face (0.37^2.2 is 0.112), stone's
+(0.25, 0.3, 0.35) a bluish dark grey, and `dev_grey128`'s tint of 0.5 times
+its 0.9 texture 0.167. Shading is linear and the frame is encoded as sRGB
+(the game's last pass is only its `r_gamma`, 1 at the default 2.2: no tone
+mapping, no exposure); the light is the map's (Light, below). `gunmetal`,
+whose albedo is almost black (0.015, 0.02, 0.02, roughness 0.4) and which most
+of Aerowalk is, shows only what it reflects. Where the import found no albedo
 for a material the page guesses a colour from the name and lists those
-materials under Preview notes.
+materials under Preview notes. Glowing materials
+(`common/materials/effects/glow*`, shader `standard_ALBEDOCOLOUR_ALBEDOINTENSITY`)
+are not lit: they shine their colour times their `albedoIntensity`.
 
 Faces of see-through materials are drawn faintly, after everything else and
 from both sides: those whose shader is a light beam (`alphaFresnel`, as
@@ -165,6 +173,109 @@ Faces of the editor's clip materials (`internal/editor/textures/editor_clip`,
 `editor_fullclip`, `editor_weaponclip`) are not drawn while flying, as the game
 does not draw them; while editing they show as purple glass.
 
+### Light
+
+Reflex lights a map in play from what the editor's Build Lighting writes
+beside it (`maps/Aerowalk.light`), from its lights and from the sun; it has no
+lightmaps for brushes. The page does the same, following the game's lighting
+shaders (`internal/shaders/gbuffer_light_*.shad` in `internal.pak`, DirectX
+bytecode, read with the Windows shader disassembler). The import copies each
+map's `.light` beside it into the pack (`light.js` reads it):
+
+- **Light probes**, one every 64 units over the map: the light arriving from
+  every direction as order-2 spherical harmonics, seven half-float planes
+  (`probes_cAr` … `probes_cC`). A surface takes the probes around it (blended)
+  for its normal, times its albedo.
+- **Reflection probes**: per ReflectionProbe entity (in their order) a 64 × 64
+  cube map, BC1, five mips; each probe cell names the one it reflects. A
+  surface reflects it, blurred by its roughness, weighted by the split-sum
+  lookup (here Karis' fit of the game's table), and its diffuse light is less
+  what it reflects (1.54 % for anything not metal).
+- Layout (little-endian): u16 2, u16 0x1323, f32 64, u32 nx, ny, nz, u32 a
+  hash, f32 origin, f32 scale and f32 offset (a point's place in the grid is
+  point × scale + offset); seven planes of nx × ny × nz × four float16, x
+  fastest; one byte per probe (its reflection probe, from 1); then u16 2, u16
+  0x1324, u32 count, u32 64, u32 5, and per probe its position, a byte and six
+  faces (+x, −x, +y, −y, +z, −z), each with its mips. Every stock file is
+  exactly that long. The game uses a copy of a map's `.light` under the copy's
+  name; without one it lights the map evenly (about 0.55 on a white face,
+  which the page uses for maps opened from a file).
+
+**Lights.** PointLight entities and the lights inside effects (point and
+spot) light what they reach as `gbuffer_light_point` and `gbuffer_light_spot`
+do: (1 − (distance − near) / (far − near))², clamped, Lambert diffuse and a
+GGX highlight, and across a spot's edge ((cos − cos outer) / (cos inner − cos
+outer))². Measured in the game with six PointLights over a grey floor: the
+light is (colour × intensity)² × 0.87 (grey 0x80 gives a quarter, intensity 2
+four times); without them near is 16, far 128 and intensity 1 (±4). An
+effect's light hangs from a bone of its mesh (`b_light`) and a spot shines
+along the bone's x axis; an Effect entity overrides them with
+`pointLight…`/`spotLight…` properties where `…Overridden` is set. Not
+measured, and taken so because Aerowalk then matches: a spot's angles are
+half the cone, and the overrides need `…Overridden`. The page
+keeps the lights in a grid of 128-unit cells and sums, per point, only those
+of its cell (ironguard has 362 lights).
+
+**The sun** rises at +z turned by `sky.skyAngle` at 6:00 (`sky.timeOfDay`), is
+overhead at 12:00 and sets on the far side at 18:00, 15° an hour; a map that
+gives neither is at 14:00, 30°. Its light at full incidence is (2.94, 2.65,
+2.13). All measured in the game with a pole and a tower on an open floor (at
+6, 9, 12, 15 and 18, at 9 and 12 turned 90°, and with neither given); the
+page's shadows match the game's there. Not measured: whether `sky.sunColor`
+or another sky property changes the sun's light (the page keeps it constant). The page shades it with one 4096²
+shadow map of the brushes and models over the whole map (the game has four
+cascades); clip brushes cast no shadow (measured).
+
+Measured on Aerowalk from a spawn (the camera fitted from the geometry: eye
+58 above the spawn point, r_fov 110 on a 4:3 frame): with every effect of the
+game off, the page's light matches the game's within 3 % overall
+(game/page 0.97); with everything on, 1.04. Switching the game's effects off
+one at a time there: dynamic lights −44 % of the brightness, sun 0, SSAO 1 %,
+bloom 5 %, fog 0.
+
+### Models
+
+Effect entities place the game's models and lights by `effectName`; pickups,
+teleporters and (in the editor) reflection probes place them too. The import
+reads the `.effect` files the maps name, the pickups' and their pads', and the
+`.mesh` files those name, and writes `effects.json` and one small binary per
+mesh into the pack (`tools/reflex_models.py`, where both formats are set out:
+materials and colours per mesh slot, lights on bones, levels of detail, rest
+poses of skinned meshes). The page merges every placement into the map's
+geometry, in the map's coordinates (position, angles, `effectScale` and any
+prefab placement around them), and lights it as the brushes are.
+
+- A mesh slot's material is the entity's (`material0Name` …), else the
+  effect's, else the mesh's (often a placeholder, `MaterialA`); its colour the
+  entity's (`material0Albedo`), else the effect's (`p_metal` is a paint, green
+  until given one), else the material's, all to 2.2, times the mesh's vertex
+  colours. A part given a clip material is not drawn (Furnace hides most of a
+  tree that way). God rays and light beams are left out (the game fades them
+  with the view).
+- Pickups stand on their pads (health, armour, powerups, weapons) and float
+  30 units above them (measured on a Furnace health; taken for the others too;
+  the game bobs and turns them). Holograms (pickups) are drawn in their colour,
+  unraised, at 60 % over what is behind them (looked alike, not measured). A
+  skinned mesh (the teleporter's portal) is posed by its bones. A Teleporter
+  shows nothing of its own (seen in the game); the stock maps place their
+  portals as Effects.
+- Mesh vertex colours are BGRA (the editor's target, red in the game, holds
+  (0, 28, 180)).
+- While editing, entities show the game editor's models (effects.json's
+  `editor` list, seen in its editor): a spawn, a target (red flag), a point
+  light (blue diamond, whatever its colour), a screenshot camera, a nav link's
+  start and end (`isStart` 0), and a red "!" for an Effect with no model of its
+  own. A reflection probe is a mirror sphere 16 in radius showing its probe.
+  Volumes are drawn as the game's editor draws them: a teleporter's, jump
+  pad's and trigger's in their editor texture (`editor_teleport`, …), unlit,
+  41 % opaque (blended in sRGB, so the light stripes come out about 10 %
+  darker than the game's, which blends in linear light), a tile every 16
+  units at the face's scale 1, offset and turned with the face, upright and
+  reading left to right on every wall (`texcoords(…, true)`; floors and
+  ceilings not measured); race starts and finishes, which the game's editor
+  does not draw, by a faint outline of their edges (they are clicked as the
+  others). Measured with test maps in the game's editor.
+
 ## Controls
 
 Playing (the page opens a map so): click the scene to capture the mouse or
@@ -174,8 +285,9 @@ camera is (as the game's play mode starts where the editor's camera was), or
 at the first spawn point when a map opens, and comes back there after falling
 out of the map. **F** flies instead (WASD, Space or E up, Shift or Q down, the
 wheel for speed, and 1–9 also the camera the map ends on, the Target its
-WorldSpawn names as `targetGameOverCamera`); F again walks. FOV (horizontal,
-as in the game), invert and Reset view are above the scene.
+WorldSpawn names as `targetGameOverCamera`); F again walks. FOV (as the game's
+`r_fov`: horizontal on a 4:3 frame, so 110 shows 124° across at 16:9), invert
+and Reset view are above the scene.
 
 **Movement** (`static/reflex-maps/movement.js`) is Quake 3's, not Reflex's
 (which is CPMA's, with air control and more): a box 30 wide and 56 tall with
@@ -585,14 +697,22 @@ random convex brushes.
 
 ## Limits and what comes next
 
-- **Textures**: lit by one fixed sun and the sky, with the editor's grid
-  while editing; normal maps, specular and the game's own shaders are not
-  drawn. The texture mapping was measured in the game; on slopes the
-  direction of v is taken from u × v = n, as on the axis faces, not measured
-  by itself. Library textures show in Skinner only.
-- **Effects** (the game's models, by `effectName`) are marked as small grey
-  points while editing, not drawn. Sky, fog and the baked light are not drawn;
-  the background is the WorldSpawn's horizon colour.
+- **Textures**: normal maps and the game's special shaders (hologram fresnel,
+  clouds, refraction, glass reflections) are not drawn. The texture mapping was
+  measured in the game; on slopes the direction of v is taken from u × v = n,
+  as on the axis faces, not measured by itself. Library textures show in
+  Skinner only.
+- **Light**: spot lights cast no shadows (the game's do: Aerowalk's right wall
+  is about 30 % too bright); the sun has one shadow map, so its edges are
+  coarser than the game's and alpha-cut leaves shadow as solid; reflection
+  probes are taken from the point's cell only, where the game blends the
+  eight around it; bloom, SSAO and fog are not drawn.
+- **Models**: animations are not played (fans, items' bob and turn); a skinned
+  mesh shows its rest pose. Particles (steam, sparks, the jump pad's green
+  glow) are not drawn. Entities the game's editor has no model for (a camera
+  path) show as coloured markers while editing.
+- **Sky**: the background is the WorldSpawn's horizon colour; the game's sky
+  (gradient, sun, stars, clouds) is not drawn.
 - **Play mode** moves as Quake 3 does, not as Reflex (CPMA) does; no weapons,
   pickups, damage, race timing or crouching. Mirroring a prefab placement
   moves and turns it but cannot mirror what it places.

@@ -31,6 +31,11 @@ const {ReflexBrush: B} = require('../static/reflex-maps/brush.js');
     assert.equal(await page.isVisible('#tools'), true, 'a new map starts in edit mode');
     assert.equal(await brushes(), 0);
     await page.selectOption('#grid', '8');
+    // The clicks below are placed for the view of 100° across this canvas; the FOV setting is the game's r_fov (across
+    // a 4:3 frame), so it is set to what gives that view.
+    const fov = await page.evaluate(() => { const c = document.getElementById('c'); return 2 * Math.atan(Math.tan(50 * Math.PI / 180) / (c.clientWidth / c.clientHeight) / .75) * 180 / Math.PI; });
+    await page.fill('#fov', String(Math.round(fov * 1000) / 1000));
+    await page.dispatchEvent('#fov', 'change');
 
     // B makes a box in front of the camera; a click on it selects it.
     await page.click('#newBrush');

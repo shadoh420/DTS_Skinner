@@ -207,7 +207,8 @@
         }
         owner = item;
         const position = property(item, 'position');
-        entities.push({entity: item, group, path, position: position && transform ? apply(transform, position) : position});
+        // `transform`: where the prefab it is in places it (null in the map itself).
+        entities.push({entity: item, group, path, transform, position: position && transform ? apply(transform, position) : position});
         if (item.type !== 'Prefab') continue;
         const name = property(item, 'prefabName'), inner = name !== undefined && prefab(map, name);
         if (!inner) { if (name !== undefined) missing.add(name); continue; }
@@ -341,6 +342,6 @@
     return [...uses].map(([group, count]) => ({name: group.name, uses: count, group}));
   }
 
-  exports.ReflexMap = {parse, write, empty, global, prefab, property, colourOf, flatten, compose, apply, fixed, isVolume, worldInsertAt, VOLUMES, MapError,
+  exports.ReflexMap = {parse, write, empty, global, prefab, property, colourOf, flatten, compose, apply, multiply, fixed, isVolume, worldInsertAt, VOLUMES, MapError,
     invert, moveItem, mirrorItem, placement, parts, breakPrefab, setPrefab, prefabUses};
 })(typeof module !== 'undefined' ? module.exports : window);

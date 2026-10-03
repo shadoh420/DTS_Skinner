@@ -27,12 +27,17 @@ import struct
 import zipfile
 
 try:
+    from tools.reflex_models import EDITOR_EFFECTS, ENTITY_EFFECTS, PICKUP_EFFECTS, VOLUME_MATERIALS, export_models, pickup_pad
     from tools.reflex_textures import bake, decode_dds, decode_textureset_image, textureset_images
 except ImportError:  # Run as a script from tools/.
+    from reflex_models import EDITOR_EFFECTS, ENTITY_EFFECTS, PICKUP_EFFECTS, VOLUME_MATERIALS, export_models, pickup_pad
     from reflex_textures import bake, decode_dds, decode_textureset_image, textureset_images
 
 WORKSHOP_APP = '328070'
 HEADER = re.compile(rb'reflex map version (\d+)\s*$')
+EFFECT_NAME = re.compile(r'^	+String64 effectName (\S+)', re.M)
+# Materials an Effect entity puts on its model in place of the mesh's own (material0Name …).
+MATERIAL_NAME = re.compile(r'^	+String256 material\dName (\S+)', re.M)
 MATERIAL_MAGIC = b'\x14\x00\x0e\xd0'
 PARAMETER = 260
 
@@ -154,12 +159,15 @@ def material_colours(game, names, files=None):
         # Every material found is kept with its shader, which tells the page what is see-through; a colour where it has one.
         entry = colours[name] = dict(shader=shader, source=source,
                                      **{key: round(parameters[key], 4) for key in ('metallic', 'roughness') if isinstance(parameters.get(key), float)})
+        # Glowing materials (standard_ALBEDOCOLOUR_ALBEDOINTENSITY) shine their colour times this.
+        if isinstance(parameters.get('albedoIntensity'), float):
+            entry['intensity'] = round(parameters['albedoIntensity'], 4)
         key = next((key for key in ('albedo', 'diffuseColour', 'tintColor') if isinstance(parameters.get(key), list) and len(parameters[key]) >= 3), None)
         if key:
             entry['colour'] = [round(channel, 4) for channel in parameters[key][:3]]
             if key == 'tintColor': entry['tints'] = parameters.get('textureAlbedoSpec') or parameters.get('textureDiffuse') or ''
         # The textures a surface of it shows: its albedo (or diffuse) texture and the meta texture that darkens it.
-        if shader.startswith('internal/shaders/deferredPbr'):
+        if shader.startswith(('internal/shaders/deferredPbr', 'internal/shaders/standard_')):
             albedo = parameters.get('textureAlbedoSpec') or parameters.get('textureDiffuse')
             if isinstance(albedo, str) and albedo:
                 entry['textures'] = [albedo] + ([parameters['textureMeta']] if isinstance(parameters.get('textureMeta'), str) and parameters['textureMeta'] else [])
@@ -189,8 +197,9 @@ class Textures:
         return self._read[key]
 
     def image(self, name):
-        """The texture `name` as an RGBA image; KeyError when the game has none of that name."""
-        name = name.lower()
+        """The texture `name` as an RGBA image; KeyError when the game has none of that name. Some materials name it
+        with its folders (internal/effects/ribbons/ribbon_strokes_c); the game finds it by its bare name all the same."""
+        name = name.lower().rsplit('/', 1)[-1]
         if name in self.dds:
             return decode_dds(self.dds[name][0]())
         # Its textureset is named as it is less a suffix: dev_grid16 for dev_grid16_albedospec.
@@ -212,7 +221,7 @@ class Textures:
 def texture_file(textures):
     """The file name a material's baked texture is kept under: its albedo's name, with its meta's after two
     underscores."""
-    return '__'.join(name.lower() for name in textures) + '.png'
+    return '__'.join(name.lower().rsplit('/', 1)[-1] for name in textures) + '.png'
 
 
 def material_textures(game, colours, output, replace=False):
@@ -263,13 +272,18 @@ def import_maps(game, output, replace=False):
     index_path = output / 'index.json'
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}
     result = dict(imported=[], skipped=[], failed={}, materials=0, uncoloured=[])
-    used = set()
+    used, effects = set(), {*PICKUP_EFFECTS.values(), *ENTITY_EFFECTS.values(), *EDITOR_EFFECTS.values()}
     for path, group in maps:
         name = path.stem
         ident = map_id(name if group == 'Reflex Arena' else f'workshop__{path.parent.name}__{name}')
-        if ident in index and (output / 'maps' / index[ident]['file']).is_file() and not replace:
+        # Packs made before the import took the baked light take it now.
+        light_missing = path.with_suffix('.light').is_file() and not (output / 'maps' / index.get(ident, {}).get('light', '-')).is_file()
+        if ident in index and (output / 'maps' / index[ident]['file']).is_file() and not replace and not light_missing:
             result['skipped'].append(name)
             used.update(index[ident].get('materials', []))
+            kept = (output / 'maps' / index[ident]['file']).read_text(encoding='utf-8', errors='replace')
+            effects.update(EFFECT_NAME.findall(kept))
+            used.update(MATERIAL_NAME.findall(kept))
             continue
         try:
             raw = path.read_bytes()
@@ -283,14 +297,41 @@ def import_maps(game, output, replace=False):
         if old and old != file and (output / 'maps' / old).is_file():
             (output / 'maps' / old).unlink()
         (output / 'maps' / file).write_bytes(raw)
+        # The map's baked light (Build Lighting writes it beside the map), which the page lights the map with.
+        light = None
+        old_light = index.get(ident, {}).get('light')
+        try:
+            light_raw = path.with_suffix('.light').read_bytes()
+            light = f'{ident}-{hashlib.sha256(light_raw).hexdigest()[:12]}.light'
+            (output / 'maps' / light).write_bytes(light_raw)
+        except OSError:
+            pass
+        if old_light and old_light != light and (output / 'maps' / old_light).is_file():
+            (output / 'maps' / old_light).unlink()
         index[ident] = dict(id=ident, name=name, title=title, author=author, group=group, file=file, version=read_header(path),
                             source=str(path.relative_to(game) if path.is_relative_to(game) else path.name), materials=sorted(materials))
+        if light:
+            index[ident]['light'] = light
         result['imported'].append(name)
         used.update(materials)
-    # Every material of the game for the page's material browser (the editor's and effects' only when a map names
-    # them), with its colour, texture and thumbnail.
+        effects.update(EFFECT_NAME.findall(text))
+        used.update(MATERIAL_NAME.findall(text))
+    # The models the maps place (Effect entities and pickups), with the materials they use.
+    found = {}
+    for suffix in ('.effect', '.mesh'):
+        found.update({key + suffix: reader for key, (reader, _) in game_files(game, suffix).items()})
+    # The pad a pickup stands on (health_25_pad, rocketlauncher_pad), where the game has one.
+    effects.update(pad for pad in map(pickup_pad, PICKUP_EFFECTS.values()) if pad + '.effect' in found)
     files = material_files(game)
-    catalogue = used | {name for name in files if not name.startswith('internal/')}
+    bare = {}
+    for name in files:
+        bare.setdefault(name.rsplit('/', 1)[-1], name)
+    model_materials, result['models_failed'] = export_models(lambda path: found[path.lower()]() if path.lower() in found else None, effects, output,
+                                                             lambda name: name if '/' in name or name.lower() in files else bare.get(name.lower(), name))
+    used |= model_materials
+    # Every material of the game for the page's material browser (the editor's and effects' only when a map names
+    # them, or the editor draws volumes with them), with its colour, texture and thumbnail.
+    catalogue = used | set(VOLUME_MATERIALS.values()) | {name for name in files if not name.startswith('internal/')}
     colours, uncoloured = material_colours(game, catalogue, files)
     result['uncoloured'] = [name for name in uncoloured if name in used]
     result['materials'] = sum('colour' in entry for name, entry in colours.items() if name in used)
