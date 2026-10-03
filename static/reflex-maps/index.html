@@ -9,6 +9,7 @@
   <script defer src="/static/three.min.js"></script>
   <script defer src="/static/reflex-maps/brush.js"></script>
   <script defer src="/static/reflex-maps/mapfile.js"></script>
+  <script defer src="/static/reflex-maps/light.js"></script>
   <script defer src="/static/reflex-maps/movement.js"></script>
   <script defer src="/static/reflex-maps/viewer.js"></script>
 </head>
@@ -16,7 +17,7 @@
   <header><a href="/">← Models</a><strong>Reflex Maps</strong>
     <select id="map" aria-label="Map"></select>
     <label class="file">Open .map file <input id="open" type="file" accept=".map"></label>
-    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="130" value="90"></label>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="130" value="110"></label>
     <label><input id="invertX" type="checkbox"> Invert horizontal</label>
     <label><input id="invertY" type="checkbox"> Invert vertical</label>
     <button id="reset">Reset view</button>

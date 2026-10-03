@@ -323,10 +323,14 @@
      nearest: U = (0, 0, 1) × n and V = n × U, except on faces looking mostly along z, where U = +x × n looking along −z
      and +y × n along +z (U = +y, V = +x on a −z face; U = +x, V = +y on +z). So U flips where the nearest axis
      changes (+y on a −z face turned 44° toward −x, −y at 46°), as it does in the game. `rotation` degrees turn both
-     right-handed about n. A scale of zero is taken as one. */
-  function texcoords(brush, face) {
+     right-handed about n. A scale of zero is taken as one.
+     `volume`: the frame the game's editor draws a volume's texture in, U = n × +y and V = n × U, so its labels stand
+     upright and read left to right on every wall (measured on ±z and +x faces); on a floor or ceiling U = (0, 0, 1) × n
+     (not measured: the editor's eye never saw one). */
+  function texcoords(brush, face, volume = false) {
     const points = polygonOf(brush, face), n = normalize(newell(points));
-    const reference = Math.abs(n[2]) >= Math.abs(n[0]) && Math.abs(n[2]) >= Math.abs(n[1]) ? (n[2] < 0 ? [1, 0, 0] : [0, 1, 0]) : [0, 0, 1];
+    const reference = volume ? (Math.abs(n[1]) >= Math.abs(n[0]) && Math.abs(n[1]) >= Math.abs(n[2]) ? [0, 0, 1] : [0, -1, 0])
+      : Math.abs(n[2]) >= Math.abs(n[0]) && Math.abs(n[2]) >= Math.abs(n[1]) ? (n[2] < 0 ? [1, 0, 0] : [0, 1, 0]) : [0, 0, 1];
     const U0 = normalize(cross(reference, n)), V0 = cross(n, U0);
     const radians = (face.rotation || 0) * Math.PI / 180, c = Math.cos(radians), s = Math.sin(radians);
     const U = add(scale(U0, c), scale(V0, s)), V = add(scale(V0, c), scale(U0, -s));  // n × U0 = V0, n × V0 = −U0.
