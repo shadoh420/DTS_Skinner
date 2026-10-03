@@ -409,21 +409,42 @@ test('a bridge refuses faces of different corner counts', () => {
   assert.equal(B.bridge(quad, [1, 0, 0], [[64, 0, 0], [64, 32, 0], [64, 0, 32]], [-1, 0, 0], 2, cutter), null);
 });
 
-test('texture coordinates project a face on the axis plane it faces, then turn, scale and offset them', () => {
+test('texture coordinates follow the axes, offsets and rotation measured in the game', () => {
   const box = B.box([0, 0, 0], [64, 32, 16], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0});
-  const top = box.faces.find(face => face.indices.every(i => box.vertices[i][1] === 32));
-  const corner = brush => B.texcoords(brush, brush.faces[box.faces.indexOf(top)])[top.indices.indexOf(box.vertices.findIndex(v => v[0] === 64 && v[1] === 32 && v[2] === 16))];
-  const withFace = fields => ({vertices: box.vertices, faces: box.faces.map(face => face === top ? {...face, ...fields} : face)});
-  // A floor or ceiling: u along x, v against z.
-  assert.deepEqual(corner(box), [64, -16]);
-  assert.deepEqual(corner(withFace({u: 16, v: -32})), [80, -48]);
-  assert.deepEqual(corner(withFace({scaleU: 2, scaleV: -1})), [32, 16]);
-  const [u, v] = corner(withFace({rotation: 90}));
-  near(u, 16); near(v, 64);
-  // A wall facing x: u along z, v down y.
-  const side = box.faces.find(face => face.indices.every(i => box.vertices[i][0] === 64));
-  const coords = B.texcoords(box, side), at = side.indices.indexOf(box.vertices.findIndex(v => v[0] === 64 && v[1] === 32 && v[2] === 16));
-  assert.deepEqual(coords[at], [16, -32]);
+  // The face of the box looking along `normal`, with `fields`; [u, v] at its corner `at`.
+  const faceAlong = normal => box.faces.find(face => face.indices.every(i => box.vertices[i][normal.findIndex(x => x)] === (normal.some(x => x > 0) ? [64, 32, 16][normal.findIndex(x => x)] : 0)));
+  const at = (normal, corner, fields = {}) => {
+    const face = faceAlong(normal), brush = {vertices: box.vertices, faces: box.faces.map(f => f === face ? {...f, ...fields} : f)};
+    const index = box.vertices.findIndex(v => v.every((x, k) => x === corner[k]));
+    return B.texcoords(brush, brush.faces[box.faces.indexOf(face)])[face.indices.indexOf(index)];
+  };
+  // Which way u and v grow on each face (the report's faces test map): [normal, U, V].
+  const measured = [[[0, 0, -1], [0, 1, 0], [1, 0, 0]], [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    [[-1, 0, 0], [0, -1, 0], [0, 0, 1]], [[0, 1, 0], [-1, 0, 0], [0, 0, 1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]]];
+  for (const [normal, U, V] of measured) {
+    const corners = box.vertices.filter(v => faceAlong(normal).indices.some(i => box.vertices[i] === v));
+    for (const p of corners) {
+      const [u, v] = at(normal, p);
+      near(u, U[0] * p[0] + U[1] * p[1] + U[2] * p[2]);
+      near(v, V[0] * p[0] + V[1] * p[1] + V[2] * p[2]);
+    }
+  }
+  // Offsets are 1/16 unit and added before the scale (64 moves the texture 4 units whatever the scale, as in the game);
+  // a scale divides; rotation +90 on the −z face turns U from +y to +x.
+  assert.deepEqual(at([0, 0, -1], [64, 32, 0], {u: 16, v: -32}), [33, 62]);
+  assert.deepEqual(at([0, 0, -1], [64, 32, 0], {scaleU: 2, scaleV: -1}), [16, -64]);
+  assert.deepEqual(at([0, 0, -1], [64, 32, 0], {u: 64, scaleU: 2, v: 64, scaleV: -1}), [18, -68]);
+  // Turned 46° from −z toward −x the nearest axis is x, and U flips from +y to −y, as in the game.
+  const uGrowsUp = degrees => {
+    const t = degrees * Math.PI / 180, turn = ([x, y, z]) => [x * Math.cos(t) - z * Math.sin(t), y, x * Math.sin(t) + z * Math.cos(t)];
+    const cube = B.box([-8, -8, -8], [8, 8, 8], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0}), brush = {vertices: cube.vertices.map(turn), faces: cube.faces};
+    const face = brush.faces.find(f => B.normalize(B.newell(f.indices.map(i => brush.vertices[i])))[2] < -.6);
+    const coords = B.texcoords(brush, face), ys = face.indices.map(i => brush.vertices[i][1]);
+    return coords[ys.indexOf(Math.max(...ys))][0] > coords[ys.indexOf(Math.min(...ys))][0];
+  };
+  assert.deepEqual([uGrowsUp(-44), uGrowsUp(-46), uGrowsUp(46)], [true, false, true]);
+  const [u, v] = at([0, 0, -1], [64, 32, 0], {rotation: 90});
+  near(u, 64); near(v, -32);
 });
 
 test('breaking a placement gives what flatten draws, and the inverse of its placement gives the prefab back', () => {

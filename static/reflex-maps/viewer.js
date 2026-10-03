@@ -83,7 +83,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Diffuse colour and the colour of reflections at normal incidence: 4 % for anything not metal, the albedo for metal.
   function faceShade(face) {
     const material = LIBRARY.test(face.material || '') ? {albedo: [1, 1, 1], metallic: 0} : materialOf(face.material || ''), own = M.colourOf(face);
-    const albedo = own ? own.slice(0, 3).map(linear) : material.albedo, metallic = material.metallic;
+    // The game leaves a face's colour off the dev materials, whose shader (…_TINTED) takes the material's own tint.
+    const tinted = /_TINTED/.test((packColours[face.material || ''] || {}).shader || '');
+    const albedo = own && !tinted ? own.slice(0, 3).map(linear) : material.albedo, metallic = material.metallic;
     return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .04 * (1 - metallic) + c * metallic)};
   }
   // See-through materials, by shader (light beams, glass, race start and finish, pickup and powerup glows) or by
@@ -205,7 +207,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // ---- Textures ----
   // A face's texture: one of the game's, which the import decoded from its material (repeating every 128 units at
-  // scale 1, a guess: the dev grid's lines are then 16 units apart, as its name says), or one of Skinner's texture
+  // scale 1, as in the game: the dev grid's lines are 16 units apart), or one of Skinner's texture
   // libraries, which a material named skinner/<library>/<file> takes (repeating every half its size in pixels, as
   // Quake 3's default scale of 0.5 has it).
   const LIBRARY = /^skinner\/(t1|t2|q3|reflex)\/(.+)$/;
@@ -1200,7 +1202,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const change = face => {
       const value = Number(face[field]) || 0;
       let next;
-      if (field === 'u' || field === 'v') next = value + sign * settings.grid;
+      if (field === 'u' || field === 'v') next = value + sign * settings.grid * 16;  // Offsets are 1/16 unit.
       else if (field === 'rotation') next = ((value + sign * settings.angle) % 360 + 360) % 360;
       else if (!sign) next = -(value || 1);
       else next = (value < 0 ? -1 : 1) * Math.max(SCALE_STEP, (Math.abs(value) || 1) + sign * SCALE_STEP);
