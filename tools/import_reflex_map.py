@@ -28,10 +28,10 @@ import zipfile
 
 try:
     from tools.reflex_models import EDITOR_EFFECTS, ENTITY_EFFECTS, PICKUP_EFFECTS, SKY_MESHES, VOLUME_MATERIALS, export_models, pickup_pad
-    from tools.reflex_textures import bake, decode_dds, decode_textureset_image, textureset_images
+    from tools.reflex_textures import bake, decode_dds, decode_dds_cube, decode_textureset_image, textureset_images
 except ImportError:  # Run as a script from tools/.
     from reflex_models import EDITOR_EFFECTS, ENTITY_EFFECTS, PICKUP_EFFECTS, SKY_MESHES, VOLUME_MATERIALS, export_models, pickup_pad
-    from reflex_textures import bake, decode_dds, decode_textureset_image, textureset_images
+    from reflex_textures import bake, decode_dds, decode_dds_cube, decode_textureset_image, textureset_images
 
 WORKSHOP_APP = '328070'
 # The game's sky material: the page takes its star texture (textureStars) from it.
@@ -177,9 +177,21 @@ def material_colours(game, names, files=None):
         # Light beams' and pads' glows (alphaFresnel): how the glow falls off away from facing the viewer, and its strength.
         if isinstance(parameters.get('fresnelMulPow'), list) and isinstance(parameters.get('intensityMul'), float):
             entry['fresnel'] = [round(value, 4) for value in parameters['fresnelMulPow'][:2]] + [round(parameters['intensityMul'], 4)]
-        # Particles' flipbooks: rows and columns of frames in the texture.
+        # Glass (…_GLASS_REFLECTION shaders): how strongly it reflects its fixed cube map and how blurred (a mip), and
+        # that cube map and its lit sphere, which the textures step decodes.
+        if 'GLASS_REFLECTION' in shader and all(isinstance(parameters.get(key), str) and parameters[key] for key in ('textureLitSphere', 'textureCubemap')):
+            entry['glass'] = [round(parameters.get('reflectionIntensity', 0.), 4), round(parameters.get('reflectionBlur', 0.), 4)]
+            entry['glassTextures'] = [parameters['textureLitSphere'], parameters['textureCubemap']]
+            if isinstance(parameters.get('teamIndex'), float):  # team glass: its colour is the team's (0 A, 1 B)
+                entry['team'] = int(parameters['teamIndex'])
+        # Particles' flipbooks: rows and columns of frames in the texture, frames a unit of age and the first.
         if isinstance(parameters.get('flipbookRows'), float) and isinstance(parameters.get('flipbookCols'), float):
-            entry['flipbook'] = [parameters['flipbookRows'], parameters['flipbookCols']]
+            entry['flipbook'] = [parameters['flipbookRows'], parameters['flipbookCols'], parameters.get('flipbookSpeed', 0.), parameters.get('flipbookOffset', 0.)]
+        # Smoke and steam (particle_TEXTUREDIFFUSE…): how much the texture's blue and red channels carve its green
+        # (particleDiffuseProperties x and y), how sharply alpha cuts it (fadeRoughness) and its strength.
+        if shader.startswith('internal/shaders/particle_') and isinstance(parameters.get('particleDiffuseProperties'), list):
+            entry['particle'] = [round(value, 4) for value in parameters['particleDiffuseProperties'][:2]] + [
+                round(parameters.get('fadeRoughness', 1.), 4), round(parameters.get('intensityMultiplier', 1.), 4)]
         if shader.startswith(('internal/shaders/deferredPbr', 'internal/shaders/standard_', 'internal/shaders/clouds', 'internal/shaders/sky2', 'internal/shaders/particle')):
             albedo = parameters.get('textureAlbedoSpec') or parameters.get('textureDiffuse') or parameters.get('textureStars')
             if isinstance(albedo, str) and albedo:
@@ -225,6 +237,10 @@ class Textures:
                     return decode_textureset_image(raw, images[name])
         raise KeyError(name)
 
+    def cube(self, name):
+        """The cube map .dds `name` as its six faces stacked top to bottom (decode_dds_cube)."""
+        return decode_dds_cube(self.dds[name.lower().rsplit('/', 1)[-1]][0]())
+
     def thumbnail(self, material):
         raw = self.thumbs[material.lower()][0]()
         images = textureset_images(raw)
@@ -260,6 +276,15 @@ def material_textures(game, colours, output, replace=False):
             if done[file]:
                 entry['texture'] = file
                 counts['textures'] += 1
+        # Glass: its lit sphere and its cube map (the faces stacked), as litSphere and cube.
+        for key, texture in zip(('litSphere', 'cube'), entry.pop('glassTextures', None) or ()):
+            file = texture.lower().rsplit('/', 1)[-1] + '.png'
+            try:
+                if replace or not (output / 'textures' / file).is_file():
+                    (textures.cube(texture) if key == 'cube' else textures.image(texture).convert('RGB')).save(output / 'textures' / file)
+                entry[key] = file
+            except (KeyError, OSError, ValueError, struct.error, zipfile.BadZipFile) as exc:
+                entry['textureError'] = f'{exc.__class__.__name__}: {exc}'
         if name.lower() in textures.thumbs:
             thumb = re.sub(r'[^a-z0-9_.-]', '~', name.lower()) + '.png'
             if not (output / 'thumbs' / thumb).is_file() or replace:

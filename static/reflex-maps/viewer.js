@@ -86,12 +86,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   // solid (their material's flags lack 0x200), at intensity 1. What this gives is the factor on the raised colour.
   const GLOWS = /standard_ALBEDOCOLOUR_ALBEDOINTENSITY/;
   const isForward = read => /^internal\/shaders\/standard_/.test(read.shader || '');
+  const isFluid = read => /^internal\/shaders\/fluid/.test(read.shader || '');
   function glowOf(name) {
     const read = packColours[name];
     if (!read) return 0;
     if (GLOWS.test(read.shader || '')) return (read.intensity ?? 1) ** 2.2;
-    // Water, lava and slime (internal/shaders/fluid): unlit, (colour × 3.3)^2.2; water is added (isSeeThrough).
-    if (/^internal\/shaders\/fluid/.test(read.shader || '')) return 3.3 ** 2.2;
+    // Water, lava and slime (internal/shaders/fluid): unlit, (colour × 3.3)^2.2, no vertex colours; water and
+    // environment slime are added (isSeeThrough).
+    if (isFluid(read)) return 3.3 ** 2.2;
     return isForward(read) && read.flags !== undefined && !(read.flags & 0x200) ? 1 : 0;
   }
   // Diffuse colour, the colour of reflections at normal incidence (1.54 % for anything not metal, as the game's
@@ -106,12 +108,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (glow) return {diffuse: albedo.map(c => c * glow), specular: [0, 0, 0], roughness: 1, emit: 1};
     return {diffuse: albedo.map(c => c * (1 - metallic)), specular: albedo.map(c => .015395 * (1 - metallic) + c * metallic), roughness: material.roughness, emit: -(material.sss || 0)};
   }
-  // See-through materials, by shader (light beams, glass, race start and finish, pickup and powerup glows) or by
-  // name for water, whose fluid shader lava and slime share; drawn after everything else, added (ADDED).
+  // See-through materials, by shader (light beams, glass, race start and finish, pickup and powerup glows), by their
+  // flags for the other forward shaders (0x200: glass_simple) and for the fluid shader (blend 2, added: water and
+  // environment slime; lava and the common slime are solid), by name for water in packs imported without flags;
+  // drawn after everything else, added (ADDED).
   const SEE_THROUGH = /alphaFresnel|GLASS|raceStartFinish|glowPickup|powerup/;
+  const addedFluid = (read, name) => isFluid(read) && (read.flags !== undefined ? (read.flags >> 5 & 7) === 2 : /liquids\/water/.test(name));
   const isSeeThrough = face => {
     const name = face.material || '', read = packColours[name];
-    return read ? SEE_THROUGH.test(read.shader || '') || /liquids\/water/.test(name) : /fx_light_beam|race_(start|finish)|glass|liquids\/water/.test(name);
+    return read ? SEE_THROUGH.test(read.shader || '') || (isForward(read) && Boolean(read.flags & 0x200)) || addedFluid(read, name) : /fx_light_beam|race_(start|finish)|glass|liquids\/water/.test(name);
   };
   // Faces the game does not draw: the editor's clip materials (player, weapon and full clip).
   const isClip = face => /^internal\/editor\/textures\/editor_.*clip/.test(face.material || '');
@@ -119,16 +124,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ---- Drawing brushes ----
   // ---- Light ----
   // The map's baked light (light.js), as the game's lighting shader (gbuffer_light_fullscreen) applies it in play:
-  // diffuse light from the probe grid at the point, for its normal, and reflections from the reflection probe its
+  // diffuse light from the probe grid at the point, for its normal, times lightmapGain (2: fitted over the 14 game
+  // views, where the reflections need no gain), and reflections from the reflection probe its
   // grid cell names, blurred by roughness and weighted by the split-sum lookup (here Karis' fit of it); diffuse less
   // what the surface reflects. Positions and normals are the game's (the geometry is in its coordinates). A map
-  // without baked light is lit as the game lights one: evenly, about 0.55 (measured on white faces in play).
+  // without baked light is lit as the game lights one (unbaked).
   const empty3D = new THREE.Data3DTexture(new Uint16Array(4), 1, 1, 1);
   Object.assign(empty3D, {type: THREE.HalfFloatType, needsUpdate: true});
   const emptyArray = new THREE.DataArrayTexture(new Uint8Array(4), 1, 1, 1);
   emptyArray.needsUpdate = true;
-  const uniforms = {uGrid: {value: 0}, uLit: {value: 0}, uEye: {value: new THREE.Vector3()}, uAmbient: {value: new THREE.Vector3(.55, .55, .5)},
-    uProbeScale: {value: new THREE.Vector3()}, uProbeOffset: {value: new THREE.Vector3()}, uGain: {value: 1}, uCubes: {value: 0}, uCubeMips: {value: 5},
+  const uniforms = {uGrid: {value: 0}, uLit: {value: 0}, uEye: {value: new THREE.Vector3()}, uAmbient: {value: new THREE.Vector3(.1196, .1406, .1794)},
+    uProbeScale: {value: new THREE.Vector3()}, uProbeOffset: {value: new THREE.Vector3()}, uGain: {value: 2}, uCubes: {value: 0}, uCubeMips: {value: 5},
     uProbeIndex: {value: empty3D}, uCube: {value: emptyArray},
     uLightCount: {value: 0}, uLightCell: {value: 128}, uLightOrigin: {value: new THREE.Vector3()}, uLightSize: {value: [1, 1, 1]},
     uLights: {value: null}, uLightList: {value: null}, uLightCells: {value: empty3D},
@@ -136,6 +142,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     uSunBias: {value: 0}, uNearMatrix: {value: new THREE.Matrix4().makeTranslation(9, 9, 9)}, uNearDepth: {value: null}, uNearBias: {value: 0}};
   for (let i = 0; i < 7; i++) uniforms['uSH' + i] = {value: empty3D};
   scene.onBeforeRender = (_, __, view) => uniforms.uEye.value.set(view.position.x, view.position.y, -view.position.z);
+  // A direction's place in a cube map kept as six layers (+x, -x, +y, -y, +z, -z, rows top down): (s, t, layer).
+  const CUBE_COORD = `vec3 cubeCoord(vec3 r) {
+      vec3 a = abs(r); vec2 st; float face;
+      if (a.x >= a.y && a.x >= a.z) { face = r.x > 0. ? 0. : 1.; st = vec2(r.x > 0. ? -r.z : r.z, -r.y) / a.x; }
+      else if (a.y >= a.z) { face = r.y > 0. ? 2. : 3.; st = vec2(r.x, r.y > 0. ? r.z : -r.z) / a.y; }
+      else { face = r.z > 0. ? 4. : 5.; st = vec2(r.z > 0. ? r.x : -r.x, -r.y) / a.z; }
+      return vec3(st * .5 + .5, face);
+    }`;
   const LIGHTING = `precision highp sampler3D; precision highp sampler2DArray;
     uniform float uLit, uGain, uCubes, uCubeMips; uniform vec3 uEye, uAmbient, uProbeScale, uProbeOffset;
     uniform sampler3D uSH0, uSH1, uSH2, uSH3, uSH4, uSH5, uSH6, uProbeIndex; uniform sampler2DArray uCube;
@@ -176,8 +190,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       vec3 light = uSunColour * nl * lit;
       return (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, uSun, s, diffuse, uSunColour * lit)) + a2 / (3.14159265 * den * den) * f0 * light * 2.;
     }
+    // The light of a map without a .light (reflex.exe 0x140127fa0 fills its probes with it): order-2 SH of an even
+    // light, uAmbient, and two directional ones, (1, .941, .784) from (.433, .866, .25) and (.627, .706, 1) from
+    // (−.433, −.5, −.75), each 1/4 + t/2 + 5/16 P2(t) of t = n · its direction. The exe's colours (× .05, .3, .15);
+    // their two scales (even 3.59, directional 1.74) fitted to grey cubes in the game, which match within 10 % each way.
+    vec3 unbaked(vec3 n) {
+      float t = dot(n, vec3(.433013, .866025, .25)), u = dot(n, vec3(-.433013, -.5, -.75));
+      return uAmbient + vec3(.5208, .4901, .4083) * (.25 + t * .5 + .3125 * (1.5 * t * t - .5))
+        + vec3(.1633, .1838, .2604) * (.25 + u * .5 + .3125 * (1.5 * u * u - .5));
+    }
     vec3 probeLight(vec3 p, vec3 n) {
-      if (uLit < .5) return uAmbient;
+      if (uLit < .5) return unbaked(n);
       vec3 uvw = p * uProbeScale + uProbeOffset; vec4 a = vec4(n, 1.), b = n.xyzz * n.yzzx;
       vec3 c = vec3(dot(texture(uSH0, uvw), a), dot(texture(uSH1, uvw), a), dot(texture(uSH2, uvw), a));
       c += vec3(dot(texture(uSH3, uvw), b), dot(texture(uSH4, uvw), b), dot(texture(uSH5, uvw), b));
@@ -185,15 +208,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     // The reflection probe of the point's grid cell (counted from 1; ponytail: nearest cell only, where the game blends
     // the eight around the point when they differ), looked up as a cube map: +x, -x, +y, -y, +z, -z, rows top down.
+    // Its texels are decoded with the sRGB curve: reflex.exe makes the cube array BC1_UNORM_SRGB.
+    ${CUBE_COORD}
     vec3 reflected(vec3 p, vec3 r, float rough) {
-      if (uCubes < .5) return uAmbient;
+      if (uCubes < .5) return unbaked(r);
       float index = floor(texture(uProbeIndex, p * uProbeScale + uProbeOffset).r * 255. + .5);
-      vec3 a = abs(r); vec2 st; float face;
-      if (a.x >= a.y && a.x >= a.z) { face = r.x > 0. ? 0. : 1.; st = vec2(r.x > 0. ? -r.z : r.z, -r.y) / a.x; }
-      else if (a.y >= a.z) { face = r.y > 0. ? 2. : 3.; st = vec2(r.x, r.y > 0. ? r.z : -r.z) / a.y; }
-      else { face = r.z > 0. ? 4. : 5.; st = vec2(r.z > 0. ? r.x : -r.x, -r.y) / a.z; }
-      vec3 c = textureLod(uCube, vec3(st * .5 + .5, clamp(index - 1., 0., uCubes - 1.) * 6. + face), min(rough * uCubeMips, uCubeMips - 1.)).rgb;
-      return pow(c, vec3(2.2));
+      vec3 at = cubeCoord(r);
+      vec3 c = textureLod(uCube, vec3(at.xy, clamp(index - 1., 0., uCubes - 1.) * 6. + at.z), min(rough * uCubeMips, uCubeMips - 1.)).rgb;
+      return mix(c / 12.92, pow((c + .055) / 1.055, vec3(2.4)), step(.04045, c));
     }
     // The map's point and spot lights (light.js lightGrid), as gbuffer_light_point and gbuffer_light_spot light a
     // surface: Lambert diffuse and a GGX highlight, twice; only the lights of the point's grid cell (at most 64).
@@ -252,7 +274,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         #ifdef USE_MAP
         vec4 texel = texture2D(uMap, vTex / uRepeat);
         if (texel.a < .5) discard;  // Alpha-keyed, as the game's ALPHAKEYED shaders are.
-        albedo *= pow(texel.rgb, vec3(2.2));
+        albedo *= mix(texel.rgb / 12.92, pow((texel.rgb + .055) / 1.055, vec3(2.4)), step(.04045, texel.rgb));  // the sRGB curve: its DDS are BC1/BC7 sRGB
         #endif
         vec3 c = vEmit > .5 ? albedo : shade(albedo, vSpecular, vRough, vPos, n, max(-vEmit, 0.) * vColor.r);
         if (uGrid > 0.) {
@@ -271,15 +293,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   const selectedFill = new THREE.MeshBasicMaterial({color: 0xf0c674, transparent: true, opacity: .25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1});
   const selectedEdges = new THREE.LineBasicMaterial({color: 0xf0c674, transparent: true, opacity: .9, depthTest: false});
   // See-through forward shaders (teleporter rings, glass, water, light strips) add their colour to the frame, in linear
-  // light: the game's material flags give them its additive blends (assumed from the flags of its materials, the same
-  // for its particles called …ADDITIVE; ponytail: its alpha and premultiplied blends are drawn added too). Front faces
-  // only: none of these shaders is …DOUBLESIDED, and the game culls back faces.
+  // light, tested against depth and not writing it. reflex.exe's material loader reads a material's flags so: bits 0
+  // and 1 depth test and write, bits 3–4 the cull mode (1 none, 3 back), bits 5–7 the blend (0 none, 1 alpha, 2 added,
+  // 3 premultiplied, 4 multiplied); every see-through material the maps use adds, except the editor's volumes, smoke
+  // and clouds (alpha). Glass, holograms, ribbons, light beams and race starts are drawn from both sides (cull none).
   const ADDED = {transparent: true, depthWrite: false, side: THREE.FrontSide, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor};
-  const glassMaterial = Object.assign(brushMaterial.clone(), ADDED);
-  glassMaterial.uniforms = uniforms;
-  // Light beams, race starts and finishes, pickup and powerup glows on brush faces (Phobos, Aerowalk, TheCatalyst):
-  // their own shaders are not drawn; they stay faint, a third over what is behind them, from both sides.
-  const FAINT = /alphaFresnel|raceStartFinish|glowPickup|powerup/, faint = {key: 'faint'};
+  const bothSides = read => Boolean(read) && read.flags !== undefined && (read.flags >> 3 & 3) === 1;
+  const glassMaterial = Object.assign(brushMaterial.clone(), ADDED), glassBoth = Object.assign(brushMaterial.clone(), ADDED, {side: THREE.DoubleSide});
+  glassMaterial.uniforms = glassBoth.uniforms = uniforms;
+  // Race starts and finishes, pickup and powerup glows on brush faces (Aerowalk, TheCatalyst): their own shaders are
+  // not drawn; they stay faint, a third over what is behind them, from both sides. Light beams (Phobos) are shaded as
+  // on models (fresnelMaterial).
+  const FAINT = /raceStartFinish|glowPickup|powerup/, faint = {key: 'faint'}, both = {key: 'both'};
   const faintMaterial = Object.assign(brushMaterial.clone(), {transparent: true, depthWrite: false, side: THREE.DoubleSide});
   faintMaterial.uniforms = uniforms;
   faintMaterial.fragmentShader = brushMaterial.fragmentShader.replace('gl_FragColor = vec4(c, 1.);', 'gl_FragColor = vec4(c, .35);');
@@ -366,6 +391,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   white.needsUpdate = true;
+  const black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);  // glass adds nothing until its lit sphere loads
+  black.needsUpdate = true;
   const texturedMaterials = new Map(), textureFailures = new Set();
   function texturedMaterial(source) {
     if (texturedMaterials.has(source.key)) return texturedMaterials.get(source.key);
@@ -373,7 +400,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       uniforms: {...uniforms, uMap: {value: white}, uRepeat: {value: new THREE.Vector2(source.repeat || 128, source.repeat || 128)}},
       defines: {USE_MAP: ''}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
     });
-    if (source.shine) Object.assign(material, ADDED);
+    if (source.shine) Object.assign(material, ADDED, source.both ? {side: THREE.DoubleSide} : {});
     texturedMaterials.set(source.key, material);
     new THREE.TextureLoader().load(source.url, texture => {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -385,6 +412,69 @@ window.addEventListener('DOMContentLoaded', async () => {
       sunStale = true;  // its cut-out shadow, from the next frame
     }, undefined, () => { textureFailures.add(source.key); showNotes(); });
     return material;
+  }
+
+  // Glass (…_GLASS_REFLECTION shaders: glass, frosted glass, ice) as the game's shader draws it, lighting nothing: its
+  // lit sphere at the world normal's x and y × 0.5 + 0.5, plus its fixed cube map along the reflected view ×
+  // reflectionIntensity at mip reflectionBlur rounded (its sampler takes the nearest mip; of 512, the pack keeps 256),
+  // plus the face's colour term `colour` (faceColour); added, both sides (the normal not turned). The lit sphere with
+  // the sRGB curve (an sRGB texture, so decoded before it is filtered), the cube as its values are (reflex.exe loads
+  // it BC1_UNORM): measured with test maps in the game.
+  const glassReflections = new Map();
+  function glassReflection(read, colour) {
+    const key = `${read.litSphere} ${read.cube} ${read.glass} ${colour}`;
+    if (glassReflections.has(key)) return glassReflections.get(key);
+    const material = Object.assign(new THREE.ShaderMaterial({
+      uniforms: {...uniforms, uLitSphere: {value: black}, uGlassCube: {value: emptyArray}, uGlass: {value: new THREE.Vector2(...read.glass)},
+        uAlbedo: {value: new THREE.Vector3(...colour)}},
+      vertexShader: brushMaterial.vertexShader,
+      fragmentShader: `precision highp sampler2DArray; uniform vec3 uEye; uniform sampler2D uLitSphere; uniform sampler2DArray uGlassCube;
+        uniform vec2 uGlass; uniform vec3 uAlbedo; varying vec3 vNormal; varying vec3 vPos;
+        ${CUBE_COORD}
+        void main() {
+          vec3 n = normalize(vNormal), r = reflect(normalize(vPos - uEye), n);
+          vec3 sphere = texture(uLitSphere, n.xy * .5 + .5).rgb, cube = textureLod(uGlassCube, cubeCoord(r), max(floor(uGlass.y + .5) - 1., 0.)).rgb;
+          gl_FragColor = vec4(sphere + cube * uGlass.x + uAlbedo, 1.);
+        }`,
+    }), ADDED, {side: THREE.DoubleSide});
+    glassReflections.set(key, material);
+    const url = file => `${data}textures/${encodeURIComponent(file)}`;
+    new THREE.TextureLoader().load(url(read.litSphere), texture => {
+      Object.assign(texture, {flipY: false, internalFormat: 'SRGB8_ALPHA8', needsUpdate: true});
+      material.uniforms.uLitSphere.value = texture;
+    });
+    new THREE.ImageLoader().load(url(read.cube), image => {
+      const side = image.width, canvas = Object.assign(document.createElement('canvas'), {width: side, height: side * 6}), context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0);
+      const cube = new THREE.DataArrayTexture(new Uint8Array(context.getImageData(0, 0, side, side * 6).data.buffer), side, side, 6);
+      Object.assign(cube, {minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: true, needsUpdate: true});
+      material.uniforms.uGlassCube.value = cube;
+    });
+    return material;
+  }
+  // The other see-through forward shader brush faces have (glass_simple: standard_ALBEDOCOLOUR_VERTEXCOLOUR): its
+  // colour term alone, unlit, added, both sides.
+  const simpleMaterials = new Map();
+  function simpleMaterial(colour) {
+    const key = String(colour);
+    if (!simpleMaterials.has(key)) simpleMaterials.set(key, Object.assign(new THREE.ShaderMaterial({uniforms: {uColour: {value: new THREE.Vector3(...colour)}},
+      vertexShader: brushMaterial.vertexShader, fragmentShader: 'uniform vec3 uColour; void main() { gl_FragColor = vec4(uColour, 1.); }'}), ADDED, {side: THREE.DoubleSide}));
+    return simpleMaterials.get(key);
+  }
+  // What a see-through forward brush face adds of its own colour, as those shaders' vertex shaders have it: the
+  // material's albedo^2.2 × the face's vertex colour^2.2, which is the face's colour, or (0, 0, 0, 0) where it has
+  // none (such a glass_simple face adds nothing). Team glass (…_TEAM_…) lerps from its team's colour to that colour
+  // times that colour's luma by the vertex alpha: a face with no colour shows the team's colour whole. The team's
+  // colour is the WorldSpawn's colorTeamA or colorTeamB, raised to 2.2 (red and blue where it gives none, read from
+  // reflex.exe .data 0x1409868d0), as with the game's absolute colours (cl_colors_relative 0, its default; relative
+  // colours show team 0's white and team 1's green). Measured with test maps in the game.
+  const TEAM_DEFAULTS = ['ffff0000', 'ff0000ff'];
+  function faceColour(read, face) {
+    const own = M.colourOf(face) || [0, 0, 0, 0], colour = (read.colour || [1, 1, 1]).map((a, i) => linear(a) * linear(own[i]));
+    if (read.team === undefined) return colour;
+    const spawn = worldSpawn(), team = hexColour((spawn && M.property(spawn, read.team ? 'colorTeamB' : 'colorTeamA')) ?? TEAM_DEFAULTS[read.team]);
+    const lerp = 1 - own[3] * (1 - (.299 * colour[0] + .587 * colour[1] + .114 * colour[2]));
+    return team.slice(1).map(t => linear(t) * lerp);
   }
 
   // A volume as the game's editor draws it (effects.json's volumes): its kind's texture, unlit, 41 % opaque (the
@@ -462,29 +552,43 @@ window.addEventListener('DOMContentLoaded', async () => {
   let packEffects = {effects: {}, pickups: {}, entities: {}};
   const meshes = new Map();  // model file -> its parts once loaded (null when it could not load)
   // Models' see-through forward shaders add as the brushes' do (ADDED); textured ones through texturedMaterial.
-  const shineMaterial = Object.assign(brushMaterial.clone(), ADDED);
-  shineMaterial.uniforms = uniforms;
+  const shineMaterial = Object.assign(brushMaterial.clone(), ADDED), shineBoth = Object.assign(brushMaterial.clone(), ADDED, {side: THREE.DoubleSide});
+  shineMaterial.uniforms = shineBoth.uniforms = uniforms;
   // Pickup holograms and ammo glows, as the game's hologram and glowPickup shaders shade them (read from its compiled
-  // shaders; ponytail: their noise, scan lines and movement are left out, the scan lines as their average): vColor is
-  // the material's colour as it is, vTex.x the height up the model over the material's vSize, vTex.y its gradMul.
-  // Holograms are brightest facing the viewer and glows at their rim; either is bright enough to bloom.
+  // shaders; ponytail: their noise and movement are left out): vColor is the material's colour as it is, vTex.x the
+  // height up the model over the material's vSize, vTex.y its gradMul. What moves with the game's time (scan lines,
+  // and a band running down the model, s in a glow) is taken at its average over time: a band is lit on half its
+  // cycle only (sat(0.5 − phase), the time much larger than the height), averaging 0.05 in a hologram; a glow's s
+  // averages 1/6, s² 1/18, s³ 1/48. Holograms are brightest facing the viewer and glows at their rim; both bloom.
   const forwardShade = body => Object.assign(new THREE.ShaderMaterial({uniforms, vertexShader: brushMaterial.vertexShader,
     fragmentShader: `uniform vec3 uEye; varying vec3 vColor; varying vec3 vNormal; varying vec3 vPos; varying vec2 vTex;
-      float wrap(float x) { return sign(x) * fract(abs(x)); }
       void main() { vec3 n = normalize(vNormal); float facing = clamp(dot(n, normalize(uEye - vPos)), 0., 1.); ${body} }`}), ADDED);
   const FORWARD_SHADES = {
-    hologram: forwardShade(`vec3 b = (vColor + .09) * clamp(1. - vTex.x, 0., 1.) * vTex.y + .4 * clamp(wrap(vTex.x * .5) + .5, 0., 1.);
+    hologram: Object.assign(forwardShade(`vec3 b = (vColor + .09) * clamp(1. - vTex.x, 0., 1.) * vTex.y + .05;
       float f = pow(facing, 8.);
       vec3 x = b * b * (1. + 3.2 * f) + .2 * f;
       x *= (1. + 4. * clamp(-n.y, 0., 1.)) * (1. + 2. * clamp(n.y, 0., 1.));
-      gl_FragColor = vec4(pow(1.5 * x, vec3(1.5)) * 1.5, 1.);`),  // × its alpha, 1.5
-    glowPickup: forwardShade(`float f = pow(1. - facing, 3.), s = clamp(wrap(vTex.x * .666667) * .75 + .5, 0., 1.);
-      float r = 10.24 * f * s * s + .32 * f;
-      gl_FragColor = vec4(((.8 * s * vColor + 1.) * r + .05 * s) * vColor, 1.);`),
+      gl_FragColor = vec4(pow(1.5 * x, vec3(1.5)) * 1.5, 1.);`), {side: THREE.DoubleSide}),  // × its alpha, 1.5
+    // (.8 s colour (10.24 f s² + .32 f) + 10.24 f s² + .32 f + .05 s) × colour, f = (1 − n · v)³.
+    glowPickup: forwardShade(`float f = pow(1. - facing, 3.);
+      gl_FragColor = vec4(((.213333 * vColor + .888889) * f + .008333) * vColor, 1.);`),
     // Light beams and pads' glows: sat(sat(n · v)^pow × mul) of their colour (× intensityMul), n turned to the viewer
     // (both sides drawn); mul and pow ride in the texture coordinates.
     alphaFresnel: Object.assign(forwardShade(`float f = clamp(pow(abs(dot(n, normalize(uEye - vPos))), vTex.y) * vTex.x, 0., 1.);
       gl_FragColor = vec4(f * vColor, 1.);`), {side: THREE.DoubleSide}),
+  };
+  // Light beams on brush faces: the same, with mul, pow and intensityMul from the material (the faces' texture
+  // coordinates are their own). vColor is the face's colour, else the material's (2.2), as the brushes have it.
+  const brushFresnel = new Map();
+  const fresnelMaterial = ([mul, pow, intensity]) => {
+    const key = `${mul} ${pow} ${intensity}`;
+    if (!brushFresnel.has(key)) {
+      const material = FORWARD_SHADES.alphaFresnel.clone();
+      material.uniforms = Object.assign({uFresnel: {value: new THREE.Vector3(mul, pow, intensity)}}, uniforms);
+      material.fragmentShader = 'uniform vec3 uFresnel; ' + material.fragmentShader.replace('vTex.y) * vTex.x', 'uFresnel.y) * uFresnel.x').replace('f * vColor', 'f * uFresnel.z * vColor');
+      brushFresnel.set(key, material);
+    }
+    return brushFresnel.get(key);
   };
   const models = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), modelShine = new THREE.Mesh(new THREE.BufferGeometry(), [shineMaterial]);
   // What the game shows in its editor only (a reflection probe's sphere).
@@ -605,19 +709,23 @@ window.addEventListener('DOMContentLoaded', async () => {
           // Holograms, pickup glows and the see-through forward shaders (standard_…: rings, ribbons, glass) add their
           // colour to the frame; glows and solid forward shaders are solid and shine.
           const shader = read.shader || '', kind = (/hologram|glowPickup|alphaFresnel/.exec(shader) || [])[0], fresnel = kind === 'alphaFresnel' && (read.fresnel || [.1, 4, .075]);
-          const shines = !glow && Boolean(kind || isForward(read) || SEE_THROUGH.test(shader));
+          const fluid = isFluid(read), shines = (!glow && Boolean(kind || isForward(read) || SEE_THROUGH.test(shader))) || addedFluid(read, name);
           let out = editorOnly ? editor : null;
           if (!out) {
-            const texture = !kind && read.texture, key = kind || (texture ? (shines ? 'shine:' : 'model:') + texture : null), into = shines ? shine : lit;
-            if (!into.has(key)) into.set(key, {source: kind ? null : {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines}, material: kind && FORWARD_SHADES[kind], plans: [], count: 0});
+            const texture = !kind && read.texture, sides = shines && bothSides(read) ? 2 : 1;
+            const key = kind || (texture ? (shines ? `shine${sides}:` : 'model:') + texture : shines && sides === 2 ? 'both' : null), into = shines ? shine : lit;
+            if (!into.has(key)) into.set(key, {source: kind || !texture ? null : {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines, both: sides === 2},
+              material: kind ? FORWARD_SHADES[kind] : key === 'both' ? shineBoth : null, plans: [], count: 0});
             out = into.get(key);
           }
           // Holograms and glows shade their colour as it is; the standard_ shaders raise it to 2.2, and take the
-          // mesh's vertex colours only where their name says VERTEXCOLOUR.
-          const forward = shines && isForward(read), colour = given || read.colour || [1, 1, 1];
-          const shown = fresnel ? colour.map(c => c * fresnel[2]) : kind ? colour : forward ? colour.map(linear) : shines ? colour : given ? given.map(linear) : material.albedo;
+          // mesh's vertex colours only where their name says VERTEXCOLOUR; the fluid shader raises it and takes none,
+          // nor do the translucent (_SSS: paper) and the dev (_TINTED) deferred shaders (their vertex shaders read no
+          // colour).
+          const forward = shines && isForward(read), colour = given || read.colour || [1, 1, 1], plain = fluid || /_SSS|_TINTED/.test(shader);
+          const shown = fresnel ? colour.map(c => c * fresnel[2]) : kind ? colour : forward || fluid ? colour.map(linear) : shines ? colour : given ? given.map(linear) : material.albedo;
           out.plans.push({part, matrix, scale: record.scale || 1, shown, glow, metallic: glow || shines ? 0 : material.metallic,
-            emit: glow || shines ? 1 : -(material.sss || 0), roughness: material.roughness, vertexColours: Boolean(fresnel) || (!kind && !(forward && !/VERTEXCOLOUR/.test(shader))),
+            emit: glow || shines ? 1 : -(material.sss || 0), roughness: material.roughness, vertexColours: Boolean(fresnel) || (!kind && !plain && !(forward && !/VERTEXCOLOUR/.test(shader))),
             gradient: kind && !fresnel && (read.gradient || (kind === 'hologram' ? [56, .75] : [24, .025])), fresnel});
           out.count += part.indices.length;
         }
@@ -680,42 +788,106 @@ window.addEventListener('DOMContentLoaded', async () => {
   // intensity 2 four times). A PointLight without them has near 16, far 128 and intensity 1 (measured, ±4).
   const lightColour = (colour, intensity) => colour.map(c => .87 * (c * intensity) ** 2);
   let lightTextures2 = [];
-  // Particles (ponytail: one still sprite per emitter, where the game streams them; bloom does the rest): an
-  // additive emitter (its material's flags have 0x40: flames, sparks) as a sprite of the first frame of its
-  // texture's flipbook, its birth size wide, in its birth colour^2.2 times the material's albedoIntensity (or its
-  // colour^2.2, standard_ shaders), times how many the game keeps alive at once (rate × mean lifetime), at the bone
-  // it emits from. Smoke (blended, not added) is left out.
-  const particles = new THREE.Group(), particleHeight = {value: 1};
+  // Particles, as reflex.exe's emitters keep them (EffectParticleEmitter: 0x1400eaae0 moves them, 0x1400eba60 draws
+  // them), drawn as they stand at one moment once running: an emitter's particles born `interval` apart (taken in
+  // the middle of each gap; never more than it keeps, which spreads them over their life), each thrown at its
+  // velocity along its bone's axes plus a stray (a fixed random per particle), pulled by its acceleration in the
+  // world (or along its bone, one that moves with the emitter), its size and colour (clamped to 0–1: a byte) taken
+  // between birth and death by its age. An emitter that fills up at once (interval 0: the pads' smoke) is drawn at
+  // half their life (ponytail: the game shows them in step at every age; one moment picked). Each is a quad facing
+  // the camera, twice its half sizes, hung from its point and turned by its rotation, shaded as its material's
+  // shader: a flipbook (flames) its texture's frames (age × flipbookSpeed, plus flipbookOffset and the red, which the
+  // record may make random), the next blended in by the fraction, × colour^2.2 × albedoIntensity; smoke and
+  // steam (particle_…) the texture's green carved by its blue and red (particleDiffuseProperties; the red not
+  // scrolled), over what is behind by sat(x × alpha)^fadeRoughness, or added with alpha as how hard its edge is,
+  // × intensityMultiplier; standard_ ones (sparks) texture × diffuseColour^2.2, × colour^2.2 only where the shader
+  // reads it (…_VERTEXCOLOUR). Blended by the material's flags: added (2) or over what is behind (1). Not drawn:
+  // the soft edge against surfaces (…_PARTICLESOFT), streaks along the velocity (sparks are squares), colour ramps.
+  const particles = new THREE.Group();
   root.add(particles);
+  function seeded(seed) {  // mulberry32: the same strays every time the page draws a map
+    return () => { seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+  function particleMaterial(read) {
+    const added = (read.flags >> 5 & 7) === 2, shader = read.shader || '', [carveBlue, carveRed, fade, strength] = read.particle || [0, 0, 1, 1];
+    const mode = shader.startsWith('internal/shaders/particleFlipbook') ? 0 : shader.startsWith('internal/shaders/particle_') ? 1 : 2;
+    const material = new THREE.ShaderMaterial({
+      ...ADDED, ...(added ? {} : {blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor}), side: THREE.DoubleSide,
+      uniforms: {uMap: {value: white}, uGrid: {value: new THREE.Vector2(...(read.flipbook || [1, 1]).slice(0, 2))}, uCarve: {value: new THREE.Vector4(carveBlue, carveRed, fade, strength)}},
+      vertexShader: `attribute vec2 corner, anchor; attribute vec3 centre; attribute vec4 colour, shape; varying vec2 vCorner; varying float vFrame; varying vec4 vColour;
+        void main() {
+          vec2 o = vec2(corner.x - 1. + anchor.x, anchor.y - corner.y) * 2. * shape.xy;
+          float c = cos(shape.z), s = sin(shape.z);
+          vec4 view = modelViewMatrix * vec4(centre, 1.);
+          view.xy += mat2(c, s, -s, c) * o;
+          gl_Position = projectionMatrix * view;
+          vCorner = corner;
+          vFrame = shape.w;
+          vColour = colour;
+        }`,
+      fragmentShader: `uniform sampler2D uMap; uniform vec2 uGrid; uniform vec4 uCarve; varying vec2 vCorner; varying float vFrame; varying vec4 vColour;
+        vec2 cell(float k) { k = mod(k, uGrid.x * uGrid.y); return (vec2(mod(k, uGrid.x), floor(k / uGrid.x)) + vCorner) / uGrid; }
+        void main() {
+          float k = floor(vFrame);
+          vec4 t = mix(texture2D(uMap, cell(k)), texture2D(uMap, cell(k + 1.)), vFrame - k);
+          ${mode === 1 ? `float x = mix(t.g, t.g * t.b, uCarve.x);
+          x = mix(x, x * t.r, uCarve.y);
+          ${added ? 'gl_FragColor = vec4(min(pow(x, (uCarve.z + 1.) * (1. - clamp(vColour.a - .1, 0., 1.)) + .001), 1.) * uCarve.w * vColour.rgb, 1.);'
+          : 'gl_FragColor = vec4(x * vColour.rgb, min(pow(clamp(x * vColour.a, 0., 1.), uCarve.z), 1.));'}`
+          : 'gl_FragColor = t * vColour;'}
+        }`});
+    new THREE.TextureLoader().load(`${data}textures/${encodeURIComponent(read.texture)}`, map => {
+      Object.assign(map, {flipY: false, internalFormat: 'SRGB8_ALPHA8', needsUpdate: true});
+      material.uniforms.uMap.value = map;
+    });
+    return material;
+  }
   function buildParticles(placed) {
-    for (const points of particles.children.splice(0)) { points.geometry.dispose(); points.material.dispose(); }
-    const byTexture = new Map();
-    for (const {effect, matrix} of placed) for (const particle of effect.particles || []) {
-      const read = packColours[particle.material];
-      if (!read || !read.texture || !(read.flags & 0x40)) continue;
-      const scale = Math.hypot(matrix[0][0], matrix[1][0], matrix[2][0]), p = particle.position || [0, 0, 0];
-      const at = [0, 1, 2].map(r => matrix[r][0] * p[0] + matrix[r][1] * p[1] + matrix[r][2] * p[2] + matrix[r][3]);
-      at[1] += particle.size * scale / 2;  // ponytail: flames rise from the emitter; half a sprite up, a guess
-      const tint = (read.colour || [1, 1, 1]).map(c => c ** 2.2), gain = read.intensity ?? 1, [r, g, b, a] = particle.colour;
-      if (!byTexture.has(read.texture)) byTexture.set(read.texture, {frames: read.flipbook || [1, 1], position: [], colour: [], size: []});
-      const into = byTexture.get(read.texture);
-      into.position.push(...at);
-      into.colour.push(...[r, g, b].map((c, i) => Math.max(c, 0) ** 2.2 * gain * tint[i] * a * (particle.alive || 1)));
-      into.size.push(particle.size * scale);
-    }
-    for (const [texture, {frames, position, colour, size}] of byTexture) {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
-      geometry.setAttribute('colour', new THREE.Float32BufferAttribute(colour, 3));
-      geometry.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
-      const material = new THREE.ShaderMaterial({...ADDED, uniforms: {uMap: {value: white}, uFrame: {value: new THREE.Vector2(1 / frames[1], 1 / frames[0])}, uHeight: particleHeight},
-        vertexShader: `attribute vec3 colour; attribute float size; uniform float uHeight; varying vec3 vColour;
-          void main() { vColour = colour; vec4 view = modelViewMatrix * vec4(position, 1.); gl_Position = projectionMatrix * view;
-            gl_PointSize = size * projectionMatrix[1][1] * uHeight * .5 / max(-view.z, 1.); }`,
-        fragmentShader: `uniform sampler2D uMap; uniform vec2 uFrame; varying vec3 vColour;
-          void main() { vec4 t = texture2D(uMap, gl_PointCoord * uFrame); gl_FragColor = vec4(pow(t.rgb, vec3(2.2)) * t.a * vColour, 1.); }`});
-      new THREE.TextureLoader().load(`${data}textures/${encodeURIComponent(texture)}`, map => { map.flipY = false; map.needsUpdate = true; material.uniforms.uMap.value = map; });
-      particles.add(new THREE.Points(geometry, material));
+    for (const mesh of particles.children.splice(0)) { mesh.geometry.dispose(); mesh.material.dispose(); }
+    const byMaterial = new Map();
+    placed.forEach(({effect, matrix}, entity) => (effect.particles || []).forEach((emitter, e) => {
+      const read = packColours[emitter.material], blend = read && read.flags >> 5 & 7;
+      if (!read || !read.texture || (blend !== 1 && blend !== 2) || !emitter.life) return;
+      const random = seeded(entity * 64 + e + 1), shader = read.shader || '', flipbook = shader.startsWith('internal/shaders/particleFlipbook');
+      const scale = Math.hypot(matrix[0][0], matrix[1][0], matrix[2][0]), toWorld = (v, w) => [0, 1, 2].map(r => matrix[r][0] * v[0] + matrix[r][1] * v[1] + matrix[r][2] * v[2] + w * matrix[r][3]);
+      const axes = emitter.axes || [[1, 0, 0], [0, 1, 0], [0, 0, 1]], alongBone = v => [0, 1, 2].map(c => v[0] * axes[0][c] + v[1] * axes[1][c] + v[2] * axes[2][c]);
+      const {interval, life, capacity} = emitter, count = interval > 0 ? Math.max(1, Math.min(capacity, Math.floor(life / interval + .5))) : capacity;
+      const gap = interval > 0 ? Math.max(interval, life / capacity) : 0, [bw, bh, dw, dh] = emitter.size, [rotation, rotationStray, turn, turnStray] = emitter.rotation || [0, 0, 0, 0];
+      const [rows, columns, frameSpeed, firstFrame] = read.flipbook || [1, 1, 0, 0];
+      const tint = shader.startsWith('internal/shaders/standard_') ? (read.colour || [1, 1, 1]).map(linear) : [1, 1, 1], gain = flipbook ? read.intensity ?? 1 : 1;
+      const ownColour = !shader.startsWith('internal/shaders/standard_') || /VERTEXCOLOUR/.test(shader);
+      if (!byMaterial.has(emitter.material)) byMaterial.set(emitter.material, {read, centre: [], colour: [], shape: [], anchor: []});
+      const into = byMaterial.get(emitter.material);
+      for (let k = 0; k < count; k++) {
+        const age = interval > 0 ? (k + .5) * gap : life / 2, t = Math.min(age / life, 1);
+        const v = emitter.velocity.map((c, i) => c + (2 * random() - 1) * emitter.spread[i]), a = emitter.acceleration;
+        const local = v.map((c, i) => c * age + (emitter.local ? .5 * a[i] * age * age : 0));
+        const at = toWorld(alongBone(local).map((c, i) => c + (emitter.position || [0, 0, 0])[i]), 1);
+        if (!emitter.local) at.forEach((_, i) => { at[i] += .5 * a[i] * age * age; });
+        const colour = [0, 1, 2, 3].map(i => Math.min(Math.max(emitter.colour[i] + (emitter.colour[i + 4] - emitter.colour[i]) * t, 0), 1));
+        if (emitter.randomRed) colour[0] = random();
+        into.centre.push(...at);
+        into.colour.push(...[0, 1, 2].map(i => (ownColour ? linear(colour[i]) : 1) * tint[i] * gain), colour[3]);
+        // ponytail: a flipbook not run by age takes the view's x in the game (0x1400eba60); a random frame here.
+        const frame = !flipbook ? 0 : emitter.framesByAge ? (t + firstFrame + colour[0]) * frameSpeed : Math.floor(random() * rows * columns);
+        into.shape.push((bw + (dw - bw) * t) * scale, (bh + (dh - bh) * t) * scale,
+          rotation + (2 * random() - 1) * rotationStray + (turn + (2 * random() - 1) * turnStray) * age, frame);
+        into.anchor.push(...emitter.anchor);
+      }
+    }));
+    for (const {read, centre, colour, shape, anchor} of byMaterial.values()) {
+      const geometry = new THREE.InstancedBufferGeometry();
+      geometry.setIndex([0, 2, 1, 1, 2, 3]);
+      // Each its own: disposing a geometry frees its attributes' buffers, and a shared one freed so broke the cloud dome.
+      geometry.setAttribute('corner', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2));
+      geometry.setAttribute('centre', new THREE.InstancedBufferAttribute(new Float32Array(centre), 3));
+      geometry.setAttribute('colour', new THREE.InstancedBufferAttribute(new Float32Array(colour), 4));
+      geometry.setAttribute('shape', new THREE.InstancedBufferAttribute(new Float32Array(shape), 4));
+      geometry.setAttribute('anchor', new THREE.InstancedBufferAttribute(new Float32Array(anchor), 2));
+      geometry.instanceCount = centre.length / 3;
+      const mesh = new THREE.Mesh(geometry, particleMaterial(read));
+      mesh.frustumCulled = false;
+      particles.add(mesh);
     }
   }
   function buildLights(placed) {
@@ -768,7 +940,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     const volume = entry => M.isVolume(entry.owner);
     world.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle, true, world.material);
     glass.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle,
-      face => FAINT.test((packColours[face.material || ''] || {}).shader || '') ? faint : null, glass.material, source => source ? faintMaterial : glassMaterial);
+      face => {
+        const read = packColours[face.material || ''] || {};
+        return /alphaFresnel/.test(read.shader || '') ? {key: 'fresnel:' + (read.fresnel || [.1, 4, .075]), fresnel: read.fresnel || [.1, 4, .075]}
+          : read.glass && read.litSphere && read.cube ? (colour => ({key: `glass:${face.material}:${colour}`, glass: read, colour}))(faceColour(read, face))
+          : isForward(read) && read.flags & 0x200 && !read.texture ? (colour => ({key: `simple:${colour}`, simple: colour}))(faceColour(read, face))
+          : FAINT.test(read.shader || '') ? faint : bothSides(read) ? both : null;
+      },
+      glass.material, source => source === faint ? faintMaterial : source && source.fresnel ? fresnelMaterial(source.fresnel)
+        : source && source.glass ? glassReflection(source.glass, source.colour) : source && source.simple ? simpleMaterial(source.simple) : source ? glassBoth : glassMaterial);
     clips.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && isClip(face), clipEntryOfTriangle);
     volumes.geometry = buildMesh(flat.brushes, (face, entry) => volume(entry), volumeEntryOfTriangle, volumeSource, volumes.material, volumeMaterial);
     volumes.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(volumes.geometry.attributes.texcoord.array.map(v => v / 16), 2));
@@ -789,11 +969,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   // The sun: up from the horizon in the direction sky.skyAngle turns +z by at 6:00 (sky.timeOfDay), overhead at
   // 12:00, down on the far side at 18:00, 15° an hour (measured with a pole's shadow at 6, 9, 12, 15 and 18, and at
   // 9 and 12 turned 90°); a map that gives neither is at 14:00 turned 30° (measured: Aerowalk and Phobos give no
-  // angle); its light (2.94, 2.65, 2.13) at full incidence on a grey floor (measured at noon). Clip brushes cast no
+  // angle); its light sky.sunColor (bytes / 255) × 2.94 at full incidence (measured on a grey floor: at noon under the
+  // default ffffe6b9, and at 17:00 under SkyTemples' b89a59 within 1.5 %, no other dimming by the hour). Clip brushes cast no
   // shadow (measured). Its
   // shadows from two depth maps of the brushes and models: one of the whole map, and a finer one of the 2048 units
   // around the viewer, drawn again when the viewer has moved 256 (ponytail: two cascades; the game has four).
-  const SUN_LIGHT = [2.94, 2.65, 2.13];
+  const SUN_LIGHT = 2.94;
   const shadowMap = () => new THREE.WebGLRenderTarget(4096, 4096, {depthTexture: new THREE.DepthTexture(4096, 4096), depthBuffer: true});
   const sunTarget = shadowMap(), nearTarget = shadowMap();
   const sunCamera = new THREE.OrthographicCamera(), shadowCaster = new THREE.MeshBasicMaterial();
@@ -836,7 +1017,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const height = (hour - 6) * 15 * Math.PI / 180, enabled = !spawn || M.property(spawn, 'sky.sunEnabled') !== 0;
     const sun = new THREE.Vector3(Math.sin(turn) * Math.cos(height), Math.sin(height), Math.cos(turn) * Math.cos(height)).normalize();
     uniforms.uSun.value.copy(sun);
-    uniforms.uSunColour.value.fromArray(SUN_LIGHT);
+    uniforms.uSunColour.value.fromArray(hexColour((spawn && M.property(spawn, 'sky.sunColor')) ?? SKY_DEFAULTS.sunColor).slice(1)).multiplyScalar(SUN_LIGHT);
     uniforms.uSunTexel.value = 0;
     nearAt = null; sunReach = 0;
     if (!enabled || sun.y <= 0) return;
@@ -874,7 +1055,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     horizonIntensity: .2, horizonHaloExponent: 3, horizonHaloExponentSun: 4, horizonHaloExponentSunIntensity: .2, horizonLine: -.1,
     cloudsColor: 'ffb2b2b2', cloudsCoverage: .8, 'cloudsSpeed.x': 1, 'cloudsSpeed.y': .01, cloudsCoverageMultiplier: 16, cloudsBias: .1, cloudsRoughness: .1,
     cloudsDensity: .8, cloudsThickness: .8, starsIntensity: 0};
-  // The fog a map leaves out: WorldSpawn's defaults in reflex.exe (.data 0x1409858d8, after the sky's), faint at map scale.
+  // The fog a map leaves out: WorldSpawn's defaults in reflex.exe (.data 0x1409868d8, after the sky's and the team
+  // colours), faint at map scale.
   const FOG_DEFAULTS = {fogColor: 'ffb4e1ff', fogDistanceStart: 512, fogDistanceEnd: 8192, fogHeightTop: 0, fogHeightBottom: -8192};
   const skyUniforms = {uSun: uniforms.uSun, uTop: {value: new THREE.Vector3()}, uHorizon: {value: new THREE.Vector3()}, uBottom: {value: new THREE.Vector3()},
     uSunColour: {value: new THREE.Vector3()}, uHalo: {value: new THREE.Vector3()}, uHaloIntensity: {value: 0}, uHaloExponent: {value: 1}, uHaloSun: {value: 1},
@@ -2558,7 +2740,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // where added glows run past 1; bloom (bloomHighPass: what is brighter than 2.2 in luma, half the excess; five
   // targets of half the size each, bloomBlur across and down; upsample adds each into the next larger with a 9-tap tent
   // of radius .02 down to .0015 of the frame's width, weighted 1, 1, 1.5, .5 and .2 into the scene); the map's fog
-  // (postEffects_FOG); then r_gamma's 2.2. The editor's volumes, markers and outlines are drawn after that, straight
+  // (postEffects_FOG); the vignette; then r_gamma, which at its default 2.2 changes nothing, and the sRGB curve of the game's swap
+  // chain (R8G8B8A8_UNORM_SRGB: darker than a 2.2 gamma below about 0.15). The editor's volumes, markers and outlines are drawn after that, straight
   // onto the frame as before, against the scene's depth.
   const sceneTarget = (w, h) => new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: 4, depthTexture: new THREE.DepthTexture(w, h)});
   const blurTarget = (w, h) => new THREE.WebGLRenderTarget(Math.max(1, w), Math.max(1, h), {type: THREE.HalfFloatType, depthBuffer: false});
@@ -2598,7 +2781,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         float h = clamp((uFog.z - (p.y + 4. * sin(p.x / 48. + .8 * uTime - p.z / 48.))) / (uFog.z - uFog.w), 0., 1.);
         c = mix(c, uFogColour, max(h * h, d * d));
       }
-      gl_FragColor = vec4(pow(max(c, 0.), vec3(1. / 2.2)), 1.);
+      // The vignette (r_postfx_vignette, on by default: postEffects_…_VIGNETTE), 1 − 4 r⁵ of the distance from the
+      // frame's centre in frame units; r_gamma (2.2 / 2.2: none), then the swap chain's sRGB curve (reflex.exe makes
+      // it R8G8B8A8_UNORM_SRGB).
+      float r = length(vUv - .5);
+      c = clamp(c, 0., 1.) * max(1. - 4. * r * r * r * r * r, 0.);
+      gl_FragColor = vec4(mix(c * 12.92, 1.055 * pow(c, vec3(1. / 2.4)) - .055, step(.0031308, c)), 1.);
       gl_FragDepth = depth;
     }`, {uScene: {value: null}, uBloom: {value: null}, uDepth: {value: null}, uRadius: {value: new THREE.Vector2()}, uInverse: {value: new THREE.Matrix4()}, uViewer: {value: new THREE.Vector3()}, uTime: {value: 0}, ...fog},
   {depthTest: true, depthWrite: true, depthFunc: THREE.AlwaysDepth});
@@ -2615,7 +2803,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   function draw(view = camera) {
     renderer.getDrawingBufferSize(drawingSize);
     const [w, h] = [drawingSize.x, drawingSize.y];
-    particleHeight.value = h;
     if (!hdr || hdr.width !== w || hdr.height !== h) {
       for (const target of [hdr, bright, ...levels.flat()]) if (target) { if (target.depthTexture) target.depthTexture.dispose(); target.dispose(); }
       hdr = sceneTarget(w, h); bright = blurTarget(w, h);
