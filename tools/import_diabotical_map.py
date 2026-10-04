@@ -52,8 +52,9 @@ Decals: a `decal...` entity projects its material (drawn by tiledecal.ps: map 0,
 a box, the unit cube centred on the entity under its rotation and scale (models/decal_volume.dbm is that cube), onto
 those facing its local -z (the shader drops surfaces whose normal is more than about 84 degrees off it); in 2,700
 flat stock decals the surface under one lies at its centre and faces local -z, with or without v2 or v3. The
-texture runs across local x and y, mirrored in x when `mirrored` is true, times `color` (RRGGBB or RRGGBBAA).
-`order` (-10000 to 10000) orders them.
+texture runs across local x and y (turned round on floors, see decal_matrix), times `color` (RRGGBB or AARRGGBB,
+taken as sRGB: 808080 halves the picture's value; run 13). `mirrored` changed nothing seen; v1, v2 and v3 differ
+only in v3's scale; the box's depth fades nothing. `order` (-10000 to 10000) orders them.
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
@@ -82,7 +83,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import decode_dds
 
-FORMAT = 3  # Of the files written per map: maps imported with another are read again.
+FORMAT = 4  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -190,12 +191,13 @@ def visible_blocks(blocks):
 
 
 def colour(value, palette=None):
-    """A colour field (ffaa00, #FFAA00, or accentN: the map's palette, in its global entity) as 0xRRGGBB, or None."""
+    """A colour field (ffaa00, #FFAA00, AARRGGBB, or accentN: the map's palette, in its global entity) as 0xRRGGBB, or
+    None. Eight digits are alpha first (run 13: a decal coloured ff000080 came out dark blue)."""
     value = (value or '').strip().lower()
     word = value.split()[0].lstrip('#') if value else ''
     if palette is not None and re.fullmatch(r'accent\d+', word):
         return colour(palette.get(word))
-    return int(word[:6], 16) if re.fullmatch(r'[0-9a-f]{6,8}', word) else None
+    return int(word[-6:], 16) if re.fullmatch(r'[0-9a-f]{6}|[0-9a-f]{8}', word) else None
 
 
 def read_materials(packs):
@@ -291,6 +293,23 @@ def game_matrix(position, rotation, scale):
     return out
 
 
+def decal_matrix(position, rotation, scale, v3=False):
+    """A decal's box in game axes, its local x and y the way its texture's right and top run (run 13). A v3 decal's
+    box takes its scale turned by its rotation, as absolute values (|R s|: the sizes of three test decals turned
+    differently). On a wall (a box facing sideways) the texture runs along the rotation's x and y; facing straight
+    down (a floor) the game turns it round (provisional: one wall seen, at roll 0; tilts and ceilings not seen)."""
+    turn = game_matrix((0, 0, 0), rotation, (1, 1, 1))[:3, :3]
+    if v3:
+        scale = np.abs(turn @ np.asarray(scale, float))
+    if abs(turn[1, 2]) > VERTICAL:
+        turn = turn @ np.diag([-1.0, -1.0, 1.0])
+    out = np.eye(4)
+    out[:3, :3] = turn @ np.diag(scale)
+    out[:3, 3] = position
+    return out
+
+
+VERTICAL = 0.99  # ponytail: where a decal starts counting as a floor one is a guess (run 14 to tell).
 MIRROR = np.diag([1.0, 1.0, -1.0, 1.0])  # Game axes <-> page (and FBX) axes.
 CELL = 40  # A dynamic prop's cell, in units.
 PICKUPS = re.compile(r'(spawn|hpt|armort|weapon|ammo|jumppad|jp|teleport|tpexit|flag|coin|crystal|doubledamage|tripledamage)')
@@ -310,11 +329,11 @@ def placements(entities, assets):
         if name.startswith('decal'):
             if fields.get('material'):
                 rgb, word = colour(fields.get('color'), palette), (fields.get('color') or '').strip().lstrip('#').lower()
-                alpha = int(word[6:8], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else 255
+                alpha = int(word[:2], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else 255
                 flags = sum(bit for bit, key in ((1, 'mirrored'), (2, 'v2'), (4, 'v3')) if fields.get(key) == 'true')
                 order = re.fullmatch(r'\s*(-?\d+)\D*', fields.get('order', ''))  # Some read "01000".
                 decals.setdefault(fields['material'].lower(), []).append((
-                    (MIRROR @ game_matrix(position, rotation, scale) @ MIRROR)[:3].ravel(),
+                    (MIRROR @ decal_matrix(position, rotation, scale, fields.get('v3') == 'true') @ MIRROR)[:3].ravel(),
                     [(0xffffff if rgb is None else rgb) << 8 | alpha, flags, int(order.group(1)) % 2 ** 32 if order else 0]))
             continue
         if name.startswith('liquid'):

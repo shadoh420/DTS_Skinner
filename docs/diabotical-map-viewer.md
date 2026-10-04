@@ -1,8 +1,8 @@
 # Diabotical map viewer
 
 Opens Diabotical maps from Skinner for a free-flight look at their blocks,
-props and heightmap terrain, drawn in the textures of their materials, with markers for spawns and
-pickups and liquids as see-through boxes. No decals, lights or baked lighting,
+props, heightmap terrain and decals, drawn in the textures of their materials, with markers for spawns and
+pickups and liquids as see-through boxes. No lights or baked lighting,
 one fixed sun, and no editing. Reflex, Q3, T1
 and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.md),
 [q3-map-viewer.md](q3-map-viewer.md), [t1-map-viewer.md](t1-map-viewer.md) and
@@ -88,6 +88,18 @@ left (`static/diabotical-maps/blocks.js`).
   mask, and its fourth, four times larger, where the slope is steeper than
   about 37° (normal y below 0.8, blended up to 0.85). The material is the
   entity's `material` or `shader`, else `core_ter` (grass, rock cliffs).
+- **Decals.** A `decal_…` entity paints its material's texture (drawn by the
+  game's `tiledecal.ps`, with alpha) on the surfaces inside a box: the unit
+  cube centred on the entity, under its rotation and scale. Only surfaces
+  facing the box's local -z take it (the shader drops those whose normal is
+  more than about 84° off). The page clips each block, terrain and prop
+  triangle to the boxes near it (`static/diabotical-maps/decals.js`) and draws
+  the pieces lit as the surface, times the decal's `color` (RRGGBB, or
+  AARRGGBB with alpha first, as sRGB), in `order`. On a wall the texture's
+  right and top run along the box's local x and y; on a floor (a box facing
+  straight down) it is turned round. A `v3` decal's box takes its scale turned
+  by its rotation, as absolute values; `v1` and `v2` decals take it as given.
+  `mirrored` changes nothing seen in the game, nor does a box's depth.
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes; `liquid_*` entities boxes of their scale, centred on them.
@@ -170,9 +182,27 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   has no such curve). The orange one's green comes out darker than the
   grey one's in the game: its picture is also more saturated, as a whole.
 
+- Decals: the box from 2,700 flat stock decals (the surface under one lies at
+  its centre and faces its local -z, whatever its version) and the decal
+  shader's disassembly; the rest from run 13: fourteen `center_room` decals
+  (text and arrows, so turns and mirrors show) on the template's floor and one
+  on a pillar, seen from above and from the side and drawn by the page from
+  the same points. v1 and v2 came out the same, a mirrored one the same as
+  its twin, boxes raised 15 units the same as those on the floor; ff000080 dark
+  blue (alpha first); 808080 half the value of ffffff in the picture (so sRGB,
+  unlike an accent). A v3 decal 120 × 60 × 40 showed its texture 120 × 40
+  flat and 60 × 40 turned a quarter (by roll or by yaw): the scale turned by
+  the rotation, as absolute values, fits all three. The floor decals' texture
+  runs against the box's x and y, the pillar's along them; no single rotation
+  convention fits both, so the page treats boxes facing straight down apart
+  (one wall decal seen, at roll 0: tilts, rolls on walls and ceilings are not
+  measured yet).
+
 ## Not done yet
 
-Decals, lights, billboards, particles, the glowing crystals' colours
+Where a tilted decal starts to count as a floor one, decal rolls on walls and
+ceilings (see above), decals with no texture in the game files (drawn not at
+all), props marked `no_decals` (they take decals), lights, billboards, particles, the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
 materials (a flag in the material picks the team's colour over an accent),
 whether a

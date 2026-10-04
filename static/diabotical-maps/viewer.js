@@ -223,14 +223,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Decals: each box's texture on the blocks, terrain and props in it that face it (decals.js), times its colour
-  // (0xRRGGBBAA; the hex taken as linear light, as an accent's), one mesh per material and order, drawn in order.
+  // (0xRRGGBBAA, as sRGB: run 13 showed 808080 halving the picture's value, unlike an accent), one mesh per material
+  // and order, drawn in order. The importer has turned each box so its texture runs along its x and y.
   function addDecals(list, entries) {
     const boxes = [], owners = [];
     for (const {material: name, matrices, extras, orders} of list) {
       if (!(entries[name] || {}).texture) continue;  // ponytail: a decal with no texture is left out, not drawn flat.
       for (let i = 0; i < matrices.length / 12; i++) {
         boxes.push(matrices.subarray(i * 12, i * 12 + 12));
-        owners.push({name, colour: extras[i * 3], flags: extras[i * 3 + 1], order: orders[i * 3 + 2]});
+        owners.push({name, colour: extras[i * 3], order: orders[i * 3 + 2]});
       }
     }
     if (!boxes.length) return 0;
@@ -273,11 +274,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     const groups = new Map();
     projector.out.forEach(({positions, normals, uvs}, i) => {
       if (!positions.length) return;
-      const {name, colour, flags, order} = owners[i], key = `${name}|${order}`;
+      const {name, colour, order} = owners[i], key = `${name}|${order}`;
       if (!groups.has(key)) groups.set(key, {name, order, positions: [], normals: [], uvs: [], colours: []});
-      const group = groups.get(key), rgba = [display(colour >>> 24), display(colour >>> 16 & 255), display(colour >>> 8 & 255), (colour & 255) / 255];
+      const group = groups.get(key), rgba = [colour >>> 24, colour >>> 16 & 255, colour >>> 8 & 255, colour & 255].map(byte => byte / 255);
       for (let j = 0; j < positions.length; j++) { group.positions.push(positions[j]); group.normals.push(normals[j]); }
-      for (let j = 0; j < uvs.length; j += 2) group.uvs.push(flags & 1 ? 1 - uvs[j] : uvs[j], uvs[j + 1]);
+      for (let j = 0; j < uvs.length; j++) group.uvs.push(uvs[j]);
       for (let j = 0; j < positions.length / 3; j++) group.colours.push(...rgba);
     });
     for (const {name, order, positions, normals, uvs, colours} of groups.values()) {

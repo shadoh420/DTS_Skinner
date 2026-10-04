@@ -289,11 +289,26 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertLess(np.linalg.det(props['props/quad||m'][0].reshape(3, 4)[:, :3]), 0)  # _flipx: mirrored.
         self.assertEqual(markers, [['spawn', 1, 2, 3]])
         self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean']])
-        # Decals: their boxes in page axes; colour 0xRRGGBBAA (alpha 255 unless given), flags (1 mirrored, 2 v2, 4 v3), order.
+        # Decals: their boxes in page axes; colour 0xRRGGBBAA (from RRGGBB, or AARRGGBB: alpha first), flags (1 mirrored,
+        # 2 v2, 4 v3), order.
         matrices, extras = decals['arrow']
         self.assertEqual(list(decals), ['arrow'])
         self.assertEqual(matrices[0].reshape(3, 4).tolist(), [[100, 0, 0, 10], [0, 50, 0, 20], [0, 0, 8, -30]])
-        self.assertEqual(extras.view(np.int32).tolist(), [[0x80402010 - 2 ** 32, 5, 1000], [0x00ff7fff, 2, -2]])
+        self.assertEqual(extras.view(np.int32).tolist(), [[0x40201080, 5, 1000], [0x00ff7fff, 2, -2]])
+
+    def test_decal_boxes_turn_their_texture_as_the_game_does(self):
+        from tools.import_diabotical_map import decal_matrix
+        quarter = np.pi / 2
+        columns = lambda m: [np.round(m[:3, i], 6).tolist() for i in range(3)]
+        # A wall decal turned 90 degrees about y (run 13): texture right toward -z, top up, facing (local -z) -x.
+        self.assertEqual(columns(decal_matrix((0, 10, -300), (0, quarter, 0), (1, 1, 1))), [[0, 0, -1], [0, 1, 0], [1, 0, 0]])
+        # On a floor (rotated 90 degrees about x) the texture is turned round: right toward -x, top toward -z.
+        self.assertEqual(columns(decal_matrix((0, 0, 0), (quarter, 0, 0), (1, 1, 1))), [[-1, 0, 0], [0, 0, -1], [0, -1, 0]])
+        # v3: the scale turned by the rotation, as absolute values.
+        flat = decal_matrix((0, 0, 0), (quarter, 0, 0), (120, 60, 40))
+        self.assertEqual(np.round(np.linalg.norm(flat[:3, :3], axis=0), 6).tolist(), [120, 60, 40])
+        turned = decal_matrix((0, 0, 0), (quarter, quarter, 0), (120, 60, 40), v3=True)
+        self.assertEqual(np.round(np.linalg.norm(turned[:3, :3], axis=0), 6).tolist(), [60, 40, 120])
 
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds
