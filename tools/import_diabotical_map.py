@@ -31,8 +31,9 @@ or pick A,B,... }, the last rule that holds in each channel wins. A model PATH_f
 
 Terrain: a map with a `terrain` entity has a heightmap beside it, NAME-h.png (512 x 512, height in red), and
 NAME-b.png (its dirt mask in red). Pixel (column, row) is the vertex at x = (column - 256) * 40, z = (row - 256) * 40
-in entity coordinates, y = offset_y + 8 * red (fitted to the grass and flowers standing on it in 64 stock maps; the
-entity's own position is not used). Its material (the entity's material or shader, else core_ter) is drawn by
+in entity coordinates, y = offset_y + 8 * red (fitted to the grass and flowers standing on it in 64 stock maps, then
+measured in the game; the entity's own position is not used); the mask's texel (column, row) is the cell from there
+to the next. Its material (the entity's material or shader, else core_ter) is drawn by
 tileter.ps: map 0 where flat, mixed with map 5 by the dirt mask, map 3 on slopes (normal y below 0.8, blended to
 0.85).
 
@@ -320,9 +321,10 @@ def placements(entities, assets):
 
 def read_terrain(entities, read):
     """The map's heightmap terrain, if it has a `terrain` entity and a NAME-h.png (`read(suffix)` reads the file
-    beside the map): (PNG of the heights in red and the dirt mask, NAME-b.png, in green, {offset, cell, scale,
-    material}). A vertex per pixel: (column - w/2, row - h/2) * cell from the offset in x and z, y = offset y + 8 *
-    red * scale (scale_y; one map, a guess)."""
+    beside the map): (PNG of the heights in red and the dirt in green, {offset, cell, scale, material}). A vertex
+    per pixel: (column - w/2, row - h/2) * cell from the offset in x and z, y = offset y + 8 * red * scale (scale_y;
+    one map, a guess). The dirt mask, NAME-b.png, covers cells (texel c spans x (c - w/2) * cell to the next): each
+    vertex gets the mean of the four texels around it."""
     from PIL import Image
     fields = next((fields for name, *_, fields in entities if name == 'terrain'), None)
     if fields is None:
@@ -332,7 +334,8 @@ def read_terrain(entities, read):
     except (OSError, KeyError):
         return None, None
     try:
-        mask = Image.open(io.BytesIO(read('-b.png'))).convert('RGB').getchannel('R').resize(heights.size)
+        texels = np.pad(np.asarray(Image.open(io.BytesIO(read('-b.png'))).convert('RGB').getchannel('R').resize(heights.size), float), ((1, 0), (1, 0)), 'edge')
+        mask = Image.fromarray(np.round((texels[:-1, :-1] + texels[:-1, 1:] + texels[1:, :-1] + texels[1:, 1:]) / 4).astype(np.uint8))
     except (OSError, KeyError):
         mask = Image.new('L', heights.size)
     data = io.BytesIO()

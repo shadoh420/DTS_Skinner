@@ -140,7 +140,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // The heightmap terrain: a vertex per pixel of its PNG (height in red, dirt mask in green), drawn as the game's
   // tileter.ps: ground texture where flat, mixed with dirt by the mask, the cliff texture (4x larger) on slopes.
-  const GROUND_REPEAT = .4;  // Ground tiles per 40-unit cell: one every 100 units, by eye against a game screenshot.
+  const GROUND_REPEAT = 40 / 128;  // Ground tiles per 40-unit cell: one every 128 units, measured in the game (cliff: 512).
   async function addTerrain(terrain, entries) {
     const image = await createImageBitmap(await get(data + 'maps/' + terrain.file).then(r => r.blob()), {colorSpaceConversion: 'none', premultiplyAlpha: 'none'});
     const {width, height} = image, context = Object.assign(document.createElement('canvas'), {width, height}).getContext('2d');

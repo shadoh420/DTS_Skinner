@@ -179,7 +179,9 @@ class DiaboticalMapsTest(unittest.TestCase):
             heights = Image.new('RGBA', (4, 4), (0, 0, 0, 255))
             heights.putpixel((3, 1), (134, 0, 0, 255))
             heights.save(root / 'Mine-h.png')
-            Image.new('RGBA', (4, 4), (255, 0, 0, 255)).save(root / 'Mine-b.png')
+            mask = Image.new('RGBA', (4, 4), (0, 0, 0, 255))
+            mask.putpixel((2, 2), (255, 0, 0, 255))
+            mask.save(root / 'Mine-b.png')
             result = import_maps(root / 'game', root / 'pack', extra=[mine])
             self.assertEqual((result['imported'], result['skipped']), (['walk', 'Mine'], []))
             self.assertEqual(result['failed'], {'old menu': 'map version 21 is not read yet'})
@@ -208,12 +210,14 @@ class DiaboticalMapsTest(unittest.TestCase):
             self.assertEqual(head['props'], [['props/sub/quad|stone_floor|', 1], ['props/sub/quad||', 1], ['props/gone||', 1]])
             self.assertEqual(head['markers'], [['hpt', 5, 6, 7]])
             self.assertEqual(np.frombuffer(raw, '<f4', offset=4 + length).reshape(-1, 12)[0, [3, 7, 11]].tolist(), [0, 40, 0])
-            # Terrain: heights in red and the dirt mask in green; its material's cliff (#3) and dirt (#5) textures.
+            # Terrain: heights in red and dirt in green (a texel shared by the four vertices at its corners); its
+            # material's cliff (#3) and dirt (#5) textures.
             terrain = index[1]['terrain']
             self.assertEqual({key: value for key, value in terrain.items() if key != 'file'},
                              dict(offset=[0, -1070, 0], cell=40, scale=1, material='core_ter'))
             with Image.open(root / 'pack/maps' / terrain['file']) as image:
-                self.assertEqual((image.size, image.getpixel((3, 1)), image.getpixel((0, 0))), ((4, 4), (134, 255, 0), (0, 255, 0)))
+                self.assertEqual((image.size, image.getpixel((3, 1))), ((4, 4), (134, 0, 0)))
+                self.assertEqual([image.getpixel(at)[1] for at in ((2, 2), (3, 2), (2, 3), (3, 3), (1, 2), (2, 1))], [64, 64, 64, 64, 0, 0])
             self.assertIsNone(index[0]['terrain'])
             self.assertEqual(materials['core_ter#5']['texture'], materials['core_ter']['texture'])
             self.assertNotEqual(materials['core_ter#3']['texture'], materials['core_ter']['texture'])

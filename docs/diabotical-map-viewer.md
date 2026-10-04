@@ -69,12 +69,13 @@ left (`static/diabotical-maps/blocks.js`).
   (`NAME-h.png`, 512 × 512, the height in red) and a dirt mask (`NAME-b.png`).
   Each pixel is a vertex 40 units from the next, pixel 256 at x = z = 0, its
   height the entity's `offset_y` + 8 × red; the entity's own position is not
-  used. It is drawn as the game's terrain shader (`tileter.ps`) draws it: the
-  material's first map on flat ground, mixed with its sixth by the dirt mask,
-  and its fourth, four times larger, where the slope is steeper than about 37°
-  (normal y below 0.8, blended up to 0.85). The material is the entity's
-  `material` or `shader`, else `core_ter` (grass, rock cliffs). The ground
-  texture repeats every 100 units or so, judged by eye.
+  used. The dirt mask's pixels are cells instead (pixel 256 covers 0 to 40),
+  so each vertex takes the mean of the four around it. It is drawn as the
+  game's terrain shader (`tileter.ps`) draws it: the material's first map on
+  flat ground, repeating every 128 units, mixed with its sixth by the dirt
+  mask, and its fourth, four times larger, where the slope is steeper than
+  about 37° (normal y below 0.8, blended up to 0.85). The material is the
+  entity's `material` or `shader`, else `core_ter` (grass, rock cliffs).
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes; `liquid_*` entities boxes of their scale, centred on them.
@@ -133,15 +134,22 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   8.1; x and z map to column and row without a flip or a swap, centred on pixel
   256 (to within half a cell: the fit is flat there). The pixel shader
   (disassembled with the game's own `d3dcompiler_47.dll`) gave the texture
-  slots, repeats and slope blend. In run 9's screenshot the floor's side shows
-  less above the grass than the page draws, so the ground may be up to one
-  step (8 units) higher in the game.
+  slots, repeats and slope blend. Then a test map with a heightmap and dirt
+  mask made by script, seen in the game (run 11): a column of blocks black and
+  white every 20 units meets ground predicted at y -80 exactly on a band's
+  edge, and ground predicted at the floor's top is level with it; a one-pixel
+  ridge along a column and one along a row, seen from straight above, have
+  their crests on the lines of x = 600 and z = 600 (to about 5 units), as
+  blocks placed there show; a painted stripe of the dirt mask turns the ground
+  to dirt between blocks at its predicted edges; and the grass texture
+  repeats every 128 units (205 pixels in a shot from above where the floor's
+  80-unit plates are 128).
 
 ## Not done yet
 
-Decals, lights, billboards, particles, props' `color` tints, the terrain's
-exact texture repeat (and whether a material's `uv_scale` changes it, as
-`terrain_snow_blend`'s 0.125 might) and height (one step), its normal maps and the fields
+Decals, lights, billboards, particles, props' `color` tints, whether a
+terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
+0.125; only `core_ter` was measured), the terrain's normal maps and the fields
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
