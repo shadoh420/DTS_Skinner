@@ -93,7 +93,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 10  # Of the files written per map: maps imported with another are read again.
+FORMAT = 11  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -405,10 +405,11 @@ def placements(entities, assets):
 POINT, SUN = .335, .262  # Light per unit of colour x intensity on a white surface (runs 17, 18).
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
 DEFAULT_SHADOW = [.238, .401, .457]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
+BLOCK = np.array([40, 20, 40])  # A block's size in entity units.
 SPECULAR = ('point', 'spot', 'capsule')  # tile.cs: diffuse lights (and no type: diffuse) add no specular light.
 
 
-def read_lights(entities):
+def read_lights(entities, box=None):
     """A map's lights for the page (run 16 to 18 measurements, in page axes, as light on a white surface):
     {lights: [[kind (0 point, 1 spot, 2 capsule), x, y, z, dx, dy, dz, r, g, b, radius, inner radius, cos of the
     cone's half angle, softness, length, specular scale]], nodes: [[cubic, x, y, z, radius, r, g, b]], ambient,
@@ -422,7 +423,8 @@ def read_lights(entities):
     shadow_color (global entity; by default bluish, run 20) in shadow. Ambient and shadow ambient (sunlit and shadowed ground) came out as
     0.426 x hex^0.56 (0x20 and 0x40 measured); the shadow ambient is the ambient where the map has none. Ambient
     nodes ignore intensity and falloff (sRGB-like colour: 000040 gives a fifth of 000080's light) and replace the
-    ambient where they reach; volumes, fog and animation are not read."""
+    ambient where they reach; a node outside `box` (the blocks' bounds, entity axes) does nothing (run 23); volumes,
+    fog and animation are not read."""
     hexes = lambda value, default=0xffffff: np.array([(default if colour(value) is None else colour(value)) >> s & 255 for s in (16, 8, 0)]) / 255
     number = lambda fields, key, default: next(iter(re.findall(r'-?\d*\.?\d+(?:e-?\d+)?', fields.get(key, ''))), None) or default
     ambient_level = lambda value: np.round(.426 * hexes(value, 0) ** .556, 4).tolist()
@@ -446,6 +448,8 @@ def read_lights(entities):
             continue
         radius = float(number(fields, 'radius', 200))
         if kind in ('ambient_node', 'cubic_ambient_node'):
+            if box is not None and ((np.array(position) < box[0]) | (np.array(position) > box[1])).any():
+                continue
             out['nodes'].append([int(kind == 'cubic_ambient_node'), *np.round([x, y, -z, radius, *2.11 * hexes(fields.get('color')) ** 2.2], 4).tolist()])
         elif kind in LIGHT_KINDS and radius > 0:
             rgb = hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * POINT
@@ -675,7 +679,8 @@ def import_maps(game, output, replace=False, extra=None):
             blocks = visible_blocks(parsed['blocks'])
             props, tints, markers, liquids, decals = placements(parsed['entities'], assets)
             heights, terrain = read_terrain(parsed['entities'], read)
-            lights = read_lights(parsed['entities'])
+            xyz = parsed['blocks']['xyz']
+            lights = read_lights(parsed['entities'], (xyz.min(0) * BLOCK, (xyz.max(0) + 1) * BLOCK) if len(xyz) else None)
             if not has_cube(lights['envmap']):  # Not in the game's files: its default.
                 lights['envmap'] = 'default_envmap' if has_cube('default_envmap') else None
         except (OSError, ValueError, EOFError, struct.error) as exc:

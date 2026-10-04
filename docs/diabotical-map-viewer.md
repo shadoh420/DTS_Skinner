@@ -120,7 +120,8 @@ left (`static/diabotical-maps/blocks.js`).
   20) and the shadow ambient stands for the ambient. Ambient nodes
   replace the ambient where they reach (a 3D grid built from them, as the
   game builds one when a map loads): their `intensity` and `falloff` change
-  nothing, their colour is decoded as sRGB.
+  nothing, their colour is decoded as sRGB, and a node whose centre lies
+  outside the blocks' bounds does nothing at all (run 23).
 - **Specular light and reflections** (from `tile.cs`, not yet checked in the
   game). A material's specular map (its map 2) holds gloss in red and
   strength in green; its material id is its map 3's red where that is not
@@ -309,6 +310,17 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   at intensity 0.1, 1 and 20, spheres at 1 and 4, bright colours) changed
   nothing on the floor in this map either, though the log shows the grid
   built; run 18's nodes, in a map with a non-black ambient, did.
+- Run 22 (the same nodes over ambient 404040, with and without a sun) changed
+  nothing either. Run 23 found why: runs 17 and 18 had a pillar to y 600,
+  runs 20 to 22 only the floor (top y 400) under nodes at y 450. With the
+  pillar, or with a column as tall in a far corner, the nodes show; so the
+  game drops nodes outside the blocks' bounds (centre outside; whether the
+  whole sphere must be inside is not told apart; up to 3 % of the stock maps'
+  nodes are outside). Intensity again changed nothing (cubic 0.1, 1, 20 and
+  spheres 1, 4 alike). Runs 21 to 23 also give the floor under a sun of
+  intensity 0.5, 1 (run 18) and 2: 0.039, 0.113, 0.259, linear with an
+  offset, and ambient 101010, 404040, a0a0a0 with that sun: 0.075, 0.173,
+  0.373, linear in the hex with the albedo as slope.
 
 ## Not done yet
 
@@ -338,8 +350,9 @@ shadow ambient on faces turned from the sun (the shader ramps it over N·L
 below 0.1), fog and vertical fog, light volumes
 (beams), flickering lights (drawn steady), colour grading (`lut`, 11 maps), the
 ambient level only fitted at two values (0x20, 0x40) with a sun, the strong
-light of maps with no sun (measured in run 20, not drawn), ambient nodes'
-`intensity` (bioplant uses 2 to 8) and bright colours, glowing liquids and
+light of maps with no sun (measured in run 20, not drawn), the screen's
+offset (runs 21 to 23: 1.06 × light − 0.034; the page's constants are fits
+that absorb it), glowing liquids and
 bloom, how nodes overlap and the grid's own size; the
 per-face flag byte and
 the six small per-face values (probably texture offset and turn), what the

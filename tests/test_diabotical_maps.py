@@ -353,6 +353,9 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual((spot[0], spot[12], spot[13], spot[11], np.round(spot[4:7], 6).tolist()), (1, round(np.cos(np.radians(30)), 4), .1, 100, [0, -1, 0]))
         self.assertEqual((tube[0], tube[14], np.round(tube[4:7], 6).tolist()), (2, 200, [0, 0, -1]))  # Local +z, mirrored.
         self.assertEqual(out['nodes'], [[1, 1, 2, -3, 200, 0, 0, round(2.11 * (128 / 255) ** 2.2, 4)]])
+        # A node above every block does nothing in game (run 23): the blocks' box drops it.
+        node = [('light_node', (1, 450, 3), (0, 0, 0), (1, 1, 1), {'type': 'ambient_node'})]
+        self.assertEqual([len(read_lights(node, box)['nodes']) for box in (None, ([0, 0, 0], [40, 400, 40]), ([0, 0, 0], [40, 600, 40]))], [1, 0, 1])
         # Diffuse lights (and those of no type) add no specular light; the others turn their colour back into
         # colour x intensity for it.
         self.assertEqual([lamp[15], spot[15], tube[15]], [0, 0, round(1 / POINT, 4)])
