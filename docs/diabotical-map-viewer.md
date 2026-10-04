@@ -183,6 +183,6 @@ height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
 prop materials not found (flat colours), water
-surfaces, lighting (the maps' large baked light data), the per-face flag byte and
+surfaces, lighting (the maps' large baked light data; the game's picture also goes through a filmic tone curve and more saturation), the per-face flag byte and
 the six small per-face values (probably texture offset and turn), what the
 invisible shapes are, bevelled edges, version 21 maps, and editing.
