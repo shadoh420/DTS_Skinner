@@ -393,6 +393,14 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
 
 ## Not done yet
 
+Performance, for later: the page sends a whole map every frame (bioplant 1.7
+million triangles: props 1.08 M, the terrain's full 512 x 512 grid 522 k, blocks
+101 k). Instanced props are not frustum culled (three r149 tests an instanced mesh
+against one model's bounds) and nothing has levels of detail. Cheap wins: the
+terrain at half resolution (about 130 k) and props grouped into spatial cells so
+each cell can be culled. Frames are fast (about 1 ms on bioplant); loads take
+about 24 s.
+
 Decals' cutting box tilted about x (only flat ones and walls measured), decals
 with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), billboards, particles, the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
