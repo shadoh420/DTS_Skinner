@@ -36,12 +36,16 @@ left (`static/diabotical-maps/blocks.js`).
   material in a `.shader` file; its first `map` is its colour texture (BC7
   `.dds` in the packs, decoded with Pillow and stored as PNG, 512 pixels at
   most) and `uv_scale` how often it repeats: once every 40 / `uv_scale` units.
-  A name with a variant (`metalwall_heat01:3`) is drawn as its material. 13
-  material names of the stock maps are not in the game files and are drawn in
-  a flat colour of their own, listed in the map's Preview notes.
-- **Half blocks.** The sloped side takes the material of the side it replaced
-  that runs from the missing corner to the next one in turn order. That is a
-  guess, not yet checked in the game.
+  A name with a variant (`metalwall_heat01:3`) is drawn as its material. A
+  name defined more than once takes its first definition in pack-name order
+  whose texture is found, looking also beside the shader file under the
+  texture's file name (as `black` and `white` need: the game draws them with
+  `models_theme.dbp`'s scale 0.5, not `scripts.dbp`'s 1). 13 material names of
+  the stock maps are not in the game files and are drawn in a flat colour of
+  their own, listed in the map's Preview notes.
+- **Half blocks.** The sloped side takes the material and texture axes of the
+  stored face numbered by the turn (face 0 for turn 0, …), so its texture is
+  stretched across the slope by √2, as in the game.
 
 The file formats are written out in the import's module docstring
 (`tools/import_diabotical_map.py`).
@@ -65,8 +69,14 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   versions (`gr_titans_crossing` and `tt_gr_titans_crossing`; the editor's empty
   map, saved as version 25 and 27).
 
-Not yet checked against the game: that the export's handedness is the game's
-(maps could be mirrored), and the half block's sloped side material.
+- Not mirrored: an "F" of pillars seen from straight above in the game
+  (`/phy_fly 1`, `/goto -40 600 -40`, the mouse turned 4000 counts down) reads
+  the same, the same way up, as the page drawing that map from the same point,
+  so the game's x and z are the export's. Yaw 0 looks toward the export's -z.
+- The sloped side: four half blocks, one per turn, each face in a material of
+  a different texture scale; in the export the slope's scale is that of the
+  face numbered by the turn, divided by √2. The same export confirmed the page's
+  reading of six materials' `uv_scale` and showed `black`'s 0.5.
 
 ## Not done yet
 

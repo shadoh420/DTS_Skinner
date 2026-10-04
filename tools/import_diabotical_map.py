@@ -22,7 +22,8 @@ tall; the export (and the page) puts block (x, y, z) at 40x, 20y, -40z - 40 (z m
 Materials: an asset (scripts/*.assets: asset NAME { type surface_material material MATERIAL }) names a material,
 defined in a .shader file (NAME { { map colour, map normal, ...  uv_scale s } }). The page draws a face with the
 material's first map, its texture repeating every 40 / s units, as the export's texture coordinates do. A name
-defined more than once takes the first definition (packs in name order) whose texture is in the packs.
+defined more than once takes the first definition (packs in name order) whose texture is found, as the game does
+for black: its black blocks have models_theme.dbp's uv_scale 0.5, not scripts.dbp's 1 (measured in its /export).
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials) and the materials of
@@ -131,8 +132,8 @@ def visible_blocks(blocks):
 
 
 def read_materials(packs):
-    """{asset or material name: [(colour map path, uv_scale), ...]} from every pack's .assets and .shader files:
-    every definition of a name, as some are defined twice and only one's texture is in the packs."""
+    """{asset or material name: [(colour map path, uv_scale, shader file's folder), ...]} from every pack's .assets
+    and .shader files: every definition of a name, in the order read, as some are defined more than once."""
     assets, shaders = {}, {}
     for pack in packs:
         for name in pack.files:
@@ -149,14 +150,16 @@ def read_materials(packs):
                     found = re.search(r'\bmap\s+(\S+)', stage)
                     scale = re.search(r'\buv_scale\s+([-\d.]+)', stage)
                     if found:
-                        shaders.setdefault(shader.lower(), []).append((found.group(1), float(scale.group(1)) if scale else 1.0))
+                        shaders.setdefault(shader.lower(), []).append((found.group(1), float(scale.group(1)) if scale else 1.0, name.rsplit('\\', 1)[0]))
     return {name: shaders[material] for name, material in assets.items() if material in shaders} | shaders
 
 
 def material_textures(packs, names, materials, output, replace=False):
     """Each named material's texture (scaled to TEXTURE_SIZE at most) and scale for materials.json; the names
     with no material or texture in the game files. A name with a variant (metalwall_heat01:3) is drawn as its
-    material; a texture is in the packs as PATH.dds, or as PATH itself for some plain .png ones."""
+    material; a texture is in the packs as PATH.dds, or as PATH itself for some plain .png ones, or else under its
+    file name beside the shader file (models/theme/simple/textures/black.png is in .../textures/colors/, with
+    colors.shader)."""
     where = {}
     for pack in packs:
         for name in pack.files:
@@ -165,8 +168,9 @@ def material_textures(packs, names, materials, output, replace=False):
     (output / 'textures').mkdir(parents=True, exist_ok=True)
     entries, missing = {}, []
     for name in sorted(names):
-        files = [(path + suffix, scale) for path, scale in materials.get((name or 'default').lower().split(':')[0], [])
-                 for path in [path.lower().replace('/', '\\')] for suffix in ('.dds', '') if path + suffix in where]
+        files = [(path + suffix, scale) for path, scale, folder in materials.get((name or 'default').lower().split(':')[0], [])
+                 for path in [path.lower().replace('/', '\\')] for path in (path, folder + '\\' + path.rsplit('\\', 1)[-1])
+                 for suffix in ('.dds', '') if path + suffix in where]
         if not files:
             missing.append(name or 'default')
             continue
@@ -230,6 +234,10 @@ def import_maps(game, output, replace=False, extra=None):
         index[ident] = dict(id=ident, name=name, group=group, file=file, hash=digest, version=parsed['version'],
                             author=parsed['author'], materials=parsed['materials'], blocks=len(blocks))
         result['imported'].append(name)
+    # Maps since deleted from the game or the editor's folder leave the list.
+    present = {map_id(name if group == 'Diabotical' else 'user__' + name) for name, group, _ in sources}
+    for ident in [ident for ident in index if ident not in present]:
+        (output / 'maps' / index.pop(ident)['file']).unlink(missing_ok=True)
     used = {name for item in index.values() for name in item['materials']}
     materials, result['untextured'] = material_textures(packs, used, read_materials(packs), output, replace)
     (output / 'materials.json').write_text(json.dumps(materials, separators=(',', ':'), sort_keys=True), encoding='utf-8')

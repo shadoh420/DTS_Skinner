@@ -6,8 +6,9 @@
    file's +z face points to -Z here). Texture coordinates are the export's too: per world unit a material's texture
    moves by its uv_scale / 40, along the axes FACE lists for each face. Shape 1 is a cube, shape 3 half of one cut
    along a vertical diagonal: turn 0 has lost its corner at (40x, -40z-40), and each turn moves that corner on to
-   the next one about the vertical, toward +Z first. Its sloped side takes the material of the side it replaced
-   that runs from the lost corner to the next (a guess: not yet checked in the game). Other shapes draw nothing. */
+   the next one about the vertical, toward +Z first. Its sloped side takes the material of the stored face whose
+   number is the turn, and that face's texture axes (so the texture is stretched across the slope by √2), as the
+   game's export of half blocks with six materials of different scales shows. Other shapes draw nothing. */
 (function (exports) {
   'use strict';
   const SIZE = 16, WIDTH = 40, HEIGHT = 20, CUBE = 1, HALF = 3;
@@ -91,9 +92,7 @@
       }
       const [a, b] = [left[2], left[0]], lost = CORNERS[turn];
       const outward = [lost[0] - (a[0] + b[0]) / 2, 0, lost[1] - (a[1] + b[1]) / 2], length = Math.hypot(outward[0], outward[2]);
-      const normal = [outward[0] / length, 0, outward[2] / length];
-      polygon(faces[SIDE[turn]], [point(a, false), point(b, false), point(b, true), point(a, true)], normal,
-        {u: [-normal[2], 0, normal[0]], v: [0, 1, 0]});
+      polygon(faces[turn], [point(a, false), point(b, false), point(b, true), point(a, true)], [outward[0] / length, 0, outward[2] / length], FACE[turn]);
     }
   }
 

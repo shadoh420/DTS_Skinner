@@ -2,7 +2,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {buildBlocks, SIZE} = require('../static/diabotical-maps/blocks.js').DiaboticalBlocks;
+const {buildBlocks, SIZE, FACE} = require('../static/diabotical-maps/blocks.js').DiaboticalBlocks;
 
 // Blocks as the import writes them: [x, y, z, shape, turn, open faces, six face materials].
 function blocks(...list) {
@@ -67,10 +67,16 @@ test('a half block keeps three corners and turns its lost corner with the turn',
     const lost = [[0, 0], [0, 1], [1, 1], [1, 0]][turn];
     assert.equal(corners.size, 3);
     assert.ok(!corners.has(lost.join(',')), `turn ${turn} kept its lost corner`);
-    const slope = all.flatMap(group => [corner(group.normals, 0)]).find(([x, y, z]) => x && z);
-    assert.ok(slope, 'no sloped side');
+    // The sloped side, facing the lost corner, in the material and texture axes of the face numbered by the turn
+    // (found in the game's export).
+    const [material, sloped] = [...groups].find(([, group]) => Array.from(group.normals).some((value, i) => i % 3 === 0 && value && group.normals[i + 2]));
+    assert.equal(material, turn);
+    const at = Array.from(sloped.normals).findIndex((value, i) => i % 3 === 0 && value && sloped.normals[i + 2]) / 3;
+    const slope = corner(sloped.normals, at);
     assert.ok(Math.abs(Math.hypot(...slope) - 1) < 1e-6);
     assert.deepEqual(slope.map(Math.sign), [lost[0] ? 1 : -1, 0, lost[1] ? 1 : -1]);
+    const {u} = FACE[turn], point = corner(sloped.positions, at);
+    assert.ok(Math.abs(sloped.uvs[at * 2] - (point[0] * u[0] + point[1] * u[1] + point[2] * u[2]) / 40) < 1e-6);
   }
 });
 

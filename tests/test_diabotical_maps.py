@@ -57,11 +57,16 @@ def install(root, maps):
     (root / 'packs/maps.dbp').write_bytes(dbp({f'maps\\{name}.rbe': raw for name, raw in maps.items()} | {'maps\\walk-b.png': b'png'}))
     (root / 'packs/scripts.dbp').write_bytes(dbp({
         'scripts\\walk.assets': b'asset stone\n{\n  type surface_material\n  material stone_floor\n}\n// asset gone { type surface_material material gone }\n',
-        'scripts\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/walk/missing_d.png\n }\n}\n// default { { map x } }\n',
+        'scripts\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/walk/not_in_packs_d.png\n\t\tuv_scale 0.5\n }\n}\n// default { { map x } }\n',
     }))
+    # Found under its file name beside the shader file, not where the shader says.
     (root / 'packs/textures.dbp').write_bytes(dbp({
-        'textures\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/walk/stone_d.png\n\t\tmap textures/flat_normal.png\n\t\tuv_scale 0.125\n }\n}\n',
-        'textures\\walk\\stone_d.png.dds': dds((200, 100, 50)),
+        'textures\\walk\\colours\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/walk/stone_d.png\n\t\tmap textures/flat_normal.png\n\t\tuv_scale 0.125\n }\n}\n',
+        'textures\\walk\\colours\\stone_d.png.dds': dds((200, 100, 50)),
+    }))
+    (root / 'packs/zz_late.dbp').write_bytes(dbp({
+        'zz\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/late_d.png\n\t\tuv_scale 0.75\n }\n}\n',
+        'textures\\late_d.png.dds': dds((0, 0, 255)),
     }))
     (root / 'packs/audio.dbp').write_bytes(b'not a pack: audio packs are not read')
 
@@ -111,8 +116,8 @@ class DiaboticalMapsTest(unittest.TestCase):
             blocks = np.frombuffer((root / 'pack/maps' / index[0]['file']).read_bytes(), OUT)
             self.assertEqual(blocks['open'].tolist(), [0b110111, 0b111101])
             materials = json.loads((root / 'pack/materials.json').read_text())
-            # stone is stone_floor's asset; of its two definitions, the one whose texture is in the packs is used,
-            # and stone:2 is a variant of it.
+            # stone is stone_floor's asset; of its three definitions the first whose texture is found is used, as
+            # the game does, and stone:2 is a variant of it.
             self.assertEqual(materials['stone']['scale'], .125)
             self.assertEqual(materials['stone:2'], materials['stone'])
             from PIL import Image
@@ -124,6 +129,9 @@ class DiaboticalMapsTest(unittest.TestCase):
             again = import_maps(root / 'game', root / 'pack', extra=[mine])
             self.assertEqual(again['imported'], ['Mine'])
             self.assertEqual(sorted(path.name.split('-')[0] for path in (root / 'pack/maps').iterdir()), ['user__mine', 'walk'])
+            import_maps(root / 'game', root / 'pack', extra=[])  # Deleted from the editor's folder.
+            self.assertEqual([item['id'] for item in json.loads((root / 'pack/index.json').read_text())], ['walk'])
+            self.assertEqual([path.name.split('-')[0] for path in (root / 'pack/maps').iterdir()], ['walk'])
             with self.assertRaisesRegex(ValueError, 'Enter the Diabotical folder'):
                 import_maps(root, root / 'pack')
 
