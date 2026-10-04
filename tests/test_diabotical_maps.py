@@ -19,7 +19,7 @@ from app import app
 from tools.fbx_mesh import fbx_mesh
 from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_map, visible_blocks
 
-RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
+RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 
 
 def text(value):
@@ -29,7 +29,7 @@ def text(value):
 def rbe(blocks, materials=('default', 'stone', 'stone:2'), version=27, author='Someone', entities=()):
     """A .rbe map as the game writes one: blocks are (x, y, z, shape, turn, six face materials), entities (name,
     position, rotation, scale, fields)."""
-    size, turn_at = RECORD.get(version, 53), 44 if version == 24 else 50
+    size, turn_at = RECORD.get(version, 53), 44 if version <= 24 else 50
     body = bytes([len(materials) + 1]) + b''.join(text(name) for name in (*materials, ''))
     body += struct.pack('<I', len(blocks))
     for x, y, z, shape, turn, faces in blocks:
@@ -42,7 +42,9 @@ def rbe(blocks, materials=('default', 'stone', 'stone:2'), version=27, author='S
     for name, position, rotation, scale, fields in entities:
         body += text(name) + struct.pack('<9fI', *position, *rotation, *scale, len(fields)) + b''.join(text(k) + text(v) for k, v in fields.items())
     body += b'\0' * 64  # The map's other parts, which the import does not read.
-    head = b'REBM' + struct.pack('<III', version, 0x12345678, 0) + struct.pack('<I', len(author)) + author.encode() + bytes(8)
+    head = b'REBM' + struct.pack('<III', version, 0x12345678, 0)
+    if version > 21:  # Version 21 has no author.
+        head += struct.pack('<I', len(author)) + author.encode() + bytes(8)
     return head + (gzip.compress(body) if version >= 24 else body)
 
 
@@ -149,14 +151,15 @@ CUBE = (1, 1, 1, 1, 2, 0)
 
 class DiaboticalMapsTest(unittest.TestCase):
     def test_map_records_by_version(self):
-        for version in (24, 25, 26, 27):
+        for version in (21, 24, 25, 26, 27):
             parsed = read_map(rbe([(3, -2, 5, 3, 2, (1, 2, 1, 2, 0, 1))], version=version))
-            self.assertEqual((parsed['version'], parsed['author'], parsed['materials']), (version, 'Someone', ['default', 'stone', 'stone:2', '']))
+            self.assertEqual((parsed['version'], parsed['author'], parsed['materials']),
+                             (version, '' if version == 21 else 'Someone', ['default', 'stone', 'stone:2', '']))
             blocks = parsed['blocks']
             self.assertEqual((blocks['xyz'].tolist(), blocks['shape'].tolist(), blocks['turn'].tolist(), blocks['faces'].tolist()),
                              ([[3, -2, 5]], [3], [2], [[1, 2, 1, 2, 0, 1]]))
-        with self.assertRaisesRegex(ValueError, 'version 21 is not read yet'):
-            read_map(rbe([], version=21))
+        with self.assertRaisesRegex(ValueError, 'version 20 is not read yet'):
+            read_map(rbe([], version=20))
         with self.assertRaisesRegex(ValueError, 'not a Diabotical map'):
             read_map(b'RIFF' + bytes(40))
 
@@ -181,7 +184,7 @@ class DiaboticalMapsTest(unittest.TestCase):
                      ('prop_c', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/gone'}), ('hpt1', (5, 6, 7), (0, 0, 0), (1, 1, 1), {}),
                      ('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/sub/quad', 'material': 'props/tinted', 'color2': '336699'}),
                      ('decal_arrow', (0, 0, 0), (0, 0, 0), (40, 40, 10), {'material': 'arrow'})]
-            install(root / 'game', {'walk': rbe([(0, 0, 0, 1, 0, CUBE), (1, 0, 0, 1, 0, (2, 2, 2, 2, 0, 0))], entities=props), 'old menu': rbe([], version=21)})
+            install(root / 'game', {'walk': rbe([(0, 0, 0, 1, 0, CUBE), (1, 0, 0, 1, 0, (2, 2, 2, 2, 0, 0))], entities=props), 'old menu': rbe([], version=20)})
             mine = root / 'Mine.rbe'
             mine.write_bytes(rbe([(0, 0, 0, 3, 0, CUBE)], materials=('default', 'gone'),
                                  entities=[('terrain', (500, 0, 0), (0, 0, 0), (1, 1, 1), {'offset_y': '-1070'})]))
@@ -194,7 +197,7 @@ class DiaboticalMapsTest(unittest.TestCase):
             mask.save(root / 'Mine-b.png')
             result = import_maps(root / 'game', root / 'pack', extra=[mine])
             self.assertEqual((result['imported'], result['skipped']), (['walk', 'Mine'], []))
-            self.assertEqual(result['failed'], {'old menu': 'map version 21 is not read yet'})
+            self.assertEqual(result['failed'], {'old menu': 'map version 20 is not read yet'})
             self.assertEqual(result['untextured'], ['default', 'gone'])
             index = json.loads((root / 'pack/index.json').read_text())
             self.assertEqual([(item['id'], item['group'], item['blocks']) for item in index], [('walk', 'Diabotical', 2), ('user__mine', 'Your maps', 1)])

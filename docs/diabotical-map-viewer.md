@@ -18,8 +18,8 @@ Git). The game folder is only read. A whole install takes about five minutes:
 174 maps (about 340 MB of blocks and entities, 5 MB of terrain), the 6,000 models they place
 (300 MB) and the textures of their materials (about 120 MB). Maps already imported
 are skipped unless their file changed or **Re-import existing maps** is
-ticked. The five oldest maps (the menu maps and `temple_islands`, version 21)
-are not read yet and are listed as failed.
+ticked. The five oldest maps (the menu maps and `temple_islands`) are
+version 21.
 
 ## What is drawn
 
@@ -184,7 +184,10 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   Texture axes and scales came from the export's texture coordinates.
 - Record layouts of versions 24 and 25 came from maps the game ships in two
   versions (`gr_titans_crossing` and `tt_gr_titans_crossing`; the editor's empty
-  map, saved as version 25 and 27).
+  map, saved as version 25 and 27). Version 21 (the five oldest) has no
+  author or the two words after it (the body starts at byte 16, never
+  gzipped) and blocks laid out as in version 24: all five read with sensible
+  blocks and entities, and the menu maps draw their menu scenes.
 
 - Not mirrored: an "F" of pillars seen from straight above in the game
   (`/phy_fly 1`, `/goto -40 600 -40`, the mouse turned 4000 counts down) reads
@@ -414,4 +417,4 @@ bioplant (the page lets far more through than the game), the game grid's
 half-cell shift, liquids' light on what is around them, and
 bloom, how nodes overlap and the grid's own size; the
 per-face flag byte and
-the six small per-face values (probably texture offset and turn), bevelled edges, version 21 maps, and editing.
+the six small per-face values (probably texture offset and turn), bevelled edges and editing.

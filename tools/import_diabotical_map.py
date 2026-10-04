@@ -15,7 +15,8 @@ then u32 length + name each; the last is empty and drawn as default), a u32 bloc
 map's other parts (entities, a grid, baked light), not read here. A block is a fixed record: 53 bytes in versions 26
 and 27, 52 in 25, 46 in 24, with int32 x, y, z at 0 (y up), the shape at 12, the material of each face at 25 to 30
 (faces +z, -x, -z, +x, top, bottom) and a quarter turn 0 to 3 at 50 (44 in version 24). Found by saving the same
-map in several versions and by the game's own /export: shape 1 is a cube, 3 a half cube cut along a vertical
+map in several versions and by the game's own /export (version 21, the five oldest stock maps: no author and no
+two words after it, the body from byte 16, blocks as in version 24): shape 1 is a cube, 3 a half cube cut along a vertical
 diagonal (the turn moves its missing corner), 2, 4, 5 and 6 draw nothing. A block is 40 units wide and deep and 20
 tall; the export (and the page) puts block (x, y, z) at 40x, 20y, -40z - 40 (z mirrored).
 
@@ -94,8 +95,8 @@ except ImportError:  # Run as a script from tools/.
     from reflex_textures import _dds, decode_dds
 
 FORMAT = 14  # Of the files written per map: maps imported with another are read again.
-RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
-TURN = {24: 44, 25: 50, 26: 50, 27: 50}
+RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
+TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
 # Neighbours across each face, in the order the faces' materials are stored (+z, -x, -z, +x, top, bottom).
 NEIGHBOURS = ((0, 0, 1), (-1, 0, 0), (0, 0, -1), (1, 0, 0), (0, 1, 0), (0, -1, 0))
@@ -141,9 +142,12 @@ def read_map(raw):
     version, = struct.unpack_from('<I', raw, 4)
     if version not in RECORD:
         raise ValueError(f'map version {version} is not read yet')
-    length, = struct.unpack_from('<I', raw, 16)
-    author = raw[20:20 + length].decode('utf-8', 'replace')
-    start = 20 + length + 8
+    if version == 21:  # No author or the two words after it: the body follows the hash and a zero word.
+        author, start = '', 16
+    else:
+        length, = struct.unpack_from('<I', raw, 16)
+        author = raw[20:20 + length].decode('utf-8', 'replace')
+        start = 20 + length + 8
     body = gzip.decompress(raw[start:]) if raw[start:start + 2] == b'\x1f\x8b' else raw[start:]
     count, at, materials = body[0], 1, []
     for _ in range(count):
