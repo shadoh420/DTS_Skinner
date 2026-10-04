@@ -117,17 +117,16 @@ test('lights are listed per cell and ambient nodes make a grid', () => {
   assert.deepEqual(Array.from(built.rows.slice(16, 32)), [1000, 0, 0, 50, 1, 1, 1, 2, 1, 0, 0, 25, 0, 0, 300, 3]);
   // Material ids: most blocks' 40 reflect half, metals reflect whole and take no ambient, 46 takes 1.4 times it.
   assert.deepEqual([0, 40, 46, 51, 60, 103].map(materialClass), [[0, 1, 0], [.5, 1, 0], [.5, 1.4, 0], [1, 0, 1], [1, 0, 0], [0, 1, 0]]);
-  // A sphere's share fades to its radius, its colour by 0.74 of it; a cubic node is whole to 0.875 and gone at 1.55.
-  assert.deepEqual([nodeWeights(0, 0), nodeWeights(0, 1)], [[1, 1], [0, 0]]);
-  assert.equal(nodeWeights(0, .74)[1], 0);
-  assert.deepEqual([nodeWeights(1, .875), nodeWeights(1, 1.55)], [[1, 1], [0, 0]]);
+  // A sphere's share is 0.86 - d, its colour's weight the share squared; a cubic node is whole to 0.86 and gone at 1.11.
+  assert.deepEqual([nodeWeights(0, .36), nodeWeights(0, .86)], [[.5, .25], [0, 0]]);
+  assert.deepEqual([nodeWeights(1, .86), nodeWeights(1, 1.11)], [[1, 1], [0, 0]]);
   const grid = buildGrid([[0, 0, 0, 0, 100, 0, 0, .5]]);
   const at = point => {
     const i = point.map((v, k) => Math.floor((v - grid.min[k]) / ((grid.max[k] - grid.min[k]) / grid.size[k]))), base = ((i[2] * grid.size[1] + i[1]) * grid.size[0] + i[0]) * 4;
     return Array.from(grid.data.slice(base, base + 4));
   };
   const centre = at([0, 0, 0]), edge = at([grid.min[0] + 1, 0, 0]);
-  assert.ok(centre[3] > .9 && centre[2] > .3 && centre[0] === 0, String(centre));  // A texel centre near the node.
+  assert.ok(centre[3] > .7 && centre[2] > .2 && centre[0] === 0, String(centre));  // A texel centre near the node.
   assert.deepEqual(edge, [0, 0, 0, 0]);
   assert.equal(buildGrid([]), null);
 });

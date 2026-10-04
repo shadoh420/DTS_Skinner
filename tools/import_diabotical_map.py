@@ -93,7 +93,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 11  # Of the files written per map: maps imported with another are read again.
+FORMAT = 12  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -402,32 +402,32 @@ def placements(entities, assets):
     return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids, decals
 
 
-POINT, SUN = .335, .262  # Light per unit of colour x intensity on a white surface (runs 17, 18).
+POINT = SUN = 1 / np.pi  # Light per unit of colour x intensity on a white surface (runs 17 to 23, before the LUT step).
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
-DEFAULT_SHADOW = [.238, .401, .457]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
+DEFAULT_SHADOW = [.325, .469, .519]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
 BLOCK = np.array([40, 20, 40])  # A block's size in entity units.
 SPECULAR = ('point', 'spot', 'capsule')  # tile.cs: diffuse lights (and no type: diffuse) add no specular light.
 
 
 def read_lights(entities, box=None):
-    """A map's lights for the page (run 16 to 18 measurements, in page axes, as light on a white surface):
+    """A map's lights for the page (run 16 to 23 measurements, in page axes, as light on a white surface,
+    before the game's last step, (16 x - 0.5) / 15, which the page applies to every pixel):
     {lights: [[kind (0 point, 1 spot, 2 capsule), x, y, z, dx, dy, dz, r, g, b, radius, inner radius, cos of the
     cone's half angle, softness, length, specular scale]], nodes: [[cubic, x, y, z, radius, r, g, b]], ambient,
     shadow_ambient, shadow_colour: [r, g, b], sun: [dx, dy, dz, r, g, b, specular scale] (the way its light travels)
     or None, envmap, gloss}. The specular scale turns the colour back into colour x intensity, as tile.cs lights its
     GGX specular (0 for diffuse lights); envmap and gloss are the global entity's (by default default_envmap, 1).
-    Point lights (point, diffuse, or no type) are colour (hex taken as linear) x intensity (default 4) x 0.335 x N.L,
+    Point lights (point, diffuse, or no type) are colour (hex taken as linear) x intensity (default 4) / pi x N.L,
     fading from falloff (default 0.33) x radius to nothing at radius as ((radius - d) / (radius - inner))^2.2; spots
     take their `angle` as the whole cone and `softness` in cosines; a capsule is the segment from its position along
-    its local +z for `length`. The sun travels along its local +z, colour x intensity x 0.262 x N.L, times
-    shadow_color (global entity; by default bluish, run 20) in shadow. Ambient and shadow ambient (sunlit and shadowed ground) came out as
-    0.426 x hex^0.56 (0x20 and 0x40 measured); the shadow ambient is the ambient where the map has none. Ambient
-    nodes ignore intensity and falloff (sRGB-like colour: 000040 gives a fifth of 000080's light) and replace the
-    ambient where they reach; a node outside `box` (the blocks' bounds, entity axes) does nothing (run 23); volumes,
+    its local +z for `length`. The sun travels along its local +z, colour x intensity / pi x N.L, times
+    shadow_color (global entity; by default bluish, run 20) in shadow. Ambient and shadow ambient (sunlit and shadowed ground) are their
+    hex, linear (0x10, 0x40, 0xa0 measured); the shadow ambient is the ambient where the map has none. Ambient
+    nodes ignore intensity and falloff (colour linear too) and replace the ambient where they reach; a node outside `box` (the blocks' bounds, entity axes) does nothing (run 23); volumes,
     fog and animation are not read."""
     hexes = lambda value, default=0xffffff: np.array([(default if colour(value) is None else colour(value)) >> s & 255 for s in (16, 8, 0)]) / 255
     number = lambda fields, key, default: next(iter(re.findall(r'-?\d*\.?\d+(?:e-?\d+)?', fields.get(key, ''))), None) or default
-    ambient_level = lambda value: np.round(.426 * hexes(value, 0) ** .556, 4).tolist()
+    ambient_level = lambda value: np.round(hexes(value, 0), 4).tolist()
     out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=DEFAULT_SHADOW, sun=None, envmap='default_envmap', gloss=1.0)
     for name, position, rotation, scale, fields in entities:
         if name == 'global':
@@ -450,7 +450,7 @@ def read_lights(entities, box=None):
         if kind in ('ambient_node', 'cubic_ambient_node'):
             if box is not None and ((np.array(position) < box[0]) | (np.array(position) > box[1])).any():
                 continue
-            out['nodes'].append([int(kind == 'cubic_ambient_node'), *np.round([x, y, -z, radius, *2.11 * hexes(fields.get('color')) ** 2.2], 4).tolist()])
+            out['nodes'].append([int(kind == 'cubic_ambient_node'), *np.round([x, y, -z, radius, *hexes(fields.get('color'))], 4).tolist()])
         elif kind in LIGHT_KINDS and radius > 0:
             rgb = hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * POINT
             angle = np.radians(float(number(fields, 'angle', 60)))

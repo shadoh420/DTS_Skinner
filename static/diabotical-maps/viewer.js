@@ -11,6 +11,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const canvas = $('c');
   const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // The game's last pass looks every pixel up in a 16-step colour LUT (identity unless the map sets `lut`) without
+  // the half-texel fix, which makes x into (16 x - 0.5) / 15 (runs 21 to 23).
+  THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace(
+    'vec3 CustomToneMapping( vec3 color ) { return color; }', 'vec3 CustomToneMapping( vec3 color ) { return clamp((16. * color - .5) / 15., 0., 1.); }');
+  renderer.toneMapping = THREE.CustomToneMapping;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9fc4e0);
   // Every material is lit the game's way (lighting.js); the directional light only casts the sun's shadow.

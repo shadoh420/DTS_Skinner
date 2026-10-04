@@ -108,20 +108,26 @@ left (`static/diabotical-maps/blocks.js`).
   seen in the game, nor does a box's depth.
 - **Lights.** Lit as the game's lighting shader (`tile.cs`) does, with the
   numbers measured in it: the picture is the texture's bytes times the light,
-  with no curve after. Point lights (`point`, `diffuse`, or no `type`) give
-  colour (hex as linear) × `intensity` (default 4) × 0.335 × N·L, whole out to
+  then the game's last pass, which looks the colour up in a 16-step LUT (the
+  identity `textures/lut.png` unless the map sets `lut`) without the
+  half-texel fix and so makes x into (16x − 0.5) / 15 (runs 21 to 23); the
+  page does the same to every pixel. Point lights (`point`, `diffuse`, or no
+  `type`) give colour (hex as linear) × `intensity` (default 4) / π × N·L, whole out to
   `falloff` × `radius` (falloff default 0.33) and fading to nothing at `radius`
   as ((radius − d) / (radius − inner))^2.2; spots light a cone of their whole
   `angle`, softened over `softness` (in cosines); a capsule is the segment
   from its position along its local +z for `length`. None casts a shadow. The
-  sun travels along its local +z, colour × intensity × 0.262 × N·L, and casts
+  sun travels along its local +z, colour × intensity / π × N·L, and casts
   the only shadow, in which it is multiplied by the `global` entity's
-  `shadow_color` (by default the bluish 0.238, 0.401, 0.457 measured in run
-  20) and the shadow ambient stands for the ambient. Ambient nodes
-  replace the ambient where they reach (a 3D grid built from them, as the
-  game builds one when a map loads): their `intensity` and `falloff` change
-  nothing, their colour is decoded as sRGB, and a node whose centre lies
-  outside the blocks' bounds does nothing at all (run 23).
+  `shadow_color` (by default the bluish 0.325, 0.469, 0.519 measured in run
+  20) and the shadow ambient stands for the ambient. The ambient is its hex,
+  linear. Ambient nodes replace the ambient where they reach (a 3D grid built
+  from them, as the game builds one when a map loads): a sphere by a share
+  of 0.86 − d (d the distance over the radius), a cubic node wholly to 0.86
+  and not at all past 1.11 (its largest axis distance), the node's colour
+  (hex, linear) weighted by the share squared; their `intensity` and
+  `falloff` change nothing, and a node whose centre lies outside the blocks'
+  bounds does nothing at all (run 23).
 - **Specular light and reflections** (from `tile.cs`, not yet checked in the
   game). A material's specular map (its map 2) holds gloss in red and
   strength in green; its material id is its map 3's red where that is not
@@ -320,7 +326,20 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   spheres 1, 4 alike). Runs 21 to 23 also give the floor under a sun of
   intensity 0.5, 1 (run 18) and 2: 0.039, 0.113, 0.259, linear with an
   offset, and ambient 101010, 404040, a0a0a0 with that sun: 0.075, 0.173,
-  0.373, linear in the hex with the albedo as slope.
+  0.373, linear in the hex with the albedo as slope. All of it fits the
+  LUT step above (the default `lut.png` is the identity, and (16x − 0.5) / 15
+  is 1.067x − 0.033): through it the sun is colour × intensity / π (0.314,
+  0.318, 0.318 at the three intensities), the ambient its hex, run 20's
+  default shadow colour 0.325, 0.469, 0.519, a cubic node's colour its hex,
+  and its weight on the floor the share squared; run 20's maps with no sun
+  have 0.413 more light on the floor whatever their ambient (0.83 × the
+  albedo). The page now gives every test floor of runs 21 to 23 within
+  0.004. Bioplant against run 20 got further off where it is enclosed (1.23,
+  0.65, 0.79, 0.89, 1.30, 0.78): the game's ambient occlusion is on (run 20's
+  l13 floor darkens over about 27 units beside a 20-unit step; `tile.cs`
+  multiplies the ambient by 1 − (1 − ao) × strength, except for id 47), and
+  the page has none; the old, too low ambient fit stood in for it. Spot 2's
+  floor is red with the lava's glow in the game and pale on the page.
 
 ## Not done yet
 
@@ -348,11 +367,11 @@ reflection), the reflections of the envmap's two finest mips (the page keeps
 under it) and the game's ambient occlusion; the ambient's fade toward the
 shadow ambient on faces turned from the sun (the shader ramps it over N·L
 below 0.1), fog and vertical fog, light volumes
-(beams), flickering lights (drawn steady), colour grading (`lut`, 11 maps), the
-ambient level only fitted at two values (0x20, 0x40) with a sun, the strong
-light of maps with no sun (measured in run 20, not drawn), the screen's
-offset (runs 21 to 23: 1.06 × light − 0.034; the page's constants are fits
-that absorb it), glowing liquids and
+(beams), flickering lights (drawn steady), colour grading (the 11 maps that
+set `lut`; the page applies the identity's step), the strong light of maps
+with no sun (measured in run 20, not drawn), the screen-space ambient
+occlusion (on in the game, strength unknown), the point lights' fade
+exponent (2.2, fitted before the LUT step was known), glowing liquids and
 bloom, how nodes overlap and the grid's own size; the
 per-face flag byte and
 the six small per-face values (probably texture offset and turn), what the

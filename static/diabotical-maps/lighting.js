@@ -7,13 +7,13 @@
   'use strict';
   const CELL = 256, WIDTH = 1024, MAX_PER_CELL = 64;
 
-  /* A node's share of the ambient and its colour, d its distance over its radius: a sphere's share fades as a
-     smoothstep to its radius and its colour faster, as (1 - d / 0.74)^2.4 (run 18's floor under nodes of radius 200
-     and 300); a cubic node's (d its largest axis distance) is whole to 0.875 and gone at 1.55 (run 18). */
-  const smooth = t => t * t * (3 - 2 * t), clamp = t => Math.min(1, Math.max(0, t));
+  /* A node's share of the ambient and its colour's weight (the share squared: the grid holds colour x share), d its
+     distance over its radius: a sphere's share is 0.86 - d, a cubic node's (d its largest axis distance) whole to
+     0.86 and gone at 1.11 (run 23's floor in linear light). */
+  const clamp = t => Math.min(1, Math.max(0, t)), REACH = [.86, 1.11];
   function nodeWeights(cubic, d) {
-    if (cubic) { const w = smooth(clamp((1.55 - d) / .675)); return [w, w]; }
-    return [smooth(clamp(1 - d)), clamp(1 - d / .74) ** 2.4];
+    const share = cubic ? clamp((1.11 - d) * 4) : clamp(.86 - d);
+    return [share, share * share];
   }
 
   /* The ambient grid over the nodes' reach, at most `budget` texels: RGBA floats, rgb the nodes' colour added up, a
@@ -22,7 +22,7 @@
     if (!nodes.length) return null;
     const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
     for (const [cubic, x, y, z, radius] of nodes) {
-      const reach = radius * (cubic ? 1.55 : 1);
+      const reach = radius * REACH[cubic];
       [x, y, z].forEach((v, k) => { min[k] = Math.min(min[k], v - reach); max[k] = Math.max(max[k], v + reach); });
     }
     const cell = Math.max(16, Math.cbrt((max[0] - min[0]) * (max[1] - min[1]) * (max[2] - min[2]) / budget));
@@ -32,7 +32,7 @@
     const data = new Float32Array(size[0] * size[1] * size[2] * 4);
     for (let i = 3; i < data.length; i += 4) data[i] = 1;  // What the nodes leave of the ambient, made a share below.
     for (const [cubic, x, y, z, radius, r, g, b] of nodes) {
-      const reach = radius * (cubic ? 1.55 : 1), centre = [x, y, z];
+      const reach = radius * REACH[cubic], centre = [x, y, z];
       const low = centre.map((v, k) => Math.max(0, Math.floor((v - reach - min[k]) / cell - .5)));
       const high = centre.map((v, k) => Math.min(size[k] - 1, Math.ceil((v + reach - min[k]) / cell - .5)));
       for (let k = low[2]; k <= high[2]; k++) {
