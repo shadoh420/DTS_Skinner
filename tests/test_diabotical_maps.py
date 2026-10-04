@@ -304,6 +304,10 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual(columns(decal_matrix((0, 10, -300), (0, quarter, 0), (1, 1, 1))), [[0, 0, -1], [0, 1, 0], [1, 0, 0]])
         # On a floor (rotated 90 degrees about x) the texture is turned round: right toward -x, top toward -z.
         self.assertEqual(columns(decal_matrix((0, 0, 0), (quarter, 0, 0), (1, 1, 1))), [[-1, 0, 0], [0, 0, -1], [0, -1, 0]])
+        # Tilted 89 degrees it is not (run 14), nor a wall rolled 90 (its texture's right up); turned past 90 it is.
+        self.assertEqual(columns(decal_matrix((0, 0, 0), (np.radians(89), 0, 0), (1, 1, 1)))[0], [1, 0, 0])
+        self.assertEqual(columns(decal_matrix((0, 0, 0), (0, 2 * quarter, quarter), (1, 1, 1)))[:2], [[0, 1, 0], [1, 0, 0]])
+        self.assertEqual(columns(decal_matrix((0, 0, 0), (2 * quarter, 0, 0), (1, 1, 1)))[:2], [[-1, 0, 0], [0, 1, 0]])
         # v3: the scale turned by the rotation, as absolute values.
         flat = decal_matrix((0, 0, 0), (quarter, 0, 0), (120, 60, 40))
         self.assertEqual(np.round(np.linalg.norm(flat[:3, :3], axis=0), 6).tolist(), [120, 60, 40])

@@ -52,7 +52,7 @@ Decals: a `decal...` entity projects its material (drawn by tiledecal.ps: map 0,
 a box, the unit cube centred on the entity under its rotation and scale (models/decal_volume.dbm is that cube), onto
 those facing its local -z (the shader drops surfaces whose normal is more than about 84 degrees off it); in 2,700
 flat stock decals the surface under one lies at its centre and faces local -z, with or without v2 or v3. The
-texture runs across local x and y (turned round on floors, see decal_matrix), times `color` (RRGGBB or AARRGGBB,
+texture runs across local x and y (turned round on floors and past 90 degrees, see decal_matrix), times `color` (RRGGBB or AARRGGBB,
 taken as sRGB: 808080 halves the picture's value; run 13). `mirrored` changed nothing seen; v1, v2 and v3 differ
 only in v3's scale; the box's depth fades nothing. `order` (-10000 to 10000) orders them.
 
@@ -83,7 +83,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import decode_dds
 
-FORMAT = 4  # Of the files written per map: maps imported with another are read again.
+FORMAT = 5  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -294,14 +294,16 @@ def game_matrix(position, rotation, scale):
 
 
 def decal_matrix(position, rotation, scale, v3=False):
-    """A decal's box in game axes, its local x and y the way its texture's right and top run (run 13). A v3 decal's
-    box takes its scale turned by its rotation, as absolute values (|R s|: the sizes of three test decals turned
-    differently). On a wall (a box facing sideways) the texture runs along the rotation's x and y; facing straight
-    down (a floor) the game turns it round (provisional: one wall seen, at roll 0; tilts and ceilings not seen)."""
+    """A decal's box in game axes, its local x and y the way its texture's right and top run. A v3 decal's box takes
+    its scale turned by its rotation, as absolute values (|R s|: the sizes of three test decals turned differently,
+    run 13). The texture's top is the world's up seen along the box, then turned by the roll (z): the rotation's own
+    x and y while cos(rotation x) > 0, turned round past that and where the box faces straight up or down (no up to
+    see along it). Runs 13 and 14: walls at rolls 0, 90, 180 and 45, both ways along x, floors flat (turned round)
+    and tilted 60, 80 and 89 degrees (not)."""
     turn = game_matrix((0, 0, 0), rotation, (1, 1, 1))[:3, :3]
     if v3:
         scale = np.abs(turn @ np.asarray(scale, float))
-    if abs(turn[1, 2]) > VERTICAL:
+    if np.cos(rotation[0]) < 1e-3:
         turn = turn @ np.diag([-1.0, -1.0, 1.0])
     out = np.eye(4)
     out[:3, :3] = turn @ np.diag(scale)
@@ -309,7 +311,6 @@ def decal_matrix(position, rotation, scale, v3=False):
     return out
 
 
-VERTICAL = 0.99  # ponytail: where a decal starts counting as a floor one is a guess (run 14 to tell).
 MIRROR = np.diag([1.0, 1.0, -1.0, 1.0])  # Game axes <-> page (and FBX) axes.
 CELL = 40  # A dynamic prop's cell, in units.
 PICKUPS = re.compile(r'(spawn|hpt|armort|weapon|ammo|jumppad|jp|teleport|tpexit|flag|coin|crystal|doubledamage|tripledamage)')

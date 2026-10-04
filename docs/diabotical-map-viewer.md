@@ -95,9 +95,11 @@ left (`static/diabotical-maps/blocks.js`).
   more than about 84° off). The page clips each block, terrain and prop
   triangle to the boxes near it (`static/diabotical-maps/decals.js`) and draws
   the pieces lit as the surface, times the decal's `color` (RRGGBB, or
-  AARRGGBB with alpha first, as sRGB), in `order`. On a wall the texture's
-  right and top run along the box's local x and y; on a floor (a box facing
-  straight down) it is turned round. A `v3` decal's box takes its scale turned
+  AARRGGBB with alpha first, as sRGB), in `order`. The texture's top is the
+  world's up as seen along the box, turned by the decal's roll (rotation z):
+  that is the box's own local y while cos(rotation x) > 0, and the texture is
+  turned round where the box faces exactly up or down (floors: no up to see)
+  or is turned past 90° about x. A `v3` decal's box takes its scale turned
   by its rotation, as absolute values; `v1` and `v2` decals take it as given.
   `mirrored` changes nothing seen in the game, nor does a box's depth.
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
@@ -194,14 +196,23 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   flat and 60 × 40 turned a quarter (by roll or by yaw): the scale turned by
   the rotation, as absolute values, fits all three. The floor decals' texture
   runs against the box's x and y, the pillar's along them; no single rotation
-  convention fits both, so the page treats boxes facing straight down apart
-  (one wall decal seen, at roll 0: tilts, rolls on walls and ceilings are not
-  measured yet).
+  convention fits both. Run 14 (fifteen more): on a wall, rolls 0, 90, 180
+  and 45 turn the texture counter-clockwise as seen facing it, along the
+  box's x and y; a decal facing the other way along x the same; floor decals
+  tilted 60°, 80° and even 89° read the wall way, only the flat one is turned
+  round. That is a camera's view along the box with the world's up, then
+  the roll: given the game's rotation (yaw, then pitch, then roll), the box's
+  own x and y while cos(pitch) > 0, turned round past it. Of the stock decals
+  13,852 have cos(pitch) > 0, 6,581 face straight up or down and 2,127 are
+  past 90° (such as a "5" number decal at 180°, upright this way).
 
 ## Not done yet
 
-Where a tilted decal starts to count as a floor one, decal rolls on walls and
-ceilings (see above), decals with no texture in the game files (drawn not at
+Decals at a yaw that is not a right angle: run 14's floor decals at 45° (v1
+and v3) show only part of their texture in the game, cut along its length
+(about 70 of 98 units of text), as if clipped by a box turned differently from
+the one they project from (at 90° the two would cover the same ground); the
+page draws them whole. Ceilings (assumed as floors), decals with no texture in the game files (drawn not at
 all), props marked `no_decals` (they take decals), lights, billboards, particles, the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
 materials (a flag in the material picks the team's colour over an accent),
