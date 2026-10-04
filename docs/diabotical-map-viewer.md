@@ -73,8 +73,10 @@ left (`static/diabotical-maps/blocks.js`).
   entity. Where the mask is red the texture turns toward accent 1 times the
   texel's brightness (the mean of its red, green and blue), then green
   toward accent 2, then blue toward accent 3 (read from the compiled
-  shader). A colour with no accent set leaves the texture as it is. Blocks
-  take their material's own accents.
+  shader). The game takes the hex as linear light (808080 is half of
+  ffffff's light), so the page, which mixes display values, raises it to
+  the power 1 / 2.2 first. A colour with no accent set leaves the texture
+  as it is. Blocks take their material's own accents.
 - **Terrain.** A map with a `terrain` entity has a heightmap beside it
   (`NAME-h.png`, 512 × 512, the height in red) and a dirt mask (`NAME-b.png`).
   Each pixel is a vertex 40 units from the next, pixel 256 at x = z = 0, its
@@ -154,11 +156,19 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   to dirt between blocks at its predicted edges; and the grass texture
   repeats every 128 units (205 pixels in a shot from above where the floor's
   80-unit plates are 128).
-- Tints: from `tilemask.ps`'s disassembly, and checked against run 9: the
-  sport trim (mask all red, `accent1 444444`, no colour of its own) is dark
-  grey in the game, 50 to 65 in the screenshot's top face; the page now draws
-  it 67 (198 untinted). Whether the game mixes in linear or gamma space is
-  not measured.
+- Tints: from `tilemask.ps`'s disassembly. The colour space from run 12:
+  six sport trims (mask all red) side by side, coloured ffffff, c0c0c0,
+  808080, 404040, 000000 and ff8000 (each entity needs a name of its own:
+  the game keeps only the first of a name), seen from above and from the
+  front. Taken back to linear light less the black one's, the top faces
+  of c0, 80 and 40 come out 0.84, 0.52 and 0.26 of ffffff's: the hex is
+  used as linear (decoded from sRGB it would be 0.54, 0.22, 0.05). Fitting
+  both shots with an sRGB output, a filmic (ACES) curve and the hex as
+  linear leaves 4 of 255 off on average; with the hex decoded, 15. The
+  page then draws the top faces' ratios 0.90, 0.77, 0.59 against the
+  game's 0.92, 0.75, 0.56 (the front faces, darker, differ more: the page
+  has no such curve). The orange one's green comes out darker than the
+  grey one's in the game: its picture is also more saturated, as a whole.
 
 ## Not done yet
 

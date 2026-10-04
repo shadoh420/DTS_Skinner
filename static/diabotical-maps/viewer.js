@@ -76,14 +76,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const maskOf = (name, entry, entries) => entry && entry.texture && (entries[name + '#4'] || {}).texture ? entries[name + '#4'] : null;
   // A model group's geometry with each instance's three accents (alpha 0 where none is set: no tint): the prop's own
-  // (tints, 0x1RRGGBB or 0) or else the material's.
+  // (tints, 0x1RRGGBB or 0) or else the material's. The game takes an accent's hex as linear light (run 12: 808080
+  // makes half of ffffff's light, not a fifth); the page mixes in display values, so it encodes it (power 1 / 2.2).
+  const display = byte => (byte / 255) ** (1 / 2.2);
   function withAccents(base, tints, defaults, count) {
     const geometry = new THREE.BufferGeometry(), accents = new Float32Array(count * 12);
     for (const [name, attribute] of Object.entries(base.attributes)) geometry.setAttribute(name, attribute);
     for (let i = 0; i < count; i++) {
       for (let j = 0; j < 3; j++) {
         const own = tints ? tints[i * 3 + j] : 0, value = own ? own & 0xffffff : (defaults || [])[j];
-        if (value != null) accents.set([(value >> 16 & 255) / 255, (value >> 8 & 255) / 255, (value & 255) / 255, 1], (j * count + i) * 4);
+        if (value != null) accents.set([display(value >> 16 & 255), display(value >> 8 & 255), display(value & 255), 1], (j * count + i) * 4);
       }
     }
     for (let j = 0; j < 3; j++) geometry.setAttribute(`accent${j + 1}`, new THREE.InstancedBufferAttribute(accents.subarray(j * count * 4, (j + 1) * count * 4), 4));
