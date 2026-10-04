@@ -349,12 +349,14 @@ def material_textures(packs, names, materials, output, replace=False):
     return entries, sorted(set(missing))
 
 
-def convert_models(packs, paths, materials, output, replace=False):
+def convert_models(packs, paths, materials, output, replace=False, previous=None):
     """Each model path's FBX (models/PATH.fbx in the packs) as models/HASH.bin, triangles of 8 float32 each corner
     (position, normal, uv in the page's axes) grouped by material, for models.json: {path: {file, groups: [[material,
     corners]]}}. A group's material is the first defined of PATH_MATERIAL, MATERIAL and PATH (the FBX's own material
     names say little: "1024"), else the material named most like the model (longest common start) in the nearest
-    .shader file at or above the model's folder (many pieces of a dynamic prop share one: trim01b takes trim01a's). Also returns the paths with no readable FBX."""
+    .shader file at or above the model's folder (many pieces of a dynamic prop share one: trim01b takes trim01a's).
+    Models of the `previous` models.json whose file is there are kept unless replacing. Also returns the paths with
+    no readable FBX."""
     where = {}
     for pack in packs:
         for name in pack.files:
@@ -368,6 +370,9 @@ def convert_models(packs, paths, materials, output, replace=False):
     (output / 'models').mkdir(parents=True, exist_ok=True)
     entries, missing = {}, []
     for path in sorted(paths):
+        if not replace and path in (previous or {}) and (output / 'models' / previous[path]['file']).is_file():
+            entries[path] = previous[path]
+            continue
         file = 'models\\' + path.replace('/', '\\') + '.fbx'
         try:
             raw = where[file].read(file)
@@ -449,8 +454,10 @@ def import_maps(game, output, replace=False, extra=None):
         with open(output / 'maps' / item['entities'], 'rb') as file:
             length, = struct.unpack('<I', file.read(4))
             keys |= {key for key, _ in json.loads(file.read(length))['props']}
-    models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace)
-    (output / 'models.json').write_text(json.dumps(models, separators=(',', ':'), sort_keys=True), encoding='utf-8')
+    models_path = output / 'models.json'
+    previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
+    models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous)
+    models_path.write_text(json.dumps(models, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     used = ({name for item in index.values() for name in item['materials']} | {key.split('|')[1] for key in keys if key.split('|')[1]} |
             {name for model in models.values() for name, _ in model['groups']})
     materials, result['untextured'] = material_textures(packs, used, found, output, replace)

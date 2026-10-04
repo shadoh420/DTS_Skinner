@@ -36,12 +36,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     return new THREE.Color().setHSL((hash >>> 0) % 360 / 360, .25, .55);
   }
   const loader = new THREE.TextureLoader(), textures = new Map(), materials = new Map();
-  // A material by name, once per side: mirrored props are drawn from the back, their triangles' winding reversed.
-  function material(name, entry, side = THREE.FrontSide) {
-    const key = `${name}|${side}`;
-    if (materials.has(key)) return materials.get(key);
+  function material(name, entry) {
+    if (materials.has(name)) return materials.get(name);
+    const side = THREE.FrontSide;
     let made;
-    if (!entry) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
+    if (!entry || !entry.texture) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
     else {
       if (!textures.has(entry.texture)) {
         const texture = loader.load(data + 'textures/' + entry.texture, undefined, undefined, () => { missing++; if (ready) showReady(); });
@@ -53,7 +52,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       made = new THREE.MeshLambertMaterial({map: textures.get(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
         alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
     }
-    materials.set(key, made);
+    materials.set(name, made);
     return made;
   }
 
@@ -99,9 +98,20 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!buffers.has(model)) { absent += matrices.length / 12; continue; }
       let at = 0;
       for (const [own, corners] of models[model].groups) {
-        const key = `${model}|${at}`;
+        const key = `${model}|${at}|${mirrored}`;
         if (!geometries.has(key)) {
-          const interleaved = new THREE.InterleavedBuffer(new Float32Array(buffers.get(model), at * 32, corners * 8), 8);
+          let floats = new Float32Array(buffers.get(model), at * 32, corners * 8);
+          // A mirrored prop keeps its triangles facing out by turning each the other way round (a BackSide
+          // material would also flip its normals, already mirrored by the instance matrix).
+          if (mirrored) {
+            floats = floats.slice();
+            for (let t = 0; t < corners; t += 3) {
+              const second = floats.slice((t + 1) * 8, (t + 2) * 8);
+              floats.copyWithin((t + 1) * 8, (t + 2) * 8, (t + 3) * 8);
+              floats.set(second, (t + 2) * 8);
+            }
+          }
+          const interleaved = new THREE.InterleavedBuffer(floats, 8);
           const geometry = new THREE.BufferGeometry();
           geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 0));
           geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(interleaved, 3, 3));
@@ -112,7 +122,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const name = override || own, entry = entries[name];
         if (entry && entry.hidden) continue;
         const count = matrices.length / 12;
-        const mesh = new THREE.InstancedMesh(geometries.get(key), material(name, entry, mirrored ? THREE.BackSide : THREE.FrontSide), count);
+        const mesh = new THREE.InstancedMesh(geometries.get(key), material(name, entry), count);
         for (let i = 0; i < count; i++) {
           const m = matrices.subarray(i * 12, i * 12 + 12);
           mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
