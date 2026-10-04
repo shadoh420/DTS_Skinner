@@ -171,6 +171,21 @@ left (`static/diabotical-maps/blocks.js`).
   outside in the game), mirroring the envmap where `reflection` is on. Not
   measured: the game's billboard shader, `alpha`, `height`, `backface`,
   `fade_distance_min` and the `monitor` shader (73 screens).
+- **Particles.** A `pfx_*` entity runs a particle system (1,190 in 85 stock
+  maps; 25 systems): `scripts/particles/*.particles` blocks `NAME [PARENT] {
+  key values }`, a system listing `subsystem EMITTER [delay] [size]`, sprite
+  regions in `scripts/particles/effects.atlas` (x y w h [frames [per row]]).
+  The import writes the systems the maps use to particles.json and their
+  sheets (at most 2048 square); the page spawns camera-facing sprites per
+  emitter in the entity's frame (period, max, spawn box, velocity or Euler
+  `velocity_angles` turning straight up times speed, acceleration, scale,
+  colour and fade over life, frames), unlit, alpha or additive, only within
+  `range` (else 2500) of the camera. Run 34 put five systems on a test floor:
+  in game they are faint (vent smoke is additive grey at a tenth), and the
+  page's look matches that; the emission direction is a reading of the
+  definitions, not measured. Not drawn: turbulence, aspect, rotation, the
+  systems' lights, one-shot emitters, tubes (`hero_beam`), and `penis2` (no
+  definition in the game files).
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes. A `liquid_*` entity is a box of its scale centred on it, its top
@@ -412,7 +427,7 @@ each cell can be culled. Frames are fast (about 1 ms on bioplant); loads take
 about 24 s.
 
 Decals' cutting box tilted about x (only flat ones and walls measured), decals
-with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), billboards' own shader (see above), particles, the glowing crystals' colours
+with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), billboards' own shader (see above), the particles' leftovers (see above), the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
 materials (a flag in the material picks the team's colour over an accent),
 whether a

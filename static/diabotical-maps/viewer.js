@@ -188,6 +188,95 @@ window.addEventListener('DOMContentLoaded', async () => {
       layers.decals.add(mesh);
     }
   }
+  // Particles (pfx entities; particle_systems in the importer): each emitter spawns camera-facing sprites in its
+  // entity's frame every `period` seconds up to `max`, from a random point of its `position` box, moving by `velocity`
+  // (a random vector between two) or along `angles` (random Euler angles, degrees, turning straight up) at `speed`,
+  // pushed by `acceleration`; over its life a sprite goes from the start to the end scale and colour, fading in and
+  // out, stepping through its frames. Drawn unlit, one instanced quad mesh per sheet and blend; only emitters within
+  // `range` (else 2500) of the camera run. Not drawn: turbulence, aspect, rotation, the systems' lights.
+  const emitters = [], particleGroups = new Map(), CAPACITY = 8192;
+  const random = (a, b) => a + Math.random() * (b - a);
+  const local = (values, at) => [random(values[at], values[at + 3]), random(values[at + 1], values[at + 4]), -random(values[at + 2], values[at + 5])];
+  function particleGroup(sheet, blend) {
+    const key = sheet + blend;
+    if (!particleGroups.has(key)) {
+      const geometry = new THREE.InstancedBufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute([-.5, -.5, 0, .5, -.5, 0, .5, .5, 0, -.5, .5, 0], 3));
+      geometry.setIndex([0, 1, 2, 0, 2, 3]);
+      for (const [name, size] of [['offset', 3], ['scale', 1], ['rect', 4], ['colour', 4]])
+        geometry.setAttribute(name, new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * size), size).setUsage(THREE.DynamicDrawUsage));
+      geometry.instanceCount = 0;
+      const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
+        uniforms: {map: {value: texture(sheet)}}, transparent: true, depthWrite: false,
+        blending: blend === 'add' ? THREE.AdditiveBlending : THREE.NormalBlending,
+        vertexShader: `attribute vec3 offset; attribute float scale; attribute vec4 rect, colour; varying vec2 vUv; varying vec4 vColour;
+          void main() {
+            vec4 view = modelViewMatrix * vec4(offset, 1.);
+            view.xy += position.xy * scale;
+            gl_Position = projectionMatrix * view;
+            vUv = vec2(rect.x + (position.x + .5) * rect.z, 1. - (rect.y + (.5 - position.y) * rect.w));
+            vColour = colour;
+          }`,
+        fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying vec4 vColour;
+          void main() { gl_FragColor = texture2D(map, vUv) * vColour; }`}));
+      mesh.frustumCulled = false;
+      layers.decals.add(mesh);
+      particleGroups.set(key, mesh);
+    }
+    return particleGroups.get(key);
+  }
+  async function addParticles(list) {
+    if (!list.length) return;
+    const systems = await get(data + 'particles.json').then(response => response.json()).catch(() => ({}));
+    for (const entry of list) {
+      const matrix = new THREE.Matrix4().set(...entry.slice(0, 12), 0, 0, 0, 1), [system, rgb, size] = entry.slice(12);
+      const tint = rgb == null ? [1, 1, 1] : [rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255].map(value => value / 255);
+      for (const emitter of systems[system] || [])
+        emitters.push({...emitter, matrix, origin: new THREE.Vector3().setFromMatrixPosition(matrix), tint, grow: size * emitter.size,
+          particles: [], wait: emitter.delay, group: particleGroup(emitter.sheet, emitter.blend)});
+    }
+  }
+  const up = new THREE.Vector3(), turn = new THREE.Euler();
+  function updateParticles(delta) {
+    if (!emitters.length) return;
+    for (const mesh of particleGroups.values()) mesh.geometry.instanceCount = 0;
+    for (const e of emitters) {
+      if (e.origin.distanceTo(camera.position) > (e.range || 2500)) { e.particles.length = 0; continue; }
+      e.wait -= delta;
+      for (let n = 0; e.wait <= 0 && n < 50; n++) {
+        e.wait += Math.max(.005, random(e.period[0], e.period[1]));
+        if (e.particles.length >= e.max) continue;
+        const position = new THREE.Vector3(...local(e.position, 0)).applyMatrix4(e.matrix);
+        let velocity;
+        if (e.angles) {
+          turn.set(...[0, 1, 2].map(i => THREE.MathUtils.degToRad(random(e.angles[i], e.angles[i + 3]))), 'YXZ');
+          velocity = up.set(0, 1, 0).applyEuler(turn).clone().multiplyScalar(e.speed[0]);
+          velocity.z = -velocity.z;
+        } else velocity = new THREE.Vector3(...local(e.velocity, 0));
+        const acceleration = new THREE.Vector3(...local(e.acceleration, 0));
+        const rotation = new THREE.Matrix3().setFromMatrix4(e.matrix);
+        e.particles.push({position, velocity: velocity.applyMatrix3(rotation), acceleration: acceleration.applyMatrix3(rotation), age: 0,
+          life: Math.max(.05, random(e.life[0], e.life[1])), from: random(e.scale[0], e.scale[1]), to: random(e.scale[2], e.scale[3])});
+      }
+      const mesh = e.group, attributes = mesh.geometry.attributes, c = e.colour;
+      e.particles = e.particles.filter(p => (p.age += delta) < p.life);
+      for (const p of e.particles) {
+        p.velocity.addScaledVector(p.acceleration, delta);
+        p.position.addScaledVector(p.velocity, delta);
+        const at = mesh.geometry.instanceCount;
+        if (at >= CAPACITY) break;
+        mesh.geometry.instanceCount++;
+        const t = p.age / p.life, fade = Math.min(1, e.fade[0] ? p.age / e.fade[0] : 1, e.fade[1] ? (p.life - p.age) / e.fade[1] : 1);
+        const frame = Math.floor(e.animation[1] + p.age * e.animation[0]) % e.frames;
+        attributes.offset.setXYZ(at, p.position.x, p.position.y, p.position.z);
+        attributes.scale.setX(at, (p.from + (p.to - p.from) * t) * e.grow);
+        attributes.rect.setXYZW(at, e.rect[0] + frame % e.row * e.rect[2], e.rect[1] + Math.floor(frame / e.row) * e.rect[3], e.rect[2], e.rect[3]);
+        attributes.colour.setXYZW(at, ...[0, 1, 2].map(i => (c[i] + (c[i + 4] - c[i]) * t) * e.tint[i]), (c[3] + (c[7] - c[3]) * t) * fade);
+      }
+    }
+    for (const mesh of particleGroups.values())
+      for (const name of ['offset', 'scale', 'rect', 'colour']) mesh.geometry.attributes[name].needsUpdate = true;
+  }
   // Props: each model's triangles (8 floats a corner: position, normal, uv) by material, drawn instanced.
   async function addProps(props, models, entries) {
     const needed = [...new Set(props.map(prop => prop.model))].filter(model => models[model]);
@@ -479,6 +568,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
     move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
+    updateParticles(delta);
     draw();
   });
   window.skinnerDiaboticalMaps = {renderer, scene, camera, draw};  // For checks in a hidden page, where no frame is drawn.
@@ -554,7 +644,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights, billboards} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards, pfx} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       addMarkers(markers);
       addLiquids(liquids);
@@ -562,6 +652,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       showStatus('Placing decals…');
       map.decals = addDecals(decals, entries);
       addBillboards(billboards, entries);
+      await addParticles(pfx);
     }
     renderer.shadowMap.needsUpdate = true;
     showNotes();

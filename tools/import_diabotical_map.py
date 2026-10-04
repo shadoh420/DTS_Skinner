@@ -68,9 +68,9 @@ red where not black, else its material_id): see static/diabotical-maps/lighting.
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
-map (props with their tints, decals, markers, liquids, billboards and lights: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
+map (props with their tints, decals, markers, liquids, billboards, particle emitters and lights: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
 terrain (heights in red, dirt mask in green; the index item's `terrain` says how to place it), the models the maps place in
-models.json with models/HASH.bin, and the materials of the maps and models in materials.json, with
+models.json with models/HASH.bin, the particle systems the maps use in particles.json, the materials of the maps and models in materials.json, with
 textures/HASH.png (specular maps HASH-s.png, red and green), and the maps' envmaps in envmaps/NAME.png (the six faces of
 the cube's third mip, 256 square, side by side in D3D order: +x, -x, +y, -y, +z, -z).
 """
@@ -94,7 +94,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 15  # Of the files written per map: maps imported with another are read again.
+FORMAT = 16  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -427,6 +427,126 @@ def read_billboards(entities):
     return out
 
 
+def read_pfx(entities):
+    """A map's particle emitters (pfx entities): [12 page-matrix floats (its place and turn), system name, colour 0xRRGGBB
+    or None, size (default 1)]."""
+    palette = next((fields for name, *_, fields in entities if name == 'global'), {})
+    out = []
+    for name, position, rotation, scale, fields in entities:
+        if not name.startswith('pfx') or not fields.get('system') or fields.get('no_show') in ('1', 'true'):
+            continue
+        matrix = MIRROR @ game_matrix(position, rotation, (1, 1, 1)) @ MIRROR
+        size = next(iter(re.findall(r'-?\d*\.?\d+', fields.get('size', ''))), None)
+        out.append([*np.round(matrix[:3].ravel(), 4).tolist(), fields['system'].strip().lower(), colour(fields.get('color'), palette),
+                    float(size) if size else 1.0])
+    return out
+
+
+def particle_systems(packs, names, output, replace=False):
+    """The particle systems `names` (scripts/particles/*.particles: blocks NAME [PARENT] { key values }, a child
+    taking its parent's keys; a system lists `subsystem EMITTER [delay] [size]`, or is one emitter itself) as
+    {name: [emitter]} for particles.json, and their sprite sheets written as textures/HASH-a.png (at most 2048 square).
+    An emitter: sheet (texture file), rect [u, v, width, height] of its first frame in the sheet (0-1, v down; a
+    region of scripts/particles/effects.atlas: x y w h [frames [per row]]; the whole sheet where it has none), frames,
+    row, blend (add or alpha), life, period, max, position (box min x y z, max x y z, local), velocity (min, max
+    vectors) or angles (min, max degrees) and speed (start, end), acceleration (min, max), scale (start min, max, end
+    min, max), colour (start rgba, end rgba), fade (in, out), animation (speed, start), range, delay, size.
+    One-shot emitters (max_emissions not 0) and tubes are left out; names with no definition are left out."""
+    scripts = next((pack for pack in packs if pack.path.name == 'scripts.dbp'), None)
+    blocks, atlas = {}, {}
+    for name in sorted(scripts.files) if scripts else []:
+        text = re.sub(r'//[^\n]*', '', scripts.read(name).decode('latin-1'))
+        if name.endswith('.particles'):
+            for block, parent, body in re.findall(r'(?m)^\s*([\w-]+)(?:[ \t]+([\w-]+))?\s*\{([^{}]*)\}', text):
+                blocks.setdefault(block.lower(), (parent.lower() or None, body))
+        elif name.endswith('.atlas'):
+            for sheet, width, height, body in re.findall(r'([\w.]+)\s+(\d+)\s+(\d+)\s*\{([^{}]*)\}', text):
+                for line in body.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 5:
+                        atlas.setdefault((sheet.lower(), parts[0].lower()), (int(width), int(height), *map(float, parts[1:7])))
+
+    def fields(block, seen=()):
+        parent, body = blocks[block]
+        out = fields(parent, seen + (block,)) if parent in blocks and parent not in seen else {}
+        for line in body.splitlines():
+            parts = line.split()
+            if parts and parts[0] != 'subsystem':
+                out[parts[0].lower()] = parts[1:]
+        return out
+
+    def floats(values, count, default):
+        values = [float(v) for v in values if re.fullmatch(r'-?\d*\.?\d+(?:e-?\d+)?', v)] or list(default)
+        return (values * count)[:count] if len(values) < count and count % len(values) == 0 else (values + [0.0] * count)[:count]
+
+    where = {}
+    for pack in packs:
+        for name in pack.files:
+            if name.endswith(('.dds', '.png')):
+                where.setdefault(name.rsplit('\\', 1)[-1], (pack, name))
+    sheets, systems = {}, {}
+    (output / 'textures').mkdir(parents=True, exist_ok=True)
+
+    def sheet_file(sheet):
+        if sheet not in sheets:
+            found = next((where[sheet + suffix] for suffix in ('.dds', '', ) if sheet + suffix in where), None)
+            found = found or where.get(sheet.rsplit('.', 1)[0] + '.dds')
+            sheets[sheet] = None
+            if found:
+                raw = found[0].read(found[1])
+                target = output / 'textures' / f'{hashlib.sha256(raw).hexdigest()[:16]}-a.png'
+                if replace or not target.is_file():
+                    image = decode_dds(raw).convert('RGBA') if found[1].endswith('.dds') else None
+                    if image is None:
+                        from PIL import Image
+                        image = Image.open(io.BytesIO(raw)).convert('RGBA')
+                    image.thumbnail((2048, 2048))
+                    image.save(target, 'PNG')
+                sheets[sheet] = target.name
+        return sheets[sheet]
+
+    for system in sorted(names):
+        if system not in blocks:
+            continue
+        subsystems = re.findall(r'(?m)^\s*subsystem\s+(\S+)([^\n]*)', blocks[system][1])
+        emitters = []
+        for emitter, rest in subsystems or [(system, '')]:
+            if emitter.lower() not in blocks:
+                continue
+            f, extra = fields(emitter.lower()), floats(rest.split(), 2, (0, 1))
+            if (f.get('max_emissions') or ['0'])[0] not in ('0', '0.0') or 'tube' in f.get('geometry', []):
+                continue
+            sheet = (f.get('map') or [''])[0].lower()
+            file = sheet and sheet_file(sheet)
+            if not file:
+                continue
+            region = atlas.get((sheet, (f.get('region') or [''])[0].lower()))
+            if region:
+                width, height, x, y, w, h, *rest_frames = region
+                frames, row = (int(rest_frames[0]) if rest_frames else 1), (int(rest_frames[1]) if len(rest_frames) > 1 else 1)
+                rect = [x / width, y / height, w / width, h / height]
+            else:
+                rect, frames, row = [0, 0, 1, 1], 1, 1
+            angles = 'velocity_angles' in f
+            emitters.append(dict(
+                sheet=file, rect=[round(v, 5) for v in rect], frames=max(1, frames), row=max(1, row),
+                blend='add' if (f.get('blend') or ['alpha'])[0].lower() == 'add' else 'alpha',
+                life=floats(f.get('lifetime', []), 2, (1,)), period=floats(f.get('period', []), 2, (.1,)),
+                max=int(floats(f.get('max_particles', []), 1, (10,))[0]), position=floats(f.get('position', []), 6, (0,)),
+                velocity=None if angles else floats(f.get('velocity', []), 6, (0,)),
+                angles=floats(f['velocity_angles'], 6, (0,)) if angles else None,
+                speed=[floats(f.get('speed_start', []), 1, (0,))[0], floats(f.get('speed_end', f.get('speed_start', [])), 1, (0,))[0]],
+                acceleration=floats(f.get('acceleration', []), 6, (0,)),
+                scale=floats(f.get('scale_start', []), 2, (10,)) + floats(f.get('scale_end', f.get('scale_start', [])), 2, (10,)),
+                colour=floats(f.get('color_start', []), 4, (1,)) + floats(f.get('color_end', f.get('color_start', [])), 4, (1,)),
+                fade=[floats(f.get('fade_in', []), 1, (0,))[0], floats(f.get('fade_out', []), 1, (0,))[0]],
+                animation=[floats(f.get('animation_speed', []), 1, (0,))[0], floats(f.get('animation_start', []), 1, (0,))[0]],
+                range=floats(f.get('range', []), 1, (0,))[0], delay=extra[0] + floats(f.get('delay', []), 1, (0,))[0], size=extra[1]))
+        if emitters:
+            systems[system] = emitters
+    return systems
+
+
 POINT = SUN = 1 / np.pi  # Light per unit of colour x intensity on a white surface (runs 17 to 23, before the LUT step).
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
 DEFAULT_SHADOW = [.325, .469, .519]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
@@ -714,7 +834,7 @@ def import_maps(game, output, replace=False, extra=None):
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
                                decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights,
-                               billboards=read_billboards(parsed['entities'])),
+                               billboards=read_billboards(parsed['entities']), pfx=read_pfx(parsed['entities'])),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
         placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +
@@ -741,7 +861,7 @@ def import_maps(game, output, replace=False, extra=None):
         for old in files(index.pop(ident)):
             if old:
                 (output / 'maps' / old).unlink(missing_ok=True)
-    keys, decal_materials, envmaps = set(), set(), set()
+    keys, decal_materials, envmaps, systems = set(), set(), set(), set()
     for item in index.values():
         with open(output / 'maps' / item['entities'], 'rb') as file:
             length, = struct.unpack('<I', file.read(4))
@@ -749,6 +869,7 @@ def import_maps(game, output, replace=False, extra=None):
             keys |= {entry[0] for entry in head['props']}
             decal_materials |= {entry[0] for entry in head['decals']} | {entry[13] for entry in head.get('billboards', []) if entry[13]}
             envmaps.add(head['lights']['envmap'])
+            systems |= {entry[12] for entry in head.get('pfx', [])}
     if cubes is not None:
         write_envmaps(cubes, envmaps - {None}, output, replace)
     models_path = output / 'models.json'
@@ -769,6 +890,8 @@ def import_maps(game, output, replace=False, extra=None):
     used |= decal_materials
     materials, result['untextured'] = material_textures(packs, used, found, output, replace)
     (output / 'materials.json').write_text(json.dumps(materials, separators=(',', ':'), sort_keys=True), encoding='utf-8')
+    (output / 'particles.json').write_text(json.dumps(particle_systems(packs, systems, output, replace), separators=(',', ':'), sort_keys=True),
+                                           encoding='utf-8')
     temporary = index_path.with_suffix('.tmp')
     rank = {'Diabotical': 0, 'Your maps': 1}
     temporary.write_text(json.dumps(sorted(index.values(), key=lambda item: (rank[item['group']], item['name'].lower())),
