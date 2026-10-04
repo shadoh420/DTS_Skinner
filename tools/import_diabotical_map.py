@@ -93,7 +93,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 12  # Of the files written per map: maps imported with another are read again.
+FORMAT = 14  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -337,12 +337,13 @@ CELL = 40  # A dynamic prop's cell, in units.
 PICKUPS = re.compile(r'(spawn|hpt|armort|weapon|ammo|jumppad|jp|teleport|tpexit|flag|coin|crystal|doubledamage|tripledamage)')
 
 
-def placements(entities, assets):
+def placements(entities, assets, known=()):
     """A map's props as {"model|material|m": float32 array of page matrices' top three rows} (material empty for the
     model's own, m when mirrored), their tints ({key: uint32 (n, 3)}, for the keys with any: each prop's color,
     color2 and color3 as 0x1RRGGBB, 0 if unset), its spawns, pickups and other markers, liquids, and decals ({material:
     (float32 (n, 24) page matrices of their boxes, projected from and cut to, uint32 (n, 3): colour 0xRRGGBBAA, flags (1 mirrored, 2 v2, 4 v3),
-    order as int32)}). A dynamic prop's scale is its size in 40-unit cells, each cell a model its asset's rules pick by
+    order as int32)}). A prop's material field X names the shader MODEL_X where `known` (the material names) has one
+    (bioplant's door frames: corridor_path_..._frame_red), else X. A dynamic prop's scale is its size in 40-unit cells, each cell a model its asset's rules pick by
     the cell's offsets from the prop's ends."""
     props, tints, markers, liquids, decals = {}, {}, [], [], {}
     palette = next((fields for name, *_, fields in entities if name == 'global'), {})
@@ -359,7 +360,11 @@ def placements(entities, assets):
                     [(0xffffff if rgb is None else rgb) << 8 | alpha, flags, int(order.group(1)) % 2 ** 32 if order else 0]))
             continue
         if name.startswith('liquid'):
-            liquids.append([*np.round(position, 2).tolist(), *np.round(scale, 2).tolist(), fields.get('material', '')])
+            if fields.get('no_show') not in ('1', 'true'):
+                word = (fields.get('color') or '').strip().lstrip('#').lower()
+                ocean = fields.get('shader', '').lower() == 'ocean' or fields.get('material', '').lower() == 'core_ocean'
+                liquids.append([*np.round(position, 2).tolist(), *np.round(scale, 2).tolist(), fields.get('material', ''), colour(fields.get('color'), palette),
+                                int(word[:2], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else None, int(ocean)])
             continue
         kind = PICKUPS.match(name)
         if kind and 'model' not in fields:
@@ -393,7 +398,8 @@ def placements(entities, assets):
             # PATH_flipx (and _flipy, _flipz) is PATH mirrored: no such file.
             model, flips = re.match(r'(.*?)((?:_flip[xyz])*)$', piece_asset.get('model', piece).lower()).groups()
             matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
-            material = (fields.get('material') or piece_asset.get('material') or asset.get('material') or '').lower()
+            own = (fields.get('material') or '').lower()
+            material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
             key = f"{model}|{material}|{'m' if np.linalg.det(matrix[:3, :3]) < 0 else ''}"
             props.setdefault(key, []).append(matrix[:3].ravel())
             tints.setdefault(key, []).append(tint)
@@ -664,7 +670,7 @@ def import_maps(game, output, replace=False, extra=None):
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}
     files = lambda item: [item.get('file'), item.get('entities'), (item.get('terrain') or {}).get('file')]
     result = dict(imported=[], skipped=[], failed={}, untextured=[], unconverted=[])
-    assets = read_assets(packs)
+    assets, found = read_assets(packs), read_materials(packs)
     for name, group, read in sources:
         ident = map_id(name if group == 'Diabotical' else 'user__' + name)
         try:
@@ -677,7 +683,7 @@ def import_maps(game, output, replace=False, extra=None):
                 continue
             parsed = read_map(raw)
             blocks = visible_blocks(parsed['blocks'])
-            props, tints, markers, liquids, decals = placements(parsed['entities'], assets)
+            props, tints, markers, liquids, decals = placements(parsed['entities'], assets, found)
             heights, terrain = read_terrain(parsed['entities'], read)
             xyz = parsed['blocks']['xyz']
             lights = read_lights(parsed['entities'], (xyz.min(0) * BLOCK, (xyz.max(0) + 1) * BLOCK) if len(xyz) else None)
@@ -715,7 +721,6 @@ def import_maps(game, output, replace=False, extra=None):
         for old in files(index.pop(ident)):
             if old:
                 (output / 'maps' / old).unlink(missing_ok=True)
-    found = read_materials(packs)
     keys, decal_materials, envmaps = set(), set(), set()
     for item in index.values():
         with open(output / 'maps' / item['entities'], 'rb') as file:
@@ -734,6 +739,9 @@ def import_maps(game, output, replace=False, extra=None):
             {name for model in models.values() for name, _ in model['groups']} |
             {name for item in index.values() if item.get('terrain') for name in (item['terrain']['material'], *(
                 item['terrain']['material'] + slot for slot in ('#3', '#5') if item['terrain']['material'] + slot in found))})
+    # A prop's material X on a model whose group shader is G: the variant G_X where the game has one (viewer.js).
+    used |= {f'{name}_{key.split("|")[1]}' for key in keys if key.split('|')[1] for name, _ in models.get(key.split('|')[0], {}).get('groups', [])
+             if f'{name}_{key.split("|")[1]}' in found}
     used |= {name + '#4' for name in used if name + '#4' in found}  # Colour masks.
     used |= decal_materials
     materials, result['untextured'] = material_textures(packs, used, found, output, replace)

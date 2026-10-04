@@ -157,13 +157,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
   // Liquids as see-through boxes, their size the entity's scale, centred on it (as the game's water surface is: top at y + height / 2).
-  function addLiquids(list, entries) {
-    for (const [x, y, z, width, height, depth, name] of list) {
-      const colour = entries[name] ? 0x3a7fb0 : flatColour(name || 'liquid');
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth),
-        gameLit(new THREE.MeshLambertMaterial({color: colour, transparent: true, opacity: .45, depthWrite: false})));
-      mesh.position.set(x, y, -z);
-      layers.markers.add(mesh);
+  // Liquids: the top of a box of the entity's scale. Unlit, so lava and acid glow their own colour as in the game;
+  // the colour's alpha (AARRGGBB) is the surface's opacity, and one with no colour is clear water (bioplant's pools
+  // show the floor under them). The ocean shader is dark blue and mirrors the envmap.
+  const oceans = [];
+  function addLiquids(list) {
+    for (const [x, y, z, width, height, depth, , rgb, alpha, ocean] of list) {
+      const surface = new THREE.Mesh(new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
+        color: rgb ?? (ocean ? 0x14394d : 0x2a6f8c), transparent: true, opacity: (alpha ?? (rgb == null && !ocean ? 40 : 220)) / 255,
+        depthWrite: false, side: THREE.DoubleSide, reflectivity: .5}));
+      surface.position.set(x, y + height / 2, -z);
+      if (ocean) oceans.push(Object.assign(surface.material, {envMap: gameUniforms.gameEnvmap.value}));  // Or when it loads.
+      scene.add(surface);
     }
   }
   // Props: each model's triangles (8 floats a corner: position, normal, uv) by material, drawn instanced.
@@ -198,7 +203,8 @@ window.addEventListener('DOMContentLoaded', async () => {
           geometries.set(key, geometry);
         }
         at += corners;
-        const name = override || own, entry = entries[name];
+        // A prop's material X is its group's shader's X variant (OWN_X: bioplant's door frames) where there is one.
+        const name = override ? (entries[`${own}_${override}`] ? `${own}_${override}` : override) : own, entry = entries[name];
         if (entry && entry.hidden) continue;
         const count = matrices.length / 12, mask = maskOf(name, entry, entries);
         const mesh = new THREE.InstancedMesh(mask ? withAccents(geometries.get(key), tints, entry.accents, count) : geometries.get(key),
@@ -373,6 +379,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         return canvas;
       });
       u.gameEnvmap.value = Object.assign(new THREE.CubeTexture(faces), {needsUpdate: true});
+      for (const ocean of oceans) Object.assign(ocean, {envMap: u.gameEnvmap.value, needsUpdate: true});
       draw();
     });
     if (sunLight) u.gameSunToward.value.fromArray(sunLight).negate().normalize();
@@ -533,7 +540,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const {props, markers, liquids, decals, lights} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       addMarkers(markers);
-      addLiquids(liquids, entries);
+      addLiquids(liquids);
       map.props = await addProps(props, models, entries);
       showStatus('Placing decals…');
       map.decals = addDecals(decals, entries);

@@ -293,8 +293,12 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertAlmostEqual(np.linalg.det(static[:, :3]), 8, 4)
         self.assertEqual(sorted(m[3] for key in ('props/quad||', 'props/quad||m') for m in props[key]), [20, 60, 100])
         self.assertLess(np.linalg.det(props['props/quad||m'][0].reshape(3, 4)[:, :3]), 0)  # _flipx: mirrored.
+        # A prop's material field X is the shader MODEL_X where there is one (bioplant's door frames), else X.
+        framed = [('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'Frame_Red'}),
+                  ('prop_e', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'stone_floor'})]
+        self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|', 'props/quad|stone_floor|'])
         self.assertEqual(markers, [['spawn', 1, 2, 3]])
-        self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean']])
+        self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean', None, None, 1]])  # Colour, alpha (AARRGGBB), ocean.
         # Decals: their boxes in page axes; colour 0xRRGGBBAA (from RRGGBB, or AARRGGBB: alpha first), flags (1 mirrored,
         # 2 v2, 4 v3), order.
         matrices, extras = decals['arrow']

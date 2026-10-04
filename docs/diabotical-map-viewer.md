@@ -2,7 +2,7 @@
 
 Opens Diabotical maps from Skinner for a free-flight look at their blocks,
 props, heightmap terrain and decals, drawn in the textures of their materials, with markers for spawns and
-pickups and liquids as see-through boxes. No lights or baked lighting,
+pickups, and liquids as glowing see-through surfaces. No lights or baked lighting,
 one fixed sun, and no editing. Reflex, Q3, T1
 and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.md),
 [q3-map-viewer.md](q3-map-viewer.md), [t1-map-viewer.md](t1-map-viewer.md) and
@@ -32,7 +32,8 @@ left (`static/diabotical-maps/blocks.js`).
 - **Shapes.** 1 is a cube, 3 a half cube cut along a vertical diagonal, its
   missing corner set by the turn. Shapes 2, 4, 5 and 6 draw nothing in the
   game's own OBJ export (probably invisible blocks: clips, triggers…), so the
-  page leaves them out. Cubes are drawn without the game's 4-unit bevelled
+  page leaves them out; run 32 showed a roof of each casts no sun shadow
+  either (nor do props, with or without `__shadow`). Cubes are drawn without the game's 4-unit bevelled
   edges.
 - **Materials.** A face's material is an asset (`scripts/*.assets`) naming a
   material in a `.shader` file; its first `map` is its colour texture (BC7
@@ -56,6 +57,9 @@ left (`static/diabotical-maps/blocks.js`).
   entity's position, rotation and scale. Its material is the asset's or the
   entity's `material`, else a shader named after the model, else the one
   named most like it in the nearest `.shader` file at or above its folder.
+  An entity's `material` X is first looked up as the shader `MODEL_X`
+  (bioplant's door frames: `frame_red` on `corridor_path_..._tile_x` is
+  `corridor_path_..._tile_x_frame_red`, a tinted variant), else as X.
   A dynamic prop (trims, pipes, walls: about half of all props) is a row, column
   or block of 40-unit cells from the entity (its corner), its scale the size in cells; its asset's
   `dynamic_rule` blocks pick each cell's model by the cell's offsets from the
@@ -151,7 +155,14 @@ left (`static/diabotical-maps/blocks.js`).
   albedo) and take no ambient, and id 46 takes 1.4 times the ambient.
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
-  shapes; `liquid_*` entities boxes of their scale, centred on them.
+  shapes. A `liquid_*` entity is a box of its scale centred on it, its top
+  the surface: drawn unlit (lava and acid glow their colour, as in the game)
+  in its `color` (AARRGGBB: the alpha is the surface's opacity); one with
+  no colour is clear water, as bioplant's pools are in game; the ocean (`shader ocean`, `core_ocean`)
+  is dark blue and mirrors the envmap. The game's own surfaces (water.ps,
+  panel_water.ps) add moving noise, foam where they meet the ground and fog
+  over distance; the page leaves those out, and its liquids light nothing
+  around them (whether the game's do is not measured).
 
 The file formats are written out in the import's module docstring
 (`tools/import_diabotical_map.py`).
@@ -382,8 +393,8 @@ of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
-prop materials not found (flat colours), water
-surfaces; of the lighting: the lights' specular highlights are checked only
+prop materials not found (flat colours; fewer since a prop's `material` X
+is read as its shader's X variant), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
 through bioplant's overall brightness, the reflections leave out the per-pixel
 material id (the commonest
 value of a material's id map is used), the spot lights' extra specular factor
@@ -400,8 +411,7 @@ set `lut`; the page applies the identity's step), the strong light of maps
 with no sun (measured in run 20, not drawn), the screen-space ambient
 occlusion (narrow; not drawn), the sun's light in shadow on maps like
 bioplant (the page lets far more through than the game), the game grid's
-half-cell shift, glowing liquids and
+half-cell shift, liquids' light on what is around them, and
 bloom, how nodes overlap and the grid's own size; the
 per-face flag byte and
-the six small per-face values (probably texture offset and turn), what the
-invisible shapes are, bevelled edges, version 21 maps, and editing.
+the six small per-face values (probably texture offset and turn), bevelled edges, version 21 maps, and editing.
