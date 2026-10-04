@@ -120,6 +120,22 @@ left (`static/diabotical-maps/blocks.js`).
   replace the ambient where they reach (a 3D grid built from them, as the
   game builds one when a map loads): their `intensity` and `falloff` change
   nothing, their colour is decoded as sRGB.
+- **Specular light and reflections** (from `tile.cs`, not yet checked in the
+  game). A material's specular map (its map 2) holds gloss in red and
+  strength in green; its material id is its map 3's red where that is not
+  black, else its `material_id`, else 40 (`textures/metal.png`, most blocks' id
+  map, is 40 too; run 17's `default`, with neither, is a mirror).
+  Point, spot, capsule and sun lights (not `diffuse` ones) add GGX specular
+  light: roughness 1 − gloss × the map's `gloss` (default 1), Schlick
+  visibility with k = (roughness + 1)² / 8, the distribution raised to
+  1 / 2.2, Fresnel on N·L from F0 = albedo × the id's share (0.5 for 40 to
+  49, 1 for metals, 51 to 79, else 0), times strength; the sun's is shaded as
+  its diffuse light. Materials of share above 0 also reflect the map's
+  `envmap` (a cube in `packs/textures_cubemaps.dbp`, `default_envmap`, a
+  cathedral, where the map names none) along the reflection, at mip
+  roughness^(1 / 2.2) × 10, times strength and the ambient light's hue (its
+  colour over its largest channel); metals reflect it grey (51: by the
+  albedo) and take no ambient, and id 46 takes 1.4 times the ambient.
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes; `liquid_*` entities boxes of their scale, centred on them.
@@ -259,7 +275,13 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   from five `/printcamera` points: the light falls in the same places (block
   brightness correlation 0.72 to 0.94) in the same colours, but the game is
   about 1.45 times brighter (up to 1.8 on glossy floors; a dim corner
-  matched), most likely its specular light and environment reflections.
+  matched). The specular light and reflections (read from `tile.cs` after
+  that) lift the page only 5 to 10 % against run 19's shots (median
+  game / page block ratios 1.46, 1.29, 1.39, 1.71, 1.71 became 1.38, 1.23,
+  1.27, 1.55, 1.60; the dim spot 0.96 became 0.90): most of the gap is
+  elsewhere. The map has no `shadow_color`, so the page takes the sun out of
+  its shadow entirely, while the game's default is bluish: a grey shadow
+  colour of 0.3 brought three spots near 1.0 to 1.3 but left two at 1.5.
 
 ## Not done yet
 
@@ -275,8 +297,17 @@ height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
 prop materials not found (flat colours), water
-surfaces; of the lighting: the specular highlights and reflections (about a third of the game's brightness on duel_bioplant; the
-`white`/`default` materials are mirrors), fog and vertical fog, light volumes
+surfaces; of the lighting: the specular light and reflections are not yet
+checked in the game, and leave out the per-pixel material id (the commonest
+value of a material's id map is used), the spot lights' extra specular factor
+(the shader's `mMapMax.w`, taken as 1), `video_specularity_factor`,
+`reflectivity` and `skybox_rotation` (whether they turn or scale the
+reflection), the reflections of the envmap's two finest mips (the page keeps
+256 × 256 faces), the flat ambients of bots and pickups (ids 25, 44, 45, 48,
+49, 65, 120 to 139), decals' own specular maps (a decal dims the reflection
+under it) and the game's ambient occlusion; the ambient's fade toward the
+shadow ambient on faces turned from the sun (the shader ramps it over N·L
+below 0.1), fog and vertical fog, light volumes
 (beams), flickering lights (drawn steady), colour grading (`lut`, 11 maps), the
 ambient level only fitted at two values (0x20, 0x40) and the defaults with no
 ambient or sun (a black ambient and no sun lit the floor brightly), the default

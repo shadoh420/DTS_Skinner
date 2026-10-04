@@ -29,12 +29,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     gameCellMin: {value: new THREE.Vector3()}, gameCellCount: {value: new THREE.Vector3()}, gameGridMin: {value: new THREE.Vector3()},
     gameGridMax: {value: new THREE.Vector3(1, 1, 1)}, gameAmbient: {value: new THREE.Vector3(.55, .55, .55)},
     gameShadowAmbient: {value: new THREE.Vector3(.55, .55, .55)}, gameShadowColour: {value: new THREE.Vector3(1, 1, 1)},
-    gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()}};
-  function gameLit(made) {
+    gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()},
+    gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}};
+  // A material's specular map (materials.json `spec`: a texture, or [gloss, strength] made a texel) and material id.
+  const evenTexels = new Map();
+  function evenTexel([r, g] = [0, 0]) {
+    const key = r + ',' + g;
+    if (!evenTexels.has(key)) evenTexels.set(key, Object.assign(new THREE.DataTexture(new Uint8Array([r * 255, g * 255, 0, 255]), 1, 1), {needsUpdate: true}));
+    return evenTexels.get(key);
+  }
+  function gameLit(made, entry) {
     const own = made.onBeforeCompile === THREE.Material.prototype.onBeforeCompile ? null : made.onBeforeCompile, glsl = DiaboticalLighting.shader;
+    const spec = entry && entry.spec, surface = {gameSpecularMap: {value: typeof spec === 'string' ? texture(spec) : evenTexel(spec)},
+      gameClass: {value: new THREE.Vector3(...DiaboticalLighting.materialClass(entry && entry.id || 0))}};
     made.onBeforeCompile = (shader, renderer) => {
       if (own) own(shader, renderer);
-      Object.assign(shader.uniforms, gameUniforms);
+      Object.assign(shader.uniforms, gameUniforms, surface);
       shader.vertexShader = glsl.vertexHead + shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>' + glsl.vertexBody);
       shader.fragmentShader = glsl.fragmentHead + shader.fragmentShader.replace('#include <aomap_fragment>', glsl.fragmentBody);
     };
@@ -95,7 +105,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           diffuseColor *= vec4(tinted, texel.a);`);
       };
     }
-    materials.set(key, gameLit(made));
+    materials.set(key, gameLit(made, entry));
     return made;
   }
   const maskOf = (name, entry, entries) => entry && entry.texture && (entries[name + '#4'] || {}).texture ? entries[name + '#4'] : null;
@@ -323,7 +333,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // A map's lights (read_lights in the importer) into the shaders' uniforms, and the sun's shadow over the blocks.
-  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight}) {
+  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1}) {
     const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
     u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
     u.gameCells.value = float(built.cells, width, built.cells.length / 2 / width, THREE.RGFormat);
@@ -338,11 +348,26 @@ window.addEventListener('DOMContentLoaded', async () => {
         magFilter: THREE.LinearFilter, needsUpdate: true});
       u.gameGridMin.value.fromArray(grid.min);
       u.gameGridMax.value.fromArray(grid.max);
-    }
+    } else u.gameGrid.value = emptyGrid;
     u.gameAmbient.value.fromArray(ambient);
     u.gameShadowAmbient.value.fromArray(shadowAmbient);
     u.gameShadowColour.value.fromArray(shadowColour);
     u.gameSunColour.value.fromArray(sunLight ? sunLight.slice(3) : [0, 0, 0]);
+    u.gameSunSpecular.value = sunLight && sunLight[6] || 0;
+    u.gameGloss.value = gloss;
+    // The envmap: its six faces side by side (envmaps/NAME.png), made a cube whose mips WebGL makes as the game does.
+    u.gameEnvmap.value = null;
+    const forMap = map;
+    if (envmap) new THREE.ImageLoader().load(`${data}envmaps/${envmap.replace(/[^a-z0-9_-]/g, '_')}.png`, image => {
+      if (map !== forMap) return;  // Another map was opened meanwhile.
+      const size = image.height, faces = [0, 1, 2, 3, 4, 5].map(face => {
+        const canvas = Object.assign(document.createElement('canvas'), {width: size, height: size});
+        canvas.getContext('2d').drawImage(image, face * size, 0, size, size, 0, 0, size, size);
+        return canvas;
+      });
+      u.gameEnvmap.value = Object.assign(new THREE.CubeTexture(faces), {needsUpdate: true});
+      draw();
+    });
     if (sunLight) u.gameSunToward.value.fromArray(sunLight).negate().normalize();
     if (start) {
       const centre = start.min.clone().add(start.max).multiplyScalar(.5), radius = start.max.distanceTo(start.min) / 2 + 100;

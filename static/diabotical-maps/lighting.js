@@ -61,12 +61,12 @@
   }
 
   /* The lights as rows of 16 floats (4 texels: position, radius; colour, kind; direction, inner radius; cos of the
-     half cone, softness, length, 0) and, per 256-unit cell over their reach, the list of those that reach it (up to
-     64): cells as (offset, count) pairs and the lists end to end, each laid out WIDTH texels a row. */
+     half cone, softness, length, specular scale) and, per 256-unit cell over their reach, the list of those that
+     reach it (up to 64): cells as (offset, count) pairs and the lists end to end, each laid out WIDTH texels a row. */
   function buildLights(lights) {
     const rows = new Float32Array(Math.max(1, lights.length) * 16);
-    lights.forEach(([kind, x, y, z, dx, dy, dz, r, g, b, radius, inner, cone, softness, length], i) =>
-      rows.set([x, y, z, radius, r, g, b, kind, dx, dy, dz, inner, cone, softness, length, 0], i * 16));
+    lights.forEach(([kind, x, y, z, dx, dy, dz, r, g, b, radius, inner, cone, softness, length, specular = 0], i) =>
+      rows.set([x, y, z, radius, r, g, b, kind, dx, dy, dz, inner, cone, softness, length, specular], i * 16));
     if (!lights.length) return {rows, count: 0, min: [0, 0, 0], size: [0, 0, 0], cells: new Float32Array(4), lists: new Float32Array(1)};
     const bounds = lights.map(reach), min = [0, 1, 2].map(k => Math.min(...bounds.map(b => b[k][0])));
     const size = [0, 1, 2].map(k => Math.max(1, Math.ceil((Math.max(...bounds.map(b => b[k][1])) - min[k]) / CELL)));
@@ -85,7 +85,22 @@
     return {rows, count: lights.length, min, size, cells, lists: flat};
   }
 
-  // GLSL: declarations, the vertex shader's line, and gameLight(world normal, world position, sun visibility).
+  /* What tile.cs makes of a material id (its map 3's red, else its material_id): [reflection, ambient, tint by
+     albedo]. Reflection is the share of the albedo taken as F0 and, above 0, the envmap reflected (at 0.5 tinted by the
+     ambient's hue; at 1, metals 51 to 79, as its luminance, or by the albedo for 51); metals take no ambient and 46
+     takes 1.4 times it. ponytail: the flat ambients of 25, 44, 45, 48, 49, 65 and 120 to 139 (bots, pickups) and
+     52 and 53's colours are left out. */
+  function materialClass(id) {
+    const metal = id > 50 && id <= 79;
+    const reflection = metal ? 1 : [40, 41, 42, 44, 45, 46, 47, 49].includes(id) || (id >= 120 && id <= 139) ? .5 : 0;
+    return [reflection, metal ? 0 : id === 46 ? 1.4 : 1, id === 51 ? 1 : 0];
+  }
+
+  /* GLSL: declarations, the vertex shader's line, and gameLight(world normal, world position, toward the eye, sun
+     visibility), which returns the diffuse light and leaves the specular light in gameSpecular (tile.cs's GGX: Schlick
+     visibility with k = (rough + 1)^2 / 8, Fresnel on N.L, the distribution raised to 1 / 2.2) and the ambient light
+     in gameAmbientLight. Set first: gameF0, gameRough (at least 0.01), gameStrength (the specular map's green) and
+     gameAmbientScale. */
   const vertexHead = 'varying vec3 vGameWorld;\n';
   const vertexBody = `
     vec4 gameWorld = vec4(transformed, 1.);
@@ -99,10 +114,22 @@
     uniform sampler2D gameLights, gameCells, gameLists;
     uniform sampler3D gameGrid;
     uniform vec3 gameCellMin, gameCellCount, gameGridMin, gameGridMax, gameAmbient, gameShadowAmbient, gameShadowColour, gameSunColour, gameSunToward;
-    vec3 gameLight(vec3 n, vec3 p, float sunLit) {
+    uniform float gameSunSpecular;
+    vec3 gameF0, gameSpecular, gameAmbientLight;
+    float gameRough, gameStrength, gameAmbientScale;
+    vec3 gameGGX(vec3 n, vec3 l, vec3 v, float nl) {
+      float k = (gameRough + 1.) * (gameRough + 1.) / 8., a4 = pow(gameRough, 4.), nh = clamp(dot(n, normalize(l + v)), 0., 1.);
+      float d = a4 / (3.14159265 * pow(nh * nh * (a4 - 1.) + 1., 2.));
+      float visibility = .25 / ((nl * (1. - k) + k) * (clamp(dot(n, v), 0., 1.) * (1. - k) + k));
+      return (gameF0 + (1. - gameF0) * pow(1. - nl, 5.)) * visibility * pow(d, 1. / 2.2) * nl * gameStrength;
+    }
+    vec3 gameLight(vec3 n, vec3 p, vec3 v, float sunLit) {
       vec4 grid = texture(gameGrid, clamp((p - gameGridMin) / (gameGridMax - gameGridMin), 0., 1.));
-      vec3 light = mix(gameShadowAmbient, gameAmbient, sunLit) * (1. - grid.a) + grid.rgb;
-      light += gameSunColour * max(dot(n, gameSunToward), 0.) * mix(gameShadowColour, vec3(1.), sunLit);
+      gameAmbientLight = mix(gameShadowAmbient, gameAmbient, sunLit) * (1. - grid.a) + grid.rgb;
+      vec3 light = gameAmbientLight * gameAmbientScale, shade = mix(gameShadowColour, vec3(1.), sunLit);
+      float nl = max(dot(n, gameSunToward), 0.);
+      light += gameSunColour * nl * shade;
+      gameSpecular = gameSunColour * gameSunSpecular * gameGGX(n, gameSunToward, v, nl) * shade;
       ivec3 c = ivec3(floor((p - gameCellMin) / ${CELL}.));
       if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, ivec3(gameCellCount)))) return light;
       int cell = c.x + int(gameCellCount.x) * (c.y + int(gameCellCount.y) * c.z);
@@ -123,12 +150,17 @@
           float cosine = dot(-l, d.xyz);
           fade *= cosine > e.x ? (e.y > 0. ? clamp((cosine - e.x) / e.y, 0., 1.) : 1.) : 0.;
         }
-        light += b.rgb * max(dot(n, l), 0.) * fade;
+        float nl = max(dot(n, l), 0.);
+        light += b.rgb * nl * fade;
+        if (e.w > 0.) gameSpecular += b.rgb * e.w * gameGGX(n, l, v, nl) * fade;
       }
       return light;
     }
   `;
-  // In place of the Lambert shader's light: the game's, from the first directional light's shadow.
+  /* In place of the Lambert shader's light: the game's, from the first directional light's shadow, and the
+     material's (gameSpecularMap: red gloss, green strength; gameClass: materialClass) specular light and envmap
+     reflection: the cube (gameEnvmap, its faces as in the game's files, which start at the game's third mip) along
+     the reflection in game axes, at mip roughness^(1 / 2.2) x 10. */
   const fragmentBody = `
     #include <aomap_fragment>
     {
@@ -137,9 +169,29 @@
         if (receiveShadow) sunLit = getShadow(directionalShadowMap[0], directionalLightShadows[0].shadowMapSize,
           directionalLightShadows[0].shadowBias, directionalLightShadows[0].shadowRadius, vDirectionalShadowCoord[0]);
       #endif
-      reflectedLight.directDiffuse = diffuseColor.rgb * gameLight(inverseTransformDirection(normal, viewMatrix), vGameWorld, sunLit);
+      #ifdef USE_UV
+        vec4 specularTexel = texture2D(gameSpecularMap, vUv);
+      #else
+        vec4 specularTexel = texture2D(gameSpecularMap, vec2(.5));
+      #endif
+      vec3 n = inverseTransformDirection(normal, viewMatrix), v = normalize(cameraPosition - vGameWorld);
+      float rough = 1. - specularTexel.r * gameGloss;
+      gameRough = max(rough, .01);
+      gameStrength = specularTexel.g;
+      gameF0 = gameClass.x * diffuseColor.rgb;
+      gameAmbientScale = gameClass.y;
+      vec3 colour = diffuseColor.rgb * gameLight(n, vGameWorld, v, sunLit) + gameSpecular;
+      if (gameClass.x > 0.) {
+        vec3 r = reflect(-v, n), hue = min(clamp(gameAmbientLight, 0., 1.) + 1e-4, 1.);
+        vec3 seen = textureLod(gameEnvmap, vec3(r.x, r.y, -r.z), max(pow(max(rough, 0.), 1. / 2.2) * 10. - 2., 0.)).rgb;
+        seen *= hue / max(hue.r, max(hue.g, hue.b)) * specularTexel.g;
+        colour += gameClass.x < .7 ? seen : gameClass.z > 0. ? seen * diffuseColor.rgb : vec3(dot(seen, vec3(.21, .72, .07)));
+      }
+      reflectedLight.directDiffuse = colour;
       reflectedLight.indirectDiffuse = vec3(0.);
     }`;
+  const fragmentUniforms = 'uniform sampler2D gameSpecularMap;\nuniform samplerCube gameEnvmap;\nuniform vec3 gameClass;\nuniform float gameGloss;\n';
 
-  exports.DiaboticalLighting = {buildGrid, buildLights, nodeWeights, shader: {vertexHead, vertexBody, fragmentHead, fragmentBody}, CELL, WIDTH};
+  exports.DiaboticalLighting = {buildGrid, buildLights, nodeWeights, materialClass,
+    shader: {vertexHead, vertexBody, fragmentHead: fragmentUniforms + fragmentHead, fragmentBody}, CELL, WIDTH};
 })(typeof module !== 'undefined' ? module.exports : window);

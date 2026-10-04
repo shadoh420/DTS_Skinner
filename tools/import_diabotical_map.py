@@ -60,14 +60,18 @@ fades nothing. `order` (-10000 to 10000) orders them.
 Lights: `light...` entities by their `type` (see read_lights), measured in the game on a grey floor (runs 16 to 18):
 the game lights with point, spot and capsule lights (unshadowed), one sun (shadowed), an ambient and a shadow
 ambient colour, and a 3D ambient grid it builds from ambient nodes when the map loads (tile.cs.cso); its picture is
-that light times the texture's bytes, with no further curve.
+that light times the texture's bytes, with no further curve. Point, spot, capsule and sun lights (not diffuse ones) add
+GGX specular light and the material reflects the map's envmap (a cube in packs/textures_cubemaps.dbp, by default
+default_envmap), by the material's specular map (its map 2: red gloss, green strength) and material id (its map 3's
+red where not black, else its material_id): see static/diabotical-maps/lighting.js.
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
 map (props with their tints, decals, markers, liquids and lights: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
 terrain (heights in red, dirt mask in green; the index item's `terrain` says how to place it), the models the maps place in
 models.json with models/HASH.bin, and the materials of the maps and models in materials.json, with
-textures/HASH.png.
+textures/HASH.png (specular maps HASH-s.png, red and green), and the maps' envmaps in envmaps/NAME.png (the six faces of
+the cube's third mip, 256 square, side by side in D3D order: +x, -x, +y, -y, +z, -z).
 """
 import argparse
 import gzip
@@ -84,12 +88,12 @@ import numpy as np
 
 try:
     from tools.fbx_mesh import fbx_mesh
-    from tools.reflex_textures import decode_dds
+    from tools.reflex_textures import _dds, decode_dds
 except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
-    from reflex_textures import decode_dds
+    from reflex_textures import _dds, decode_dds
 
-FORMAT = 8  # Of the files written per map: maps imported with another are read again.
+FORMAT = 9  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -209,7 +213,8 @@ def colour(value, palette=None):
 def read_materials(packs):
     """{asset or material name: [(colour map path, uv_scale, shader file's folder, flags), ...]} from every pack's
     .assets and .shader files: every definition of a name, in the order read, as some are defined more than once.
-    Flags: cutout (alpha tested and two-sided, as foliage: its shadow shader is shadow_at_...), blend, hidden."""
+    Flags: cutout (alpha tested and two-sided, as foliage: its shadow shader is shadow_at_...), blend, hidden; and
+    for the tile shaders the specular map (map 2), id map (map 3) and material_id."""
     assets, shaders = {}, {}
     for pack in packs:
         for name in pack.files:
@@ -228,6 +233,10 @@ def read_materials(packs):
                     flags = dict(cutout=bool(re.search(r'shadow_at_|culling\s+off', stage)), blend=bool(re.search(r'blendfunc\s+blend', stage)),
                                  hidden=bool(re.search(r'visible\s+false', stage)), decal='tiledecal' in stage,
                                  accents=[colour(next(iter(re.findall(rf'pixel_shader_param\s+accent{n}\s+(\S+)', stage)), None)) for n in (1, 2, 3)])
+                    lit = re.search(r'pixel_shader\s+tile', stage) and 'tiledecal' not in stage
+                    found = re.search(r'\bmaterial_id\s+(\d+)', stage)
+                    flags.update(lit=bool(lit), spec=maps[2] if lit and len(maps) > 2 else None, ids=maps[3] if lit and len(maps) > 3 else None,
+                                 id=int(found.group(1)) if found else 0)
                     # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5;
                     # a tinted material's (tilemask) colour mask is its map 4: NAME#4.
                     for slot in (0, 3, 5) if 'tileter' in stage else (0, 4) if 'tilemask' in stage else (0,):
@@ -395,13 +404,16 @@ def placements(entities, assets):
 
 POINT, SUN = .335, .262  # Light per unit of colour x intensity on a white surface (runs 17, 18).
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
+SPECULAR = ('point', 'spot', 'capsule')  # tile.cs: diffuse lights (and no type: diffuse) add no specular light.
 
 
 def read_lights(entities):
     """A map's lights for the page (run 16 to 18 measurements, in page axes, as light on a white surface):
     {lights: [[kind (0 point, 1 spot, 2 capsule), x, y, z, dx, dy, dz, r, g, b, radius, inner radius, cos of the
-    cone's half angle, softness, length]], nodes: [[cubic, x, y, z, radius, r, g, b]], ambient, shadow_ambient,
-    shadow_colour: [r, g, b], sun: [dx, dy, dz, r, g, b] (the way its light travels) or None}.
+    cone's half angle, softness, length, specular scale]], nodes: [[cubic, x, y, z, radius, r, g, b]], ambient,
+    shadow_ambient, shadow_colour: [r, g, b], sun: [dx, dy, dz, r, g, b, specular scale] (the way its light travels)
+    or None, envmap, gloss}. The specular scale turns the colour back into colour x intensity, as tile.cs lights its
+    GGX specular (0 for diffuse lights); envmap and gloss are the global entity's (by default default_envmap, 1).
     Point lights (point, diffuse, or no type) are colour (hex taken as linear) x intensity (default 4) x 0.335 x N.L,
     fading from falloff (default 0.33) x radius to nothing at radius as ((radius - d) / (radius - inner))^2.2; spots
     take their `angle` as the whole cone and `softness` in cosines; a capsule is the segment from its position along
@@ -413,10 +425,13 @@ def read_lights(entities):
     hexes = lambda value, default=0xffffff: np.array([(default if colour(value) is None else colour(value)) >> s & 255 for s in (16, 8, 0)]) / 255
     number = lambda fields, key, default: next(iter(re.findall(r'-?\d*\.?\d+(?:e-?\d+)?', fields.get(key, ''))), None) or default
     ambient_level = lambda value: np.round(.426 * hexes(value, 0) ** .556, 4).tolist()
-    out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=[0, 0, 0], sun=None)
+    out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=[0, 0, 0], sun=None, envmap='default_envmap', gloss=1.0)
     for name, position, rotation, scale, fields in entities:
-        if name == 'global' and 'shadow_color' in fields:
-            out['shadow_colour'] = np.round(hexes(fields['shadow_color'], 0), 4).tolist()
+        if name == 'global':
+            if 'shadow_color' in fields:
+                out['shadow_colour'] = np.round(hexes(fields['shadow_color'], 0), 4).tolist()
+            out['envmap'] = fields.get('envmap', '').strip().lower() or out['envmap']
+            out['gloss'] = float(number(fields, 'gloss', out['gloss']))
         if not name.startswith('light'):
             continue
         kind, (x, y, z) = fields.get('type', '').strip().lower(), position
@@ -426,7 +441,7 @@ def read_lights(entities):
         travel = game_matrix((0, 0, 0), rotation, (1, 1, 1))[:3, 2] * (1, 1, -1)
         if kind == 'sun':
             if out['sun'] is None:
-                out['sun'] = np.round([*travel, *hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * SUN], 4).tolist()
+                out['sun'] = np.round([*travel, *hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * SUN, 1 / SUN], 4).tolist()
             continue
         radius = float(number(fields, 'radius', 200))
         if kind in ('ambient_node', 'cubic_ambient_node'):
@@ -435,7 +450,8 @@ def read_lights(entities):
             rgb = hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * POINT
             angle = np.radians(float(number(fields, 'angle', 60)))
             out['lights'].append([LIGHT_KINDS[kind], *np.round([x, y, -z, *travel, *rgb, radius, radius * min(1, max(0, float(number(fields, 'falloff', .33)))),
-                                  np.cos(angle / 2), float(number(fields, 'softness', 0)), float(number(fields, 'length', 0))], 4).tolist()])
+                                  np.cos(angle / 2), float(number(fields, 'softness', 0)), float(number(fields, 'length', 0)),
+                                  1 / POINT if kind in SPECULAR else 0], 4).tolist()])
     if out['shadow_ambient'] is None:
         out['shadow_ambient'] = out['ambient']
     return out
@@ -479,15 +495,54 @@ def material_textures(packs, names, materials, output, replace=False):
             if name.endswith(('.dds', '.png')):
                 where.setdefault(name, pack)
     (output / 'textures').mkdir(parents=True, exist_ok=True)
+    find = lambda path, folder: next((path + suffix for path in [path.lower().replace('/', '\\')] for path in (path, folder + '\\' + path.rsplit('\\', 1)[-1])
+                                      for suffix in ('.dds', '', '.png.dds') if path + suffix in where), None)
+    decoded = {}
+
+    def pixels(file):
+        if file not in decoded:
+            try:
+                decoded[file] = decode_dds(where[file].read(file)).convert('RGB')
+            except (OSError, ValueError):
+                decoded[file] = None
+        return decoded[file]
+
+    def surface(flags, folder):
+        """A lit material's specular map (red gloss, green strength: [r, g] when even, else a texture) and material
+        id: its id map's red (the commonest value; ponytail: the game reads it per pixel) where not 0, else its
+        material_id, else 40 (run 17's `default`, with no id map or material_id, is a mirror: its id reflects;
+        most blocks' id map, textures/metal.png, is 40 too)."""
+        if not flags.get('lit'):
+            return {}
+        file = flags.get('ids') and find(flags['ids'], folder)
+        ids = pixels(file) if file else None
+        values, counts = np.unique(np.asarray(ids)[..., 0], return_counts=True) if ids is not None else ([0], [1])
+        out = {'id': int(values[np.argmax(counts)]) or flags['id'] or 40}
+        file = flags.get('spec') and find(flags['spec'], folder)
+        image = pixels(file) if file else None
+        if image is None:
+            return out
+        rg = np.asarray(image)[..., :2]
+        if rg.max() == 0:
+            return out
+        if np.ptp(rg[..., 0]) <= 2 and np.ptp(rg[..., 1]) <= 2:
+            return out | {'spec': np.round(rg.reshape(-1, 2).mean(0) / 255, 3).tolist()}
+        target = output / 'textures' / f"{hashlib.sha256(where[file].read(file)).hexdigest()[:16]}-s.png"
+        if replace or not target.is_file():
+            image = image.copy()
+            if max(image.size) > TEXTURE_SIZE:
+                image.thumbnail((TEXTURE_SIZE, TEXTURE_SIZE))
+            image.save(target, 'PNG')
+        return out | {'spec': target.name}
+
     entries, missing = {}, []
     for name in sorted(names):
-        files = [(path + suffix, scale, flags) for path, scale, folder, flags in materials.get((name or 'default').lower().split(':')[0], [])
-                 for path in [path.lower().replace('/', '\\')] for path in (path, folder + '\\' + path.rsplit('\\', 1)[-1])
-                 for suffix in ('.dds', '', '.png.dds') if path + suffix in where]
+        files = [(found, scale, folder, flags) for path, scale, folder, flags in materials.get((name or 'default').lower().split(':')[0], [])
+                 for found in [find(path, folder)] if found]
         if not files:
             missing.append(name or 'default')
             continue
-        file, scale, flags = files[0]
+        file, scale, folder, flags = files[0]
         if flags['hidden']:
             entries[name] = dict(hidden=True)
             continue
@@ -506,8 +561,35 @@ def material_textures(packs, names, materials, output, replace=False):
             image.save(data, 'PNG')
             target.write_bytes(data.getvalue())
         entries[name] = (dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend') if flags[key]} |
-                         ({'accents': flags['accents']} if any(a is not None for a in flags['accents']) else {}))
+                         ({'accents': flags['accents']} if any(a is not None for a in flags['accents']) else {}) |
+                         ({} if '#' in name else surface(flags, folder)))
     return entries, sorted(set(missing))
+
+
+def write_envmaps(pack, names, output, replace=False):
+    """Each named envmap (textures/cubemaps/NAME.dds in `pack`, textures_cubemaps.dbp: BC7 cubes, 1024 square with
+    every mip) as envmaps/NAME.png: its third mip's six faces side by side. Returns the names written or found."""
+    done = []
+    (output / 'envmaps').mkdir(parents=True, exist_ok=True)
+    from PIL import Image
+    for name in sorted(names):
+        file, target = f'textures\\cubemaps\\{name}.dds', output / 'envmaps' / f'{map_id(name)}.png'
+        if file not in pack.files:
+            continue
+        if replace or not target.is_file():
+            raw = pack.read(file)
+            height, width, _, _, mips = struct.unpack_from('<5I', raw, 12)
+            if raw[84:88] != b'DX10' or struct.unpack_from('<I', raw, 128)[0] not in (98, 99) or mips < 3:
+                continue
+            sizes = [max(1, (width >> m) + 3 >> 2) * max(1, (height >> m) + 3 >> 2) * 16 for m in range(mips)]
+            faces = [Image.open(io.BytesIO(_dds(98, width >> 2, height >> 2, raw[148 + face * sum(sizes) + sizes[0] + sizes[1]:]))).convert('RGB')
+                     for face in range(6)]
+            strip = Image.new('RGB', (faces[0].width * 6, faces[0].height))
+            for face, image in enumerate(faces):
+                strip.paste(image, (face * image.width, 0))
+            strip.save(target, 'PNG')
+        done.append(name)
+    return done
 
 
 def convert_models(packs, paths, materials, output, replace=False, previous=None):
@@ -565,6 +647,8 @@ def import_maps(game, output, replace=False, extra=None):
         raise ValueError('No packs/maps.dbp here. Enter the Diabotical folder.')
     packs = [Pack(path) for path in sorted((game / 'packs').glob('*.dbp')) if not path.name.startswith('audio')]
     stock = next(pack for pack in packs if pack.path.name == 'maps.dbp')
+    cubes = next((pack for pack in packs if pack.path.name == 'textures_cubemaps.dbp'), None)
+    has_cube = lambda name: cubes is not None and f'textures\\cubemaps\\{name}.dds' in cubes.files
     # A map's reader takes the suffix of the file to read beside it: '.rbe', '-h.png'...
     sources = [(name.rsplit('\\', 1)[-1][:-4], 'Diabotical', lambda suffix, name=name[:-4]: stock.read(name + suffix))
                for name in sorted(stock.files) if name.endswith('.rbe')]
@@ -591,6 +675,8 @@ def import_maps(game, output, replace=False, extra=None):
             props, tints, markers, liquids, decals = placements(parsed['entities'], assets)
             heights, terrain = read_terrain(parsed['entities'], read)
             lights = read_lights(parsed['entities'])
+            if not has_cube(lights['envmap']):  # Not in the game's files: its default.
+                lights['envmap'] = 'default_envmap' if has_cube('default_envmap') else None
         except (OSError, ValueError, EOFError, struct.error) as exc:
             result['failed'][name] = str(exc)
             index.pop(ident, None)
@@ -624,13 +710,16 @@ def import_maps(game, output, replace=False, extra=None):
             if old:
                 (output / 'maps' / old).unlink(missing_ok=True)
     found = read_materials(packs)
-    keys, decal_materials = set(), set()
+    keys, decal_materials, envmaps = set(), set(), set()
     for item in index.values():
         with open(output / 'maps' / item['entities'], 'rb') as file:
             length, = struct.unpack('<I', file.read(4))
             head = json.loads(file.read(length))
             keys |= {entry[0] for entry in head['props']}
             decal_materials |= {entry[0] for entry in head['decals']}
+            envmaps.add(head['lights']['envmap'])
+    if cubes is not None:
+        write_envmaps(cubes, envmaps - {None}, output, replace)
     models_path = output / 'models.json'
     previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
     models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous)

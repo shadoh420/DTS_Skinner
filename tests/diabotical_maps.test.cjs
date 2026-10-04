@@ -105,15 +105,18 @@ test('an entities file gives each prop group its matrices and tints, and the mar
 });
 
 test('lights are listed per cell and ambient nodes make a grid', () => {
-  const {buildLights, buildGrid, nodeWeights, CELL, WIDTH} = require('../static/diabotical-maps/lighting.js').DiaboticalLighting;
-  // A point light of radius 100 at the origin and a capsule from x 1000 along +x for 300, radius 50.
-  const built = buildLights([[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 100, 33, 0, 0, 0], [2, 1000, 0, 0, 1, 0, 0, 1, 1, 1, 50, 25, 0, 0, 300]]);
+  const {buildLights, buildGrid, nodeWeights, materialClass, CELL, WIDTH} = require('../static/diabotical-maps/lighting.js').DiaboticalLighting;
+  // A diffuse point light of radius 100 at the origin and a capsule from x 1000 along +x for 300, radius 50, its
+  // specular light 3 times its colour.
+  const built = buildLights([[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 100, 33, 0, 0, 0, 0], [2, 1000, 0, 0, 1, 0, 0, 1, 1, 1, 50, 25, 0, 0, 300, 3]]);
   assert.deepEqual(built.min, [-100, -100, -100]);
   assert.deepEqual(built.size, [Math.ceil(1450 / CELL), 1, 1]);
   const list = cell => { const [at, count] = built.cells.slice(cell * 2, cell * 2 + 2); return Array.from(built.lists.slice(at, at + count)); };
   assert.deepEqual([0, 1, 2, 3, 4, 5].map(list), [[0], [], [], [], [1], [1]]);
   assert.equal(built.cells.length % (WIDTH * 2), 0);
-  assert.deepEqual(Array.from(built.rows.slice(16, 32)), [1000, 0, 0, 50, 1, 1, 1, 2, 1, 0, 0, 25, 0, 0, 300, 0]);
+  assert.deepEqual(Array.from(built.rows.slice(16, 32)), [1000, 0, 0, 50, 1, 1, 1, 2, 1, 0, 0, 25, 0, 0, 300, 3]);
+  // Material ids: most blocks' 40 reflect half, metals reflect whole and take no ambient, 46 takes 1.4 times it.
+  assert.deepEqual([0, 40, 46, 51, 60, 103].map(materialClass), [[0, 1, 0], [.5, 1, 0], [.5, 1.4, 0], [1, 0, 1], [1, 0, 0], [0, 1, 0]]);
   // A sphere's share fades to its radius, its colour by 0.74 of it; a cubic node is whole to 0.875 and gone at 1.55.
   assert.deepEqual([nodeWeights(0, 0), nodeWeights(0, 1)], [[1, 1], [0, 0]]);
   assert.equal(nodeWeights(0, .74)[1], 0);

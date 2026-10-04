@@ -137,6 +137,9 @@ def install(root, maps):
                                          # A decal's texture keeps its alpha.
                                          b'arrow\n{\n {\n\t\tmap models/props/quad_d.png\n\t\tpixel_shader tiledecal.ps.cso\n }\n}\n'),
         'models\\props\\quad_d.png.dds': dds((10, 200, 10)),
+        # Its specular map (map 2: red gloss, green strength) is even, so a constant; its id map's red, the material id.
+        'models\\props\\s.png.dds': dds((0, 255, 0)),
+        'models\\props\\id.png.dds': dds((255, 0, 0)),
     }))
     (root / 'packs/audio.dbp').write_bytes(b'not a pack: audio packs are not read')
 
@@ -224,6 +227,9 @@ class DiaboticalMapsTest(unittest.TestCase):
             self.assertEqual(materials['arrow']['texture'][-6:], '-a.png')
             self.assertEqual(materials['props/tinted']['accents'], [0xff0000, None, None])
             self.assertIn('texture', materials['props/tinted#4'])
+            self.assertEqual((materials['props/tinted']['spec'], materials['props/tinted']['id']), ([0, 1], 255))
+            self.assertFalse({'spec', 'id'} & (set(materials['stone']) | set(materials['arrow']) | set(materials['props/tinted#4'])))
+            self.assertIsNone(head['lights']['envmap'])  # No textures_cubemaps.dbp here.
             self.assertEqual(head['markers'], [['hpt', 5, 6, 7]])
             self.assertEqual(np.frombuffer(raw, '<f4', 12, 4 + length)[[3, 7, 11]].tolist(), [0, 40, 0])
             # Terrain: heights in red and dirt in green (a texel shared by the four vertices at its corners); its
@@ -324,7 +330,7 @@ class DiaboticalMapsTest(unittest.TestCase):
         from tools.import_diabotical_map import read_lights, POINT, SUN
         quarter = np.pi / 2
         out = read_lights([
-            ('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'shadow_color': '404040'}),
+            ('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'shadow_color': '404040', 'gloss': '0.5'}),
             ('light_ambient', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'ambient', 'color': '404040'}),
             ('light_sun', (0, 0, 0), (quarter, 0, 0), (1, 1, 1), {'type': 'sun', 'color': 'ff0000', 'intensity': '2'}),
             ('light_lamp', (10, 20, 30), (0, 0, 0), (1, 1, 1), {'color': '808080', 'radius': '200'}),  # No type, intensity, falloff.
@@ -338,13 +344,17 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertAlmostEqual(out['ambient'][0], .426 * .251 ** .556, 3)
         # The sun travels along its local +z (pitch 90: straight down), red x intensity x 0.262.
         self.assertEqual(np.round(out['sun'][:3], 6).tolist(), [0, -1, 0])
-        self.assertEqual(out['sun'][3:], [round(2 * SUN, 4), 0, 0])
+        self.assertEqual(out['sun'][3:], [round(2 * SUN, 4), 0, 0, round(1 / SUN, 4)])  # Then its specular scale.
+        self.assertEqual((out['envmap'], out['gloss']), ('default_envmap', .5))
         lamp, spot, tube = out['lights']
         # Hex linear, intensity 4 by default, page z mirrored, falloff 0.33 by default.
         self.assertEqual(lamp[:4] + lamp[7:12], [0, 10, 20, -30, *[round(128 / 255 * 4 * POINT, 4)] * 3, 200, 66])
         self.assertEqual((spot[0], spot[12], spot[13], spot[11], np.round(spot[4:7], 6).tolist()), (1, round(np.cos(np.radians(30)), 4), .1, 100, [0, -1, 0]))
         self.assertEqual((tube[0], tube[14], np.round(tube[4:7], 6).tolist()), (2, 200, [0, 0, -1]))  # Local +z, mirrored.
         self.assertEqual(out['nodes'], [[1, 1, 2, -3, 200, 0, 0, round(2.11 * (128 / 255) ** 2.2, 4)]])
+        # Diffuse lights (and those of no type) add no specular light; the others turn their colour back into
+        # colour x intensity for it.
+        self.assertEqual([lamp[15], spot[15], tube[15]], [0, 0, round(1 / POINT, 4)])
 
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds
