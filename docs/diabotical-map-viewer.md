@@ -1,7 +1,7 @@
 # Diabotical map viewer
 
-Opens Diabotical maps from Skinner for a free-flight look at their blocks and
-props, drawn in the textures of their materials, with markers for spawns and
+Opens Diabotical maps from Skinner for a free-flight look at their blocks,
+props and heightmap terrain, drawn in the textures of their materials, with markers for spawns and
 pickups and liquids as see-through boxes. No decals, lights or baked lighting,
 one fixed sun, and no editing. Reflex, Q3, T1
 and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.md),
@@ -15,7 +15,7 @@ and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.m
 `packs/maps.dbp` and the maps made in the game's editor from
 `%APPDATA%/Diabotical/Maps`, into `local-data/diabotical-maps` (ignored by
 Git). The game folder is only read. A whole install takes about five minutes:
-174 maps (about 340 MB of blocks and entities), the 6,000 models they place
+174 maps (about 340 MB of blocks and entities, 5 MB of terrain), the 6,000 models they place
 (300 MB) and the textures of their materials (about 120 MB). Maps already imported
 are skipped unless their file changed or **Re-import existing maps** is
 ticked. The five oldest maps (the menu maps and `temple_islands`, version 21)
@@ -65,6 +65,16 @@ left (`static/diabotical-maps/blocks.js`).
   invisible ones) and materials marked `visible false` are left out; foliage
   (shadow shader `shadow_at_…` or `culling off`) is cut out by its texture's
   alpha and two-sided.
+- **Terrain.** A map with a `terrain` entity has a heightmap beside it
+  (`NAME-h.png`, 512 × 512, the height in red) and a dirt mask (`NAME-b.png`).
+  Each pixel is a vertex 40 units from the next, pixel 256 at x = z = 0, its
+  height the entity's `offset_y` + 8 × red; the entity's own position is not
+  used. It is drawn as the game's terrain shader (`tileter.ps`) draws it: the
+  material's first map on flat ground, mixed with its sixth by the dirt mask,
+  and its fourth, four times larger, where the slope is steeper than about 37°
+  (normal y below 0.8, blended up to 0.85). The material is the entity's
+  `material` or `shader`, else `core_ter` (grass, rock cliffs). The ground
+  texture repeats every 100 units or so, judged by eye.
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes; `liquid_*` entities boxes of their scale, centred on them.
@@ -115,11 +125,24 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   y -900, black and white every 100 units: from 260 and 860 units away the
   water meets the column at y -270, the top of the template's ocean (y -520,
   500 tall) as a box centred on its entity.
+- Terrain: the game builds the terrain's mesh itself (its vertex shader
+  `tilestaticter.vs` reads no heightmap), so the mapping was fitted to the
+  stock maps: the grass, flowers and bushes standing on the terrain in 64 maps
+  (4,444 props, most of them on blocks). With height = `offset_y` + k × red,
+  457 stand within 3 units of the surface at k = 8 against 100 to 230 at 7.9 or
+  8.1; x and z map to column and row without a flip or a swap, centred on pixel
+  256 (to within half a cell: the fit is flat there). The pixel shader
+  (disassembled with the game's own `d3dcompiler_47.dll`) gave the texture
+  slots, repeats and slope blend. In run 9's screenshot the floor's side shows
+  less above the grass than the page draws, so the ground may be up to one
+  step (8 units) higher in the game.
 
 ## Not done yet
 
-Decals, lights, billboards, particles and the heightmap terrain (`terrain`
-entity, the map's `-h.png`), props' `color` tints, the game's choice among a
+Decals, lights, billboards, particles, props' `color` tints, the terrain's
+exact texture repeat and height (one step), its normal maps and the fields
+of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
+height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
 prop materials not found (flat colours), water

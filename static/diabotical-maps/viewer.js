@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const storageKey = 'skinner.diaboticalmaps';
-  const settings = {fov: 100, invertX: false, invertY: false, props: true, markers: true};
+  const settings = {fov: 100, invertX: false, invertY: false, props: true, markers: true, terrain: true};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -36,28 +36,31 @@ window.addEventListener('DOMContentLoaded', async () => {
     return new THREE.Color().setHSL((hash >>> 0) % 360 / 360, .25, .55);
   }
   const loader = new THREE.TextureLoader(), textures = new Map(), materials = new Map();
+  function texture(file) {
+    if (!textures.has(file)) {
+      const made = loader.load(data + 'textures/' + file, undefined, undefined, () => { missing++; if (ready) showReady(); });
+      made.wrapS = made.wrapT = THREE.RepeatWrapping;
+      made.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      textures.set(file, made);
+    }
+    return textures.get(file);
+  }
   function material(name, entry) {
     if (materials.has(name)) return materials.get(name);
     const side = THREE.FrontSide;
     let made;
     if (!entry || !entry.texture) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
     else {
-      if (!textures.has(entry.texture)) {
-        const texture = loader.load(data + 'textures/' + entry.texture, undefined, undefined, () => { missing++; if (ready) showReady(); });
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        textures.set(entry.texture, texture);
-      }
       // Foliage and the like are cut out by their texture's alpha and seen from both sides.
-      made = new THREE.MeshLambertMaterial({map: textures.get(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
+      made = new THREE.MeshLambertMaterial({map: texture(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
         alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
     }
     materials.set(name, made);
     return made;
   }
 
-  const layers = {props: new THREE.Group(), markers: new THREE.Group()};
-  scene.add(layers.props, layers.markers);
+  const layers = {props: new THREE.Group(), markers: new THREE.Group(), terrain: new THREE.Group()};
+  scene.add(layers.props, layers.markers, layers.terrain);
   // Markers for what the game draws by itself: spawns, pickups, jump pads, teleporters, flags.
   const MARKERS = [[/^spawn/, 0x3fd06a, 'cone'], [/^hpt|^health/, 0x8fe04a], [/^armor/, 0xf0a020], [/^weapon/, 0xd040e0, 'box'],
     [/^ammo/, 0xa080c0, 'box'], [/^(jumppad|jp$)/, 0x30d0f0, 'disc'], [/^(teleport|tpexit)/, 0x4060ff, 'disc'], [/^flag/, 0xff4040, 'cone'],
@@ -135,6 +138,52 @@ window.addEventListener('DOMContentLoaded', async () => {
     return {drawn, absent};
   }
 
+  // The heightmap terrain: a vertex per pixel of its PNG (height in red, dirt mask in green), drawn as the game's
+  // tileter.ps: ground texture where flat, mixed with dirt by the mask, the cliff texture (4x larger) on slopes.
+  const GROUND_REPEAT = .4;  // Ground tiles per 40-unit cell: one every 100 units, by eye against a game screenshot.
+  async function addTerrain(terrain, entries) {
+    const image = await createImageBitmap(await get(data + 'maps/' + terrain.file).then(r => r.blob()), {colorSpaceConversion: 'none', premultiplyAlpha: 'none'});
+    const {width, height} = image, context = Object.assign(document.createElement('canvas'), {width, height}).getContext('2d');
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, width, height).data, [ox, oy, oz] = terrain.offset;
+    const positions = new Float32Array(width * height * 3), uvs = new Float32Array(width * height * 2), dirt = new Float32Array(width * height);
+    for (let row = 0, i = 0; row < height; row++) {
+      for (let column = 0; column < width; column++, i++) {
+        positions.set([(column - width / 2) * terrain.cell + ox, oy + 8 * terrain.scale * pixels[i * 4], -((row - height / 2) * terrain.cell + oz)], i * 3);
+        uvs.set([column * GROUND_REPEAT, row * GROUND_REPEAT], i * 2);
+        dirt[i] = pixels[i * 4 + 1] / 255;
+      }
+    }
+    const index = new Uint32Array((width - 1) * (height - 1) * 6);
+    for (let row = 0, at = 0; row < height - 1; row++) {
+      for (let column = 0; column < width - 1; column++) {
+        const a = row * width + column, b = a + width;  // b is the next row: toward -z on the page, so (a, a + 1, b) faces up.
+        index.set([a, a + 1, b, a + 1, b + 1, b], at);
+        at += 6;
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geometry.setAttribute('dirt', new THREE.BufferAttribute(dirt, 1));
+    geometry.setIndex(new THREE.BufferAttribute(index, 1));
+    geometry.computeVertexNormals();
+    const name = terrain.material, ground = entries[name], made = new THREE.MeshLambertMaterial(
+      ground && ground.texture ? {map: texture(ground.texture)} : {color: flatColour(name)});
+    if (ground && ground.texture) {
+      const slot = number => texture((entries[`${name}#${number}`] || ground).texture);
+      made.onBeforeCompile = shader => {
+        Object.assign(shader.uniforms, {cliffMap: {value: slot(3)}, dirtMap: {value: slot(5)}});
+        shader.vertexShader = 'attribute float dirt;\nvarying float vDirt, vUp;\n' +
+          shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvDirt = dirt; vUp = abs(normal.y);');
+        shader.fragmentShader = 'uniform sampler2D cliffMap, dirtMap;\nvarying float vDirt, vUp;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+          vec3 level = mix(texture2D(map, vUv).rgb, texture2D(dirtMap, vUv).rgb, vDirt), cliff = texture2D(cliffMap, vUv * .25).rgb;
+          diffuseColor.rgb *= mix(cliff, level, clamp(1. - 20. * (.85 - vUp), 0., 1.));`);
+      };
+    }
+    layers.terrain.add(new THREE.Mesh(geometry, made));
+  }
+
   function showNotes() {
     if (!map) return;
     const parts = [`${map.blocks.toLocaleString()} blocks drawn, map version ${map.version}${map.author ? `, by ${map.author}` : ''}`];
@@ -145,9 +194,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('notes').after(Object.assign(document.createElement('span'), {id: 'mapNotes'}));
 
   function applySettings() {
-    for (const id of ['invertX', 'invertY', 'props', 'markers']) $(id).checked = settings[id];
-    layers.props.visible = settings.props;
-    layers.markers.visible = settings.markers;
+    for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain']) $(id).checked = settings[id];
+    for (const id of ['props', 'markers', 'terrain']) layers[id].visible = settings[id];
     $('fov').value = settings.fov;
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
@@ -165,7 +213,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 100)); save(); applySettings(); });
-  for (const id of ['invertX', 'invertY', 'props', 'markers']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
   $('reset').addEventListener('click', () => { speed = 600; showStart(); if (ready) showReady(); });
   new ResizeObserver(applySettings).observe(canvas.parentElement);
 
@@ -264,6 +312,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!bounds.isEmpty()) start = {min: bounds.min, max: bounds.max};
     applySettings();
     showStart();
+    if (map.terrain) {
+      showStatus('Loading terrain…');
+      await addTerrain(map.terrain, entries);
+    }
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);

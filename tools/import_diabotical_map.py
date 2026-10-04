@@ -29,6 +29,13 @@ MATERIAL }, or a dynamic one, built of 40-unit cells from the entity on (its sca
 dynamic_rule blocks pick: { channel N, if CONDITION (on the cell's offset_left/right/bottom/top/front/back), select
 or pick A,B,... }, the last rule that holds in each channel wins. A model PATH_flipx is PATH mirrored in x.
 
+Terrain: a map with a `terrain` entity has a heightmap beside it, NAME-h.png (512 x 512, height in red), and
+NAME-b.png (its dirt mask in red). Pixel (column, row) is the vertex at x = (column - 256) * 40, z = (row - 256) * 40
+in entity coordinates, y = offset_y + 8 * red (fitted to the grass and flowers standing on it in 64 stock maps; the
+entity's own position is not used). Its material (the entity's material or shader, else core_ter) is drawn by
+tileter.ps: map 0 where flat, mixed with map 5 by the dirt mask, map 3 on slopes (normal y below 0.8, blended to
+0.85).
+
 Materials: an asset (scripts/*.assets: asset NAME { type surface_material material MATERIAL }) names a material,
 defined in a .shader file (NAME { { map colour, map normal, ...  uv_scale s } }). The page draws a face with the
 material's first map, its texture repeating every 40 / s units, as the export's texture coordinates do. A name
@@ -37,7 +44,8 @@ for black: its black blocks have models_theme.dbp's uv_scale 0.5, not scripts.db
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
-map (props, markers and liquids: static/diabotical-maps/entities.js reads it), the models the maps place in
+map (props, markers and liquids: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
+terrain (heights in red, dirt mask in green; the index item's `terrain` says how to place it), the models the maps place in
 models.json with models/HASH.bin, and the materials of the maps and models in materials.json, with
 textures/HASH.png.
 """
@@ -184,12 +192,15 @@ def read_materials(packs):
                         assets.setdefault(asset.lower(), found.group(1).lower())
             else:
                 for shader, stage in SHADER.findall(text):
-                    found = re.search(r'\bmap\s+(\S+)', stage)
+                    maps = re.findall(r'\bmap\s+(\S+)', stage)
                     scale = re.search(r'\buv_scale\s+([-\d.]+)', stage)
                     flags = dict(cutout=bool(re.search(r'shadow_at_|culling\s+off', stage)), blend=bool(re.search(r'blendfunc\s+blend', stage)),
                                  hidden=bool(re.search(r'visible\s+false', stage)))
-                    if found:
-                        shaders.setdefault(shader.lower(), []).append((found.group(1), float(scale.group(1)) if scale else 1.0, name.rsplit('\\', 1)[0], flags))
+                    # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5.
+                    for slot in (0, 3, 5) if 'tileter' in stage else (0,):
+                        if slot < len(maps):
+                            shaders.setdefault(shader.lower() + (f'#{slot}' if slot else ''), []).append(
+                                (maps[slot], float(scale.group(1)) if scale else 1.0, name.rsplit('\\', 1)[0], flags))
     return {name: shaders[material] for name, material in assets.items() if material in shaders} | shaders
 
 
@@ -307,6 +318,30 @@ def placements(entities, assets):
     return {key: np.array(value, np.float32) for key, value in props.items()}, markers, liquids
 
 
+def read_terrain(entities, read):
+    """The map's heightmap terrain, if it has a `terrain` entity and a NAME-h.png (`read(suffix)` reads the file
+    beside the map): (PNG of the heights in red and the dirt mask, NAME-b.png, in green, {offset, cell, scale,
+    material}). A vertex per pixel: (column - w/2, row - h/2) * cell from the offset in x and z, y = offset y + 8 *
+    red * scale (scale_y; one map, a guess)."""
+    from PIL import Image
+    fields = next((fields for name, *_, fields in entities if name == 'terrain'), None)
+    if fields is None:
+        return None, None
+    try:
+        heights = Image.open(io.BytesIO(read('-h.png'))).convert('RGB')
+    except (OSError, KeyError):
+        return None, None
+    try:
+        mask = Image.open(io.BytesIO(read('-b.png'))).convert('RGB').getchannel('R').resize(heights.size)
+    except (OSError, KeyError):
+        mask = Image.new('L', heights.size)
+    data = io.BytesIO()
+    Image.merge('RGB', (heights.getchannel('R'), mask, Image.new('L', heights.size))).save(data, 'PNG')
+    number = lambda key, default: float(fields.get(key) or default)
+    return data.getvalue(), dict(offset=[number('offset_x', 0), number('offset_y', 0), number('offset_z', 0)], cell=number('cell_size', 40),
+                                 scale=number('scale_y', 1), material=(fields.get('material') or fields.get('shader') or 'core_ter').lower())
+
+
 def material_textures(packs, names, materials, output, replace=False):
     """Each named material's texture (scaled to TEXTURE_SIZE at most) and scale for materials.json; the names
     with no material or texture in the game files. A name with a variant (metalwall_heat01:3) is drawn as its
@@ -404,26 +439,31 @@ def import_maps(game, output, replace=False, extra=None):
         raise ValueError('No packs/maps.dbp here. Enter the Diabotical folder.')
     packs = [Pack(path) for path in sorted((game / 'packs').glob('*.dbp')) if not path.name.startswith('audio')]
     stock = next(pack for pack in packs if pack.path.name == 'maps.dbp')
-    sources = [(name.rsplit('\\', 1)[-1][:-4], 'Diabotical', lambda name=name: stock.read(name))
+    # A map's reader takes the suffix of the file to read beside it: '.rbe', '-h.png'...
+    sources = [(name.rsplit('\\', 1)[-1][:-4], 'Diabotical', lambda suffix, name=name[:-4]: stock.read(name + suffix))
                for name in sorted(stock.files) if name.endswith('.rbe')]
-    sources += [(path.stem, 'Your maps', path.read_bytes) for path in (user_maps() if extra is None else extra)]
+    sources += [(path.stem, 'Your maps', lambda suffix, path=path: path.with_name(path.stem + suffix).read_bytes())
+                for path in (user_maps() if extra is None else extra)]
     (output / 'maps').mkdir(parents=True, exist_ok=True)
     index_path = output / 'index.json'
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}
+    files = lambda item: [item.get('file'), item.get('entities'), (item.get('terrain') or {}).get('file')]
     result = dict(imported=[], skipped=[], failed={}, untextured=[], unconverted=[])
     assets = read_assets(packs)
     for name, group, read in sources:
         ident = map_id(name if group == 'Diabotical' else 'user__' + name)
         try:
-            raw = read()
+            raw = read('.rbe')
             digest = hashlib.sha256(raw).hexdigest()[:12]
-            if not replace and index.get(ident, {}).get('hash') == digest and all(
-                    (output / 'maps' / index[ident].get(key, '-')).is_file() for key in ('file', 'entities')):
+            # Maps imported before terrain was read (no terrain key) are read again.
+            if not replace and index.get(ident, {}).get('hash') == digest and 'terrain' in index[ident] and all(
+                    (output / 'maps' / file).is_file() for file in files(index[ident]) if file):
                 result['skipped'].append(name)
                 continue
             parsed = read_map(raw)
             blocks = visible_blocks(parsed['blocks'])
             props, markers, liquids = placements(parsed['entities'], assets)
+            heights, terrain = read_terrain(parsed['entities'], read)
         except (OSError, ValueError, EOFError, struct.error) as exc:
             result['failed'][name] = str(exc)
             index.pop(ident, None)
@@ -434,20 +474,25 @@ def import_maps(game, output, replace=False, extra=None):
         placed = struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values())
         # Named by content: served as immutable, and a newer import can place the same map's props differently.
         file, entities = f'{ident}-{digest}.bin', f'{ident}-{hashlib.sha256(placed).hexdigest()[:12]}.ent'
-        for old in (index.get(ident, {}).get(key) for key in ('file', 'entities')):
-            if old and old not in (file, entities):
+        if terrain:
+            terrain['file'] = f'{ident}-{hashlib.sha256(heights).hexdigest()[:12]}.png'
+        item = dict(id=ident, name=name, group=group, file=file, entities=entities, terrain=terrain, hash=digest, version=parsed['version'],
+                    author=parsed['author'], materials=parsed['materials'], blocks=len(blocks))
+        for old in files(index.get(ident, {})):
+            if old and old not in files(item):
                 (output / 'maps' / old).unlink(missing_ok=True)
         (output / 'maps' / file).write_bytes(blocks.tobytes())
         (output / 'maps' / entities).write_bytes(placed)
-        index[ident] = dict(id=ident, name=name, group=group, file=file, entities=entities, hash=digest, version=parsed['version'],
-                            author=parsed['author'], materials=parsed['materials'], blocks=len(blocks))
+        if terrain:
+            (output / 'maps' / terrain['file']).write_bytes(heights)
+        index[ident] = item
         result['imported'].append(name)
     # Maps since deleted from the game or the editor's folder leave the list.
     present = {map_id(name if group == 'Diabotical' else 'user__' + name) for name, group, _ in sources}
     for ident in [ident for ident in index if ident not in present]:
-        gone = index.pop(ident)
-        for key in ('file', 'entities'):
-            (output / 'maps' / gone.get(key, '-')).unlink(missing_ok=True)
+        for old in files(index.pop(ident)):
+            if old:
+                (output / 'maps' / old).unlink(missing_ok=True)
     found = read_materials(packs)
     keys = set()
     for item in index.values():
@@ -459,7 +504,9 @@ def import_maps(game, output, replace=False, extra=None):
     models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous)
     models_path.write_text(json.dumps(models, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     used = ({name for item in index.values() for name in item['materials']} | {key.split('|')[1] for key in keys if key.split('|')[1]} |
-            {name for model in models.values() for name, _ in model['groups']})
+            {name for model in models.values() for name, _ in model['groups']} |
+            {name for item in index.values() if item.get('terrain') for name in (item['terrain']['material'], *(
+                item['terrain']['material'] + slot for slot in ('#3', '#5') if item['terrain']['material'] + slot in found))})
     materials, result['untextured'] = material_textures(packs, used, found, output, replace)
     (output / 'materials.json').write_text(json.dumps(materials, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     temporary = index_path.with_suffix('.tmp')

@@ -113,6 +113,11 @@ def install(root, maps):
     (root / 'packs/textures.dbp').write_bytes(dbp({
         'textures\\walk\\colours\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/walk/stone_d.png\n\t\tmap textures/flat_normal.png\n\t\tuv_scale 0.125\n }\n}\n',
         'textures\\walk\\colours\\stone_d.png.dds': dds((200, 100, 50)),
+        # A terrain material: maps 0, 3 and 5 are its ground, cliff and dirt.
+        'textures\\ter.shader': b'core_ter\n{\n {\n\t\tmap textures/ter_d.png\n\t\tmap n.png\n\t\tmap black.png\n\t\tmap textures/cliff_d.png\n'
+                                b'\t\tmap n.png\n\t\tmap textures/ter_d.png\n\t\tpixel_shader tileter.ps.cso\n }\n}\n',
+        'textures\\ter_d.png.dds': dds((0, 120, 0)),
+        'textures\\cliff_d.png.dds': dds((90, 90, 90)),
     }))
     (root / 'packs/zz_late.dbp').write_bytes(dbp({
         'zz\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/late_d.png\n\t\tuv_scale 0.75\n }\n}\n',
@@ -168,7 +173,13 @@ class DiaboticalMapsTest(unittest.TestCase):
                      ('prop_c', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/gone'}), ('hpt1', (5, 6, 7), (0, 0, 0), (1, 1, 1), {})]
             install(root / 'game', {'walk': rbe([(0, 0, 0, 1, 0, CUBE), (1, 0, 0, 1, 0, (2, 2, 2, 2, 0, 0))], entities=props), 'old menu': rbe([], version=21)})
             mine = root / 'Mine.rbe'
-            mine.write_bytes(rbe([(0, 0, 0, 3, 0, CUBE)], materials=('default', 'gone')))
+            mine.write_bytes(rbe([(0, 0, 0, 3, 0, CUBE)], materials=('default', 'gone'),
+                                 entities=[('terrain', (500, 0, 0), (0, 0, 0), (1, 1, 1), {'offset_y': '-1070'})]))
+            from PIL import Image
+            heights = Image.new('RGBA', (4, 4), (0, 0, 0, 255))
+            heights.putpixel((3, 1), (134, 0, 0, 255))
+            heights.save(root / 'Mine-h.png')
+            Image.new('RGBA', (4, 4), (255, 0, 0, 255)).save(root / 'Mine-b.png')
             result = import_maps(root / 'game', root / 'pack', extra=[mine])
             self.assertEqual((result['imported'], result['skipped']), (['walk', 'Mine'], []))
             self.assertEqual(result['failed'], {'old menu': 'map version 21 is not read yet'})
@@ -182,7 +193,6 @@ class DiaboticalMapsTest(unittest.TestCase):
             # the game does, and stone:2 is a variant of it.
             self.assertEqual(materials['stone']['scale'], .125)
             self.assertEqual(materials['stone:2'], materials['stone'])
-            from PIL import Image
             with Image.open(root / 'pack/textures' / materials['stone']['texture']) as image:
                 self.assertLess(max(abs(a - b) for a, b in zip(image.getpixel((4, 4)), (200, 100, 50))), 8)  # DXT1 rounds to 5:6:5.
             # Props: the model converted once, its own material found in the .shader above it (two-sided, cut out).
@@ -198,6 +208,15 @@ class DiaboticalMapsTest(unittest.TestCase):
             self.assertEqual(head['props'], [['props/sub/quad|stone_floor|', 1], ['props/sub/quad||', 1], ['props/gone||', 1]])
             self.assertEqual(head['markers'], [['hpt', 5, 6, 7]])
             self.assertEqual(np.frombuffer(raw, '<f4', offset=4 + length).reshape(-1, 12)[0, [3, 7, 11]].tolist(), [0, 40, 0])
+            # Terrain: heights in red and the dirt mask in green; its material's cliff (#3) and dirt (#5) textures.
+            terrain = index[1]['terrain']
+            self.assertEqual({key: value for key, value in terrain.items() if key != 'file'},
+                             dict(offset=[0, -1070, 0], cell=40, scale=1, material='core_ter'))
+            with Image.open(root / 'pack/maps' / terrain['file']) as image:
+                self.assertEqual((image.size, image.getpixel((3, 1)), image.getpixel((0, 0))), ((4, 4), (134, 255, 0), (0, 255, 0)))
+            self.assertIsNone(index[0]['terrain'])
+            self.assertEqual(materials['core_ter#5']['texture'], materials['core_ter']['texture'])
+            self.assertNotEqual(materials['core_ter#3']['texture'], materials['core_ter']['texture'])
             again = import_maps(root / 'game', root / 'pack', extra=[mine])
             self.assertEqual((again['imported'], again['skipped']), ([], ['walk', 'Mine']))
             mine.write_bytes(rbe([(0, 0, 0, 1, 0, CUBE)]))
