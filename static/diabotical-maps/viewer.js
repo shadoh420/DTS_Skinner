@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const storageKey = 'skinner.diaboticalmaps';
-  const settings = {fov: 100, invertX: false, invertY: false, props: true, markers: true, terrain: true};
+  const settings = {fov: 100, invertX: false, invertY: false, props: true, markers: true, terrain: true, decals: true};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -92,8 +92,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     return geometry;
   }
 
-  const layers = {props: new THREE.Group(), markers: new THREE.Group(), terrain: new THREE.Group()};
-  scene.add(layers.props, layers.markers, layers.terrain);
+  const layers = {props: new THREE.Group(), markers: new THREE.Group(), terrain: new THREE.Group(), decals: new THREE.Group()};
+  scene.add(layers.props, layers.markers, layers.terrain, layers.decals);
+  // What decals land on: block and terrain triangles in world space, props as model triangles and instance matrices.
+  const surfaces = {fixed: [], props: []};
   // Markers for what the game draws by itself: spawns, pickups, jump pads, teleporters, flags.
   const MARKERS = [[/^spawn/, 0x3fd06a, 'cone'], [/^hpt|^health/, 0x8fe04a], [/^armor/, 0xf0a020], [/^weapon/, 0xd040e0, 'box'],
     [/^ammo/, 0xa080c0, 'box'], [/^(jumppad|jp$)/, 0x30d0f0, 'disc'], [/^(teleport|tpexit)/, 0x4060ff, 'disc'], [/^flag/, 0xff4040, 'cone'],
@@ -166,6 +168,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
         mesh.frustumCulled = false;  // r149 culls an instanced mesh by its one model's bounds.
         layers.props.add(mesh);
+        surfaces.props.push({floats: geometries.get(key).attributes.position.data.array, matrices});
       }
       drawn += matrices.length / 12;
     }
@@ -216,20 +219,94 @@ window.addEventListener('DOMContentLoaded', async () => {
       };
     }
     layers.terrain.add(new THREE.Mesh(geometry, made));
+    surfaces.fixed.push({positions, normals: geometry.attributes.normal.array, index});
+  }
+
+  // Decals: each box's texture on the blocks, terrain and props in it that face it (decals.js), times its colour
+  // (0xRRGGBBAA; the hex taken as linear light, as an accent's), one mesh per material and order, drawn in order.
+  function addDecals(list, entries) {
+    const boxes = [], owners = [];
+    for (const {material: name, matrices, extras, orders} of list) {
+      if (!(entries[name] || {}).texture) continue;  // ponytail: a decal with no texture is left out, not drawn flat.
+      for (let i = 0; i < matrices.length / 12; i++) {
+        boxes.push(matrices.subarray(i * 12, i * 12 + 12));
+        owners.push({name, colour: extras[i * 3], flags: extras[i * 3 + 1], order: orders[i * 3 + 2]});
+      }
+    }
+    if (!boxes.length) return 0;
+    const projector = DiaboticalDecals.createProjector(boxes);
+    const a = [0, 0, 0], b = [0, 0, 0], c = [0, 0, 0], na = [0, 0, 0], nb = [0, 0, 0], nc = [0, 0, 0];
+    const corner = (point, normal, positions, normals, at) => {
+      for (let k = 0; k < 3; k++) { point[k] = positions[at * 3 + k]; normal[k] = normals[at * 3 + k]; }
+    };
+    for (const {positions, normals, index} of surfaces.fixed) {
+      const count = index ? index.length : positions.length / 3;
+      for (let i = 0; i < count; i += 3) {
+        corner(a, na, positions, normals, index ? index[i] : i);
+        corner(b, nb, positions, normals, index ? index[i + 1] : i + 1);
+        corner(c, nc, positions, normals, index ? index[i + 2] : i + 2);
+        projector.add(a, b, c, na, nb, nc);
+      }
+    }
+    // Props: a model's bounds first, then each instance near a decal triangle by triangle (positions and normals
+    // through its matrix; a mirrored model's triangles are already turned round).
+    for (const {floats, matrices} of surfaces.props) {
+      const low = [Infinity, Infinity, Infinity], high = [-Infinity, -Infinity, -Infinity];
+      for (let at = 0; at < floats.length; at += 8) for (let k = 0; k < 3; k++) { low[k] = Math.min(low[k], floats[at + k]); high[k] = Math.max(high[k], floats[at + k]); }
+      for (let i = 0; i < matrices.length / 12; i++) {
+        const m = matrices.subarray(i * 12, i * 12 + 12);
+        const centre = [0, 1, 2].map(row => m[row * 4 + 3] + [0, 1, 2].reduce((sum, k) => sum + m[row * 4 + k] * (low[k] + high[k]) / 2, 0));
+        const extent = [0, 1, 2].map(row => [0, 1, 2].reduce((sum, k) => sum + Math.abs(m[row * 4 + k]) * (high[k] - low[k]) / 2, 0));
+        if (!projector.touches(centre.map((v, k) => v - extent[k]), centre.map((v, k) => v + extent[k]))) continue;
+        const place = (point, normal, at) => {
+          for (let row = 0; row < 3; row++) {
+            point[row] = m[row * 4] * floats[at] + m[row * 4 + 1] * floats[at + 1] + m[row * 4 + 2] * floats[at + 2] + m[row * 4 + 3];
+            normal[row] = m[row * 4] * floats[at + 3] + m[row * 4 + 1] * floats[at + 4] + m[row * 4 + 2] * floats[at + 5];
+          }
+        };
+        for (let at = 0; at < floats.length; at += 24) {
+          place(a, na, at); place(b, nb, at + 8); place(c, nc, at + 16);
+          projector.add(a, b, c, na, nb, nc);
+        }
+      }
+    }
+    const groups = new Map();
+    projector.out.forEach(({positions, normals, uvs}, i) => {
+      if (!positions.length) return;
+      const {name, colour, flags, order} = owners[i], key = `${name}|${order}`;
+      if (!groups.has(key)) groups.set(key, {name, order, positions: [], normals: [], uvs: [], colours: []});
+      const group = groups.get(key), rgba = [display(colour >>> 24), display(colour >>> 16 & 255), display(colour >>> 8 & 255), (colour & 255) / 255];
+      for (let j = 0; j < positions.length; j++) { group.positions.push(positions[j]); group.normals.push(normals[j]); }
+      for (let j = 0; j < uvs.length; j += 2) group.uvs.push(flags & 1 ? 1 - uvs[j] : uvs[j], uvs[j + 1]);
+      for (let j = 0; j < positions.length / 3; j++) group.colours.push(...rgba);
+    });
+    for (const {name, order, positions, normals, uvs, colours} of groups.values()) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 4));
+      const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({map: texture(entries[name].texture), vertexColors: true,
+        transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4}));
+      mesh.renderOrder = order;
+      layers.decals.add(mesh);
+    }
+    return boxes.length;
   }
 
   function showNotes() {
     if (!map) return;
     const parts = [`${map.blocks.toLocaleString()} blocks drawn, map version ${map.version}${map.author ? `, by ${map.author}` : ''}`];
     if (map.props) parts.push(`${map.props.drawn.toLocaleString()} props drawn` + (map.props.absent ? `, ${map.props.absent.toLocaleString()} left out (no model file)` : ''));
+    if (map.decals) parts.push(`${map.decals.toLocaleString()} decals`);
     if (map.untextured.length) parts.push('Not in the game files, so drawn in a flat colour: ' + map.untextured.join(', '));
     $('mapNotes').textContent = ' This map — ' + parts.join('. ') + '.';
   }
   $('notes').after(Object.assign(document.createElement('span'), {id: 'mapNotes'}));
 
   function applySettings() {
-    for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain']) $(id).checked = settings[id];
-    for (const id of ['props', 'markers', 'terrain']) layers[id].visible = settings[id];
+    for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain', 'decals']) $(id).checked = settings[id];
+    for (const id of ['props', 'markers', 'terrain', 'decals']) layers[id].visible = settings[id];
     $('fov').value = settings.fov;
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
@@ -247,7 +324,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 100)); save(); applySettings(); });
-  for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain', 'decals']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
   $('reset').addEventListener('click', () => { speed = 600; showStart(); if (ready) showReady(); });
   new ResizeObserver(applySettings).observe(canvas.parentElement);
 
@@ -342,6 +419,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       geometry.computeBoundingBox();
       bounds.union(geometry.boundingBox);
       const name = names[index] || 'default', entry = entries[names[index]], mask = maskOf(name, entry, entries);
+      surfaces.fixed.push({positions, normals});
       if (!mask) { scene.add(new THREE.Mesh(geometry, material(name, entry))); continue; }
       // Tinted by its material's own accents: one instance, to share the props' path.
       const mesh = new THREE.InstancedMesh(withAccents(geometry, null, entry.accents, 1), material(name, entry, mask), 1);
@@ -358,10 +436,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals} = DiaboticalEntities.parseEntities(found);
       addMarkers(markers);
       addLiquids(liquids, entries);
       map.props = await addProps(props, models, entries);
+      showStatus('Placing decals…');
+      map.decals = addDecals(decals, entries);
     }
     showNotes();
     ready = true;

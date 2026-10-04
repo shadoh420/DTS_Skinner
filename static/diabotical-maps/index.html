@@ -8,6 +8,7 @@
   <script defer src="/static/three.min.js"></script>
   <script defer src="/static/diabotical-maps/blocks.js"></script>
   <script defer src="/static/diabotical-maps/entities.js"></script>
+  <script defer src="/static/diabotical-maps/decals.js"></script>
   <script defer src="/static/diabotical-maps/viewer.js"></script>
 </head>
 <body>
@@ -19,6 +20,7 @@
     <label><input id="props" type="checkbox" checked> Props</label>
     <label><input id="markers" type="checkbox" checked> Markers</label>
     <label><input id="terrain" type="checkbox" checked> Terrain</label>
+    <label><input id="decals" type="checkbox" checked> Decals</label>
     <button id="reset">Reset view</button>
     <details id="importPanel"><summary>Import maps</summary>
       <div class="import">
@@ -32,6 +34,6 @@
   <main><canvas id="c"></canvas></main>
   <footer><span id="status" role="status">Loading map…</span>
     <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release</span>
-    <details><summary>Preview notes</summary><span id="notes">Free-flight preview of the map's blocks, props and heightmap terrain, with markers for spawns, pickups, jump pads, teleporters and flags, and liquids as see-through boxes: no decals, lights or baked lighting, lit by one fixed sun. Cubes are drawn without the game's bevelled edges; invisible blocks and props are left out. Props built from pieces (trims, pipes, walls) pick their pieces by the game's rules, but not always the same variant.</span></details></footer>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview of the map's blocks, props, heightmap terrain and decals, with markers for spawns, pickups, jump pads, teleporters and flags, and liquids as see-through boxes: no lights or baked lighting, lit by one fixed sun. Cubes are drawn without the game's bevelled edges; invisible blocks and props are left out. Props built from pieces (trims, pipes, walls) pick their pieces by the game's rules, but not always the same variant.</span></details></footer>
 </body>
 </html>

@@ -133,7 +133,9 @@ def install(root, maps):
                                          b'props/sub/quad_mat\n{\n {\n\t\tmap models/props/quad_d.png\n\t\tculling off\n }\n}\n'
                                          # Tinted: map 4 is its colour mask, accent1 its own colour.
                                          b'props/tinted\n{\n {\n\t\tmap models/props/quad_d.png\n\t\tmap n.png\n\t\tmap s.png\n\t\tmap id.png\n'
-                                         b'\t\tmap models/props/quad_d.png\n\t\tpixel_shader tilemask.ps.cso\n\t\tpixel_shader_param accent1 FF0000\n }\n}\n'),
+                                         b'\t\tmap models/props/quad_d.png\n\t\tpixel_shader tilemask.ps.cso\n\t\tpixel_shader_param accent1 FF0000\n }\n}\n'
+                                         # A decal's texture keeps its alpha.
+                                         b'arrow\n{\n {\n\t\tmap models/props/quad_d.png\n\t\tpixel_shader tiledecal.ps.cso\n }\n}\n'),
         'models\\props\\quad_d.png.dds': dds((10, 200, 10)),
     }))
     (root / 'packs/audio.dbp').write_bytes(b'not a pack: audio packs are not read')
@@ -174,7 +176,8 @@ class DiaboticalMapsTest(unittest.TestCase):
             root = Path(directory)
             props = [('prop_a', (0, 40, 0), (0, 0, 0), (1, 1, 1), {'model': 'quad_prop'}), ('prop_b', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/sub/quad'}),
                      ('prop_c', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/gone'}), ('hpt1', (5, 6, 7), (0, 0, 0), (1, 1, 1), {}),
-                     ('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/sub/quad', 'material': 'props/tinted', 'color2': '336699'})]
+                     ('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/sub/quad', 'material': 'props/tinted', 'color2': '336699'}),
+                     ('decal_arrow', (0, 0, 0), (0, 0, 0), (40, 40, 10), {'material': 'arrow'})]
             install(root / 'game', {'walk': rbe([(0, 0, 0, 1, 0, CUBE), (1, 0, 0, 1, 0, (2, 2, 2, 2, 0, 0))], entities=props), 'old menu': rbe([], version=21)})
             mine = root / 'Mine.rbe'
             mine.write_bytes(rbe([(0, 0, 0, 3, 0, CUBE)], materials=('default', 'gone'),
@@ -213,7 +216,12 @@ class DiaboticalMapsTest(unittest.TestCase):
             head = json.loads(raw[4:4 + length])
             self.assertEqual(head['props'], [['props/sub/quad|stone_floor|', 1, 0], ['props/sub/quad||', 1, 0], ['props/gone||', 1, 0],
                                              ['props/sub/quad|props/tinted|', 1, 1]])
-            self.assertEqual(np.frombuffer(raw[-12:], '<u4').tolist(), [0, 0x1336699, 0])  # The tinted key's tints, last.
+            self.assertEqual(np.frombuffer(raw[-12 - 60:-60], '<u4').tolist(), [0, 0x1336699, 0])  # The tinted key's tints.
+            # Then the decals: their box matrices, then colour, flags and order each.
+            self.assertEqual(head['decals'], [['arrow', 1]])
+            self.assertEqual(np.frombuffer(raw[-60:-12], '<f4')[[0, 5, 10]].tolist(), [40, 40, 10])
+            self.assertEqual(np.frombuffer(raw[-12:], '<u4').tolist(), [0xffffffff, 0, 0])
+            self.assertEqual(materials['arrow']['texture'][-6:], '-a.png')
             self.assertEqual(materials['props/tinted']['accents'], [0xff0000, None, None])
             self.assertIn('texture', materials['props/tinted#4'])
             self.assertEqual(head['markers'], [['hpt', 5, 6, 7]])
@@ -259,13 +267,16 @@ class DiaboticalMapsTest(unittest.TestCase):
             ('spawn_2', (1, 2, 3), (0, 1, 0), (1, 1, 1), {}),
             ('liquid_ocean', (0, -50, 0), (0, 0, 0), (1000, 100, 1000), {'material': 'core_ocean'}),
             ('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'accent2': '00ff7f'}),
+            ('decal_arrow', (10, 20, 30), (0, 0, 0), (100, 50, 8), {'material': 'Arrow', 'color': '80402010', 'mirrored': 'true', 'v3': 'true', 'order': '01000'}),
+            ('decal_arrow_1', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'material': 'arrow', 'color': 'accent2', 'v2': 'true', 'order': '-2'}),
+            ('decal_none', (0, 0, 0), (0, 0, 0), (1, 1, 1), {}),
         ]
         parsed = read_map(rbe([], entities=entities))
         self.assertEqual([e[0] for e in parsed['entities']], [e[0] for e in entities])
         self.assertEqual(parsed['entities'][1][4], {'model': 'quad_strip', 'unique': '1', 'color': '#FF8000', 'color3': 'accent2'})
         assets = {'quad_prop': {'model': 'props/quad', 'material': 'stone_floor', 'rules': []},
                   'quad_strip': {'dynamic': 'true', 'rules': [(0, [], ['props/quad']), (0, ['offset_right is 0'], ['props/quad_flipx'])]}}
-        props, tints, markers, liquids = placements(parsed['entities'], assets)
+        props, tints, markers, liquids, decals = placements(parsed['entities'], assets)
         self.assertEqual({key: len(value) for key, value in props.items()}, {'props/quad|stone_floor|': 1, 'props/quad||': 2, 'props/quad||m': 1})
         # Tints: color, color2, color3 as 0x1RRGGBB, 0 unset; accentN is the global entity's. Only tinted keys are listed.
         self.assertEqual(sorted(tints), ['props/quad||', 'props/quad||m'])
@@ -278,6 +289,11 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertLess(np.linalg.det(props['props/quad||m'][0].reshape(3, 4)[:, :3]), 0)  # _flipx: mirrored.
         self.assertEqual(markers, [['spawn', 1, 2, 3]])
         self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean']])
+        # Decals: their boxes in page axes; colour 0xRRGGBBAA (alpha 255 unless given), flags (1 mirrored, 2 v2, 4 v3), order.
+        matrices, extras = decals['arrow']
+        self.assertEqual(list(decals), ['arrow'])
+        self.assertEqual(matrices[0].reshape(3, 4).tolist(), [[100, 0, 0, 10], [0, 50, 0, 20], [0, 0, 8, -30]])
+        self.assertEqual(extras.view(np.int32).tolist(), [[0x80402010 - 2 ** 32, 5, 1000], [0x00ff7fff, 2, -2]])
 
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds

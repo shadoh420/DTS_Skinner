@@ -85,17 +85,47 @@ test('shapes that draw nothing and an empty map give no surfaces', () => {
   assert.equal(buildBlocks(new ArrayBuffer(0), []).size, 0);
 });
 
-test('an entities file gives each prop group its matrices and tints, and the markers and liquids', () => {
+test('an entities file gives each prop group its matrices and tints, and the markers, liquids and decals', () => {
   const {parseEntities} = require('../static/diabotical-maps/entities.js').DiaboticalEntities;
-  let head = Buffer.from(JSON.stringify({props: [['a/b|stone|', 2, 1], ['c||m', 1, 0]], markers: [['spawn', 1, 2, 3]], liquids: []}));
+  let head = Buffer.from(JSON.stringify({props: [['a/b|stone|', 2, 1], ['c||m', 1, 0]], markers: [['spawn', 1, 2, 3]], liquids: [], decals: [['arrow', 2]]}));
   head = Buffer.concat([head, Buffer.alloc((4 - head.length % 4) % 4, 32)]);
   const matrices = Float32Array.from({length: 36}, (_, i) => i), tints = Uint32Array.of(0x1ff0000, 0, 0, 0, 0, 0x1336699);
-  const file = Buffer.concat([Buffer.from(Uint32Array.of(head.length).buffer), head, Buffer.from(matrices.buffer), Buffer.from(tints.buffer)]);
-  const {props, markers, liquids} = parseEntities(file.buffer.slice(file.byteOffset, file.byteOffset + file.length));
+  const boxes = Float32Array.from({length: 24}, (_, i) => 100 + i), extras = Int32Array.of(-1, 1, 1000, 0x112233ff, 4, -2);
+  const file = Buffer.concat([Buffer.from(Uint32Array.of(head.length).buffer), head, Buffer.from(matrices.buffer), Buffer.from(tints.buffer),
+    Buffer.from(boxes.buffer), Buffer.from(extras.buffer)]);
+  const {props, markers, liquids, decals} = parseEntities(file.buffer.slice(file.byteOffset, file.byteOffset + file.length));
+  assert.deepEqual(decals.map(({material, matrices, extras, orders}) => [material, matrices.length, matrices[12], extras[0], extras[1], orders[2], orders[5]]),
+    [['arrow', 24, 112, 0xffffffff, 1, 1000, -2]]);
   assert.deepEqual(props.map(({model, material, mirrored, matrices}) => [model, material, mirrored, matrices.length, matrices[0]]),
     [['a/b', 'stone', false, 24, 0], ['c', '', true, 12, 24]]);
   assert.deepEqual([...props[0].tints], [...tints]);
   assert.equal(props[1].tints, null);
   assert.deepEqual(markers, [['spawn', 1, 2, 3]]);
   assert.deepEqual(liquids, []);
+});
+
+test('a decal takes the part of each surface in its box that faces its local +z', () => {
+  const {createProjector} = require('../static/diabotical-maps/decals.js').DiaboticalDecals;
+  // A 40 x 40 box, 10 deep, its local z up the world's y (so it faces the floor's top), centred at (10, 0, 0).
+  const projector = createProjector([[40, 0, 0, 10, 0, 0, 10, 0, 0, -40, 0, 0]]);
+  const up = [0, 1, 0];
+  // The floor y = 0 from -100 to 100, counter-clockwise from above, then the same seen from below and a wall facing +x.
+  projector.add([-100, 0, 100], [100, 0, 100], [100, 0, -100], up, up, up);
+  projector.add([-100, 0, 100], [100, 0, -100], [-100, 0, -100], up, up, up);
+  projector.add([-100, 0, 100], [100, 0, -100], [100, 0, 100], up, up, up);
+  projector.add([0, -50, 0], [0, -50, -50], [0, 50, 0], up, up, up);
+  const {positions, uvs, normals} = projector.out[0];
+  let area = 0;
+  for (let i = 0; i < positions.length; i += 9) {
+    const [ax, , az, bx, , bz, cx, , cz] = positions.slice(i, i + 9);
+    area += ((bx - ax) * (cz - az) - (cx - ax) * (bz - az)) / -2;
+  }
+  assert.ok(Math.abs(area - 1600) < 1e-6, area);
+  assert.ok(positions.every((v, i) => i % 3 === 0 ? v >= -10 - 1e-9 && v <= 30 + 1e-9 : i % 3 === 1 ? v === 0 : Math.abs(v) <= 20 + 1e-9));
+  assert.ok(uvs.every(v => v >= -1e-9 && v <= 1 + 1e-9));
+  // uv follows local x and y: u 0 at world x -10, v 0 at world z +20 (local -y).
+  const corner = positions.findIndex((v, i) => i % 3 === 0 && Math.abs(v + 10) < 1e-9 && Math.abs(positions[i + 2] - 20) < 1e-9);
+  assert.ok(corner >= 0);
+  assert.deepEqual(uvs.slice(corner / 3 * 2, corner / 3 * 2 + 2).map(v => Math.round(v * 1e6) / 1e6), [0, 0]);
+  assert.deepEqual(normals.slice(0, 3), [0, 1, 0]);
 });
