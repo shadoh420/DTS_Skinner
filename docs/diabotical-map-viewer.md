@@ -125,9 +125,14 @@ left (`static/diabotical-maps/blocks.js`).
   from them, as the game builds one when a map loads): a sphere by a share
   of 0.86 − d (d the distance over the radius), a cubic node wholly to 0.86
   and not at all past 1.11 (its largest axis distance), the node's colour
-  (hex, linear) weighted by the share squared; their `intensity` and
-  `falloff` change nothing, and a node whose centre lies outside the blocks'
-  bounds does nothing at all (run 23).
+  (hex, linear) weighted by the share squared. Where nodes meet, each adds
+  a weight (a sphere's 1 − d) and the share is their sum less 0.14, the
+  colour their weighted mean times the share squared, so two nodes between
+  them take more of the ambient than either would leave the other (run
+  26). Their `intensity` and `falloff` change nothing, and a node whose
+  centre lies outside the blocks' bounds does nothing at all (run 23). The
+  game's own grid shows its nodes about 27 units toward +x and +z of where
+  they stand (probably sampled half a cell off); the page does not.
 - **Specular light and reflections** (from `tile.cs`, not yet checked in the
   game). A material's specular map (its map 2) holds gloss in red and
   strength in green; its material id is its map 3's red where that is not
@@ -340,6 +345,29 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   multiplies the ambient by 1 − (1 − ao) × strength, except for id 47), and
   the page has none; the old, too low ambient fit stood in for it. Spot 2's
   floor is red with the lava's glow in the game and pale on the page.
+- Run 24 (ridges 20, 60 and 200 high under a white ambient): the ambient
+  occlusion is real but narrow, darkening the floor within about 19 units
+  of a ridge to 0.59 beside the 20-unit one, 0.87 beside the 60-unit one
+  and not at all beside the 200-unit one; too little to explain bioplant.
+  Run 25: walls facing −x and −z, a ceiling and the floor under it read the
+  same as the open floor, so the ambient does not depend on the surface's
+  direction. The textures are BC7 without sRGB, and `tile.ps` writes the
+  texel as it is.
+- Run 26: point lights match the page within 1 to 4 levels (falloff 0,
+  0.33, 0.8, radius 400, intensities 1 to 4, a grey light, two overlapping),
+  so their fade needs no change. Overlapping nodes did not: the game takes
+  all the ambient between two blue nodes that would each take 0.3; adding
+  their weights fits (the page now does). Bioplant after it: 1.04, 0.68,
+  0.76, 0.74, 0.96, 0.74. Dim areas are too dark on the page and bright
+  ones too bright, and switching parts off on the page shows the sun
+  carries the excess: without it the page is 1.04 to 1.41 of the game, and
+  at spot 2 (under a roof) the game's floor shows no sun at all while the
+  page's shadowed sun, times the default shadow colour, lights it yellow.
+  The shader multiplies the sun by the shadow colour in shadow (with a
+  fade past 6000 units toward `mHorizonShadeColor`), so either bioplant's
+  default shadow colour differs from the test map's or it is not relative
+  to the sun; next: bioplant's own sun, ambient and lack of shadow_color on
+  a test map with a roof.
 
 ## Not done yet
 
@@ -370,8 +398,9 @@ below 0.1), fog and vertical fog, light volumes
 (beams), flickering lights (drawn steady), colour grading (the 11 maps that
 set `lut`; the page applies the identity's step), the strong light of maps
 with no sun (measured in run 20, not drawn), the screen-space ambient
-occlusion (on in the game, strength unknown), the point lights' fade
-exponent (2.2, fitted before the LUT step was known), glowing liquids and
+occlusion (narrow; not drawn), the sun's light in shadow on maps like
+bioplant (the page lets far more through than the game), the game grid's
+half-cell shift, glowing liquids and
 bloom, how nodes overlap and the grid's own size; the
 per-face flag byte and
 the six small per-face values (probably texture offset and turn), what the

@@ -105,7 +105,7 @@ test('an entities file gives each prop group its matrices and tints, and the mar
 });
 
 test('lights are listed per cell and ambient nodes make a grid', () => {
-  const {buildLights, buildGrid, nodeWeights, materialClass, CELL, WIDTH} = require('../static/diabotical-maps/lighting.js').DiaboticalLighting;
+  const {buildLights, buildGrid, nodeWeight, nodeShare, materialClass, CELL, WIDTH} = require('../static/diabotical-maps/lighting.js').DiaboticalLighting;
   // A diffuse point light of radius 100 at the origin and a capsule from x 1000 along +x for 300, radius 50, its
   // specular light 3 times its colour.
   const built = buildLights([[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 100, 33, 0, 0, 0, 0], [2, 1000, 0, 0, 1, 0, 0, 1, 1, 1, 50, 25, 0, 0, 300, 3]]);
@@ -117,9 +117,15 @@ test('lights are listed per cell and ambient nodes make a grid', () => {
   assert.deepEqual(Array.from(built.rows.slice(16, 32)), [1000, 0, 0, 50, 1, 1, 1, 2, 1, 0, 0, 25, 0, 0, 300, 3]);
   // Material ids: most blocks' 40 reflect half, metals reflect whole and take no ambient, 46 takes 1.4 times it.
   assert.deepEqual([0, 40, 46, 51, 60, 103].map(materialClass), [[0, 1, 0], [.5, 1, 0], [.5, 1.4, 0], [1, 0, 1], [1, 0, 0], [0, 1, 0]]);
-  // A sphere's share is 0.86 - d, its colour's weight the share squared; a cubic node is whole to 0.86 and gone at 1.11.
-  assert.deepEqual([nodeWeights(0, .36), nodeWeights(0, .86)], [[.5, .25], [0, 0]]);
-  assert.deepEqual([nodeWeights(1, .86), nodeWeights(1, 1.11)], [[1, 1], [0, 0]]);
+  // Alone, a sphere takes 0.86 - d of the ambient and a cubic node all of it to 0.86 and none past 1.11; where two
+  // spheres meet their weights add up, so between them they take more than either alone (run 26).
+  const share = (cubic, d) => +nodeShare(nodeWeight(cubic, d)).toFixed(6);
+  assert.deepEqual([share(0, .36), share(0, .86), share(1, .86), share(1, 1.11)], [.5, 0, 1, 0]);
+  assert.equal(+nodeShare(2 * nodeWeight(0, .56)).toFixed(6), .74);
+  const pair = buildGrid([[0, -100, 0, 0, 200, 0, 0, .5], [0, 100, 0, 0, 200, 0, 0, .5]]);
+  const middle = [0, 1, 2].map(k => Math.floor((0 - pair.min[k]) / ((pair.max[k] - pair.min[k]) / pair.size[k])));
+  const texel = pair.data.slice(((middle[2] * pair.size[1] + middle[1]) * pair.size[0] + middle[0]) * 4).slice(0, 4);
+  assert.ok(texel[3] > .7 && Math.abs(texel[2] - .5 * texel[3] ** 2) < 1e-6, String(texel));
   const grid = buildGrid([[0, 0, 0, 0, 100, 0, 0, .5]]);
   const at = point => {
     const i = point.map((v, k) => Math.floor((v - grid.min[k]) / ((grid.max[k] - grid.min[k]) / grid.size[k]))), base = ((i[2] * grid.size[1] + i[1]) * grid.size[0] + i[0]) * 4;

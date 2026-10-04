@@ -7,17 +7,17 @@
   'use strict';
   const CELL = 256, WIDTH = 1024, MAX_PER_CELL = 64;
 
-  /* A node's share of the ambient and its colour's weight (the share squared: the grid holds colour x share), d its
-     distance over its radius: a sphere's share is 0.86 - d, a cubic node's (d its largest axis distance) whole to
-     0.86 and gone at 1.11 (run 23's floor in linear light; the sphere measured from d 0.36 out, its centre extrapolated). */
-  const clamp = t => Math.min(1, Math.max(0, t)), REACH = [.86, 1.11];
-  function nodeWeights(cubic, d) {
-    const share = cubic ? clamp((1.11 - d) * 4) : clamp(.86 - d);
-    return [share, share * share];
-  }
+  /* A node's weight, d its distance over its radius: a sphere's 1 - d, a cubic node's (d its largest axis distance)
+     1.14 to 0.86 and gone at 1.145. Where nodes meet, their weights add up: the ambient's share taken is the sum less
+     0.14, the colour their weighted mean times that share squared. Alone, a sphere takes 0.86 - d and a cubic node all
+     to 0.86 and none past 1.11 (run 23, its centre extrapolated); two spheres between them take more than either
+     would leave the other (run 26). */
+  const clamp = t => Math.min(1, Math.max(0, t)), REACH = [1, 1.145], FLOOR = .14;
+  const nodeWeight = (cubic, d) => cubic ? Math.min(1 + FLOOR, Math.max(0, (1.145 - d) * 4)) : Math.max(0, 1 - d);
+  const nodeShare = sum => clamp(sum - FLOOR);
 
-  /* The ambient grid over the nodes' reach, at most `budget` texels: RGBA floats, rgb the nodes' colour added up, a
-     their combined share (1 - the product of what each leaves). Empty texels border it, so outside reads none. */
+  /* The ambient grid over the nodes' reach, at most `budget` texels: RGBA floats, rgb the nodes' colour (their
+     weighted mean times the share squared), a the share. Empty texels border it, so outside reads none. */
   function buildGrid(nodes, budget = 1 << 20) {
     if (!nodes.length) return null;
     const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
@@ -30,7 +30,6 @@
     for (let k = 0; k < 3; k++) min[k] -= cell * 1.5;  // Texel centres at min + (i + 0.5) cell.
     for (let k = 0; k < 3; k++) max[k] = min[k] + size[k] * cell;
     const data = new Float32Array(size[0] * size[1] * size[2] * 4);
-    for (let i = 3; i < data.length; i += 4) data[i] = 1;  // What the nodes leave of the ambient, made a share below.
     for (const [cubic, x, y, z, radius, r, g, b] of nodes) {
       const reach = radius * REACH[cubic], centre = [x, y, z];
       const low = centre.map((v, k) => Math.max(0, Math.floor((v - reach - min[k]) / cell - .5)));
@@ -42,15 +41,18 @@
           for (let i = low[0]; i <= high[0]; i++) {
             const dx = min[0] + (i + .5) * cell - x;
             const d = (cubic ? Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) : Math.hypot(dx, dy, dz)) / radius;
-            const [share, colour] = nodeWeights(cubic, d);
-            if (!share && !colour) continue;
+            const w = nodeWeight(cubic, d);
+            if (!w) continue;
             const at = ((k * size[1] + j) * size[0] + i) * 4;
-            data[at] += r * colour; data[at + 1] += g * colour; data[at + 2] += b * colour; data[at + 3] *= 1 - share;
+            data[at] += r * w; data[at + 1] += g * w; data[at + 2] += b * w; data[at + 3] += w;
           }
         }
       }
     }
-    for (let i = 3; i < data.length; i += 4) data[i] = 1 - data[i];
+    for (let i = 0; i < data.length; i += 4) {
+      const sum = data[i + 3], share = nodeShare(sum), scale = sum ? share * share / sum : 0;
+      data[i] *= scale; data[i + 1] *= scale; data[i + 2] *= scale; data[i + 3] = share;
+    }
     return {data, size, min, max};
   }
 
@@ -193,6 +195,6 @@
     }`;
   const fragmentUniforms = 'uniform sampler2D gameSpecularMap;\nuniform samplerCube gameEnvmap;\nuniform vec3 gameClass;\nuniform float gameGloss;\n';
 
-  exports.DiaboticalLighting = {buildGrid, buildLights, nodeWeights, materialClass,
+  exports.DiaboticalLighting = {buildGrid, buildLights, nodeWeight, nodeShare, materialClass,
     shader: {vertexHead, vertexBody, fragmentHead: fragmentUniforms + fragmentHead, fragmentBody}, CELL, WIDTH};
 })(typeof module !== 'undefined' ? module.exports : window);
