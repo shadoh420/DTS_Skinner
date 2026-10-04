@@ -84,3 +84,16 @@ test('shapes that draw nothing and an empty map give no surfaces', () => {
   assert.equal(buildBlocks(blocks([0, 0, 0, 2, 0, 0x3f, [1, 1, 1, 1, 1, 1]]), []).size, 0);
   assert.equal(buildBlocks(new ArrayBuffer(0), []).size, 0);
 });
+
+test('an entities file gives each prop group its matrices, and the markers and liquids', () => {
+  const {parseEntities} = require('../static/diabotical-maps/entities.js').DiaboticalEntities;
+  let head = Buffer.from(JSON.stringify({props: [['a/b|stone|', 2], ['c||m', 1]], markers: [['spawn', 1, 2, 3]], liquids: []}));
+  head = Buffer.concat([head, Buffer.alloc((4 - head.length % 4) % 4, 32)]);
+  const matrices = Float32Array.from({length: 36}, (_, i) => i);
+  const file = Buffer.concat([Buffer.from(Uint32Array.of(head.length).buffer), head, Buffer.from(matrices.buffer)]);
+  const {props, markers, liquids} = parseEntities(file.buffer.slice(file.byteOffset, file.byteOffset + file.length));
+  assert.deepEqual(props.map(({model, material, mirrored, matrices}) => [model, material, mirrored, matrices.length, matrices[0]]),
+    [['a/b', 'stone', false, 24, 0], ['c', '', true, 12, 24]]);
+  assert.deepEqual(markers, [['spawn', 1, 2, 3]]);
+  assert.deepEqual(liquids, []);
+});

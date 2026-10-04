@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const storageKey = 'skinner.diaboticalmaps';
-  const settings = {fov: 100, invertX: false, invertY: false};
+  const settings = {fov: 100, invertX: false, invertY: false, props: true, markers: true};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -35,25 +35,109 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const c of name) hash = Math.imul(hash ^ c.charCodeAt(0), 16777619);
     return new THREE.Color().setHSL((hash >>> 0) % 360 / 360, .25, .55);
   }
-  const loader = new THREE.TextureLoader();
-  function material(name, entry) {
-    if (!entry) return new THREE.MeshLambertMaterial({color: flatColour(name)});
-    const texture = loader.load(data + 'textures/' + entry.texture, undefined, undefined, () => { missing++; if (ready) showReady(); });
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    return new THREE.MeshLambertMaterial({map: texture});
+  const loader = new THREE.TextureLoader(), textures = new Map(), materials = new Map();
+  // A material by name, once per side: mirrored props are drawn from the back, their triangles' winding reversed.
+  function material(name, entry, side = THREE.FrontSide) {
+    const key = `${name}|${side}`;
+    if (materials.has(key)) return materials.get(key);
+    let made;
+    if (!entry) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
+    else {
+      if (!textures.has(entry.texture)) {
+        const texture = loader.load(data + 'textures/' + entry.texture, undefined, undefined, () => { missing++; if (ready) showReady(); });
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        textures.set(entry.texture, texture);
+      }
+      // Foliage and the like are cut out by their texture's alpha and seen from both sides.
+      made = new THREE.MeshLambertMaterial({map: textures.get(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
+        alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
+    }
+    materials.set(key, made);
+    return made;
+  }
+
+  const layers = {props: new THREE.Group(), markers: new THREE.Group()};
+  scene.add(layers.props, layers.markers);
+  // Markers for what the game draws by itself: spawns, pickups, jump pads, teleporters, flags.
+  const MARKERS = [[/^spawn/, 0x3fd06a, 'cone'], [/^hpt|^health/, 0x8fe04a], [/^armor/, 0xf0a020], [/^weapon/, 0xd040e0, 'box'],
+    [/^ammo/, 0xa080c0, 'box'], [/^(jumppad|jp$)/, 0x30d0f0, 'disc'], [/^(teleport|tpexit)/, 0x4060ff, 'disc'], [/^flag/, 0xff4040, 'cone'],
+    [/^(doubledamage|tripledamage|crystal|coin)/, 0xffe040]];
+  const SHAPES = {cone: new THREE.ConeGeometry(12, 40, 12).translate(0, 20, 0), box: new THREE.BoxGeometry(20, 20, 20),
+    disc: new THREE.CylinderGeometry(30, 30, 4, 20).translate(0, 2, 0), ball: new THREE.SphereGeometry(12, 12, 8)};
+  function addMarkers(list) {
+    const byStyle = new Map();
+    for (const [kind, x, y, z] of list) {
+      const style = MARKERS.find(([pattern]) => pattern.test(kind));
+      if (style) byStyle.set(style, [...(byStyle.get(style) || []), [x, y, -z]]);
+    }
+    const matrix = new THREE.Matrix4();
+    for (const [[, colour, shape], points] of byStyle) {
+      const mesh = new THREE.InstancedMesh(SHAPES[shape || 'ball'], new THREE.MeshLambertMaterial({color: colour, emissive: colour, emissiveIntensity: .35}), points.length);
+      points.forEach((point, i) => mesh.setMatrixAt(i, matrix.makeTranslation(...point)));
+      layers.markers.add(mesh);
+    }
+  }
+  // Liquids as see-through boxes, their size the entity's scale, centred on it (as the game's water surface is: top at y + height / 2).
+  function addLiquids(list, entries) {
+    for (const [x, y, z, width, height, depth, name] of list) {
+      const colour = entries[name] ? 0x3a7fb0 : flatColour(name || 'liquid');
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshLambertMaterial({color: colour, transparent: true, opacity: .45, depthWrite: false}));
+      mesh.position.set(x, y, -z);
+      layers.markers.add(mesh);
+    }
+  }
+  // Props: each model's triangles (8 floats a corner: position, normal, uv) by material, drawn instanced.
+  async function addProps(props, models, entries) {
+    const needed = [...new Set(props.map(prop => prop.model))].filter(model => models[model]);
+    const buffers = new Map(await Promise.all(needed.map(async model =>
+      [model, await get(`${data}models/${models[model].file}`).then(r => r.arrayBuffer())])));
+    const geometries = new Map(), matrix = new THREE.Matrix4();
+    let drawn = 0, absent = 0;
+    for (const {model, material: override, mirrored, matrices} of props) {
+      if (!buffers.has(model)) { absent += matrices.length / 12; continue; }
+      let at = 0;
+      for (const [own, corners] of models[model].groups) {
+        const key = `${model}|${at}`;
+        if (!geometries.has(key)) {
+          const interleaved = new THREE.InterleavedBuffer(new Float32Array(buffers.get(model), at * 32, corners * 8), 8);
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 0));
+          geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(interleaved, 3, 3));
+          geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(interleaved, 2, 6));
+          geometries.set(key, geometry);
+        }
+        at += corners;
+        const name = override || own, entry = entries[name];
+        if (entry && entry.hidden) continue;
+        const count = matrices.length / 12;
+        const mesh = new THREE.InstancedMesh(geometries.get(key), material(name, entry, mirrored ? THREE.BackSide : THREE.FrontSide), count);
+        for (let i = 0; i < count; i++) {
+          const m = matrices.subarray(i * 12, i * 12 + 12);
+          mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
+        }
+        mesh.frustumCulled = false;  // r149 culls an instanced mesh by its one model's bounds.
+        layers.props.add(mesh);
+      }
+      drawn += matrices.length / 12;
+    }
+    return {drawn, absent};
   }
 
   function showNotes() {
     if (!map) return;
     const parts = [`${map.blocks.toLocaleString()} blocks drawn, map version ${map.version}${map.author ? `, by ${map.author}` : ''}`];
+    if (map.props) parts.push(`${map.props.drawn.toLocaleString()} props drawn` + (map.props.absent ? `, ${map.props.absent.toLocaleString()} left out (no model file)` : ''));
     if (map.untextured.length) parts.push('Not in the game files, so drawn in a flat colour: ' + map.untextured.join(', '));
     $('mapNotes').textContent = ' This map — ' + parts.join('. ') + '.';
   }
   $('notes').after(Object.assign(document.createElement('span'), {id: 'mapNotes'}));
 
   function applySettings() {
-    for (const id of ['invertX', 'invertY']) $(id).checked = settings[id];
+    for (const id of ['invertX', 'invertY', 'props', 'markers']) $(id).checked = settings[id];
+    layers.props.visible = settings.props;
+    layers.markers.visible = settings.markers;
     $('fov').value = settings.fov;
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
@@ -71,7 +155,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 100)); save(); applySettings(); });
-  for (const id of ['invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  for (const id of ['invertX', 'invertY', 'props', 'markers']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
   $('reset').addEventListener('click', () => { speed = 600; showStart(); if (ready) showReady(); });
   new ResizeObserver(applySettings).observe(canvas.parentElement);
 
@@ -118,7 +202,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const game = $('gamePath').value.trim();
     if (!game) { $('importStatus').textContent = 'Enter your Diabotical folder.'; return; }
     $('import').disabled = true;
-    $('importStatus').textContent = 'Importing maps… the whole game takes about half a minute.';
+    $('importStatus').textContent = 'Importing maps… the whole game takes about five minutes the first time.';
     try {
       const response = await fetch('/import_diabotical_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({game, replace: $('replace').checked})});
@@ -168,9 +252,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       scene.add(new THREE.Mesh(geometry, material(names[index] || 'default', entries[names[index]])));
     }
     if (!bounds.isEmpty()) start = {min: bounds.min, max: bounds.max};
-    showNotes();
     applySettings();
     showStart();
+    if (map.entities) {
+      showStatus('Loading props…');
+      const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
+      const {props, markers, liquids} = DiaboticalEntities.parseEntities(found);
+      addMarkers(markers);
+      addLiquids(liquids, entries);
+      map.props = await addProps(props, models, entries);
+    }
+    showNotes();
     ready = true;
     showReady();
   } catch (error) {

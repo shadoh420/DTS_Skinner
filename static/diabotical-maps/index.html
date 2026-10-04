@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/static/t1-maps/style.css">
   <script defer src="/static/three.min.js"></script>
   <script defer src="/static/diabotical-maps/blocks.js"></script>
+  <script defer src="/static/diabotical-maps/entities.js"></script>
   <script defer src="/static/diabotical-maps/viewer.js"></script>
 </head>
 <body>
@@ -15,19 +16,21 @@
     <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="130" value="100"></label>
     <label><input id="invertX" type="checkbox"> Invert horizontal</label>
     <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <label><input id="props" type="checkbox" checked> Props</label>
+    <label><input id="markers" type="checkbox" checked> Markers</label>
     <button id="reset">Reset view</button>
     <details id="importPanel"><summary>Import maps</summary>
       <div class="import">
         <label>Diabotical folder <input id="gamePath" placeholder="C:\Program Files\Epic Games\Diabotical"></label>
         <label><input id="replace" type="checkbox"> Re-import existing maps</label>
         <button id="import">Import</button>
-        <span id="importStatus" role="status">Imports the game's maps (packs\maps.dbp), the maps you made in its editor, and the textures of the materials they use. The game folder is only read.</span>
+        <span id="importStatus" role="status">Imports the game's maps (packs\maps.dbp), the maps you made in its editor, the models they place and the textures of the materials they use. The game folder is only read.</span>
       </div>
     </details>
   </header>
   <main><canvas id="c"></canvas></main>
   <footer><span id="status" role="status">Loading map…</span>
     <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release</span>
-    <details><summary>Preview notes</summary><span id="notes">Free-flight preview of the map's blocks only: no props, entities, water, decals or baked lighting, lit by one fixed sun. Cubes are drawn without the game's bevelled edges and invisible blocks are left out.</span></details></footer>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview of the map's blocks and props, with markers for spawns, pickups, jump pads, teleporters and flags, and liquids as see-through boxes: no decals, lights or baked lighting, lit by one fixed sun. Cubes are drawn without the game's bevelled edges; invisible blocks and props are left out. Props built from pieces (trims, pipes, walls) pick their pieces by the game's rules, but not always the same variant.</span></details></footer>
 </body>
 </html>

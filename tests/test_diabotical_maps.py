@@ -16,21 +16,31 @@ from unittest.mock import patch
 import numpy as np
 
 from app import app
-from tools.import_diabotical_map import OUT, import_maps, map_id, read_map, visible_blocks
+from tools.fbx_mesh import fbx_mesh
+from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_map, visible_blocks
 
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 
 
-def rbe(blocks, materials=('default', 'stone', 'stone:2'), version=27, author='Someone'):
-    """A .rbe map as the game writes one: blocks are (x, y, z, shape, turn, six face materials)."""
+def text(value):
+    return struct.pack('<I', len(value)) + value.encode()
+
+
+def rbe(blocks, materials=('default', 'stone', 'stone:2'), version=27, author='Someone', entities=()):
+    """A .rbe map as the game writes one: blocks are (x, y, z, shape, turn, six face materials), entities (name,
+    position, rotation, scale, fields)."""
     size, turn_at = RECORD.get(version, 53), 44 if version == 24 else 50
-    body = bytes([len(materials) + 1]) + b''.join(struct.pack('<I', len(name)) + name.encode() for name in (*materials, ''))
+    body = bytes([len(materials) + 1]) + b''.join(text(name) for name in (*materials, ''))
     body += struct.pack('<I', len(blocks))
     for x, y, z, shape, turn, faces in blocks:
         record = bytearray(size)
         struct.pack_into('<3i', record, 0, x, y, z)
         record[12], record[turn_at], record[25:31] = shape, turn, bytes(faces)
         body += bytes(record)
+    body += struct.pack('<I', 2) + bytes(32)  # A grid of 16-byte cells, not read.
+    body += struct.pack('<I', len(entities))
+    for name, position, rotation, scale, fields in entities:
+        body += text(name) + struct.pack('<9fI', *position, *rotation, *scale, len(fields)) + b''.join(text(k) + text(v) for k, v in fields.items())
     body += b'\0' * 64  # The map's other parts, which the import does not read.
     head = b'REBM' + struct.pack('<III', version, 0x12345678, 0) + struct.pack('<I', len(author)) + author.encode() + bytes(8)
     return head + (gzip.compress(body) if version >= 24 else body)
@@ -52,6 +62,46 @@ def dds(colour):
     return output.getvalue()
 
 
+def fbx(nodes):
+    """A binary FBX (version 7400) of nodes (name, [values], [children]); values are int, float, str or numpy arrays."""
+    def node(at, name, values, children):
+        props = b''
+        for value in values:
+            if isinstance(value, str):
+                props += b'S' + text(value)
+            elif isinstance(value, float):
+                props += b'D' + struct.pack('<d', value)
+            elif isinstance(value, int):
+                props += b'L' + struct.pack('<q', value)
+            else:
+                raw = value.tobytes()
+                props += {np.dtype('<f8'): b'd', np.dtype('<i4'): b'i'}[value.dtype] + struct.pack('<III', len(value), 0, len(raw)) + raw
+        inner, start = b'', at + 13 + len(name) + len(props)
+        for c in children:
+            inner += node(start + len(inner), *c)
+        if children:
+            inner += bytes(13)
+        return struct.pack('<IIIB', at + 13 + len(name) + len(props) + len(inner), len(values), len(props), len(name)) + name.encode() + props + inner
+    out = b'Kaydara FBX Binary  \x00\x1a\x00' + struct.pack('<I', 7400)
+    for n in nodes:
+        out += node(len(out), *n)
+    return out + bytes(13)
+
+
+def quad_fbx():
+    """One square of side 10 in material 'skin', its model moved 5 along x: two triangles."""
+    p70 = lambda *entries: ('Properties70', [], [('P', [k, '', '', '', *v], []) for k, *v in entries])
+    geometry = ('Geometry', [1, 'quad\x00\x01Geometry', 'Mesh'], [
+        ('Vertices', [np.array([0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0], '<f8')], []),
+        ('PolygonVertexIndex', [np.array([0, 1, 2, -4], '<i4')], []),
+        ('LayerElementUV', [0], [('MappingInformationType', ['ByPolygonVertex'], []), ('ReferenceInformationType', ['Direct'], []),
+                                 ('UV', [np.array([0, 0, 1, 0, 1, 1, 0, 1], '<f8')], [])])])
+    model = ('Model', [2, 'quad\x00\x01Model', 'Mesh'], [p70(('Lcl Translation', 5.0, 0.0, 0.0))])
+    material = ('Material', [3, 'skin\x00\x01Material', ''], [])
+    links = [('C', ['OO', 2, 0], []), ('C', ['OO', 1, 2], []), ('C', ['OO', 3, 2], [])]
+    return fbx([('Objects', [], [geometry, model, material]), ('Connections', [], links)])
+
+
 def install(root, maps):
     (root / 'packs').mkdir(parents=True)
     (root / 'packs/maps.dbp').write_bytes(dbp({f'maps\\{name}.rbe': raw for name, raw in maps.items()} | {'maps\\walk-b.png': b'png'}))
@@ -67,6 +117,16 @@ def install(root, maps):
     (root / 'packs/zz_late.dbp').write_bytes(dbp({
         'zz\\walk.shader': b'stone_floor\n{\n {\n\t\tmap textures/late_d.png\n\t\tuv_scale 0.75\n }\n}\n',
         'textures\\late_d.png.dds': dds((0, 0, 255)),
+    }))
+    (root / 'packs/models_props.dbp').write_bytes(dbp({
+        'models\\props\\sub\\quad.fbx': quad_fbx(),
+        'models\\props\\sub\\quad.assets': (b'asset quad_prop\n{\n  model props/sub/quad\n  material stone_floor\n}\n'
+                                             b'asset quad_strip\n{\n  dynamic true\n  dynamic_rule\n  {\n    select props/sub/quad\n  }\n'
+                                             b'  dynamic_rule\n  {\n    if offset_right is 0\n    select props/sub/quad_flipx serial_rand\n  }\n}\n'),
+        # The model's own material is the one named most like it in the nearest .shader at or above its folder.
+        'models\\props\\props.shader': (b'props/other\n{\n {\n\t\tmap models/props/quad_d.png\n }\n}\n'
+                                         b'props/sub/quad_mat\n{\n {\n\t\tmap models/props/quad_d.png\n\t\tculling off\n }\n}\n'),
+        'models\\props\\quad_d.png.dds': dds((10, 200, 10)),
     }))
     (root / 'packs/audio.dbp').write_bytes(b'not a pack: audio packs are not read')
 
@@ -104,7 +164,9 @@ class DiaboticalMapsTest(unittest.TestCase):
     def test_import_writes_blocks_index_and_material_textures(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            install(root / 'game', {'walk': rbe([(0, 0, 0, 1, 0, CUBE), (1, 0, 0, 1, 0, (2, 2, 2, 2, 0, 0))]), 'old menu': rbe([], version=21)})
+            props = [('prop_a', (0, 40, 0), (0, 0, 0), (1, 1, 1), {'model': 'quad_prop'}), ('prop_b', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/sub/quad'}),
+                     ('prop_c', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/gone'}), ('hpt1', (5, 6, 7), (0, 0, 0), (1, 1, 1), {})]
+            install(root / 'game', {'walk': rbe([(0, 0, 0, 1, 0, CUBE), (1, 0, 0, 1, 0, (2, 2, 2, 2, 0, 0))], entities=props), 'old menu': rbe([], version=21)})
             mine = root / 'Mine.rbe'
             mine.write_bytes(rbe([(0, 0, 0, 3, 0, CUBE)], materials=('default', 'gone')))
             result = import_maps(root / 'game', root / 'pack', extra=[mine])
@@ -123,17 +185,72 @@ class DiaboticalMapsTest(unittest.TestCase):
             from PIL import Image
             with Image.open(root / 'pack/textures' / materials['stone']['texture']) as image:
                 self.assertLess(max(abs(a - b) for a, b in zip(image.getpixel((4, 4)), (200, 100, 50))), 8)  # DXT1 rounds to 5:6:5.
+            # Props: the model converted once, its own material found in the .shader above it (two-sided, cut out).
+            self.assertEqual(result['unconverted'], ['props/gone'])
+            models = json.loads((root / 'pack/models.json').read_text())
+            self.assertEqual(list(models), ['props/sub/quad'])
+            self.assertEqual(models['props/sub/quad']['groups'], [['props/sub/quad_mat', 6]])
+            self.assertEqual(len((root / 'pack/models' / models['props/sub/quad']['file']).read_bytes()), 6 * 8 * 4)
+            self.assertEqual((materials['props/sub/quad_mat']['cutout'], materials['props/sub/quad_mat']['texture'][-6:]), (True, '-a.png'))
+            raw = (root / 'pack/maps' / index[0]['entities']).read_bytes()
+            length, = struct.unpack_from('<I', raw)
+            head = json.loads(raw[4:4 + length])
+            self.assertEqual(head['props'], [['props/sub/quad|stone_floor|', 1], ['props/sub/quad||', 1], ['props/gone||', 1]])
+            self.assertEqual(head['markers'], [['hpt', 5, 6, 7]])
+            self.assertEqual(np.frombuffer(raw, '<f4', offset=4 + length).reshape(-1, 12)[0, [3, 7, 11]].tolist(), [0, 40, 0])
             again = import_maps(root / 'game', root / 'pack', extra=[mine])
             self.assertEqual((again['imported'], again['skipped']), ([], ['walk', 'Mine']))
             mine.write_bytes(rbe([(0, 0, 0, 1, 0, CUBE)]))
             again = import_maps(root / 'game', root / 'pack', extra=[mine])
             self.assertEqual(again['imported'], ['Mine'])
-            self.assertEqual(sorted(path.name.split('-')[0] for path in (root / 'pack/maps').iterdir()), ['user__mine', 'walk'])
+            self.assertEqual(sorted(path.name.split('-')[0] for path in (root / 'pack/maps').iterdir()), ['user__mine', 'user__mine', 'walk', 'walk'])  # Blocks and entities, the old ones gone.
             import_maps(root / 'game', root / 'pack', extra=[])  # Deleted from the editor's folder.
             self.assertEqual([item['id'] for item in json.loads((root / 'pack/index.json').read_text())], ['walk'])
-            self.assertEqual([path.name.split('-')[0] for path in (root / 'pack/maps').iterdir()], ['walk'])
+            self.assertEqual([path.name.split('-')[0] for path in sorted((root / 'pack/maps').iterdir())], ['walk', 'walk'])
             with self.assertRaisesRegex(ValueError, 'Enter the Diabotical folder'):
                 import_maps(root, root / 'pack')
+
+    def test_fbx_mesh_triangulates_and_moves_by_its_model(self):
+        groups = fbx_mesh(quad_fbx())
+        self.assertEqual(list(groups), ['skin'])
+        positions, normals, uvs = groups['skin']
+        self.assertEqual(positions.shape, (2, 3, 3))
+        self.assertEqual((positions[..., 0].min(), positions[..., 0].max()), (5, 15))
+        self.assertEqual(uvs[0].tolist(), [[0, 0], [1, 0], [1, 1]])
+        with self.assertRaisesRegex(ValueError, 'not a binary FBX'):
+            fbx_mesh(b'; FBX 7.4.0 project file')
+
+    def test_entities_become_props_markers_and_liquids(self):
+        entities = [
+            ('prop_a', (40, 20, 80), (0, 0, 0), (2, 2, 2), {'model': 'quad_prop'}),
+            ('prop_b', (0, 0, 0), (0, 0, 0), (3, 1, 1), {'model': 'quad_strip', 'unique': '1'}),
+            ('prop_c', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'no_show': '1'}),
+            ('spawn_2', (1, 2, 3), (0, 1, 0), (1, 1, 1), {}),
+            ('liquid_ocean', (0, -50, 0), (0, 0, 0), (1000, 100, 1000), {'material': 'core_ocean'}),
+        ]
+        parsed = read_map(rbe([], entities=entities))
+        self.assertEqual([e[0] for e in parsed['entities']], [e[0] for e in entities])
+        self.assertEqual(parsed['entities'][1][4], {'model': 'quad_strip', 'unique': '1'})
+        assets = {'quad_prop': {'model': 'props/quad', 'material': 'stone_floor', 'rules': []},
+                  'quad_strip': {'dynamic': 'true', 'rules': [(0, [], ['props/quad']), (0, ['offset_right is 0'], ['props/quad_flipx'])]}}
+        props, markers, liquids = placements(parsed['entities'], assets)
+        self.assertEqual({key: len(value) for key, value in props.items()}, {'props/quad|stone_floor|': 1, 'props/quad||': 2, 'props/quad||m': 1})
+        # Page axes: the game's z negated. A static prop keeps its scale; a dynamic one is 40-unit cells from its corner.
+        static = props['props/quad|stone_floor|'][0].reshape(3, 4)
+        self.assertEqual(static[:, 3].tolist(), [40, 20, -80])
+        self.assertAlmostEqual(np.linalg.det(static[:, :3]), 8, 4)
+        self.assertEqual(sorted(m[3] for key in ('props/quad||', 'props/quad||m') for m in props[key]), [20, 60, 100])
+        self.assertLess(np.linalg.det(props['props/quad||m'][0].reshape(3, 4)[:, :3]), 0)  # _flipx: mirrored.
+        self.assertEqual(markers, [['spawn', 1, 2, 3]])
+        self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean']])
+
+    def test_dynamic_rule_conditions(self):
+        from tools.import_diabotical_map import rule_holds
+        cell = dict(offset_left=2, offset_right=0, offset_bottom=4, size_x=3)
+        self.assertTrue(all(rule_holds(c, cell) for c in ('offset_right is 0', 'offset_left == 2', 'offset_bottom % 2 0', 'size_x > 2',
+                                                            'offset right % 3 0', 'offset_left 2', 'offset_bottom - offset_left 2')))
+        self.assertFalse(any(rule_holds(c, cell) for c in ('offset_left is 0', 'offset_bottom % 3 0', 'size_x < 3', 'left empty',
+                                                             'offset_front / offset_bottom 2', 'offset_top is 0')))
 
     def test_map_id(self):
         self.assertEqual(map_id('duel_F1sks House'), 'duel_f1sks_house')

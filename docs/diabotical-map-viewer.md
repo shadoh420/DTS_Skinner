@@ -1,8 +1,9 @@
 # Diabotical map viewer
 
-Opens Diabotical maps from Skinner for a free-flight look at their blocks,
-drawn in the textures of their materials. A first version: no props, entities,
-water, decals or baked lighting, one fixed sun, and no editing. Reflex, Q3, T1
+Opens Diabotical maps from Skinner for a free-flight look at their blocks and
+props, drawn in the textures of their materials, with markers for spawns and
+pickups and liquids as see-through boxes. No decals, lights or baked lighting,
+one fixed sun, and no editing. Reflex, Q3, T1
 and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.md),
 [q3-map-viewer.md](q3-map-viewer.md), [t1-map-viewer.md](t1-map-viewer.md) and
 [t2-map-viewer.md](t2-map-viewer.md).
@@ -13,8 +14,9 @@ and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.m
 "C:/Program Files/Epic Games/Diabotical"`) reads the game's maps from
 `packs/maps.dbp` and the maps made in the game's editor from
 `%APPDATA%/Diabotical/Maps`, into `local-data/diabotical-maps` (ignored by
-Git). The game folder is only read. A whole install takes about half a minute:
-174 maps, about 225 MB of blocks and 40 MB of textures (295). Maps already imported
+Git). The game folder is only read. A whole install takes about five minutes:
+174 maps (about 340 MB of blocks and entities), the 6,000 models they place
+(300 MB) and the textures of their materials (about 120 MB). Maps already imported
 are skipped unless their file changed or **Re-import existing maps** is
 ticked. The five oldest maps (the menu maps and `temple_islands`, version 21)
 are not read yet and are listed as failed.
@@ -47,6 +49,26 @@ left (`static/diabotical-maps/blocks.js`).
   stored face numbered by the turn (face 0 for turn 0, …), so its texture is
   stretched across the slope by √2, as in the game.
 
+- **Props.** An entity whose `model` is a path under `models/` or an asset
+  naming one is drawn as that model: its `.fbx` (read by `tools/fbx_mesh.py`;
+  the game's compiled `.dbm` is the same model with z negated, and the bounding
+  boxes of 7,720 of the 7,974 models shipped both ways match) placed by the
+  entity's position, rotation and scale. Its material is the asset's or the
+  entity's `material`, else a shader named after the model, else the one
+  named most like it in the nearest `.shader` file at or above its folder.
+  A dynamic prop (trims, pipes, walls: about half of all props) is a row, column
+  or block of 40-unit cells from the entity (its corner), its scale the size in cells; its asset's
+  `dynamic_rule` blocks pick each cell's model by the cell's offsets from the
+  prop's ends (the last rule that holds wins, per channel). The game picks among
+  a rule's variants at random; the page picks the same way every time.
+  `PATH_flipx` is `PATH` mirrored. Props marked `no_show` (clip boxes and other
+  invisible ones) and materials marked `visible false` are left out; foliage
+  (shadow shader `shadow_at_…` or `culling off`) is cut out by its texture's
+  alpha and two-sided.
+- **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
+  teleporters, flags and power-ups (named by the entity's name) are coloured
+  shapes; `liquid_*` entities boxes of their scale, centred on them.
+
 The file formats are written out in the import's module docstring
 (`tools/import_diabotical_map.py`).
 
@@ -71,16 +93,36 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
 
 - Not mirrored: an "F" of pillars seen from straight above in the game
   (`/phy_fly 1`, `/goto -40 600 -40`, the mouse turned 4000 counts down) reads
-  the same, the same way up, as the page drawing that map from the same point,
-  so the game's x and z are the export's. Yaw 0 looks toward the export's -z.
+  the same, the same way up, as the page drawing that map from the same point
+  (the point at (-40, -40) hid the axes: the game's `/goto` z is the export's
+  -z, see the props below). Yaw 0 looks toward the export's -z.
 - The sloped side: four half blocks, one per turn, each face in a material of
   a different texture scale; in the export the slope's scale is that of the
   face numbered by the turn, divided by √2. The same export confirmed the page's
   reading of six materials' `uv_scale` and showed `black`'s 0.5.
+- Props: where entities stand came from the stock maps (jump pads stand
+  exactly on the blocks under them, pickups 20 units above). A test map with
+  seven chairs in seven rotations and three dynamic props (a wooden trim 4
+  cells long, a pipe 3 cells high, a sport trim 3 cells long) beside 1-block
+  pillars was seen in the game from above and from the side (`/goto` takes the
+  entities' coordinates; `/printcamera` gives the eye, 26 units above) and
+  drawn by the page from the same points: the chairs match (rotation: roll
+  about z, then pitch about x, then yaw about y, in the game's axes) and so do
+  the dynamic props once a prop's cells start at the entity (cell centre at
+  40 × (i + ½) on each axis).
+- Liquids: the same map without its `terrain` entity (which hides the water
+  near the map) and with a column of blocks hanging from the floor's edge to
+  y -900, black and white every 100 units: from 260 and 860 units away the
+  water meets the column at y -270, the top of the template's ocean (y -520,
+  500 tall) as a box centred on its entity.
 
 ## Not done yet
 
-Entities and props (models placed by the map), water and other volumes,
-decals, lighting (the maps' large baked light data), the per-face flag byte and
+Decals, lights, billboards, particles and the heightmap terrain (`terrain`
+entity, the map's `-h.png`), props' `color` tints, the game's choice among a
+dynamic rule's variants and the rule conditions not understood (`/`, `when`,
+neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
+prop materials not found (flat colours), water
+surfaces, lighting (the maps' large baked light data), the per-face flag byte and
 the six small per-face values (probably texture offset and turn), what the
 invisible shapes are, bevelled edges, version 21 maps, and editing.
