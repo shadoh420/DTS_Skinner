@@ -9,7 +9,7 @@
 
   /* A node's share of the ambient and its colour's weight (the share squared: the grid holds colour x share), d its
      distance over its radius: a sphere's share is 0.86 - d, a cubic node's (d its largest axis distance) whole to
-     0.86 and gone at 1.11 (run 23's floor in linear light). */
+     0.86 and gone at 1.11 (run 23's floor in linear light; the sphere measured from d 0.36 out, its centre extrapolated). */
   const clamp = t => Math.min(1, Math.max(0, t)), REACH = [.86, 1.11];
   function nodeWeights(cubic, d) {
     const share = cubic ? clamp((1.11 - d) * 4) : clamp(.86 - d);
