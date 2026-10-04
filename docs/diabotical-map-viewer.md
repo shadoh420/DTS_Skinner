@@ -255,7 +255,11 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   `shadow_color` takes the sun out of the shadow entirely); blue ambient
   nodes at intensity 1, 2 and 4 and at falloff 0 came out the same, 000040
   a fifth of 000080, a cubic node a flat square; their footprints set the
-  page's fade.
+  page's fade. Run 19 compared the page with the game on `duel_bioplant`
+  from five `/printcamera` points: the light falls in the same places (block
+  brightness correlation 0.72 to 0.94) in the same colours, but the game is
+  about 1.45 times brighter (up to 1.8 on glossy floors; a dim corner
+  matched), most likely its specular light and environment reflections.
 
 ## Not done yet
 
@@ -271,7 +275,7 @@ height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
 prop materials not found (flat colours), water
-surfaces; of the lighting: the specular highlights and reflections (the
+surfaces; of the lighting: the specular highlights and reflections (about a third of the game's brightness on duel_bioplant; the
 `white`/`default` materials are mirrors), fog and vertical fog, light volumes
 (beams), flickering lights (drawn steady), colour grading (`lut`, 11 maps), the
 ambient level only fitted at two values (0x20, 0x40) and the defaults with no
