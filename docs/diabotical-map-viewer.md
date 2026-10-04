@@ -116,7 +116,8 @@ left (`static/diabotical-maps/blocks.js`).
   from its position along its local +z for `length`. None casts a shadow. The
   sun travels along its local +z, colour × intensity × 0.262 × N·L, and casts
   the only shadow, in which it is multiplied by the `global` entity's
-  `shadow_color` and the shadow ambient stands for the ambient. Ambient nodes
+  `shadow_color` (by default the bluish 0.238, 0.401, 0.457 measured in run
+  20) and the shadow ambient stands for the ambient. Ambient nodes
   replace the ambient where they reach (a 3D grid built from them, as the
   game builds one when a map loads): their `intensity` and `falloff` change
   nothing, their colour is decoded as sRGB.
@@ -279,9 +280,24 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   that) lift the page only 5 to 10 % against run 19's shots (median
   game / page block ratios 1.46, 1.29, 1.39, 1.71, 1.71 became 1.38, 1.23,
   1.27, 1.55, 1.60; the dim spot 0.96 became 0.90): most of the gap is
-  elsewhere. The map has no `shadow_color`, so the page takes the sun out of
-  its shadow entirely, while the game's default is bluish: a grey shadow
-  colour of 0.3 brought three spots near 1.0 to 1.3 but left two at 1.5.
+  elsewhere. The map has no `shadow_color`, so the page took the sun out of
+  its shadow entirely, while the game's default is bluish.
+- Run 20 (test maps on the grey floor, then `duel_bioplant` again from run
+  19's points at yaw 90°): with no `shadow_color`, a pillar's shadow over a
+  floor lit by a white sun alone (0.259, as run 18's) read 0.062, 0.104,
+  0.118, so the default shadow colour is 0.238, 0.401, 0.457. On bioplant
+  the game / page medians went from 1.66, 1.24, 1.09, 1.35, 2.59, 0.96
+  (lights only) to 1.45, 1.19, 1.06, 1.28, 1.95, 0.90 with the specular
+  light and reflections, and to 1.16, 0.85, 0.89, 1.00, 1.43, 0.89 with the
+  shadow colour too (correlation 0.59 to 0.87); the fifth point's floors
+  are still 1.7 times brighter in the game, beside a glowing liquid and
+  intensity 4 ambient nodes. Maps with no sun get a strong light of their
+  own: the floor read 0.435 with no ambient and no sun and 0.439, 0.607,
+  0.740, 0.937 with ambient 101010, 606060, a0a0a0, ffffff; ambient nodes
+  made no difference there, so their intensity is still unmeasured. The
+  `default` mirror patch saturated (255) under ambient 404040, which leaves
+  the envmap's orientation unchecked, and two shots (a node and the `point`
+  light over specular plates) came out a flat blue frame.
 
 ## Not done yet
 
@@ -297,8 +313,9 @@ height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
 prop materials not found (flat colours), water
-surfaces; of the lighting: the specular light and reflections are not yet
-checked in the game, and leave out the per-pixel material id (the commonest
+surfaces; of the lighting: the specular light and reflections are checked
+only through bioplant's overall brightness (the envmap's orientation and a
+highlight not yet), and leave out the per-pixel material id (the commonest
 value of a material's id map is used), the spot lights' extra specular factor
 (the shader's `mMapMax.w`, taken as 1), `video_specularity_factor`,
 `reflectivity` and `skybox_rotation` (whether they turn or scale the
@@ -309,9 +326,10 @@ under it) and the game's ambient occlusion; the ambient's fade toward the
 shadow ambient on faces turned from the sun (the shader ramps it over N·L
 below 0.1), fog and vertical fog, light volumes
 (beams), flickering lights (drawn steady), colour grading (`lut`, 11 maps), the
-ambient level only fitted at two values (0x20, 0x40) and the defaults with no
-ambient or sun (a black ambient and no sun lit the floor brightly), the default
-`shadow_color` (bluish), how nodes overlap and the grid's own size; the
+ambient level only fitted at two values (0x20, 0x40) with a sun, the strong
+light of maps with no sun (measured in run 20, not drawn), ambient nodes'
+`intensity` (bioplant uses 2 to 8) and bright colours, glowing liquids and
+bloom, how nodes overlap and the grid's own size; the
 per-face flag byte and
 the six small per-face values (probably texture offset and turn), what the
 invisible shapes are, bevelled edges, version 21 maps, and editing.

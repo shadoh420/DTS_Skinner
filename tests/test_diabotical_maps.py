@@ -340,6 +340,7 @@ class DiaboticalMapsTest(unittest.TestCase):
             ('light_fog', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'fog', 'color': 'ffffff'}),
             ('prop_lamp', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'a'})])
         self.assertEqual(out['shadow_colour'], [.251, .251, .251])
+        self.assertEqual(read_lights([])['shadow_colour'], [.238, .401, .457])  # The game's own, bluish (run 20).
         self.assertEqual(out['ambient'], out['shadow_ambient'])  # None of its own: the ambient.
         self.assertAlmostEqual(out['ambient'][0], .426 * .251 ** .556, 3)
         # The sun travels along its local +z (pitch 90: straight down), red x intensity x 0.262.
