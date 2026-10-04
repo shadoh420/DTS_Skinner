@@ -57,9 +57,14 @@ by the yaw the other way (see decal_matrix), times `color` (RRGGBB or AARRGGBB, 
 picture's value; run 13). `mirrored` changed nothing seen; v1, v2 and v3 differ only in v3's scale; the box's depth
 fades nothing. `order` (-10000 to 10000) orders them.
 
+Lights: `light...` entities by their `type` (see read_lights), measured in the game on a grey floor (runs 16 to 18):
+the game lights with point, spot and capsule lights (unshadowed), one sun (shadowed), an ambient and a shadow
+ambient colour, and a 3D ambient grid it builds from ambient nodes when the map loads (tile.cs.cso); its picture is
+that light times the texture's bytes, with no further curve.
+
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
-map (props with their tints, decals, markers and liquids: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
+map (props with their tints, decals, markers, liquids and lights: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
 terrain (heights in red, dirt mask in green; the index item's `terrain` says how to place it), the models the maps place in
 models.json with models/HASH.bin, and the materials of the maps and models in materials.json, with
 textures/HASH.png.
@@ -84,7 +89,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import decode_dds
 
-FORMAT = 7  # Of the files written per map: maps imported with another are read again.
+FORMAT = 8  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -388,6 +393,54 @@ def placements(entities, assets):
     return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids, decals
 
 
+POINT, SUN = .335, .262  # Light per unit of colour x intensity on a white surface (runs 17, 18).
+LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
+
+
+def read_lights(entities):
+    """A map's lights for the page (run 16 to 18 measurements, in page axes, as light on a white surface):
+    {lights: [[kind (0 point, 1 spot, 2 capsule), x, y, z, dx, dy, dz, r, g, b, radius, inner radius, cos of the
+    cone's half angle, softness, length]], nodes: [[cubic, x, y, z, radius, r, g, b]], ambient, shadow_ambient,
+    shadow_colour: [r, g, b], sun: [dx, dy, dz, r, g, b] (the way its light travels) or None}.
+    Point lights (point, diffuse, or no type) are colour (hex taken as linear) x intensity (default 4) x 0.335 x N.L,
+    fading from falloff (default 0.33) x radius to nothing at radius as ((radius - d) / (radius - inner))^2.2; spots
+    take their `angle` as the whole cone and `softness` in cosines; a capsule is the segment from its position along
+    its local +z for `length`. The sun travels along its local +z, colour x intensity x 0.262 x N.L, times
+    shadow_color (global entity) in shadow. Ambient and shadow ambient (sunlit and shadowed ground) came out as
+    0.426 x hex^0.56 (0x20 and 0x40 measured); the shadow ambient is the ambient where the map has none. Ambient
+    nodes ignore intensity and falloff (sRGB-like colour: 000040 gives a fifth of 000080's light) and replace the
+    ambient where they reach; volumes, fog and animation are not read."""
+    hexes = lambda value, default=0xffffff: np.array([(default if colour(value) is None else colour(value)) >> s & 255 for s in (16, 8, 0)]) / 255
+    number = lambda fields, key, default: next(iter(re.findall(r'-?\d*\.?\d+(?:e-?\d+)?', fields.get(key, ''))), None) or default
+    ambient_level = lambda value: np.round(.426 * hexes(value, 0) ** .556, 4).tolist()
+    out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=[0, 0, 0], sun=None)
+    for name, position, rotation, scale, fields in entities:
+        if name == 'global' and 'shadow_color' in fields:
+            out['shadow_colour'] = np.round(hexes(fields['shadow_color'], 0), 4).tolist()
+        if not name.startswith('light'):
+            continue
+        kind, (x, y, z) = fields.get('type', '').strip().lower(), position
+        if kind in ('ambient', 'shadow_ambient'):
+            out[kind] = ambient_level(fields.get('color'))
+            continue
+        travel = game_matrix((0, 0, 0), rotation, (1, 1, 1))[:3, 2] * (1, 1, -1)
+        if kind == 'sun':
+            if out['sun'] is None:
+                out['sun'] = np.round([*travel, *hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * SUN], 4).tolist()
+            continue
+        radius = float(number(fields, 'radius', 200))
+        if kind in ('ambient_node', 'cubic_ambient_node'):
+            out['nodes'].append([int(kind == 'cubic_ambient_node'), *np.round([x, y, -z, radius, *2.11 * hexes(fields.get('color')) ** 2.2], 4).tolist()])
+        elif kind in LIGHT_KINDS and radius > 0:
+            rgb = hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * POINT
+            angle = np.radians(float(number(fields, 'angle', 60)))
+            out['lights'].append([LIGHT_KINDS[kind], *np.round([x, y, -z, *travel, *rgb, radius, radius * min(1, max(0, float(number(fields, 'falloff', .33)))),
+                                  np.cos(angle / 2), float(number(fields, 'softness', 0)), float(number(fields, 'length', 0))], 4).tolist()])
+    if out['shadow_ambient'] is None:
+        out['shadow_ambient'] = out['ambient']
+    return out
+
+
 def read_terrain(entities, read):
     """The map's heightmap terrain, if it has a `terrain` entity and a NAME-h.png (`read(suffix)` reads the file
     beside the map): (PNG of the heights in red and the dirt in green, {offset, cell, scale, material}). A vertex
@@ -537,12 +590,13 @@ def import_maps(game, output, replace=False, extra=None):
             blocks = visible_blocks(parsed['blocks'])
             props, tints, markers, liquids, decals = placements(parsed['entities'], assets)
             heights, terrain = read_terrain(parsed['entities'], read)
+            lights = read_lights(parsed['entities'])
         except (OSError, ValueError, EOFError, struct.error) as exc:
             result['failed'][name] = str(exc)
             index.pop(ident, None)
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
-                               decals=[[key, len(value[0])] for key, value in decals.items()]),
+                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
         placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +

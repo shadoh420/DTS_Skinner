@@ -13,10 +13,34 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9fc4e0);
-  scene.add(new THREE.HemisphereLight(0xdde8f0, 0x5a5048, .75));
-  const sun = new THREE.DirectionalLight(0xfff4e0, .6);
-  sun.position.set(.4, 1, .25);
-  scene.add(sun);
+  // Every material is lit the game's way (lighting.js); the directional light only casts the sun's shadow.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.autoUpdate = false;
+  const sun = new THREE.DirectionalLight(0xffffff, 1);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(4096, 4096);
+  Object.assign(sun.shadow, {bias: -.0003, normalBias: 2});
+  scene.add(sun, sun.target);
+  const float = (data, width, height, format) => Object.assign(new THREE.DataTexture(data, width, height, format, THREE.FloatType), {needsUpdate: true});
+  const emptyGrid = Object.assign(new THREE.Data3DTexture(new Uint16Array(4), 1, 1, 1), {type: THREE.HalfFloatType, needsUpdate: true});
+  // Until a map's lights are read: a plain grey ambient and a sun from above.
+  const gameUniforms = {gameLights: {value: float(new Float32Array(4), 1, 1, THREE.RGBAFormat)}, gameCells: {value: float(new Float32Array(2), 1, 1, THREE.RGFormat)},
+    gameLists: {value: float(new Float32Array(1), 1, 1, THREE.RedFormat)}, gameGrid: {value: emptyGrid},
+    gameCellMin: {value: new THREE.Vector3()}, gameCellCount: {value: new THREE.Vector3()}, gameGridMin: {value: new THREE.Vector3()},
+    gameGridMax: {value: new THREE.Vector3(1, 1, 1)}, gameAmbient: {value: new THREE.Vector3(.55, .55, .55)},
+    gameShadowAmbient: {value: new THREE.Vector3(.55, .55, .55)}, gameShadowColour: {value: new THREE.Vector3(1, 1, 1)},
+    gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()}};
+  function gameLit(made) {
+    const own = made.onBeforeCompile === THREE.Material.prototype.onBeforeCompile ? null : made.onBeforeCompile, glsl = DiaboticalLighting.shader;
+    made.onBeforeCompile = (shader, renderer) => {
+      if (own) own(shader, renderer);
+      Object.assign(shader.uniforms, gameUniforms);
+      shader.vertexShader = glsl.vertexHead + shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>' + glsl.vertexBody);
+      shader.fragmentShader = glsl.fragmentHead + shader.fragmentShader.replace('#include <aomap_fragment>', glsl.fragmentBody);
+    };
+    made.customProgramCacheKey = () => 'game' + (own ? own.toString() : '');
+    return made;
+  }
   const camera = new THREE.PerspectiveCamera(60, 1, 2, 40000);
   camera.rotation.order = 'YXZ';
   const data = '/diabotical-map-data/';
@@ -71,7 +95,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           diffuseColor *= vec4(tinted, texel.a);`);
       };
     }
-    materials.set(key, made);
+    materials.set(key, gameLit(made));
     return made;
   }
   const maskOf = (name, entry, entries) => entry && entry.texture && (entries[name + '#4'] || {}).texture ? entries[name + '#4'] : null;
@@ -110,7 +134,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     const matrix = new THREE.Matrix4();
     for (const [[, colour, shape], points] of byStyle) {
-      const mesh = new THREE.InstancedMesh(SHAPES[shape || 'ball'], new THREE.MeshLambertMaterial({color: colour, emissive: colour, emissiveIntensity: .35}), points.length);
+      const mesh = new THREE.InstancedMesh(SHAPES[shape || 'ball'], gameLit(new THREE.MeshLambertMaterial({color: colour, emissive: colour, emissiveIntensity: .35})), points.length);
       points.forEach((point, i) => mesh.setMatrixAt(i, matrix.makeTranslation(...point)));
       layers.markers.add(mesh);
     }
@@ -120,7 +144,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const [x, y, z, width, height, depth, name] of list) {
       const colour = entries[name] ? 0x3a7fb0 : flatColour(name || 'liquid');
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth),
-        new THREE.MeshLambertMaterial({color: colour, transparent: true, opacity: .45, depthWrite: false}));
+        gameLit(new THREE.MeshLambertMaterial({color: colour, transparent: true, opacity: .45, depthWrite: false})));
       mesh.position.set(x, y, -z);
       layers.markers.add(mesh);
     }
@@ -167,6 +191,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
         }
         mesh.frustumCulled = false;  // r149 culls an instanced mesh by its one model's bounds.
+        mesh.castShadow = mesh.receiveShadow = true;
         layers.props.add(mesh);
         surfaces.props.push({floats: geometries.get(key).attributes.position.data.array, matrices});
       }
@@ -218,7 +243,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           diffuseColor.rgb *= mix(cliff, level, clamp(1. - 20. * (.85 - vUp), 0., 1.));`);
       };
     }
-    layers.terrain.add(new THREE.Mesh(geometry, made));
+    layers.terrain.add(Object.assign(new THREE.Mesh(geometry, gameLit(made)), {castShadow: true, receiveShadow: true}));
     surfaces.fixed.push({positions, normals: geometry.attributes.normal.array, index});
   }
 
@@ -288,12 +313,45 @@ window.addEventListener('DOMContentLoaded', async () => {
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 4));
-      const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({map: texture(entries[name].texture), vertexColors: true,
-        transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4}));
+      const mesh = new THREE.Mesh(geometry, gameLit(new THREE.MeshLambertMaterial({map: texture(entries[name].texture), vertexColors: true,
+        transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4})));
       mesh.renderOrder = order;
+      mesh.receiveShadow = true;
       layers.decals.add(mesh);
     }
     return boxes.length;
+  }
+
+  // A map's lights (read_lights in the importer) into the shaders' uniforms, and the sun's shadow over the blocks.
+  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight}) {
+    const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
+    u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
+    u.gameCells.value = float(built.cells, width, built.cells.length / 2 / width, THREE.RGFormat);
+    u.gameLists.value = float(built.lists, width, built.lists.length / width, THREE.RedFormat);
+    u.gameCellMin.value.fromArray(built.min);
+    u.gameCellCount.value.fromArray(built.size);
+    const grid = DiaboticalLighting.buildGrid(nodes);
+    if (grid) {
+      const half = new Uint16Array(grid.data.length);
+      for (let i = 0; i < half.length; i++) half[i] = THREE.DataUtils.toHalfFloat(grid.data[i]);
+      u.gameGrid.value = Object.assign(new THREE.Data3DTexture(half, ...grid.size), {type: THREE.HalfFloatType, minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter, needsUpdate: true});
+      u.gameGridMin.value.fromArray(grid.min);
+      u.gameGridMax.value.fromArray(grid.max);
+    }
+    u.gameAmbient.value.fromArray(ambient);
+    u.gameShadowAmbient.value.fromArray(shadowAmbient);
+    u.gameShadowColour.value.fromArray(shadowColour);
+    u.gameSunColour.value.fromArray(sunLight ? sunLight.slice(3) : [0, 0, 0]);
+    if (sunLight) u.gameSunToward.value.fromArray(sunLight).negate().normalize();
+    if (start) {
+      const centre = start.min.clone().add(start.max).multiplyScalar(.5), radius = start.max.distanceTo(start.min) / 2 + 100;
+      sun.target.position.copy(centre);
+      sun.position.copy(centre).addScaledVector(u.gameSunToward.value, radius * 2);
+      Object.assign(sun.shadow.camera, {left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: radius * 4});
+      sun.shadow.camera.updateProjectionMatrix();
+    }
+    return {lights: built.count, nodes: nodes.length};
   }
 
   function showNotes() {
@@ -301,6 +359,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const parts = [`${map.blocks.toLocaleString()} blocks drawn, map version ${map.version}${map.author ? `, by ${map.author}` : ''}`];
     if (map.props) parts.push(`${map.props.drawn.toLocaleString()} props drawn` + (map.props.absent ? `, ${map.props.absent.toLocaleString()} left out (no model file)` : ''));
     if (map.decals) parts.push(`${map.decals.toLocaleString()} decals`);
+    if (map.lights) parts.push(`${map.lights.lights.toLocaleString()} lights and ${map.lights.nodes.toLocaleString()} ambient nodes`);
     if (map.untextured.length) parts.push('Not in the game files, so drawn in a flat colour: ' + map.untextured.join(', '));
     $('mapNotes').textContent = ' This map — ' + parts.join('. ') + '.';
   }
@@ -422,10 +481,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       bounds.union(geometry.boundingBox);
       const name = names[index] || 'default', entry = entries[names[index]], mask = maskOf(name, entry, entries);
       surfaces.fixed.push({positions, normals});
-      if (!mask) { scene.add(new THREE.Mesh(geometry, material(name, entry))); continue; }
+      if (!mask) { scene.add(Object.assign(new THREE.Mesh(geometry, material(name, entry)), {castShadow: true, receiveShadow: true})); continue; }
       // Tinted by its material's own accents: one instance, to share the props' path.
       const mesh = new THREE.InstancedMesh(withAccents(geometry, null, entry.accents, 1), material(name, entry, mask), 1);
       mesh.setMatrixAt(0, new THREE.Matrix4());
+      mesh.castShadow = mesh.receiveShadow = true;
       scene.add(mesh);
     }
     if (!bounds.isEmpty()) start = {min: bounds.min, max: bounds.max};
@@ -438,13 +498,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights} = DiaboticalEntities.parseEntities(found);
+      if (lights) map.lights = useLights(lights);
       addMarkers(markers);
       addLiquids(liquids, entries);
       map.props = await addProps(props, models, entries);
       showStatus('Placing decals…');
       map.decals = addDecals(decals, entries);
     }
+    renderer.shadowMap.needsUpdate = true;
     showNotes();
     ready = true;
     showReady();

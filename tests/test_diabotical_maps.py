@@ -320,6 +320,32 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual(np.round(cut[:3, 0] / 120, 6).tolist(), np.round([np.cos(np.radians(30)), 0, np.sin(np.radians(30))], 6).tolist())
         self.assertEqual((cut[:3, 3].tolist(), np.round(np.linalg.norm(cut[:3, :3], axis=0), 6).tolist()), ([1, 2, 3], [120, 60, 40]))
 
+    def test_lights_are_read_as_the_game_lit_them(self):
+        from tools.import_diabotical_map import read_lights, POINT, SUN
+        quarter = np.pi / 2
+        out = read_lights([
+            ('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'shadow_color': '404040'}),
+            ('light_ambient', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'ambient', 'color': '404040'}),
+            ('light_sun', (0, 0, 0), (quarter, 0, 0), (1, 1, 1), {'type': 'sun', 'color': 'ff0000', 'intensity': '2'}),
+            ('light_lamp', (10, 20, 30), (0, 0, 0), (1, 1, 1), {'color': '808080', 'radius': '200'}),  # No type, intensity, falloff.
+            ('light_spot', (0, 0, 0), (quarter, 0, 0), (1, 1, 1), {'type': 'diffuse_spot', 'angle': '60', 'softness': '0.1', 'falloff': '.5', 'intensity': '1'}),
+            ('light_tube', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'capsule', 'length': '200', 'radius': '100'}),
+            ('light_node', (1, 2, 3), (0, 0, 0), (1, 1, 1), {'type': 'cubic_ambient_node', 'color': '000080', 'radius': '200', 'intensity': '20'}),
+            ('light_fog', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'fog', 'color': 'ffffff'}),
+            ('prop_lamp', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'a'})])
+        self.assertEqual(out['shadow_colour'], [.251, .251, .251])
+        self.assertEqual(out['ambient'], out['shadow_ambient'])  # None of its own: the ambient.
+        self.assertAlmostEqual(out['ambient'][0], .426 * .251 ** .556, 3)
+        # The sun travels along its local +z (pitch 90: straight down), red x intensity x 0.262.
+        self.assertEqual(np.round(out['sun'][:3], 6).tolist(), [0, -1, 0])
+        self.assertEqual(out['sun'][3:], [round(2 * SUN, 4), 0, 0])
+        lamp, spot, tube = out['lights']
+        # Hex linear, intensity 4 by default, page z mirrored, falloff 0.33 by default.
+        self.assertEqual(lamp[:4] + lamp[7:12], [0, 10, 20, -30, *[round(128 / 255 * 4 * POINT, 4)] * 3, 200, 66])
+        self.assertEqual((spot[0], spot[12], spot[13], spot[11], np.round(spot[4:7], 6).tolist()), (1, round(np.cos(np.radians(30)), 4), .1, 100, [0, -1, 0]))
+        self.assertEqual((tube[0], tube[14], np.round(tube[4:7], 6).tolist()), (2, 200, [0, 0, -1]))  # Local +z, mirrored.
+        self.assertEqual(out['nodes'], [[1, 1, 2, -3, 200, 0, 0, round(2.11 * (128 / 255) ** 2.2, 4)]])
+
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds
         cell = dict(offset_left=2, offset_right=0, offset_bottom=4, size_x=3)

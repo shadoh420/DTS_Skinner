@@ -106,6 +106,20 @@ left (`static/diabotical-maps/blocks.js`).
   as their scale (the rotation's entries as absolute values, times the
   scale); `v1` and `v2` decals take it as given. `mirrored` changes nothing
   seen in the game, nor does a box's depth.
+- **Lights.** Lit as the game's lighting shader (`tile.cs`) does, with the
+  numbers measured in it: the picture is the texture's bytes times the light,
+  with no curve after. Point lights (`point`, `diffuse`, or no `type`) give
+  colour (hex as linear) × `intensity` (default 4) × 0.335 × N·L, whole out to
+  `falloff` × `radius` (falloff default 0.33) and fading to nothing at `radius`
+  as ((radius − d) / (radius − inner))^2.2; spots light a cone of their whole
+  `angle`, softened over `softness` (in cosines); a capsule is the segment
+  from its position along its local +z for `length`. None casts a shadow. The
+  sun travels along its local +z, colour × intensity × 0.262 × N·L, and casts
+  the only shadow, in which it is multiplied by the `global` entity's
+  `shadow_color` and the shadow ambient stands for the ambient. Ambient nodes
+  replace the ambient where they reach (a 3D grid built from them, as the
+  game builds one when a map loads): their `intensity` and `falloff` change
+  nothing, their colour is decoded as sRGB.
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes; `liquid_*` entities boxes of their scale, centred on them.
@@ -187,6 +201,9 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   game's 0.92, 0.75, 0.56 (the front faces, darker, differ more: the page
   has no such curve). The orange one's green comes out darker than the
   grey one's in the game: its picture is also more saturated, as a whole.
+  (Run 17 later showed the game's picture is its shader's value with no sRGB
+  step or curve, so the page's accent encoding, hex^(1/2.2), stands as a
+  measured fit rather than an inverse curve.)
 
 - Decals: the box from 2,700 flat stock decals (the surface under one lies at
   its centre and faces its local -z, whatever its version) and the decal
@@ -220,11 +237,30 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   wall decals rolled 90° in 40 × 20 boxes showing only about 20 × 20. A
   `center_room` decal on a ceiling (rotation x -90°) is turned round, as a
   floor's.
+- Lights: the game's lighting compute shader (`tile.cs`, disassembled) gave
+  the model (ambient grid, light list, sun shadow, falloff curve, cone); its
+  post shaders have no curve. Run 16's floor used the `default` material,
+  which turned out a mirror of the environment map; runs 17 and 18 used
+  `gray` (50 % grey, black specular map) on an 80 × 80 block floor, the
+  ambient and sun off or split by colour channel, one light per spot seen
+  from 400 units straight above. Pixel values divided by the floor's
+  albedo: 808080 gives half of ffffff, intensity 4 twice 2, a light with no
+  type the same as `diffuse`, falloff 0.5 a profile flat to half the radius
+  then the 2.2 curve (falloff 1 flat to the radius, 0 the curve from the
+  centre, none fits 0.33), a spot of `angle` 60 lit to 30° (softness 0.1 full
+  inside 15°, 0.5 a quarter at its centre), capsules along their +z (one
+  turned by yaw 45°), each to within the floor texture's noise. The sun at
+  rotation (60°, 30°) cast a pillar's shadow along that direction. Run 18:
+  a red sun, green ambient and blue shadow ambient kept apart (black
+  `shadow_color` takes the sun out of the shadow entirely); blue ambient
+  nodes at intensity 1, 2 and 4 and at falloff 0 came out the same, 000040
+  a fifth of 000080, a cubic node a flat square; their footprints set the
+  page's fade.
 
 ## Not done yet
 
 Decals' cutting box tilted about x (only flat ones and walls measured), decals
-with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), lights, billboards, particles, the glowing crystals' colours
+with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), billboards, particles, the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
 materials (a flag in the material picks the team's colour over an accent),
 whether a
@@ -235,6 +271,12 @@ height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
 prop materials not found (flat colours), water
-surfaces, lighting (the maps' large baked light data; the game's picture also goes through a filmic tone curve and more saturation), the per-face flag byte and
+surfaces; of the lighting: the specular highlights and reflections (the
+`white`/`default` materials are mirrors), fog and vertical fog, light volumes
+(beams), flickering lights (drawn steady), colour grading (`lut`, 11 maps), the
+ambient level only fitted at two values (0x20, 0x40) and the defaults with no
+ambient or sun (a black ambient and no sun lit the floor brightly), the default
+`shadow_color` (bluish), how nodes overlap and the grid's own size; the
+per-face flag byte and
 the six small per-face values (probably texture offset and turn), what the
 invisible shapes are, bevelled edges, version 21 maps, and editing.
