@@ -140,7 +140,8 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
 ## Not done yet
 
 Decals, lights, billboards, particles, props' `color` tints, the terrain's
-exact texture repeat and height (one step), its normal maps and the fields
+exact texture repeat (and whether a material's `uv_scale` changes it, as
+`terrain_snow_blend`'s 0.125 might) and height (one step), its normal maps and the fields
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
