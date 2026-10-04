@@ -33,8 +33,12 @@ test('a cube fills its cell, each face in its own material and facing out', () =
   // Faces +z, -x, -z, +x, top, bottom of the file; z is mirrored, so the file's +z face points to -Z.
   const normals = [[0, 0, -1], [-1, 0, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0], [0, -1, 0]];
   for (const [material, group] of groups) {
-    assert.equal(triangles(group), 2);
-    assert.deepEqual(corner(group.normals, 0), normals[material]);
+    // Every edge of a lone cube is bevelled: each face is its middle, four 4-unit rims and four corners.
+    assert.equal(triangles(group), 18);
+    const shading = Array.from({length: group.normals.length / 3}, (_, i) => corner(group.normals, i));
+    assert.ok(shading.some(n => n.every((v, i) => v === normals[material][i])), 'no corner keeps the face normal');
+    assert.ok(shading.some(n => Math.abs(n.reduce((s, v, i) => s + v * normals[material][i], 0) - Math.SQRT1_2) < 1e-6), 'no rim corner bent halfway');
+    assert.ok(shading.every(n => n.reduce((s, v, i) => s + v * normals[material][i], 0) > 1 / Math.sqrt(3) - 1e-6));
     assertOutward(group);
     for (let i = 0; i < group.positions.length / 3; i++) {
       const [x, y, z] = corner(group.positions, i);
@@ -43,6 +47,12 @@ test('a cube fills its cell, each face in its own material and facing out', () =
   }
   const top = groups.get(4);
   for (let i = 0; i < 6; i++) assert.equal(top.positions[i * 3 + 1], 0);
+});
+
+test('the edge between two cubes side by side is not bevelled', () => {
+  // Two cubes along x: each top has three bevelled edges (the shared side is closed), 3 x 2 pieces.
+  const groups = buildBlocks(blocks([0, 0, 0, 1, 0, 0b110111, [0, 0, 0, 0, 1, 0]], [1, 0, 0, 1, 0, 0b111101, [0, 0, 0, 0, 1, 0]]), []);
+  assert.equal(triangles(groups.get(1)), 2 * 12);
 });
 
 test('closed faces are left out and texture coordinates follow the material scale', () => {

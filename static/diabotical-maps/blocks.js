@@ -8,10 +8,14 @@
    along a vertical diagonal: turn 0 has lost its corner at (40x, -40z-40), and each turn moves that corner on to
    the next one about the vertical, toward +Z first. Its sloped side takes the material of the stored face whose
    number is the turn, and that face's texture axes (so the texture is stretched across the slope by √2), as the
-   game's export of half blocks with six materials of different scales shows. Other shapes draw nothing. */
+   game's export of half blocks with six materials of different scales shows. Other shapes draw nothing.
+
+   A cube's edge between two of its open faces is bevelled as the game draws it: the export splits each face into
+   a 4-unit rim along such edges, flat, and the game shades it round (run 33). Here the rim's outer corners take
+   the normal halfway to the other face's (a third of the way to each at a corner), its inner ones the face's own. */
 (function (exports) {
   'use strict';
-  const SIZE = 16, WIDTH = 40, HEIGHT = 20, CUBE = 1, HALF = 3;
+  const SIZE = 16, WIDTH = 40, HEIGHT = 20, CUBE = 1, HALF = 3, BEVEL = 4;
   // Per stored face: its outward normal here, and the world axes (with signs) its u and v follow.
   const FACE = [
     {normal: [0, 0, -1], u: [-1, 0, 0], v: [0, 1, 0]},
@@ -41,14 +45,17 @@
       out.set(material, {positions: new Float32Array(count * 9), normals: new Float32Array(count * 9), uvs: new Float32Array(count * 6)});
       filled.set(material, 0);
     }
-    // One flat polygon (corners in any order around it), turned to face `normal`, as a fan of triangles.
-    eachPolygon(buffer, (material, corners, normal, axes) => {
-      if (dot(cross(sub(corners[1], corners[0]), sub(corners[2], corners[0])), normal) < 0) corners = corners.slice().reverse();
+    // One flat polygon (corners in any order around it), turned to face `normal`, as a fan of triangles; `bent`, if
+    // given, is each corner's own shading normal.
+    eachPolygon(buffer, (material, corners, normal, axes, bent) => {
+      let order = corners.map((_, i) => i);
+      if (dot(cross(sub(corners[1], corners[0]), sub(corners[2], corners[0])), normal) < 0) order = order.reverse();
       const {positions, normals, uvs} = out.get(material), scale = (scales[material] ?? 1) / WIDTH;
       let at = filled.get(material);
-      for (let i = 1; i + 1 < corners.length; i++) for (const corner of [corners[0], corners[i], corners[i + 1]]) {
+      for (let i = 1; i + 1 < order.length; i++) for (const k of [order[0], order[i], order[i + 1]]) {
+        const corner = corners[k];
         positions.set(corner, at * 3);
-        normals.set(normal, at * 3);
+        normals.set(bent ? bent[k] : normal, at * 3);
         uvs[at * 2] = dot(corner, axes.u) * scale;
         uvs[at * 2 + 1] = dot(corner, axes.v) * scale;
         at++;
@@ -71,14 +78,34 @@
         for (let face = 0; face < 6; face++) {
           if (!(open & 1 << face)) continue;
           const {normal} = FACE[face], axis = normal.findIndex(value => value !== 0), far = normal[axis] > 0;
-          const corners = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => {
-            const fractions = [0, 0, 0], others = [0, 1, 2].filter(other => other !== axis);
+          const others = [0, 1, 2].filter(other => other !== axis), extent = [WIDTH, HEIGHT, WIDTH];
+          // Along each of the face's two axes, the normals of the open faces at its low and high ends (bevelled
+          // edges), and where the face is cut for their rims.
+          const ends = others.map(other => [-1, 1].map(sign => {
+            const side = FACE.findIndex(entry => entry.normal[other] === sign);
+            return open & 1 << side ? FACE[side].normal : null;
+          }));
+          const cuts = others.map((other, j) => [0, ...(ends[j][0] ? [BEVEL / extent[other]] : []), ...(ends[j][1] ? [1 - BEVEL / extent[other]] : []), 1]);
+          const point = (a, b) => {
+            const fractions = [0, 0, 0];
             fractions[axis] = far ? 1 : 0;
             fractions[others[0]] = a;
             fractions[others[1]] = b;
             return [x0 + fractions[0] * WIDTH, y0 + fractions[1] * HEIGHT, z0 + fractions[2] * WIDTH];
-          });
-          polygon(faces[face], corners, normal, FACE[face]);
+          };
+          const shade = (a, b) => {
+            const sum = normal.slice();
+            [a, b].forEach((at, j) => {
+              const end = at === 0 ? ends[j][0] : at === 1 ? ends[j][1] : null;
+              if (end) end.forEach((value, i) => { sum[i] += value; });
+            });
+            const length = Math.hypot(...sum);
+            return sum.map(value => value / length);
+          };
+          for (let i = 0; i + 1 < cuts[0].length; i++) for (let j = 0; j + 1 < cuts[1].length; j++) {
+            const quad = [[cuts[0][i], cuts[1][j]], [cuts[0][i + 1], cuts[1][j]], [cuts[0][i + 1], cuts[1][j + 1]], [cuts[0][i], cuts[1][j + 1]]];
+            polygon(faces[face], quad.map(([a, b]) => point(a, b)), normal, FACE[face], quad.map(([a, b]) => shade(a, b)));
+          }
         }
         continue;
       }

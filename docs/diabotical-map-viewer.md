@@ -33,8 +33,16 @@ left (`static/diabotical-maps/blocks.js`).
   missing corner set by the turn. Shapes 2, 4, 5 and 6 draw nothing in the
   game's own OBJ export (probably invisible blocks: clips, triggers…), so the
   page leaves them out; run 32 showed a roof of each casts no sun shadow
-  either (nor do props, with or without `__shadow`). Cubes are drawn without the game's 4-unit bevelled
-  edges.
+  either (nor do props, with or without `__shadow`).
+- **Bevels.** The game's export splits a cube's face into a 4-unit flat rim
+  along each edge it shares with another of the cube's open faces, and the
+  game shades that rim round (run 33: a gray pillar under bioplant's sun,
+  close up). The page cuts the same rims and bends their outer normals
+  halfway to the other face's (equally to all three at a corner), which
+  matches the game's soft edge bands; edges against a neighbouring cube, half
+  blocks and concave edges are not bevelled. The game's darkening on the
+  floor around a block's base is its screen-space ambient occlusion (not
+  drawn).
 - **Materials.** A face's material is an asset (`scripts/*.assets`) naming a
   material in a `.shader` file; its first `map` is its colour texture (BC7
   `.dds` in the packs, decoded with Pillow and stored as PNG, 512 pixels at
@@ -417,4 +425,4 @@ bioplant (the page lets far more through than the game), the game grid's
 half-cell shift, liquids' light on what is around them, and
 bloom, how nodes overlap and the grid's own size; the
 per-face flag byte and
-the six small per-face values (probably texture offset and turn), bevelled edges and editing.
+the six small per-face values (probably texture offset and turn), half blocks' bevels and editing.
