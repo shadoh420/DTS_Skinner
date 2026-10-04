@@ -14,7 +14,7 @@ and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.m
 `packs/maps.dbp` and the maps made in the game's editor from
 `%APPDATA%/Diabotical/Maps`, into `local-data/diabotical-maps` (ignored by
 Git). The game folder is only read. A whole install takes about half a minute:
-174 maps, about 225 MB of blocks and 37 MB of textures. Maps already imported
+174 maps, about 225 MB of blocks and 40 MB of textures (295). Maps already imported
 are skipped unless their file changed or **Re-import existing maps** is
 ticked. The five oldest maps (the menu maps and `temple_islands`, version 21)
 are not read yet and are listed as failed.

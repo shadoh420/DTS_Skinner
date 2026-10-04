@@ -21,7 +21,8 @@ tall; the export (and the page) puts block (x, y, z) at 40x, 20y, -40z - 40 (z m
 
 Materials: an asset (scripts/*.assets: asset NAME { type surface_material material MATERIAL }) names a material,
 defined in a .shader file (NAME { { map colour, map normal, ...  uv_scale s } }). The page draws a face with the
-material's first map, its texture repeating every 40 / s units, as the export's texture coordinates do.
+material's first map, its texture repeating every 40 / s units, as the export's texture coordinates do. A name
+defined more than once takes the first definition (packs in name order) whose texture is in the packs.
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials) and the materials of
