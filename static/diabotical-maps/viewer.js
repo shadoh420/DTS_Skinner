@@ -45,8 +45,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     return textures.get(file);
   }
-  function material(name, entry) {
-    if (materials.has(name)) return materials.get(name);
+  // With a colour mask (`mask`, the material's map 4), the texture is tinted by each prop's accent colours, as the
+  // game's tilemask.ps does: toward accent × the texel's mean by the mask's red, green and blue for accents 1, 2, 3.
+  function material(name, entry, mask) {
+    const key = mask ? name + '#tinted' : name;
+    if (materials.has(key)) return materials.get(key);
     const side = THREE.FrontSide;
     let made;
     if (!entry || !entry.texture) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
@@ -54,9 +57,37 @@ window.addEventListener('DOMContentLoaded', async () => {
       // Foliage and the like are cut out by their texture's alpha and seen from both sides.
       made = new THREE.MeshLambertMaterial({map: texture(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
         alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
+      if (mask) made.onBeforeCompile = shader => {
+        shader.uniforms.maskMap = {value: texture(mask.texture)};
+        shader.vertexShader = 'attribute vec4 accent1, accent2, accent3;\nvarying vec4 vAccent1, vAccent2, vAccent3;\n' +
+          shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvAccent1 = accent1; vAccent2 = accent2; vAccent3 = accent3;');
+        shader.fragmentShader = 'uniform sampler2D maskMap;\nvarying vec4 vAccent1, vAccent2, vAccent3;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+          vec4 texel = texture2D(map, vUv);
+          vec3 weight = texture2D(maskMap, vUv).rgb, tinted = texel.rgb;
+          float grey = (tinted.r + tinted.g + tinted.b) / 3.;
+          tinted = mix(tinted, vAccent1.rgb * grey, weight.r * vAccent1.a);
+          tinted = mix(tinted, vAccent2.rgb * grey, weight.g * vAccent2.a);
+          tinted = mix(tinted, vAccent3.rgb * grey, weight.b * vAccent3.a);
+          diffuseColor *= vec4(tinted, texel.a);`);
+      };
     }
-    materials.set(name, made);
+    materials.set(key, made);
     return made;
+  }
+  const maskOf = (name, entry, entries) => entry && entry.texture && (entries[name + '#4'] || {}).texture ? entries[name + '#4'] : null;
+  // A model group's geometry with each instance's three accents (alpha 0 where none is set: no tint): the prop's own
+  // (tints, 0x1RRGGBB or 0) or else the material's.
+  function withAccents(base, tints, defaults, count) {
+    const geometry = new THREE.BufferGeometry(), accents = new Float32Array(count * 12);
+    for (const [name, attribute] of Object.entries(base.attributes)) geometry.setAttribute(name, attribute);
+    for (let i = 0; i < count; i++) {
+      for (let j = 0; j < 3; j++) {
+        const own = tints ? tints[i * 3 + j] : 0, value = own ? own & 0xffffff : (defaults || [])[j];
+        if (value != null) accents.set([(value >> 16 & 255) / 255, (value >> 8 & 255) / 255, (value & 255) / 255, 1], (j * count + i) * 4);
+      }
+    }
+    for (let j = 0; j < 3; j++) geometry.setAttribute(`accent${j + 1}`, new THREE.InstancedBufferAttribute(accents.subarray(j * count * 4, (j + 1) * count * 4), 4));
+    return geometry;
   }
 
   const layers = {props: new THREE.Group(), markers: new THREE.Group(), terrain: new THREE.Group()};
@@ -97,7 +128,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       [model, await get(`${data}models/${models[model].file}`).then(r => r.arrayBuffer())])));
     const geometries = new Map(), matrix = new THREE.Matrix4();
     let drawn = 0, absent = 0;
-    for (const {model, material: override, mirrored, matrices} of props) {
+    for (const {model, material: override, mirrored, matrices, tints} of props) {
       if (!buffers.has(model)) { absent += matrices.length / 12; continue; }
       let at = 0;
       for (const [own, corners] of models[model].groups) {
@@ -124,8 +155,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         at += corners;
         const name = override || own, entry = entries[name];
         if (entry && entry.hidden) continue;
-        const count = matrices.length / 12;
-        const mesh = new THREE.InstancedMesh(geometries.get(key), material(name, entry), count);
+        const count = matrices.length / 12, mask = maskOf(name, entry, entries);
+        const mesh = new THREE.InstancedMesh(mask ? withAccents(geometries.get(key), tints, entry.accents, count) : geometries.get(key),
+          material(name, entry, mask), count);
         for (let i = 0; i < count; i++) {
           const m = matrices.subarray(i * 12, i * 12 + 12);
           mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
@@ -307,7 +339,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
       geometry.computeBoundingBox();
       bounds.union(geometry.boundingBox);
-      scene.add(new THREE.Mesh(geometry, material(names[index] || 'default', entries[names[index]])));
+      const name = names[index] || 'default', entry = entries[names[index]], mask = maskOf(name, entry, entries);
+      if (!mask) { scene.add(new THREE.Mesh(geometry, material(name, entry))); continue; }
+      // Tinted by its material's own accents: one instance, to share the props' path.
+      const mesh = new THREE.InstancedMesh(withAccents(geometry, null, entry.accents, 1), material(name, entry, mask), 1);
+      mesh.setMatrixAt(0, new THREE.Matrix4());
+      scene.add(mesh);
     }
     if (!bounds.isEmpty()) start = {min: bounds.min, max: bounds.max};
     applySettings();

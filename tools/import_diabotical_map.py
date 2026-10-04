@@ -43,9 +43,14 @@ material's first map, its texture repeating every 40 / s units, as the export's 
 defined more than once takes the first definition (packs in name order) whose texture is found, as the game does
 for black: its black blocks have models_theme.dbp's uv_scale 0.5, not scripts.dbp's 1 (measured in its /export).
 
+Tints: a material drawn by tilemask.ps has a colour mask (its map 4) and up to three accent colours (pixel_shader_param
+accentN RRGGBB), which a prop's color, color2 and color3 replace (RRGGBB, #RRGGBB, or accentN: the map's palette, the
+accentN fields of its global entity). The shader turns the colour texture d toward accent * mean(d.rgb) by the mask's
+red, then green, then blue, for the accents 1, 2, 3 (read from the compiled shader).
+
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
-map (props, markers and liquids: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
+map (props with their tints, markers and liquids: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
 terrain (heights in red, dirt mask in green; the index item's `terrain` says how to place it), the models the maps place in
 models.json with models/HASH.bin, and the materials of the maps and models in materials.json, with
 textures/HASH.png.
@@ -70,6 +75,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import decode_dds
 
+FORMAT = 2  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -176,6 +182,15 @@ def visible_blocks(blocks):
     return out
 
 
+def colour(value, palette=None):
+    """A colour field (ffaa00, #FFAA00, or accentN: the map's palette, in its global entity) as 0xRRGGBB, or None."""
+    value = (value or '').strip().lower()
+    word = value.split()[0].lstrip('#') if value else ''
+    if palette is not None and re.fullmatch(r'accent\d+', word):
+        return colour(palette.get(word))
+    return int(word[:6], 16) if re.fullmatch(r'[0-9a-f]{6,8}', word) else None
+
+
 def read_materials(packs):
     """{asset or material name: [(colour map path, uv_scale, shader file's folder, flags), ...]} from every pack's
     .assets and .shader files: every definition of a name, in the order read, as some are defined more than once.
@@ -196,9 +211,11 @@ def read_materials(packs):
                     maps = re.findall(r'\bmap\s+(\S+)', stage)
                     scale = re.search(r'\buv_scale\s+([-\d.]+)', stage)
                     flags = dict(cutout=bool(re.search(r'shadow_at_|culling\s+off', stage)), blend=bool(re.search(r'blendfunc\s+blend', stage)),
-                                 hidden=bool(re.search(r'visible\s+false', stage)))
-                    # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5.
-                    for slot in (0, 3, 5) if 'tileter' in stage else (0,):
+                                 hidden=bool(re.search(r'visible\s+false', stage)),
+                                 accents=[colour(next(iter(re.findall(rf'pixel_shader_param\s+accent{n}\s+(\S+)', stage)), None)) for n in (1, 2, 3)])
+                    # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5;
+                    # a tinted material's (tilemask) colour mask is its map 4: NAME#4.
+                    for slot in (0, 3, 5) if 'tileter' in stage else (0, 4) if 'tilemask' in stage else (0,):
                         if slot < len(maps):
                             shaders.setdefault(shader.lower() + (f'#{slot}' if slot else ''), []).append(
                                 (maps[slot], float(scale.group(1)) if scale else 1.0, name.rsplit('\\', 1)[0], flags))
@@ -274,9 +291,12 @@ PICKUPS = re.compile(r'(spawn|hpt|armort|weapon|ammo|jumppad|jp|teleport|tpexit|
 
 def placements(entities, assets):
     """A map's props as {"model|material|m": float32 array of page matrices' top three rows} (material empty for the
-    model's own, m when mirrored), and its spawns, pickups and other markers, and liquids. A dynamic prop's scale is
-    its size in 40-unit cells, each cell a model its asset's rules pick by the cell's offsets from the prop's ends."""
-    props, markers, liquids = {}, [], []
+    model's own, m when mirrored), their tints ({key: uint32 (n, 3)}, for the keys with any: each prop's color,
+    color2 and color3 as 0x1RRGGBB, 0 if unset), and its spawns, pickups and other markers, and liquids. A dynamic
+    prop's scale is its size in 40-unit cells, each cell a model its asset's rules pick by the cell's offsets from the
+    prop's ends."""
+    props, tints, markers, liquids = {}, {}, [], []
+    palette = next((fields for name, *_, fields in entities if name == 'global'), {})
     for number, (name, position, rotation, scale, fields) in enumerate(entities):
         base = game_matrix(position, rotation, (1, 1, 1))
         if name.startswith('liquid'):
@@ -290,6 +310,7 @@ def placements(entities, assets):
         asset = assets.get(model, {})
         if not model or fields.get('no_show') in ('1', 'true') or 'no_show true' in asset.get('entity_property', ''):
             continue
+        tint = [0 if found is None else found | 1 << 24 for found in (colour(fields.get(key), palette) for key in ('color', 'color2', 'color3'))]
         pieces = []
         if asset.get('dynamic') == 'true':
             size = [max(1, int(round(s))) for s in scale]
@@ -316,7 +337,9 @@ def placements(entities, assets):
             material = (fields.get('material') or piece_asset.get('material') or asset.get('material') or '').lower()
             key = f"{model}|{material}|{'m' if np.linalg.det(matrix[:3, :3]) < 0 else ''}"
             props.setdefault(key, []).append(matrix[:3].ravel())
-    return {key: np.array(value, np.float32) for key, value in props.items()}, markers, liquids
+            tints.setdefault(key, []).append(tint)
+    tints = {key: np.array(value, np.uint32) for key, value in tints.items() if any(map(any, value))}
+    return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids
 
 
 def read_terrain(entities, read):
@@ -383,7 +406,8 @@ def material_textures(packs, names, materials, output, replace=False):
             data = io.BytesIO()
             image.save(data, 'PNG')
             target.write_bytes(data.getvalue())
-        entries[name] = dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend') if flags[key]}
+        entries[name] = (dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend') if flags[key]} |
+                         ({'accents': flags['accents']} if any(a is not None for a in flags['accents']) else {}))
     return entries, sorted(set(missing))
 
 
@@ -458,28 +482,29 @@ def import_maps(game, output, replace=False, extra=None):
         try:
             raw = read('.rbe')
             digest = hashlib.sha256(raw).hexdigest()[:12]
-            # Maps imported before terrain was read (no terrain key) are read again.
-            if not replace and index.get(ident, {}).get('hash') == digest and 'terrain' in index[ident] and all(
+            # Maps imported by an older version of this import (another FORMAT) are read again.
+            if not replace and index.get(ident, {}).get('hash') == digest and index[ident].get('format') == FORMAT and all(
                     (output / 'maps' / file).is_file() for file in files(index[ident]) if file):
                 result['skipped'].append(name)
                 continue
             parsed = read_map(raw)
             blocks = visible_blocks(parsed['blocks'])
-            props, markers, liquids = placements(parsed['entities'], assets)
+            props, tints, markers, liquids = placements(parsed['entities'], assets)
             heights, terrain = read_terrain(parsed['entities'], read)
         except (OSError, ValueError, EOFError, struct.error) as exc:
             result['failed'][name] = str(exc)
             index.pop(ident, None)
             continue
-        head = json.dumps(dict(props=[[key, len(value)] for key, value in props.items()], markers=markers, liquids=liquids),
+        head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
-        placed = struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values())
+        placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +
+                  b''.join(tints[key].tobytes() for key in props if key in tints))
         # Named by content: served as immutable, and a newer import can place the same map's props differently.
         file, entities = f'{ident}-{digest}.bin', f'{ident}-{hashlib.sha256(placed).hexdigest()[:12]}.ent'
         if terrain:
             terrain['file'] = f'{ident}-{hashlib.sha256(heights).hexdigest()[:12]}.png'
-        item = dict(id=ident, name=name, group=group, file=file, entities=entities, terrain=terrain, hash=digest, version=parsed['version'],
+        item = dict(id=ident, format=FORMAT, name=name, group=group, file=file, entities=entities, terrain=terrain, hash=digest, version=parsed['version'],
                     author=parsed['author'], materials=parsed['materials'], blocks=len(blocks))
         for old in files(index.get(ident, {})):
             if old and old not in files(item):
@@ -501,7 +526,7 @@ def import_maps(game, output, replace=False, extra=None):
     for item in index.values():
         with open(output / 'maps' / item['entities'], 'rb') as file:
             length, = struct.unpack('<I', file.read(4))
-            keys |= {key for key, _ in json.loads(file.read(length))['props']}
+            keys |= {entry[0] for entry in json.loads(file.read(length))['props']}
     models_path = output / 'models.json'
     previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
     models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous)
@@ -510,6 +535,7 @@ def import_maps(game, output, replace=False, extra=None):
             {name for model in models.values() for name, _ in model['groups']} |
             {name for item in index.values() if item.get('terrain') for name in (item['terrain']['material'], *(
                 item['terrain']['material'] + slot for slot in ('#3', '#5') if item['terrain']['material'] + slot in found))})
+    used |= {name + '#4' for name in used if name + '#4' in found}  # Colour masks.
     materials, result['untextured'] = material_textures(packs, used, found, output, replace)
     (output / 'materials.json').write_text(json.dumps(materials, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     temporary = index_path.with_suffix('.tmp')

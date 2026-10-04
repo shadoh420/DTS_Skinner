@@ -65,6 +65,16 @@ left (`static/diabotical-maps/blocks.js`).
   invisible ones) and materials marked `visible false` are left out; foliage
   (shadow shader `shadow_at_…` or `culling off`) is cut out by its texture's
   alpha and two-sided.
+- **Colour tints.** A material drawn by the game's `tilemask.ps` (about a
+  third of all props, and 207 block materials) has a colour mask, its fifth
+  map, and up to three accent colours of its own (`pixel_shader_param
+  accent1 444444`); a prop's `color`, `color2` and `color3` replace them,
+  as a hex colour or as `accentN`, the map's palette in its `global`
+  entity. Where the mask is red the texture turns toward accent 1 times the
+  texel's brightness (the mean of its red, green and blue), then green
+  toward accent 2, then blue toward accent 3 (read from the compiled
+  shader). A colour with no accent set leaves the texture as it is. Blocks
+  take their material's own accents.
 - **Terrain.** A map with a `terrain` entity has a heightmap beside it
   (`NAME-h.png`, 512 × 512, the height in red) and a dirt mask (`NAME-b.png`).
   Each pixel is a vertex 40 units from the next, pixel 256 at x = z = 0, its
@@ -144,10 +154,18 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   to dirt between blocks at its predicted edges; and the grass texture
   repeats every 128 units (205 pixels in a shot from above where the floor's
   80-unit plates are 128).
+- Tints: from `tilemask.ps`'s disassembly, and checked against run 9: the
+  sport trim (mask all red, `accent1 444444`, no colour of its own) is dark
+  grey in the game, 50 to 65 in the screenshot's top face; the page now draws
+  it 67 (198 untinted). Whether the game mixes in linear or gamma space is
+  not measured.
 
 ## Not done yet
 
-Decals, lights, billboards, particles, props' `color` tints, whether a
+Decals, lights, billboards, particles, the glowing crystals' colours
+(`efferv.ps`, its own `color1` to `color3`), team colours on tinted
+materials (a flag in the material picks the team's colour over an accent),
+whether a
 terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
 0.125; only `core_ter` was measured), the terrain's normal maps and the fields
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
