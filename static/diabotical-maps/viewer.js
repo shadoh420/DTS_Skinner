@@ -160,15 +160,32 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Liquids: the top of a box of the entity's scale. Unlit, so lava and acid glow their own colour as in the game;
   // the colour's alpha (AARRGGBB) is the surface's opacity, and one with no colour is clear water (bioplant's pools
   // show the floor under them). The ocean shader is dark blue and mirrors the envmap.
-  const oceans = [];
+  const mirrors = [];  // Materials that take the envmap when it has loaded.
   function addLiquids(list) {
     for (const [x, y, z, width, height, depth, , rgb, alpha, ocean] of list) {
       const surface = new THREE.Mesh(new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
         color: rgb ?? (ocean ? 0x14394d : 0x2a6f8c), transparent: true, opacity: (alpha ?? (rgb == null && !ocean ? 40 : 220)) / 255,
         depthWrite: false, side: THREE.DoubleSide, reflectivity: .5}));
       surface.position.set(x, y + height / 2, -z);
-      if (ocean) oceans.push(Object.assign(surface.material, {envMap: gameUniforms.gameEnvmap.value}));  // Or when it loads.
+      if (ocean) mirrors.push(Object.assign(surface.material, {envMap: gameUniforms.gameEnvmap.value}));  // Or when it loads.
       scene.add(surface);
+    }
+  }
+  // Billboards: flat panes (glass, light glows, signs), unlit, the texture times the colour and see-through; a glow
+  // texture adds its light. One with no texture, or one not in the game's files (billboard_glass: the game's own
+  // glass), is tinted glass (bioplant's windows show the outside in the game), mirroring the envmap where it reflects.
+  function addBillboards(list, entries) {
+    const square = new THREE.PlaneGeometry(1, 1);
+    for (const billboard of list) {
+      const [rgb, name, reflects] = billboard.slice(12), entry = entries[name];
+      const options = {color: rgb ?? 0xffffff, transparent: true, depthWrite: false, side: THREE.DoubleSide};
+      if (entry && entry.texture) Object.assign(options, {map: texture(entry.texture), blending: /glow/.test(name) ? THREE.AdditiveBlending : THREE.NormalBlending});
+      else Object.assign(options, {opacity: .25, reflectivity: .3});
+      const mesh = new THREE.Mesh(square, new THREE.MeshBasicMaterial(options));
+      mesh.matrixAutoUpdate = false;
+      mesh.matrix.set(...billboard.slice(0, 12), 0, 0, 0, 1);
+      if (!options.map && reflects) mirrors.push(Object.assign(mesh.material, {envMap: gameUniforms.gameEnvmap.value}));
+      layers.decals.add(mesh);
     }
   }
   // Props: each model's triangles (8 floats a corner: position, normal, uv) by material, drawn instanced.
@@ -379,7 +396,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         return canvas;
       });
       u.gameEnvmap.value = Object.assign(new THREE.CubeTexture(faces), {needsUpdate: true});
-      for (const ocean of oceans) Object.assign(ocean, {envMap: u.gameEnvmap.value, needsUpdate: true});
+      for (const mirror of mirrors) Object.assign(mirror, {envMap: u.gameEnvmap.value, needsUpdate: true});
       draw();
     });
     if (sunLight) u.gameSunToward.value.fromArray(sunLight).negate().normalize();
@@ -537,13 +554,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       addMarkers(markers);
       addLiquids(liquids);
       map.props = await addProps(props, models, entries);
       showStatus('Placing decals…');
       map.decals = addDecals(decals, entries);
+      addBillboards(billboards, entries);
     }
     renderer.shadowMap.needsUpdate = true;
     showNotes();

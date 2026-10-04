@@ -161,6 +161,16 @@ left (`static/diabotical-maps/blocks.js`).
   roughness^(1 / 2.2) × 10, times strength and the ambient light's hue (its
   colour over its largest channel); metals reflect it grey (51: by the
   albedo) and take no ambient, and id 46 takes 1.4 times the ambient.
+- **Billboards.** A `billboard_*` entity is a flat pane, a unit square scaled
+  by its scale's x and y and placed like a prop: window glass, light glows,
+  signs (2,306 in 79 stock maps). Its `texture` is a decal asset or a texture
+  path, times its `color`. The page draws them unlit and see-through, a
+  texture named `glow` added on; one with no texture, or one not in the game's
+  files (`billboard_glass`, 206 of the 334 such), is a faint tinted glass
+  (bioplant's windows, a `17292f` pane under `billboard_glass`, show the
+  outside in the game), mirroring the envmap where `reflection` is on. Not
+  measured: the game's billboard shader, `alpha`, `height`, `backface`,
+  `fade_distance_min` and the `monitor` shader (73 screens).
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes. A `liquid_*` entity is a box of its scale centred on it, its top
@@ -402,7 +412,7 @@ each cell can be culled. Frames are fast (about 1 ms on bioplant); loads take
 about 24 s.
 
 Decals' cutting box tilted about x (only flat ones and walls measured), decals
-with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), billboards, particles, the glowing crystals' colours
+with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), billboards' own shader (see above), particles, the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
 materials (a flag in the material picks the team's colour over an accent),
 whether a

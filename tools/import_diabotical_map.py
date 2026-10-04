@@ -68,7 +68,7 @@ red where not black, else its material_id): see static/diabotical-maps/lighting.
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
-map (props with their tints, decals, markers, liquids and lights: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
+map (props with their tints, decals, markers, liquids, billboards and lights: static/diabotical-maps/entities.js reads it), maps/ID-HASH.png for a map with
 terrain (heights in red, dirt mask in green; the index item's `terrain` says how to place it), the models the maps place in
 models.json with models/HASH.bin, and the materials of the maps and models in materials.json, with
 textures/HASH.png (specular maps HASH-s.png, red and green), and the maps' envmaps in envmaps/NAME.png (the six faces of
@@ -94,7 +94,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 14  # Of the files written per map: maps imported with another are read again.
+FORMAT = 15  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -412,6 +412,21 @@ def placements(entities, assets, known=()):
     return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids, decals
 
 
+def read_billboards(entities):
+    """A map's billboards (flat panes: glass, light glows, signs): [12 page-matrix floats of a unit square in local
+    x, y (the entity's scale x by y, placed as a prop), colour 0xRRGGBB or None, texture (a decal asset or a texture
+    path; '' for none), reflection 0/1]."""
+    palette = next((fields for name, *_, fields in entities if name == 'global'), {})
+    out = []
+    for name, position, rotation, scale, fields in entities:
+        if not name.startswith('billboard') or fields.get('no_show') in ('1', 'true'):
+            continue
+        matrix = MIRROR @ game_matrix(position, rotation, (scale[0], scale[1], 1)) @ MIRROR
+        texture = (fields.get('texture') or fields.get('material') or '').strip().lower().replace('\\', '/')
+        out.append([*np.round(matrix[:3].ravel(), 3).tolist(), colour(fields.get('color'), palette), texture, int(fields.get('reflection') == 'on')])
+    return out
+
+
 POINT = SUN = 1 / np.pi  # Light per unit of colour x intensity on a white surface (runs 17 to 23, before the LUT step).
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
 DEFAULT_SHADOW = [.325, .469, .519]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
@@ -698,7 +713,8 @@ def import_maps(game, output, replace=False, extra=None):
             index.pop(ident, None)
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
-                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights),
+                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights,
+                               billboards=read_billboards(parsed['entities'])),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
         placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +
@@ -731,7 +747,7 @@ def import_maps(game, output, replace=False, extra=None):
             length, = struct.unpack('<I', file.read(4))
             head = json.loads(file.read(length))
             keys |= {entry[0] for entry in head['props']}
-            decal_materials |= {entry[0] for entry in head['decals']}
+            decal_materials |= {entry[0] for entry in head['decals']} | {entry[13] for entry in head.get('billboards', []) if entry[13]}
             envmaps.add(head['lights']['envmap'])
     if cubes is not None:
         write_envmaps(cubes, envmaps - {None}, output, replace)
@@ -747,6 +763,9 @@ def import_maps(game, output, replace=False, extra=None):
     used |= {f'{name}_{key.split("|")[1]}' for key in keys if key.split('|')[1] for name, _ in models.get(key.split('|')[0], {}).get('groups', [])
              if f'{name}_{key.split("|")[1]}' in found}
     used |= {name + '#4' for name in used if name + '#4' in found}  # Colour masks.
+    # A billboard's texture may be a path rather than a material: a texture-only material of that name.
+    found |= {name: [(name, 1.0, '', dict(cutout=False, blend=False, hidden=False, decal=True, accents=[None] * 3, lit=False))]
+              for name in decal_materials if name not in found}
     used |= decal_materials
     materials, result['untextured'] = material_textures(packs, used, found, output, replace)
     (output / 'materials.json').write_text(json.dumps(materials, separators=(',', ':'), sort_keys=True), encoding='utf-8')

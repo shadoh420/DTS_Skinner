@@ -17,7 +17,7 @@ import numpy as np
 
 from app import app
 from tools.fbx_mesh import fbx_mesh
-from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_map, visible_blocks
+from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_billboards, read_map, visible_blocks
 
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 
@@ -300,6 +300,11 @@ class DiaboticalMapsTest(unittest.TestCase):
         framed = [('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'Frame_Red'}),
                   ('prop_e', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'stone_floor'})]
         self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|', 'props/quad|stone_floor|'])
+        # Billboards: a unit square scaled x by y, placed as a prop (page axes), colour, texture path with / , reflection.
+        panes = [('billboard_1', (10, 20, 30), (0, 0, 0), (100, 50, 1), {'color': 'accent2', 'texture': 'Textures\Decals\Glow.png', 'reflection': 'on'}),
+                 ('billboard_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'no_show': 'true'})]
+        self.assertEqual(read_billboards(panes + [('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'accent2': '00ff7f'})]),
+                         [[100, 0, 0, 10, 0, 50, 0, 20, 0, 0, 1, -30, 0x00ff7f, 'textures/decals/glow.png', 1]])
         self.assertEqual(markers, [['spawn', 1, 2, 3]])
         self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean', None, None, 1]])  # Colour, alpha (AARRGGBB), ocean.
         # Decals: their boxes in page axes; colour 0xRRGGBBAA (from RRGGBB, or AARRGGBB: alpha first), flags (1 mirrored,
