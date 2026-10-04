@@ -295,9 +295,20 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   own: the floor read 0.435 with no ambient and no sun and 0.439, 0.607,
   0.740, 0.937 with ambient 101010, 606060, a0a0a0, ffffff; ambient nodes
   made no difference there, so their intensity is still unmeasured. The
-  `default` mirror patch saturated (255) under ambient 404040, which leaves
-  the envmap's orientation unchecked, and two shots (a node and the `point`
-  light over specular plates) came out a flat blue frame.
+  `default` mirror patch saturated (255) under ambient 404040, and two shots
+  (a node and the `point` light over specular plates) came out a flat blue
+  frame.
+- Run 21 (sun in every map, black ambient): the `default` patch is a mirror
+  of the cathedral envmap, and the page from the same four cameras (looking
+  down, and at yaw 0°, 90°, 270°) shows the same vaults, pulpit and banners
+  in the same places, 1.03 to 1.18 times darker. That comparison found the
+  page's eye direction wrong (three gives Lambert materials no
+  `cameraPosition`; it now comes from the view-space position), which had
+  shown the envmap's floor in place of its ceiling. Bioplant against run 20
+  after the fix: 1.18, 0.86, 0.86, 1.01, 1.53, 0.88. Ambient nodes (cubic
+  at intensity 0.1, 1 and 20, spheres at 1 and 4, bright colours) changed
+  nothing on the floor in this map either, though the log shows the grid
+  built; run 18's nodes, in a map with a non-black ambient, did.
 
 ## Not done yet
 
@@ -313,9 +324,9 @@ height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
 prop materials not found (flat colours), water
-surfaces; of the lighting: the specular light and reflections are checked
-only through bioplant's overall brightness (the envmap's orientation and a
-highlight not yet), and leave out the per-pixel material id (the commonest
+surfaces; of the lighting: the lights' specular highlights are checked only
+through bioplant's overall brightness, the reflections leave out the per-pixel
+material id (the commonest
 value of a material's id map is used), the spot lights' extra specular factor
 (the shader's `mMapMax.w`, taken as 1), `video_specularity_factor`,
 `reflectivity` and `skybox_rotation` (whether they turn or scale the

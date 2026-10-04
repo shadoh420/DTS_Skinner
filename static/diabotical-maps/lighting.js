@@ -174,7 +174,8 @@
       #else
         vec4 specularTexel = texture2D(gameSpecularMap, vec2(.5));
       #endif
-      vec3 n = inverseTransformDirection(normal, viewMatrix), v = normalize(cameraPosition - vGameWorld);
+      // Toward the eye from the view-space position (three sets no cameraPosition for Lambert materials).
+      vec3 n = inverseTransformDirection(normal, viewMatrix), v = inverseTransformDirection(normalize(vViewPosition), viewMatrix);
       float rough = 1. - specularTexel.r * gameGloss;
       gameRough = max(rough, .01);
       gameStrength = specularTexel.g;
