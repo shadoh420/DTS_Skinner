@@ -65,8 +65,8 @@ left (`static/diabotical-maps/blocks.js`).
   invisible ones) and materials marked `visible false` are left out; foliage
   (shadow shader `shadow_at_…` or `culling off`) is cut out by its texture's
   alpha and two-sided.
-- **Colour tints.** A material drawn by the game's `tilemask.ps` (about a
-  third of all props, and 207 block materials) has a colour mask, its fifth
+- **Colour tints.** A material drawn by the game's `tilemask.ps` (886 of
+  the materials the maps use, 207 of them on blocks) has a colour mask, its fifth
   map, and up to three accent colours of its own (`pixel_shader_param
   accent1 444444`); a prop's `color`, `color2` and `color3` replace them,
   as a hex colour or as `accentN`, the map's palette in its `global`
