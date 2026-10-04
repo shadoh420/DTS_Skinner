@@ -90,12 +90,12 @@ test('an entities file gives each prop group its matrices and tints, and the mar
   let head = Buffer.from(JSON.stringify({props: [['a/b|stone|', 2, 1], ['c||m', 1, 0]], markers: [['spawn', 1, 2, 3]], liquids: [], decals: [['arrow', 2]]}));
   head = Buffer.concat([head, Buffer.alloc((4 - head.length % 4) % 4, 32)]);
   const matrices = Float32Array.from({length: 36}, (_, i) => i), tints = Uint32Array.of(0x1ff0000, 0, 0, 0, 0, 0x1336699);
-  const boxes = Float32Array.from({length: 24}, (_, i) => 100 + i), extras = Int32Array.of(-1, 1, 1000, 0x112233ff, 4, -2);
+  const boxes = Float32Array.from({length: 48}, (_, i) => 100 + i), extras = Int32Array.of(-1, 1, 1000, 0x112233ff, 4, -2);
   const file = Buffer.concat([Buffer.from(Uint32Array.of(head.length).buffer), head, Buffer.from(matrices.buffer), Buffer.from(tints.buffer),
     Buffer.from(boxes.buffer), Buffer.from(extras.buffer)]);
   const {props, markers, liquids, decals} = parseEntities(file.buffer.slice(file.byteOffset, file.byteOffset + file.length));
   assert.deepEqual(decals.map(({material, matrices, extras, orders}) => [material, matrices.length, matrices[12], extras[0], extras[1], orders[2], orders[5]]),
-    [['arrow', 24, 112, 0xffffffff, 1, 1000, -2]]);
+    [['arrow', 48, 112, 0xffffffff, 1, 1000, -2]]);
   assert.deepEqual(props.map(({model, material, mirrored, matrices}) => [model, material, mirrored, matrices.length, matrices[0]]),
     [['a/b', 'stone', false, 24, 0], ['c', '', true, 12, 24]]);
   assert.deepEqual([...props[0].tints], [...tints]);
@@ -128,4 +128,11 @@ test('a decal takes the part of each surface in its box that faces its local +z'
   assert.ok(corner >= 0);
   assert.deepEqual(uvs.slice(corner / 3 * 2, corner / 3 * 2 + 2).map(v => Math.round(v * 1e6) / 1e6), [0, 0]);
   assert.deepEqual(normals.slice(0, 3), [0, 1, 0]);
+  // Cut to a second box half as wide along x: half the area, the texture where it was.
+  const cut = createProjector([[40, 0, 0, 10, 0, 0, 10, 0, 0, -40, 0, 0]], [[20, 0, 0, 10, 0, 0, 10, 0, 0, -40, 0, 0]]);
+  cut.add([-100, 0, 100], [100, 0, 100], [100, 0, -100], up, up, up);
+  cut.add([-100, 0, 100], [100, 0, -100], [-100, 0, -100], up, up, up);
+  const half = cut.out[0];
+  assert.ok(half.positions.every((v, i) => i % 3 !== 0 || (v >= -1e-9 && v <= 20 + 1e-9)));
+  assert.ok(half.uvs.every((v, i) => i % 2 || (v >= .25 - 1e-9 && v <= .75 + 1e-9)));
 });

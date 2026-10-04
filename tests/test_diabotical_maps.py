@@ -216,10 +216,10 @@ class DiaboticalMapsTest(unittest.TestCase):
             head = json.loads(raw[4:4 + length])
             self.assertEqual(head['props'], [['props/sub/quad|stone_floor|', 1, 0], ['props/sub/quad||', 1, 0], ['props/gone||', 1, 0],
                                              ['props/sub/quad|props/tinted|', 1, 1]])
-            self.assertEqual(np.frombuffer(raw[-12 - 60:-60], '<u4').tolist(), [0, 0x1336699, 0])  # The tinted key's tints.
+            self.assertEqual(np.frombuffer(raw[-12 - 108:-108], '<u4').tolist(), [0, 0x1336699, 0])  # The tinted key's tints.
             # Then the decals: their box matrices, then colour, flags and order each.
             self.assertEqual(head['decals'], [['arrow', 1]])
-            self.assertEqual(np.frombuffer(raw[-60:-12], '<f4')[[0, 5, 10]].tolist(), [40, 40, 10])
+            self.assertEqual(np.frombuffer(raw[-108:-12], '<f4')[[0, 5, 10, 12, 17, 22]].tolist(), [40, 40, 10] * 2)
             self.assertEqual(np.frombuffer(raw[-12:], '<u4').tolist(), [0xffffffff, 0, 0])
             self.assertEqual(materials['arrow']['texture'][-6:], '-a.png')
             self.assertEqual(materials['props/tinted']['accents'], [0xff0000, None, None])
@@ -293,13 +293,13 @@ class DiaboticalMapsTest(unittest.TestCase):
         # 2 v2, 4 v3), order.
         matrices, extras = decals['arrow']
         self.assertEqual(list(decals), ['arrow'])
-        self.assertEqual(matrices[0].reshape(3, 4).tolist(), [[100, 0, 0, 10], [0, 50, 0, 20], [0, 0, 8, -30]])
+        self.assertEqual(matrices[0].reshape(6, 4).tolist(), [[100, 0, 0, 10], [0, 50, 0, 20], [0, 0, 8, -30]] * 2)
         self.assertEqual(extras.view(np.int32).tolist(), [[0x40201080, 5, 1000], [0x00ff7fff, 2, -2]])
 
     def test_decal_boxes_turn_their_texture_as_the_game_does(self):
         from tools.import_diabotical_map import decal_matrix
         quarter = np.pi / 2
-        columns = lambda m: [np.round(m[:3, i], 6).tolist() for i in range(3)]
+        columns = lambda m: [np.round(m[0][:3, i], 6).tolist() for i in range(3)]
         # A wall decal turned 90 degrees about y (run 13): texture right toward -z, top up, facing (local -z) -x.
         self.assertEqual(columns(decal_matrix((0, 10, -300), (0, quarter, 0), (1, 1, 1))), [[0, 0, -1], [0, 1, 0], [1, 0, 0]])
         # On a floor (rotated 90 degrees about x) the texture is turned round: right toward -x, top toward -z.
@@ -308,11 +308,17 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual(columns(decal_matrix((0, 0, 0), (np.radians(89), 0, 0), (1, 1, 1)))[0], [1, 0, 0])
         self.assertEqual(columns(decal_matrix((0, 0, 0), (0, 2 * quarter, quarter), (1, 1, 1)))[:2], [[0, 1, 0], [1, 0, 0]])
         self.assertEqual(columns(decal_matrix((0, 0, 0), (2 * quarter, 0, 0), (1, 1, 1)))[:2], [[-1, 0, 0], [0, 1, 0]])
-        # v3: the scale turned by the rotation, as absolute values.
+        # v3: |R| s, the rotation's entries as absolute values times the scale.
         flat = decal_matrix((0, 0, 0), (quarter, 0, 0), (120, 60, 40))
-        self.assertEqual(np.round(np.linalg.norm(flat[:3, :3], axis=0), 6).tolist(), [120, 60, 40])
+        self.assertEqual(np.round(np.linalg.norm(flat[0][:3, :3], axis=0), 6).tolist(), [120, 60, 40])
         turned = decal_matrix((0, 0, 0), (quarter, quarter, 0), (120, 60, 40), v3=True)
-        self.assertEqual(np.round(np.linalg.norm(turned[:3, :3], axis=0), 6).tolist(), [60, 40, 120])
+        self.assertEqual(np.round(np.linalg.norm(turned[0][:3, :3], axis=0), 6).tolist(), [60, 40, 120])
+        rolled = decal_matrix((0, 0, 0), (0, 2 * quarter, quarter / 2), (40, 40, 30), v3=True)
+        self.assertEqual(np.round(np.linalg.norm(rolled[0][:3, :3], axis=0), 2).tolist(), [56.57, 56.57, 30])
+        # The box it is cut to: turned by the yaw the other way, not by the roll (run 15), same size and place.
+        projected, cut = decal_matrix((1, 2, 3), (quarter, np.radians(30), np.radians(45)), (120, 60, 40))
+        self.assertEqual(np.round(cut[:3, 0] / 120, 6).tolist(), np.round([np.cos(np.radians(30)), 0, np.sin(np.radians(30))], 6).tolist())
+        self.assertEqual((cut[:3, 3].tolist(), np.round(np.linalg.norm(cut[:3, :3], axis=0), 6).tolist()), ([1, 2, 3], [120, 60, 40]))
 
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds

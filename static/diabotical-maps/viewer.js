@@ -226,16 +226,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   // (0xRRGGBBAA, as sRGB: run 13 showed 808080 halving the picture's value, unlike an accent), one mesh per material
   // and order, drawn in order. The importer has turned each box so its texture runs along its x and y.
   function addDecals(list, entries) {
-    const boxes = [], owners = [];
+    const boxes = [], cuts = [], owners = [];
     for (const {material: name, matrices, extras, orders} of list) {
       if (!(entries[name] || {}).texture) continue;  // ponytail: a decal with no texture is left out, not drawn flat.
-      for (let i = 0; i < matrices.length / 12; i++) {
-        boxes.push(matrices.subarray(i * 12, i * 12 + 12));
+      for (let i = 0; i < matrices.length / 24; i++) {
+        boxes.push(matrices.subarray(i * 24, i * 24 + 12));
+        cuts.push(matrices.subarray(i * 24 + 12, i * 24 + 24));
         owners.push({name, colour: extras[i * 3], order: orders[i * 3 + 2]});
       }
     }
     if (!boxes.length) return 0;
-    const projector = DiaboticalDecals.createProjector(boxes);
+    const projector = DiaboticalDecals.createProjector(boxes, cuts);
     const a = [0, 0, 0], b = [0, 0, 0], c = [0, 0, 0], na = [0, 0, 0], nb = [0, 0, 0], nc = [0, 0, 0];
     const corner = (point, normal, positions, normals, at) => {
       for (let k = 0; k < 3; k++) { point[k] = positions[at * 3 + k]; normal[k] = normals[at * 3 + k]; }

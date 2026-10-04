@@ -52,9 +52,10 @@ Decals: a `decal...` entity projects its material (drawn by tiledecal.ps: map 0,
 a box, the unit cube centred on the entity under its rotation and scale (models/decal_volume.dbm is that cube), onto
 those facing its local -z (the shader drops surfaces whose normal is more than about 84 degrees off it); in 2,700
 flat stock decals the surface under one lies at its centre and faces local -z, with or without v2 or v3. The
-texture runs across local x and y (turned round on floors and past 90 degrees, see decal_matrix), times `color` (RRGGBB or AARRGGBB,
-taken as sRGB: 808080 halves the picture's value; run 13). `mirrored` changed nothing seen; v1, v2 and v3 differ
-only in v3's scale; the box's depth fades nothing. `order` (-10000 to 10000) orders them.
+texture runs across local x and y (turned round on floors and past 90 degrees) and is cut to a second box turned
+by the yaw the other way (see decal_matrix), times `color` (RRGGBB or AARRGGBB, taken as sRGB: 808080 halves the
+picture's value; run 13). `mirrored` changed nothing seen; v1, v2 and v3 differ only in v3's scale; the box's depth
+fades nothing. `order` (-10000 to 10000) orders them.
 
 Written (under local-data/diabotical-maps): index.json, maps/ID-HASH.bin per map (16-byte blocks: int16 x, y, z,
 u8 shape, turn, open faces (bit per face, in the order above), 0, then six u8 face materials), maps/ID-HASH.ent per
@@ -83,7 +84,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import decode_dds
 
-FORMAT = 5  # Of the files written per map: maps imported with another are read again.
+FORMAT = 7  # Of the files written per map: maps imported with another are read again.
 RECORD = {24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -294,21 +295,27 @@ def game_matrix(position, rotation, scale):
 
 
 def decal_matrix(position, rotation, scale, v3=False):
-    """A decal's box in game axes, its local x and y the way its texture's right and top run. A v3 decal's box takes
-    its scale turned by its rotation, as absolute values (|R s|: the sizes of three test decals turned differently,
-    run 13). The texture's top is the world's up seen along the box, then turned by the roll (z): the rotation's own
-    x and y while cos(rotation x) > 0, turned round past that and where the box faces straight up or down (no up to
-    see along it). Runs 13 and 14: walls at rolls 0, 90, 180 and 45, both ways along x, floors flat (turned round)
+    """A decal's box in game axes (the one its texture is projected from) and the box it is cut to, which the game
+    turns by the yaw the other way and not by the roll (run 15: banner decals turned by yaw 30, 45 and 60 come out
+    as parallelograms, one turned by roll 45 as cut by its unturned box; a square box at yaw 45 whole).
+    The first box's local x and y are the way its texture's right and top run. A v3 decal's box takes
+    |R| s as its scale (the rotation's entries as absolute values, times the scale): the sizes of three test decals
+    turned by right angles (run 13), and of one rolled 45 degrees on a wall (run 14: 40 x 40 drawn about 57 x 57,
+    where |R s| would have no width). The texture's top is the world's up seen along the box, then turned by the
+    roll (z): the rotation's own x and y while cos(rotation x) > 0, turned round past that and where the box faces
+    straight up or down (no up to see along it). Runs 13 to 15: walls at rolls 0, 90, 180 and 45, both ways along
+    x, floors and a ceiling flat (turned round)
     and tilted 60, 80 and 89 degrees (not)."""
     turn = game_matrix((0, 0, 0), rotation, (1, 1, 1))[:3, :3]
     if v3:
-        scale = np.abs(turn @ np.asarray(scale, float))
+        scale = np.abs(turn) @ np.asarray(scale, float)
     if np.cos(rotation[0]) < 1e-3:
         turn = turn @ np.diag([-1.0, -1.0, 1.0])
-    out = np.eye(4)
+    out, cut = np.eye(4), np.eye(4)
     out[:3, :3] = turn @ np.diag(scale)
-    out[:3, 3] = position
-    return out
+    cut[:3, :3] = game_matrix((0, 0, 0), (rotation[0], -rotation[1], 0), (1, 1, 1))[:3, :3] @ np.diag(scale)
+    out[:3, 3] = cut[:3, 3] = position
+    return out, cut
 
 
 MIRROR = np.diag([1.0, 1.0, -1.0, 1.0])  # Game axes <-> page (and FBX) axes.
@@ -320,7 +327,7 @@ def placements(entities, assets):
     """A map's props as {"model|material|m": float32 array of page matrices' top three rows} (material empty for the
     model's own, m when mirrored), their tints ({key: uint32 (n, 3)}, for the keys with any: each prop's color,
     color2 and color3 as 0x1RRGGBB, 0 if unset), its spawns, pickups and other markers, liquids, and decals ({material:
-    (float32 (n, 12) page matrices of their boxes, uint32 (n, 3): colour 0xRRGGBBAA, flags (1 mirrored, 2 v2, 4 v3),
+    (float32 (n, 24) page matrices of their boxes, projected from and cut to, uint32 (n, 3): colour 0xRRGGBBAA, flags (1 mirrored, 2 v2, 4 v3),
     order as int32)}). A dynamic prop's scale is its size in 40-unit cells, each cell a model its asset's rules pick by
     the cell's offsets from the prop's ends."""
     props, tints, markers, liquids, decals = {}, {}, [], [], {}
@@ -334,7 +341,7 @@ def placements(entities, assets):
                 flags = sum(bit for bit, key in ((1, 'mirrored'), (2, 'v2'), (4, 'v3')) if fields.get(key) == 'true')
                 order = re.fullmatch(r'\s*(-?\d+)\D*', fields.get('order', ''))  # Some read "01000".
                 decals.setdefault(fields['material'].lower(), []).append((
-                    (MIRROR @ decal_matrix(position, rotation, scale, fields.get('v3') == 'true') @ MIRROR)[:3].ravel(),
+                    np.concatenate([(MIRROR @ box @ MIRROR)[:3].ravel() for box in decal_matrix(position, rotation, scale, fields.get('v3') == 'true')]),
                     [(0xffffff if rgb is None else rgb) << 8 | alpha, flags, int(order.group(1)) % 2 ** 32 if order else 0]))
             continue
         if name.startswith('liquid'):

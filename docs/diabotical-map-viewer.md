@@ -99,9 +99,13 @@ left (`static/diabotical-maps/blocks.js`).
   world's up as seen along the box, turned by the decal's roll (rotation z):
   that is the box's own local y while cos(rotation x) > 0, and the texture is
   turned round where the box faces exactly up or down (floors: no up to see)
-  or is turned past 90° about x. A `v3` decal's box takes its scale turned
-  by its rotation, as absolute values; `v1` and `v2` decals take it as given.
-  `mirrored` changes nothing seen in the game, nor does a box's depth.
+  or is turned past 90° about x. The game then cuts the decal to a second
+  box of the same size and place, turned by the yaw the other way and not by
+  the roll: a decal at a yaw that is not a right angle shows as a
+  parallelogram, unless its box is square. A `v3` decal's boxes take |R| s
+  as their scale (the rotation's entries as absolute values, times the
+  scale); `v1` and `v2` decals take it as given. `mirrored` changes nothing
+  seen in the game, nor does a box's depth.
 - **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
   teleporters, flags and power-ups (named by the entity's name) are coloured
   shapes; `liquid_*` entities boxes of their scale, centred on them.
@@ -193,8 +197,8 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   its twin, boxes raised 15 units the same as those on the floor; ff000080 dark
   blue (alpha first); 808080 half the value of ffffff in the picture (so sRGB,
   unlike an accent). A v3 decal 120 × 60 × 40 showed its texture 120 × 40
-  flat and 60 × 40 turned a quarter (by roll or by yaw): the scale turned by
-  the rotation, as absolute values, fits all three. The floor decals' texture
+  flat and 60 × 40 turned a quarter (by roll or by yaw), which |R| s fits
+  (and run 14's 40 × 40 rolled 45° on a wall, drawn about 57 × 57). The floor decals' texture
   runs against the box's x and y, the pillar's along them; no single rotation
   convention fits both. Run 14 (fifteen more): on a wall, rolls 0, 90, 180
   and 45 turn the texture counter-clockwise as seen facing it, along the
@@ -204,16 +208,23 @@ made by script into its editor (`/edit NAME`) and reading back what it wrote:
   the roll: given the game's rotation (yaw, then pitch, then roll), the box's
   own x and y while cos(pitch) > 0, turned round past it. Of the stock decals
   13,852 have cos(pitch) > 0, 6,581 face straight up or down and 2,127 are
-  past 90° (such as a "5" number decal at 180°, upright this way).
+  past 90° (such as a "5" number decal at 180°, upright this way). Run 14's
+  floor decals at a 45° yaw also showed only part of their text: run 15 put
+  `dignitas_banner` decals (an orange rectangle filling nearly all its
+  texture) flat on the floor at yaws 0, 30, 45, 60 and 90, one turned by roll
+  45° instead, one at yaw 45° in a square box and one v3: yaws 30 to 60 come
+  out as parallelograms with edges at +yaw and -yaw, the rolled one with two
+  edges level, the square one whole. Simulated against the shot, a cutting
+  box turned by -yaw and no roll fits all eight (overlap 0.77 to 0.92, as
+  good as the uncut yaw 0, against 0.30 to 0.65 uncut), and explains run 14's
+  wall decals rolled 90° in 40 × 20 boxes showing only about 20 × 20. A
+  `center_room` decal on a ceiling (rotation x -90°) is turned round, as a
+  floor's.
 
 ## Not done yet
 
-Decals at a yaw that is not a right angle: run 14's floor decals at 45° (v1
-and v3) show only part of their texture in the game, cut along its length
-(about 70 of 98 units of text), as if clipped by a box turned differently from
-the one they project from (at 90° the two would cover the same ground); the
-page draws them whole. Ceilings (assumed as floors), decals with no texture in the game files (drawn not at
-all), props marked `no_decals` (they take decals), lights, billboards, particles, the glowing crystals' colours
+Decals' cutting box tilted about x (only flat ones and walls measured), decals
+with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), lights, billboards, particles, the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
 materials (a flag in the material picks the team's colour over an accent),
 whether a

@@ -2,8 +2,8 @@
    (padded to 4 bytes), the head {props: [["model|material|m", count, tinted]], markers: [[kind, x, y, z]], liquids:
    [[x, y, z, width, height, depth, material]], decals: [[material, count]]}, then each prop group's page matrices in
    turn, 12 float32 each (the top three rows, row by row), then for each tinted group its props' color, color2 and
-   color3, 3 uint32 each (0x1RRGGBB, or 0 where the material's own accent stands), then each decal group's box
-   matrices (12 float32 each), then per decal its colour (0xRRGGBBAA), flags (1 mirrored, 2 v2, 4 v3) and order
+   color3, 3 uint32 each (0x1RRGGBB, or 0 where the material's own accent stands), then each decal group's boxes
+   (24 float32 each: the matrix of the box its texture is projected from, then of the box it is cut to), then per decal its colour (0xRRGGBBAA), flags (1 mirrored, 2 v2, 4 v3) and order
    (int32). Material is empty where the model's own are drawn, m
    marks mirrored props. Marker and liquid positions are the game's (the page's x, y, -z). Node runs it too
    (tests/diabotical_maps.test.cjs). */
@@ -25,12 +25,12 @@
       at += count * 12;
     });
     const decals = head.decals.map(([material, count]) => {
-      const matrices = new Float32Array(buffer, at, count * 12);
-      at += count * 48;
+      const matrices = new Float32Array(buffer, at, count * 24);
+      at += count * 96;
       return {material, matrices};
     });
     for (const decal of decals) {
-      const count = decal.matrices.length / 12;
+      const count = decal.matrices.length / 24;
       Object.assign(decal, {extras: new Uint32Array(buffer, at, count * 3), orders: new Int32Array(buffer, at, count * 3)});
       at += count * 12;
     }
