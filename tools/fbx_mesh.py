@@ -1,19 +1,59 @@
-"""Binary FBX (version 7100 to 7700) to triangles per material, with node transforms applied as assimp does (the
-Diabotical import's models). Checked against the game's own compiled models (.dbm, assimp output): the bounding
+"""Binary FBX (version 7100 to 7700), or ASCII FBX (weapongl, the grenade launcher pickup), to triangles per
+material, with node transforms applied as assimp does (the Diabotical import's models). Checked against the game's own compiled models (.dbm, assimp output): the bounding
 boxes of 7681 of the 7927 models shipped as both match, the .dbm being the FBX with z negated; most of the rest are
 old or backup files compiled from another version."""
+import re
 import struct
 import zlib
 
 import numpy as np
 
 ARRAYS = {b'f': '<f4', b'd': '<f8', b'l': '<i8', b'i': '<i4', b'b': 'u1'}
+ASCII_TOKEN = re.compile(r'"[^"]*"|[A-Za-z_][\w|]*:|[{}]|[^\s,{}"]+')
+
+
+def read_ascii_nodes(text):
+    """An ASCII FBX's node tree as read_nodes gives a binary one's: an array (`*N { a: ... }`) as one numpy value,
+    an object's "Class::Name" as the binary's "Name\\x00\\x01Class"."""
+    tokens, at = ASCII_TOKEN.findall(re.sub(r'(?m)^\s*;.*$', '', text)), 0
+
+    def value(token):
+        if token[0] == '"':
+            word = token[1:-1]
+            return '\x00\x01'.join(word.split('::', 1)[::-1]) if '::' in word else word
+        for kind in (int, float):
+            try:
+                return kind(token)
+            except ValueError:
+                pass
+        return token
+
+    def nodes():
+        nonlocal at
+        out = []
+        while at < len(tokens) and tokens[at] != '}':
+            name, values, children = tokens[at][:-1], [], []
+            at += 1
+            while at < len(tokens) and tokens[at] not in ('{', '}') and not (tokens[at][-1] == ':' and tokens[at][0] != '"'):
+                values.append(value(tokens[at]))
+                at += 1
+            if at < len(tokens) and tokens[at] == '{':
+                at += 1
+                children = nodes()
+                at += 1
+            if values and str(values[0]).startswith('*'):
+                values, children = [np.array(children[0][1] if children else [])], []
+            out.append((name, values, children))
+        return out
+    return nodes()
 
 
 def read_nodes(data):
     """The FBX node tree: [(name, properties, children)]."""
+    if data.lstrip()[:5] == b'; FBX':
+        return read_ascii_nodes(data.decode('utf-8', 'replace'))
     if data[:21] != b'Kaydara FBX Binary  \x00':
-        raise ValueError('not a binary FBX')
+        raise ValueError('not an FBX')
     version, = struct.unpack_from('<I', data, 23)
     head, head_size = ('<QQQB', 25) if version >= 7500 else ('<IIIB', 13)
 
@@ -117,6 +157,8 @@ def layer(geometry, kind, values, indices, width, corners):
 def fbx_mesh(data):
     """{material name: (positions, normals, uvs)}, each (triangles, 3, n) float32, in the FBX's own axes."""
     nodes = read_nodes(data)
+    if child(('', [], nodes), 'Objects') is None:
+        raise ValueError('no objects in the FBX')
     objects = {o[1][0]: o for o in child(('', [], nodes), 'Objects')[2]}
     parent, children = {}, {}
     for link in child(('', [], nodes), 'Connections')[2]:

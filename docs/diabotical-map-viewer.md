@@ -80,7 +80,9 @@ left (`static/diabotical-maps/blocks.js`).
   prop's ends (the last rule that holds wins, per channel). The game picks among
   a rule's variants at random; the page picks the same way every time.
   `PATH_flipx` is `PATH` mirrored. Props marked `no_show` (clip boxes and other
-  invisible ones) and materials marked `visible false` are left out; foliage
+  invisible ones) and materials marked `visible false` are left out (also where
+  the line comes before the shader's stage: the jump pads' ring band and the
+  cover over their orange disc, drawn black until FORMAT 22); foliage
   (shadow shader `shadow_at_…` or `culling off`) is cut out by its texture's
   alpha and two-sided.
 - **Colour tints.** A material drawn by the game's `tilemask.ps` (886 of
@@ -210,9 +212,12 @@ left (`static/diabotical-maps/blocks.js`).
   0.36 of its model's length, tilted a little). The asset's `pfx` (system and
   offset) is drawn as a particle emitter. The page draws them still where the
   game spins and bobs them, and from the start where power-ups wait for their
-  timers; the small `hpt0` bubble is see-through glass in game (`efferv.ps`)
-  and an opaque blue blob here. `weapongl` and `weaponfg` (ASCII FBX) stay
-  markers.
+  timers. The health bubbles' glass (`efferv.ps`, no texture: `!skybox` or a
+  test cubemap) is drawn unlit and see-through, its base colour (accent 1)
+  turning to its edge colour (accent 2) where the surface is seen edge on; the
+  game's smoke (accent 3) and refraction are left out. `weapongl` is an ASCII
+  FBX, read as the binary ones are; `weaponfg`, `weapondf`, `ammodf` and
+  `weaponbfg` have no model in the game files and stay markers.
 - **Markers and liquids.** Spawns, jump pads, teleporters and any pickup
   without a model it can read are coloured shapes. A `liquid_*` entity is a box of its scale centred on it, its top
   the surface: drawn unlit (lava and acid glow their colour, as in the game)
@@ -466,7 +471,7 @@ terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
-neighbour tests such as `left empty`), skinned and ASCII FBX models, the
+neighbour tests such as `left empty`), skinned models, the
 few prop materials still not found (flat colours: weapon models placed as props, particle
 containers, holiday lights, some ads), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
 through bioplant's overall brightness, the reflections leave out the per-pixel

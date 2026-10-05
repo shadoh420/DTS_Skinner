@@ -97,7 +97,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 22  # Of the files written per map: maps imported with another are read again.
+FORMAT = 23  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -246,6 +246,9 @@ def read_materials(packs):
                     found = re.search(r'\bmaterial_id\s+(\d+)', stage)
                     flags.update(lit=bool(lit), spec=maps[2] if lit and len(maps) > 2 else None, ids=maps[3] if lit and len(maps) > 3 else None,
                                  id=int(found.group(1)) if found else 0)
+                    # The efferv glass (health bubbles): its base and edge (fresnel) colours, linear RGBA; no texture.
+                    params = dict(re.findall(r'pixel_shader_param\s+(accent[12])\s+(\S+\s+\S+\s+\S+\s+\S+)', stage))
+                    flags['glass'] = [[float(v) for v in params[k].split()] for k in ('accent1', 'accent2')] if 'efferv' in stage and len(params) == 2 else None
                     # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5;
                     # a tinted material's (tilemask) colour mask is its map 4: NAME#4.
                     for slot in (0, 3, 5) if 'tileter' in stage else (0, 4) if 'tilemask' in stage else (0,):
@@ -382,16 +385,16 @@ PICKUP_MODELS = {'flag': 'ctf_flag', 'coin': 'entities/coin/coin'}  # Named in t
 WEAPON_PICKUP_SCALE = 0.4
 
 
-def pickup_kinds(assets, binary):
+def pickup_kinds(assets, readable):
     """{kind: (model path, scale, centred)} for the pickups the game draws as a model (run 37): the kinds with an asset
     marked `pickup_size` and coins; the model is the asset's, else PICKUP_MODELS', else models/KIND (weapons), kept
-    where `binary(path)` (only binary FBX are read: weapongl stays a marker). Scale is the asset's (1.4 for the melee
+    where `readable(path)` (an FBX, binary or ASCII). Scale is the asset's (1.4 for the melee
     weebles), times WEAPON_PICKUP_SCALE for weapons; a model is centred on its bounding box unless the asset sets a `pivot`."""
     kinds = {}
     for kind in sorted({name for name, fields in assets.items() if 'pickup_size' in fields} | {'coin'}):
         fields = assets.get(kind, {})
         model = (fields.get('model') or PICKUP_MODELS.get(kind) or kind).lower()
-        if binary(model):
+        if readable(model):
             scale = float(fields.get('scale') or 1) * (WEAPON_PICKUP_SCALE if kind.startswith('weapon') else 1)
             kinds[kind] = (model, round(scale, 4), 'pivot' not in fields)
     return kinds
@@ -760,6 +763,10 @@ def material_textures(packs, names, materials, output, replace=False):
 
     entries, missing = {}, []
     for name in sorted(names):
+        glass = next((flags['glass'] for *_, flags in materials.get((name or 'default').lower().split(':')[0], [])[:1] if flags.get('glass')), None)
+        if glass:
+            entries[name] = dict(glass=glass)
+            continue
         files = [(found, scale, folder, flags) for path, scale, folder, flags in materials.get((name or 'default').lower().split(':')[0], [])
                  for found in [find(path, folder)] if found]
         if not files:
@@ -903,7 +910,8 @@ def import_maps(game, output, replace=False, extra=None):
             if name.endswith('.fbx'):
                 fbx.setdefault(name, pack)
     fbx_file = lambda model: 'models\\' + model.replace('/', '\\') + '.fbx'
-    pickups = pickup_kinds(assets, lambda model: fbx_file(model) in fbx and fbx[fbx_file(model)].read(fbx_file(model))[:18] == b'Kaydara FBX Binary')
+    is_fbx = lambda raw: raw[:18] == b'Kaydara FBX Binary' or raw.lstrip()[:5] == b'; FBX'
+    pickups = pickup_kinds(assets, lambda model: fbx_file(model) in fbx and is_fbx(fbx[fbx_file(model)].read(fbx_file(model))))
     for name, group, read in sources:
         ident = map_id(name if group == 'Diabotical' else 'user__' + name)
         try:

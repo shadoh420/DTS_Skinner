@@ -186,6 +186,11 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertTrue(found['pad_mat_rings'][0][3]['hidden'])
         self.assertEqual(found['pad_mat_rings'][0][0], 'glow_d.png')
         self.assertFalse(found['pad_mat_1'][0][3]['hidden'])
+        # The health bubbles' glass (efferv): no texture, its base and edge colours from accents 1 and 2.
+        shader = b"hpt1_mat_2\n{\n  {\n\tmap !skybox\n    pixel_shader efferv.ps.cso\n\t//Base color\n" \
+                 b"\tpixel_shader_param accent1 0 0.5 0.4 0.15\n\tpixel_shader_param accent2 0.75 0.5  0.25 0.6\n  }\n}\n"
+        self.assertEqual(read_materials([pack])['hpt1_mat_2'][0][3]['glass'], [[0, .5, .4, .15], [.75, .5, .25, .6]])
+        self.assertIsNone(found['pad_mat_1'][0][3]['glass'])
 
     def test_import_writes_blocks_index_and_material_textures(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -275,8 +280,23 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual(positions.shape, (2, 3, 3))
         self.assertEqual((positions[..., 0].min(), positions[..., 0].max()), (5, 15))
         self.assertEqual(uvs[0].tolist(), [[0, 0], [1, 0], [1, 1]])
-        with self.assertRaisesRegex(ValueError, 'not a binary FBX'):
+        with self.assertRaisesRegex(ValueError, 'not an FBX'):
+            fbx_mesh(b'PK\x03\x04')
+        with self.assertRaisesRegex(ValueError, 'no objects'):
             fbx_mesh(b'; FBX 7.4.0 project file')
+        # The same square as an ASCII FBX (the grenade launcher pickup's is one).
+        ascii_quad = (b'; FBX 7.3.0 project file\nObjects:  {\n\tGeometry: 1, "Geometry::quad", "Mesh" {\n'
+                      b'\t\tVertices: *12 {\n\t\t\ta: 0,0,0,10,0,0,\n10,10,0,0,10,0\n\t\t}\n\t\tPolygonVertexIndex: *4 {\n\t\t\ta: 0,1,2,-4\n\t\t}\n'
+                      b'\t\tLayerElementUV: 0 {\n\t\t\tMappingInformationType: "ByPolygonVertex"\n\t\t\tReferenceInformationType: "Direct"\n'
+                      b'\t\t\tUV: *8 {\n\t\t\t\ta: 0,0,1,0,1,1,0,1\n\t\t\t}\n\t\t}\n\t}\n'
+                      b'\tModel: 2, "Model::quad", "Mesh" {\n\t\tVersion: 232\n\t\tProperties70:  {\n'
+                      b'\t\t\tP: "Lcl Translation", "Lcl Translation", "", "A",5,0,0\n\t\t}\n\t\tShading: T\n\t}\n'
+                      b'\tMaterial: 3, "Material::skin", "" {\n\t}\n}\nConnections:  {\n\t;Model::quad, Model::RootNode\n'
+                      b'\tC: "OO",2,0\n\tC: "OO",1,2\n\tC: "OO",3,2\n}\n')
+        ascii_groups = fbx_mesh(ascii_quad)
+        self.assertEqual(list(ascii_groups), ['skin'])
+        for a, b in zip(ascii_groups['skin'], groups['skin']):
+            self.assertEqual(a.tolist(), b.tolist())
 
     def test_entities_become_props_markers_and_liquids(self):
         entities = [
@@ -400,7 +420,7 @@ class DiaboticalMapsTest(unittest.TestCase):
         from tools.import_diabotical_map import pickup_kinds, placements
         assets = {'hpt1': {'model': 'Entities/Health/hpt1', 'pickup_size': 'large'}, 'weaponsw': {'pivot': '0 0 0', 'scale': '1.4', 'pickup_size': 'large'},
                   'weapongl': {'pickup_size': 'large'}, 'flag': {'pickup_size': 'large'}, 'chair': {'model': 'props/chair'}}
-        kinds = pickup_kinds(assets, lambda model: model != 'weapongl')  # weapongl: an ASCII FBX.
+        kinds = pickup_kinds(assets, lambda model: model != 'weapongl')  # As if weapongl's FBX could not be read.
         self.assertEqual(kinds, {'hpt1': ('entities/health/hpt1', 1.0, True), 'weaponsw': ('weaponsw', 0.56, False), 'flag': ('ctf_flag', 1.0, True),
                                  'coin': ('entities/coin/coin', 1.0, True)})
         entities = [('hpt1_2', (10, 20, 30), (0, 0, 0), (1, 1, 1), {}), ('weaponsw', (0, 0, 0), (0, 0, 0), (1, 1, 1), {}),

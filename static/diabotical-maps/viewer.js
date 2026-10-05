@@ -93,6 +93,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (materials.has(key)) return materials.get(key);
     const side = THREE.FrontSide;
     let made;
+    if (entry && entry.glass) {
+      // The game's efferv glass (health bubbles): unlit and see-through, its base colour turning to its edge colour
+      // where the surface is seen edge on (linear RGBA from the shader, drawn as given, as liquids are).
+      const [base, edge] = entry.glass;
+      made = new THREE.MeshLambertMaterial({transparent: true, depthWrite: false, side});
+      made.onBeforeCompile = shader => {
+        shader.uniforms.glassBase = {value: new THREE.Vector4(...base)};
+        shader.uniforms.glassEdge = {value: new THREE.Vector4(...edge)};
+        shader.fragmentShader = 'uniform vec4 glassBase, glassEdge;\n' + shader.fragmentShader.replace('#include <output_fragment>', `
+          float edgeOn = pow(1. - abs(dot(normal, normalize(vViewPosition))), 2.);
+          gl_FragColor = mix(glassBase, glassEdge, edgeOn);`);
+      };
+      materials.set(key, made);
+      return made;
+    }
     if (!entry || !entry.texture) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
     else {
       // Foliage and the like are cut out by their texture's alpha and seen from both sides.
