@@ -70,6 +70,12 @@ class DiaboticalModelsTest(unittest.TestCase):
             with Image.open(output / 'textures/props_red.png') as tinted:
                 red, green, _ = tinted.getpixel((0, 0))  # (10, 200, 10) toward red x its mean (73).
                 self.assertEqual((abs(red - 73) < 4, green < 4), (True, True))
+            # A mirrored piece is turned round: its triangles still wind toward +z, the way the quad faces.
+            import numpy as np
+            for name in ('dynprop.strip.props_sub_quad', 'dynprop.strip.props_sub_quad_flipx', 'dynprop.strip'):
+                data = load_model_data(output / f'model_json/{name}.json')
+                v, t = np.reshape(data['vertices'], (-1, 3)), np.reshape(data['indices'], (-1, 3))
+                self.assertTrue((np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])[:, 2] > 0).all(), name)
             jump = load_model_data(output / 'model_json/entity.jump.json')
             self.assertEqual(jump['material_textures'], ['marker_30d0f0.png'])
             self.assertTrue((output / 'textures/arrow.png').is_file())  # Decals join the texture library.
