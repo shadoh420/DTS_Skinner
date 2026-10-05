@@ -63,8 +63,14 @@ left (`static/diabotical-maps/blocks.js`).
   the game's compiled `.dbm` is the same model with z negated, and the bounding
   boxes of 7,720 of the 7,974 models shipped both ways match) placed by the
   entity's position, rotation and scale. Its material is the asset's or the
-  entity's `material`, else a shader named after the model, else the one
-  named most like it in the nearest `.shader` file at or above its folder.
+  entity's `material`, else a shader named after the model, else, for a
+  piece of a dynamic prop, its channel's `channel_material` (offshore pipes)
+  or the first shader named after a model its channel's rules list (the
+  pieces' own model files name only Maya's `lambert1`: temple wallbars draw
+  as `dp_wallbars_mid_mid`, castle `woodexterior_y` as `woodexterior`; about
+  52,000 placements; run 35 saw them textured so in game, and the temple
+  pillar ends as stone, not their folder's metal frame), else the one named
+  most like it in the nearest `.shader` file at or above its folder.
   An entity's `material` X is first looked up as the shader `MODEL_X`
   (bioplant's door frames: `frame_red` on `corridor_path_..._tile_x` is
   `corridor_path_..._tile_x_frame_red`, a tinted variant), else as X.
@@ -436,9 +442,9 @@ terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
-neighbour tests such as `left empty`), skinned and ASCII FBX models, about 250
-prop materials not found (flat colours; fewer since a prop's `material` X
-is read as its shader's X variant), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
+neighbour tests such as `left empty`), skinned and ASCII FBX models, the
+few prop materials still not found (flat colours: weapon pickups, particle
+containers, holiday lights, some ads), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
 through bioplant's overall brightness, the reflections leave out the per-pixel
 material id (the commonest
 value of a material's id map is used), the spot lights' extra specular factor

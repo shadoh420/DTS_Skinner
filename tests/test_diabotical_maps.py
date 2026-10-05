@@ -384,6 +384,19 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertFalse(any(rule_holds(c, cell) for c in ('offset_left is 0', 'offset_bottom % 3 0', 'size_x < 3', 'left empty',
                                                              'offset_front / offset_bottom 2', 'offset_top is 0')))
 
+    def test_dynamic_pieces_draw_with_their_channels_shader(self):
+        from tools.import_diabotical_map import piece_shaders
+        assets = {'bars': dict(dynamic='true', channels={}, rules=[(0, [], ['p/bars_mid']), (0, ['offset_top is 0'], ['p/bars_top_flipx']),
+                                                                   (1, [], ['trim', 'p/trim_b'])]),
+                  'pipe': dict(dynamic='true', channels={0: 'ofs_pipes_clean'}, rules=[(0, [], ['p/pipe_mid_1', 'p/pipe_mid_2'])]),
+                  'scaffold': dict(dynamic='true', channels={}, rules=[(0, [], ['p/sc_bottom']), (0, [], ['p/sc_mid_flipz'])]),
+                  'none': dict(dynamic='true', channels={}, rules=[(0, [], ['p/odd'])]),
+                  'trim': dict(model='p/trim_a')}
+        known = {'p/bars_mid', 'p/trim_a', 'ofs_pipes_clean', 'p/sc_mid_flipz'}
+        self.assertEqual(piece_shaders(assets, known), {'p/bars_mid': 'p/bars_mid', 'p/bars_top': 'p/bars_mid', 'p/trim_a': 'p/trim_a',
+                                                        'p/trim_b': 'p/trim_a', 'p/pipe_mid_1': 'ofs_pipes_clean', 'p/pipe_mid_2': 'ofs_pipes_clean',
+                                                        'p/sc_bottom': 'p/sc_mid_flipz', 'p/sc_mid': 'p/sc_mid_flipz'})
+
     def test_map_id(self):
         self.assertEqual(map_id('duel_F1sks House'), 'duel_f1sks_house')
 

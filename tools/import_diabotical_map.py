@@ -94,7 +94,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 16  # Of the files written per map: maps imported with another are read again.
+FORMAT = 18  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -276,8 +276,31 @@ def read_assets(packs):
                     # A choice may carry a word on how to pick (serial_horizontal, serial_rand): not followed.
                     choices = [c.split()[0].lower() for line in re.findall(r'^\s*(?:select|pick)\s+(.+)$', rule, re.M) for c in line.split(',') if c.strip()]
                     fields['rules'].append((int(channel.group(1)) if channel else 0, re.findall(r'^\s*if\s+(.+?)\s*$', rule, re.M), choices))
+                fields['channels'] = {int(n): shader.lower() for n, shader in re.findall(r'^\s*channel_material\s+(\d+)\s+(\S+)', inner, re.M)}
                 assets.setdefault(found.group(1).lower(), fields)
     return assets
+
+
+def piece_shaders(assets, known):
+    """{model path: shader} for the pieces of dynamic assets, whose own model files name no shader (Maya's lambert1):
+    the channel's `channel_material` (offshore pipes), else the first shader in `known` named after a model the channel's
+    rules list, in order, as listed or without its _flipx (temple wallbars draw as dp_wallbars_mid_mid, castle
+    woodexterior_y as woodexterior, scaffold pieces as dp_scaffold_test_corner_mid_x_flipz). The first asset read wins."""
+    raw = lambda choice: assets.get(choice, {}).get('model', choice).lower()
+    model = lambda choice: re.sub(r'(_flip[xyz])+$', '', raw(choice))
+    heads = {}
+    for asset in assets.values():
+        if asset.get('dynamic') != 'true':
+            continue
+        first = dict(asset['channels'])
+        for channel, _, choices in asset['rules']:
+            for name in (name for choice in choices for name in (raw(choice), model(choice)) if name in known):
+                first.setdefault(channel, name)
+        for channel, _, choices in asset['rules']:
+            for choice in choices:
+                if channel in first:
+                    heads.setdefault(model(choice), first[channel])
+    return heads
 
 
 def rule_holds(condition, cell):
@@ -742,13 +765,13 @@ def write_envmaps(pack, names, output, replace=False):
     return done
 
 
-def convert_models(packs, paths, materials, output, replace=False, previous=None):
+def convert_models(packs, paths, materials, output, replace=False, previous=None, heads=None):
     """Each model path's FBX (models/PATH.fbx in the packs) as models/HASH.bin, triangles of 8 float32 each corner
     (position, normal, uv in the page's axes) grouped by material, for models.json: {path: {file, groups: [[material,
-    corners]]}}. A group's material is the first defined of PATH_MATERIAL, MATERIAL and PATH (the FBX's own material
-    names say little: "1024"), else the material named most like the model (longest common start) in the nearest
+    corners]]}}. A group's material is the first defined of PATH_MATERIAL, MATERIAL, PATH and the shader its dynamic
+    asset draws it with (`heads`, piece_shaders; the FBX's own material names say little: "1024"), else the material named most like the model (longest common start) in the nearest
     .shader file at or above the model's folder (many pieces of a dynamic prop share one: trim01b takes trim01a's).
-    Models of the `previous` models.json whose file is there are kept unless replacing. Also returns the paths with
+    Models of the `previous` models.json (of this FORMAT) whose file is there are kept unless replacing. Also returns the paths with
     no readable FBX."""
     where = {}
     for pack in packs:
@@ -763,7 +786,7 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
     (output / 'models').mkdir(parents=True, exist_ok=True)
     entries, missing = {}, []
     for path in sorted(paths):
-        if not replace and path in (previous or {}) and (output / 'models' / previous[path]['file']).is_file():
+        if not replace and (previous or {}).get(path, {}).get('format') == FORMAT and (output / 'models' / previous[path]['file']).is_file():
             entries[path] = previous[path]
             continue
         file = 'models\\' + path.replace('/', '\\') + '.fbx'
@@ -777,10 +800,10 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         # Else the material most like the model's name in the nearest .shader beside it or in a folder above it.
         parts = file.split('\\')[:-1]
         own = next((alike(path, folders[f]) for f in ('\\'.join(parts[:n]) for n in range(len(parts), 1, -1)) if f in folders), path)
-        names = [next((m for m in (f'{path}_{name}'.lower(), name.lower(), path) if m in materials), own) for name in groups]
+        names = [next((m for m in (f'{path}_{name}'.lower(), name.lower(), path, (heads or {}).get(path)) if m in materials), own) for name in groups]
         if replace or not target.is_file():
             target.write_bytes(b''.join(np.concatenate(parts, 2).tobytes() for parts in groups.values()))
-        entries[path] = dict(file=target.name, groups=[[name, 3 * len(parts[0])] for name, parts in zip(names, groups.values())])
+        entries[path] = dict(format=FORMAT, file=target.name, groups=[[name, 3 * len(parts[0])] for name, parts in zip(names, groups.values())])
     return entries, missing
 
 
@@ -874,7 +897,7 @@ def import_maps(game, output, replace=False, extra=None):
         write_envmaps(cubes, envmaps - {None}, output, replace)
     models_path = output / 'models.json'
     previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
-    models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous)
+    models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous, piece_shaders(assets, found))
     models_path.write_text(json.dumps(models, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     used = ({name for item in index.values() for name in item['materials']} | {key.split('|')[1] for key in keys if key.split('|')[1]} |
             {name for model in models.values() for name, _ in model['groups']} |
