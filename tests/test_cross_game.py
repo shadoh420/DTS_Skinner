@@ -52,6 +52,7 @@ class CrossGameTests(unittest.TestCase):
             stack.enter_context(patch('app.textures_dir', directories['t1']))
             stack.enter_context(patch('app.q3_dir', root / 'q3'))
             stack.enter_context(patch('app.local_data_dir', root))
+            stack.enter_context(patch('app.app_local_data_dir', root))
             stack.enter_context(patch('tools.animate_t2.load_animated_model',
                                      side_effect=lambda name, source, preview: dict(preview, animation_clips=clips)))
             client = app.test_client()

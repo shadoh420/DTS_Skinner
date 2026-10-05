@@ -37,20 +37,28 @@
       return {inverse: invert(m), cut: invert(cuts[id]), direction: [m[2] / length, m[6] / length, m[10] / length], min, max};
     });
     const out = boxes.map(() => ({positions: [], normals: [], uvs: []}));
+    const all = decals.reduce((all, d) => ({min: all.min.map((v, k) => Math.min(v, d.min[k])), max: all.max.map((v, k) => Math.max(v, d.max[k]))}),
+      {min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity]});
     let visit = 0;
-    // Each decal whose box's bounds meet the bounds min..max, once.
+    function* binned(lo, hi) {
+      for (let x = Math.floor(lo[0] / CELL); x <= Math.floor(hi[0] / CELL); x++)
+        for (let y = Math.floor(lo[1] / CELL); y <= Math.floor(hi[1] / CELL); y++)
+          for (let z = Math.floor(lo[2] / CELL); z <= Math.floor(hi[2] / CELL); z++) yield* bins.get(cell(x * CELL) | cell(y * CELL) << 10 | cell(z * CELL) << 20) || [];
+    }
+    // Each decal whose box's bounds meet the bounds min..max, once. Only the cells where decals are are walked, and
+    // the decals one by one where those are more cells than decals: a far prop's triangle (a_barrows_gate's are
+    // 20000 units wide) would walk a million cells, and the page froze.
     function* near(min, max) {
       visit++;
-      for (let x = Math.floor(min[0] / CELL); x <= Math.floor(max[0] / CELL); x++)
-        for (let y = Math.floor(min[1] / CELL); y <= Math.floor(max[1] / CELL); y++)
-          for (let z = Math.floor(min[2] / CELL); z <= Math.floor(max[2] / CELL); z++) {
-            for (const id of bins.get(cell(x * CELL) | cell(y * CELL) << 10 | cell(z * CELL) << 20) || []) {
-              if (stamp[id] === visit) continue;
-              stamp[id] = visit;
-              const decal = decals[id];
-              if (!decal.min.some((low, k) => max[k] < low) && !decal.max.some((high, k) => min[k] > high)) yield id;
-            }
-          }
+      const lo = min.map((v, k) => Math.max(v, all.min[k])), hi = max.map((v, k) => Math.min(v, all.max[k]));
+      if (lo.some((v, k) => !(v <= hi[k]))) return;
+      const cells = [0, 1, 2].reduce((n, k) => n * (Math.floor(hi[k] / CELL) - Math.floor(lo[k] / CELL) + 1), 1);
+      for (const id of cells > decals.length ? decals.keys() : binned(lo, hi)) {
+        if (stamp[id] === visit) continue;
+        stamp[id] = visit;
+        const decal = decals[id];
+        if (!decal.min.some((low, k) => max[k] < low) && !decal.max.some((high, k) => min[k] > high)) yield id;
+      }
     }
     // Whether any decal box's bounds meet min..max (to skip a prop far from all).
     const touches = (min, max) => !near(min, max).next().done;

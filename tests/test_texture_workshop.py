@@ -70,6 +70,7 @@ class TextureWorkshopTests(unittest.TestCase):
             stack.enter_context(patch('app.textures_dir', root))
             stack.enter_context(patch('app.model_path', return_value=path))
             stack.enter_context(patch('app.local_data_dir', root / 'local'))
+            stack.enter_context(patch('app.app_local_data_dir', root / 'local'))
             # Exercise an animation cache containing deliberately stale material transforms.
             cache = root / 'local/animations/t1/sample.json.gz'
             cache.parent.mkdir(parents=True)

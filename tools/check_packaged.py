@@ -27,7 +27,8 @@ def check(base, games=('t1','t2','q3')):
             expected = (root/inventory).read_text(encoding='utf-8').splitlines()
         else:
             from tools.import_q3 import current_import
-            expected = [entry['model_name'] for entry in json.loads((current_import(root/'local-data/q3')/'catalog.json').read_text(encoding='utf-8'))]
+            from tools.local_data import LOCAL_DATA
+            expected = [entry['model_name'] for entry in json.loads((current_import(LOCAL_DATA/'q3')/'catalog.json').read_text(encoding='utf-8'))]
         assert [m['model_name'] for m in catalog] == expected, (game, 'catalog mismatch')
         ready = [m for m in catalog if m.get('status', 'ready') == 'ready']
         missing = {}

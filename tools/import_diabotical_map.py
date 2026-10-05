@@ -75,6 +75,7 @@ textures/HASH.png (specular maps HASH-s.png, red and green), and the maps' envma
 the cube's third mip, 256 square, side by side in D3D order: +x, -x, +y, -y, +z, -z).
 """
 import argparse
+import functools
 import gzip
 import hashlib
 import io
@@ -90,11 +91,13 @@ import numpy as np
 try:
     from tools.fbx_mesh import fbx_mesh
     from tools.reflex_textures import _dds, decode_dds
+    from tools.local_data import LOCAL_DATA
 except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
+    from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 21  # Of the files written per map: maps imported with another are read again.
+FORMAT = 28  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -103,7 +106,8 @@ NEIGHBOURS = ((0, 0, 1), (-1, 0, 0), (0, 0, -1), (1, 0, 0), (0, 1, 0), (0, -1, 0
 OUT = np.dtype([('x', '<i2'), ('y', '<i2'), ('z', '<i2'), ('shape', 'u1'), ('turn', 'u1'), ('open', 'u1'), ('pad', 'u1'), ('faces', 'u1', 6)])
 TEXTURE_SIZE = 512
 ASSET = re.compile(r'\basset\s+(\S+)\s*\{([^{}]*)\}')
-SHADER = re.compile(r'(?:^|\n)\s*([^\s{}]+)\s*\{\s*\{(.*?)(?:\}|\Z)', re.S)  # Some files end mid-shader.
+# A shader's own lines (`visible false`: the jump pads' ring band) may come before its stage. Some files end mid-shader.
+SHADER = re.compile(r'(?:^|\n)\s*([^\s{}]+)\s*\{([^{}]*)\{(.*?)(?:\}|\Z)', re.S)
 
 
 def map_id(name):
@@ -231,7 +235,8 @@ def read_materials(packs):
                     if found and re.search(r'\btype\s+surface_material\b', fields):
                         assets.setdefault(asset.lower(), found.group(1).lower())
             else:
-                for shader, stage in SHADER.findall(text):
+                for shader, outer, stage in SHADER.findall(text):
+                    stage = outer + stage
                     maps = re.findall(r'\bmap\s+(\S+)', stage)
                     scale = re.search(r'\buv_scale\s+([-\d.]+)', stage)
                     flags = dict(cutout=bool(re.search(r'shadow_at_|culling\s+off', stage)), blend=bool(re.search(r'blendfunc\s+blend', stage)),
@@ -241,6 +246,9 @@ def read_materials(packs):
                     found = re.search(r'\bmaterial_id\s+(\d+)', stage)
                     flags.update(lit=bool(lit), spec=maps[2] if lit and len(maps) > 2 else None, ids=maps[3] if lit and len(maps) > 3 else None,
                                  id=int(found.group(1)) if found else 0)
+                    # The efferv glass (health bubbles): its base and edge (fresnel) colours, linear RGBA; no texture.
+                    params = dict(re.findall(r'pixel_shader_param\s+(accent[12])\s+(\S+\s+\S+\s+\S+\s+\S+)', stage))
+                    flags['glass'] = [[float(v) for v in params[k].split()] for k in ('accent1', 'accent2')] if 'efferv' in stage and len(params) == 2 else None
                     # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5;
                     # a tinted material's (tilemask) colour mask is its map 4: NAME#4.
                     for slot in (0, 3, 5) if 'tileter' in stage else (0, 4) if 'tilemask' in stage else (0,):
@@ -303,10 +311,17 @@ def piece_shaders(assets, known):
     return heads
 
 
+@functools.lru_cache(maxsize=None)
+def rule_words(condition):
+    """A rule line's words and {word: int} for its numbers, read once: the import asks tens of millions of times."""
+    words = tuple(re.sub(r'\s*(%|==|>|<|-|/)\s*', r' \1 ', condition.replace('offset right', 'offset_right')).split())
+    return words, {word: int(word) for word in words if re.fullmatch(r'-?\d+', word)}
+
+
 def rule_holds(condition, cell):
     """One `if` line of a dynamic rule, for a cell's offsets from each end and the prop's size."""
-    words = re.sub(r'\s*(%|==|>|<|-|/)\s*', r' \1 ', condition.replace('offset right', 'offset_right')).split()
-    value = lambda word: cell[word] if word in cell else int(word) if re.fullmatch(r'-?\d+', word) else None
+    words, numbers = rule_words(condition)
+    value = lambda word: cell[word] if word in cell else numbers.get(word)
     if any(value(word) is None for word in words if word not in ('is', '==', '%', '<', '>', '-', '/')):
         return False
     try:
@@ -318,9 +333,13 @@ def rule_holds(condition, cell):
             return value(words[0]) > value(words[2]) if words[1] == '>' else value(words[0]) < value(words[2])
         if len(words) == 4 and words[1] == '-':
             return value(words[0]) - value(words[2]) == value(words[3])
+        # A slope (roofs, diagonal walls, stair fences: 68 assets): `a / b c` is a = b x c, one cell up every c
+        # cells along (a_bazaar's tile roofs: front / bottom 3, pieces 3 cells deep and 1 high; run 41).
+        if len(words) == 4 and words[1] == '/':
+            return value(words[0]) == value(words[2]) * value(words[3])
     except (TypeError, ZeroDivisionError):
         pass
-    return False  # ponytail: `/`, `when`, `left empty` (neighbour tests) are not understood and never hold.
+    return False  # ponytail: `when`, `left empty` (neighbour tests) are not understood and never hold.
 
 
 def game_matrix(position, rotation, scale):
@@ -361,6 +380,13 @@ def decal_matrix(position, rotation, scale, v3=False):
 
 MIRROR = np.diag([1.0, 1.0, -1.0, 1.0])  # Game axes <-> page (and FBX) axes.
 CELL = 40  # A dynamic prop's cell, in units.
+# Models the game reads from their FBX (no compiled .dbm beside them) as the geometry stands, leaving out the Model
+# nodes' transforms, where each FBX keeps its piece where the artist laid a sample of the set out (the 9-cell arch's
+# tops at x -160..-60, -60..100, 100..200 as nodes moved by -160, 0, +160); a dynamic piece of them stands on its
+# cell's corner. Runs 43 and 44 (skinner_l44: medina posts, arches 5, 9 and 1 wide, stone gate, fence; the game's
+# 2-cell post is its arms and bottom plate both 40..80 up). ponytail: theme/medina only (1292 FBX, none with a .dbm);
+# about 110 other FBX without a .dbm have moved nodes too (dynamic_props, props, theme): unmeasured, drawn as before.
+RAW_FBX = 'theme/medina/'
 PICKUPS = re.compile(r'(spawn|hpt|armort|weapon|ammo|jumppad|jp|teleport|tpexit|flag|coin|crystal|doubledamage|tripledamage)')
 
 
@@ -370,19 +396,35 @@ PICKUP_MODELS = {'flag': 'ctf_flag', 'coin': 'entities/coin/coin'}  # Named in t
 WEAPON_PICKUP_SCALE = 0.4
 
 
-def pickup_kinds(assets, binary):
+def pickup_kinds(assets, readable):
     """{kind: (model path, scale, centred)} for the pickups the game draws as a model (run 37): the kinds with an asset
     marked `pickup_size` and coins; the model is the asset's, else PICKUP_MODELS', else models/KIND (weapons), kept
-    where `binary(path)` (only binary FBX are read: weapongl stays a marker). Scale is the asset's (1.4 for the melee
+    where `readable(path)` (an FBX, binary or ASCII). Scale is the asset's (1.4 for the melee
     weebles), times WEAPON_PICKUP_SCALE for weapons; a model is centred on its bounding box unless the asset sets a `pivot`."""
     kinds = {}
     for kind in sorted({name for name, fields in assets.items() if 'pickup_size' in fields} | {'coin'}):
         fields = assets.get(kind, {})
         model = (fields.get('model') or PICKUP_MODELS.get(kind) or kind).lower()
-        if binary(model):
+        if readable(model):
             scale = float(fields.get('scale') or 1) * (WEAPON_PICKUP_SCALE if kind.startswith('weapon') else 1)
             kinds[kind] = (model, round(scale, 4), 'pivot' not in fields)
     return kinds
+
+
+def prop_key(piece, matrix, fields, asset, assets, known=()):
+    """A placed piece (a model path or asset, under the game-axes `matrix`) as placements keys it, "model|material|flags",
+    with its page matrix; None for a dynamic asset. `fields` are the entity's, `asset` the placed asset's."""
+    piece_asset = assets.get(piece, {})
+    if piece_asset.get('dynamic') == 'true':
+        return None
+    # PATH_flipx (and _flipy, _flipz) is PATH mirrored: no such file.
+    model, flips = re.match(r'(.*?)((?:_flip[xyz])*)$', piece_asset.get('model', piece).lower()).groups()
+    matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
+    own = (fields.get('material') or '').lower()
+    material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
+    # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds).
+    flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '')
+    return f"{model}|{material}|{flags}", matrix
 
 
 def placements(entities, assets, known=(), pickups=None):
@@ -440,25 +482,19 @@ def placements(entities, assets, known=(), pickups=None):
                 for channel, conditions, choices in asset['rules']:
                     if choices and all(rule_holds(c, cell) for c in conditions):
                         chosen[channel] = choices[(number * 7919 + i * 31 + j * 17 + k * 13 + channel) % len(choices)]
-                offset = np.eye(4)
-                offset[:3, 3] = ((i + .5) * CELL, (j + .5) * CELL, (k + .5) * CELL)  # The entity is the prop's corner.
-                pieces += [(choice, base @ offset) for choice in chosen.values()]
+                for choice in chosen.values():
+                    # The entity is the prop's corner. A piece stands on its cell's centre, a theme/medina one on the
+                    # cell's -x -y -z corner (RAW_FBX).
+                    offset = np.eye(4)
+                    offset[:3, 3] = (np.array([i, j, k]) + (0 if assets.get(choice, {}).get('model', choice).lower().startswith(RAW_FBX) else .5)) * CELL
+                    pieces.append((choice, base @ offset))
         else:
             pieces.append((model, game_matrix(position, rotation, scale)))
         for piece, matrix in pieces:
-            piece_asset = assets.get(piece, {})
-            if piece_asset.get('dynamic') == 'true':
-                continue
-            # PATH_flipx (and _flipy, _flipz) is PATH mirrored: no such file.
-            model, flips = re.match(r'(.*?)((?:_flip[xyz])*)$', piece_asset.get('model', piece).lower()).groups()
-            matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
-            own = (fields.get('material') or '').lower()
-            material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
-            # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds).
-            flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '')
-            key = f"{model}|{material}|{flags}"
-            props.setdefault(key, []).append(matrix[:3].ravel())
-            tints.setdefault(key, []).append(tint)
+            found = prop_key(piece, matrix, fields, asset, assets, known)
+            if found:
+                props.setdefault(found[0], []).append(found[1][:3].ravel())
+                tints.setdefault(found[0], []).append(tint)
     tints = {key: np.array(value, np.uint32) for key, value in tints.items() if any(map(any, value))}
     decals = {key: (np.array([m for m, _ in value], np.float32), np.array([e for _, e in value], np.uint32)) for key, value in decals.items()}
     return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids, decals
@@ -748,6 +784,10 @@ def material_textures(packs, names, materials, output, replace=False):
 
     entries, missing = {}, []
     for name in sorted(names):
+        glass = next((flags['glass'] for *_, flags in materials.get((name or 'default').lower().split(':')[0], [])[:1] if flags.get('glass')), None)
+        if glass:
+            entries[name] = dict(glass=glass)
+            continue
         files = [(found, scale, folder, flags) for path, scale, folder, flags in materials.get((name or 'default').lower().split(':')[0], [])
                  for found in [find(path, folder)] if found]
         if not files:
@@ -811,7 +851,7 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
     .shader file at or above the model's folder (many pieces of a dynamic prop share one: trim01b takes trim01a's).
     Models of the `previous` models.json (of this FORMAT) whose file is there are kept unless replacing. A path
     pickup/KIND in `pickups` ({path: (model, scale, centred)}, pickup_kinds) is that model, named and centred as a pickup.
-    Also returns the paths with no readable FBX."""
+    A theme/medina model is its FBX's geometry as it stands (see RAW_FBX). Also returns the paths with no readable FBX."""
     where = {}
     for pack in packs:
         for name in pack.files:
@@ -831,8 +871,9 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         file = 'models\\' + (pickups[path][0] if path in (pickups or {}) else path).replace('/', '\\') + '.fbx'
         try:
             raw = where[file].read(file)
-            target = output / 'models' / f'{hashlib.sha256(raw).hexdigest()[:16]}.bin'
-            groups = fbx_mesh(raw)
+            moved = not path.startswith(RAW_FBX)  # Its own name: files of earlier imports kept the nodes' transforms.
+            target = output / 'models' / f'{hashlib.sha256(raw + (b"" if moved else b"raw")).hexdigest()[:16]}.bin'
+            groups = fbx_mesh(raw, moved)
         except (KeyError, ValueError, IndexError, struct.error, zlib.error):
             missing.append(path)
             continue
@@ -891,7 +932,8 @@ def import_maps(game, output, replace=False, extra=None):
             if name.endswith('.fbx'):
                 fbx.setdefault(name, pack)
     fbx_file = lambda model: 'models\\' + model.replace('/', '\\') + '.fbx'
-    pickups = pickup_kinds(assets, lambda model: fbx_file(model) in fbx and fbx[fbx_file(model)].read(fbx_file(model))[:18] == b'Kaydara FBX Binary')
+    is_fbx = lambda raw: raw[:18] == b'Kaydara FBX Binary' or raw.lstrip()[:5] == b'; FBX'
+    pickups = pickup_kinds(assets, lambda model: fbx_file(model) in fbx and is_fbx(fbx[fbx_file(model)].read(fbx_file(model))))
     for name, group, read in sources:
         ident = map_id(name if group == 'Diabotical' else 'user__' + name)
         try:
@@ -986,7 +1028,7 @@ def import_maps(game, output, replace=False, extra=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--game-base', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1] / 'local-data/diabotical-maps')
+    parser.add_argument('--output', type=Path, default=LOCAL_DATA / 'diabotical-maps')
     parser.add_argument('--replace', action='store_true')
     args = parser.parse_args()
     done = import_maps(args.game_base, args.output, args.replace)

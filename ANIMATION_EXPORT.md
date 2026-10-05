@@ -68,15 +68,16 @@ No Q3 game files or generated retail assets are committed to the repository or
 embedded in the executable.
 
 The material correction build is `dist/material-workshop/SkinnerApp.exe`, with
-its refreshed Q3 import and the T1/T2 animation caches beside it. Keep that folder
+the T1/T2 animation caches beside it in `local-data/animations`. Keep that folder
 together. When using an older `local-data/q3` import, import the game folder again
 to regenerate shader settings and triangle order; existing PNG edits are kept.
 The viewer identifies older imports with a reimport message.
 
 ## Rebuilding the local animation data
 
-Keep `local-data` beside the executable when moving the application. The delivered
-folder has T1/T2 animation caches and the user's local Q3 import. The original
+The T1/T2 animation caches are `local-data/animations` beside the executable (or in the checkout). Imports,
+the Q3 one included, go to `%LOCALAPPDATA%/DTS-Skinner/local-data` (`SKINNER_DATA_DIR` overrides it), shared by
+every build and checkout. The original
 game installations and T2 reader kit are not needed for cached exports.
 
 From the repository, using the existing virtual environment:
@@ -86,7 +87,7 @@ From the repository, using the existing virtual environment:
 .venv/Scripts/python.exe -m tools.animate_t2 --bake
 .venv/Scripts/python.exe -m tools.import_q3 'C:/Program Files (x86)/Steam/steamapps/common/Quake 3 Arena/baseq3'
 .venv/Scripts/python.exe -m PyInstaller --noconfirm --distpath dist/material-workshop DiscSkinnerApp.spec
-Copy-Item -LiteralPath local-data -Destination dist/material-workshop/local-data -Recurse
+Copy-Item -LiteralPath local-data/animations -Destination dist/material-workshop/local-data/animations -Recurse
 ```
 
 T1 source override: `SKINNER_T1_SOURCE`. T2 overrides: `SKINNER_T2_GAME_DATA` and

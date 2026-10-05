@@ -17,7 +17,7 @@ import numpy as np
 
 from app import app
 from tools.fbx_mesh import fbx_mesh
-from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_billboards, read_map, read_pfx, visible_blocks
+from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_billboards, read_map, read_materials, read_pfx, visible_blocks
 
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 
@@ -177,6 +177,21 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual(at[(1, 2, 1)]['open'], 0b010000)
         self.assertEqual((at[(5, 0, 0)]['open'], at[(5, 0, 0)]['turn'], at[(5, 0, 0)]['shape']), (0x3f, 1, 3))
 
+    def test_shader_lines_before_the_stage_are_read(self):
+        # The jump pads' ring band: `visible false` comes before the stage, and that part is hidden in the game.
+        shader = b"pad_mat_rings\n{\nvisible false\n {\n  map glow_d.png\n  blendfunc blend\n }\n}\n" \
+                 b"pad_mat_1\n{\n\t{\n\t\tmap pad_d.png\n\t}\n}\n"
+        pack = type('Pack', (), {'files': ['models\\pad.shader'], 'read': lambda self, name: shader})()
+        found = read_materials([pack])
+        self.assertTrue(found['pad_mat_rings'][0][3]['hidden'])
+        self.assertEqual(found['pad_mat_rings'][0][0], 'glow_d.png')
+        self.assertFalse(found['pad_mat_1'][0][3]['hidden'])
+        # The health bubbles' glass (efferv): no texture, its base and edge colours from accents 1 and 2.
+        shader = b"hpt1_mat_2\n{\n  {\n\tmap !skybox\n    pixel_shader efferv.ps.cso\n\t//Base color\n" \
+                 b"\tpixel_shader_param accent1 0 0.5 0.4 0.15\n\tpixel_shader_param accent2 0.75 0.5  0.25 0.6\n  }\n}\n"
+        self.assertEqual(read_materials([pack])['hpt1_mat_2'][0][3]['glass'], [[0, .5, .4, .15], [.75, .5, .25, .6]])
+        self.assertIsNone(found['pad_mat_1'][0][3]['glass'])
+
     def test_import_writes_blocks_index_and_material_textures(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -265,8 +280,23 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual(positions.shape, (2, 3, 3))
         self.assertEqual((positions[..., 0].min(), positions[..., 0].max()), (5, 15))
         self.assertEqual(uvs[0].tolist(), [[0, 0], [1, 0], [1, 1]])
-        with self.assertRaisesRegex(ValueError, 'not a binary FBX'):
+        with self.assertRaisesRegex(ValueError, 'not an FBX'):
+            fbx_mesh(b'PK\x03\x04')
+        with self.assertRaisesRegex(ValueError, 'no objects'):
             fbx_mesh(b'; FBX 7.4.0 project file')
+        # The same square as an ASCII FBX (the grenade launcher pickup's is one).
+        ascii_quad = (b'; FBX 7.3.0 project file\nObjects:  {\n\tGeometry: 1, "Geometry::quad", "Mesh" {\n'
+                      b'\t\tVertices: *12 {\n\t\t\ta: 0,0,0,10,0,0,\n10,10,0,0,10,0\n\t\t}\n\t\tPolygonVertexIndex: *4 {\n\t\t\ta: 0,1,2,-4\n\t\t}\n'
+                      b'\t\tLayerElementUV: 0 {\n\t\t\tMappingInformationType: "ByPolygonVertex"\n\t\t\tReferenceInformationType: "Direct"\n'
+                      b'\t\t\tUV: *8 {\n\t\t\t\ta: 0,0,1,0,1,1,0,1\n\t\t\t}\n\t\t}\n\t}\n'
+                      b'\tModel: 2, "Model::quad", "Mesh" {\n\t\tVersion: 232\n\t\tProperties70:  {\n'
+                      b'\t\t\tP: "Lcl Translation", "Lcl Translation", "", "A",5,0,0\n\t\t}\n\t\tShading: T\n\t}\n'
+                      b'\tMaterial: 3, "Material::skin", "" {\n\t}\n}\nConnections:  {\n\t;Model::quad, Model::RootNode\n'
+                      b'\tC: "OO",2,0\n\tC: "OO",1,2\n\tC: "OO",3,2\n}\n')
+        ascii_groups = fbx_mesh(ascii_quad)
+        self.assertEqual(list(ascii_groups), ['skin'])
+        for a, b in zip(ascii_groups['skin'], groups['skin']):
+            self.assertEqual(a.tolist(), b.tolist())
 
     def test_entities_become_props_markers_and_liquids(self):
         entities = [
@@ -382,15 +412,27 @@ class DiaboticalMapsTest(unittest.TestCase):
         from tools.import_diabotical_map import rule_holds
         cell = dict(offset_left=2, offset_right=0, offset_bottom=4, size_x=3)
         self.assertTrue(all(rule_holds(c, cell) for c in ('offset_right is 0', 'offset_left == 2', 'offset_bottom % 2 0', 'size_x > 2',
-                                                            'offset right % 3 0', 'offset_left 2', 'offset_bottom - offset_left 2')))
+                                                            'offset right % 3 0', 'offset_left 2', 'offset_bottom - offset_left 2',
+                                                            'offset_bottom / offset_left 2')))
         self.assertFalse(any(rule_holds(c, cell) for c in ('offset_left is 0', 'offset_bottom % 3 0', 'size_x < 3', 'left empty',
-                                                             'offset_front / offset_bottom 2', 'offset_top is 0')))
+                                                             'offset_front / offset_bottom 2', 'offset_bottom / offset_left 3', 'offset_top is 0')))
+
+    def test_medina_pieces_are_their_raw_geometry_on_the_cell_corner(self):
+        from tools.import_diabotical_map import placements
+        # The game reads a theme/medina FBX without its Model nodes' transforms: the quad's node moves it by 5 in x.
+        positions = fbx_mesh(quad_fbx(), transforms=False)['skin'][0]
+        self.assertEqual((positions[..., 0].min(), positions[..., 0].max()), (0, 10))
+        # Its dynamic pieces stand on their cell's corner, other pieces on its centre.
+        assets = {'strip': {'dynamic': 'true', 'rules': [(0, [], ['theme/medina/post']), (1, [], ['props/post'])]}}
+        props = placements([('prop_a', (0, 0, 0), (0, 0, 0), (2, 1, 1), {'model': 'strip'})], assets)[0]
+        self.assertEqual(sorted(m[3] for m in props['theme/medina/post||']), [0, 40])
+        self.assertEqual(props['props/post||'][0][[3, 7, 11]].tolist(), [20, 20, -20])
 
     def test_pickups_are_drawn_as_their_kinds_models(self):
         from tools.import_diabotical_map import pickup_kinds, placements
         assets = {'hpt1': {'model': 'Entities/Health/hpt1', 'pickup_size': 'large'}, 'weaponsw': {'pivot': '0 0 0', 'scale': '1.4', 'pickup_size': 'large'},
                   'weapongl': {'pickup_size': 'large'}, 'flag': {'pickup_size': 'large'}, 'chair': {'model': 'props/chair'}}
-        kinds = pickup_kinds(assets, lambda model: model != 'weapongl')  # weapongl: an ASCII FBX.
+        kinds = pickup_kinds(assets, lambda model: model != 'weapongl')  # As if weapongl's FBX could not be read.
         self.assertEqual(kinds, {'hpt1': ('entities/health/hpt1', 1.0, True), 'weaponsw': ('weaponsw', 0.56, False), 'flag': ('ctf_flag', 1.0, True),
                                  'coin': ('entities/coin/coin', 1.0, True)})
         entities = [('hpt1_2', (10, 20, 30), (0, 0, 0), (1, 1, 1), {}), ('weaponsw', (0, 0, 0), (0, 0, 0), (1, 1, 1), {}),

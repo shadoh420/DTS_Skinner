@@ -281,8 +281,8 @@ class ReflexTexturesTest(unittest.TestCase):
                     self.assertEqual(response.status_code, 200)
                 self.assertEqual(client.get('/texture_metadata?game=reflex').json[0]['width'], 4)
                 self.assertIn('dev_grid16_albedospec__dev_grid16_meta.png', client.get('/texture_versions?game=reflex').json)
-                # Reflex has textures, not models.
-                self.assertEqual(client.get('/list_models?game=reflex').status_code, 400)
+                # Reflex models come from their own import (tests/test_reflex_models.py): none yet.
+                self.assertEqual(client.get('/list_models?game=reflex').json, [])
         # A model's slot may take a Reflex texture.
         names, games, _ = material_texture_refs(dict(game='t1', material_textures=['a.png']), {'0': {'game': 'reflex', 'filename': 'dev_grid16_albedospec__dev_grid16_meta.png'}})
         self.assertEqual((names, games), (['dev_grid16_albedospec__dev_grid16_meta.png'], ['reflex']))

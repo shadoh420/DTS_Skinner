@@ -14,7 +14,7 @@ and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.m
 "C:/Program Files/Epic Games/Diabotical"`) reads the game's maps from
 `packs/maps.dbp` and the maps made in the game's editor from
 `%APPDATA%/Diabotical/Maps`, into `local-data/diabotical-maps` (ignored by
-Git). The game folder is only read. A whole install takes about five minutes:
+Git). The game folder is only read. A whole install takes about four minutes:
 174 maps (about 340 MB of blocks and entities, 5 MB of terrain), the 6,000 models they place
 (300 MB) and the textures of their materials (about 120 MB). Maps already imported
 are skipped unless their file changed or **Re-import existing maps** is
@@ -77,10 +77,26 @@ left (`static/diabotical-maps/blocks.js`).
   A dynamic prop (trims, pipes, walls: about half of all props) is a row, column
   or block of 40-unit cells from the entity (its corner), its scale the size in cells; its asset's
   `dynamic_rule` blocks pick each cell's model by the cell's offsets from the
-  prop's ends (the last rule that holds wins, per channel). The game picks among
+  prop's ends (the last rule that holds wins, per channel). A slope's condition
+  `a / b c` holds where a = b x c: one cell up every c cells along (68 assets:
+  roofs, diagonal walls, stair fences; a_bazaar's tiled roofs, `front / bottom 3`,
+  were missing until FORMAT 24; run 41 compared them from above). The game picks among
   a rule's variants at random; the page picks the same way every time.
+  The medina pieces (theme/medina: no compiled `.dbm`, the game reads their FBX)
+  are drawn as their geometry stands, without the FBX's node transforms, and stand
+  on their cell's corner rather than its centre. Each file keeps its piece where the
+  artist laid out a sample of the set by moving nodes (the 9-cell arch's left and
+  right tops moved by -160 and +160), which the game ignores (run 44's test map: arches
+  5, 9 and 1 cells wide, a stone gate, a fence, two roofs and a post at each
+  prop's corner, from above and from the front). A 2-cell post is then its arms and
+  bottom plate, both 40 to 80 up, floating as in the game. Until FORMAT 28 these
+  pieces were spread out (a_bazaar's floating arch tops, poles, gate slab, trims and
+  the gaps between the green roofs' rows). About 110 FBX outside theme/medina also
+  have no `.dbm` and moved nodes; they are drawn as before, unmeasured.
   `PATH_flipx` is `PATH` mirrored. Props marked `no_show` (clip boxes and other
-  invisible ones) and materials marked `visible false` are left out; foliage
+  invisible ones) and materials marked `visible false` are left out (also where
+  the line comes before the shader's stage: the jump pads' ring band and the
+  cover over their orange disc, drawn black until FORMAT 22); foliage
   (shadow shader `shadow_at_…` or `culling off`) is cut out by its texture's
   alpha and two-sided.
 - **Colour tints.** A material drawn by the game's `tilemask.ps` (886 of
@@ -210,9 +226,12 @@ left (`static/diabotical-maps/blocks.js`).
   0.36 of its model's length, tilted a little). The asset's `pfx` (system and
   offset) is drawn as a particle emitter. The page draws them still where the
   game spins and bobs them, and from the start where power-ups wait for their
-  timers; the small `hpt0` bubble is see-through glass in game (`efferv.ps`)
-  and an opaque blue blob here. `weapongl` and `weaponfg` (ASCII FBX) stay
-  markers.
+  timers. The health bubbles' glass (`efferv.ps`, no texture: `!skybox` or a
+  test cubemap) is drawn unlit and see-through, its base colour (accent 1)
+  turning to its edge colour (accent 2) where the surface is seen edge on; the
+  game's smoke (accent 3) and refraction are left out. `weapongl` is an ASCII
+  FBX, read as the binary ones are; `weaponfg`, `weapondf`, `ammodf` and
+  `weaponbfg` have no model in the game files and stay markers.
 - **Markers and liquids.** Spawns, jump pads, teleporters and any pickup
   without a model it can read are coloured shapes. A `liquid_*` entity is a box of its scale centred on it, its top
   the surface: drawn unlit (lava and acid glow their colour, as in the game)
@@ -450,8 +469,11 @@ million triangles: props 1.08 M, the terrain's full 512 x 512 grid 522 k, blocks
 against one model's bounds) and nothing has levels of detail. Cheap wins: the
 terrain at half resolution (about 130 k) and props grouped into spatial cells so
 each cell can be culled. Frames are fast (about 1 ms on bioplant); loads take
-about 24 s, but b_ancient's about 4 minutes headless (SwiftShader), nearly all
-before its decals are placed, and the page does not answer meanwhile.
+about 24 s, b_ancient's 11 s headless (SwiftShader). Decal placement
+used to freeze the page on maps with huge far-off prop triangles (a_barrows_gate,
+b_ancient): it walked every grid cell a triangle's bounds touched, a million for
+a 20000-unit triangle; it now clips those bounds to the decals' and checks the
+decals one by one when there are fewer of them than cells.
 
 Decals whose texture is not in the game files (drawn not at all: 80 decals,
 all community `jacobs_decals` ones, mostly on a_enclosure), billboards' own shader (see above), the particles' leftovers (see above), the glowing crystals' colours
@@ -462,8 +484,8 @@ terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
 0.125; only `core_ter` was measured), the terrain's normal maps and the fields
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
-dynamic rule's variants and the rule conditions not understood (`/`, `when`,
-neighbour tests such as `left empty`), skinned and ASCII FBX models, the
+dynamic rule's variants and the rule conditions not understood (`when`,
+neighbour tests such as `left empty`), skinned models, the
 few prop materials still not found (flat colours: weapon models placed as props, particle
 containers, holiday lights, some ads), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
 through bioplant's overall brightness, the reflections leave out the per-pixel

@@ -25,7 +25,7 @@ from typing import List, Tuple, Dict, Optional
 def q3_material_settings(data):
     """Keep the imported shader contract aligned with texture slot overrides."""
     count = len(data['material_textures'])
-    if data.get('game') != 'q3':
+    if data.get('game') not in ('q3', 'diabotical', 'reflex'):
         return [{} for _ in range(count)]
     settings = data.get('material_settings') or [{} for _ in range(count)]
     if not isinstance(settings, list) or len(settings) != count:
@@ -363,7 +363,7 @@ def json_to_obj_zip(
     settings = q3_material_settings(data)
     opacity_maps, opacity_images, export_warnings = {}, {}, []
     reserved_names = {name.casefold() for name in export_names}
-    if data.get('game') == 'q3':
+    if data.get('game') in ('q3', 'diabotical', 'reflex'):
         for slot, (name, setting) in enumerate(zip(material_textures, settings)):
             alpha_func, blend = setting.get('alphaFunc', ''), setting.get('blend', [])
             if blend and blend != ['gl_src_alpha', 'gl_one_minus_src_alpha']:
@@ -408,7 +408,7 @@ def json_to_obj_zip(
     # Generate MTL content
     print(f"Generating MTL content for {len(material_textures)} materials...")
     mtl_content = generate_mtl_content(export_names, model_name, data.get("material_flags"),
-                                      opacity_maps, settings if data.get('game') == 'q3' else None)
+                                      opacity_maps, settings if data.get('game') in ('q3', 'diabotical', 'reflex') else None)
     
     # Generate README
     readme_content = generate_readme_content(model_name, scale_factor)
@@ -487,12 +487,12 @@ def json_to_obj_zip(
             
             # Add README
             zipf.write(readme_file, readme_file.name)
-            if data.get("metadata") or data.get('game') == 'q3' or cross_game or transformed_exports:
+            if data.get("metadata") or data.get('game') in ('q3', 'diabotical', 'reflex') or cross_game or transformed_exports:
                 metadata = dict(data.get('metadata') or {}, material_textures=material_textures,
                                 material_texture_games=texture_games, material_texture_paths=export_names,
                                 material_texture_transforms=transforms,
                                 material_flags=data.get('material_flags', []))
-                if data.get('game') == 'q3':
+                if data.get('game') in ('q3', 'diabotical', 'reflex'):
                     metadata.update(material_settings=settings, opacity_maps=opacity_maps, export_warnings=export_warnings)
                 zipf.writestr("metadata.json", json.dumps(metadata, indent=2))
             for name, contents in opacity_images.items():

@@ -99,7 +99,7 @@ def read_tags(path):
     if not path.exists():
         return {}
     data = json.loads(path.read_text(encoding='utf-8'))
-    if not isinstance(data, dict) or any(game not in ('t1', 't2', 'q3', 'reflex') or not isinstance(entries, dict)
+    if not isinstance(data, dict) or any(game not in ('t1', 't2', 'q3', 'reflex', 'diabotical') or not isinstance(entries, dict)
                                           for game, entries in data.items()):
         raise ValueError('Invalid texture tags file; existing data was preserved')
     for entries in data.values():
@@ -109,7 +109,7 @@ def read_tags(path):
 
 
 def save_tags(path, game, filename, tags):
-    if game not in ('t1', 't2', 'q3', 'reflex'):
+    if game not in ('t1', 't2', 'q3', 'reflex', 'diabotical'):
         raise ValueError('Unknown texture game')
     tags = validate_tags(tags)
     path = Path(path)
