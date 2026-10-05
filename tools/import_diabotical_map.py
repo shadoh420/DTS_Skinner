@@ -411,6 +411,22 @@ def pickup_kinds(assets, readable):
     return kinds
 
 
+def prop_key(piece, matrix, fields, asset, assets, known=()):
+    """A placed piece (a model path or asset, under the game-axes `matrix`) as placements keys it, "model|material|flags",
+    with its page matrix; None for a dynamic asset. `fields` are the entity's, `asset` the placed asset's."""
+    piece_asset = assets.get(piece, {})
+    if piece_asset.get('dynamic') == 'true':
+        return None
+    # PATH_flipx (and _flipy, _flipz) is PATH mirrored: no such file.
+    model, flips = re.match(r'(.*?)((?:_flip[xyz])*)$', piece_asset.get('model', piece).lower()).groups()
+    matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
+    own = (fields.get('material') or '').lower()
+    material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
+    # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds).
+    flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '')
+    return f"{model}|{material}|{flags}", matrix
+
+
 def placements(entities, assets, known=(), pickups=None):
     """A map's props as {"model|material|m": float32 array of page matrices' top three rows} (material empty for the
     model's own, m when mirrored), their tints ({key: uint32 (n, 3)}, for the keys with any: each prop's color,
@@ -475,19 +491,10 @@ def placements(entities, assets, known=(), pickups=None):
         else:
             pieces.append((model, game_matrix(position, rotation, scale)))
         for piece, matrix in pieces:
-            piece_asset = assets.get(piece, {})
-            if piece_asset.get('dynamic') == 'true':
-                continue
-            # PATH_flipx (and _flipy, _flipz) is PATH mirrored: no such file.
-            model, flips = re.match(r'(.*?)((?:_flip[xyz])*)$', piece_asset.get('model', piece).lower()).groups()
-            matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
-            own = (fields.get('material') or '').lower()
-            material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
-            # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds).
-            flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '')
-            key = f"{model}|{material}|{flags}"
-            props.setdefault(key, []).append(matrix[:3].ravel())
-            tints.setdefault(key, []).append(tint)
+            found = prop_key(piece, matrix, fields, asset, assets, known)
+            if found:
+                props.setdefault(found[0], []).append(found[1][:3].ravel())
+                tints.setdefault(found[0], []).append(tint)
     tints = {key: np.array(value, np.uint32) for key, value in tints.items() if any(map(any, value))}
     decals = {key: (np.array([m for m, _ in value], np.float32), np.array([e for _, e in value], np.uint32)) for key, value in decals.items()}
     return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids, decals

@@ -32,13 +32,14 @@ def model_sort_key(name):
 
 # Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
 # tools/import_reflex_map.py; textures only).
-TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex')
+TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical')
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical')
 
 
 def material_texture_refs(data, material_overrides=None):
     """Validate slot references while keeping filenames compatible with old clients."""
     game = data.get('game', 't1')
-    if game not in ('t1', 't2', 'q3'):
+    if game not in MODEL_GAMES:
         raise ValueError('Unknown model game')
     names = data['material_textures']
     if not isinstance(names, list) or not names:
@@ -88,6 +89,27 @@ def material_texture_paths(data, textures_dir, texture_dirs=None):
     return [pathlib.Path(directories[game]) / name for name, game in zip(names, games)]
 
 
+def geometry(path, data):
+    """A Diabotical model's (tools/import_diabotical_models.py) vertices: its groups are ranges of corners (8 float32:
+    position, normal, uv with v up) in a file of models/ beside model_json/, read as shared, indexed vertices."""
+    import numpy as np
+    if not re.fullmatch(r'(c-)?[0-9a-f]{16}\.bin', str(data['geometry'])):
+        raise ValueError('Invalid model geometry file')
+    corners = np.fromfile(path.parent.parent / 'models' / data['geometry'], '<f4').reshape(-1, 8)
+    if any(type(g.get(k)) is not int for g in data['groups'] for k in ('start', 'count')) or any(
+            g['start'] < 0 or g['count'] <= 0 or g['count'] % 3 or g['start'] + g['count'] > len(corners) for g in data['groups']):
+        raise ValueError('Invalid model geometry range')
+    corners = np.concatenate([corners[g['start']:g['start'] + g['count']] for g in data['groups']]).astype(float)
+    corners[:, 7] = 1 - corners[:, 7]
+    rows, indices = np.unique(np.round(corners, 4), axis=0, return_inverse=True)
+    groups, at = [], 0
+    for group in data['groups']:
+        groups.append(dict(group, start=at))
+        at += group['count']
+    return dict(vertices=rows[:, :3].ravel().tolist(), normals=rows[:, 3:6].ravel().tolist(), uvs=rows[:, 6:].ravel().tolist(),
+                indices=indices.ravel().tolist(), groups=groups)
+
+
 def load_model_data(json_path, fallback_texture=None, material_overrides=None):
     path = pathlib.Path(json_path)
     with path.open(encoding="utf-8") as stream:
@@ -96,6 +118,8 @@ def load_model_data(json_path, fallback_texture=None, material_overrides=None):
         data = dict(data, vertices=data["v"], uvs=data["uv"], indices=data["tri"])
         for key in ("v", "uv", "tri"):
             del data[key]
+    if "geometry" in data:
+        data = dict(data, **geometry(path, data))
     vertices, uvs, indices = (data.get(key, []) for key in ("vertices", "uvs", "indices"))
     if not vertices or len(vertices) % 3 or not indices or len(indices) % 3:
         raise ValueError("Model must contain complete vertices and triangles")

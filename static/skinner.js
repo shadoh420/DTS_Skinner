@@ -345,7 +345,9 @@ window.addEventListener('DOMContentLoaded', () => {
     $('status').textContent = 'Loading catalog…';
     $('textureGame').value = game;
     $('q3Import').hidden = game !== 'q3';
-    $('coverageReport').hidden = game === 't1';
+    $('diaboticalImport').hidden = game !== 'diabotical';
+    $('modelThumbnail').hidden = true;
+    $('coverageReport').hidden = game === 't1' || game === 'diabotical';
     $('coverageReport').href = game === 'q3' ? '/q3_inventory' : '/static/t2/inventory.json';
     $('coverageReport').textContent = `View ${game.toUpperCase()} inventory & coverage report`;
     showWarnings([]);
@@ -371,6 +373,7 @@ window.addEventListener('DOMContentLoaded', () => {
       } else {
         $('status').textContent = 'This game has no imported catalog entries.';
         if (game === 'q3') $('q3Import').open = true;
+        if (game === 'diabotical') $('diaboticalImport').open = true;
       }
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
@@ -417,7 +420,7 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.minFilter = flags & 128 ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
       texture.generateMipmaps = !(flags & 128);
     }
-    if (gameId === 'q3') {
+    if (gameId === 'q3' || gameId === 'diabotical') {
       texture.wrapS = texture.wrapT = settings.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       texture.magFilter = THREE.LinearFilter;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -475,6 +478,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const oldPosition = group ? group.position.clone() : null;
     disposeModel(); emptyInspector();
     const entry = catalog.find(x => x.model_name === name) || {};
+    // Diabotical: the Editpad's own thumbnail of the asset, where the game has one.
+    $('modelThumbnail').hidden = !entry.thumbnail;
+    if (entry.thumbnail) $('modelThumbnail').src = `/diabotical_thumbnail/${encodeURIComponent(name)}.png`;
     showWarnings(entry.warnings || []);
     if (!available(entry)) {
       $('status').textContent = `Preview unavailable: ${entry.status}.`;
@@ -511,7 +517,8 @@ window.addEventListener('DOMContentLoaded', () => {
           transparent, depthWrite: !transparent,
           blending: flags & 8 ? THREE.AdditiveBlending : flags & 16 ? THREE.SubtractiveBlending : THREE.NormalBlending
         }));
-        if (gameId === 'q3' && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
+        // Diabotical's import writes the same shader settings for its cutout (foliage) and blended materials.
+        if ((gameId === 'q3' || gameId === 'diabotical') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
       }
       if (serial !== loadSerial) { disposeMaterials(newMaterials); return; }
       const geometry = new THREE.BufferGeometry();
@@ -717,7 +724,7 @@ window.addEventListener('DOMContentLoaded', () => {
   async function loadTextureLibrary() {
     const serial = ++textureSerial, gameId = $('textureGame').value;
     const previous = $('skinSelect').value;
-    $('texturePath').textContent = gameId === 'reflex' ? 'local-data/reflex-maps/textures' : gameId === 'q3' ? 'local-data/q3/textures' : gameId === 't2' ? 'static/textures/t2' : 'static/textures';
+    $('texturePath').textContent = gameId === 'diabotical' ? 'local-data/diabotical/textures' : gameId === 'reflex' ? 'local-data/reflex-maps/textures' : gameId === 'q3' ? 'local-data/q3/textures' : gameId === 't2' ? 'static/textures/t2' : 'static/textures';
     textures = []; textureMetadata = new Map(); filterSkins();
     $('textureCount').textContent = 'Reading texture dimensions…';
     try {
@@ -726,13 +733,13 @@ window.addEventListener('DOMContentLoaded', () => {
       textureMetadata = new Map(entries.map(entry => [entry.filename, entry]));
       textures = entries.map(entry => entry.filename).sort(compare);
       filterSkins(previous);
-      if (!textures.length) $('skinSelect').replaceChildren(option(gameId === 'q3' ? 'Import Quake 3 to add textures' : 'No PNG textures in this library', ''));
+      if (!textures.length) $('skinSelect').replaceChildren(option(gameId === 'q3' ? 'Import Quake 3 to add textures' : gameId === 'diabotical' ? 'Import Diabotical to add textures' : 'No PNG textures in this library', ''));
     } catch (error) {
       if (serial === textureSerial) { $('skinSelect').replaceChildren(option('Texture library unavailable; try Reload textures', '')); $('textureCount').textContent = error.message; }
     }
   }
   async function allTextureVersions() {
-    const results = await Promise.all(['t1', 't2', 'q3', 'reflex'].map(async gameId => {
+    const results = await Promise.all(['t1', 't2', 'q3', 'reflex', 'diabotical'].map(async gameId => {
       const values = await json(`/texture_versions?${query({}, gameId)}`);
       return Object.entries(values).map(([name, version]) => [textureId(name, gameId), version]);
     }));
@@ -744,21 +751,23 @@ window.addEventListener('DOMContentLoaded', () => {
     if (serial === catalogSerial) await loadModel(true);
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
-  $('importQ3').addEventListener('click', async () => {
-    const path = $('q3Path').value.trim();
-    if (!path) { $('importStatus').textContent = 'Enter a local game folder or PK3 file.'; return; }
-    $('importQ3').disabled = true; $('importStatus').textContent = 'Importing models and textures…';
-    try {
-      const response = await fetch('/import_q3', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Import failed');
-      $('importStatus').textContent = `${result.entries} entries imported; ${result.ready} previews. Existing PNG edits kept.`;
-      if (game === 'q3') await loadCatalog();
-      history.length = future.length = 0; lastState = snapshot(); updateHistoryButtons();
-      $('historyStatus').textContent = 'History restarted after import';
-    } catch (error) { $('importStatus').textContent = error.message; }
-    finally { $('importQ3').disabled = false; }
-  });
+  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus']]) {
+    $(button).addEventListener('click', async () => {
+      const path = $(input).value.trim();
+      if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }
+      $(button).disabled = true; $(status).textContent = 'Importing models and textures…';
+      try {
+        const response = await fetch(`/import_${gameId}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Import failed');
+        $(status).textContent = `${result.entries} entries imported; ${result.ready} previews. Existing PNG edits kept.`;
+        if (game === gameId) await loadCatalog();
+        history.length = future.length = 0; lastState = snapshot(); updateHistoryButtons();
+        $('historyStatus').textContent = 'History restarted after import';
+      } catch (error) { $(status).textContent = error.message; }
+      finally { $(button).disabled = false; }
+    });
+  }
   action('modelSearch', 'input', 'Search models', filterCatalog);
   action('categorySelect', 'change', 'Filter models', filterCatalog);
   action('modelSelect', 'change', 'Select model', selectModel);

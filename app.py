@@ -4,7 +4,7 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, TEXTURE_GAMES
+from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, TEXTURE_GAMES, MODEL_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
@@ -25,6 +25,7 @@ from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
+from tools.import_diabotical_models import import_catalog as import_diabotical_catalog
 
 # --- System Tray Imports ---
 try:
@@ -60,6 +61,7 @@ model_json_dir = static_dir / "model_json" # Where pre-processed JSONs are store
 app_local_data_dir = (pathlib.Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else root) / 'local-data'
 local_data_dir = LOCAL_DATA
 q3_dir = local_data_dir / 'q3'
+diabotical_dir = local_data_dir / 'diabotical'
 import_lock = threading.Lock()
 
 # Source directories (can be used by list_models for discovery if desired, but not for on-demand export)
@@ -299,7 +301,7 @@ def import_diabotical_maps_route():
 
 def selected_game():
     game = request.args.get("game", "t1")
-    if game not in ("t1", "t2", "q3"):
+    if game not in MODEL_GAMES:
         abort(400, "Unknown game")
     return game
 
@@ -315,6 +317,8 @@ def texture_game():
 def game_textures(game):
     if game == 'reflex':
         return local_data_dir / 'reflex-maps' / 'textures'
+    if game == 'diabotical':
+        return diabotical_dir / 'textures'
     return q3_dir / 'textures' if game == 'q3' else textures_dir / "t2" if game == "t2" else textures_dir
 
 
@@ -333,6 +337,8 @@ def model_path(name):
         if not any(entry['model_name']==name and entry['status']=='ready' for entry in entries):
             abort(404, 'Model is not available in the current Q3 catalog.')
         directory = active / 'model_json'
+    if selected_game() == 'diabotical':
+        directory = diabotical_dir / 'model_json'  # Entries with no preview have no file.
     path = directory / (name + ".json")
     if not path.is_file():
         abort(404, "Model has no supported preview geometry; see catalog coverage.")
@@ -411,8 +417,8 @@ def texture_versions():
 
 @app.route("/list_models")
 def list_models():
-    if selected_game() in ("t2", "q3"):
-        catalog = current_import(q3_dir) / 'catalog.json' if selected_game() == 'q3' else static_dir / "t2" / "catalog.json"
+    if selected_game() in ("t2", "q3", "diabotical"):
+        catalog = {'q3': current_import(q3_dir) / 'catalog.json', 'diabotical': diabotical_dir / 'catalog.json'}.get(selected_game(), static_dir / "t2" / "catalog.json")
         if not catalog.exists():
             return jsonify([])
         entries = json.loads(catalog.read_text(encoding="utf-8"))
@@ -464,6 +470,31 @@ def import_q3():
         import_lock.release()
 
 
+@app.route('/import_diabotical', methods=['POST'])
+def import_diabotical():
+    if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your local Diabotical folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_diabotical_catalog(payload['path'].strip(), diabotical_dir))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/diabotical_thumbnail/<filename>')
+def diabotical_thumbnail(filename):
+    # The Editpad's own picture of an asset, copied by the import.
+    return send_from_directory(diabotical_dir / 'thumbnails', filename, max_age=0)
+
+
 @app.route('/export_glb/<model_name>')
 def export_glb(model_name):
     from tools.glb_exporter import model_to_glb
@@ -484,6 +515,8 @@ def export_glb(model_name):
         elif game == 't1':
             from tools.animate_t1 import load_animated_model
             data = load_animated_model(model_name, None, preview)
+        elif game == 'diabotical':
+            data = dict(preview, animation_clips=[], animation_status='static')  # Props and pickups do not animate.
         else:
             from tools.animate_t2 import load_animated_model
             data = load_animated_model(model_name, None, preview)

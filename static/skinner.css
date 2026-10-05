@@ -24,6 +24,8 @@ h1,h2 { margin:0 0 8px; font-size:17px; font-weight:600; color:#eff5f8; }
 #modelSelect { flex:1 1 auto; min-height:130px; background:#111b22; padding:3px; }
 #modelSelect option { padding:7px 8px; border-radius:3px; }
 #modelSelect option:checked { background:#286655; color:white; }
+.model-thumbnail { display:block; width:128px; height:128px; margin:8px auto 0; object-fit:contain; background:#111b22; border-radius:3px; }
+.model-thumbnail[hidden] { display:none; }
 #modelSelect option[data-unavailable="true"] { color:#dfa97b; }
 .button-row { display:flex; gap:7px; margin-top:8px; }
 .button-row>* { flex:1; min-width:0; }

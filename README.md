@@ -1,12 +1,13 @@
 # DTS Skinner
 
-Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 3**, view and edit Reflex Arena maps, and view Diabotical maps. Runs on Windows with a 3D viewer in your browser.
+Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3 and Diabotical**, view and edit Reflex Arena maps, and view Diabotical maps. Runs on Windows with a 3D viewer in your browser.
 
 **[Download the latest release](https://github.com/shadoh420/DTS_Skinner/releases/latest)**
 
 ## Features
 
 - Browse models and interiors; inspect and replace individual materials.
+- **Diabotical** in the Game list holds what the game's Editpad places, imported from your install (**Import Diabotical models**, a few minutes): its props, dynamic props (built at their default size, each piece they can use listed under them), pickups, entities (as their pickup or model, else a marker) and utility boxes and sounds, with the Editpad's thumbnails. Its materials, decals, sprays and surface materials become the **Diabotical textures** library, tinted by their default accent colours.
 - Expand the texture browser, resize thumbnails, and search filenames or your own tags.
 - Rotate textures 90° left/right or flip horizontally/vertically using temporary copies; save a copy only when wanted.
 - Filter pixel dimensions or find textures with similar size or overall hue, with adjustable tolerances.
