@@ -17,7 +17,7 @@ import numpy as np
 
 from app import app
 from tools.fbx_mesh import fbx_mesh
-from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_billboards, read_map, read_pfx, visible_blocks
+from tools.import_diabotical_map import OUT, import_maps, map_id, placements, read_billboards, read_map, read_materials, read_pfx, visible_blocks
 
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 
@@ -176,6 +176,16 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertEqual(at[(0, 0, 0)]['open'], 0b100110)
         self.assertEqual(at[(1, 2, 1)]['open'], 0b010000)
         self.assertEqual((at[(5, 0, 0)]['open'], at[(5, 0, 0)]['turn'], at[(5, 0, 0)]['shape']), (0x3f, 1, 3))
+
+    def test_shader_lines_before_the_stage_are_read(self):
+        # The jump pads' ring band: `visible false` comes before the stage, and that part is hidden in the game.
+        shader = b"pad_mat_rings\n{\nvisible false\n {\n  map glow_d.png\n  blendfunc blend\n }\n}\n" \
+                 b"pad_mat_1\n{\n\t{\n\t\tmap pad_d.png\n\t}\n}\n"
+        pack = type('Pack', (), {'files': ['models\\pad.shader'], 'read': lambda self, name: shader})()
+        found = read_materials([pack])
+        self.assertTrue(found['pad_mat_rings'][0][3]['hidden'])
+        self.assertEqual(found['pad_mat_rings'][0][0], 'glow_d.png')
+        self.assertFalse(found['pad_mat_1'][0][3]['hidden'])
 
     def test_import_writes_blocks_index_and_material_textures(self):
         with tempfile.TemporaryDirectory() as directory:

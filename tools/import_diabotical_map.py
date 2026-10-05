@@ -97,7 +97,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 21  # Of the files written per map: maps imported with another are read again.
+FORMAT = 22  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -106,7 +106,8 @@ NEIGHBOURS = ((0, 0, 1), (-1, 0, 0), (0, 0, -1), (1, 0, 0), (0, 1, 0), (0, -1, 0
 OUT = np.dtype([('x', '<i2'), ('y', '<i2'), ('z', '<i2'), ('shape', 'u1'), ('turn', 'u1'), ('open', 'u1'), ('pad', 'u1'), ('faces', 'u1', 6)])
 TEXTURE_SIZE = 512
 ASSET = re.compile(r'\basset\s+(\S+)\s*\{([^{}]*)\}')
-SHADER = re.compile(r'(?:^|\n)\s*([^\s{}]+)\s*\{\s*\{(.*?)(?:\}|\Z)', re.S)  # Some files end mid-shader.
+# A shader's own lines (`visible false`: the jump pads' ring band) may come before its stage. Some files end mid-shader.
+SHADER = re.compile(r'(?:^|\n)\s*([^\s{}]+)\s*\{([^{}]*)\{(.*?)(?:\}|\Z)', re.S)
 
 
 def map_id(name):
@@ -234,7 +235,8 @@ def read_materials(packs):
                     if found and re.search(r'\btype\s+surface_material\b', fields):
                         assets.setdefault(asset.lower(), found.group(1).lower())
             else:
-                for shader, stage in SHADER.findall(text):
+                for shader, outer, stage in SHADER.findall(text):
+                    stage = outer + stage
                     maps = re.findall(r'\bmap\s+(\S+)', stage)
                     scale = re.search(r'\buv_scale\s+([-\d.]+)', stage)
                     flags = dict(cutout=bool(re.search(r'shadow_at_|culling\s+off', stage)), blend=bool(re.search(r'blendfunc\s+blend', stage)),
