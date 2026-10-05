@@ -26,6 +26,7 @@ from tools.import_q3_map import import_maps as import_q3_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
 from tools.import_diabotical_models import import_catalog as import_diabotical_catalog
+from tools.import_reflex_models import import_catalog as import_reflex_catalog
 
 # --- System Tray Imports ---
 try:
@@ -62,6 +63,7 @@ app_local_data_dir = (pathlib.Path(sys.executable).resolve().parent if getattr(s
 local_data_dir = LOCAL_DATA
 q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
+reflex_models_dir = local_data_dir / 'reflex-models'
 import_lock = threading.Lock()
 
 # Source directories (can be used by list_models for discovery if desired, but not for on-demand export)
@@ -337,8 +339,8 @@ def model_path(name):
         if not any(entry['model_name']==name and entry['status']=='ready' for entry in entries):
             abort(404, 'Model is not available in the current Q3 catalog.')
         directory = active / 'model_json'
-    if selected_game() == 'diabotical':
-        directory = diabotical_dir / 'model_json'  # Entries with no preview have no file.
+    if selected_game() in ('diabotical', 'reflex'):
+        directory = {'diabotical': diabotical_dir, 'reflex': reflex_models_dir}[selected_game()] / 'model_json'  # Entries with no preview have no file.
     path = directory / (name + ".json")
     if not path.is_file():
         abort(404, "Model has no supported preview geometry; see catalog coverage.")
@@ -417,8 +419,9 @@ def texture_versions():
 
 @app.route("/list_models")
 def list_models():
-    if selected_game() in ("t2", "q3", "diabotical"):
-        catalog = {'q3': current_import(q3_dir) / 'catalog.json', 'diabotical': diabotical_dir / 'catalog.json'}.get(selected_game(), static_dir / "t2" / "catalog.json")
+    if selected_game() in ("t2", "q3", "diabotical", "reflex"):
+        catalog = {'q3': current_import(q3_dir) / 'catalog.json', 'diabotical': diabotical_dir / 'catalog.json',
+                   'reflex': reflex_models_dir / 'catalog.json'}.get(selected_game(), static_dir / "t2" / "catalog.json")
         if not catalog.exists():
             return jsonify([])
         entries = json.loads(catalog.read_text(encoding="utf-8"))
@@ -489,10 +492,32 @@ def import_diabotical():
         import_lock.release()
 
 
-@app.route('/diabotical_thumbnail/<filename>')
-def diabotical_thumbnail(filename):
-    # The Editpad's own picture of an asset, copied by the import.
-    return send_from_directory(diabotical_dir / 'thumbnails', filename, max_age=0)
+@app.route('/import_reflex', methods=['POST'])
+def import_reflex():
+    if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your local Reflex Arena folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_reflex_catalog(payload['path'].strip(), reflex_models_dir, local_data_dir / 'reflex-maps'))
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/model_thumbnail/<game>/<filename>')
+def model_thumbnail(game, filename):
+    # The game editor's own picture of a model, copied by the import.
+    folders = {'diabotical': diabotical_dir, 'reflex': reflex_models_dir}
+    if game not in folders:
+        abort(404)
+    return send_from_directory(folders[game] / 'thumbnails', filename, max_age=0)
 
 
 @app.route('/export_glb/<model_name>')
@@ -515,7 +540,7 @@ def export_glb(model_name):
         elif game == 't1':
             from tools.animate_t1 import load_animated_model
             data = load_animated_model(model_name, None, preview)
-        elif game == 'diabotical':
+        elif game in ('diabotical', 'reflex'):
             data = dict(preview, animation_clips=[], animation_status='static')  # Props and pickups do not animate.
         else:
             from tools.animate_t2 import load_animated_model

@@ -92,8 +92,9 @@ class DiaboticalModelsTest(unittest.TestCase):
                 model = client.get('/model_json/dynprop.strip?game=diabotical').json
                 self.assertEqual(model['game'], 'diabotical')
                 self.assertEqual(client.get('/model_json/nope?game=diabotical').status_code, 404)
-                self.assertEqual(client.get('/diabotical_thumbnail/prop.props_sub_quad.png').status_code, 200)
-                self.assertEqual(client.get('/diabotical_thumbnail/..%5Ccatalog.json').status_code, 404)
+                self.assertEqual(client.get('/model_thumbnail/diabotical/prop.props_sub_quad.png').status_code, 200)
+                self.assertEqual(client.get('/model_thumbnail/diabotical/..%5Ccatalog.json').status_code, 404)
+                self.assertEqual(client.get('/model_thumbnail/q3/prop.props_sub_quad.png').status_code, 404)
                 self.assertEqual(client.get('/texture/props_red.png?game=diabotical').status_code, 200)
                 glb = client.get('/export_glb/dynprop.strip?game=diabotical')
                 self.assertEqual((glb.status_code, glb.data[:4]), (200, b'glTF'))

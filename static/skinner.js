@@ -346,8 +346,9 @@ window.addEventListener('DOMContentLoaded', () => {
     $('textureGame').value = game;
     $('q3Import').hidden = game !== 'q3';
     $('diaboticalImport').hidden = game !== 'diabotical';
+    $('reflexImport').hidden = game !== 'reflex';
     $('modelThumbnail').hidden = true;
-    $('coverageReport').hidden = game === 't1' || game === 'diabotical';
+    $('coverageReport').hidden = game === 't1' || game === 'diabotical' || game === 'reflex';
     $('coverageReport').href = game === 'q3' ? '/q3_inventory' : '/static/t2/inventory.json';
     $('coverageReport').textContent = `View ${game.toUpperCase()} inventory & coverage report`;
     showWarnings([]);
@@ -374,6 +375,7 @@ window.addEventListener('DOMContentLoaded', () => {
         $('status').textContent = 'This game has no imported catalog entries.';
         if (game === 'q3') $('q3Import').open = true;
         if (game === 'diabotical') $('diaboticalImport').open = true;
+        if (game === 'reflex') $('reflexImport').open = true;
       }
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
@@ -420,7 +422,7 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.minFilter = flags & 128 ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
       texture.generateMipmaps = !(flags & 128);
     }
-    if (gameId === 'q3' || gameId === 'diabotical') {
+    if (gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex') {
       texture.wrapS = texture.wrapT = settings.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       texture.magFilter = THREE.LinearFilter;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -478,9 +480,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const oldPosition = group ? group.position.clone() : null;
     disposeModel(); emptyInspector();
     const entry = catalog.find(x => x.model_name === name) || {};
-    // Diabotical: the Editpad's own thumbnail of the asset, where the game has one.
+    // Diabotical and Reflex: the game editor's own thumbnail of the model, where the game has one.
     $('modelThumbnail').hidden = !entry.thumbnail;
-    if (entry.thumbnail) $('modelThumbnail').src = `/diabotical_thumbnail/${encodeURIComponent(name)}.png`;
+    if (entry.thumbnail) $('modelThumbnail').src = `/model_thumbnail/${gameId}/${encodeURIComponent(name)}.png`;
     showWarnings(entry.warnings || []);
     if (!available(entry)) {
       $('status').textContent = `Preview unavailable: ${entry.status}.`;
@@ -512,18 +514,19 @@ window.addEventListener('DOMContentLoaded', () => {
         const Material = $('lighting').checked && !(flags & 32) ? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
         const transparent = Boolean(flags & (4 | 8 | 16));
         newMaterials.push(new Material({
-          name: filename, map, color: map ? 0xffffff : failures.has(textureId(filename, sourceGame(model, index))) ? 0xcc00cc : 0x999999,
+          name: filename, map, vertexColors: Boolean(model.colors), color: map ? 0xffffff : failures.has(textureId(filename, sourceGame(model, index))) ? 0xcc00cc : 0x999999,
           side: THREE.DoubleSide, wireframe: $('wireframe').checked,
           transparent, depthWrite: !transparent,
           blending: flags & 8 ? THREE.AdditiveBlending : flags & 16 ? THREE.SubtractiveBlending : THREE.NormalBlending
         }));
-        // Diabotical's import writes the same shader settings for its cutout (foliage) and blended materials.
-        if ((gameId === 'q3' || gameId === 'diabotical') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
+        // Diabotical's and Reflex's imports write the same shader settings for their cutout (foliage) and blended materials.
+        if ((gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
       }
       if (serial !== loadSerial) { disposeMaterials(newMaterials); return; }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(model.vertices, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(model.uvs, 2));
+      if (model.colors) geometry.setAttribute('color', new THREE.Float32BufferAttribute(model.colors, 3));  // Reflex: shading in the mesh.
       if (model.indices && model.indices.length) geometry.setIndex(model.indices);
       if (model.normals && model.normals.length === model.vertices.length) geometry.setAttribute('normal', new THREE.Float32BufferAttribute(model.normals, 3));
       else geometry.computeVertexNormals();
@@ -713,8 +716,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const halfFov = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect));
     const distance = radius / Math.sin(halfFov) * 1.18;
     const directions = {perspective: [0, .25, 1], front: [0, 0, 1], back: [0, 0, -1], left: [-1, 0, 0], right: [1, 0, 0], top: [0, 1, .0001], bottom: [0, -1, .0001]};
-    // Imported T2 forward (+Y) becomes -Z in the viewer's Y-up coordinates.
-    if (game === 't2') for (const direction of Object.values(directions)) direction[2] *= -1;
+    // Imported T2 forward (+Y) becomes -Z in the viewer's Y-up coordinates; Reflex's front (its +z, its letters' and
+    // characters' faces) is -Z here too, z turned round.
+    if (game === 't2' || game === 'reflex') for (const direction of Object.values(directions)) direction[2] *= -1;
     camera.near = Math.max(Math.min(radius / 10000, .01), .0001);
     camera.far = Math.max(radius * 100, 10);
     camera.updateProjectionMatrix();
@@ -733,7 +737,7 @@ window.addEventListener('DOMContentLoaded', () => {
       textureMetadata = new Map(entries.map(entry => [entry.filename, entry]));
       textures = entries.map(entry => entry.filename).sort(compare);
       filterSkins(previous);
-      if (!textures.length) $('skinSelect').replaceChildren(option(gameId === 'q3' ? 'Import Quake 3 to add textures' : gameId === 'diabotical' ? 'Import Diabotical to add textures' : 'No PNG textures in this library', ''));
+      if (!textures.length) $('skinSelect').replaceChildren(option(gameId === 'q3' ? 'Import Quake 3 to add textures' : gameId === 'diabotical' ? 'Import Diabotical to add textures' : gameId === 'reflex' ? 'Import Reflex models or maps to add textures' : 'No PNG textures in this library', ''));
     } catch (error) {
       if (serial === textureSerial) { $('skinSelect').replaceChildren(option('Texture library unavailable; try Reload textures', '')); $('textureCount').textContent = error.message; }
     }
@@ -751,7 +755,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (serial === catalogSerial) await loadModel(true);
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
-  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus']]) {
+  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus']]) {
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();
       if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }

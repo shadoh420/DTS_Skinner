@@ -10,7 +10,7 @@
   <script defer src="/static/skinner.js"></script>
 </head>
 <body>
-  <header class="app-header"><div><strong>DTS SKINNER</strong><span class="subtle">Tribes, Quake 3 &amp; Diabotical model workshop</span></div><div class="history-controls"><button id="undoAction" disabled title="Ctrl+Z">Undo</button><button id="redoAction" disabled title="Ctrl+Shift+Z / Ctrl+Y">Redo</button><span id="historyStatus" class="subtle" role="status">Session history</span></div><span id="catalogSummary" class="subtle"></span></header>
+  <header class="app-header"><div><strong>DTS SKINNER</strong><span class="subtle">Tribes, Quake 3, Diabotical &amp; Reflex model workshop</span></div><div class="history-controls"><button id="undoAction" disabled title="Ctrl+Z">Undo</button><button id="redoAction" disabled title="Ctrl+Shift+Z / Ctrl+Y">Redo</button><span id="historyStatus" class="subtle" role="status">Session history</span></div><span id="catalogSummary" class="subtle"></span></header>
   <main class="workspace">
     <aside class="catalog panel" aria-label="Model browser">
       <h1>Models</h1>
@@ -20,8 +20,9 @@
       <a class="button" href="/maps/reflex/">Reflex Maps</a>
       <a class="button" href="/maps/diabotical/">Diabotical Maps</a>
       <label for="gameSelect">Game</label>
-      <select id="gameSelect"><option value="t1">Starsiege: Tribes</option><option value="t2">Tribes 2</option><option value="q3">Quake 3 Arena</option><option value="diabotical">Diabotical</option></select>
+      <select id="gameSelect"><option value="t1">Starsiege: Tribes</option><option value="t2">Tribes 2</option><option value="q3">Quake 3 Arena</option><option value="diabotical">Diabotical</option><option value="reflex">Reflex Arena</option></select>
       <details id="diaboticalImport" hidden><summary>Import Diabotical models</summary><label for="diaboticalPath">Diabotical folder</label><input id="diaboticalPath" value="C:\Program Files\Epic Games\Diabotical"><button id="importDiabotical">Import local models</button><p id="diaboticalImportStatus" class="hint" role="status">Reads the Editpad's props, dynamic props, pickups and entities, and every material, decal and spray as textures, from your installed game. Takes about ten minutes the first time. Existing PNG edits are kept.</p></details>
+      <details id="reflexImport" hidden><summary>Import Reflex models</summary><label for="reflexPath">Reflex Arena folder</label><input id="reflexPath" value="C:\Program Files (x86)\Steam\steamapps\common\reflexfps"><button id="importReflex">Import local models</button><p id="reflexImportStatus" class="hint" role="status">Reads the editor's props and the pickups and their pads, with their materials as Reflex textures, from your installed game. Takes a minute or two. Existing PNG edits are kept.</p></details>
       <details id="q3Import" hidden><summary>Import Quake 3 models</summary><label for="q3Path">Game folder, baseq3 folder, or PK3 file</label><input id="q3Path" placeholder="C:\Games\Quake 3 Arena"><button id="importQ3">Import local models</button><p id="importStatus" class="hint" role="status">Reads MD3 models and skins from your installed game. Existing PNG edits are kept.</p></details>
       <label for="modelSearch">Search catalog</label>
       <input id="modelSearch" type="search" placeholder="Name or family…" autocomplete="off">

@@ -1,6 +1,6 @@
 # DTS Skinner
 
-Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3 and Diabotical**, view and edit Reflex Arena maps, and view Diabotical maps. Runs on Windows with a 3D viewer in your browser.
+Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, Diabotical and Reflex Arena**, view and edit Reflex Arena maps, and view Diabotical maps. Runs on Windows with a 3D viewer in your browser.
 
 **[Download the latest release](https://github.com/shadoh420/DTS_Skinner/releases/latest)**
 
@@ -8,6 +8,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3 an
 
 - Browse models and interiors; inspect and replace individual materials.
 - **Diabotical** in the Game list holds what the game's Editpad places, imported from your install (**Import Diabotical models**, about ten minutes the first time): its props, dynamic props (built at their default size, each piece they can use listed under them), pickups, entities (as their pickup or model, else a marker) and utility boxes and sounds, with the Editpad's thumbnails. Its materials, decals, sprays and surface materials become the **Diabotical textures** library, tinted by their default accent colours.
+- **Reflex Arena** in the Game list holds the editor's props (with its thumbnails) and the pickups and pads of weapons, ammo, health, armour, powerups and flags, imported from your install (**Import Reflex models**). They are coloured as the game colours them: their material's texture or colour times the effect's colour, as PNGs in the **Reflex textures** library (flat swatches for colour-only materials), shaded by the meshes' vertex colours; GLB keeps those, OBJ cannot. Holograms and glows are drawn as added light.
 - Expand the texture browser, resize thumbnails, and search filenames or your own tags.
 - Rotate textures 90° left/right or flip horizontally/vertically using temporary copies; save a copy only when wanted.
 - Filter pixel dimensions or find textures with similar size or overall hue, with adjustable tolerances.

@@ -33,7 +33,7 @@ def model_sort_key(name):
 # Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
 # tools/import_reflex_map.py; textures only).
 TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical')
-MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical')
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex')
 
 
 def material_texture_refs(data, material_overrides=None):
@@ -147,4 +147,7 @@ def load_model_data(json_path, fallback_texture=None, material_overrides=None):
     if "normals" in data:
         if len(data["normals"]) != len(vertices) or any(not isinstance(x, (int, float)) or not math.isfinite(x) for x in data["normals"]):
             raise ValueError("Model must have one finite normal per vertex")
+    if "colors" in data:  # Reflex: vertex colours (display values, 0 to 1) that shade the slot's texture.
+        if len(data["colors"]) != len(vertices) or any(not isinstance(x, (int, float)) or not 0 <= x <= 1 for x in data["colors"]):
+            raise ValueError("Model must have one colour between 0 and 1 per vertex")
     return data
