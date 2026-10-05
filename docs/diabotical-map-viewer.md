@@ -14,7 +14,7 @@ and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.m
 "C:/Program Files/Epic Games/Diabotical"`) reads the game's maps from
 `packs/maps.dbp` and the maps made in the game's editor from
 `%APPDATA%/Diabotical/Maps`, into `local-data/diabotical-maps` (ignored by
-Git). The game folder is only read. A whole install takes about five minutes:
+Git). The game folder is only read. A whole install takes about four minutes:
 174 maps (about 340 MB of blocks and entities, 5 MB of terrain), the 6,000 models they place
 (300 MB) and the textures of their materials (about 120 MB). Maps already imported
 are skipped unless their file changed or **Re-import existing maps** is
@@ -450,8 +450,11 @@ million triangles: props 1.08 M, the terrain's full 512 x 512 grid 522 k, blocks
 against one model's bounds) and nothing has levels of detail. Cheap wins: the
 terrain at half resolution (about 130 k) and props grouped into spatial cells so
 each cell can be culled. Frames are fast (about 1 ms on bioplant); loads take
-about 24 s, but b_ancient's about 4 minutes headless (SwiftShader), nearly all
-before its decals are placed, and the page does not answer meanwhile.
+about 24 s, b_ancient's 11 s headless (SwiftShader). Decal placement
+used to freeze the page on maps with huge far-off prop triangles (a_barrows_gate,
+b_ancient): it walked every grid cell a triangle's bounds touched, a million for
+a 20000-unit triangle; it now clips those bounds to the decals' and checks the
+decals one by one when there are fewer of them than cells.
 
 Decals whose texture is not in the game files (drawn not at all: 80 decals,
 all community `jacobs_decals` ones, mostly on a_enclosure), billboards' own shader (see above), the particles' leftovers (see above), the glowing crystals' colours
