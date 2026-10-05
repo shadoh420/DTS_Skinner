@@ -434,7 +434,8 @@ million triangles: props 1.08 M, the terrain's full 512 x 512 grid 522 k, blocks
 against one model's bounds) and nothing has levels of detail. Cheap wins: the
 terrain at half resolution (about 130 k) and props grouped into spatial cells so
 each cell can be culled. Frames are fast (about 1 ms on bioplant); loads take
-about 24 s.
+about 24 s, but b_ancient's about 4 minutes headless (SwiftShader), nearly all
+before its decals are placed, and the page does not answer meanwhile.
 
 Decals whose texture is not in the game files (drawn not at all: 80 decals,
 all community `jacobs_decals` ones, mostly on a_enclosure), billboards' own shader (see above), the particles' leftovers (see above), the glowing crystals' colours
