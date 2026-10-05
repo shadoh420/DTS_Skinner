@@ -97,7 +97,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 24  # Of the files written per map: maps imported with another are read again.
+FORMAT = 26  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -864,6 +864,16 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         own = next((alike(path, folders[f]) for f in ('\\'.join(parts[:n]) for n in range(len(parts), 1, -1)) if f in folders), path)
         names = [next((m for m in (f'{path}_{name}'.lower(), name.lower(), path, (heads or {}).get(path)) if m in materials), own) for name in groups]
         triangles = [np.concatenate(parts, 2) for parts in groups.values()]
+        if path.startswith('theme/medina/dynamic_prop/woodposts/') and triangles:
+            # The medina wood posts' pieces (no .dbm: the game reads the FBX itself) stand on their cell's corner (the
+            # game's -x, -y, -z one: page z is the game's negated), not its centre, and each FBX keeps the piece where
+            # the artist laid the set out (bottom -40..0, mid1 0..40, mid 40..80, top 80..120), which the game drops:
+            # run 43's test map. ponytail: posts only; the same shift on all medina pieces lifted the roofs' rafters
+            # through their tiles (runs 41, 42), so the rule for the other medina sets is still to be measured.
+            low = min(t[..., 1].min() for t in triangles)
+            shift = np.array([-20, -20 - CELL * np.floor((low + .5) / CELL), 20], np.float32)
+            triangles = [np.concatenate([t[..., :3] + shift, t[..., 3:]], -1).astype(np.float32) for t in triangles]
+            target = target.with_name(f'{hashlib.sha256(raw + b"corner").hexdigest()[:16]}.bin')
         if path in (pickups or {}):
             # A pickup's shaders go by the entity's kind (hpt.shader says so): KIND_MATERIAL (after the FBX's
             # namespace:), the model's own, KIND. Groups with none (the melee weebles' arms) are left out.

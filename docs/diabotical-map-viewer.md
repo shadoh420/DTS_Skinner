@@ -82,6 +82,12 @@ left (`static/diabotical-maps/blocks.js`).
   roofs, diagonal walls, stair fences; a_bazaar's tiled roofs, `front / bottom 3`,
   were missing until FORMAT 24; run 41 compared them from above). The game picks among
   a rule's variants at random; the page picks the same way every time.
+  The medina wood posts' pieces (no compiled `.dbm`: the game reads their FBX) keep
+  the artist's layout in the file (bottom -40..0, mid1 0..40, mid 40..80, top
+  80..120) and stand on their cell's corner: the game drops the layout and the page
+  does too (run 43's test map: a standing and a lying post, seen from the side and
+  above; a_bazaar's floating poles). Other medina sets (arches, roof rafters, a few
+  trims) carry layout offsets too and are still drawn as their files place them.
   `PATH_flipx` is `PATH` mirrored. Props marked `no_show` (clip boxes and other
   invisible ones) and materials marked `visible false` are left out (also where
   the line comes before the shader's stage: the jump pads' ring band and the
