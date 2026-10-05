@@ -113,15 +113,15 @@ class ReflexMapsTest(unittest.TestCase):
             self.assertNotIn('light', index[1])
             colours = json.loads((pack / 'materials.json').read_text())
             self.assertEqual(colours['common/materials/stone/concrete'],
-                             dict(colour=[.37, .38, .35], metallic=0.0, roughness=.8, shader='internal/shaders/deferredPbrStylized', source='common.pak'))
+                             dict(colour=[.37, .38, .35], flags=0x11b, metallic=0.0, roughness=.8, shader='internal/shaders/deferredPbrStylized', source='common.pak'))
             self.assertEqual((colours['common/materials/wood/bare']['colour'], colours['common/materials/wood/bare']['metallic']), ([.5, .25, 0], 1))
             self.assertEqual(colours['structural/dev/dev_grey128'],
-                             dict(colour=[.5, .5, .5], shader='tinted', source='structural.pak', tints='dev_grid16_albedospec'))
+                             dict(colour=[.5, .5, .5], flags=0x11b, shader='tinted', source='structural.pak', tints='dev_grid16_albedospec'))
             self.assertEqual(report['materials'], 3)
             # A material without a colour is still kept with its shader, which says whether it is see-through; its
             # texture is looked for too (models' glowing materials use theirs), and this made-up install has none.
             self.assertEqual(colours['internal/editor/textures/editor_clip'],
-                             dict(shader='internal/shaders/standard_TEXTUREDIFFUSE', source='internal.pak', textureError="KeyError: 'editor_clip_c'"))
+                             dict(shader='internal/shaders/standard_TEXTUREDIFFUSE', flags=0x11b, source='internal.pak', textureError="KeyError: 'editor_clip_c'"))
             self.assertEqual(report['uncoloured'], ['internal/editor/textures/editor_clip'])
             self.assertEqual(import_maps(game, pack)['skipped'], ['Test Walk', 'other'])
             # A changed map replaces its old copy.
@@ -215,6 +215,23 @@ class ReflexTexturesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'not a Reflex textureset'):
             textureset_images(b'DDS ' + bytes(200))
 
+    def test_cube_maps_decode_as_their_faces_stacked(self):
+        from tools.reflex_textures import decode_dds_cube
+        # A DXT1 cube 8 x 8 with two levels, each face one colour (565: red, green, blue, white, black, yellow).
+        colours = [0xf800, 0x07e0, 0x001f, 0xffff, 0x0000, 0xffe0]
+        header = bytearray(128)
+        header[:4] = b'DDS '
+        struct.pack_into('<7I', header, 4, 124, 0x21007, 8, 8, 0, 0, 2)
+        struct.pack_into('<2I4s', header, 76, 32, 4, b'DXT1')
+        struct.pack_into('<2I', header, 108, 0x401008, 0xfe00)
+        faces = b''.join(struct.pack('<2HI', c, c, 0) * 4 + struct.pack('<2HI', 0x1234, 0x1234, 0) for c in colours)  # level 0: 4 blocks, level 1: 1
+        strip = decode_dds_cube(bytes(header) + faces, size=8)
+        self.assertEqual(strip.size, (8, 48))
+        self.assertEqual([strip.getpixel((4, 8 * face + 4)) for face in range(6)],
+                         [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 255), (0, 0, 0), (255, 255, 0)])
+        with self.assertRaisesRegex(ValueError, 'not a DXT cube map'):
+            decode_dds_cube(bytes(header[:112]) + bytes(4) + bytes(header[116:]) + faces)
+
     def test_import_bakes_material_textures_and_thumbnails(self):
         from PIL import Image
         with tempfile.TemporaryDirectory() as directory:
@@ -272,19 +289,22 @@ class ReflexTexturesTest(unittest.TestCase):
 
 
 def mesh_file_bytes():
-    """A one-triangle .mesh as the game writes one: one material, one level of detail, a bone b_light posed 2 below
-    the origin with its x axis down."""
+    """A one-triangle .mesh as the game writes one: one material, one level of detail, a one-triangle shadow mesh, a
+    bone b_light posed 2 below the origin with its x axis down."""
     head = b'\x23\x00\x0a\xd0' + struct.pack('<I6f3I', 1, 0, 0, 0, 8, 8, 0, 1, 0, 9) + b'MaterialA\0'
     vertex = lambda x, y, z: struct.pack('<3f4B3f2f4f', x, y, z, 255, 255, 255, 255, 0, 0, -1, 0, 0, 1, 0, 0, 1)
     block = struct.pack('<4I', 3, 3, 0x1d, 4) + vertex(0, 0, 0) + vertex(8, 0, 0) + vertex(0, 0, 8) + struct.pack('<3H', 0, 1, 2)
-    shadow = struct.pack('<4I', 0, 0, 0, 4)
+    shadow = struct.pack('<4I', 3, 3, 0, 4) + struct.pack('<9f', 0, 0, 0, 4, 0, 0, 0, 4, 0) + struct.pack('<3H', 0, 2, 1)
     identity = (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
     pose = (0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, -2, 0, 1)
     return head + block + shadow + struct.pack('<i', -1) + b'b_light\0' + struct.pack('<16f', *identity) + struct.pack('<16f', *pose)
 
 
 def effect_file_bytes():
-    """An .effect with a mesh record (its material and colour set, scale 2) and a spot light on b_light."""
+    """An .effect with a mesh record (its material and colour set, scale 2), a spot light on b_light and a particle
+    emitter on b_light (at most 32, one every 0.1 s living 1.5 s, thrown 3 along the bone's x and rising, half sizes 10
+    by 14 at birth, 2 at death, hung a quarter below the middle, its flipbook run by age), at effect quality 1 and 2; at
+    0 the mesh alone, as the game's pads have it."""
     mesh = bytearray(2141)
     mesh[0] = 1
     mesh[1:10] = b'test/mesh'
@@ -296,16 +316,28 @@ def effect_file_bytes():
     struct.pack_into('<4f4f', spot, 1, 1, .9, .7, 1, 2.5, 16, 192, 0)
     struct.pack_into('<2f', spot, 37, 5, 40)
     spot[45:52] = b'b_light'
-    records = bytes(mesh + spot)
-    return b'\x33\x00\x0c\xd0' + struct.pack('<10I', 0x945893a8, 2, 2, 2, 44, 44 + len(records), 44 + 2 * len(records), 0, 0, 0) + records * 3
+    particle = bytearray(525)
+    particle[0] = 2
+    particle[1:20] = b'test/particle_flame'
+    struct.pack_into('<i2f', particle, 257, 32, .1, 1.5)
+    struct.pack_into('<3f', particle, 273, 3, 0, 0)
+    struct.pack_into('<3f', particle, 297, 0, 72, 0)
+    struct.pack_into('<6f', particle, 309, 10, 14, 2, 2, .5, .75)
+    struct.pack_into('<8f', particle, 333, 1, .5, .25, 1, 1, .5, .25, 0)
+    particle[519] = 1
+    particle[389:396] = b'b_light'
+    records = bytes(mesh + spot + particle)
+    return b'\x33\x00\x0c\xd0' + struct.pack('<10I', 0x945893a8, 1, 3, 3, 44, 44 + len(mesh), 44 + len(mesh) + len(records), 0, 0, 0) + mesh + records * 2
 
 
 class ReflexModelsTest(unittest.TestCase):
     def test_effects_and_meshes_are_read_and_written_for_the_page(self):
         from tools.reflex_models import export_models, read_effect, read_mesh
         mesh = read_mesh(mesh_file_bytes())
-        self.assertEqual((mesh['materials'], len(mesh['parts']), mesh['parts'][0]['indices']), (['MaterialA'], 1, [0, 1, 2]))
-        self.assertEqual(mesh['bones']['b_light'], dict(position=[0, -2, 0], axis=[0, -1, 0]))
+        self.assertEqual((mesh['materials'], len(mesh['parts']), mesh['parts'][0]['indices']), (['MaterialA'], 2, [0, 1, 2]))
+        # The shadow mesh is a part of its own (slot 255).
+        self.assertEqual((mesh['parts'][1]['material'], mesh['parts'][1]['positions'][3:6], mesh['parts'][1]['indices']), (255, [4, 0, 0], [0, 2, 1]))
+        self.assertEqual(mesh['bones']['b_light'], dict(position=[0, -2, 0], axis=[0, -1, 0], rows=[[0, -1, 0], [1, 0, 0], [0, 0, 1]]))
         effect = read_effect(effect_file_bytes())
         self.assertEqual(effect['meshes'][0]['materials'][0], 'common/materials/stone/stone')
         self.assertEqual((effect['meshes'][0]['colours'][0], effect['meshes'][0]['colours'][1], effect['meshes'][0]['scale']), ([.5, .5, .5, 1], None, 2))
@@ -314,10 +346,16 @@ class ReflexModelsTest(unittest.TestCase):
         files = {'test/effect.effect': effect_file_bytes(), 'test/mesh.mesh': mesh_file_bytes()}
         with tempfile.TemporaryDirectory() as directory:
             materials, failed = export_models(files.get, {'test/effect', 'test/missing'}, Path(directory))
-            self.assertEqual((materials, failed), ({'common/materials/stone/stone'}, {'test/missing': 'no such effect'}))
+            self.assertEqual((materials, failed), ({'common/materials/stone/stone', 'test/particle_flame'}, {'test/missing': 'no such effect'}))
             written = json.loads((Path(directory) / 'effects.json').read_text())['effects']['test/effect']
             # A spot light hangs from its bone and shines along the bone's x axis.
             self.assertEqual((written['lights'][0]['position'], written['lights'][0]['direction']), ([0, -2, 0], [0, -1, 0]))
+            # A particle emitter: its material, births and life, motion, sizes, hanging point, colours, flags, and its
+            # bone's place and axes (which its velocity runs along: the pose's rows from z to x).
+            self.assertEqual({k: v for k, v in written['particles'][0].items() if k not in ('spread', 'rotation', 'bone')},
+                             dict(material='test/particle_flame', capacity=32, interval=.1, life=1.5, velocity=[3, 0, 0], acceleration=[0, 72, 0],
+                                  size=[10, 14, 2, 2], anchor=[.5, .75], colour=[1, .5, .25, 1, 1, .5, .25, 0], local=False, randomRed=False,
+                                  framesByAge=True, position=[0, -2, 0], axes=[[0, 0, 1], [1, 0, 0], [0, -1, 0]]))
             raw = (Path(directory) / 'models' / written['meshes'][0]['file']).read_bytes()
-            self.assertEqual(struct.unpack_from('<4I', raw), (1, 0, 3, 3))
-            self.assertEqual(len(raw), 16 + 3 * (12 + 12 + 8 + 4) + 3 * 4)
+            self.assertEqual(struct.unpack_from('<4I', raw), (2, 0, 3, 3))
+            self.assertEqual(len(raw), 4 + 2 * (12 + 3 * (12 + 12 + 8 + 4) + 3 * 4))

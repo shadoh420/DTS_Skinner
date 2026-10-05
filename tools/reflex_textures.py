@@ -83,6 +83,25 @@ def decode_dds(raw):
         raise ValueError(str(exc)) from exc
 
 
+def decode_dds_cube(raw, size=256):
+    """A cube map .dds (DXT1, DXT3 or DXT5; faces +x, -x, +y, -y, +z, -z, each with its mips) as one RGB image of
+    its faces stacked top to bottom, each scaled to `size`. Each face's first level is decoded as a .dds of its own."""
+    from PIL import Image
+    width, mips, block = struct.unpack_from('<I', raw, 16)[0], struct.unpack_from('<I', raw, 28)[0] or 1, {b'DXT1': 8, b'DXT3': 16, b'DXT5': 16}.get(raw[84:88])
+    if block is None or struct.unpack_from('<I', raw, 112)[0] & 0xfe00 != 0xfe00:
+        raise ValueError('not a DXT cube map')
+    level = lambda m: max(1, ((width >> m) + 3) // 4) ** 2 * block
+    header = bytearray(raw[:128])
+    struct.pack_into('<I', header, 8, struct.unpack_from('<I', raw, 8)[0] & ~0x20000)  # no mip count
+    struct.pack_into('<I', header, 28, 1)
+    struct.pack_into('<2I', header, 108, 0x1000, 0)  # a plain texture
+    strip = Image.new('RGB', (size, size * 6))
+    for face in range(6):
+        at = 128 + face * sum(level(m) for m in range(mips))
+        strip.paste(decode_dds(bytes(header) + raw[at:at + level(0)]).convert('RGB').resize((size, size), Image.Resampling.LANCZOS), (0, face * size))
+    return strip
+
+
 def bake(albedo, meta=None, size=1024, alpha=False):
     """The colour of a surface as the page draws it: the albedo's colour (its alpha, the specular level of an
     albedoSpec texture, left out unless `alpha`: a diffuse texture's alpha is how see-through it is), divided by the
