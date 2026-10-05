@@ -75,6 +75,7 @@ textures/HASH.png (specular maps HASH-s.png, red and green), and the maps' envma
 the cube's third mip, 256 square, side by side in D3D order: +x, -x, +y, -y, +z, -z).
 """
 import argparse
+import functools
 import gzip
 import hashlib
 import io
@@ -303,10 +304,17 @@ def piece_shaders(assets, known):
     return heads
 
 
+@functools.lru_cache(maxsize=None)
+def rule_words(condition):
+    """A rule line's words and {word: int} for its numbers, read once: the import asks tens of millions of times."""
+    words = tuple(re.sub(r'\s*(%|==|>|<|-|/)\s*', r' \1 ', condition.replace('offset right', 'offset_right')).split())
+    return words, {word: int(word) for word in words if re.fullmatch(r'-?\d+', word)}
+
+
 def rule_holds(condition, cell):
     """One `if` line of a dynamic rule, for a cell's offsets from each end and the prop's size."""
-    words = re.sub(r'\s*(%|==|>|<|-|/)\s*', r' \1 ', condition.replace('offset right', 'offset_right')).split()
-    value = lambda word: cell[word] if word in cell else int(word) if re.fullmatch(r'-?\d+', word) else None
+    words, numbers = rule_words(condition)
+    value = lambda word: cell[word] if word in cell else numbers.get(word)
     if any(value(word) is None for word in words if word not in ('is', '==', '%', '<', '>', '-', '/')):
         return False
     try:

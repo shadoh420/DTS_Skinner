@@ -178,4 +178,12 @@ test('a decal takes the part of each surface in its box that faces its local +z'
   const half = cut.out[0];
   assert.ok(half.positions.every((v, i) => i % 3 !== 0 || (v >= -1e-9 && v <= 20 + 1e-9)));
   assert.ok(half.uvs.every((v, i) => i % 2 || (v >= .25 - 1e-9 && v <= .75 + 1e-9)));
+  // Huge triangles (a far prop's, 1e6 wide) take no time: far off, nothing; over the decal, the same 1600.
+  const huge = createProjector([[40, 0, 0, 10, 0, 0, 10, 0, 0, -40, 0, 0]]), start = Date.now();
+  huge.add([-1e6, 5000, 1e6], [1e6, 5000, 1e6], [1e6, 1e5, -1e6], up, up, up);
+  huge.add([-1e6, 0, 1e6], [1e6, 0, 1e6], [0, 0, -1e6], up, up, up);
+  assert.ok(Date.now() - start < 1000);
+  let hugeArea = 0;
+  for (let i = 0, p = huge.out[0].positions; i < p.length; i += 9) hugeArea += ((p[i + 3] - p[i]) * (p[i + 8] - p[i + 2]) - (p[i + 6] - p[i]) * (p[i + 5] - p[i + 2])) / -2;
+  assert.ok(Math.abs(hugeArea - 1600) < 1e-6, hugeArea);
 });
