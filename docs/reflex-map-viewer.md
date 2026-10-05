@@ -231,9 +231,14 @@ map's `.light` beside it into the pack (`light.js` reads it):
 **Lights.** PointLight entities and the lights inside effects (point and
 spot) light what they reach as `gbuffer_light_point` and `gbuffer_light_spot`
 do: (1 − (distance − near) / (far − near))², clamped, Lambert diffuse and a
-GGX highlight, and across a spot's edge ((cos − cos outer) / (cos inner − cos
-outer))². Measured in the game with six PointLights over a grey floor: the
-light is (colour × intensity)² × 0.87 (grey 0x80 gives a quarter, intensity 2
+highlight, and across a spot's edge ((cos − cos outer) / (cos inner − cos
+outer))². The highlight (the sun's too) is the shaders' own: GGX D × Smith G
+(Schlick, k = (roughness + 1)² / 8) × Schlick F (the exp2 fit, toward
+sat(50 f0.g)) / (4 n·l n·v), times the light; the page had drawn D × f0 × 2,
+about 8 times too much, and had made the lights 0.87 times too dim to make
+up for it on a floor seen from above. Measured in the game with six
+PointLights over a grey floor: the light is (colour × intensity)² (each
+pool's peak within 1 % of the game's; grey 0x80 gives a quarter, intensity 2
 four times); without them near is 16, far 128 and intensity 1 (±4). An
 effect's light hangs from a bone of its mesh (`b_light`) and a spot shines
 along the bone's x axis; an Effect entity overrides them with
@@ -251,8 +256,13 @@ braziers in a closed room, plain, at 1.5 and at 1.5 with Ruin's override (near
 matches the game's within 3 % across all three. The same holds for a
 teleporter portal with Ashur's override (near 32, far 128) at 1.5: on a wall
 96 units behind it its glow falls off as a PointLight's with near 48, far 192
-at the bone's height (90) does: within 2 % where bright, 10 % in the faint
-tail (game run, October 2026). Not measured, and taken so because Aerowalk then matches: a spot's
+at the bone's height (90) does, in the game and on the page alike: 0.36,
+0.18 and 0.06 at 40, 60 and 80 px from the light (game 0.35, 0.17 and
+0.05), the PointLight's peak 0.679 on both (game run, October 2026). The
+portal's glow once looked brighter than the PointLight's on the page: the
+game draws its 1061-row window with a 16:9 projection (1.8 % wider than the
+window's own shape, which the page's frame takes), so columns measured from
+the game's frame missed the page's glow centres. Not measured, and taken so because Aerowalk then matches: a spot's
 angles are half the cone. The page
 keeps the lights in a grid of 128-unit cells and sums, per point, only those
 of its cell (ironguard has 362 lights).
@@ -1041,11 +1051,14 @@ random convex brushes.
     against the game's 0.52 and 0.46 (means, from the game camera of
     build/reflex-sweep/game-run-phobos): about 10 % short, where the test
     maps match; the rest is what lies behind the panes and the gap of
-    probe-lit faces above. That whole shot is
-    yellow-olive in the game and grey on the page; not looked into.
-    Phobos' WorldSpawn names no colour grading; it has an orange fog
-    (d67117, end 7234, the default heights: top 0, bottom −8192) and a
-    yellow sun (faad19), where Ruin's fog is blue; candidates.
+    probe-lit faces above. That whole shot was yellow-olive in the game and
+    grey on the page: Phobos' sun is yellow (`sky.sunColor` faad19), and the
+    page now lights with it (see The sun). From that run's first camera the
+    frame's red/green is 1.25 on the page against 1.19 in the game, blue/green
+    0.52 against 0.59 (1.10 and 0.92 with the old constant light); the mean
+    difference fell from 0.081 to 0.062. Its second camera was placed inside
+    a ledge (the spawn sat under it and the game moved the player), so it
+    cannot be matched.
   - In the Phobos game run `cl_show_hud 0` did not hide the HUD (it was
     typed after the map had loaded; the same steps hid it on Ruin, and on
     the glass test maps, typed 4 s later).

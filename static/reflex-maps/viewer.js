@@ -170,6 +170,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       return lit / 9.;
     }
+    // The lights' highlight as the game's lighting shaders (gbuffer_light_point, _spot, _directional) have it: GGX D ×
+    // Smith-Schlick G (k = (rough + 1)² / 8) × Schlick F (Unreal's exp2 fit, toward sat(50 f0.g)) / (4 nl nv), nl and
+    // nv at least 0.01; the caller multiplies by the light (which carries nl).
+    vec3 highlight(vec3 n, vec3 v, vec3 l, vec3 f0, float rough) {
+      vec3 h = normalize(v + l);
+      float nh = clamp(dot(n, h), 0., 1.), nv = max(clamp(dot(n, v), 0., 1.), .01), nl = max(clamp(dot(n, l), 0., 1.), .01), vh = clamp(dot(v, h), 0., 1.);
+      float a2 = rough * rough; a2 *= a2;
+      float den = nh * nh * (a2 - 1.) + 1., k = (rough + 1.) * (rough + 1.) * .125;
+      float g = nv / (nv * (1. - k) + k) * nl / (nl * (1. - k) + k);
+      vec3 f = f0 + (clamp(50. * f0.g, 0., 1.) - f0) * exp2((-5.55473 * vh - 6.98316) * vh);
+      return a2 / (3.14159265 * den * den) * g * f / (4. * nl * nv);
+    }
     // Light through a translucent surface (the _SSS shaders' sss times the albedo's red, s): 2 s (t + s (w − t)) of
     // the diffuse light whichever way the surface faces, t = sat(v · −l)⁴ toward the viewer, w = sat(0.6 (−n · l) + 0.4).
     vec3 through(vec3 n, vec3 v, vec3 l, float s, vec3 diffuse, vec3 light) {
@@ -185,10 +197,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       float lit = sunShadow(uNearDepth, uNearMatrix, uNearBias * slope, p);
       if (lit < 0.) lit = sunShadow(uSunDepth, uSunMatrix, uSunBias * slope, p);
       if (lit < 0.) lit = 1.;
-      float a2 = rough * rough; a2 *= a2;
-      float nh = max(clamp(dot(n, normalize(v + uSun)), 0., 1.), .01), den = nh * nh * (a2 - 1.) + 1.;
       vec3 light = uSunColour * nl * lit;
-      return (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, uSun, s, diffuse, uSunColour * lit)) + a2 / (3.14159265 * den * den) * f0 * light * 2.;
+      return (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, uSun, s, diffuse, uSunColour * lit)) + highlight(n, v, uSun, f0, rough) * light;
     }
     // The light of a map without a .light (reflex.exe 0x140127fa0 fills its probes with it): order-2 SH of an even
     // light, uAmbient, and two directional ones, (1, .941, .784) from (.433, .866, .25) and (.627, .706, 1) from
@@ -218,14 +228,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       return mix(c / 12.92, pow((c + .055) / 1.055, vec3(2.4)), step(.04045, c));
     }
     // The map's point and spot lights (light.js lightGrid), as gbuffer_light_point and gbuffer_light_spot light a
-    // surface: Lambert diffuse and a GGX highlight, twice; only the lights of the point's grid cell (at most 64).
+    // surface: Lambert diffuse and the highlight; only the lights of the point's grid cell (at most 64).
     vec3 dynamicLight(vec3 p, vec3 n, vec3 v, vec3 diffuse, vec3 f0, float rough, float s) {
       if (uLightCount < .5) return vec3(0.);
       ivec3 c = ivec3(floor((p - uLightOrigin) / uLightCell));
       if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, uLightSize))) return vec3(0.);
       vec2 entry = texelFetch(uLightCells, c, 0).rg;
       int first = int(entry.x), count = int(entry.y);
-      float a2 = rough * rough; a2 *= a2;
       vec3 sum = vec3(0.);
       for (int k = 0; k < 64; k++) {
         if (k >= count) break;
@@ -237,9 +246,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (e.y > .5) { float edge = clamp((dot(-l, d.xyz) - d.w) * e.x, 0., 1.); fall *= edge * edge; }
         float nl = clamp(dot(n, l), 0., 1.);
         if (fall <= 0. || (nl <= 0. && s <= 0.)) continue;
-        float nh = max(clamp(dot(n, normalize(v + l)), 0., 1.), .01), den = nh * nh * (a2 - 1.) + 1.;
         vec3 light = b.rgb * fall * nl;
-        sum += (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, l, s, diffuse, b.rgb * fall)) + a2 / (3.14159265 * den * den) * f0 * light * 2.;
+        sum += (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, l, s, diffuse, b.rgb * fall)) + highlight(n, v, l, f0, rough) * light;
       }
       return sum;
     }
@@ -783,10 +791,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     fill(modelShine, [...shine.values()], modelShine.material);
     fill(editorModels, [editor], editorModels.material);
   }
-  // A light's colour as the game's lighting shader gets it: (colour × intensity)², times 0.87 (measured: a white
-  // PointLight of intensity 1 over a grey floor, near 0 and far 200, and inside near 100; grey 0x80 gives a quarter,
-  // intensity 2 four times). A PointLight without them has near 16, far 128 and intensity 1 (measured, ±4).
-  const lightColour = (colour, intensity) => colour.map(c => .87 * (c * intensity) ** 2);
+  // A light's colour as the game's lighting shader gets it: (colour × intensity)² (measured: six PointLights over a
+  // grey floor within 1 % of 1 once the highlight is the game's; grey 0x80 gives a quarter, intensity 2 four times).
+  // A PointLight without them has near 16, far 128 and intensity 1 (measured, ±4).
+  const lightColour = (colour, intensity) => colour.map(c => (c * intensity) ** 2);
   let lightTextures2 = [];
   // Particles, as reflex.exe's emitters keep them (EffectParticleEmitter: 0x1400eaae0 moves them, 0x1400eba60 draws
   // them), drawn as they stand at one moment once running: an emitter's particles born `interval` apart (taken in
