@@ -1,8 +1,8 @@
 # Diabotical map viewer
 
 Opens Diabotical maps from Skinner for a free-flight look at their blocks,
-props, heightmap terrain and decals, drawn in the textures of their materials, with markers for spawns and
-pickups, and liquids as glowing see-through surfaces. No lights or baked lighting,
+props, heightmap terrain and decals, drawn in the textures of their materials, with the pickups' models, markers for spawns,
+jump pads and teleporters, and liquids as glowing see-through surfaces. No lights or baked lighting,
 one fixed sun, and no editing. Reflex, Q3, T1
 and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.md),
 [q3-map-viewer.md](q3-map-viewer.md), [t1-map-viewer.md](t1-map-viewer.md) and
@@ -196,9 +196,25 @@ left (`static/diabotical-maps/blocks.js`).
   definitions, not measured. Not drawn: turbulence, aspect, rotation, the
   systems' lights, one-shot emitters, tubes (`hero_beam`), and `penis2` (no
   definition in the game files).
-- **Markers and liquids.** Spawns, health, armour, weapons, ammo, jump pads,
-  teleporters, flags and power-ups (named by the entity's name) are coloured
-  shapes. A `liquid_*` entity is a box of its scale centred on it, its top
+- **Pickups.** An entity named after a pickup kind (`hpt1`, `armort3_2`,
+  `weaponrl`, `ammoshaft`, `doubledamage`, `flag`, `coin`: the name before its
+  first `_`) is drawn as the model the game uses (run 37): the kind's asset's
+  `model` (health, armour, ammo, power-ups), else `models/KIND` (weapons), the
+  CTF flag `ctf_flag` and coins `entities/coin/coin` (named in the game's
+  executable). Its shaders go by the entity's kind, not the model (the game's
+  `hpt.shader` says so): KIND_MATERIAL, else the model's own, else KIND, so
+  weapons take their bright pickup skins (`rl_pickup_d.png`); groups with
+  none, such as the melee weebles' arms, are left out. Models are centred on
+  their bounding box unless the asset sets a `pivot`, scaled by the asset's
+  `scale`, and weapons by 0.4 more (run 37's top view: every weapon 0.35 to
+  0.36 of its model's length, tilted a little). The asset's `pfx` (system and
+  offset) is drawn as a particle emitter. The page draws them still where the
+  game spins and bobs them, and from the start where power-ups wait for their
+  timers; the small `hpt0` bubble is see-through glass in game (`efferv.ps`)
+  and an opaque blue blob here. `weapongl` and `weaponfg` (ASCII FBX) stay
+  markers.
+- **Markers and liquids.** Spawns, jump pads, teleporters and any pickup
+  without a model it can read are coloured shapes. A `liquid_*` entity is a box of its scale centred on it, its top
   the surface: drawn unlit (lava and acid glow their colour, as in the game)
   in its `color` (AARRGGBB: the alpha is the surface's opacity); one with
   no colour is clear water, as bioplant's pools are in game; the ocean (`shader ocean`, `core_ocean`)
@@ -448,7 +464,7 @@ of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`/`, `when`,
 neighbour tests such as `left empty`), skinned and ASCII FBX models, the
-few prop materials still not found (flat colours: weapon pickups, particle
+few prop materials still not found (flat colours: weapon models placed as props, particle
 containers, holiday lights, some ads), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
 through bioplant's overall brightness, the reflections leave out the per-pixel
 material id (the commonest

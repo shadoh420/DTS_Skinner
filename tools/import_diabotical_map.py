@@ -94,7 +94,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 19  # Of the files written per map: maps imported with another are read again.
+FORMAT = 21  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -364,14 +364,35 @@ CELL = 40  # A dynamic prop's cell, in units.
 PICKUPS = re.compile(r'(spawn|hpt|armort|weapon|ammo|jumppad|jp|teleport|tpexit|flag|coin|crystal|doubledamage|tripledamage)')
 
 
-def placements(entities, assets, known=()):
+PICKUP_MODELS = {'flag': 'ctf_flag', 'coin': 'entities/coin/coin'}  # Named in the game's executable, not in an asset.
+# A weapon pickup is its first-person model shrunk: run 37's top view showed every weapon 0.35-0.36 of its model's
+# length, tilted a little up as it spins (so about 0.4); the health, armour, ammo, coin and flag models matched at 1.
+WEAPON_PICKUP_SCALE = 0.4
+
+
+def pickup_kinds(assets, binary):
+    """{kind: (model path, scale, centred)} for the pickups the game draws as a model (run 37): the kinds with an asset
+    marked `pickup_size` and coins; the model is the asset's, else PICKUP_MODELS', else models/KIND (weapons), kept
+    where `binary(path)` (only binary FBX are read: weapongl stays a marker). Scale is the asset's (1.4 for the melee
+    weebles), times WEAPON_PICKUP_SCALE for weapons; a model is centred on its bounding box unless the asset sets a `pivot`."""
+    kinds = {}
+    for kind in sorted({name for name, fields in assets.items() if 'pickup_size' in fields} | {'coin'}):
+        fields = assets.get(kind, {})
+        model = (fields.get('model') or PICKUP_MODELS.get(kind) or kind).lower()
+        if binary(model):
+            scale = float(fields.get('scale') or 1) * (WEAPON_PICKUP_SCALE if kind.startswith('weapon') else 1)
+            kinds[kind] = (model, round(scale, 4), 'pivot' not in fields)
+    return kinds
+
+
+def placements(entities, assets, known=(), pickups=None):
     """A map's props as {"model|material|m": float32 array of page matrices' top three rows} (material empty for the
     model's own, m when mirrored), their tints ({key: uint32 (n, 3)}, for the keys with any: each prop's color,
     color2 and color3 as 0x1RRGGBB, 0 if unset), its spawns, pickups and other markers, liquids, and decals ({material:
     (float32 (n, 24) page matrices of their boxes, projected from and cut to, uint32 (n, 3): colour 0xRRGGBBAA, flags (1 mirrored, 2 v2, 4 v3),
     order as int32)}). A prop's material field X names the shader MODEL_X where `known` (the material names) has one
     (bioplant's door frames: corridor_path_..._frame_red), else X. A dynamic prop's scale is its size in 40-unit cells, each cell a model its asset's rules pick by
-    the cell's offsets from the prop's ends."""
+    the cell's offsets from the prop's ends. A pickup of a kind in `pickups` ({kind: scale}) is the prop pickup/KIND."""
     props, tints, markers, liquids, decals = {}, {}, [], [], {}
     palette = next((fields for name, *_, fields in entities if name == 'global'), {})
     for number, (name, position, rotation, scale, fields) in enumerate(entities):
@@ -392,6 +413,12 @@ def placements(entities, assets, known=()):
                 ocean = fields.get('shader', '').lower() == 'ocean' or fields.get('material', '').lower() == 'core_ocean'
                 liquids.append([*np.round(position, 2).tolist(), *np.round(scale, 2).tolist(), fields.get('material', ''), colour(fields.get('color'), palette),
                                 int(word[:2], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else None, int(ocean)])
+            continue
+        # A pickup the game draws as a model (pickup_kinds: {kind: scale}): the prop pickup/KIND, as placed (the game spins it).
+        kind = name.split('_')[0].lower()
+        if kind in (pickups or {}) and 'model' not in fields:
+            matrix = MIRROR @ game_matrix(position, rotation, np.multiply(scale, pickups[kind])) @ MIRROR
+            props.setdefault(f"pickup/{kind}||{'m' if np.linalg.det(matrix[:3, :3]) < 0 else ''}", []).append(matrix[:3].ravel())
             continue
         kind = PICKUPS.match(name)
         if kind and 'model' not in fields:
@@ -452,12 +479,20 @@ def read_billboards(entities):
     return out
 
 
-def read_pfx(entities):
+def read_pfx(entities, assets=None, pickups=()):
     """A map's particle emitters (pfx entities): [12 page-matrix floats (its place and turn), system name, colour 0xRRGGBB
-    or None, size (default 1)]."""
+    or None, size (default 1)]; also the effect of each pickup of a kind in `pickups` whose asset names one (`pfx SYSTEM
+    [x y z]`, the offset in its own frame: armour shields' glow 7 up)."""
     palette = next((fields for name, *_, fields in entities if name == 'global'), {})
     out = []
     for name, position, rotation, scale, fields in entities:
+        words = (assets or {}).get(name.split('_')[0].lower(), {}).get('pfx', '').split()
+        if name.split('_')[0].lower() in pickups and 'model' not in fields and words:
+            offset = np.eye(4)
+            offset[:3, 3] = [float(word) for word in words[1:4]] if len(words) >= 4 else 0
+            matrix = MIRROR @ game_matrix(position, rotation, (1, 1, 1)) @ offset @ MIRROR
+            out.append([*np.round(matrix[:3].ravel(), 4).tolist(), words[0].lower(), None, 1.0])
+            continue
         if not name.startswith('pfx') or not fields.get('system') or fields.get('no_show') in ('1', 'true'):
             continue
         matrix = MIRROR @ game_matrix(position, rotation, (1, 1, 1)) @ MIRROR
@@ -768,14 +803,15 @@ def write_envmaps(pack, names, output, replace=False):
     return done
 
 
-def convert_models(packs, paths, materials, output, replace=False, previous=None, heads=None):
+def convert_models(packs, paths, materials, output, replace=False, previous=None, heads=None, pickups=None):
     """Each model path's FBX (models/PATH.fbx in the packs) as models/HASH.bin, triangles of 8 float32 each corner
     (position, normal, uv in the page's axes) grouped by material, for models.json: {path: {file, groups: [[material,
     corners]]}}. A group's material is the first defined of PATH_MATERIAL, MATERIAL, PATH and the shader its dynamic
     asset draws it with (`heads`, piece_shaders; the FBX's own material names say little: "1024"), else the material named most like the model (longest common start) in the nearest
     .shader file at or above the model's folder (many pieces of a dynamic prop share one: trim01b takes trim01a's).
-    Models of the `previous` models.json (of this FORMAT) whose file is there are kept unless replacing. Also returns the paths with
-    no readable FBX."""
+    Models of the `previous` models.json (of this FORMAT) whose file is there are kept unless replacing. A path
+    pickup/KIND in `pickups` ({path: (model, scale, centred)}, pickup_kinds) is that model, named and centred as a pickup.
+    Also returns the paths with no readable FBX."""
     where = {}
     for pack in packs:
         for name in pack.files:
@@ -792,7 +828,7 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         if not replace and (previous or {}).get(path, {}).get('format') == FORMAT and (output / 'models' / previous[path]['file']).is_file():
             entries[path] = previous[path]
             continue
-        file = 'models\\' + path.replace('/', '\\') + '.fbx'
+        file = 'models\\' + (pickups[path][0] if path in (pickups or {}) else path).replace('/', '\\') + '.fbx'
         try:
             raw = where[file].read(file)
             target = output / 'models' / f'{hashlib.sha256(raw).hexdigest()[:16]}.bin'
@@ -804,9 +840,22 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         parts = file.split('\\')[:-1]
         own = next((alike(path, folders[f]) for f in ('\\'.join(parts[:n]) for n in range(len(parts), 1, -1)) if f in folders), path)
         names = [next((m for m in (f'{path}_{name}'.lower(), name.lower(), path, (heads or {}).get(path)) if m in materials), own) for name in groups]
+        triangles = [np.concatenate(parts, 2) for parts in groups.values()]
+        if path in (pickups or {}):
+            # A pickup's shaders go by the entity's kind (hpt.shader says so): KIND_MATERIAL (after the FBX's
+            # namespace:), the model's own, KIND. Groups with none (the melee weebles' arms) are left out.
+            kind, (model, _, centred) = path.split('/', 1)[1], pickups[path]
+            names = [next((m for m in (f"{kind}_{name.rsplit(':', 1)[-1]}".lower(), model, kind) if m in materials), None) for name in groups]
+            triangles = [t for name, t in zip(names, triangles) if name]
+            names = [name for name in names if name]
+            if centred and triangles:
+                corners = np.concatenate([t[..., :3].reshape(-1, 3) for t in triangles])
+                middle = (corners.min(0) + corners.max(0)) / 2
+                triangles = [np.concatenate([t[..., :3] - middle, t[..., 3:]], -1).astype(np.float32) for t in triangles]
+            target = target.with_name(f'{hashlib.sha256(raw + path.encode()).hexdigest()[:16]}.bin')
         if replace or not target.is_file():
-            target.write_bytes(b''.join(np.concatenate(parts, 2).tobytes() for parts in groups.values()))
-        entries[path] = dict(format=FORMAT, file=target.name, groups=[[name, 3 * len(parts[0])] for name, parts in zip(names, groups.values())])
+            target.write_bytes(b''.join(t.tobytes() for t in triangles))
+        entries[path] = dict(format=FORMAT, file=target.name, groups=[[name, 3 * len(t)] for name, t in zip(names, triangles)])
     return entries, missing
 
 
@@ -836,6 +885,13 @@ def import_maps(game, output, replace=False, extra=None):
     files = lambda item: [item.get('file'), item.get('entities'), (item.get('terrain') or {}).get('file')]
     result = dict(imported=[], skipped=[], failed={}, untextured=[], unconverted=[])
     assets, found = read_assets(packs), read_materials(packs)
+    fbx = {}
+    for pack in packs:
+        for name in pack.files:
+            if name.endswith('.fbx'):
+                fbx.setdefault(name, pack)
+    fbx_file = lambda model: 'models\\' + model.replace('/', '\\') + '.fbx'
+    pickups = pickup_kinds(assets, lambda model: fbx_file(model) in fbx and fbx[fbx_file(model)].read(fbx_file(model))[:18] == b'Kaydara FBX Binary')
     for name, group, read in sources:
         ident = map_id(name if group == 'Diabotical' else 'user__' + name)
         try:
@@ -848,7 +904,7 @@ def import_maps(game, output, replace=False, extra=None):
                 continue
             parsed = read_map(raw)
             blocks = visible_blocks(parsed['blocks'])
-            props, tints, markers, liquids, decals = placements(parsed['entities'], assets, found)
+            props, tints, markers, liquids, decals = placements(parsed['entities'], assets, found, {kind: scale for kind, (_, scale, _) in pickups.items()})
             heights, terrain = read_terrain(parsed['entities'], read)
             xyz = parsed['blocks']['xyz']
             lights = read_lights(parsed['entities'], (xyz.min(0) * BLOCK, (xyz.max(0) + 1) * BLOCK) if len(xyz) else None)
@@ -860,7 +916,7 @@ def import_maps(game, output, replace=False, extra=None):
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
                                decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights,
-                               billboards=read_billboards(parsed['entities']), pfx=read_pfx(parsed['entities'])),
+                               billboards=read_billboards(parsed['entities']), pfx=read_pfx(parsed['entities'], assets, pickups)),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
         placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +
@@ -900,7 +956,8 @@ def import_maps(game, output, replace=False, extra=None):
         write_envmaps(cubes, envmaps - {None}, output, replace)
     models_path = output / 'models.json'
     previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
-    models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous, piece_shaders(assets, found))
+    models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous, piece_shaders(assets, found),
+                                                         {f'pickup/{kind}': value for kind, value in pickups.items()})
     models_path.write_text(json.dumps(models, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     used = ({name for item in index.values() for name in item['materials']} | {key.split('|')[1] for key in keys if key.split('|')[1]} |
             {name for model in models.values() for name, _ in model['groups']} |

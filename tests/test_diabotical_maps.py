@@ -386,6 +386,26 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertFalse(any(rule_holds(c, cell) for c in ('offset_left is 0', 'offset_bottom % 3 0', 'size_x < 3', 'left empty',
                                                              'offset_front / offset_bottom 2', 'offset_top is 0')))
 
+    def test_pickups_are_drawn_as_their_kinds_models(self):
+        from tools.import_diabotical_map import pickup_kinds, placements
+        assets = {'hpt1': {'model': 'Entities/Health/hpt1', 'pickup_size': 'large'}, 'weaponsw': {'pivot': '0 0 0', 'scale': '1.4', 'pickup_size': 'large'},
+                  'weapongl': {'pickup_size': 'large'}, 'flag': {'pickup_size': 'large'}, 'chair': {'model': 'props/chair'}}
+        kinds = pickup_kinds(assets, lambda model: model != 'weapongl')  # weapongl: an ASCII FBX.
+        self.assertEqual(kinds, {'hpt1': ('entities/health/hpt1', 1.0, True), 'weaponsw': ('weaponsw', 0.56, False), 'flag': ('ctf_flag', 1.0, True),
+                                 'coin': ('entities/coin/coin', 1.0, True)})
+        entities = [('hpt1_2', (10, 20, 30), (0, 0, 0), (1, 1, 1), {}), ('weaponsw', (0, 0, 0), (0, 0, 0), (1, 1, 1), {}),
+                    ('weapongl', (1, 2, 3), (0, 0, 0), (1, 1, 1), {})]
+        props, _, markers, _, _ = placements(entities, assets, (), {kind: scale for kind, (_, scale, _) in kinds.items()})
+        self.assertEqual(sorted(props), ['pickup/hpt1||', 'pickup/weaponsw||'])
+        self.assertEqual(props['pickup/hpt1||'][0].tolist(), [1, 0, 0, 10, 0, 1, 0, 20, 0, 0, 1, -30])
+        self.assertAlmostEqual(float(props['pickup/weaponsw||'][0][0]), 0.56, 5)
+        self.assertEqual(markers, [['weapongl', 1, 2, 3]])  # No model it can read: still a marker.
+        # Its asset's effect, offset in its own frame, joins the pfx emitters.
+        from tools.import_diabotical_map import read_pfx
+        glow = read_pfx([('armort2_1', (10, 20, 30), (0, 0, 0), (1, 1, 1), {}), ('hpt9', (0, 0, 0), (0, 0, 0), (1, 1, 1), {})],
+                        {'armort2': {'pfx': 'Shield_01_green_vfx 0 7 0'}}, {'armort2': 1.0})
+        self.assertEqual(glow, [[1, 0, 0, 10, 0, 1, 0, 27, 0, 0, 1, -30, 'shield_01_green_vfx', None, 1.0]])
+
     def test_dynamic_pieces_draw_with_their_channels_shader(self):
         from tools.import_diabotical_map import piece_shaders
         assets = {'bars': dict(dynamic='true', channels={}, rules=[(0, [], ['p/bars_mid']), (0, ['offset_top is 0'], ['p/bars_top_flipx']),
