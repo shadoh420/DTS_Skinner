@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import export_interior  # noqa: E402
 import export_model  # noqa: E402
 from interior_module import dml as interior_dml, interiorshape  # noqa: E402
+from local_data import LOCAL_DATA  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -990,7 +991,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--game-base', type=Path, required=True, help='Tribes folder or its base folder')
     parser.add_argument('--mission', type=Path, action='append', help='mission file or folder of missions; default: every mission in the install')
-    parser.add_argument('--output', type=Path, default=Path('local-data/t1-maps'))
+    parser.add_argument('--output', type=Path, default=LOCAL_DATA / 't1-maps')
     parser.add_argument('--replace', action='store_true', help='re-import maps that already exist in the output')
     args = parser.parse_args()
     result = import_maps(args.game_base, args.output, args.mission, args.replace)

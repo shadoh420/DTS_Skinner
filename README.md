@@ -27,7 +27,9 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 ## Getting started
 
 1. Download and extract the release ZIP into a writable folder.
-2. Run `SkinnerApp.exe`. Keep `static` and `local-data` beside it.
+2. Run `SkinnerApp.exe`. Keep `static` and `local-data` (its animation caches) beside it. Imported maps, models and tags go to
+   `%LOCALAPPDATA%\DTS-Skinner\local-data`, shared by every release, so a new release opens with them
+   (an older release's `local-data` next to the app is moved there on first start).
 3. Choose a model, select a material and texture, then click **Apply to slot**.
 
 If the browser doesn't open, visit `http://localhost:5000/`. Quit through the app's system-tray menu.
@@ -38,7 +40,7 @@ If the browser doesn't open, visit `http://localhost:5000/`. Quit through the ap
 
 **Expand texture browser** opens a large gallery with adjustable thumbnail size. Selecting a thumbnail previews it without changing the model. Rotate or flip the selected texture, then **Apply to slot** to see the copy on the model. **Save rotated copy** downloads a separate PNG with alpha preserved; it does not add it to the library. Applied copies also appear in OBJ and GLB exports. Original PNGs are never overwritten. Copies are temporary for the current window and disappear on reload/close; place a saved PNG in the relevant texture folder and reload to keep it in the library.
 
-Enter comma-separated **User tags** such as `walls, metal, concrete`, then **Save tags**. Tags are stored by game and filename in `local-data/texture-tags.json` beside the executable and remain available after restart. Filename/tag search matches all entered words.
+Enter comma-separated **User tags** such as `walls, metal, concrete`, then **Save tags**. Tags are stored by game and filename in `local-data/texture-tags.json` and remain available after restart. Filename/tag search matches all entered words.
 
 Under **Size & hue search**, width and height limits are inclusive; leave either end blank for no limit. For example, Width min `100` and Width max `120` finds textures 100–120 pixels wide at any height. **Find similar size** uses the highlighted texture's original dimensions and a ±pixel tolerance for each dimension (zero means exact). **Find similar hue** compares a sampled, chroma-weighted circular average hue, with tolerance from 0 to 180 degrees. Neutral or color-balanced textures without a meaningful average match each other. Hue search is a color aid, not image/pattern recognition. Transparent pixels contribute less; T2 uses RGB because alpha can store reflectivity. Similarity buttons clear previous search filters; changing tolerance updates matches immediately.
 

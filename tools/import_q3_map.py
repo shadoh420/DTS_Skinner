@@ -30,8 +30,10 @@ from PIL import Image
 
 try:
     from tools.import_q3 import key_name, read_md3, read_text
+    from tools.local_data import LOCAL_DATA
 except ImportError:  # Run as a script.
     from import_q3 import key_name, read_md3, read_text
+    from local_data import LOCAL_DATA
 
 LUMPS = 17
 KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14)  # Entities, shaders, models, vertices, indices, faces, lightmaps: all the viewer reads.
@@ -653,7 +655,7 @@ def import_maps(game, output, replace=False, extra=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--game-base', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1] / 'local-data/q3-maps')
+    parser.add_argument('--output', type=Path, default=LOCAL_DATA / 'q3-maps')
     parser.add_argument('--replace', action='store_true')
     parser.add_argument('--extra', type=Path, help='folder of files the game lacks (default: q3-extra beside the pack)')
     args = parser.parse_args()

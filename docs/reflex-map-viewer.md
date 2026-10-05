@@ -27,8 +27,8 @@ below is compiled in.
 - **Open .map file** on the page reads a map from disk. Nothing is imported or
   kept; the map is gone when the page reloads.
 - **Import maps** copies the maps of your install into
-  `local-data/reflex-maps` (ignored by Git; next to the executable in a
-  packaged build) so the dropdown lists them. Enter the Reflex Arena folder.
+  `local-data/reflex-maps` (in `%LOCALAPPDATA%/DTS-Skinner`, shared by
+  every build) so the dropdown lists them. Enter the Reflex Arena folder.
   (`steamapps/common/reflexfps` in a Steam install). A file is taken as a map
   when its first line is `reflex map version N`, wherever it lies in that
   folder (the stock maps are in `maps`); Steam Workshop maps are read from

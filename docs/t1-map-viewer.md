@@ -28,7 +28,7 @@ python tools/import_t1_map.py --game-base C:/path/to/Tribes --mission C:/Maps/My
 ```
 
 The game folder and mission files are only read. Output goes to
-`local-data/t1-maps` (ignored by Git; next to the executable in a packaged build):
+`local-data/t1-maps` (in `%LOCALAPPDATA%/DTS-Skinner`, shared by every build):
 one folder per map under `maps/`, shared files under `textures/` named by content
 so identical data is stored once (bitmaps, building lightmap atlases, their `.uv`
 coordinates, `.anim` light animations and `.bsp` weather shelters), buildings

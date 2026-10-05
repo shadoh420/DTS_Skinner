@@ -91,8 +91,10 @@ import numpy as np
 try:
     from tools.fbx_mesh import fbx_mesh
     from tools.reflex_textures import _dds, decode_dds
+    from tools.local_data import LOCAL_DATA
 except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
+    from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
 FORMAT = 21  # Of the files written per map: maps imported with another are read again.
@@ -994,7 +996,7 @@ def import_maps(game, output, replace=False, extra=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--game-base', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1] / 'local-data/diabotical-maps')
+    parser.add_argument('--output', type=Path, default=LOCAL_DATA / 'diabotical-maps')
     parser.add_argument('--replace', action='store_true')
     args = parser.parse_args()
     done = import_maps(args.game_base, args.output, args.replace)

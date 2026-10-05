@@ -6,6 +6,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, TEXTURE_GAMES
 from tools.obj_exporter import json_to_obj_zip
+from tools.local_data import LOCAL_DATA
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
 import io
 import json
@@ -55,7 +56,9 @@ if getattr(sys, 'frozen', False):
         if not destination.exists():
             shutil.copy2(source, destination)
 model_json_dir = static_dir / "model_json" # Where pre-processed JSONs are stored
-local_data_dir = (pathlib.Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else root) / 'local-data'
+# Older builds kept their imports next to the app, where releases still ship their animation caches.
+app_local_data_dir = (pathlib.Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else root) / 'local-data'
+local_data_dir = LOCAL_DATA
 q3_dir = local_data_dir / 'q3'
 import_lock = threading.Lock()
 
@@ -469,7 +472,7 @@ def export_glb(model_name):
     overrides = material_overrides()
     try:
         preview = load_model_data(path, request.args.get('texture'), overrides)
-        cache = local_data_dir / 'animations' / game / (model_name+'.json.gz')
+        cache = app_local_data_dir / 'animations' / game / (model_name+'.json.gz')
         if cache.is_file() and game != 't2':
             with gzip.open(cache, 'rt', encoding='utf-8') as stream:
                 data = json.load(stream)
@@ -757,6 +760,12 @@ if __name__ == "__main__":
     server_port = args.port
     if args.no_tray:
         HAS_PYSTRAY = False
+    if not local_data_dir.exists() and app_local_data_dir.is_dir() and not os.environ.get('SKINNER_DATA_DIR'):
+        local_data_dir.mkdir(parents=True) # an older build's imports carried over once; later builds find them here
+        for item in app_local_data_dir.iterdir():
+            if item.name != 'animations':
+                shutil.move(item, local_data_dir / item.name)
+    print(f"Imported data: {local_data_dir}")
     # No longer need to check for exporter imports here if using pre-processing
     # if run_dts_exporter is None or run_interior_exporter is None:
     #      print("CRITICAL WARNING: One or more exporter functions could not be imported. On-demand export WILL FAIL.")

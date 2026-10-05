@@ -11,6 +11,11 @@ import shutil
 import tempfile
 import zipfile
 
+try:
+    from tools.local_data import LOCAL_DATA
+except ImportError:  # Run as a script from tools/.
+    from local_data import LOCAL_DATA
+
 # Later archives win. On the install checked, this order and the game's (by archive name) choose the same files.
 ARCHIVES = ('base.vl2', 'scripts.vl2', 'missions.vl2', 'shapes.vl2',
             'interiors.vl2', 'textures.vl2', 'skins.vl2', 'badlands.vl2',
@@ -119,7 +124,7 @@ def import_maps(game_base, output, replace=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--game-base', type=Path, required=True, help='Tribes 2 GameData folder or its base folder')
-    parser.add_argument('--output', type=Path, default=Path('local-data/t2-maps'))
+    parser.add_argument('--output', type=Path, default=LOCAL_DATA / 't2-maps')
     parser.add_argument('--replace', action='store_true', help='rebuild a map pack that already exists')
     args = parser.parse_args()
     result = import_maps(args.game_base, args.output, args.replace)

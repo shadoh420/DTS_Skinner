@@ -18,6 +18,11 @@ from functools import cache
 
 from PIL import Image
 
+try:
+    from tools.local_data import LOCAL_DATA
+except ImportError:  # Run as a script from tools/.
+    from local_data import LOCAL_DATA
+
 ANIM_NAMES = ('BOTH_DEATH1 BOTH_DEAD1 BOTH_DEATH2 BOTH_DEAD2 BOTH_DEATH3 BOTH_DEAD3 '
               'TORSO_GESTURE TORSO_ATTACK TORSO_ATTACK2 TORSO_DROP TORSO_RAISE TORSO_STAND '
               'TORSO_STAND2 LEGS_WALKCR LEGS_WALK LEGS_RUN LEGS_BACK LEGS_SWIM LEGS_JUMP '
@@ -456,6 +461,6 @@ def load_animated_model(name, source_path, preview_data):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path)
-    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1]/'local-data/q3')
+    parser.add_argument('--output', type=Path, default=LOCAL_DATA/'q3')
     args = parser.parse_args()
     print(import_catalog(args.source, args.output))

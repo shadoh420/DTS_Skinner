@@ -29,7 +29,9 @@ import zipfile
 try:
     from tools.reflex_models import EDITOR_EFFECTS, ENTITY_EFFECTS, PICKUP_EFFECTS, SKY_MESHES, VOLUME_MATERIALS, export_models, pickup_pad
     from tools.reflex_textures import bake, decode_dds, decode_dds_cube, decode_textureset_image, textureset_images
+    from tools.local_data import LOCAL_DATA
 except ImportError:  # Run as a script from tools/.
+    from local_data import LOCAL_DATA
     from reflex_models import EDITOR_EFFECTS, ENTITY_EFFECTS, PICKUP_EFFECTS, SKY_MESHES, VOLUME_MATERIALS, export_models, pickup_pad
     from reflex_textures import bake, decode_dds, decode_dds_cube, decode_textureset_image, textureset_images
 
@@ -386,7 +388,7 @@ def import_maps(game, output, replace=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--game-base', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1] / 'local-data/reflex-maps')
+    parser.add_argument('--output', type=Path, default=LOCAL_DATA / 'reflex-maps')
     parser.add_argument('--replace', action='store_true')
     args = parser.parse_args()
     done = import_maps(args.game_base, args.output, args.replace)
