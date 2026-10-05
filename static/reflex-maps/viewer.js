@@ -708,12 +708,15 @@ window.addEventListener('DOMContentLoaded', async () => {
           // (materialNAlbedo), else the effect's, else the material's, raised to 2.2 as the game does. Parts given a
           // clip material are not drawn, as the game draws no clip faces.
           const slot = part.material, name = M.property(entity, `material${slot}Name`) || record.materials[slot] || '';
-          // God rays and light beams fade with the view in the game; they are left out.
+          // God rays and light beams fade with the view in the game; they are left out. So is the resist powerup's
+          // shader (Ashur's logos behind the portals), which has no colour to read and barely shows in the game.
           const read = packColours[name] || {};
-          if (isClip({material: name}) || /godrays/.test(read.shader || '')) continue;
+          if (isClip({material: name}) || /godrays|powerup_resist/.test(read.shader || '')) continue;
           const own = M.property(entity, `material${slot}Albedo`), ownColour = own !== undefined && hexColour(own);
           const set = record.colours[slot], material = materialOf(name), glow = glowOf(name);
-          const given = ownColour && ownColour[0] > 0 ? ownColour.slice(1) : set ? set.slice(0, 3) : null;
+          // The effect's slot colour goes with the effect's material: an entity that swaps the material drops it
+          // (measured: pipes given water and glow show those materials' own colours, not the slot's).
+          const given = ownColour && ownColour[0] > 0 ? ownColour.slice(1) : set && !M.property(entity, `material${slot}Name`) ? set.slice(0, 3) : null;
           // Holograms, pickup glows and the see-through forward shaders (standard_…: rings, ribbons, glass) add their
           // colour to the frame; glows and solid forward shaders are solid and shine.
           const shader = read.shader || '', kind = (/hologram|glowPickup|alphaFresnel/.exec(shader) || [])[0], fresnel = kind === 'alphaFresnel' && (read.fresnel || [.1, 4, .075]);

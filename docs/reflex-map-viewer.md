@@ -356,8 +356,8 @@ drawn after that, against the scene's depth, as before.
   that, its pixel shader passes it on), also where an entity puts them on a
   model (Ashur's teleporter portals: a bright cyan sheet, within 3 % of the
   game's green and blue; environment slime is added by its flags, not
-  measured, and a model slot's colour where the entity sets none, as for
-  other materials, is not checked for fluids: SkyTemples' sign_carnage), and
+  measured; a model slot's colour where the entity sets none is the
+  fluid's own, as for other materials (Models, below)), and
   pickup holograms and glows. Their colours are raised to 2.2 as
   their shaders do, and vertex colours count only where the shader's name says
   `VERTEXCOLOUR`. A material's flags (the u32 after its shader name, which the
@@ -474,10 +474,18 @@ thing's own axes (seen in the game: Ruin's pads at 180 90 0 lie flat as at
 - A mesh slot's material is the entity's (`material0Name` …), else the
   effect's, else the mesh's (often a placeholder, `MaterialA`); its colour the
   entity's (`material0Albedo`), else the effect's (`p_metal` is a paint, green
-  until given one), else the material's, all to 2.2, times the mesh's vertex
-  colours. A part given a clip material is not drawn (Furnace hides most of a
+  until given one) while the slot keeps the effect's material, else the
+  material's, all to 2.2, times the mesh's vertex colours. An entity that
+  swaps the material drops the effect's colour (measured on SkyTemples copies:
+  a pipe, slot colour (.21, .2, .18), given water or glow shows those
+  materials' own blue and cyan, within 3 %; a sign_carnage given water and no
+  albedo is water blue; the page had them white × 13.8). 983 placed parts
+  in the maps take this path, 550 of them in SkyTemples. A part given a clip material is not drawn (Furnace hides most of a
   tree that way). God rays and light beams are left out (the game fades them
-  with the view).
+  with the view), and so is the resist powerup's shader (`powerup_resist`, no
+  colour to read: Ashur's Reflex logos behind its teleporters, barely there in
+  the game; left out, Ashur's spawn view comes within .0287 of the game's
+  frame, drawn white .0333).
 - Pickups stand on their pads (health, armour, powerups, weapons) and float
   30 units above them (measured on a Furnace health; taken for the others too;
   the game bobs and turns them). Holograms and glows are drawn as their
@@ -1078,9 +1086,9 @@ random convex brushes.
     across the screen, inside the portal light's reach. On a GPU the page
     draws the beams and the ceiling as the game does. Check a headless-only
     oddity on a GPU before chasing it.
-  - Ashur's Reflex logo behind its teleporters (`powerup_resist`) shows
-    through the portal's sheet on the page as a pale ring; in the game it is
-    barely there (8 % over the sheet in red, 2 to 3 % in green and blue).
+  - Ashur's Reflex logo behind its teleporters (`powerup_resist`) is barely
+    there in the game (8 % over the sheet in red, 2 to 3 % in green and
+    blue); the page leaves it out (Models). Its shader is not read.
   - Fire, sparks, smoke and steam are drawn at one moment (Particles): from
     the side the page's brazier flames reach higher above the rim than in
     the game's frame (2 to 4 times the light above it) while from above they
