@@ -94,7 +94,7 @@ except ImportError:  # Run as a script from tools/.
     from fbx_mesh import fbx_mesh
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 18  # Of the files written per map: maps imported with another are read again.
+FORMAT = 19  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -427,7 +427,9 @@ def placements(entities, assets, known=()):
             matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
             own = (fields.get('material') or '').lower()
             material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
-            key = f"{model}|{material}|{'m' if np.linalg.det(matrix[:3, :3]) < 0 else ''}"
+            # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds).
+            flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '')
+            key = f"{model}|{material}|{flags}"
             props.setdefault(key, []).append(matrix[:3].ravel())
             tints.setdefault(key, []).append(tint)
     tints = {key: np.array(value, np.uint32) for key, value in tints.items() if any(map(any, value))}
@@ -632,7 +634,7 @@ def read_lights(entities, box=None):
 
 def read_terrain(entities, read):
     """The map's heightmap terrain, if it has a `terrain` entity and a NAME-h.png (`read(suffix)` reads the file
-    beside the map): (PNG of the heights in red and the dirt in green, {offset, cell, scale, material}). A vertex
+    beside the map): (PNG of the heights in red and the dirt in green, {offset, cell, scale, material, no_decals}). A vertex
     per pixel: (column - w/2, row - h/2) * cell from the offset in x and z, y = offset y + 8 * red * scale (scale_y;
     one map, a guess). The dirt mask, NAME-b.png, covers cells (texel c spans x (c - w/2) * cell to the next): each
     vertex gets the mean of the four texels around it."""
@@ -653,7 +655,8 @@ def read_terrain(entities, read):
     Image.merge('RGB', (heights.getchannel('R'), mask, Image.new('L', heights.size))).save(data, 'PNG')
     number = lambda key, default: float(fields.get(key) or default)
     return data.getvalue(), dict(offset=[number('offset_x', 0), number('offset_y', 0), number('offset_z', 0)], cell=number('cell_size', 40),
-                                 scale=number('scale_y', 1), material=(fields.get('material') or fields.get('shader') or 'core_ter').lower())
+                                 scale=number('scale_y', 1), material=(fields.get('material') or fields.get('shader') or 'core_ter').lower(),
+                                 no_decals=fields.get('no_decals') in ('1', 'true'))
 
 
 def material_textures(packs, names, materials, output, replace=False):

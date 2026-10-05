@@ -123,7 +123,11 @@ left (`static/diabotical-maps/blocks.js`).
   parallelogram, unless its box is square. A `v3` decal's boxes take |R| s
   as their scale (the rotation's entries as absolute values, times the
   scale); `v1` and `v2` decals take it as given. `mirrored` changes nothing
-  seen in the game, nor does a box's depth.
+  seen in the game, nor does a box's depth. The same holds for boxes tilted
+  about x (run 36: twelve banners tilted 15 to 45 degrees off a floor, with
+  yaws, rolls, a `v3` and a square box, matched the game's outlines). A prop
+  or terrain with `no_decals` takes none (b_ancient's snow mounds,
+  duel_raya's terrain).
 - **Lights.** Lit as the game's lighting shader (`tile.cs`) does, with the
   numbers measured in it: the picture is the texture's bytes times the light,
   then the game's last pass, which looks the colour up in a 16-step LUT (the
@@ -432,8 +436,8 @@ terrain at half resolution (about 130 k) and props grouped into spatial cells so
 each cell can be culled. Frames are fast (about 1 ms on bioplant); loads take
 about 24 s.
 
-Decals' cutting box tilted about x (only flat ones and walls measured), decals
-with no texture in the game files (drawn not at all), props marked `no_decals` (they take decals), billboards' own shader (see above), the particles' leftovers (see above), the glowing crystals' colours
+Decals whose texture is not in the game files (drawn not at all: 80 decals,
+all community `jacobs_decals` ones, mostly on a_enclosure), billboards' own shader (see above), the particles' leftovers (see above), the glowing crystals' colours
 (`efferv.ps`, its own `color1` to `color3`), team colours on tinted
 materials (a flag in the material picks the team's colour over an accent),
 whether a

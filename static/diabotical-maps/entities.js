@@ -4,8 +4,8 @@
    turn, 12 float32 each (the top three rows, row by row), then for each tinted group its props' color, color2 and
    color3, 3 uint32 each (0x1RRGGBB, or 0 where the material's own accent stands), then each decal group's boxes
    (24 float32 each: the matrix of the box its texture is projected from, then of the box it is cut to), then per decal its colour (0xRRGGBBAA), flags (1 mirrored, 2 v2, 4 v3) and order
-   (int32). Material is empty where the model's own are drawn, m
-   marks mirrored props. Marker and liquid positions are the game's (the page's x, y, -z). Node runs it too
+   (int32). Material is empty where the model's own are drawn; after it m
+   marks mirrored props, n props that take no decals. Marker and liquid positions are the game's (the page's x, y, -z). Node runs it too
    (tests/diabotical_maps.test.cjs). */
 (function (exports) {
   'use strict';
@@ -14,10 +14,10 @@
     const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, 4, length)));
     let at = 4 + length;
     const props = head.props.map(([key, count]) => {
-      const [model, material, mirrored] = key.split('|');
+      const [model, material, flags = ''] = key.split('|');
       const matrices = new Float32Array(buffer, at, count * 12);
       at += count * 48;
-      return {model, material, mirrored: mirrored === 'm', matrices, tints: null};
+      return {model, material, mirrored: flags.includes('m'), noDecals: flags.includes('n'), matrices, tints: null};
     });
     head.props.forEach(([, count, tinted], i) => {
       if (!tinted) return;

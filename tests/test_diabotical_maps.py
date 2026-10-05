@@ -239,7 +239,7 @@ class DiaboticalMapsTest(unittest.TestCase):
             # material's cliff (#3) and dirt (#5) textures.
             terrain = index[1]['terrain']
             self.assertEqual({key: value for key, value in terrain.items() if key != 'file'},
-                             dict(offset=[0, -1070, 0], cell=40, scale=1, material='core_ter'))
+                             dict(offset=[0, -1070, 0], cell=40, scale=1, material='core_ter', no_decals=False))
             with Image.open(root / 'pack/maps' / terrain['file']) as image:
                 self.assertEqual((image.size, image.getpixel((3, 1))), ((4, 4), (134, 0, 0)))
                 self.assertEqual([image.getpixel(at)[1] for at in ((2, 2), (3, 2), (2, 3), (3, 3), (1, 2), (2, 1))], [64, 64, 64, 64, 0, 0])
@@ -298,8 +298,10 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertLess(np.linalg.det(props['props/quad||m'][0].reshape(3, 4)[:, :3]), 0)  # _flipx: mirrored.
         # A prop's material field X is the shader MODEL_X where there is one (bioplant's door frames), else X.
         framed = [('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'Frame_Red'}),
-                  ('prop_e', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'stone_floor'})]
-        self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|', 'props/quad|stone_floor|'])
+                  ('prop_e', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'stone_floor'}),
+                  ('prop_f', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'no_decals': '1'})]
+        self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|', 'props/quad|stone_floor|',
+                                                                                     'props/quad||n'])
         # Billboards: a unit square scaled x by y, placed as a prop (page axes), colour, texture path with / , reflection.
         panes = [('billboard_1', (10, 20, 30), (0, 0, 0), (100, 50, 1), {'color': 'accent2', 'texture': 'Textures\Decals\Glow.png', 'reflection': 'on'}),
                  ('billboard_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'no_show': 'true'})]
