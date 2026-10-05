@@ -1,0 +1,664 @@
+/* Vanilla Three.js free-flight viewer for the pack written by tools/import_diabotical_map.py: each map's blocks,
+   meshed by blocks.js in the game's /export coordinates (y up), drawn in their materials' textures. */
+'use strict';
+window.addEventListener('DOMContentLoaded', async () => {
+  const $ = id => document.getElementById(id);
+  const storageKey = 'skinner.diaboticalmaps';
+  const settings = {fov: 100, invertX: false, invertY: false, props: true, markers: true, terrain: true, decals: true};
+  try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
+  const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
+
+  const canvas = $('c');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // The game's last pass looks every pixel up in a 16-step colour LUT (identity unless the map sets `lut`) without
+  // the half-texel fix, which makes x into (16 x - 0.5) / 15 (runs 21 to 23).
+  const identity = 'vec3 CustomToneMapping( vec3 color ) { return color; }';
+  if (!THREE.ShaderChunk.tonemapping_pars_fragment.includes(identity)) console.warn('three changed CustomToneMapping: the LUT step is not drawn');
+  THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace(
+    identity, 'vec3 CustomToneMapping( vec3 color ) { return clamp((16. * color - .5) / 15., 0., 1.); }');
+  renderer.toneMapping = THREE.CustomToneMapping;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9fc4e0);
+  // Every material is lit the game's way (lighting.js); the directional light only casts the sun's shadow.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.autoUpdate = false;
+  const sun = new THREE.DirectionalLight(0xffffff, 1);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(4096, 4096);
+  Object.assign(sun.shadow, {bias: -.0003, normalBias: 2});
+  scene.add(sun, sun.target);
+  const float = (data, width, height, format) => Object.assign(new THREE.DataTexture(data, width, height, format, THREE.FloatType), {needsUpdate: true});
+  const emptyGrid = Object.assign(new THREE.Data3DTexture(new Uint16Array(4), 1, 1, 1), {type: THREE.HalfFloatType, needsUpdate: true});
+  // Until a map's lights are read: a plain grey ambient and a sun from above.
+  const gameUniforms = {gameLights: {value: float(new Float32Array(4), 1, 1, THREE.RGBAFormat)}, gameCells: {value: float(new Float32Array(2), 1, 1, THREE.RGFormat)},
+    gameLists: {value: float(new Float32Array(1), 1, 1, THREE.RedFormat)}, gameGrid: {value: emptyGrid},
+    gameCellMin: {value: new THREE.Vector3()}, gameCellCount: {value: new THREE.Vector3()}, gameGridMin: {value: new THREE.Vector3()},
+    gameGridMax: {value: new THREE.Vector3(1, 1, 1)}, gameAmbient: {value: new THREE.Vector3(.55, .55, .55)},
+    gameShadowAmbient: {value: new THREE.Vector3(.55, .55, .55)}, gameShadowColour: {value: new THREE.Vector3(1, 1, 1)},
+    gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()},
+    gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}};
+  // A material's specular map (materials.json `spec`: a texture, or [gloss, strength] made a texel) and material id.
+  const evenTexels = new Map();
+  function evenTexel([r, g] = [0, 0]) {
+    const key = r + ',' + g;
+    if (!evenTexels.has(key)) evenTexels.set(key, Object.assign(new THREE.DataTexture(new Uint8Array([r * 255, g * 255, 0, 255]), 1, 1), {needsUpdate: true}));
+    return evenTexels.get(key);
+  }
+  function gameLit(made, entry) {
+    const own = made.onBeforeCompile === THREE.Material.prototype.onBeforeCompile ? null : made.onBeforeCompile, glsl = DiaboticalLighting.shader;
+    const spec = entry && entry.spec, surface = {gameSpecularMap: {value: typeof spec === 'string' ? texture(spec) : evenTexel(spec)},
+      gameClass: {value: new THREE.Vector3(...DiaboticalLighting.materialClass(entry && entry.id || 0))}};
+    made.onBeforeCompile = (shader, renderer) => {
+      if (own) own(shader, renderer);
+      Object.assign(shader.uniforms, gameUniforms, surface);
+      shader.vertexShader = glsl.vertexHead + shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>' + glsl.vertexBody);
+      shader.fragmentShader = glsl.fragmentHead + shader.fragmentShader.replace('#include <aomap_fragment>', glsl.fragmentBody);
+    };
+    made.customProgramCacheKey = () => 'game' + (own ? own.toString() : '');
+    return made;
+  }
+  const camera = new THREE.PerspectiveCamera(60, 1, 2, 40000);
+  camera.rotation.order = 'YXZ';
+  const data = '/diabotical-map-data/';
+  let speed = 600, ready = false, map = null, start = null, missing = 0;
+  const showStatus = text => { $('status').textContent = text; };
+  const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing textures` : 'Map ready'} · speed ${Math.round(speed)}`);
+
+  async function get(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${url} (${response.status})`);
+    return response;
+  }
+  // A material with no texture is drawn in a flat colour of its own, from its name.
+  function flatColour(name) {
+    let hash = 2166136261;
+    for (const c of name) hash = Math.imul(hash ^ c.charCodeAt(0), 16777619);
+    return new THREE.Color().setHSL((hash >>> 0) % 360 / 360, .25, .55);
+  }
+  const loader = new THREE.TextureLoader(), textures = new Map(), materials = new Map();
+  function texture(file) {
+    if (!textures.has(file)) {
+      const made = loader.load(data + 'textures/' + file, undefined, undefined, () => { missing++; if (ready) showReady(); });
+      made.wrapS = made.wrapT = THREE.RepeatWrapping;
+      made.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      textures.set(file, made);
+    }
+    return textures.get(file);
+  }
+  // With a colour mask (`mask`, the material's map 4), the texture is tinted by each prop's accent colours, as the
+  // game's tilemask.ps does: toward accent × the texel's mean by the mask's red, green and blue for accents 1, 2, 3.
+  function material(name, entry, mask) {
+    const key = mask ? name + '#tinted' : name;
+    if (materials.has(key)) return materials.get(key);
+    const side = THREE.FrontSide;
+    let made;
+    if (!entry || !entry.texture) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
+    else {
+      // Foliage and the like are cut out by their texture's alpha and seen from both sides.
+      made = new THREE.MeshLambertMaterial({map: texture(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
+        alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
+      if (mask) made.onBeforeCompile = shader => {
+        shader.uniforms.maskMap = {value: texture(mask.texture)};
+        shader.vertexShader = 'attribute vec4 accent1, accent2, accent3;\nvarying vec4 vAccent1, vAccent2, vAccent3;\n' +
+          shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvAccent1 = accent1; vAccent2 = accent2; vAccent3 = accent3;');
+        shader.fragmentShader = 'uniform sampler2D maskMap;\nvarying vec4 vAccent1, vAccent2, vAccent3;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+          vec4 texel = texture2D(map, vUv);
+          vec3 weight = texture2D(maskMap, vUv).rgb, tinted = texel.rgb;
+          float grey = (tinted.r + tinted.g + tinted.b) / 3.;
+          tinted = mix(tinted, vAccent1.rgb * grey, weight.r * vAccent1.a);
+          tinted = mix(tinted, vAccent2.rgb * grey, weight.g * vAccent2.a);
+          tinted = mix(tinted, vAccent3.rgb * grey, weight.b * vAccent3.a);
+          diffuseColor *= vec4(tinted, texel.a);`);
+      };
+    }
+    materials.set(key, gameLit(made, entry));
+    return made;
+  }
+  const maskOf = (name, entry, entries) => entry && entry.texture && (entries[name + '#4'] || {}).texture ? entries[name + '#4'] : null;
+  // A model group's geometry with each instance's three accents (alpha 0 where none is set: no tint): the prop's own
+  // (tints, 0x1RRGGBB or 0) or else the material's. The game takes an accent's hex as linear light (run 12: 808080
+  // makes half of ffffff's light, not a fifth); the page mixes in display values, so it encodes it (power 1 / 2.2).
+  const display = byte => (byte / 255) ** (1 / 2.2);
+  function withAccents(base, tints, defaults, count) {
+    const geometry = new THREE.BufferGeometry(), accents = new Float32Array(count * 12);
+    for (const [name, attribute] of Object.entries(base.attributes)) geometry.setAttribute(name, attribute);
+    for (let i = 0; i < count; i++) {
+      for (let j = 0; j < 3; j++) {
+        const own = tints ? tints[i * 3 + j] : 0, value = own ? own & 0xffffff : (defaults || [])[j];
+        if (value != null) accents.set([display(value >> 16 & 255), display(value >> 8 & 255), display(value & 255), 1], (j * count + i) * 4);
+      }
+    }
+    for (let j = 0; j < 3; j++) geometry.setAttribute(`accent${j + 1}`, new THREE.InstancedBufferAttribute(accents.subarray(j * count * 4, (j + 1) * count * 4), 4));
+    return geometry;
+  }
+
+  const layers = {props: new THREE.Group(), markers: new THREE.Group(), terrain: new THREE.Group(), decals: new THREE.Group()};
+  scene.add(layers.props, layers.markers, layers.terrain, layers.decals);
+  // What decals land on: block and terrain triangles in world space, props as model triangles and instance matrices.
+  const surfaces = {fixed: [], props: []};
+  // Markers for what the game draws by itself: spawns, pickups, jump pads, teleporters, flags.
+  const MARKERS = [[/^spawn/, 0x3fd06a, 'cone'], [/^hpt|^health/, 0x8fe04a], [/^armor/, 0xf0a020], [/^weapon/, 0xd040e0, 'box'],
+    [/^ammo/, 0xa080c0, 'box'], [/^(jumppad|jp$)/, 0x30d0f0, 'disc'], [/^(teleport|tpexit)/, 0x4060ff, 'disc'], [/^flag/, 0xff4040, 'cone'],
+    [/^(doubledamage|tripledamage|crystal|coin)/, 0xffe040]];
+  const SHAPES = {cone: new THREE.ConeGeometry(12, 40, 12).translate(0, 20, 0), box: new THREE.BoxGeometry(20, 20, 20),
+    disc: new THREE.CylinderGeometry(30, 30, 4, 20).translate(0, 2, 0), ball: new THREE.SphereGeometry(12, 12, 8)};
+  function addMarkers(list) {
+    const byStyle = new Map();
+    for (const [kind, x, y, z] of list) {
+      const style = MARKERS.find(([pattern]) => pattern.test(kind));
+      if (style) byStyle.set(style, [...(byStyle.get(style) || []), [x, y, -z]]);
+    }
+    const matrix = new THREE.Matrix4();
+    for (const [[, colour, shape], points] of byStyle) {
+      const mesh = new THREE.InstancedMesh(SHAPES[shape || 'ball'], gameLit(new THREE.MeshLambertMaterial({color: colour, emissive: colour, emissiveIntensity: .35})), points.length);
+      points.forEach((point, i) => mesh.setMatrixAt(i, matrix.makeTranslation(...point)));
+      layers.markers.add(mesh);
+    }
+  }
+  // Liquids as see-through boxes, their size the entity's scale, centred on it (as the game's water surface is: top at y + height / 2).
+  // Liquids: the top of a box of the entity's scale. Unlit, so lava and acid glow their own colour as in the game;
+  // the colour's alpha (AARRGGBB) is the surface's opacity, and one with no colour is clear water (bioplant's pools
+  // show the floor under them). The ocean shader is dark blue and mirrors the envmap.
+  const mirrors = [];  // Materials that take the envmap when it has loaded.
+  function addLiquids(list) {
+    for (const [x, y, z, width, height, depth, , rgb, alpha, ocean] of list) {
+      const surface = new THREE.Mesh(new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
+        color: rgb ?? (ocean ? 0x14394d : 0x2a6f8c), transparent: true, opacity: (alpha ?? (rgb == null && !ocean ? 40 : 220)) / 255,
+        depthWrite: false, side: THREE.DoubleSide, reflectivity: .5}));
+      surface.position.set(x, y + height / 2, -z);
+      if (ocean) mirrors.push(Object.assign(surface.material, {envMap: gameUniforms.gameEnvmap.value}));  // Or when it loads.
+      scene.add(surface);
+    }
+  }
+  // Billboards: flat panes (glass, light glows, signs), unlit, the texture times the colour and see-through; a glow
+  // texture adds its light. One with no texture, or one not in the game's files (billboard_glass: the game's own
+  // glass), is tinted glass (bioplant's windows show the outside in the game), mirroring the envmap where it reflects.
+  function addBillboards(list, entries) {
+    const square = new THREE.PlaneGeometry(1, 1);
+    for (const billboard of list) {
+      const [rgb, name, reflects] = billboard.slice(12), entry = entries[name];
+      const options = {color: rgb ?? 0xffffff, transparent: true, depthWrite: false, side: THREE.DoubleSide};
+      if (entry && entry.texture) Object.assign(options, {map: texture(entry.texture), blending: /glow/.test(name) ? THREE.AdditiveBlending : THREE.NormalBlending});
+      else Object.assign(options, {opacity: .25, reflectivity: .3});
+      const mesh = new THREE.Mesh(square, new THREE.MeshBasicMaterial(options));
+      mesh.matrixAutoUpdate = false;
+      mesh.matrix.set(...billboard.slice(0, 12), 0, 0, 0, 1);
+      if (!options.map && reflects) mirrors.push(Object.assign(mesh.material, {envMap: gameUniforms.gameEnvmap.value}));
+      layers.decals.add(mesh);
+    }
+  }
+  // Particles (pfx entities; particle_systems in the importer): each emitter spawns camera-facing sprites in its
+  // entity's frame every `period` seconds up to `max`, from a random point of its `position` box, moving by `velocity`
+  // (a random vector between two) or along `angles` (random Euler angles, degrees, turning straight up) at `speed`,
+  // pushed by `acceleration`; over its life a sprite goes from the start to the end scale and colour, fading in and
+  // out, stepping through its frames. Drawn unlit, one instanced quad mesh per sheet and blend; only emitters within
+  // `range` (else 2500) of the camera run. Not drawn: turbulence, aspect, rotation, the systems' lights.
+  const emitters = [], particleGroups = new Map(), CAPACITY = 8192;
+  const random = (a, b) => a + Math.random() * (b - a);
+  const local = (values, at) => [random(values[at], values[at + 3]), random(values[at + 1], values[at + 4]), -random(values[at + 2], values[at + 5])];
+  function particleGroup(sheet, blend) {
+    const key = sheet + blend;
+    if (!particleGroups.has(key)) {
+      const geometry = new THREE.InstancedBufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute([-.5, -.5, 0, .5, -.5, 0, .5, .5, 0, -.5, .5, 0], 3));
+      geometry.setIndex([0, 1, 2, 0, 2, 3]);
+      for (const [name, size] of [['offset', 3], ['scale', 1], ['rect', 4], ['colour', 4]])
+        geometry.setAttribute(name, new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * size), size).setUsage(THREE.DynamicDrawUsage));
+      geometry.instanceCount = 0;
+      const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
+        uniforms: {map: {value: texture(sheet)}}, transparent: true, depthWrite: false,
+        blending: blend === 'add' ? THREE.AdditiveBlending : THREE.NormalBlending,
+        vertexShader: `attribute vec3 offset; attribute float scale; attribute vec4 rect, colour; varying vec2 vUv; varying vec4 vColour;
+          void main() {
+            vec4 view = modelViewMatrix * vec4(offset, 1.);
+            view.xy += position.xy * scale;
+            gl_Position = projectionMatrix * view;
+            vUv = vec2(rect.x + (position.x + .5) * rect.z, 1. - (rect.y + (.5 - position.y) * rect.w));
+            vColour = colour;
+          }`,
+        fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying vec4 vColour;
+          void main() { gl_FragColor = texture2D(map, vUv) * vColour; }`}));
+      mesh.frustumCulled = false;
+      layers.decals.add(mesh);
+      particleGroups.set(key, mesh);
+    }
+    return particleGroups.get(key);
+  }
+  async function addParticles(list) {
+    if (!list.length) return;
+    const systems = await get(data + 'particles.json').then(response => response.json()).catch(() => ({}));
+    for (const entry of list) {
+      const matrix = new THREE.Matrix4().set(...entry.slice(0, 12), 0, 0, 0, 1), [system, rgb, size] = entry.slice(12);
+      const tint = rgb == null ? [1, 1, 1] : [rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255].map(value => value / 255);
+      for (const emitter of systems[system] || [])
+        emitters.push({...emitter, matrix, origin: new THREE.Vector3().setFromMatrixPosition(matrix), tint, grow: size * emitter.size,
+          particles: [], wait: emitter.delay, group: particleGroup(emitter.sheet, emitter.blend)});
+    }
+  }
+  const up = new THREE.Vector3(), turn = new THREE.Euler();
+  function updateParticles(delta) {
+    if (!emitters.length) return;
+    for (const mesh of particleGroups.values()) mesh.geometry.instanceCount = 0;
+    for (const e of emitters) {
+      if (e.origin.distanceTo(camera.position) > (e.range || 2500)) { e.particles.length = 0; continue; }
+      e.wait -= delta;
+      for (let n = 0; e.wait <= 0 && n < 50; n++) {
+        e.wait += Math.max(.005, random(e.period[0], e.period[1]));
+        if (e.particles.length >= e.max) continue;
+        const position = new THREE.Vector3(...local(e.position, 0)).applyMatrix4(e.matrix);
+        let velocity;
+        if (e.angles) {
+          turn.set(...[0, 1, 2].map(i => THREE.MathUtils.degToRad(random(e.angles[i], e.angles[i + 3]))), 'YXZ');
+          velocity = up.set(0, 1, 0).applyEuler(turn).clone().multiplyScalar(e.speed[0]);
+          velocity.z = -velocity.z;
+        } else velocity = new THREE.Vector3(...local(e.velocity, 0));
+        const acceleration = new THREE.Vector3(...local(e.acceleration, 0));
+        const rotation = new THREE.Matrix3().setFromMatrix4(e.matrix);
+        e.particles.push({position, velocity: velocity.applyMatrix3(rotation), acceleration: acceleration.applyMatrix3(rotation), age: 0,
+          life: Math.max(.05, random(e.life[0], e.life[1])), from: random(e.scale[0], e.scale[1]), to: random(e.scale[2], e.scale[3])});
+      }
+      const mesh = e.group, attributes = mesh.geometry.attributes, c = e.colour;
+      e.particles = e.particles.filter(p => (p.age += delta) < p.life);
+      for (const p of e.particles) {
+        p.velocity.addScaledVector(p.acceleration, delta);
+        p.position.addScaledVector(p.velocity, delta);
+        const at = mesh.geometry.instanceCount;
+        if (at >= CAPACITY) break;
+        mesh.geometry.instanceCount++;
+        const t = p.age / p.life, fade = Math.min(1, e.fade[0] ? p.age / e.fade[0] : 1, e.fade[1] ? (p.life - p.age) / e.fade[1] : 1);
+        const frame = Math.floor(e.animation[1] + p.age * e.animation[0]) % e.frames;
+        attributes.offset.setXYZ(at, p.position.x, p.position.y, p.position.z);
+        attributes.scale.setX(at, (p.from + (p.to - p.from) * t) * e.grow);
+        attributes.rect.setXYZW(at, e.rect[0] + frame % e.row * e.rect[2], e.rect[1] + Math.floor(frame / e.row) * e.rect[3], e.rect[2], e.rect[3]);
+        attributes.colour.setXYZW(at, ...[0, 1, 2].map(i => (c[i] + (c[i + 4] - c[i]) * t) * e.tint[i]), (c[3] + (c[7] - c[3]) * t) * fade);
+      }
+    }
+    for (const mesh of particleGroups.values())
+      for (const name of ['offset', 'scale', 'rect', 'colour']) mesh.geometry.attributes[name].needsUpdate = true;
+  }
+  // Props: each model's triangles (8 floats a corner: position, normal, uv) by material, drawn instanced.
+  async function addProps(props, models, entries) {
+    const needed = [...new Set(props.map(prop => prop.model))].filter(model => models[model]);
+    const buffers = new Map(await Promise.all(needed.map(async model =>
+      [model, await get(`${data}models/${models[model].file}`).then(r => r.arrayBuffer())])));
+    const geometries = new Map(), matrix = new THREE.Matrix4();
+    let drawn = 0, absent = 0;
+    for (const {model, material: override, mirrored, noDecals, matrices, tints} of props) {
+      if (!buffers.has(model)) { absent += matrices.length / 12; continue; }
+      let at = 0;
+      for (const [own, corners] of models[model].groups) {
+        const key = `${model}|${at}|${mirrored}`;
+        if (!geometries.has(key)) {
+          let floats = new Float32Array(buffers.get(model), at * 32, corners * 8);
+          // A mirrored prop keeps its triangles facing out by turning each the other way round (a BackSide
+          // material would also flip its normals, already mirrored by the instance matrix).
+          if (mirrored) {
+            floats = floats.slice();
+            for (let t = 0; t < corners; t += 3) {
+              const second = floats.slice((t + 1) * 8, (t + 2) * 8);
+              floats.copyWithin((t + 1) * 8, (t + 2) * 8, (t + 3) * 8);
+              floats.set(second, (t + 2) * 8);
+            }
+          }
+          const interleaved = new THREE.InterleavedBuffer(floats, 8);
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 0));
+          geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(interleaved, 3, 3));
+          geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(interleaved, 2, 6));
+          geometries.set(key, geometry);
+        }
+        at += corners;
+        // A prop's material X is its group's shader's X variant (OWN_X: bioplant's door frames) where there is one.
+        const name = override ? (entries[`${own}_${override}`] ? `${own}_${override}` : override) : own, entry = entries[name];
+        if (entry && entry.hidden) continue;
+        const count = matrices.length / 12, mask = maskOf(name, entry, entries);
+        const mesh = new THREE.InstancedMesh(mask ? withAccents(geometries.get(key), tints, entry.accents, count) : geometries.get(key),
+          material(name, entry, mask), count);
+        for (let i = 0; i < count; i++) {
+          const m = matrices.subarray(i * 12, i * 12 + 12);
+          mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
+        }
+        mesh.frustumCulled = false;  // r149 culls an instanced mesh by its one model's bounds.
+        mesh.castShadow = mesh.receiveShadow = true;
+        layers.props.add(mesh);
+        if (!noDecals) surfaces.props.push({floats: geometries.get(key).attributes.position.data.array, matrices});
+      }
+      drawn += matrices.length / 12;
+    }
+    return {drawn, absent};
+  }
+
+  // The heightmap terrain: a vertex per pixel of its PNG (height in red, dirt mask in green), drawn as the game's
+  // tileter.ps: ground texture where flat, mixed with dirt by the mask, the cliff texture (4x larger) on slopes.
+  const GROUND_REPEAT = 40 / 128;  // Ground tiles per 40-unit cell: one every 128 units, measured in the game (cliff: 512).
+  async function addTerrain(terrain, entries) {
+    const image = await createImageBitmap(await get(data + 'maps/' + terrain.file).then(r => r.blob()), {colorSpaceConversion: 'none', premultiplyAlpha: 'none'});
+    const {width, height} = image, context = Object.assign(document.createElement('canvas'), {width, height}).getContext('2d');
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, width, height).data, [ox, oy, oz] = terrain.offset;
+    const positions = new Float32Array(width * height * 3), uvs = new Float32Array(width * height * 2), dirt = new Float32Array(width * height);
+    for (let row = 0, i = 0; row < height; row++) {
+      for (let column = 0; column < width; column++, i++) {
+        positions.set([(column - width / 2) * terrain.cell + ox, oy + 8 * terrain.scale * pixels[i * 4], -((row - height / 2) * terrain.cell + oz)], i * 3);
+        uvs.set([column * GROUND_REPEAT, row * GROUND_REPEAT], i * 2);
+        dirt[i] = pixels[i * 4 + 1] / 255;
+      }
+    }
+    const index = new Uint32Array((width - 1) * (height - 1) * 6);
+    for (let row = 0, at = 0; row < height - 1; row++) {
+      for (let column = 0; column < width - 1; column++) {
+        const a = row * width + column, b = a + width;  // b is the next row: toward -z on the page, so (a, a + 1, b) faces up.
+        index.set([a, a + 1, b, a + 1, b + 1, b], at);
+        at += 6;
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geometry.setAttribute('dirt', new THREE.BufferAttribute(dirt, 1));
+    geometry.setIndex(new THREE.BufferAttribute(index, 1));
+    geometry.computeVertexNormals();
+    const name = terrain.material, ground = entries[name], made = new THREE.MeshLambertMaterial(
+      ground && ground.texture ? {map: texture(ground.texture)} : {color: flatColour(name)});
+    if (ground && ground.texture) {
+      const slot = number => texture((entries[`${name}#${number}`] || ground).texture);
+      made.onBeforeCompile = shader => {
+        Object.assign(shader.uniforms, {cliffMap: {value: slot(3)}, dirtMap: {value: slot(5)}});
+        shader.vertexShader = 'attribute float dirt;\nvarying float vDirt, vUp;\n' +
+          shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvDirt = dirt; vUp = abs(normal.y);');
+        shader.fragmentShader = 'uniform sampler2D cliffMap, dirtMap;\nvarying float vDirt, vUp;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+          vec3 level = mix(texture2D(map, vUv).rgb, texture2D(dirtMap, vUv).rgb, vDirt), cliff = texture2D(cliffMap, vUv * .25).rgb;
+          diffuseColor.rgb *= mix(cliff, level, clamp(1. - 20. * (.85 - vUp), 0., 1.));`);
+      };
+    }
+    layers.terrain.add(Object.assign(new THREE.Mesh(geometry, gameLit(made)), {castShadow: true, receiveShadow: true}));
+    if (!terrain.no_decals) surfaces.fixed.push({positions, normals: geometry.attributes.normal.array, index});
+  }
+
+  // Decals: each box's texture on the blocks, terrain and props in it that face it (decals.js), times its colour
+  // (0xRRGGBBAA, as sRGB: run 13 showed 808080 halving the picture's value, unlike an accent), one mesh per material
+  // and order, drawn in order. The importer has turned each box so its texture runs along its x and y.
+  function addDecals(list, entries) {
+    const boxes = [], cuts = [], owners = [];
+    for (const {material: name, matrices, extras, orders} of list) {
+      if (!(entries[name] || {}).texture) continue;  // ponytail: a decal with no texture is left out, not drawn flat.
+      for (let i = 0; i < matrices.length / 24; i++) {
+        boxes.push(matrices.subarray(i * 24, i * 24 + 12));
+        cuts.push(matrices.subarray(i * 24 + 12, i * 24 + 24));
+        owners.push({name, colour: extras[i * 3], order: orders[i * 3 + 2]});
+      }
+    }
+    if (!boxes.length) return 0;
+    const projector = DiaboticalDecals.createProjector(boxes, cuts);
+    const a = [0, 0, 0], b = [0, 0, 0], c = [0, 0, 0], na = [0, 0, 0], nb = [0, 0, 0], nc = [0, 0, 0];
+    const corner = (point, normal, positions, normals, at) => {
+      for (let k = 0; k < 3; k++) { point[k] = positions[at * 3 + k]; normal[k] = normals[at * 3 + k]; }
+    };
+    for (const {positions, normals, index} of surfaces.fixed) {
+      const count = index ? index.length : positions.length / 3;
+      for (let i = 0; i < count; i += 3) {
+        corner(a, na, positions, normals, index ? index[i] : i);
+        corner(b, nb, positions, normals, index ? index[i + 1] : i + 1);
+        corner(c, nc, positions, normals, index ? index[i + 2] : i + 2);
+        projector.add(a, b, c, na, nb, nc);
+      }
+    }
+    // Props: a model's bounds first, then each instance near a decal triangle by triangle (positions and normals
+    // through its matrix; a mirrored model's triangles are already turned round).
+    for (const {floats, matrices} of surfaces.props) {
+      const low = [Infinity, Infinity, Infinity], high = [-Infinity, -Infinity, -Infinity];
+      for (let at = 0; at < floats.length; at += 8) for (let k = 0; k < 3; k++) { low[k] = Math.min(low[k], floats[at + k]); high[k] = Math.max(high[k], floats[at + k]); }
+      for (let i = 0; i < matrices.length / 12; i++) {
+        const m = matrices.subarray(i * 12, i * 12 + 12);
+        const centre = [0, 1, 2].map(row => m[row * 4 + 3] + [0, 1, 2].reduce((sum, k) => sum + m[row * 4 + k] * (low[k] + high[k]) / 2, 0));
+        const extent = [0, 1, 2].map(row => [0, 1, 2].reduce((sum, k) => sum + Math.abs(m[row * 4 + k]) * (high[k] - low[k]) / 2, 0));
+        if (!projector.touches(centre.map((v, k) => v - extent[k]), centre.map((v, k) => v + extent[k]))) continue;
+        const place = (point, normal, at) => {
+          for (let row = 0; row < 3; row++) {
+            point[row] = m[row * 4] * floats[at] + m[row * 4 + 1] * floats[at + 1] + m[row * 4 + 2] * floats[at + 2] + m[row * 4 + 3];
+            normal[row] = m[row * 4] * floats[at + 3] + m[row * 4 + 1] * floats[at + 4] + m[row * 4 + 2] * floats[at + 5];
+          }
+        };
+        for (let at = 0; at < floats.length; at += 24) {
+          place(a, na, at); place(b, nb, at + 8); place(c, nc, at + 16);
+          projector.add(a, b, c, na, nb, nc);
+        }
+      }
+    }
+    const groups = new Map();
+    projector.out.forEach(({positions, normals, uvs}, i) => {
+      if (!positions.length) return;
+      const {name, colour, order} = owners[i], key = `${name}|${order}`;
+      if (!groups.has(key)) groups.set(key, {name, order, positions: [], normals: [], uvs: [], colours: []});
+      const group = groups.get(key), rgba = [colour >>> 24, colour >>> 16 & 255, colour >>> 8 & 255, colour & 255].map(byte => byte / 255);
+      for (let j = 0; j < positions.length; j++) { group.positions.push(positions[j]); group.normals.push(normals[j]); }
+      for (let j = 0; j < uvs.length; j++) group.uvs.push(uvs[j]);
+      for (let j = 0; j < positions.length / 3; j++) group.colours.push(...rgba);
+    });
+    for (const {name, order, positions, normals, uvs, colours} of groups.values()) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 4));
+      const mesh = new THREE.Mesh(geometry, gameLit(new THREE.MeshLambertMaterial({map: texture(entries[name].texture), vertexColors: true,
+        transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4})));
+      mesh.renderOrder = order;
+      mesh.receiveShadow = true;
+      layers.decals.add(mesh);
+    }
+    return boxes.length;
+  }
+
+  // A map's lights (read_lights in the importer) into the shaders' uniforms, and the sun's shadow over the blocks.
+  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1}) {
+    const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
+    u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
+    u.gameCells.value = float(built.cells, width, built.cells.length / 2 / width, THREE.RGFormat);
+    u.gameLists.value = float(built.lists, width, built.lists.length / width, THREE.RedFormat);
+    u.gameCellMin.value.fromArray(built.min);
+    u.gameCellCount.value.fromArray(built.size);
+    const grid = DiaboticalLighting.buildGrid(nodes);
+    if (grid) {
+      const half = new Uint16Array(grid.data.length);
+      for (let i = 0; i < half.length; i++) half[i] = THREE.DataUtils.toHalfFloat(grid.data[i]);
+      u.gameGrid.value = Object.assign(new THREE.Data3DTexture(half, ...grid.size), {type: THREE.HalfFloatType, minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter, needsUpdate: true});
+      u.gameGridMin.value.fromArray(grid.min);
+      u.gameGridMax.value.fromArray(grid.max);
+    } else u.gameGrid.value = emptyGrid;
+    u.gameAmbient.value.fromArray(ambient);
+    u.gameShadowAmbient.value.fromArray(shadowAmbient);
+    u.gameShadowColour.value.fromArray(shadowColour);
+    u.gameSunColour.value.fromArray(sunLight ? sunLight.slice(3) : [0, 0, 0]);
+    u.gameSunSpecular.value = sunLight && sunLight[6] || 0;
+    u.gameGloss.value = gloss;
+    // The envmap: its six faces side by side (envmaps/NAME.png), made a cube whose mips WebGL makes as the game does.
+    u.gameEnvmap.value = null;
+    const forMap = map;
+    if (envmap) new THREE.ImageLoader().load(`${data}envmaps/${envmap.replace(/[^a-z0-9_-]/g, '_')}.png`, image => {
+      if (map !== forMap) return;  // Another map was opened meanwhile.
+      const size = image.height, faces = [0, 1, 2, 3, 4, 5].map(face => {
+        const canvas = Object.assign(document.createElement('canvas'), {width: size, height: size});
+        canvas.getContext('2d').drawImage(image, face * size, 0, size, size, 0, 0, size, size);
+        return canvas;
+      });
+      u.gameEnvmap.value = Object.assign(new THREE.CubeTexture(faces), {needsUpdate: true});
+      for (const mirror of mirrors) Object.assign(mirror, {envMap: u.gameEnvmap.value, needsUpdate: true});
+      draw();
+    });
+    if (sunLight) u.gameSunToward.value.fromArray(sunLight).negate().normalize();
+    if (start) {
+      const centre = start.min.clone().add(start.max).multiplyScalar(.5), radius = start.max.distanceTo(start.min) / 2 + 100;
+      sun.target.position.copy(centre);
+      sun.position.copy(centre).addScaledVector(u.gameSunToward.value, radius * 2);
+      Object.assign(sun.shadow.camera, {left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: radius * 4});
+      sun.shadow.camera.updateProjectionMatrix();
+    }
+    return {lights: built.count, nodes: nodes.length};
+  }
+
+  function showNotes() {
+    if (!map) return;
+    const parts = [`${map.blocks.toLocaleString()} blocks drawn, map version ${map.version}${map.author ? `, by ${map.author}` : ''}`];
+    if (map.props) parts.push(`${map.props.drawn.toLocaleString()} props drawn` + (map.props.absent ? `, ${map.props.absent.toLocaleString()} left out (no model file)` : ''));
+    if (map.decals) parts.push(`${map.decals.toLocaleString()} decals`);
+    if (map.lights) parts.push(`${map.lights.lights.toLocaleString()} lights and ${map.lights.nodes.toLocaleString()} ambient nodes`);
+    if (map.untextured.length) parts.push('Not in the game files, so drawn in a flat colour: ' + map.untextured.join(', '));
+    $('mapNotes').textContent = ' This map — ' + parts.join('. ') + '.';
+  }
+  $('notes').after(Object.assign(document.createElement('span'), {id: 'mapNotes'}));
+
+  function applySettings() {
+    for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain', 'decals']) $(id).checked = settings[id];
+    for (const id of ['props', 'markers', 'terrain', 'decals']) layers[id].visible = settings[id];
+    $('fov').value = settings.fov;
+    const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
+    renderer.setSize(main.clientWidth, main.clientHeight, false);
+    camera.aspect = aspect;
+    // The field is horizontal, as in the game's settings; Three's is vertical.
+    camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
+    camera.updateProjectionMatrix();
+  }
+  // The start view: above one corner of the blocks' bounds, looking across them.
+  function showStart() {
+    if (!start) return;
+    const {min, max} = start, size = max.clone().sub(min);
+    camera.position.set(min.x - size.x * .1, max.y + Math.max(size.y * .3, 200), max.z + size.z * .1);
+    camera.lookAt(min.clone().add(max).multiplyScalar(.5));
+  }
+
+  $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 100)); save(); applySettings(); });
+  for (const id of ['invertX', 'invertY', 'props', 'markers', 'terrain', 'decals']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  $('reset').addEventListener('click', () => { speed = 600; showStart(); if (ready) showReady(); });
+  new ResizeObserver(applySettings).observe(canvas.parentElement);
+
+  // Captured mouse and plain drag share one look function: mouse right looks right, mouse up looks up.
+  const keys = new Set();
+  let dragging = false;
+  canvas.addEventListener('mousedown', () => {
+    dragging = true;
+    try { Promise.resolve(canvas.requestPointerLock()).catch(() => { /* Drag-to-look still works. */ }); } catch (_) { /* Same. */ }
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+  window.addEventListener('blur', () => { dragging = false; keys.clear(); });
+  document.addEventListener('mousemove', event => {
+    if (!dragging && document.pointerLockElement !== canvas) return;
+    camera.rotation.y -= event.movementX * .0025 * (settings.invertX ? -1 : 1);
+    camera.rotation.x = Math.max(-1.55, Math.min(1.55, camera.rotation.x - event.movementY * .0025 * (settings.invertY ? -1 : 1)));
+  });
+  canvas.addEventListener('wheel', event => {
+    event.preventDefault();
+    speed = Math.max(20, Math.min(20000, speed * (event.deltaY < 0 ? 1.2 : 1 / 1.2)));
+    if (ready) showReady();
+  }, {passive: false});
+  document.addEventListener('keydown', event => {
+    if (event.target.matches('input:not([type=checkbox]), select')) return;
+    if (/^(Key[WASD]|Space|Shift(Left|Right))$/.test(event.code)) { keys.add(event.code); event.preventDefault(); }
+  });
+  document.addEventListener('keyup', event => keys.delete(event.code));
+
+  const draw = () => renderer.render(scene, camera);
+  const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
+  renderer.setAnimationLoop(() => {
+    const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
+    camera.getWorldDirection(forward);
+    right.crossVectors(forward, camera.up).normalize();
+    move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
+    move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
+    if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
+    updateParticles(delta);
+    draw();
+  });
+  window.skinnerDiaboticalMaps = {renderer, scene, camera, draw};  // For checks in a hidden page, where no frame is drawn.
+
+  $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
+  $('import').addEventListener('click', async () => {
+    const game = $('gamePath').value.trim();
+    if (!game) { $('importStatus').textContent = 'Enter your Diabotical folder.'; return; }
+    $('import').disabled = true;
+    $('importStatus').textContent = 'Importing maps… the whole game takes about five minutes the first time.';
+    try {
+      const response = await fetch('/import_diabotical_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({game, replace: $('replace').checked})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Import failed');
+      try { localStorage.setItem(storageKey + '.game', game); } catch (_) { /* Path is simply not remembered. */ }
+      const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
+      $('importStatus').textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length} already imported` +
+        (failed.length ? `, failed ${failed.length} (${failed.join('; ')})` : '') +
+        (result.untextured.length ? `. Materials not in the game files, drawn in flat colours: ${result.untextured.join(', ')}` : '') + '.';
+      if (result.imported.length && !map) location.reload();
+    } catch (error) { $('importStatus').textContent = error.message; }
+    finally { $('import').disabled = false; }
+  });
+  try { $('gamePath').value = localStorage.getItem(storageKey + '.game') || ''; } catch (_) { /* Field stays empty. */ }
+
+  try {
+    let maps = [];
+    try { maps = await (await get(data + 'index.json')).json(); } catch (_) { /* No pack yet. */ }
+    if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
+    let mapId = new URLSearchParams(location.search).get('map') || '';
+    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === 'duel_bioplant') || maps[0]).id;
+    const byGroup = new Map();
+    for (const item of maps) byGroup.set(item.group, [...(byGroup.get(item.group) || []), item]);
+    $('map').replaceChildren(...[...byGroup].map(([group, items]) => {
+      const element = Object.assign(document.createElement('optgroup'), {label: group});
+      element.append(...items.map(item => new Option(item.name, item.id)));
+      return element;
+    }));
+    $('map').value = mapId;
+    map = maps.find(item => item.id === mapId);
+    document.title = `${map.name} — Diabotical Maps`;
+    showStatus('Loading blocks…');
+    const [buffer, entries] = await Promise.all([get(`${data}maps/${map.file}`).then(r => r.arrayBuffer()), get(data + 'materials.json').then(r => r.json())]);
+    // The last material of a map is unnamed and drawn as default, as the game does.
+    const names = map.materials.map(name => name || 'default');
+    map.untextured = [...new Set(names.filter(name => !entries[name]))];
+    const groups = DiaboticalBlocks.buildBlocks(buffer, names.map(name => (entries[name] || {}).scale ?? 1));
+    const bounds = new THREE.Box3();
+    for (const [index, {positions, normals, uvs}] of groups) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+      geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+      geometry.computeBoundingBox();
+      bounds.union(geometry.boundingBox);
+      const name = names[index] || 'default', entry = entries[names[index]], mask = maskOf(name, entry, entries);
+      surfaces.fixed.push({positions, normals});
+      if (!mask) { scene.add(Object.assign(new THREE.Mesh(geometry, material(name, entry)), {castShadow: true, receiveShadow: true})); continue; }
+      // Tinted by its material's own accents: one instance, to share the props' path.
+      const mesh = new THREE.InstancedMesh(withAccents(geometry, null, entry.accents, 1), material(name, entry, mask), 1);
+      mesh.setMatrixAt(0, new THREE.Matrix4());
+      mesh.castShadow = mesh.receiveShadow = true;
+      scene.add(mesh);
+    }
+    if (!bounds.isEmpty()) start = {min: bounds.min, max: bounds.max};
+    applySettings();
+    showStart();
+    if (map.terrain) {
+      showStatus('Loading terrain…');
+      await addTerrain(map.terrain, entries);
+    }
+    if (map.entities) {
+      showStatus('Loading props…');
+      const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
+      const {props, markers, liquids, decals, lights, billboards, pfx} = DiaboticalEntities.parseEntities(found);
+      if (lights) map.lights = useLights(lights);
+      addMarkers(markers);
+      addLiquids(liquids);
+      map.props = await addProps(props, models, entries);
+      showStatus('Placing decals…');
+      map.decals = addDecals(decals, entries);
+      addBillboards(billboards, entries);
+      await addParticles(pfx);
+    }
+    renderer.shadowMap.needsUpdate = true;
+    showNotes();
+    ready = true;
+    showReady();
+  } catch (error) {
+    showStatus('Could not load map: ' + error.message);
+  }
+});

@@ -1,6 +1,6 @@
 # DTS Skinner
 
-Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 3**, and view and edit Reflex Arena maps. Runs on Windows with a 3D viewer in your browser.
+Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 3**, view and edit Reflex Arena maps, and view Diabotical maps. Runs on Windows with a 3D viewer in your browser.
 
 **[Download the latest release](https://github.com/shadoh420/DTS_Skinner/releases/latest)**
 
@@ -22,6 +22,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 - **T1 Maps** opens a free-flight preview of Starsiege: Tribes missions: every map in your own install plus custom missions, imported from the page's **Import maps** panel; see [T1 map setup and limitations](docs/t1-map-viewer.md).
 - **Q3 Maps** opens a free-flight preview of Quake 3 Arena maps with lightmaps, curved surfaces, shader effects, skies and pickups: every map of your own install, stock, Team Arena and custom pk3s, imported from the page's **Import maps** panel; see [Q3 map setup and limitations](docs/q3-map-viewer.md).
 - **Reflex Maps** opens Reflex Arena maps to walk through (Quake 3-style movement, teleporters and jump pads) and edits their brushes, textured from the game's materials or any of Skinner's texture libraries (and the game's textures become a fourth library for models): **0** switches to edit mode as in the game, with the game's editor controls (drag to move, Alt to lift, Shift-drag a face, 1–8 to create brushes, volumes and entities, V for vertex mode, B to bridge two faces, C to clip, numpad +/− to turn, the texture keys on one or several faces, mirroring, prefabs made, broken, updated and edited in place, N for properties, K/M materials, G clone, Z/X undo), and brushes are also carved, hollowed, merged and split, and the map is saved back as a `.map` file. Import your install's maps (and Workshop maps) from the page, or open a `.map` file directly; see [Reflex map viewer and brush editor](docs/reflex-map-viewer.md).
+- **Diabotical Maps** opens a free-flight preview of Diabotical maps' blocks in their materials' textures: the game's maps and the ones you made in its editor, imported from the page's **Import maps** panel; see [Diabotical map viewer](docs/diabotical-map-viewer.md).
 
 ## Getting started
 
