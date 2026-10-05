@@ -27,12 +27,12 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, and Quake 
 ## Getting started
 
 1. Download and extract the release ZIP into a writable folder.
-2. Run `SkinnerApp.exe`. Keep `static` and `local-data` (its animation caches) beside it. Imported maps, models and tags go to
+2. Run `SkinnerApp.exe`. Keep `_internal`, `static` and `local-data` (its animation caches) beside it. Imported maps, models and tags go to
    `%LOCALAPPDATA%\DTS-Skinner\local-data`, shared by every release, so a new release opens with them
    (an older release's `local-data` next to the app is moved there on first start).
 3. Choose a model, select a material and texture, then click **Apply to slot**.
 
-If the browser doesn't open, visit `http://localhost:5000/`. Quit through the app's system-tray menu.
+If the browser doesn't open, visit `http://localhost:5000/`. Starting it again while it runs just opens the browser on it. Quit through the app's system-tray menu.
 
 **Controls:** drag to orbit, wheel to zoom, right-drag to pan. **Walk / Fly** (Shift + backtick) uses WASD and Q/E; Escape returns to orbit. Position and rotation changes are preview-only.
 

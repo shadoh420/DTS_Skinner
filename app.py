@@ -760,6 +760,19 @@ if __name__ == "__main__":
     server_port = args.port
     if args.no_tray:
         HAS_PYSTRAY = False
+    # A second launch opens the copy already running instead of starting another on the same port (Windows lets
+    # both listen, and requests then reach either). ponytail: two launches within the first's startup both start.
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{server_port}/", timeout=3) as response:
+            running = b"DTS Model Skinner" in response.read()
+    except OSError:
+        running = False
+    if running:
+        print(f"Already running on port {server_port}.")
+        if not args.no_browser:
+            open_browser()
+        sys.exit(0)
     if not local_data_dir.exists() and app_local_data_dir.is_dir() and not os.environ.get('SKINNER_DATA_DIR'):
         local_data_dir.mkdir(parents=True) # an older build's imports carried over once; later builds find them here
         for item in app_local_data_dir.iterdir():
