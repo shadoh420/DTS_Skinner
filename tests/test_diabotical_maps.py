@@ -412,9 +412,10 @@ class DiaboticalMapsTest(unittest.TestCase):
         from tools.import_diabotical_map import rule_holds
         cell = dict(offset_left=2, offset_right=0, offset_bottom=4, size_x=3)
         self.assertTrue(all(rule_holds(c, cell) for c in ('offset_right is 0', 'offset_left == 2', 'offset_bottom % 2 0', 'size_x > 2',
-                                                            'offset right % 3 0', 'offset_left 2', 'offset_bottom - offset_left 2')))
+                                                            'offset right % 3 0', 'offset_left 2', 'offset_bottom - offset_left 2',
+                                                            'offset_bottom / offset_left 2')))
         self.assertFalse(any(rule_holds(c, cell) for c in ('offset_left is 0', 'offset_bottom % 3 0', 'size_x < 3', 'left empty',
-                                                             'offset_front / offset_bottom 2', 'offset_top is 0')))
+                                                             'offset_front / offset_bottom 2', 'offset_bottom / offset_left 3', 'offset_top is 0')))
 
     def test_pickups_are_drawn_as_their_kinds_models(self):
         from tools.import_diabotical_map import pickup_kinds, placements

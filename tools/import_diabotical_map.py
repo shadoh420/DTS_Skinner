@@ -97,7 +97,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 23  # Of the files written per map: maps imported with another are read again.
+FORMAT = 24  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -333,9 +333,13 @@ def rule_holds(condition, cell):
             return value(words[0]) > value(words[2]) if words[1] == '>' else value(words[0]) < value(words[2])
         if len(words) == 4 and words[1] == '-':
             return value(words[0]) - value(words[2]) == value(words[3])
+        # A slope (roofs, diagonal walls, stair fences: 68 assets): `a / b c` is a = b x c, one cell up every c
+        # cells along (a_bazaar's tile roofs: front / bottom 3, pieces 3 cells deep and 1 high; run 41).
+        if len(words) == 4 and words[1] == '/':
+            return value(words[0]) == value(words[2]) * value(words[3])
     except (TypeError, ZeroDivisionError):
         pass
-    return False  # ponytail: `/`, `when`, `left empty` (neighbour tests) are not understood and never hold.
+    return False  # ponytail: `when`, `left empty` (neighbour tests) are not understood and never hold.
 
 
 def game_matrix(position, rotation, scale):

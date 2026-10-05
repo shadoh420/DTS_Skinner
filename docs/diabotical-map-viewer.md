@@ -77,7 +77,10 @@ left (`static/diabotical-maps/blocks.js`).
   A dynamic prop (trims, pipes, walls: about half of all props) is a row, column
   or block of 40-unit cells from the entity (its corner), its scale the size in cells; its asset's
   `dynamic_rule` blocks pick each cell's model by the cell's offsets from the
-  prop's ends (the last rule that holds wins, per channel). The game picks among
+  prop's ends (the last rule that holds wins, per channel). A slope's condition
+  `a / b c` holds where a = b x c: one cell up every c cells along (68 assets:
+  roofs, diagonal walls, stair fences; a_bazaar's tiled roofs, `front / bottom 3`,
+  were missing until FORMAT 24; run 41 compared them from above). The game picks among
   a rule's variants at random; the page picks the same way every time.
   `PATH_flipx` is `PATH` mirrored. Props marked `no_show` (clip boxes and other
   invisible ones) and materials marked `visible false` are left out (also where
@@ -470,7 +473,7 @@ terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
 0.125; only `core_ter` was measured), the terrain's normal maps and the fields
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
-dynamic rule's variants and the rule conditions not understood (`/`, `when`,
+dynamic rule's variants and the rule conditions not understood (`when`,
 neighbour tests such as `left empty`), skinned models, the
 few prop materials still not found (flat colours: weapon models placed as props, particle
 containers, holiday lights, some ads), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
