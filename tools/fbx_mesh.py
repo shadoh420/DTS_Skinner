@@ -154,8 +154,9 @@ def layer(geometry, kind, values, indices, width, corners):
     return data if mapping == 'ByPolygonVertex' else data[corners] if mapping in ('ByVertice', 'ByVertex') else None
 
 
-def fbx_mesh(data):
-    """{material name: (positions, normals, uvs)}, each (triangles, 3, n) float32, in the FBX's own axes."""
+def fbx_mesh(data, transforms=True):
+    """{material name: (positions, normals, uvs)}, each (triangles, 3, n) float32, in the FBX's own axes; without
+    `transforms`, each mesh where its geometry has it (Model nodes' translation, rotation and scaling left out)."""
     nodes = read_nodes(data)
     if child(('', [], nodes), 'Objects') is None:
         raise ValueError('no objects in the FBX')
@@ -170,7 +171,7 @@ def fbx_mesh(data):
     def world(ident):
         if ident not in worlds:
             o = objects.get(ident)
-            worlds[ident] = np.eye(4) if o is None or o[0] != 'Model' else world(parent.get(ident, 0)) @ local_matrix(properties(o))
+            worlds[ident] = np.eye(4) if o is None or o[0] != 'Model' or not transforms else world(parent.get(ident, 0)) @ local_matrix(properties(o))
         return worlds[ident]
 
     out = {}

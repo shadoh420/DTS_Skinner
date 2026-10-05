@@ -82,12 +82,17 @@ left (`static/diabotical-maps/blocks.js`).
   roofs, diagonal walls, stair fences; a_bazaar's tiled roofs, `front / bottom 3`,
   were missing until FORMAT 24; run 41 compared them from above). The game picks among
   a rule's variants at random; the page picks the same way every time.
-  The medina wood posts' pieces (no compiled `.dbm`: the game reads their FBX) keep
-  the artist's layout in the file (bottom -40..0, mid1 0..40, mid 40..80, top
-  80..120) and stand on their cell's corner: the game drops the layout and the page
-  does too (run 43's test map: a standing and a lying post, seen from the side and
-  above; a_bazaar's floating poles). Other medina sets (arches, roof rafters, a few
-  trims) carry layout offsets too and are still drawn as their files place them.
+  The medina pieces (theme/medina: no compiled `.dbm`, the game reads their FBX)
+  are drawn as their geometry stands, without the FBX's node transforms, and stand
+  on their cell's corner rather than its centre. Each file keeps its piece where the
+  artist laid out a sample of the set by moving nodes (the 9-cell arch's left and
+  right tops moved by -160 and +160), which the game ignores (run 44's test map: arches
+  5, 9 and 1 cells wide, a stone gate, a fence, two roofs and a post at each
+  prop's corner, from above and from the front). A 2-cell post is then its arms and
+  bottom plate, both 40 to 80 up, floating as in the game. Until FORMAT 28 these
+  pieces were spread out (a_bazaar's floating arch tops, poles, gate slab, trims and
+  the gaps between the green roofs' rows). About 110 FBX outside theme/medina also
+  have no `.dbm` and moved nodes; they are drawn as before, unmeasured.
   `PATH_flipx` is `PATH` mirrored. Props marked `no_show` (clip boxes and other
   invisible ones) and materials marked `visible false` are left out (also where
   the line comes before the shader's stage: the jump pads' ring band and the

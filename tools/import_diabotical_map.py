@@ -97,7 +97,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 26  # Of the files written per map: maps imported with another are read again.
+FORMAT = 28  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -380,6 +380,13 @@ def decal_matrix(position, rotation, scale, v3=False):
 
 MIRROR = np.diag([1.0, 1.0, -1.0, 1.0])  # Game axes <-> page (and FBX) axes.
 CELL = 40  # A dynamic prop's cell, in units.
+# Models the game reads from their FBX (no compiled .dbm beside them) as the geometry stands, leaving out the Model
+# nodes' transforms, where each FBX keeps its piece where the artist laid a sample of the set out (the 9-cell arch's
+# tops at x -160..-60, -60..100, 100..200 as nodes moved by -160, 0, +160); a dynamic piece of them stands on its
+# cell's corner. Runs 43 and 44 (skinner_l44: medina posts, arches 5, 9 and 1 wide, stone gate, fence; the game's
+# 2-cell post is its arms and bottom plate both 40..80 up). ponytail: theme/medina only (1292 FBX, none with a .dbm);
+# about 110 other FBX without a .dbm have moved nodes too (dynamic_props, props, theme): unmeasured, drawn as before.
+RAW_FBX = 'theme/medina/'
 PICKUPS = re.compile(r'(spawn|hpt|armort|weapon|ammo|jumppad|jp|teleport|tpexit|flag|coin|crystal|doubledamage|tripledamage)')
 
 
@@ -459,9 +466,12 @@ def placements(entities, assets, known=(), pickups=None):
                 for channel, conditions, choices in asset['rules']:
                     if choices and all(rule_holds(c, cell) for c in conditions):
                         chosen[channel] = choices[(number * 7919 + i * 31 + j * 17 + k * 13 + channel) % len(choices)]
-                offset = np.eye(4)
-                offset[:3, 3] = ((i + .5) * CELL, (j + .5) * CELL, (k + .5) * CELL)  # The entity is the prop's corner.
-                pieces += [(choice, base @ offset) for choice in chosen.values()]
+                for choice in chosen.values():
+                    # The entity is the prop's corner. A piece stands on its cell's centre, a theme/medina one on the
+                    # cell's -x -y -z corner (RAW_FBX).
+                    offset = np.eye(4)
+                    offset[:3, 3] = (np.array([i, j, k]) + (0 if assets.get(choice, {}).get('model', choice).lower().startswith(RAW_FBX) else .5)) * CELL
+                    pieces.append((choice, base @ offset))
         else:
             pieces.append((model, game_matrix(position, rotation, scale)))
         for piece, matrix in pieces:
@@ -834,7 +844,7 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
     .shader file at or above the model's folder (many pieces of a dynamic prop share one: trim01b takes trim01a's).
     Models of the `previous` models.json (of this FORMAT) whose file is there are kept unless replacing. A path
     pickup/KIND in `pickups` ({path: (model, scale, centred)}, pickup_kinds) is that model, named and centred as a pickup.
-    Also returns the paths with no readable FBX."""
+    A theme/medina model is its FBX's geometry as it stands (see RAW_FBX). Also returns the paths with no readable FBX."""
     where = {}
     for pack in packs:
         for name in pack.files:
@@ -854,8 +864,9 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         file = 'models\\' + (pickups[path][0] if path in (pickups or {}) else path).replace('/', '\\') + '.fbx'
         try:
             raw = where[file].read(file)
-            target = output / 'models' / f'{hashlib.sha256(raw).hexdigest()[:16]}.bin'
-            groups = fbx_mesh(raw)
+            moved = not path.startswith(RAW_FBX)  # Its own name: files of earlier imports kept the nodes' transforms.
+            target = output / 'models' / f'{hashlib.sha256(raw + (b"" if moved else b"raw")).hexdigest()[:16]}.bin'
+            groups = fbx_mesh(raw, moved)
         except (KeyError, ValueError, IndexError, struct.error, zlib.error):
             missing.append(path)
             continue
@@ -864,16 +875,6 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         own = next((alike(path, folders[f]) for f in ('\\'.join(parts[:n]) for n in range(len(parts), 1, -1)) if f in folders), path)
         names = [next((m for m in (f'{path}_{name}'.lower(), name.lower(), path, (heads or {}).get(path)) if m in materials), own) for name in groups]
         triangles = [np.concatenate(parts, 2) for parts in groups.values()]
-        if path.startswith('theme/medina/dynamic_prop/woodposts/') and triangles:
-            # The medina wood posts' pieces (no .dbm: the game reads the FBX itself) stand on their cell's corner (the
-            # game's -x, -y, -z one: page z is the game's negated), not its centre, and each FBX keeps the piece where
-            # the artist laid the set out (bottom -40..0, mid1 0..40, mid 40..80, top 80..120), which the game drops:
-            # run 43's test map. ponytail: posts only; the same shift on all medina pieces lifted the roofs' rafters
-            # through their tiles (runs 41, 42), so the rule for the other medina sets is still to be measured.
-            low = min(t[..., 1].min() for t in triangles)
-            shift = np.array([-20, -20 - CELL * np.floor((low + .5) / CELL), 20], np.float32)
-            triangles = [np.concatenate([t[..., :3] + shift, t[..., 3:]], -1).astype(np.float32) for t in triangles]
-            target = target.with_name(f'{hashlib.sha256(raw + b"corner").hexdigest()[:16]}.bin')
         if path in (pickups or {}):
             # A pickup's shaders go by the entity's kind (hpt.shader says so): KIND_MATERIAL (after the FBX's
             # namespace:), the model's own, KIND. Groups with none (the melee weebles' arms) are left out.

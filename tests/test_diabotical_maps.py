@@ -417,6 +417,17 @@ class DiaboticalMapsTest(unittest.TestCase):
         self.assertFalse(any(rule_holds(c, cell) for c in ('offset_left is 0', 'offset_bottom % 3 0', 'size_x < 3', 'left empty',
                                                              'offset_front / offset_bottom 2', 'offset_bottom / offset_left 3', 'offset_top is 0')))
 
+    def test_medina_pieces_are_their_raw_geometry_on_the_cell_corner(self):
+        from tools.import_diabotical_map import placements
+        # The game reads a theme/medina FBX without its Model nodes' transforms: the quad's node moves it by 5 in x.
+        positions = fbx_mesh(quad_fbx(), transforms=False)['skin'][0]
+        self.assertEqual((positions[..., 0].min(), positions[..., 0].max()), (0, 10))
+        # Its dynamic pieces stand on their cell's corner, other pieces on its centre.
+        assets = {'strip': {'dynamic': 'true', 'rules': [(0, [], ['theme/medina/post']), (1, [], ['props/post'])]}}
+        props = placements([('prop_a', (0, 0, 0), (0, 0, 0), (2, 1, 1), {'model': 'strip'})], assets)[0]
+        self.assertEqual(sorted(m[3] for m in props['theme/medina/post||']), [0, 40])
+        self.assertEqual(props['props/post||'][0][[3, 7, 11]].tolist(), [20, 20, -20])
+
     def test_pickups_are_drawn_as_their_kinds_models(self):
         from tools.import_diabotical_map import pickup_kinds, placements
         assets = {'hpt1': {'model': 'Entities/Health/hpt1', 'pickup_size': 'large'}, 'weaponsw': {'pivot': '0 0 0', 'scale': '1.4', 'pickup_size': 'large'},
