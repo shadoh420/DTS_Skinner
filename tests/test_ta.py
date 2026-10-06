@@ -67,5 +67,23 @@ class TaImportTest(unittest.TestCase):
                 self.assertEqual(client.post('/import_ta', json={'path': str(root / 'nowhere')}).status_code, 422)
 
 
+class AtRestTest(unittest.TestCase):
+    def test_objects_show_as_the_game_shows_a_shape_at_rest(self):
+        from types import SimpleNamespace as N
+        from tools.export_model import initially_visible
+        # Sequence 1 "visibility" hides the hulk at position 0 (intact) and shows the muzzle flash.
+        shape = N(names=[b'fire\0', b'visibility\0'], sequences=[N(name_index=0), N(name_index=1)],
+                  sub_sequences=[N(sequence_idx=1, num_key_frames=2, first_key_frame=0),
+                                 N(sequence_idx=1, num_key_frames=1, first_key_frame=2),
+                                 N(sequence_idx=0, num_key_frames=1, first_key_frame=3)],
+                  keyframes=[N(mat_index=0x4000), N(mat_index=0xc000), N(mat_index=0xc000), N(mat_index=0x4000)])
+        obj = lambda flags, first, count: N(flags=flags, first_sub_seq=first, num_sub_seq=count)
+        self.assertTrue(initially_visible(shape, obj(0, 0, 0)))
+        self.assertFalse(initially_visible(shape, obj(1, 0, 0)))  # DefaultInvisible
+        self.assertFalse(initially_visible(shape, obj(0, 0, 1)))  # Hulk
+        self.assertTrue(initially_visible(shape, obj(1, 1, 1)))
+        self.assertFalse(initially_visible(shape, obj(1, 2, 1)))  # Only "visibility" counts at rest.
+
+
 if __name__ == '__main__':
     unittest.main()
