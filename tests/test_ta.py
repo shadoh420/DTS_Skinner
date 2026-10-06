@@ -82,6 +82,7 @@ class TvImportTest(unittest.TestCase):
             (pack / 'base/chaingun.bmp').write_bytes(b'PBMP' + struct.pack('<I', 0) + b'head' + struct.pack('<I5i', 20, 3, 4, 4, 8, 0)
                                                      + b'data' + struct.pack('<I', 16) + pixels)
             Image.new('RGBA', (4, 4), 'red').save(pack / 'replacements/DISC.tga')
+            Image.new('RGB', (4, 4), 'blue').save(pack / 'DISC.tga')  # An extra skin.
             Image.new('RGB', (4, 4), 'white').save(stock / 'pulse.png')
 
             self.assertEqual(import_tv(pack, output, stock), dict(entries=2, ready=2, missing=[]))
@@ -92,7 +93,7 @@ class TvImportTest(unittest.TestCase):
             self.assertEqual((disc['material_textures'][0], disc['material_texture_games'][0]), ('DISC.png', 'tv'))
             gun = load_model_data(output / 'model_json/beagle_chaingun.json')
             self.assertEqual(gun['material_texture_games'][:2], ['tv', 't1'])
-            self.assertEqual(sorted(p.name for p in (output / 'textures').iterdir()), ['DISC.png', 'chaingun.png'])
+            self.assertEqual(sorted(p.name for p in (output / 'textures').iterdir()), ['DISC.alt.png', 'DISC.png', 'chaingun.png'])
             from tools.import_tv import PALETTE
             self.assertEqual(Image.open(output / 'textures/chaingun.png').getpixel((0, 0)), tuple(PALETTE[0][3:6]))
 

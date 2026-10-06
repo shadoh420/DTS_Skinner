@@ -15,8 +15,8 @@ PALETTE = (list((pathlib.Path(__file__).parent / 't1_shape_palette_1136.rgb').re
 def import_catalog(pack, output, t1_textures):
     """Every .dts in `pack`/base is a model named after the file; every one in `pack`/armors/<team> is one named
     <team>_<file>. Skins are the HudBot replacements (`pack`/replacements/*.tga), stored as PNGs in output/textures
-    (kept when already there, so edits survive). A `pack`/base .bmp with no replacement (a palettised PBMP) is decoded
-    with PALETTE. Other slots take the stock Tribes 1 texture of that name when there is one."""
+    (kept when already there, so edits survive); a .tga in `pack` itself is an extra skin, stored as <name>.alt.png. A
+    `pack`/base .bmp with no replacement (a palettised PBMP) is decoded with PALETTE. Other slots take the stock Tribes 1 texture of that name when there is one."""
     pack, output = pathlib.Path(pack), pathlib.Path(output)
     models = sorted((f.stem.lower(), f.stem, f) for f in (pack / 'base').glob('*') if f.suffix.lower() == '.dts') + \
         sorted((f'{f.parent.name}_{f.stem}'.lower(), f'{f.parent.name} {f.stem}', f)
@@ -32,6 +32,10 @@ def import_catalog(pack, output, t1_textures):
         if not (output / 'textures' / stored).exists():
             with Image.open(tga) as image:
                 image.save(output / 'textures' / stored)
+    for tga in sorted(pack.glob('*.tga')):  # Extra skins beside a replacement of the same name (Anubis's flag).
+        if not (output / 'textures' / (tga.stem + '.alt.png')).exists():
+            with Image.open(tga) as image:
+                image.save(output / 'textures' / (tga.stem + '.alt.png'))
     for bmp in sorted((pack / 'base').glob('*.bmp')):
         stored = bmp.stem + '.png'
         if stored.lower() not in own:
