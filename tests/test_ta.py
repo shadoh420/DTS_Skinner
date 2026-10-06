@@ -67,6 +67,39 @@ class TaImportTest(unittest.TestCase):
                 self.assertEqual(client.post('/import_ta', json={'path': str(root / 'nowhere')}).status_code, 422)
 
 
+class TvImportTest(unittest.TestCase):
+    def test_base_and_team_armor_models_take_the_hudbot_replacements(self):
+        from tools.import_tv import import_catalog as import_tv
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pack, stock, output = root / 'pack', root / 'stock', root / 'local/tv'
+            for folder in ('base', 'armors/beagle', 'replacements', 'stock'):
+                (root / ('stock' if folder == 'stock' else f'pack/{folder}')).mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(DTS / 'disc.DTS', pack / 'base/Disc.DTS')
+            shutil.copyfile(DTS / 'chaingun.DTS', pack / 'armors/beagle/chaingun.DTS')
+            (pack / 'base/disc.bmp').write_bytes(b'PBMP')  # No palette: never read.
+            Image.new('RGBA', (4, 4), 'red').save(pack / 'replacements/DISC.tga')
+            Image.new('RGB', (4, 4), 'white').save(stock / 'pulse.png')
+
+            self.assertEqual(import_tv(pack, output, stock), dict(entries=2, ready=2, missing=['chaingun.png']))
+            catalog = json.loads((output / 'catalog.json').read_text())
+            self.assertEqual([(e['model_name'], e['display_name']) for e in catalog],
+                             [('disc', 'Disc'), ('beagle_chaingun', 'beagle chaingun')])
+            disc = load_model_data(output / 'model_json/disc.json')
+            self.assertEqual((disc['material_textures'][0], disc['material_texture_games'][0]), ('DISC.png', 'tv'))
+            gun = load_model_data(output / 'model_json/beagle_chaingun.json')
+            self.assertEqual(gun['material_texture_games'][:2], ['tv', 't1'])
+            self.assertEqual(sorted(p.name for p in (output / 'textures').iterdir()), ['DISC.png'])
+
+            with patch('app.tv_dir', output):
+                client = app.test_client()
+                self.assertEqual(len(client.get('/list_models?game=tv').json), 2)
+                self.assertEqual(client.get('/texture/DISC.png?game=tv').status_code, 200)
+                glb = client.get('/export_glb/beagle_chaingun?game=tv')
+                self.assertEqual((glb.status_code, glb.data[:4]), (200, b'glTF'))
+                self.assertEqual(client.post('/import_tv', json={'path': str(root / 'nowhere')}).status_code, 422)
+
+
 class AtRestTest(unittest.TestCase):
     def test_objects_show_as_the_game_shows_a_shape_at_rest(self):
         from types import SimpleNamespace as N

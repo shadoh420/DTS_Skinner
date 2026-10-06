@@ -37,28 +37,36 @@ def import_catalog(pack, output, t1_textures):
             own[png.name.lower()] = stored
             if not (output / 'textures' / stored).exists():
                 shutil.copyfile(png, output / 'textures' / stored)
-        # The exporter keys player-armor handling and its output name off the DTS file's own name.
-        with tempfile.TemporaryDirectory() as temp, contextlib.redirect_stdout(io.StringIO()):
-            export_dts(dts, temp)
-            data = json.loads((pathlib.Path(temp) / (dts.stem + '.json')).read_text(encoding='utf-8'))
-        slots, games = [], []
-        for slot in data['material_textures'] or [f'{dts.stem}.png']:
-            if slot.lower() in own:
-                slots.append(own[slot.lower()]); games.append('ta')
-            elif slot.lower() in stock:
-                slots.append(stock[slot.lower()]); games.append('t1')
-            else:
-                slots.append(slot); games.append('ta')
-                if not slot.startswith('['):
-                    missing.add(slot)
-        data.update(game='ta', material_textures=slots, material_texture_games=games, source=f'{folder.name}/{dts.name}')
-        (output / 'model_json' / f'{name}.json').write_text(json.dumps(data), encoding='utf-8')
-        (output / 'dts' / name).mkdir(exist_ok=True)
-        shutil.copyfile(dts, output / 'dts' / name / dts.name)
-        entries.append(dict(model_name=name, display_name=folder.name, texture_name=slots[0], game='ta',
-                            category='TA conversions', status='ready' if data['vertices'] else 'no visible geometry'))
+        entry, lost = add_model(dts, name, folder.name, own, stock, output, 'ta', 'TA conversions')
+        entries.append(entry); missing |= lost
     (output / 'catalog.json').write_text(json.dumps(entries, indent=1), encoding='utf-8')
     return dict(entries=len(entries), ready=sum(e['status'] == 'ready' for e in entries), missing=sorted(missing))
+
+
+def add_model(dts, name, display_name, own, stock, output, game, category):
+    """Writes model `name` from `dts` into output (preview JSON and a copy of the DTS) and returns its catalog entry and
+    the slot textures found nowhere. `own` maps a slot name (lower case) to the pack texture stored for it; other
+    slots take the stock Tribes 1 texture `stock` names (lower case -> file name)."""
+    # The exporter keys player-armor handling and its output name off the DTS file's own name.
+    with tempfile.TemporaryDirectory() as temp, contextlib.redirect_stdout(io.StringIO()):
+        export_dts(dts, temp)
+        data = json.loads((pathlib.Path(temp) / (dts.stem + '.json')).read_text(encoding='utf-8'))
+    slots, games, missing = [], [], set()
+    for slot in data['material_textures'] or [f'{dts.stem}.png']:
+        if slot.lower() in own:
+            slots.append(own[slot.lower()]); games.append(game)
+        elif slot.lower() in stock:
+            slots.append(stock[slot.lower()]); games.append('t1')
+        else:
+            slots.append(slot); games.append(game)
+            if not slot.startswith('['):
+                missing.add(slot)
+    data.update(game=game, material_textures=slots, material_texture_games=games, source=dts.relative_to(dts.parents[1]).as_posix())
+    (output / 'model_json' / f'{name}.json').write_text(json.dumps(data), encoding='utf-8')
+    (output / 'dts' / name).mkdir(exist_ok=True)
+    shutil.copyfile(dts, output / 'dts' / name / dts.name)
+    return dict(model_name=name, display_name=display_name, texture_name=slots[0], game=game, category=category,
+                status='ready' if data['vertices'] else 'no visible geometry'), missing
 
 
 def dts_source(output, name):
