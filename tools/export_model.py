@@ -100,8 +100,9 @@ def get_world_transform_for_node(node_idx_param, shape_obj, target_anim_info, mo
     q_tuple_raw, local_t_data, local_s_data = (0,0,0,32767), (0.0,0.0,0.0), (1.0,1.0,1.0)
     transform_source_is_animated = False
     
-    if target_anim_info:
-        target_anim_sequence_idx, use_last_keyframe = target_anim_info
+    for target_anim_sequence_idx, use_last_keyframe in target_anim_info or ():
+        # The first posing sequence that animates this node places it (the engine runs them as parallel threads).
+        if transform_source_is_animated: break
         if 0 <= target_anim_sequence_idx < shape_obj.num_seq:
             for i in range(current_node.num_sub_seq):
                 sub_seq_idx_abs = current_node.first_sub_seq + i
@@ -174,8 +175,10 @@ def main(dts_file_path_str, output_json_dir_str):
         raise RuntimeError(f"Error loading DTS file {dts_file_path.name} with dts_module: {e}") from e
 
     # ... (target_anim_for_pose_info logic - no change) ...
-    target_anim_for_pose_info = None
-    preferred_sequences_config = [("activation", True),("root", False), ("ambient", False), ("idle", False)]
+    target_anim_for_pose_info = ()
+    # Deployed and powered as in play: deployables open on "deploy", turrets rise on "power" (unpowered they sit
+    # retracted in their base). Each node takes its pose from the first of these that animates it.
+    preferred_sequences_config = [("activation", True), ("deploy", True), ("power", True), ("root", False), ("ambient", False), ("idle", False)]
     if shape.num_seq > 0:
         found_preferred = False
         for preferred_name, use_last_kf in preferred_sequences_config:
@@ -185,13 +188,13 @@ def main(dts_file_path_str, output_json_dir_str):
                         seq_name_bytes = shape.names[seq_obj.name_index]
                         seq_name = seq_name_bytes.split(b'\x00')[0].decode('utf-8', 'ignore').lower().strip()
                         if seq_name == preferred_name:
-                            target_anim_for_pose_info = (seq_idx, use_last_kf)
+                            # A looping sequence (an ammo unit's spin) has no end state: its start is the pose.
+                            target_anim_for_pose_info += ((seq_idx, use_last_kf and not seq_obj.cyclic),)
                             print(f"Found preferred sequence '{seq_name}' (idx {seq_idx}, use_last_kf={use_last_kf}) for base pose of {dts_file_path.name}.")
                             found_preferred = True; break
                     except Exception: pass
-            if found_preferred: break
         if not found_preferred and shape.num_seq > 0 :
-            target_anim_for_pose_info = (0, False)
+            target_anim_for_pose_info = ((0, False),)
             print(f"No preferred sequence. Using first keyframe of seq 0 for {dts_file_path.name}.")
     else: print(f"No animation sequences in {dts_file_path.name}. Using default node transforms.")
 
