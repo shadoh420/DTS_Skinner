@@ -13,10 +13,21 @@ except ImportError as e:
     print(f"       Ensure 'dts_module' directory is in {project_root} and has an __init__.py if needed.")
     raise
 
-# --- Player Model Stems ---
-PLAYER_MODEL_STEMS = {"larmor", "lfemale", "marmor", "mfemale", "harmor"}
-
 # --- Helper Functions ---
+def initially_visible(shape, obj):
+    """Whether the game shows an object on a shape at rest: not when flagged DefaultInvisible, and a "visibility"
+    sequence overrides that at position 0 (StaticBase's damage thread holds it there while the shape is intact)."""
+    shown = not (obj.flags & 1)
+    names = [shape.names[s.name_index].split(b'\0')[0].lower() for s in shape.sequences]
+    if b'visibility' in names:
+        for sub in shape.sub_sequences[obj.first_sub_seq:obj.first_sub_seq + obj.num_sub_seq]:
+            if sub.sequence_idx == names.index(b'visibility') and sub.num_key_frames:
+                key = shape.keyframes[sub.first_key_frame]
+                if key.mat_index & 0x4000:
+                    shown = bool(key.mat_index & 0x8000)
+    return shown
+
+
 def get_all_descendant_nodes(shape_nodes, root_node_idx_param):
     # ... (no change) ...
     nodes_in_lod_set = set()
@@ -70,19 +81,6 @@ def transform_vertex_by_matrix(matrix, vertex):
     res_z = matrix[2][0]*x + matrix[2][1]*y + matrix[2][2]*z + matrix[2][3]
     return (res_x,res_y,res_z)
 
-def invert_affine_matrix(m):
-    # ... (no change) ...
-    inv = [[0.0]*4 for _ in range(4)]
-    inv[0][0],inv[1][0],inv[2][0] = m[0][0],m[0][1],m[0][2]
-    inv[0][1],inv[1][1],inv[2][1] = m[1][0],m[1][1],m[1][2]
-    inv[0][2],inv[1][2],inv[2][2] = m[2][0],m[2][1],m[2][2]
-    tx,ty,tz = m[0][3],m[1][3],m[2][3]
-    inv[0][3]=-(inv[0][0]*tx + inv[0][1]*ty + inv[0][2]*tz)
-    inv[1][3]=-(inv[1][0]*tx + inv[1][1]*ty + inv[1][2]*tz)
-    inv[2][3]=-(inv[2][0]*tx + inv[2][1]*ty + inv[2][2]*tz)
-    inv[3][3]=1.0
-    return inv
-
 def transpose_rotation_in_4x4(m):
     """Transposes the upper-left 3x3 part of a 4x4 matrix."""
     return [
@@ -102,8 +100,9 @@ def get_world_transform_for_node(node_idx_param, shape_obj, target_anim_info, mo
     q_tuple_raw, local_t_data, local_s_data = (0,0,0,32767), (0.0,0.0,0.0), (1.0,1.0,1.0)
     transform_source_is_animated = False
     
-    if target_anim_info:
-        target_anim_sequence_idx, use_last_keyframe = target_anim_info
+    for target_anim_sequence_idx, use_last_keyframe in target_anim_info or ():
+        # The first posing sequence that animates this node places it (the engine runs them as parallel threads).
+        if transform_source_is_animated: break
         if 0 <= target_anim_sequence_idx < shape_obj.num_seq:
             for i in range(current_node.num_sub_seq):
                 sub_seq_idx_abs = current_node.first_sub_seq + i
@@ -142,9 +141,8 @@ def get_world_transform_for_node(node_idx_param, shape_obj, target_anim_info, mo
             
     local_node_matrix = get_matrix_from_quat_trans(q_tuple_raw, local_t_data, local_s_data)
 
-    if model_stem in PLAYER_MODEL_STEMS:
-        # print(f"DEBUG: Transposing rotation for node {node_idx_param} in player model {model_stem}")
-        local_node_matrix = transpose_rotation_in_4x4(local_node_matrix)
+    # DarkStar multiplies row vectors (point * matrix, world = local * parent), so every shape's rotations act transposed.
+    local_node_matrix = transpose_rotation_in_4x4(local_node_matrix)
 
     if current_node.parent_node == -1 or current_node.parent_node == node_idx_param:
         final_world_matrix = local_node_matrix
@@ -177,8 +175,10 @@ def main(dts_file_path_str, output_json_dir_str):
         raise RuntimeError(f"Error loading DTS file {dts_file_path.name} with dts_module: {e}") from e
 
     # ... (target_anim_for_pose_info logic - no change) ...
-    target_anim_for_pose_info = None
-    preferred_sequences_config = [("activation", True),("root", False), ("ambient", False), ("idle", False)]
+    target_anim_for_pose_info = ()
+    # Deployed and powered as in play: deployables open on "deploy", turrets rise on "power" (unpowered they sit
+    # retracted in their base). Each node takes its pose from the first of these that animates it.
+    preferred_sequences_config = [("activation", True), ("deploy", True), ("power", True), ("root", False), ("ambient", False), ("idle", False)]
     if shape.num_seq > 0:
         found_preferred = False
         for preferred_name, use_last_kf in preferred_sequences_config:
@@ -188,13 +188,13 @@ def main(dts_file_path_str, output_json_dir_str):
                         seq_name_bytes = shape.names[seq_obj.name_index]
                         seq_name = seq_name_bytes.split(b'\x00')[0].decode('utf-8', 'ignore').lower().strip()
                         if seq_name == preferred_name:
-                            target_anim_for_pose_info = (seq_idx, use_last_kf)
+                            # A looping sequence (an ammo unit's spin) has no end state: its start is the pose.
+                            target_anim_for_pose_info += ((seq_idx, use_last_kf and not seq_obj.cyclic),)
                             print(f"Found preferred sequence '{seq_name}' (idx {seq_idx}, use_last_kf={use_last_kf}) for base pose of {dts_file_path.name}.")
                             found_preferred = True; break
                     except Exception: pass
-            if found_preferred: break
         if not found_preferred and shape.num_seq > 0 :
-            target_anim_for_pose_info = (0, False)
+            target_anim_for_pose_info = ((0, False),)
             print(f"No preferred sequence. Using first keyframe of seq 0 for {dts_file_path.name}.")
     else: print(f"No animation sequences in {dts_file_path.name}. Using default node transforms.")
 
@@ -225,8 +225,8 @@ def main(dts_file_path_str, output_json_dir_str):
                 try: bounds_s_actual = (float(bounds_node_transform_data.scale), float(bounds_node_transform_data.scale), float(bounds_node_transform_data.scale))
                 except: pass # Keep (1,1,1) if conversion fails
         bounds_matrix = get_matrix_from_quat_trans(bounds_q_raw, bounds_t, bounds_s_actual)
-        if bounds_s_actual != (1.0,1.0,1.0): print(f"WARNING: Bounds node for {dts_file_path.name} has non-identity scale {bounds_s_actual}. Simplified 'invert_affine_matrix' might be inaccurate.")
-        inverse_bounds_matrix = invert_affine_matrix(bounds_matrix)
+        # The engine draws the root's rotation too (TS::ShapeInstance fRootDeltaTransform): only its offset is removed.
+        inverse_bounds_matrix = [[1,0,0,-bounds_matrix[0][3]],[0,1,0,-bounds_matrix[1][3]],[0,0,1,-bounds_matrix[2][3]],[0,0,0,1]]
         print(f"Applied inverse transform of bounds node for {dts_file_path.name}.")
     else: print(f"INFO: Could not get bounds node transform for {dts_file_path.name}. Using identity for inverse_bounds_matrix.")
 
@@ -292,8 +292,7 @@ def main(dts_file_path_str, output_json_dir_str):
         if current_obj.node_index not in selected_lod_nodes: continue
         if current_obj.mesh_index < 0 or current_obj.mesh_index >= shape.num_meshes: continue
         
-        OBJECT_IS_INITIALLY_INVISIBLE_FLAG = 0x1
-        # if hasattr(current_obj, 'flags') and (current_obj.flags & OBJECT_IS_INITIALLY_INVISIBLE_FLAG): continue
+        if not initially_visible(shape, current_obj): continue  # Muzzle flashes, destroyed hulks.
             
         mesh_to_process = shape.meshes[current_obj.mesh_index]
         # --- ADD THIS CHECK ---

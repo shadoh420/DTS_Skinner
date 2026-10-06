@@ -19,7 +19,7 @@ if __package__ in (None, ''):
 import numpy as np
 
 from dts_module import dts
-from tools.export_model import (PLAYER_MODEL_STEMS, get_all_descendant_nodes,
+from tools.export_model import (get_all_descendant_nodes, initially_visible,
                                 get_matrix_from_quat_trans,
                                 transpose_rotation_in_4x4)
 
@@ -74,7 +74,7 @@ def _quaternion(transform):
     return value / norm if norm > 1e-8 else np.array([0., 0., 0., 1.])
 
 
-def _matrix(a, b=None, weight=0., armor=False):
+def _matrix(a, b=None, weight=0.):
     b = a if b is None else b
     qa, qb = _quaternion(a), _quaternion(b)
     dot = float(qa @ qb)
@@ -89,10 +89,8 @@ def _matrix(a, b=None, weight=0., armor=False):
     q /= np.linalg.norm(q)
     translation = np.array(a.translate) * (1 - weight) + np.array(b.translate) * weight
     scale = np.array(a.scale) * (1 - weight) + np.array(b.scale) * weight
-    matrix = get_matrix_from_quat_trans(q * 32767, translation, scale)
-    if armor:
-        matrix = transpose_rotation_in_4x4(matrix)
-    return np.array(matrix)
+    # DarkStar multiplies row vectors, so rotations act transposed (as in tools/export_model.py).
+    return np.array(transpose_rotation_in_4x4(get_matrix_from_quat_trans(q * 32767, translation, scale)))
 
 
 def load_animated_model(name, source_path, preview_data):
@@ -115,7 +113,6 @@ def load_animated_model(name, source_path, preview_data):
         metadata['animation_status'] = 'Source DTS has no sequences'
         return result
 
-    armor = name.casefold() in PLAYER_MODEL_STEMS
     selected = set(range(len(shape.nodes)))
     if shape.details:
         detail = max(shape.details, key=lambda item: item.size)
@@ -124,6 +121,7 @@ def load_animated_model(name, source_path, preview_data):
         selected |= get_all_descendant_nodes(shape.nodes, shape.always_node)
     objects = [obj for obj in shape.objects if obj.node_index in selected
                and 0 <= obj.mesh_index < len(shape.meshes)]
+    at_rest = {id(obj): initially_visible(shape, obj) for obj in objects}
     # Each material group keeps a stable vertex/UV pair mapping in every pose.
     bindings, indices, uvs, groups = [], [], [], []
     materials = result['material_textures']
@@ -151,9 +149,11 @@ def load_animated_model(name, source_path, preview_data):
                                    materialIndex=material if material < len(materials) else 0))
     if not bindings:
         raise ValueError('T1 animation source has no selected render geometry')
-    bounds = _matrix(shape.transforms[shape.nodes[0].transform_index])
+    # Only the root's offset is removed: the engine draws its rotation (as tools/export_model.py does).
+    recentre = np.eye(4)
+    recentre[:3, 3] = -np.array(shape.transforms[shape.nodes[0].transform_index].translate)
     conversion = np.array([[1, 0, 0, 0], [0, 0, 1, 0],
-                           [0, -1, 0, 0], [0, 0, 0, 1]]) @ np.linalg.inv(bounds)
+                           [0, -1, 0, 0], [0, 0, 0, 1]]) @ recentre
     limitations = ['Baked geometry animation; editable skeleton, triggers, transition blending and IFL/UV animation are not exported.']
     if any(s.num_ifl_subsequences for s in shape.sequences):
         limitations.append('Source has IFL material animation; exported textures retain the preview binding.')
@@ -177,10 +177,10 @@ def load_animated_model(name, source_path, preview_data):
             if keys:
                 a, b, weight = _keys(keys, position, loop)
                 local = _matrix(shape.transforms[a.key_value],
-                                shape.transforms[b.key_value], weight, armor)
+                                shape.transforms[b.key_value], weight)
                 shown = bool(a.mat_index & 0x8000) if shape.version >= 7 else True
             else:
-                local = _matrix(shape.transforms[node.transform_index], armor=armor)
+                local = _matrix(shape.transforms[node.transform_index])
             parent = node.parent_node
             if parent >= 0 and parent != index:
                 local = world(parent) @ local
@@ -196,7 +196,7 @@ def load_animated_model(name, source_path, preview_data):
             transform = transform.copy()
             transform[:3, 3] += transform[:3, :3] @ np.array(offset)
             mesh = shape.meshes[obj.mesh_index]
-            frame, shown = 0, not (obj.flags & 1)
+            frame, shown = 0, at_rest[id(obj)]
             keys = object_tracks[id(obj)]
             if keys:
                 key = _keys(keys, position, loop)[0]

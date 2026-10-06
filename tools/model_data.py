@@ -32,8 +32,8 @@ def model_sort_key(name):
 
 # Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
 # tools/import_reflex_map.py; textures only).
-TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical')
-MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex')
+TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv')
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv')
 
 
 def material_texture_refs(data, material_overrides=None):
