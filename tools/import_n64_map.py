@@ -18,7 +18,8 @@ GAMES = {
                     'skedarruinsbattleshrine skedar pipes ravine g5building sewers warehouse grid ruins area52 base fortress villa '
                     'carpark templepd complexpd felicity',
     'Diddy Kong Racing': 'ancientlake bouldercanyon crescentisland darkmooncaverns darkwaterbeach dinodomain dragonforest '
-                         'everfrostpeak fossilcanyon frostyvillage futurefunland greenwoodvillage hauntedwoods firemountain centralarea',
+                         'everfrostpeak fossilcanyon frostyvillage futurefunland greenwoodvillage hauntedwoods firemountain centralarea '
+                         'smokeyscourse horeshoegulch',
     'Super Smash Bros.': 'planetzebes',
 }
 GAME_OF = {name: game for game, names in GAMES.items() for name in names.split()}
