@@ -408,6 +408,15 @@ window.addEventListener('DOMContentLoaded', () => {
     $('viewSelect').value = 'perspective';
     return loadModel(false);
   }
+  // Whether any texel is see-through. T1 models keep no material flags, but a Tribes 1.40 PNG's tRNS/alpha is the
+  // texture's coverage (tree leaves, translucent in the game), so it decides.
+  function hasAlpha(image) {
+    const context = Object.assign(document.createElement('canvas'), {width: image.width, height: image.height}).getContext('2d');
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, image.width, image.height).data;
+    for (let index = 3; index < pixels.length; index += 4) if (pixels[index] < 255) return true;
+    return false;
+  }
   async function makeTexture(name, gameId, signal, flags, settings, textureGame, transform) {
     const response = await fetch(textureUrl(name, textureGame, transform), {cache: 'no-store', signal});
     if (!response.ok) throw new Error(`Missing texture: ${name}`);
@@ -415,6 +424,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const bitmap = await createImageBitmap(await response.blob(), {premultiplyAlpha: 'none'});
     const texture = new THREE.Texture(bitmap);
     texture.needsUpdate = true;
+    if (textureGame === 't1') texture.userData.alpha = hasAlpha(bitmap);
     texture.flipY = false;
     texture.magFilter = THREE.NearestFilter;
     texture.minFilter = THREE.NearestFilter;
@@ -516,11 +526,11 @@ window.addEventListener('DOMContentLoaded', () => {
         const key = textureKey(index), flags = gameId === 't2' ? flagsFor(index) : 0;
         const map = cache.has(key) ? await cache.get(key) : null;
         const Material = $('lighting').checked && !(flags & 32) ? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
-        const transparent = Boolean(flags & (4 | 8 | 16));
+        const transparent = Boolean(flags & (4 | 8 | 16)) || Boolean(map && map.userData.alpha);
         newMaterials.push(new Material({
           name: filename, map, vertexColors: Boolean(model.colors), color: map ? 0xffffff : failures.has(textureId(filename, sourceGame(model, index))) ? 0xcc00cc : 0x999999,
           side: THREE.DoubleSide, wireframe: $('wireframe').checked,
-          transparent, depthWrite: !transparent,
+          transparent, depthWrite: !transparent, alphaTest: map && map.userData.alpha ? .02 : 0,
           blending: flags & 8 ? THREE.AdditiveBlending : flags & 16 ? THREE.SubtractiveBlending : THREE.NormalBlending
         }));
         // Diabotical's and Reflex's imports write the same shader settings for their cutout (foliage) and blended materials.

@@ -30,6 +30,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       texture.flipY = false;
       texture.anisotropy = 8;
       if (repeat) texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      // Whether any texel is see-through: a Tribes 1.40 PNG's tRNS/alpha is its coverage (tree leaves).
+      const {width, height} = texture.image, context = Object.assign(document.createElement('canvas'), {width, height}).getContext('2d');
+      context.drawImage(texture.image, 0, 0);
+      texture.userData.alpha = context.getImageData(0, 0, width, height).data.some((value, index) => index % 4 === 3 && value < 255);
       resolve(texture);
     }, undefined, () => { missing++; resolve(null); })));
     return textures.get(url);
@@ -123,7 +127,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       const materials = await Promise.all(model.material_textures.map(async file => {
         const blank = file.startsWith('[');
         const texture = blank || !file ? null : await loadTexture(pack ? data + 'textures/' + file : `/texture/${encodeURIComponent(file)}?game=t1`, true);
-        return new THREE.MeshLambertMaterial({map: texture, color: texture ? 0xffffff : blank ? 0x999999 : 0xcc00cc, side: THREE.DoubleSide});
+        // Catalog models keep no material flags; a texture with alpha is blended by it, as the game draws its leaves.
+        const transparent = Boolean(texture && texture.userData.alpha);
+        return new THREE.MeshLambertMaterial({map: texture, color: texture ? 0xffffff : blank ? 0x999999 : 0xcc00cc, side: THREE.DoubleSide,
+          transparent, depthWrite: !transparent, alphaTest: transparent ? .02 : 0});
       }));
       return {geometry, materials};
     })());
@@ -240,7 +247,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       const lightMap = object.light && await loadLightMap(object.light);
       // The mission lightmap already holds the sun and the building's own lights: texture × lightmap, no scene lights.
       mesh = new THREE.Mesh(model.geometry, !lightMap ? model.materials : model.materials.map(material => new THREE.MeshBasicMaterial(
-        {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap})));
+        {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap,
+          transparent: material.transparent, depthWrite: material.depthWrite, alphaTest: material.alphaTest})));
     } catch (_) { missing++; mesh = new THREE.Mesh(placeholder, magenta); }
     mesh.name = object.name;
     mesh.applyMatrix4(matrix);
