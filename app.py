@@ -29,6 +29,7 @@ from tools.import_diabotical_models import import_catalog as import_diabotical_c
 from tools.import_reflex_models import import_catalog as import_reflex_catalog
 from tools.import_ta import import_catalog as import_ta_catalog, dts_source as ta_dts_source
 from tools.import_tv import import_catalog as import_tv_catalog
+from tools.import_t1_mod import import_catalog as import_t1_mod
 
 # --- System Tray Imports ---
 try:
@@ -66,8 +67,10 @@ local_data_dir = LOCAL_DATA
 q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
-ta_dir = local_data_dir / 'ta'
-tv_dir = local_data_dir / 'tv'
+# Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg')}
+# The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
+T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
 
 # Source directories (can be used by list_models for discovery if desired, but not for on-demand export)
@@ -325,8 +328,8 @@ def game_textures(game):
         return local_data_dir / 'reflex-maps' / 'textures'
     if game == 'diabotical':
         return diabotical_dir / 'textures'
-    if game in ('ta', 'tv'):
-        return {'ta': ta_dir, 'tv': tv_dir}[game] / 'textures'
+    if game in pack_dirs:
+        return pack_dirs[game] / 'textures'
     return q3_dir / 'textures' if game == 'q3' else textures_dir / "t2" if game == "t2" else textures_dir
 
 
@@ -345,8 +348,8 @@ def model_path(name):
         if not any(entry['model_name']==name and entry['status']=='ready' for entry in entries):
             abort(404, 'Model is not available in the current Q3 catalog.')
         directory = active / 'model_json'
-    if selected_game() in ('diabotical', 'reflex', 'ta', 'tv'):
-        directory = {'diabotical': diabotical_dir, 'reflex': reflex_models_dir, 'ta': ta_dir, 'tv': tv_dir}[selected_game()] / 'model_json'  # Entries with no preview have no file.
+    if selected_game() in ('diabotical', 'reflex', *pack_dirs):
+        directory = {'diabotical': diabotical_dir, 'reflex': reflex_models_dir, **pack_dirs}[selected_game()] / 'model_json'  # Entries with no preview have no file.
     path = directory / (name + ".json")
     if not path.is_file():
         abort(404, "Model has no supported preview geometry; see catalog coverage.")
@@ -425,9 +428,9 @@ def texture_versions():
 
 @app.route("/list_models")
 def list_models():
-    if selected_game() in ("t2", "q3", "diabotical", "reflex", "ta", "tv"):
+    if selected_game() in ("t2", "q3", "diabotical", "reflex", *pack_dirs):
         catalog = {'q3': current_import(q3_dir) / 'catalog.json', 'diabotical': diabotical_dir / 'catalog.json',
-                   'reflex': reflex_models_dir / 'catalog.json', 'ta': ta_dir / 'catalog.json', 'tv': tv_dir / 'catalog.json'}.get(selected_game(), static_dir / "t2" / "catalog.json")
+                   'reflex': reflex_models_dir / 'catalog.json', **{g: d / 'catalog.json' for g, d in pack_dirs.items()}}.get(selected_game(), static_dir / "t2" / "catalog.json")
         if not catalog.exists():
             return jsonify([])
         entries = json.loads(catalog.read_text(encoding="utf-8"))
@@ -519,6 +522,9 @@ def import_reflex():
 
 @app.route('/import_ta', methods=['POST'])
 @app.route('/import_tv', methods=['POST'])
+@app.route('/import_trpg', methods=['POST'])
+@app.route('/import_sw', methods=['POST'])
+@app.route('/import_rm', methods=['POST'])
 def import_conversion_pack():
     game = request.path.removeprefix('/import_')
     if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
@@ -527,12 +533,14 @@ def import_conversion_pack():
         return jsonify(error='Expected a small JSON import request.'), 400
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
-        return jsonify(error=f'Enter the {game.upper()} conversion pack folder.'), 400
+        return jsonify(error=f'Enter the {game.upper()} folder.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
+        if game in T1_MODS:
+            return jsonify(import_t1_mod(payload['path'].strip(), pack_dirs[game], textures_dir, game, T1_MODS[game]))
         importer = {'ta': import_ta_catalog, 'tv': import_tv_catalog}[game]
-        return jsonify(importer(payload['path'].strip(), {'ta': ta_dir, 'tv': tv_dir}[game], textures_dir))
+        return jsonify(importer(payload['path'].strip(), pack_dirs[game], textures_dir))
     except (OSError, ValueError, KeyError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
@@ -568,15 +576,16 @@ def export_glb(model_name):
         elif game == 't1':
             from tools.animate_t1 import load_animated_model
             data = load_animated_model(model_name, None, preview)
-        elif game in ('ta', 'tv'):
+        elif game in ('ta', 'tv', *T1_MODS):
             from tools.animate_t1 import load_animated_model
-            source = ta_dts_source({'ta': ta_dir, 'tv': tv_dir}[game], model_name)
+            source = ta_dts_source(pack_dirs[game], model_name)
             try:
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex'):
-            data = dict(preview, animation_clips=[], animation_status='static')  # Props and pickups do not animate.
+        elif game in ('diabotical', 'reflex', 't2rpg'):
+            # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
+            data = dict(preview, animation_clips=[], animation_status='static')
         else:
             from tools.animate_t2 import load_animated_model
             data = load_animated_model(model_name, None, preview)

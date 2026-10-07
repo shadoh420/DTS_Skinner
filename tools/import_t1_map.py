@@ -272,7 +272,10 @@ def read_palettes(data):
     return palettes, list(colours[haze * 4:haze * 4 + 3]) if 0 <= haze < 256 and colours else None
 
 
-SHAPE_PALETTE = (list((Path(__file__).parent / 't1_shape_palette_1136.rgb').read_bytes()), [255] * 256)
+# The palettes every Tribes 1.11 world palette set shares (identical in all 12): 1136 is the shape palette, and mod
+# skins name 503, 1135 and 1974-1977 too. Records of a little-endian id and 256 RGB triples.
+SHARED_PALETTES = {struct.unpack_from('<I', data, at)[0]: (list(data[at + 4:at + 772]), [255] * 256)
+                   for data in [(Path(__file__).parent / 't1_shared_palettes.bin').read_bytes()] for at in range(0, len(data), 772)}
 
 
 def bitmap_png(data, palettes, alpha=False):
@@ -286,9 +289,9 @@ def bitmap_png(data, palettes, alpha=False):
     if data[:4] != b'PBMP':
         with Image.open(io.BytesIO(data)) as source:
             # An 8-bit Windows bitmap names its game palette in bfReserved2 and the engine colours it from that, not
-            # from its own (often grey) palette (DarkStar g_bitmap.cpp readMSBitmap); 1136 is the shape palette.
+            # from its own (often grey) palette (DarkStar g_bitmap.cpp readMSBitmap).
             index = struct.unpack_from('<H', data, 8)[0] if data[:2] == b'BM' and source.mode in ('P', 'L') else None
-            palette = palettes.get(index) or (SHAPE_PALETTE if index == 1136 else None)
+            palette = palettes.get(index) or SHARED_PALETTES.get(index)
             if palette:
                 source = Image.frombytes('P', source.size, source.tobytes())
                 source.putpalette(palette[0])

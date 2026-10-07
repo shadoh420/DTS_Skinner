@@ -5,7 +5,7 @@ import math
 import pathlib
 import re
 if __package__:
-    from .texture_workshop import normalize_transform
+    from .texture_workshop import TEXTURE_GAMES, normalize_transform
 else:
     from texture_workshop import normalize_transform
 
@@ -30,10 +30,7 @@ def model_sort_key(name):
     return parts, name.casefold(), name
 
 
-# Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
-# tools/import_reflex_map.py; textures only).
-TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv')
-MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv')
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg')
 
 
 def material_texture_refs(data, material_overrides=None):

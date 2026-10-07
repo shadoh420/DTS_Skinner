@@ -330,10 +330,12 @@ def attach_materials(data, names, flags, record, metadata, resolver):
     record['materials'] = used_names
 
 
-def build(root, kit, output):
+def build(root, kit, output, game='t2'):
     assets, report = inventory(root)
     reader, dsq_reader, provenance = load_readers(kit, assets)
-    model_dir, texture_dir = output / 'static/t2/model_json', output / 'static/textures/t2'
+    # Stock Tribes 2 ships in the app's static folder; a mod (--game t2rpg) goes to local-data/<game> like the packs.
+    folder, texture_dir = (output / 'static/t2', output / 'static/textures/t2') if game == 't2' else (output, output / 'textures')
+    model_dir = folder / 'model_json'
     model_dir.mkdir(parents=True, exist_ok=True)
     texture_dir.mkdir(parents=True, exist_ok=True)
     texture_resolver = Textures(assets, texture_dir)
@@ -367,13 +369,13 @@ def build(root, kit, output):
             entry['error'] = str(exc)
         external[key] = entry
     catalog = []
-    metadata_dir = output / 'static/t2/metadata'
+    metadata_dir = folder / 'metadata'
     metadata_dir.mkdir(parents=True, exist_ok=True)
     for key in source_models:
         raw = assets[key]['read']()
         stem = Path(key).stem
         name = safe_name(stem) + ('__' + digest(key.encode())[:8] if stems[stem] > 1 else '')
-        record = {'model_name': name, 'game': 't2', 'category': category(stem), 'status': 'failed',
+        record = {'model_name': name, 'game': game, 'category': category(stem), 'status': 'failed',
                   'warnings': [], 'format': 'DTS', 'source': assets[key]['source'], 'source_path': key,
                   'source_sha256': digest(raw), 'source_bytes': len(raw),
                   'version': struct.unpack_from('<I', raw)[0] & 255 if len(raw) >= 4 else None,
@@ -423,7 +425,7 @@ def build(root, kit, output):
             record.update(status='ready', triangles=len(data['indices']) // 3,
                           selected_detail=metadata['details'][detail]['name'])
             metadata['source'] = dict(record)
-            data.update(game='t2', metadata=metadata)
+            data.update(game=game, metadata=metadata)
             (model_dir / (name + '.json')).write_text(json.dumps(data, separators=(',', ':'), allow_nan=False), encoding='utf-8')
         except Exception as exc:
             record['warnings'].append(str(exc))
@@ -436,7 +438,7 @@ def build(root, kit, output):
     for key in source_interiors:
         raw, stem = assets[key]['read'](), Path(key).stem
         name = 'interior_' + safe_name(stem) + ('__' + digest(key.encode())[:8] if interior_stems[stem] > 1 else '')
-        record = {'model_name': name, 'game': 't2', 'category': 'Interiors', 'format': 'DIF',
+        record = {'model_name': name, 'game': game, 'category': 'Interiors', 'format': 'DIF',
                   'status': 'failed', 'warnings': [], 'source': assets[key]['source'], 'source_path': key,
                   'source_sha256': digest(raw), 'source_bytes': len(raw), 'alternatives': assets[key]['alternatives']}
         metadata = {'source': dict(record)}
@@ -449,7 +451,7 @@ def build(root, kit, output):
             record.update(status='ready', version=metadata['file_version'], triangles=len(data['indices']) // 3,
                           selected_detail=str(metadata['selected_detail']), sequences=0, external_sequences=0)
             metadata['source'] = dict(record)
-            data.update(game='t2', metadata=metadata)
+            data.update(game=game, metadata=metadata)
             (model_dir / (name + '.json')).write_text(json.dumps(data, separators=(',', ':'), allow_nan=False), encoding='utf-8')
         except Exception as exc:
             record['warnings'].append(str(exc))
@@ -466,9 +468,10 @@ def build(root, kit, output):
                   policy='Virtual paths are case-insensitive. Loose files override archives; later case-insensitive sorted archive paths override earlier identical virtual paths. Texture formats prefer PNG, JPG, JPEG, BMP, TGA, DDS, BM8, IFL, DML; basename ambiguity is reported. Native runtime search precedence is not asserted.',
                   animation_boundary='Default static poses only. Sequence descriptors, node bindings, flags, durations and source hashes retained; original animation samples remain available in the source installation. No T1.50-specific player contracts or sequence renaming.',
                   dif_boundary='DIF render surfaces use highest-detail base textures; lightmaps, alarm states, animated lights and resource movers deferred; null surfaces/collision hulls excluded.')
-    (output / 'static/t2/catalog.json').write_text(json.dumps(catalog, indent=2), encoding='utf-8')
-    (output / 'static/t2/inventory.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
-    (output / 't2_catalog.txt').write_text('\n'.join(r['model_name'] for r in catalog) + '\n', encoding='utf-8')
+    (folder / 'catalog.json').write_text(json.dumps(catalog, indent=2), encoding='utf-8')
+    (folder / 'inventory.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+    if game == 't2':
+        (output / 't2_catalog.txt').write_text('\n'.join(r['model_name'] for r in catalog) + '\n', encoding='utf-8')
     print(json.dumps({key: report[key] for key in ('source_model_count', 'versions', 'statuses', 'unique_dif_count')}, indent=2))
     print('Textures:', len(texture_resolver.copied), 'DSQ:', len(external))
     for record in catalog:
@@ -482,5 +485,7 @@ if __name__ == '__main__':
     parser.add_argument('--game-data', type=Path, required=True)
     parser.add_argument('--kit', type=Path, required=True)
     parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument('--game', default='t2', help='t2rpg for IronSphere: writes model_json, textures and catalog.json '
+                        'straight into --output (local-data/t2rpg)')
     args = parser.parse_args()
-    build(args.game_data, args.kit, args.output)
+    build(args.game_data, args.kit, args.output, args.game)
