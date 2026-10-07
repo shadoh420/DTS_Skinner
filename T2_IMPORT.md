@@ -44,6 +44,21 @@ regeneration preserves an already existing editable image of that name. To produ
 a fresh image baseline, use a new staging output directory. Game identity supplies
 the T1/T2 namespace; interior IDs also carry an `interior_` prefix.
 
+### IronSphere (T2RPG)
+
+The IronSphere RPG mod is its own game, **T2RPG**. Point `--game-data` at the
+mod's GameData folder and write straight into the app's data folder:
+
+```powershell
+.\.venv\Scripts\python.exe tools\import_t2.py --game t2rpg `
+  --game-data <IronSphere GameData folder> `
+  --kit <t2port-kit tools folder> `
+  --output $env:LOCALAPPDATA\DTS-Skinner\local-data\t2rpg
+```
+
+Pick T2RPG in the model browser's Game list to see its models. They do not
+animate.
+
 The viewer's reproducible search policy is case-insensitive virtual paths, later
 alphabetically sorted archive paths overriding earlier identical virtual paths,
 then loose files overriding archives. For image formats the preference is PNG,
