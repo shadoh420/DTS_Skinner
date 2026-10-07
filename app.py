@@ -25,6 +25,7 @@ from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
+from tools.import_n64_map import import_maps as import_n64_maps
 from tools.import_diabotical_models import import_catalog as import_diabotical_catalog
 from tools.import_reflex_models import import_catalog as import_reflex_catalog
 from tools.import_ta import import_catalog as import_ta_catalog, dts_source as ta_dts_source
@@ -302,6 +303,37 @@ def import_diabotical_maps_route():
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
         return jsonify(import_diabotical_maps(payload['game'].strip(), local_data_dir / 'diabotical-maps', payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/n64/')
+def n64_maps_viewer():
+    response = send_from_directory(static_dir / 'n64-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/n64-map-data/<path:filename>')
+def n64_map_data(filename):
+    return send_from_directory(local_data_dir / 'n64-maps', filename)
+
+
+@app.route('/import_n64_maps', methods=['POST'])
+def import_n64_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('folder'), str) or not payload['folder'].strip():
+        return jsonify(error='Enter the folder you extracted the maps to.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_n64_maps(payload['folder'].strip(), local_data_dir / 'n64-maps', payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
