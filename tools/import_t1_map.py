@@ -272,6 +272,9 @@ def read_palettes(data):
     return palettes, list(colours[haze * 4:haze * 4 + 3]) if 0 <= haze < 256 and colours else None
 
 
+SHAPE_PALETTE = (list((Path(__file__).parent / 't1_shape_palette_1136.rgb').read_bytes()), [255] * 256)
+
+
 def bitmap_png(data, palettes, alpha=False):
     """PNG bytes for a PNG, Windows bitmap or DarkStar PBMP; indexed PBMPs take colours from the mission palette.
 
@@ -282,6 +285,13 @@ def bitmap_png(data, palettes, alpha=False):
     mode = 'RGBA' if alpha else 'RGB'
     if data[:4] != b'PBMP':
         with Image.open(io.BytesIO(data)) as source:
+            # An 8-bit Windows bitmap names its game palette in bfReserved2 and the engine colours it from that, not
+            # from its own (often grey) palette (DarkStar g_bitmap.cpp readMSBitmap); 1136 is the shape palette.
+            index = struct.unpack_from('<H', data, 8)[0] if data[:2] == b'BM' and source.mode in ('P', 'L') else None
+            palette = palettes.get(index) or (SHAPE_PALETTE if index == 1136 else None)
+            if palette:
+                source = Image.frombytes('P', source.size, source.tobytes())
+                source.putpalette(palette[0])
             image = source.convert(mode)
     else:
         chunks, offset = {}, 8
@@ -525,7 +535,10 @@ def parse_mission(text):
         line = line.strip()
         opened = re.fullmatch(r'instant\s+(\w+)(?:\s+"([^"]*)")?\s*\{', line)
         field = re.fullmatch(r'([\w\[\]]+)\s*=\s*"(.*)";', line)
-        if opened:
+        empty = re.fullmatch(r'instant\s+(\w+)\s+"([^"]*)"\s*;', line)  # `instant SimGroup "RACE MaleHuman";` (RPG data)
+        if empty:
+            stack[-1]['children'].append({'class': empty[1].lower(), 'name': empty[2], 'fields': {}, 'children': []})
+        elif opened:
             node = {'class': opened[1].lower(), 'name': opened[2] or '', 'fields': {}, 'children': []}
             stack[-1]['children'].append(node)
             stack.append(node)
@@ -538,6 +551,38 @@ def parse_mission(text):
     if len(stack) != 1:
         raise ValueError('Unbalanced mission file')
     return root
+
+
+def rpg_places(nodes):
+    """An RPG mission's named zones and town NPCs (Mods/RPG scripts/zone.cs InitZones, Ai.cs InitTownBots).
+    zones: [{"name", "kind", "matrix"}] at the zone's drop points when they lie in the box its two markers span (a
+    town: players appear there; a dungeon's drop the player back in a town), else at the box's centre.
+    NPCs: (node, groups) StaticShapes of datablock RACE + "TownBot" at each TownBots group's marker, as the game spawns
+    them at mission start."""
+    zones, bots = [], []
+    for node, groups in nodes:
+        if node['class'] != 'simgroup' or not groups:
+            continue
+        markers = [item for item in node['children'] if item['class'] == 'marker' and 'position' in item['fields']]
+        words = {item['name'].split(' ', 1)[0].upper(): item['name'].partition(' ')[2]
+                 for item in node['children'] if item['class'] == 'simgroup'}
+        if groups[-1] == 'zones' and ' ' in node['name'] and markers:
+            kind, name = node['name'].split(' ', 1)
+            if kind.upper() in ('WATER', 'MUSIC', 'ENTERSOUND', 'EXITSOUND', 'AMBIENTSOUND'):
+                continue
+            drops = [floats(item['fields']['position']) for group in node['children']
+                     if group['class'] == 'simgroup' and group['name'].lower() == 'droppoints'
+                     for item in group['children'] if item['class'] == 'marker' and 'position' in item['fields']]
+            corners = [floats(item['fields']['position']) for item in markers[:2]]
+            point = [sum(axis) / len(drops) for axis in zip(*drops)] if drops else None
+            if not point or len(corners) == 2 and not all(min(a, b) <= v <= max(a, b) for v, a, b in zip(point[:2], *corners)):
+                point = [sum(axis) / len(corners) for axis in zip(*corners)]
+            zones.append({'name': name.strip(), 'kind': kind.upper(), 'matrix': placement(point, (0.0, 0.0, 0.0))})
+        elif groups[-1] == 'townbots' and markers and words.get('RACE'):
+            bots.append(({'class': 'staticshape', 'name': words.get('NAME') or node['name'], 'children': [],
+                          'fields': {'datablock': words['RACE'].strip() + 'TownBot', 'position': markers[0]['fields']['position'],
+                                     'rotation': markers[0]['fields'].get('rotation', '0 0 0')}}, groups + (node['name'].lower(),)))
+    return zones, bots
 
 
 def walk(node, groups=()):
@@ -629,7 +674,8 @@ class Install:
     def shapes(self, mission_folder):
         """Datablock name -> shape file, read from every script the install and the mission folder carry."""
         def scan(text, found):
-            for block in re.finditer(r'^[ \t]*\w+Data[ \t]+(\w+)\s*\{(.*?)^[ \t]*\};', text, re.S | re.M):
+            # A block may end mid-line: the RPG mod writes whole datablocks on one line (rpgstaticshape.cs).
+            for block in re.finditer(r'^[ \t]*\w+Data[ \t]+(\w+)\s*\{(.*?)\};', text, re.S | re.M):
                 shape = re.search(r'shapeFile\s*=\s*"([^"]+)"', block[2])
                 if shape:
                     found[block[1].lower()] = Path(shape[1]).stem
@@ -645,7 +691,9 @@ class Install:
         if mission_folder not in self._scripts:
             found = {}
             if self.base not in mission_folder.parents and mission_folder != self.base:
-                for path in sorted(mission_folder.glob('*.cs')):
+                # A mod's missions folder (Mods/RPG/MISSIONS) has the mod's scripts beside it (Mods/RPG/scripts).
+                mod = mission_folder.parent if mission_folder.name.lower() == 'missions' else None
+                for path in sorted(mod.glob('scripts/*.cs') if mod else []) + sorted(mission_folder.glob('*.cs')):
                     scan(path.read_text(encoding='cp1252', errors='replace'), found)
             self._scripts[mission_folder] = found
         return {**self._scripts[self.base], **self._scripts[mission_folder]}
@@ -659,7 +707,8 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     """Write one mission's pack to root/maps/<id>; returns its scene. Shared textures go to root/textures."""
     mission = parse_mission(mission_path.read_text(encoding='cp1252', errors='replace'))
     nodes = list(walk(mission))
-    folders = [mission_path.parent, install.base / 'missions', install.base]
+    # A mod keeps its volumes beside its missions folder (opencall3/opencall3.zip, opencall3/missions/*.mis).
+    folders = [mission_path.parent, mission_path.parent.parent, install.base / 'missions', install.base]
     resources, provenance, warnings = {}, [], []
     for node, _ in nodes:
         if node['class'] != 'simvolume' or not node['fields'].get('filename'):
@@ -837,7 +886,8 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     models = {path.stem.lower(): path.stem for path in model_dir.glob('*.json')}
     shapes = install.shapes(mission_path.parent)
     objects, viewpoints, missing, unlit = [], [], set(), set()
-    for node, groups in nodes:
+    zones, bots = rpg_places(nodes)
+    for node, groups in nodes + bots:
         fields = node['fields']
         if 'position' not in fields or node['class'] == 'simterrain':
             continue
@@ -869,6 +919,9 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
             if cover:
                 objects[-1]['shelter'] = cover
     warnings += ['No preview model for ' + item for item in sorted(missing)]
+    shapeless = sorted({node['fields']['datablock'] for node, _ in bots if not shapes.get(node['fields']['datablock'].lower())})
+    if shapeless:  # The mod's scripts are not beside its missions folder (e.g. a staged mission without its mod).
+        warnings.append('Town NPCs left out, no datablock for: ' + ', '.join(shapeless))
     if unlit:
         warnings.append('No lightmap, plain sun shading instead: ' + ', '.join(sorted(unlit)))
 
@@ -933,7 +986,8 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     'visibleDistance': float(terrain_node.get('visibledistance', 500)),
                     'hazeDistance': float(terrain_node.get('hazedistance', 250))},
         'sun': sun,
-        'haze': haze, 'sky': dome, 'planets': planets, 'stars': stars, 'flare': flare, 'weather': weather, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings}
+        'haze': haze, 'sky': dome, 'planets': planets, 'stars': stars, 'flare': flare, 'weather': weather, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings,
+        **({'zones': zones} if zones else {})}
 
     # Build beside the target, then swap, so a failed import never leaves a half-written map.
     target = root / 'maps' / scene['id']

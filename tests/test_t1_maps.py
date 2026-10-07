@@ -17,7 +17,7 @@ from PIL import Image
 from app import app
 from tools.import_t1_map import (Install, bake_lightmap, bitmap_png, import_maps, interior_dml, light_colours, lzh_expand, map_id,
                                  open_volume, pack_shelter, parse_mission, placement, read_lighting, read_palettes,
-                                 read_terrain_block, read_terrain_index, walk)
+                                 read_terrain_block, read_terrain_index, rpg_places, walk)
 
 MISSION = '''//--- export object begin ---//
 instant SimGroup "MissionGroup" {
@@ -111,6 +111,61 @@ class T1MapTests(unittest.TestCase):
             with Image.open(io.BytesIO(bitmap_png(sprite, palettes, True))) as image:
                 self.assertEqual((image.mode, [image.getpixel((x, y))[3] for y in range(2) for x in range(2)], image.getpixel((1, 0))[:3]),
                                  ('RGBA', alphas, (0, 255, 0)))
+
+    def test_windows_bitmap_takes_colours_from_the_game_palette_it_names(self):
+        # The engine colours an 8-bit Windows bitmap from the palette bfReserved2 names (g_bitmap.cpp readMSBitmap),
+        # not its own: the Star Wars RPG skins carry a grey palette and name 1136, the shape palette.
+        source = Image.new('P', (2, 1))
+        source.putpalette([value for grey in range(256) for value in (grey, grey, grey)])
+        source.putdata([0, 1])
+        stream = io.BytesIO()
+        source.save(stream, 'BMP')
+        own = stream.getvalue()
+        palettes = {7: ([255, 0, 0, 0, 255, 0] + [0] * 762, [255] * 256)}
+        for named, expected in ((7, [(255, 0, 0), (0, 255, 0)]), (0, [(0, 0, 0), (1, 1, 1)])):
+            data = own[:8] + struct.pack('<H', named) + own[10:]
+            with Image.open(io.BytesIO(bitmap_png(data, palettes))) as image:
+                self.assertEqual([image.getpixel((x, 0)) for x in range(2)], expected)
+        shape = bitmap_png(own[:8] + struct.pack('<H', 1136) + own[10:], {})
+        with Image.open(io.BytesIO(shape)) as image:
+            self.assertNotEqual(image.getpixel((1, 0)), (1, 1, 1))
+
+    def test_rpg_town_npcs_and_zones_come_from_the_mod_and_its_one_line_groups(self):
+        mission = """instant SimGroup "MissionGroup" {
+            instant SimGroup "Zones" {
+                instant SimGroup "PROTECTED Keldrin Town" {
+                    instant Marker "Marker1" { position = "0 0 0"; rotation = "0 0 0"; };
+                    instant Marker "Marker1" { position = "100 200 50"; rotation = "0 0 0"; };
+                    instant SimGroup "AMBIENTSOUND area_plains.wav 10";
+                    instant SimGroup "DropPoints" {
+                        instant Marker "Marker1" { position = "10 20 5"; rotation = "0 0 0"; };
+                    };
+                };
+                instant SimGroup "WATER water" {
+                    instant Marker "Marker1" { position = "0 0 0"; rotation = "0 0 0"; };
+                };
+            };
+            instant SimGroup "TownBots" {
+                instant SimGroup "merchant1" {
+                    instant Marker "keldrin merchant" { position = "1 2 3"; rotation = "0 0 1"; };
+                    instant SimGroup "NAME merchant";
+                    instant SimGroup "RACE MaleHuman";
+                };
+            };
+        };""".replace('{ ', '{\n').replace('; ', ';\n').replace('; }', ';\n}')
+        zones, bots = rpg_places(list(walk(parse_mission(mission))))
+        self.assertEqual([(zone['name'], zone['kind'], zone['matrix'][12:15]) for zone in zones],
+                         [('Keldrin Town', 'PROTECTED', placement([10, 20, 5], (0, 0, 0))[12:15])])
+        self.assertEqual([(node['name'], node['fields']) for node, _ in bots],
+                         [('merchant', {'datablock': 'MaleHumanTownBot', 'position': '1 2 3', 'rotation': '0 0 1'})])
+        with tempfile.TemporaryDirectory() as folder:  # Mods/RPG: scripts beside MISSIONS, whole datablocks on one line
+            base, mod = Path(folder, 'base'), Path(folder, 'Mods', 'RPG')
+            for path in (base, mod / 'MISSIONS', mod / 'scripts'):
+                path.mkdir(parents=True)
+            (mod / 'scripts' / 'rpgstaticshape.cs').write_text(
+                'StaticShapeData MaleHumanTownBot{\tclassName = "TownBot";\tshapeFile = "rpgmalehuman";};'
+                'StaticShapeData Other{\tshapeFile = "other";};\n')
+            self.assertEqual(Install(base).shapes(mod / 'MISSIONS').get('malehumantownbot'), 'rpgmalehuman')
 
     def test_raw_terrain_blocks_and_version_2_material_lists_are_read(self):
         heights, light = struct.pack('<4f', 1, 2, 3, 4), struct.pack('<4H', 255, 128, 16, 0)  # One 8-bit light level per word.
