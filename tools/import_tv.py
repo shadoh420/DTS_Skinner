@@ -4,12 +4,11 @@ import pathlib
 
 from PIL import Image
 
-from tools.import_t1_map import bitmap_png
+from tools.import_t1_map import SHARED_PALETTES, bitmap_png
 from tools.import_ta import add_model
 
-# Palette 1136 of every Tribes 1.11 world palette set (identical in all 12): it turns the pack's PBMPs into its own
-# TGAs to within a few levels, so it decodes the ones with no TGA.
-PALETTE = (list((pathlib.Path(__file__).parent / 't1_shape_palette_1136.rgb').read_bytes()), [255] * 256)
+# The shape palette 1136 turns the pack's PBMPs into its own TGAs to within a few levels, so it decodes the ones with no TGA.
+PALETTE = SHARED_PALETTES[1136]
 
 
 def import_catalog(pack, output, t1_textures):

@@ -10,6 +10,10 @@ import threading
 
 from PIL import Image
 
+# Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
+# tools/import_reflex_map.py; textures only).
+TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg')
+
 
 def normalize_transform(value=None):
     if value is None:
@@ -75,7 +79,7 @@ def _image_metadata(path, fingerprint, ignore_alpha, include_hue=True):
 def texture_metadata(path, game, include_hue=True):
     path = Path(path)
     stat = path.stat()
-    return dict(_image_metadata(str(path.resolve()), (stat.st_mtime_ns, stat.st_size, stat.st_ino), game == 't2', include_hue))
+    return dict(_image_metadata(str(path.resolve()), (stat.st_mtime_ns, stat.st_size, stat.st_ino), game in ('t2', 't2rpg'), include_hue))
 
 
 def validate_tags(tags):
@@ -99,7 +103,7 @@ def read_tags(path):
     if not path.exists():
         return {}
     data = json.loads(path.read_text(encoding='utf-8'))
-    if not isinstance(data, dict) or any(game not in ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv') or not isinstance(entries, dict)
+    if not isinstance(data, dict) or any(game not in TEXTURE_GAMES or not isinstance(entries, dict)
                                           for game, entries in data.items()):
         raise ValueError('Invalid texture tags file; existing data was preserved')
     for entries in data.values():
@@ -109,7 +113,7 @@ def read_tags(path):
 
 
 def save_tags(path, game, filename, tags):
-    if game not in ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv'):
+    if game not in TEXTURE_GAMES:
         raise ValueError('Unknown texture game')
     tags = validate_tags(tags)
     path = Path(path)

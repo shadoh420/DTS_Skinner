@@ -4,6 +4,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
   const compare = (a, b) => a.localeCompare(b, 'en', {numeric: true, sensitivity: 'base'});
+  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm'];  // Games with an import box (<id>Import).
   const scene = new THREE.Scene();
   scene.add(new THREE.AmbientLight(0xffffff, .6));
   const light = new THREE.DirectionalLight(0xffffff, .8);
@@ -344,13 +345,9 @@ window.addEventListener('DOMContentLoaded', () => {
     $('modelSearch').value = ''; $('skinSearch').value = '';
     $('status').textContent = 'Loading catalog…';
     $('textureGame').value = game;
-    $('q3Import').hidden = game !== 'q3';
-    $('diaboticalImport').hidden = game !== 'diabotical';
-    $('reflexImport').hidden = game !== 'reflex';
-    $('taImport').hidden = game !== 'ta';
-    $('tvImport').hidden = game !== 'tv';
+    for (const id of IMPORTS) $(`${id}Import`).hidden = game !== id;
     $('modelThumbnail').hidden = true;
-    $('coverageReport').hidden = game === 't1' || game === 'diabotical' || game === 'reflex' || game === 'ta' || game === 'tv';
+    $('coverageReport').hidden = game !== 't2' && game !== 'q3';
     $('coverageReport').href = game === 'q3' ? '/q3_inventory' : '/static/t2/inventory.json';
     $('coverageReport').textContent = `View ${game.toUpperCase()} inventory & coverage report`;
     showWarnings([]);
@@ -375,11 +372,7 @@ window.addEventListener('DOMContentLoaded', () => {
         await selectModel();
       } else {
         $('status').textContent = 'This game has no imported catalog entries.';
-        if (game === 'q3') $('q3Import').open = true;
-        if (game === 'diabotical') $('diaboticalImport').open = true;
-        if (game === 'reflex') $('reflexImport').open = true;
-        if (game === 'ta') $('taImport').open = true;
-        if (game === 'tv') $('tvImport').open = true;
+        if (IMPORTS.includes(game)) $(`${game}Import`).open = true;
       }
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
@@ -742,7 +735,7 @@ window.addEventListener('DOMContentLoaded', () => {
   async function loadTextureLibrary() {
     const serial = ++textureSerial, gameId = $('textureGame').value;
     const previous = $('skinSelect').value;
-    $('texturePath').textContent = gameId === 'diabotical' ? 'local-data/diabotical/textures' : gameId === 'reflex' ? 'local-data/reflex-maps/textures' : gameId === 'ta' ? 'local-data/ta/textures' : gameId === 'tv' ? 'local-data/tv/textures' : gameId === 'q3' ? 'local-data/q3/textures' : gameId === 't2' ? 'static/textures/t2' : 'static/textures';
+    $('texturePath').textContent = gameId === 'reflex' ? 'local-data/reflex-maps/textures' : gameId === 't2' ? 'static/textures/t2' : gameId === 't1' ? 'static/textures' : `local-data/${gameId}/textures`;
     textures = []; textureMetadata = new Map(); filterSkins();
     $('textureCount').textContent = 'Reading texture dimensions…';
     try {
@@ -751,13 +744,13 @@ window.addEventListener('DOMContentLoaded', () => {
       textureMetadata = new Map(entries.map(entry => [entry.filename, entry]));
       textures = entries.map(entry => entry.filename).sort(compare);
       filterSkins(previous);
-      if (!textures.length) $('skinSelect').replaceChildren(option(gameId === 'q3' ? 'Import Quake 3 to add textures' : gameId === 'diabotical' ? 'Import Diabotical to add textures' : gameId === 'reflex' ? 'Import Reflex models or maps to add textures' : gameId === 'ta' ? 'Import TA conversions to add textures' : gameId === 'tv' ? 'Import TV conversions to add textures' : 'No PNG textures in this library', ''));
+      if (!textures.length) $('skinSelect').replaceChildren(option(gameId === 'q3' ? 'Import Quake 3 to add textures' : gameId === 'diabotical' ? 'Import Diabotical to add textures' : gameId === 'reflex' ? 'Import Reflex models or maps to add textures' : gameId === 't2rpg' ? 'Run tools/import_t2.py --game t2rpg to add textures' : IMPORTS.includes(gameId) ? `Import ${$('textureGame').selectedOptions[0].textContent.replace(/ textures$/, '')} to add textures` : 'No PNG textures in this library', ''));
     } catch (error) {
       if (serial === textureSerial) { $('skinSelect').replaceChildren(option('Texture library unavailable; try Reload textures', '')); $('textureCount').textContent = error.message; }
     }
   }
   async function allTextureVersions() {
-    const results = await Promise.all(['t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv'].map(async gameId => {
+    const results = await Promise.all([...$('textureGame').options].map(option => option.value).map(async gameId => {
       const values = await json(`/texture_versions?${query({}, gameId)}`);
       return Object.entries(values).map(([name, version]) => [textureId(name, gameId), version]);
     }));
@@ -769,7 +762,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (serial === catalogSerial) await loadModel(true);
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
-  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus']]) {
+  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus']]) {
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();
       if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }

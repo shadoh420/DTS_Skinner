@@ -50,7 +50,7 @@ class TaImportTest(unittest.TestCase):
             import_catalog(pack, output, stock)
             self.assertEqual((output / 'textures/chaingun_alt.png').read_bytes(), b'edited')
 
-            with patch('app.ta_dir', output):
+            with patch.dict('app.pack_dirs', ta=output):
                 client = app.test_client()
                 self.assertEqual(len(client.get('/list_models?game=ta').json), 3)
                 self.assertEqual(client.get('/model_json/gun_b_-_two?game=ta').json['game'], 'ta')
@@ -97,7 +97,7 @@ class TvImportTest(unittest.TestCase):
             from tools.import_tv import PALETTE
             self.assertEqual(Image.open(output / 'textures/chaingun.png').getpixel((0, 0)), tuple(PALETTE[0][3:6]))
 
-            with patch('app.tv_dir', output):
+            with patch.dict('app.pack_dirs', tv=output):
                 client = app.test_client()
                 self.assertEqual(len(client.get('/list_models?game=tv').json), 2)
                 self.assertEqual(client.get('/texture/DISC.png?game=tv').status_code, 200)
