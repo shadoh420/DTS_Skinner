@@ -22,7 +22,7 @@ class N64MapTests(unittest.TestCase):
             result = import_maps(source, output)
             self.assertEqual(result, dict(imported=['Dam'], skipped=[], failed={}))
             self.assertEqual(sorted(path.name for path in (output / 'maps/dam').iterdir()), ['Dam.mtl', 'Dam.obj', 'a.png'])
-            self.assertEqual(json.loads((output / 'index.json').read_text()), [dict(id='dam', name='Dam', objs=['Dam.obj'], mtls=['Dam.mtl'])])
+            self.assertEqual(json.loads((output / 'index.json').read_text()), [dict(id='dam', name='Dam', game='GoldenEye 007', objs=['Dam.obj'], mtls=['Dam.mtl'])])
             self.assertEqual(import_maps(source, output)['skipped'], ['Dam'])
             self.assertEqual(import_maps(source / 'Dam', output, replace=True)['imported'], ['Dam'])  # One map's own folder.
             with self.assertRaisesRegex(ValueError, 'No map folders'):

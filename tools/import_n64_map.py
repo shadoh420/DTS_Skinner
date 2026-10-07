@@ -8,6 +8,20 @@ import re
 import shutil
 
 KEEP = ('.obj', '.mtl', '.png')
+# The game of each level, by folder name (lower case); folders not listed go under 'Other'.
+GAMES = {
+    'GoldenEye 007': 'dam facility runway surface bunkersmall bunkerfull silo frigate statue archives streets depot train jungle '
+                     'control caverns cradle aztec egyptian cuba basement library stack caves complexge templege',
+    'Perfect Dark': 'datadynecentraldefection datadynecentralinvestigation datadynecentralextraction carringtonvillahostageone '
+                    'chicagostealth g5buildingreconnaissance area51infiltration airbaseespionage airforceoneantiterrorism '
+                    'crashsiteconfrontation pelagiciiexploration deepseanullifythreat carringtoninstitute attackshipcovertassault '
+                    'skedarruinsbattleshrine skedar pipes ravine g5building sewers warehouse grid ruins area52 base fortress villa '
+                    'carpark templepd complexpd felicity',
+    'Diddy Kong Racing': 'ancientlake bouldercanyon crescentisland darkmooncaverns darkwaterbeach dinodomain dragonforest '
+                         'everfrostpeak fossilcanyon frostyvillage futurefunland greenwoodvillage hauntedwoods firemountain centralarea',
+    'Super Smash Bros.': 'planetzebes',
+}
+GAME_OF = {name: game for game, names in GAMES.items() for name in names.split()}
 
 
 def map_id(name):
@@ -27,7 +41,9 @@ def import_maps(folder, output, replace=False):
     result = dict(imported=[], skipped=[], failed={})
     for source in sources:
         ident, target = map_id(source.name), output / 'maps' / map_id(source.name)
+        game = GAME_OF.get(source.name.lower(), 'Other')
         if not replace and ident in index and target.is_dir():
+            index[ident]['game'] = game
             result['skipped'].append(source.name)
             continue
         try:
@@ -40,7 +56,7 @@ def import_maps(folder, output, replace=False):
             result['failed'][source.name] = str(exc)
             index.pop(ident, None)
             continue
-        index[ident] = dict(id=ident, name=source.name, objs=[name for name in files if name.lower().endswith('.obj')],
+        index[ident] = dict(id=ident, name=source.name, game=game, objs=[name for name in files if name.lower().endswith('.obj')],
                             mtls=[name for name in files if name.lower().endswith('.mtl')])
         result['imported'].append(source.name)
     output.mkdir(parents=True, exist_ok=True)

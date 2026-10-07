@@ -197,7 +197,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
     const wanted = new URLSearchParams(location.search).get('map');
     map = maps.find(item => item.id === wanted) || maps[0];
-    $('map').replaceChildren(...maps.map(item => new Option(item.name, item.id)));
+    const byGame = new Map();
+    for (const item of maps) byGame.set(item.game || 'Other', [...(byGame.get(item.game || 'Other') || []), item]);
+    $('map').replaceChildren(...[...byGame].sort(([a], [b]) => (a === 'Other') - (b === 'Other') || a.localeCompare(b)).map(([game, items]) => {
+      const element = Object.assign(document.createElement('optgroup'), {label: game});
+      element.append(...items.map(item => new Option(item.name, item.id)));
+      return element;
+    }));
     $('map').value = map.id;
     document.title = `${map.name} — N64 Maps`;
     applySettings();
