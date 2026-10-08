@@ -16,8 +16,9 @@ Read from the install's VOLN volumes (*.vol, every entry stored; SIMPATCH volume
   int16 index[length]} darkest first). A side whose fill and line both carry 0x14 in their top byte is not drawn.
 - Texture banks: the u16 at offset 0x94 of the shape's .DAT picks one (BANKS); debris (XXXX_DEB) takes its chassis'.
 - Weapons: a chassis' .GL lists its hardpoints. A drawn one's part is a placeholder, left out; an ES2 player chassis
-  shows its shell stock fit there instead (STOCK_FITS), each weapon the MECHWPNS.DTS root its sim WEAPONS.DAT
-  template names for the hardpoint's mounting code, in the WPNTEX bank.
+  shows its shell stock fit there instead (STOCK_FITS) and any other ES2 machine the fit its missions give it most
+  (mission_fits), each weapon the MECHWPNS.DTS root its sim WEAPONS.DAT template names for the hardpoint's mounting
+  code, in the WPNTEX bank. ES1 machines keep bare hardpoints.
 
 Sources: disassembly of Earthsiege 1's DBSIM.EXE (texture poly render 0x5A1E8, solid 0x5A118, bank names at
 0x989A0) and Kevin Foley's Herculan documentation of Earthsiege 2 (github.com/kevinfoley/Herculan,
@@ -28,6 +29,7 @@ Written (under local-data/<game>): catalog.json, model_json/MODEL.json and textu
 flat colours as rgb_rrggbb.png; kept when already there, so edits survive).
 """
 import argparse
+from collections import Counter
 import json
 import math
 from pathlib import Path
@@ -56,7 +58,7 @@ CATEGORY = {3: 'Cybrids'}  # Any other bank: HERCs.
 # the ones whose frame counts fit (BASETEX, WPNTEX); BASES.DAT's per-type selector is not read.
 FIXED_BANKS = {'SKIMMER': 'enemy', 'BASES_AE': 'basetex', 'BASES_AN': 'basetex', 'MECHWPNS': 'wpntex', 'MECHWPN2': 'wpntex'}
 # Earthsiege 2's player chassis and the shell's stock fit for each (Herculan, herc-catalogs.md: SHELL0 GAM\INI_*.DAT,
-# types 0-8). Cybrid fits live in the missions and Earthsiege 1's source is not found, so those show bare hardpoints.
+# types 0-8). The Cybrids take their fits from the missions (mission_fits).
 STOCK_FITS = {'OUTLAW': 'INI_OUTL.DAT', 'RAPTOR2': 'INI_RAPT.DAT', 'TOMAHAWK': 'INI_TOMA.DAT', 'SAMSON': 'INI_SAMS.DAT',
               'COLOSSUS': 'INI_COLO.DAT', 'APOCA': 'INI_APOC.DAT', 'OGRE': 'INI_OGRE.DAT', 'MAVERICK': 'INI_MAVR.DAT',
               'RAZOR': 'INI_RAZR.DAT'}
@@ -349,6 +351,34 @@ def build_model(root, game, bank, colours, ramps, textures, hardpoints=(), weapo
                 material_textures=names), skipped
 
 
+def mission_fits(files):
+    """{MECH: {fit slot: weapon id}}, each mech type's most common fit in the missions' mech rosters (Herculan,
+    msn-mission-file.md): a .MSN is int16 revision 5, then rows of uint16 count and fixed-size records, but for row 8's
+    nested lists (10 bytes and 2 per entry, the count its fifth short); row 12 holds 144-byte records with the
+    MECHS.NAM type at 0x30 and ten weapon ids at 0x32. ponytail: a tie goes to the fit met first, in file order."""
+    names = files.get('MECHS.NAM', b'').decode('latin1').split('\0')
+    sizes = {1: 14, 2: 82, 3: 8, 4: 144, 5: 64, 6: 22, 7: 10, 9: 12, 10: 82, 11: 30}
+    seen = {}
+    for name in sorted(k for k in files if k.endswith('.MSN') and '/' not in k):
+        data, at = files[name], 2
+        if data[:2] != b'\x05\x00':
+            continue
+        try:
+            for row in range(1, 12):
+                count = struct.unpack_from('<H', data, at)[0]
+                at += 2
+                for _ in range(count if row == 8 else 0):
+                    at += 10 + 2 * struct.unpack_from('<h', data, at + 8)[0]
+                at += 0 if row == 8 else count * sizes[row]
+            for i in range(struct.unpack_from('<H', data, at)[0]):
+                kind, *fit = struct.unpack_from('<11h', data, at + 2 + 144 * i + 0x30)
+                if 0 <= kind < len(names) and any(w > 0 for w in fit):
+                    seen.setdefault(names[kind].strip().upper(), Counter())[tuple(fit)] += 1
+        except struct.error:
+            continue
+    return {mech: dict(enumerate(counts.most_common(1)[0][0])) for mech, counts in seen.items()}
+
+
 def import_catalog(install, output, game):
     """Import every shape of the Earthsiege (game es1) or Earthsiege 2 (es2) install `install` into `output`.
     Returns counts of entries, previews and polys not drawn for want of a frame."""
@@ -378,10 +408,17 @@ def import_catalog(install, output, game):
         records = [struct.unpack_from('<h4xB9x3h1xB', data, 2 + 26 * i) for i in range(count) if 2 + 26 * (i + 1) <= len(data)]
         return [(r[0], r[1], r[2:5], r[5]) for r in records if r[1] < 4]
 
-    # The weapon each fit slot of a player chassis' stock fit carries, drawn as the MECHWPNS.DTS root its sim
-    # template names for the hardpoint's mounting code (Herculan: herc-catalogs.md, weapons-dat-sim.md).
+    # The weapon each fit slot carries (a player chassis' stock fit over the missions' favourite), drawn as the
+    # MECHWPNS.DTS root its sim template names for the hardpoint's mounting code (Herculan: herc-catalogs.md,
+    # weapons-dat-sim.md).
+    fits = mission_fits(files) if game == 'es2' else {}  # ES1's .MSN says revision 5 too, but lays rows out otherwise.
+    for stem, name in STOCK_FITS.items():
+        data = files.get(name, b'')
+        if len(data) >= 8:
+            fits[stem] = {slot: weapon for slot, weapon, _, _ in
+                          struct.iter_unpack('<4h', data[8:8 + 8 * struct.unpack_from('<h', data, 6)[0]])}
     templates, weapon_roots = [], []
-    if 'DAT/WEAPONS.DAT' in files and 'MECHWPNS.DTS' in files and any(STOCK_FITS.get(s[:-4]) in files for s in shapes):
+    if 'DAT/WEAPONS.DAT' in files and 'MECHWPNS.DTS' in files and fits:
         table, at = files['DAT/WEAPONS.DAT'], 2
         for _ in range(struct.unpack_from('<H', table)[0]):  # A .DMG piece, a .COL cluster, then a 48-byte tail.
             at += 8 + 4 * max(struct.unpack_from('<h', table, at + 6)[0], 0)
@@ -394,11 +431,7 @@ def import_catalog(install, output, game):
             weapon_roots.append(read_object(reader))
 
     def weapons(stem):
-        data = files.get(STOCK_FITS.get(stem, ''), b'')
-        if len(data) < 8:
-            return []
-        fit = {slot: weapon for slot, weapon, _, _ in struct.iter_unpack('<4h', data[8:8 + 8 * struct.unpack_from('<h', data, 6)[0]])}
-        out = []
+        fit, out = fits.get(stem, {}), []
         for bone, code, mount, slot in hardpoints(stem):
             weapon = fit.get(slot, 0)  # 0: an empty hardpoint.
             if 0 < weapon < len(templates) and 0 <= templates[weapon][code] < len(weapon_roots):

@@ -9,7 +9,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from app import app
-from tools.import_earthsiege import import_catalog
+from tools.import_earthsiege import import_catalog, mission_fits
 
 
 def voln(members, folder=b'dts'):
@@ -124,6 +124,16 @@ class EarthsiegeImportTest(unittest.TestCase):
             vertices = [model['vertices'][i:i + 3] for i in range(0, len(model['vertices']), 3)]
             self.assertIn([0, 3.0, 0], vertices)  # The weapon's origin at the mount point, 500 up.
             self.assertEqual(len(vertices), 6)  # The chassis' shaded triangle and the weapon's; no placeholder.
+
+    def test_mission_fits_take_the_most_common(self):
+        """Row 12 is reached past rows 1-11 (row 8 with a nested list); BOX (MECHS.NAM type 1) is fitted 2, 2, 7."""
+        def roster(kind, weapon):
+            return bytes(0x30) + struct.pack('<h10h', kind, weapon, *[-1] * 9) + bytes(144 - 0x46)
+        msn = struct.pack('<h', 5) + struct.pack('<H', 0) * 7 + struct.pack('<H', 1) + struct.pack('<5h', 0, -1, -1, -1, 2) + \
+            struct.pack('<2h', 4, 5) + struct.pack('<H', 0) * 3 + struct.pack('<H', 4) + \
+            roster(1, 2) + roster(1, 7) + roster(1, 2) + roster(-1, 9)
+        fits = mission_fits({'MECHS.NAM': b'OUTLAW\0BOX\0', 'A.MSN': msn, 'B.MSN': b'\x04\0'})
+        self.assertEqual(fits, {'BOX': {0: 2, **{slot: -1 for slot in range(1, 10)}}})
 
     def test_not_an_install(self):
         with tempfile.TemporaryDirectory() as temp, self.assertRaisesRegex(ValueError, 'No Earthsiege volumes'):
