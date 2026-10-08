@@ -9,7 +9,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from app import app
-from tools.import_earthsiege import import_catalog, mission_fits
+from tools.import_earthsiege import MISSION_ROWS, import_catalog, mission_fits
 
 
 def voln(members, folder=b'dts'):
@@ -102,10 +102,13 @@ class EarthsiegeImportTest(unittest.TestCase):
 
     def test_stock_fit_weapon_at_hardpoint(self):
         """ES2: BOX's stock fit puts weapon 1 in slot 0, which BOX.GL hangs on bone 7 (code 0, mount point z 500);
-        template 1 draws MECHWPNS root 0 for code 0, a green triangle at the shape origin."""
+        template 1 draws MECHWPNS root 0 for code 0, a green triangle at the shape origin. Template 0, with no hit
+        spheres, is the empty weapon."""
         layout = struct.pack('<h', 1) + struct.pack('<hhhBB8x3hbBh', 7, -1, -1, 0, 0, 0, 0, 500, 0, 0, 0)
         stock = struct.pack('<4h', 3, 100, 0, 1) + struct.pack('<4h', 0, 1, 100, 5)  # Slot 0: weapon 1.
-        template = struct.pack('<hhBBh', 0, 0, 0, 0, 0) + struct.pack('<hh', 19, 0) + bytes(0x30)  # Every model: root 0.
+        piece = struct.pack('<hhBBh', 0, 0, 0, 0, 0)
+        empty = piece + struct.pack('<hh', 19, 0) + bytes(0x30)
+        armed = piece + struct.pack('<hh4h', 19, 1, 0, 0, 0, 100) + bytes(0x30)  # One hit sphere; every model root 0.
         points = [(0, 0, 0), (0, 0, 100), (100, 0, 0), (0, -2048, 0)]
         group = tagged(0x14, struct.pack('<hhh3h', -1, 0, 0, 0, 0, 0) + struct.pack('<4H', 3, 4, 4, 1) +
                        struct.pack('<3H', 0, 1, 2) + b''.join(struct.pack('<3h', *p) for p in points) +
@@ -116,7 +119,7 @@ class EarthsiegeImportTest(unittest.TestCase):
             (install / 'vol').mkdir(parents=True)
             (install / 'vol/simvol0.vol').write_bytes(voln({'BOX.DTS': shape(), 'BOX.GL': layout, 'MECHWPNS.DTS': weapon,
                                                             'WORLD0.DPL': palette()}))
-            (install / 'vol/simvol1.vol').write_bytes(voln({'WEAPONS.DAT': struct.pack('<H', 2) + template * 2}, b'dat\\'))
+            (install / 'vol/simvol1.vol').write_bytes(voln({'WEAPONS.DAT': struct.pack('<H', 2) + empty + armed}, b'dat\\'))
             (install / 'vol/shell0.vol').write_bytes(voln({'INI_BOX.DAT': stock, 'WEAPONS.DAT': b'shell catalog'}, b'GAM\\'))
 
             import_catalog(install, output, 'es2')
@@ -126,14 +129,22 @@ class EarthsiegeImportTest(unittest.TestCase):
             self.assertEqual(len(vertices), 6)  # The chassis' shaded triangle and the weapon's; no placeholder.
 
     def test_mission_fits_take_the_most_common(self):
-        """Row 12 is reached past rows 1-11 (row 8 with a nested list); BOX (MECHS.NAM type 1) is fitted 2, 2, 7."""
-        def roster(kind, weapon):
-            return bytes(0x30) + struct.pack('<h10h', kind, weapon, *[-1] * 9) + bytes(144 - 0x46)
-        msn = struct.pack('<h', 5) + struct.pack('<H', 0) * 7 + struct.pack('<H', 1) + struct.pack('<5h', 0, -1, -1, -1, 2) + \
-            struct.pack('<2h', 4, 5) + struct.pack('<H', 0) * 3 + struct.pack('<H', 4) + \
-            roster(1, 2) + roster(1, 7) + roster(1, 2) + roster(-1, 9)
-        fits = mission_fits({'MECHS.NAM': b'OUTLAW\0BOX\0', 'A.MSN': msn, 'B.MSN': b'\x04\0'})
-        self.assertEqual(fits, {'BOX': {0: 2, **{slot: -1 for slot in range(1, 10)}}})
+        """The roster is reached past the rows before it (a waypoint list among them); BOX (MECHS.NAM type 1) is
+        fitted 2, 2, 7. A mission that does not end where its rows do is not counted."""
+        for game, (sizes, roster_row) in MISSION_ROWS.items():
+            def roster(kind, weapon):
+                return bytes(0x30) + struct.pack('<h10h', kind, weapon, *[-1] * 9) + bytes(sizes[roster_row] - 0x46)
+            msn = struct.pack('<h', 5)
+            for row, size in enumerate(sizes):
+                if size is None:
+                    msn += struct.pack('<H', 1) + struct.pack('<5h', 0, -1, -1, -1, 2) + struct.pack('<2h', 4, 5)
+                elif row == roster_row:
+                    msn += struct.pack('<H', 4) + roster(1, 2) + roster(1, 7) + roster(1, 2) + roster(-1, 9)
+                else:
+                    msn += struct.pack('<H', 0)
+            files = {'MECHS.NAM': b'OUTLAW\0BOX\0', 'A.MSN': msn, 'B.MSN': msn + b'\0\0'}
+            with self.subTest(game=game):
+                self.assertEqual(mission_fits(files, game), {'BOX': {0: 2, **{slot: -1 for slot in range(1, 10)}}})
 
     def test_not_an_install(self):
         with tempfile.TemporaryDirectory() as temp, self.assertRaisesRegex(ValueError, 'No Earthsiege volumes'):
