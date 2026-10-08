@@ -15,10 +15,14 @@ Read from the install's VOLN volumes (*.vol, every entry stored; SIMPATCH volume
   Gouraud poly's a shade ramp of the palette (.DPL: colours, then int32 ramp count and {int16 length,
   int16 index[length]} darkest first). A side whose fill and line both carry 0x14 in their top byte is not drawn.
 - Texture banks: the u16 at offset 0x94 of the shape's .DAT picks one (BANKS); debris (XXXX_DEB) takes its chassis'.
+- Weapons: a chassis' .GL lists its hardpoints. A drawn one's part is a placeholder, left out; an ES2 player chassis
+  shows its shell stock fit there instead (STOCK_FITS), each weapon the MECHWPNS.DTS root its sim WEAPONS.DAT
+  template names for the hardpoint's mounting code, in the WPNTEX bank.
 
 Sources: disassembly of Earthsiege 1's DBSIM.EXE (texture poly render 0x5A1E8, solid 0x5A118, bank names at
 0x989A0) and Kevin Foley's Herculan documentation of Earthsiege 2 (github.com/kevinfoley/Herculan,
-docs/retail/formats/dts-texture-binding.md, mech-shape-drawing.md, dts-node-posing.md; MIT).
+docs/retail/formats/dts-texture-binding.md, mech-shape-drawing.md, dts-node-posing.md, gun-layout-gl.md,
+weapons-dat-sim.md, herc-catalogs.md and simulation/weapon-mounts.md; MIT).
 
 Written (under local-data/<game>): catalog.json, model_json/MODEL.json and textures/*.png (frames as BANK_NN.png,
 flat colours as rgb_rrggbb.png; kept when already there, so edits survive).
@@ -51,6 +55,11 @@ CATEGORY = {3: 'Cybrids'}  # Any other bank: HERCs.
 # Shapes with no .DAT selector. Herculan: every flyer draws from ENEMY. ponytail: the structure and weapon banks are
 # the ones whose frame counts fit (BASETEX, WPNTEX); BASES.DAT's per-type selector is not read.
 FIXED_BANKS = {'SKIMMER': 'enemy', 'BASES_AE': 'basetex', 'BASES_AN': 'basetex', 'MECHWPNS': 'wpntex', 'MECHWPN2': 'wpntex'}
+# Earthsiege 2's player chassis and the shell's stock fit for each (Herculan, herc-catalogs.md: SHELL0 GAM\INI_*.DAT,
+# types 0-8). Cybrid fits live in the missions and Earthsiege 1's source is not found, so those show bare hardpoints.
+STOCK_FITS = {'OUTLAW': 'INI_OUTL.DAT', 'RAPTOR2': 'INI_RAPT.DAT', 'TOMAHAWK': 'INI_TOMA.DAT', 'SAMSON': 'INI_SAMS.DAT',
+              'COLOSSUS': 'INI_COLO.DAT', 'APOCA': 'INI_APOC.DAT', 'OGRE': 'INI_OGRE.DAT', 'MAVERICK': 'INI_MAVR.DAT',
+              'RAZOR': 'INI_RAZR.DAT'}
 TAGS = {0x08: 'shape', 0x07: 'part_list', 0x05: 'base_part', 0x15: 'bsp_part', 0x0b: 'cell_anim_part',
         0x0c: 'detail_part', 0x13: 'bitmap_part', 0x14: 'group', 0x0a: 'bsp_group', 0x01: 'poly', 0x02: 'solid_poly',
         0x03: 'shaded_poly', 0x09: 'gouraud_poly', 0x0f: 'texture_poly', 0x10: 'solid_poly', 0x11: 'shaded_poly',
@@ -60,7 +69,8 @@ HIDDEN = 0x14
 
 
 def read_volumes(install):
-    """Every stored entry of the install's VOLN volumes as {NAME: bytes}; SIMPATCH volumes first, so they win."""
+    """Every stored entry of the install's VOLN volumes as {NAME: bytes} and {FOLDER/NAME: bytes} (ES2 has a shell
+    GAM/WEAPONS.DAT and a sim DAT/WEAPONS.DAT); SIMPATCH volumes first, so they win."""
     volumes = sorted((p for p in Path(install).rglob('*') if p.suffix.lower() == '.vol' and p.is_file()),
                      key=lambda p: ('patch' not in p.name.lower(), str(p).lower()))
     files = {}
@@ -69,16 +79,20 @@ def read_volumes(install):
         if data[:4] != b'VOLN':
             continue
         chars = struct.unpack_from('<H', data, 10)[0]
+        folders = data[12:12 + chars].decode('latin1').upper().split('\0')
         at = 12 + chars
         count = struct.unpack_from('<H', data, at)[0]
         at += 6
         for _ in range(count):
             name = data[at:at + 13].split(b'\0')[0].decode('latin1').upper()
+            folder = folders[data[at + 13]].strip('\\') if data[at + 13] < len(folders) else ''
             offset = struct.unpack_from('<I', data, at + 14)[0]
             at += 18
             kind, size = struct.unpack_from('<BI', data, offset)
-            if kind == 2 and name not in files:  # Herculan: every retail entry is stored (type 2).
-                files[name] = data[offset + 9:offset + 9 + size]
+            if kind == 2:  # Herculan: every retail entry is stored (type 2).
+                entry = data[offset + 9:offset + 9 + size]
+                files.setdefault(name, entry)
+                files.setdefault(f'{folder}/{name}', entry)
     return files
 
 
@@ -246,13 +260,28 @@ def surface_colour(value, kind, colours, ramps):
     return colours[index & 0xff]
 
 
-def build_model(root, game, bank, colours, ramps, textures, hardpoints=()):
-    """Geometry, UVs and material slots of a shape's root 0; slot names are PNGs written to `textures`."""
+def part_transforms(node, out):
+    """{part id: transform} over a shape, first part of an id winning (Herculan, ShapeAnimation.CollectPartTransforms)."""
+    if node.get('transform', -1) >= 0:
+        out.setdefault(node['id'], node['transform'])
+    for child in node['children']:
+        part_transforms(child, out)
+    return out
+
+
+def build_model(root, game, bank, colours, ramps, textures, hardpoints=(), weapons=()):
+    """Geometry, UVs and material slots of a shape's root 0; slot names are PNGs written to `textures`.
+    `weapons` are (weapon root, its bank, bone part id, mount point): each drawn at the posed bone, its points moved by
+    the mount point and its own transforms ignored, as the game stamps the bone's transform onto every weapon part."""
     pose = rest_pose(root)
     corners = INSET[game]
     vertices, normals, uvs, slots, skipped = [], [], [], {}, 0
-    for group in groups_of(root, [], hardpoints):
-        matrix, offset = pose.get(group['transform'], ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], [0, 0, 0]))
+    identity = ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], [0, 0, 0])
+    bones = part_transforms(root, {}) if weapons else {}
+    drawn = [(group, pose.get(group['transform'], identity), bank, (0, 0, 0)) for group in groups_of(root, [], hardpoints)]
+    for weapon, weapon_bank, bone, mount in weapons:
+        drawn += [(group, pose.get(bones.get(bone), identity), weapon_bank, mount) for group in groups_of(weapon, [])]
+    for group, (matrix, offset), bank, mount in drawn:
         points, surfaces = group['points'], group['surfaces']
         for poly in group['children']:
             kind = poly['type']
@@ -278,7 +307,7 @@ def build_model(root, game, bank, colours, ramps, textures, hardpoints=()):
                 if sides[0] is None and sides[1] is None:
                     continue
             normal = apply(matrix, points[poly['normal']])
-            corner_points = [[a + b for a, b in zip(apply(matrix, points[i]), offset)] for i in ring]
+            corner_points = [[a + b for a, b in zip(apply(matrix, [p + m for p, m in zip(points[i], mount)]), offset)] for i in ring]
             for side, value in enumerate(sides):
                 if value is None:
                     continue
@@ -327,7 +356,7 @@ def import_catalog(install, output, game):
         raise ValueError(f'Unknown Earthsiege game {game}')
     install, output = Path(install).expanduser(), Path(output)
     files = read_volumes(install) if install.is_dir() else {}
-    shapes = sorted(name for name in files if name.endswith('.DTS'))
+    shapes = sorted(name for name in files if name.endswith('.DTS') and '/' not in name)
     if not shapes or PALETTE not in files:
         raise ValueError(f'No Earthsiege volumes (.vol with shapes and {PALETTE}) in {install}')
     colours, ramps = palette(files[PALETTE])
@@ -342,11 +371,39 @@ def import_catalog(install, output, game):
 
     def hardpoints(stem):
         """Herculan (gun-layout-gl.md, mech-shape-drawing.md): a chassis' .GL is int16 count, 26-byte records of
-        int16 part id (bone) and at +6 the mounting code; codes below 4 are drawn, so their parts are placeholders."""
+        int16 part id (bone), at +6 the mounting code (below 4 drawn, so the bone's part is a placeholder), at +0x10
+        the mount point and at +0x17 the fit slot. As (bone, code, mount point, slot), the drawn ones only."""
         data = files.get(stem + '.GL', b'')
         count = struct.unpack_from('<h', data)[0] if len(data) >= 2 else 0
-        return {struct.unpack_from('<h', data, 2 + 26 * i)[0] for i in range(count)
-                if 2 + 26 * i + 7 <= len(data) and data[2 + 26 * i + 6] < 4}
+        records = [struct.unpack_from('<h4xB9x3h1xB', data, 2 + 26 * i) for i in range(count) if 2 + 26 * (i + 1) <= len(data)]
+        return [(r[0], r[1], r[2:5], r[5]) for r in records if r[1] < 4]
+
+    # The weapon each fit slot of a player chassis' stock fit carries, drawn as the MECHWPNS.DTS root its sim
+    # template names for the hardpoint's mounting code (Herculan: herc-catalogs.md, weapons-dat-sim.md).
+    templates, weapon_roots = [], []
+    if 'DAT/WEAPONS.DAT' in files and 'MECHWPNS.DTS' in files and any(STOCK_FITS.get(s[:-4]) in files for s in shapes):
+        table, at = files['DAT/WEAPONS.DAT'], 2
+        for _ in range(struct.unpack_from('<H', table)[0]):  # A .DMG piece, a .COL cluster, then a 48-byte tail.
+            at += 8 + 4 * max(struct.unpack_from('<h', table, at + 6)[0], 0)
+            spheres = struct.unpack_from('<h', table, at + 2)[0]
+            at += 4 + (8 * spheres if spheres & 0x1fff else 0)
+            templates.append(struct.unpack_from('<4h', table, at))
+            at += 0x30
+        reader = Reader(files['MECHWPNS.DTS'])
+        while reader.at + 8 <= len(reader.data):
+            weapon_roots.append(read_object(reader))
+
+    def weapons(stem):
+        data = files.get(STOCK_FITS.get(stem, ''), b'')
+        if len(data) < 8:
+            return []
+        fit = {slot: weapon for slot, weapon, _, _ in struct.iter_unpack('<4h', data[8:8 + 8 * struct.unpack_from('<h', data, 6)[0]])}
+        out = []
+        for bone, code, mount, slot in hardpoints(stem):
+            weapon = fit.get(slot, 0)  # 0: an empty hardpoint.
+            if 0 < weapon < len(templates) and 0 <= templates[weapon][code] < len(weapon_roots):
+                out.append((weapon_roots[templates[weapon][code]], bank('wpntex'), bone, mount))
+        return out
 
     selector = {}
     for name in shapes:
@@ -365,7 +422,8 @@ def import_catalog(install, output, game):
         model = safe(stem)
         item = dict(model_name=model, display_name=stem, texture_name='', game=game, category='Objects', status='ready')
         try:
-            data, lost = build_model(read_object(Reader(files[name])), game, bank(chosen), colours, ramps, textures, hardpoints(stem))
+            data, lost = build_model(read_object(Reader(files[name])), game, bank(chosen), colours, ramps, textures,
+                                     {bone for bone, _, _, _ in hardpoints(stem)}, weapons(stem))
         except (struct.error, IndexError, KeyError, RecursionError) as exc:
             catalog.append(dict(item, status=f'failed: {exc}'))
             continue
