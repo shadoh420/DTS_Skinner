@@ -126,6 +126,27 @@ class RedBaronImportTest(unittest.TestCase):
                 self.assertEqual(client.get('/texture/03000010.png?game=rb3d').status_code, 200)
                 self.assertEqual(client.get('/export_glb/03008000?game=rb3d').status_code, 200)
 
+    def test_older_shape(self):
+        """An older 0x64 shape: integer part headers, and a 0x28 mesh of integer points, a 16.16 normal and 28-byte
+        faces. Its material list is its name with the 8 made a 9 (variant 1: 0b0b9001.dml)."""
+        corners = [(0, 0, 0), (10, 0, 0), (10, 0, 10), (0, 0, 0)]
+        mesh = tagged(0x28, struct.pack('<6i', -1, 0, 1, 0, 0, 0) + struct.pack('<3I', 4, 0, 1) +
+                      b''.join(struct.pack('<6i', *p, 0, 65536, 0) for p in corners) + struct.pack('<10H2i', 0, 1, 2, 2, 0, 0, 0, 0, 3, 0, 0, 0))
+        old = tagged(0x64, struct.pack('<6i', -1, 0, 1, 0, 0, 0) + struct.pack('<I', 1) + mesh) + struct.pack('<I', 0)
+        items = material(1, 0, 1, 0, 5, 0, 0, 0)
+        dml = struct.pack('<HHIII', 0x1e, 0x14, 0, 1, 1) + items
+        with tempfile.TemporaryDirectory() as temp:
+            install, output = Path(temp, 'Red Baron 3D'), Path(temp, 'local/rb3d')
+            (install / 'Data').mkdir(parents=True)
+            (install / 'Data/rb.vol').write_bytes(volume({'0b0b8001.dts': old, '0b0b9001.dml': dml, 'summer.pal': palette()}))
+
+            self.assertEqual(import_catalog(install, output)['ready'], 1)
+            entry = json.loads((output / 'catalog.json').read_text())[0]
+            self.assertEqual((entry['display_name'], entry['category']), ('Aircraft wreckage 1', 'Projectiles'))
+            model = json.loads((output / 'model_json/0b0b8001.json').read_text())
+            self.assertEqual((model['material_textures'], len(model['vertices']), model['normals'][:3]), (['rgb_00ff00.png'], 9, [0, 0, 1]))
+            self.assertIn(-0.381, model['vertices'])
+
     def test_not_an_install(self):
         with tempfile.TemporaryDirectory() as temp, self.assertRaisesRegex(ValueError, 'No Red Baron volumes'):
             import_catalog(temp, Path(temp, 'out'))

@@ -62,7 +62,7 @@ Skinner's reading is often deeper than siege-studio's:
 | Palettes | PL98 (`dts_module/palette.py:28`); Earthsiege `.dpl` with its shade ramps (`tools/import_earthsiege.py`); Red Baron's PPAL (`tools/import_redbaron.py`) | RIFF `.pal`, old DGDS `PAL:` |
 | VOL | `PVOL` with LZH (`tools/import_t1_map.py:167`); Starsiege ` VOL`; Earthsiege `VOLN` (stored entries); Red Baron `VOL ` with LZH (`tools/import_redbaron.py`) | RMF/DYN (3Space 1.5/DGDS); RBX/TBV |
 | 3Space 2.0 DTS, DBM/DBA/DCI | DTS (finest root, rest pose, textured) and DBA (`tools/import_earthsiege.py`) | DCI |
-| 3Space 2.5 DTS, DML | Red Baron 3D's 0x65 shapes (finest detail and cockpits, textured, aircraft in a squadron's paint) and DML (`tools/import_redbaron.py`) | the 17 older 0x64 (fixed-point) shapes |
+| 3Space 2.5 DTS, DML | Red Baron 3D's 0x65 and older 0x64 shapes (finest detail and cockpits, textured, aircraft in a squadron's paint) and DML (`tools/import_redbaron.py`) | |
 | ZIP/VL2, PK3 | ✔ | |
 
 Games siege-studio covers, and where you have them:
@@ -110,12 +110,14 @@ Games siege-studio covers, and where you have them:
      - Shaded and Gouraud polys name a shade ramp, which the `.DPL` stores after its colours; solid polys name a palette index.
    - Imported by `tools/import_earthsiege.py` as games `es1` (32 of 35 shapes) and `es2` (50 of 55); the rest are effects with no polygons.
    - Weapons (2026-10-08): the ES2 player HERCs carry their shell stock fit (`SHELL0 GAM\INI_*.DAT`). Each `.GL` hardpoint with a drawn mounting code takes the weapon its fit slot (`+0x17`) names, drawn as the `MECHWPNS.DTS` root that the sim `WEAPONS.DAT` template gives for that code, at the hardpoint bone moved by the mount point. Checked against Herculan running TRAIN8 (Samson) and TRAIN1 (Outlaw). The Cybrids (and the other non-player machines) take the fit their missions give them most: row 12 of every `.MSN`, the mech roster, has the `MECHS.NAM` type at 0x30 and ten weapon ids at 0x32. ES1 has no stock-fit files, so every ES1 machine takes its missions' favourite. Its `.MSN` files also say revision 5 but have 11 rows, read from its shell `GO.EXE` (parser at 0x30120; X-32 image, address = file offset - 0x491D): records of 14, 22, 22, 10 bytes, waypoint lists, 12, 30, 106 (the mech roster, the same type and weapon fields as ES2's), 64, 24 and 88 bytes. 112 of its 114 missions read exactly to their end (only those count; ES2: 61 of 62). The empty weapon is the template with no hit spheres: ES2 id 0, ES1 id 17.
-3. **Red Baron 3D** (3Space 2.5 DTS), done 2026-10-08 as game `rb3d` (`tools/import_redbaron.py`; 128 of 173 shapes, the rest are sprite effects or the older 0x64 format). siege-studio's reader reads nothing, so everything here was decoded from the files and `Baron.exe`:
+3. **Red Baron 3D** (3Space 2.5 DTS), done 2026-10-08 as game `rb3d` (`tools/import_redbaron.py`; 143 of 173 shapes, the rest are sprite effects, plus the Roland C.II's cockpit, which has no material list). siege-studio's reader reads nothing, so everything here was decoded from the files and `Baron.exe`:
    - `VOL ` volumes: chunks with a u24 size and 0x80; 14-byte index entries; LZH (type 3) as in Tribes.
    - Shapes: tagged objects padded to 2 bytes; the `nu` ones carry a leading u32 1; all floats. Every part's transform is -1, so points are in shape space. A cell animation's tail is sequence, count and the child per frame; frame 0 is the intact state for wings and control surfaces.
    - Faces: four corners (a triangle repeats its third), four texture corners, a normal vertex and a material; the corners wind against the normal. Texture v 0 is the bitmap's top row (checked on the Camel's trailing-edge cut-out and the church's door).
    - Axes: x right, y forward, z up, 1.5 inches a unit. Checked on the S.E.5a, whose Vickers sits on the pilot's left as on the real aircraft, and on the E.III's and Camel's spans.
    - Paint: `FUS`, `UWT`... are paint parts (`Baron.exe` table at 0x188268); the bitmap is `03 PP NN SS .bmp`. Materials flagged 1 make palette index 0 clear; flagged 2 are `.pab` alpha maps for fire, oil and propeller blur, left out.
+   - Material lists: the shape's name with its 8 made a 9 (`Baron.exe`: `%02x%02x9%1x00.dml`), so each cockpit (`9f00`) and variant has its own.
+   - Older 0x64 shapes (BSP 0x46, mesh 0x28): integer part headers and points in the same units, 16.16 normals and texture vertices, 28-byte faces of u16 indices. Fifteen of them are aircraft wreckage (1111, no name row), whose paint parts the breaking plane fills in.
    - The viewer draws `rb3d` front faces only, as the game does: a wing's top and bottom are two faces in one plane.
 4. **Skip, unless you want a generic "extract archive" feature**:
    - CyberStorm 1/2 and the RBX/TBV/RMF/DYN games: archives of 2D formats nobody reads;

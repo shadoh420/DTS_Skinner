@@ -15,9 +15,11 @@ size, u8 compression (0 stored, 3 DarkStar LZH), u8 1) and the 'VBLK' blocks.
   vertex, texture-vertex and face counts, vertices (f32 point[3], f32 normal[3]), texture vertices (f32 u, v) and
   faces (i32 vertex[4], i32 texture vertex[4], i32 normal vertex, i32 material, f32 plane distance, i32 0; a
   triangle repeats its third corner). The corners wind against the normal; texture v 0 is the bitmap's top row. Axes
-  are x right, y forward, z up (the S.E.5a's Vickers is on the pilot's left). The 17 older 0x64 shapes (fixed-point)
-  are skipped.
-- Materials (.DML, CC II 90 00 for a shape's class and index): tag 0x1e, u32 count, u32 detail levels, then each
+  are x right, y forward, z up (the S.E.5a's Vickers is on the pilot's left). The 17 older shapes (0x64, BSP part
+  0x46, mesh 0x28) have no leading u32 and an integer part header; their mesh has i32 points in the same units,
+  16.16 normals and texture vertices, and 28-byte faces (u16 vertex[4], texture vertex[4], normal vertex, material,
+  then i32 plane distance and flags).
+- Materials (.DML, the shape's name with its 8 made a 9: CC II 9L VV): tag 0x1e, u32 count, u32 detail levels, then each
   material (tag 0x1f): u32 kind, then 1: palette index at body +16; 2: 0xBBGGRR at +20; 3: six i32 (the sixth its
   flags: 1 palette index 0 is clear, 2 a .pab alpha map for fire, oil or propeller blur, not drawn), u32 length, name.
 - Textures: an aircraft's FUS, UWT, MWB... names a paint part (Baron.exe's code table at 0x188268, the paint shop's
@@ -25,7 +27,8 @@ size, u8 compression (0 stored, 3 DarkStar LZH), u8 1) and the 'VBLK' blocks.
   painted here. PBMP bitmaps are coloured from the sim palette (summer.pal, a PPAL's 'data' RGBA chunk); Windows
   bitmaps carry their own.
 - Names: pnames.dat, a Dynamix table (u16 rows, u16 row width at 0x14; rows at the end: i32 id, then the name); an
-  aircraft's id is its index, anything else's class * 100 + index.
+  aircraft's id is its index, anything else's class * 100 + index. 1111 has no row: its 15 variants are wreckage
+  (wheels, wing pieces) whose paint parts the breaking plane fills in, drawn plain grey here.
 
 Written (under local-data/rb3d): catalog.json, model_json/MODEL.json and textures/*.png (kept when already there, so
 edits survive).
@@ -123,8 +126,8 @@ def skip(data, at):
 
 
 def meshes(data):
-    """Every drawn mesh of a 0x65 shape as (vertices, texture vertices, faces)."""
-    if struct.unpack_from('<HH', data) != (0x65, 0x14):
+    """Every drawn mesh of a 0x65 or older 0x64 shape as (vertices, texture vertices, faces), in the 0x2b layout."""
+    if struct.unpack_from('<HH', data) not in ((0x65, 0x14), (0x64, 0x14)):
         raise ValueError('Not a 3Space 2.5 shape')
     out, lists = [], [0]
     while lists:
@@ -152,6 +155,14 @@ def meshes(data):
                 uvs = list(struct.iter_unpack('<2f', data[p:p + 8 * counts[1]]))
                 p += 8 * counts[1]
                 out.append((vertices, uvs, list(struct.iter_unpack('<10ifi', data[p:p + 48 * counts[2]]))))
+            elif kind == 0x28:  # The older mesh: integer points, 16.16 normals and texture vertices, u16 indices.
+                counts = struct.unpack_from('<3I', data, child + 32)
+                p = child + 44
+                vertices = [(*v[:3], *(n / 65536 for n in v[3:])) for v in struct.iter_unpack('<6i', data[p:p + 24 * counts[0]])]
+                p += 24 * counts[0]
+                uvs = [(u / 65536, v / 65536) for u, v in struct.iter_unpack('<2I', data[p:p + 8 * counts[1]])]
+                p += 8 * counts[1]
+                out.append((vertices, uvs, list(struct.iter_unpack('<10H2i', data[p:p + 28 * counts[2]]))))
     return out
 
 
@@ -208,7 +219,8 @@ def import_catalog(install, output):
     catalog, textures = [], {}
     for name in shapes:
         kind, index, detail, variant = (int(name[i:i + 2], 16) for i in (0, 2, 4, 6))
-        title = names.get(index if kind == 3 else kind * 100 + index) or name[:-4]
+        ident = index if kind == 3 else kind * 100 + index
+        title = names.get(ident) or ('Aircraft wreckage' if ident == 1111 else name[:-4])
         title += ' cockpit' if detail == 0x8f else f' {variant}' if variant else ''
         model = safe(name[:-4])
         item = dict(model_name=model, display_name=title, texture_name='', game='rb3d',
@@ -225,6 +237,10 @@ def import_catalog(install, output):
                 textures.setdefault(slot, None)
                 return slot
             stem = value.rsplit('.', 1)[0]
+            if kind != 3 and stem in PARTS and not flags & 2:
+                # Wreckage (1111) takes the paint of whichever plane broke up; plain grey here.
+                textures.setdefault('rgb_a0a0a0.png', None)
+                return 'rgb_a0a0a0.png'
             source = f'03{name[2:4]}{PARTS[stem]:02x}{squadron}.bmp' if kind == 3 and stem in PARTS else value
             if flags & 2 or source not in files:
                 return None  # Effects show only while burning or spinning; clbill1.bmp is in no volume.
@@ -233,8 +249,10 @@ def import_catalog(install, output):
             return slot
 
         try:
-            dml = files.get(f'{name[:4]}9000.dml')
-            material_table = materials(dml()) if dml else []
+            dml = files.get(f'{name[:4]}9{name[5:8]}.dml')  # Baron.exe: %02x%02x9%1x00.dml beside %02x%02x8%1x00.dts.
+            if not dml:
+                raise ValueError('no material list')  # The Roland C.II's cockpit, which no flyable plane uses.
+            material_table = materials(dml())
             data = build_model(files[name](), slots_of)
         except (struct.error, ValueError, IndexError) as exc:
             catalog.append(dict(item, status=f'failed: {exc}'))
