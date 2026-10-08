@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — N64 Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/n64-maps/viewer.js"></script>
+</head>
+<body>
+  <header><a href="/">← Models</a><strong>N64 Maps</strong>
+    <select id="map" aria-label="Map"></select>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="130" value="90"></label>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+    <details id="importPanel"><summary>Import maps</summary>
+      <div class="import">
+        <label>Maps folder <input id="folderPath" placeholder="C:\Users\you\Downloads\Everything"></label>
+        <label><input id="replace" type="checkbox"> Re-import existing maps</label>
+        <button id="import">Import</button>
+        <span id="importStatus" role="status">Imports level conversions made for Blender: each folder of .obj files (with its .mtl and .png textures) becomes one map. Extract a .rar first. The folder is only read.</span>
+      </div>
+    </details>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading map…</span>
+    <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release</span>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay or audio. Surfaces are drawn unlit, texture times vertex colour (the level's baked shading), as the Blender material script of the conversions' author, <a href="https://github.com/L-Spiro">L. Spiro</a>, draws them, with the material names' clamp, mirror, two-sided, see-through and decal flags. Vertex alpha makes glass and water see-through. Chrome (environment-mapped) surfaces show their plain texture; there are no skies, fog, doors or characters beyond what the conversion holds.</span></details></footer>
+</body>
+</html>
