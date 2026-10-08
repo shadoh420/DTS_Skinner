@@ -1,6 +1,7 @@
 /* Vanilla Three.js free-flight viewer for the maps copied by tools/import_n64_map.py: N64 level conversions made for
-   Blender, as .obj pieces whose vertices carry RGBA colour after their position. Surfaces are drawn as the
-   conversions' Blender script draws them: unlit, texture times vertex colour, with flags read from material names. */
+   Blender by L. Spiro (https://github.com/L-Spiro), as .obj pieces whose vertices carry RGBA colour after their position.
+   Surfaces are drawn as L. Spiro's Blender material script draws them: unlit, texture times vertex colour, with flags
+   read from material names. Used with L. Spiro's permission; no conversion is included. */
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);

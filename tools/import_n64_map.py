@@ -1,4 +1,4 @@
-"""Import N64 level conversions made for Blender: one folder per level holding its pieces as .obj files (each
+"""Import L. Spiro's N64 level conversions (https://github.com/L-Spiro), made for Blender: one folder per level holding its pieces as .obj files (each
 vertex's RGBA colour after its position), one .mtl and the .png textures. Every folder of .obj files under the
 chosen folder (or the folder itself) is copied to <output>/maps/<id>/ and listed in <output>/index.json, which the
 N64 Maps page (static/n64-maps/viewer.js) reads. Other files (.blend, .rar) are left out."""
