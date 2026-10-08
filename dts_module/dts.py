@@ -321,13 +321,15 @@ class dts:
         print(f"DEBUG: Before transitions. Num_transitions: {self.num_transitions}. curr_data_index: {curr_data_index[0]}")
         self.transitions = []
         if self.num_transitions > 0: # Only read if num_transitions > 0
-            if self.version == 7: # Kaitai: transitionv7 (u4, u4, f4, f4, transformv7)
-                                  # transformv7: quat16, point3f (translate), point3f (scale)
+            if self.version == 7: # u4, u4, f4, f4, f4 duration, transformv7 (quat16, point3f translate, point3f scale)
+                                  # The duration is there (siege-studio darkstar_structures.hpp shape::v7::transition;
+                                  # Starsiege's HERCs have transitions and misparse without it).
                 for _ in range(self.num_transitions):
                     start_seq = helper.get_int(data, curr_data_index)
                     end_seq = helper.get_int(data, curr_data_index)
                     start_pos = helper.get_float(data, curr_data_index)
                     end_pos = helper.get_float(data, curr_data_index)
+                    duration = helper.get_float(data, curr_data_index)
                     # transformv7 part
                     qx = helper.get_int16(data, curr_data_index)
                     qy = helper.get_int16(data, curr_data_index)
@@ -336,8 +338,7 @@ class dts:
                     quat = dts_quat(float(qx), float(qy), float(qz), float(qw))
                     trans_pos = helper.get_float3d(data, curr_data_index)
                     trans_scale = helper.get_float3d(data, curr_data_index)
-                    # dts_transition expects duration, but v7 doesn't have it here. Pass 0.
-                    self.transitions.append(dts_transition(start_seq, end_seq, start_pos, end_pos, 0.0, 
+                    self.transitions.append(dts_transition(start_seq, end_seq, start_pos, end_pos, duration, 
                                                            quat, trans_pos, trans_scale))
             elif self.version >= 8: # Kaitai: transition (u4, u4, f4, f4, f4, transform)
                                    # transform: quat16, point3f (translate)

@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
   const compare = (a, b) => a.localeCompare(b, 'en', {numeric: true, sensitivity: 'base'});
-  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm'];  // Games with an import box (<id>Import).
+  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 'ss', 'es1', 'es2', 'rb3d'];  // Games with an import box (<id>Import).
   const scene = new THREE.Scene();
   scene.add(new THREE.AmbientLight(0xffffff, .6));
   const light = new THREE.DirectionalLight(0xffffff, .8);
@@ -417,7 +417,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const bitmap = await createImageBitmap(await response.blob(), {premultiplyAlpha: 'none'});
     const texture = new THREE.Texture(bitmap);
     texture.needsUpdate = true;
-    if (textureGame === 't1') texture.userData.alpha = hasAlpha(bitmap);
+    if (textureGame === 't1' || textureGame === 'rb3d') texture.userData.alpha = hasAlpha(bitmap);
     texture.flipY = false;
     texture.magFilter = THREE.NearestFilter;
     texture.minFilter = THREE.NearestFilter;
@@ -519,10 +519,12 @@ window.addEventListener('DOMContentLoaded', () => {
         const key = textureKey(index), flags = gameId === 't2' ? flagsFor(index) : 0;
         const map = cache.has(key) ? await cache.get(key) : null;
         const Material = $('lighting').checked && !(flags & 32) ? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
-        const transparent = Boolean(flags & (4 | 8 | 16)) || Boolean(map && map.userData.alpha);
+        // Red Baron's alpha is a colour key: cut out, still writing depth, so stacked wings hide each other.
+        const transparent = Boolean(flags & (4 | 8 | 16)) || Boolean(map && map.userData.alpha && gameId !== 'rb3d');
         newMaterials.push(new Material({
           name: filename, map, vertexColors: Boolean(model.colors), color: map ? 0xffffff : failures.has(textureId(filename, sourceGame(model, index))) ? 0xcc00cc : 0x999999,
-          side: THREE.DoubleSide, wireframe: $('wireframe').checked,
+          // Red Baron models a wing's top and bottom as two faces in one plane; the game culls the far one.
+          side: gameId === 'rb3d' ? THREE.FrontSide : THREE.DoubleSide, wireframe: $('wireframe').checked,
           transparent, depthWrite: !transparent, alphaTest: map && map.userData.alpha ? .02 : 0,
           blending: flags & 8 ? THREE.AdditiveBlending : flags & 16 ? THREE.SubtractiveBlending : THREE.NormalBlending
         }));
@@ -762,7 +764,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (serial === catalogSerial) await loadModel(true);
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
-  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus']]) {
+  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus']]) {
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();
       if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }
