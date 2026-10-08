@@ -59,9 +59,9 @@ Skinner's reading is often deeper than siege-studio's:
 | Darkstar DTS | v7, v8 (`dts_module/dts.py`); the `< 7` branch at `:246` has never seen a real file | v2-v6, if Starsiege or older Darkstar games use them |
 | DML | v1-4 | |
 | PBMP | ✔ (`dts_module/dml.py`) | **PBA** (PBMA arrays) |
-| Palettes | PL98 (`dts_module/palette.py:28`) | RIFF `.pal`, Earthsiege `.dpl`, old DGDS `PAL:` |
-| VOL | `PVOL` with LZH (`tools/import_t1_map.py:167`) | ` VOL` variant; `VOLN`/RMF/DYN (3Space 2.0); RBX/TBV |
-| 3Space 2.0 DTS, DBM/DBA/DCI | ✘ | all of them |
+| Palettes | PL98 (`dts_module/palette.py:28`); Earthsiege `.dpl` with its shade ramps (`tools/import_earthsiege.py`) | RIFF `.pal`, old DGDS `PAL:` |
+| VOL | `PVOL` with LZH (`tools/import_t1_map.py:167`); Starsiege ` VOL`; Earthsiege `VOLN` (stored entries) | RMF/DYN (3Space 1.5/DGDS); RBX/TBV |
+| 3Space 2.0 DTS, DBM/DBA/DCI | DTS (finest root, rest pose, textured) and DBA (`tools/import_earthsiege.py`) | DCI |
 | ZIP/VL2, PK3 | ✔ | |
 
 Games siege-studio covers, and where you have them:
@@ -101,7 +101,12 @@ Games siege-studio covers, and where you have them:
    - ES2 `SIMVOL0.VOL` holds 55 DTS models (all the HERCs plus debris and effects), 126 DBA, 45 HBA and 32 DPL.
    - Geometry, the part hierarchy and the default pose decode correctly: the Apocalypse renders as itself.
    - DBA bitmaps and DPL palettes decode correctly. DBM objects pad to an even size, and pixels start 21 bytes into each object.
-   - **Open:** which bitmap and which DBA each textured polygon uses. The first byte of the poly's colour record (`colors[color // 4][0]`) is the best lead so far: it picks `APOCATEX.DBA` for the Apocalypse.
+   - ~~Open: which bitmap and which DBA each textured polygon uses.~~ **Solved** (2026-10-08), from a disassembly of Earthsiege 1's `DBSIM.EXE` and checked against Kevin Foley's Herculan docs for Earthsiege 2 (github.com/kevinfoley/Herculan, `docs/retail/formats/dts-texture-binding.md`, MIT):
+     - The poly's colour field is a dword index into the group's surface table (front fill, front line, back fill, back line); the probe's `colors[color // 4]` was the wrong stride.
+     - A texture poly's value is a frame of the shape's texture bank, mapped corner to corner in vertex order (ES1 inset 3 texels).
+     - The bank comes from the u16 at offset 0x94 of the shape's `.DAT`: ES1 light, medium, heavy, enemy, apoco; ES2 adds apocatex, razortex, newhercs.
+     - Shaded and Gouraud polys name a shade ramp, which the `.DPL` stores after its colours; solid polys name a palette index.
+   - Imported by `tools/import_earthsiege.py` as games `es1` (32 of 35 shapes) and `es2` (50 of 55); the rest are effects with no polygons.
 3. **Red Baron 2/3D** (3Space 2.5 DT2/DTS), only if you want it. The reader exists in siege-studio but was never wired into it, and the game is neither local nor in the library.
 4. **Skip, unless you want a generic "extract archive" feature**:
    - CyberStorm 1/2 and the RBX/TBV/RMF/DYN games: archives of 2D formats nobody reads;
