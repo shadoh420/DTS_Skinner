@@ -103,6 +103,9 @@ def read_object(reader):
         node['transform'], node['id'] = reader.read('hhh3h')[:2]
     if name in PART_LISTS:
         node['children'] = [read_object(reader) for _ in range(reader.read('H')[0])]
+        if name == 'bsp_part':  # Nodes: int16 normal[3], int32 constant, int16 front, back (a child when & 0x4000).
+            count = reader.read('h')[0]
+            node['nodes'] = [reader.read('3hihh')[4:] for _ in range(count)]
         if name in ('shape', 'an_shape'):
             transforms, sequences = reader.read('HH')
             reader.read(f'{sequences + transforms}h')
@@ -176,6 +179,23 @@ def rest_pose(root):
     return world
 
 
+def reached(part):
+    """The children of a BSP part its tree reaches from node 0, in file order; the game draws no other
+    (Herculan, dts-texture-binding.md, "TSBSPPart child selection")."""
+    nodes, seen, found, pending = part.get('nodes', []), set(), set(), [0]
+    while pending:
+        index = pending.pop()
+        if not 0 <= index < len(nodes) or index in seen:
+            continue
+        seen.add(index)
+        for link in nodes[index]:
+            if link >= 0 and link & 0x4000:
+                found.add(link & 0x3fff)
+            elif link >= 0:
+                pending.append(link)
+    return sorted(i for i in found if i < len(part['children']))
+
+
 def groups_of(node, out, hardpoints=()):
     """The groups drawn at full detail: a detail part's finest (last) level, a cell-animation part's first cell; not
     the parts whose id is a visible hardpoint, placeholders the game swaps for the fitted weapon's shape."""
@@ -183,7 +203,9 @@ def groups_of(node, out, hardpoints=()):
         out.append(node)
         return out
     children = [child for child in node['children'] if child['type'] != 'an_anim_list' and child.get('id') not in hardpoints]
-    if node['type'] == 'detail_part':
+    if node['type'] == 'bsp_part':
+        children = [node['children'][i] for i in reached(node) if node['children'][i] in children]
+    elif node['type'] == 'detail_part':
         children = children[-1:]
     elif node['type'] == 'cell_anim_part':
         children = children[:1]
