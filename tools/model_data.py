@@ -30,7 +30,7 @@ def model_sort_key(name):
     return parts, name.casefold(), name
 
 
-MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg')
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss')
 
 
 def material_texture_refs(data, material_overrides=None):

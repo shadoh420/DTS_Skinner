@@ -157,16 +157,18 @@ def lzh_expand(data, offset, length):
 
 
 def open_volume(path):
-    """Members of a zip or PVOL volume as {lowercase file name: function returning its bytes}."""
+    """Members of a zip, PVOL (Tribes) or ' VOL' (Starsiege) volume as {lowercase file name: function returning its bytes}."""
     if zipfile.is_zipfile(path):
         archive = zipfile.ZipFile(path)
         return {Path(entry.filename).name.lower(): (lambda entry=entry: archive.read(entry))
                 for entry in archive.infolist() if not entry.is_dir()}
     data = path.read_bytes()
     try:
-        if data[:4] != b'PVOL':
+        if data[:4] not in (b'PVOL', b' VOL'):
             raise ValueError
         names_at = struct.unpack_from('<I', data, 4)[0]
+        if data[:4] == b' VOL' and data[names_at:names_at + 16] == b'vols\0\0\0\0voli\0\0\0\0':
+            names_at += 16  # Starsiege puts an empty name list and index before the real ones.
         if data[names_at:names_at + 4] != b'vols':
             raise ValueError
         names_size = struct.unpack_from('<I', data, names_at + 4)[0]

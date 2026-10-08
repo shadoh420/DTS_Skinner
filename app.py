@@ -31,6 +31,7 @@ from tools.import_reflex_models import import_catalog as import_reflex_catalog
 from tools.import_ta import import_catalog as import_ta_catalog, dts_source as ta_dts_source
 from tools.import_tv import import_catalog as import_tv_catalog
 from tools.import_t1_mod import import_catalog as import_t1_mod
+from tools.import_starsiege import import_catalog as import_starsiege_catalog
 
 # --- System Tray Imports ---
 try:
@@ -69,7 +70,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -557,6 +558,7 @@ def import_reflex():
 @app.route('/import_trpg', methods=['POST'])
 @app.route('/import_sw', methods=['POST'])
 @app.route('/import_rm', methods=['POST'])
+@app.route('/import_ss', methods=['POST'])
 def import_conversion_pack():
     game = request.path.removeprefix('/import_')
     if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
@@ -571,7 +573,7 @@ def import_conversion_pack():
     try:
         if game in T1_MODS:
             return jsonify(import_t1_mod(payload['path'].strip(), pack_dirs[game], textures_dir, game, T1_MODS[game]))
-        importer = {'ta': import_ta_catalog, 'tv': import_tv_catalog}[game]
+        importer = {'ta': import_ta_catalog, 'tv': import_tv_catalog, 'ss': import_starsiege_catalog}[game]
         return jsonify(importer(payload['path'].strip(), pack_dirs[game], textures_dir))
     except (OSError, ValueError, KeyError) as exc:
         return jsonify(error=str(exc)), 422
@@ -608,7 +610,7 @@ def export_glb(model_name):
         elif game == 't1':
             from tools.animate_t1 import load_animated_model
             data = load_animated_model(model_name, None, preview)
-        elif game in ('ta', 'tv', *T1_MODS):
+        elif game in ('ta', 'tv', 'ss', *T1_MODS):
             from tools.animate_t1 import load_animated_model
             source = ta_dts_source(pack_dirs[game], model_name)
             try:
