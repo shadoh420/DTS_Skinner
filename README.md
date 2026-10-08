@@ -1,6 +1,8 @@
 # DTS Skinner
 
-Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, Diabotical and Reflex Arena**, view and edit Reflex Arena maps, and view Diabotical maps. Runs on Windows with a 3D viewer in your browser.
+Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, Diabotical and Reflex Arena**, plus Tribes conversion packs and mods. Fly through maps of Tribes 1 and 2, Quake 3, Reflex Arena (and edit them), Diabotical and N64 level conversions. Runs on Windows with a 3D viewer in your browser.
+
+![DTS Skinner](docs/workshop.png)
 
 **[Download the latest release](https://github.com/shadoh420/DTS_Skinner/releases/latest)**
 
@@ -26,7 +28,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, D
 - **T2 Maps** opens a free-flight preview of Tribes 2 missions with terrain, buildings, placed objects, sky, water and fog: every stock, Classic and Team Rabbit 2 map of your own install, imported from the page's **Import maps** panel; see [T2 map setup and limitations](docs/t2-map-viewer.md).
 - **T1 Maps** opens a free-flight preview of Starsiege: Tribes missions: every map in your own install plus custom missions, imported from the page's **Import maps** panel; see [T1 map setup and limitations](docs/t1-map-viewer.md).
 - **Q3 Maps** opens a free-flight preview of Quake 3 Arena maps with lightmaps, curved surfaces, shader effects, skies and pickups: every map of your own install, stock, Team Arena and custom pk3s, imported from the page's **Import maps** panel; see [Q3 map setup and limitations](docs/q3-map-viewer.md).
-- **Reflex Maps** opens Reflex Arena maps to walk through (Quake 3-style movement, teleporters and jump pads) and edits their brushes, textured from the game's materials or any of Skinner's texture libraries (and the game's textures become a fourth library for models): **0** switches to edit mode as in the game, with the game's editor controls (drag to move, Alt to lift, Shift-drag a face, 1–8 to create brushes, volumes and entities, V for vertex mode, B to bridge two faces, C to clip, numpad +/− to turn, the texture keys on one or several faces, mirroring, prefabs made, broken, updated and edited in place, N for properties, K/M materials, G clone, Z/X undo), and brushes are also carved, hollowed, merged and split, and the map is saved back as a `.map` file. Import your install's maps (and Workshop maps) from the page, or open a `.map` file directly; see [Reflex map viewer and brush editor](docs/reflex-map-viewer.md).
+- **Reflex Maps** opens Reflex Arena maps to walk through (Quake 3-style movement, teleporters and jump pads) and edits their brushes, textured from the game's materials or any of Skinner's texture libraries (and the game's textures become a fourth library for models): **0** switches to edit mode as in the game, with the game's editor controls (drag to move, Alt to lift, Shift-drag a face, 1–8 to create brushes, volumes and entities, V for vertex mode, B to bridge two faces, C to clip, numpad +/− to turn, the texture keys on one or several faces, mirroring, prefabs made, broken, updated and edited in place, N for properties, K/M materials, G clone, Z/X undo), and brushes are also carved, hollowed, merged and split, and the map is saved back as a `.map` file. Maps are lit as the game lights them: the light probes of the map's baked `.light`, its lights and the sun. Import your install's maps (and Workshop maps) from the page, or open a `.map` file directly; see [Reflex map viewer and brush editor](docs/reflex-map-viewer.md).
 - **N64 Maps** opens a free-flight preview of [L. Spiro](https://github.com/L-Spiro)'s N64 level conversions (GoldenEye 007, Perfect Dark, Diddy Kong Racing and more; OBJ + MTL + PNG made for Blender), listed by game: no maps come with Skinner, import your own folder of the conversions from the page's **Import maps** panel. Surfaces are drawn as L. Spiro's Blender material script draws them (unlit, texture times the level's vertex colours, with the clamp, mirror, see-through and decal flags in the material names).
 - **Diabotical Maps** opens a free-flight preview of Diabotical maps' blocks in their materials' textures: the game's maps and the ones you made in its editor, imported from the page's **Import maps** panel; see [Diabotical map viewer](docs/diabotical-map-viewer.md).
 
@@ -58,7 +60,15 @@ Developer checks: `python -B -m unittest discover -s tests -v`, then run `node t
 
 Viewport checks: `node tools/check_viewport_workshop.cjs http://127.0.0.1:5000 build/viewport-review` verifies visible gallery actions at three window sizes, collapsed transforms, FOV/reset/history, and nonblank PNG downloads for all three games. Run against the packaged executable with its complete texture/model libraries.
 
-![DTS Skinner](docs/workshop.png)
+## Screenshots
+
+| T1 Maps (Raindance) | T2 Maps (Katabatic) |
+| --- | --- |
+| ![T1 Maps](docs/screenshots/t1-maps.jpg) | ![T2 Maps](docs/screenshots/t2-maps.jpg) |
+| **Q3 Maps (The Longest Yard)** | **Reflex Maps (Furnace)** |
+| ![Q3 Maps](docs/screenshots/q3-maps.jpg) | ![Reflex Maps](docs/screenshots/reflex-maps.jpg) |
+| **Diabotical Maps (Bazaar)** | |
+| ![Diabotical Maps](docs/screenshots/diabotical-maps.jpg) | |
 
 See [animation and export details](ANIMATION_EXPORT.md) and [T2 coverage and limitations](T2_IMPORT.md).
 
