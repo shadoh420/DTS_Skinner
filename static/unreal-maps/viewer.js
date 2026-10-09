@@ -157,10 +157,24 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.addEventListener('keyup', event => keys.delete(event.code));
 
-  // The sky zone is the level seen from the SkyZoneInfo, turned with the view and by the zone's own rotation; the
-  // level is drawn over it, its backdrops leaving it showing; then the display gamma, onto `target` (the screen by default).
+  // An Unreal rotator (pitch, yaw, roll; 65536 to a turn) as a rotation in the page's axes: the matrix of
+  // tools/import_unreal.py rotation(), with Unreal's x, y, z read as the page's z, -x, y.
+  const unrealTurn = rotator => {
+    const [p, y, r] = rotator.map(a => a * Math.PI / 32768);
+    const [cp, sp, cy, sy, cr, sr] = [Math.cos(p), Math.sin(p), Math.cos(y), Math.sin(y), Math.cos(r), Math.sin(r)];
+    const columns = [[cp * cy, cp * sy, sp], [sr * sp * cy - cr * sy, sr * sp * sy + cr * cy, -sr * cp],
+      [-(cr * sp * cy + sr * sy), cy * sr - cr * sp * sy, cr * cp]];
+    const axis = [[1, -1], [2, 1], [0, 1]];  // Page axis: Unreal axis, sign.
+    const rows = axis.map(([i, si]) => axis.map(([j, sj]) => columns[j][i] * si * sj));
+    return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...rows.flat())));
+  };
+
+  // The sky zone is the level seen from the SkyZoneInfo, turned with the view and by the zone's own rotation (turning
+  // on by its rate where the game turns it); the level is drawn over it, its backdrops leaving it showing; then the
+  // display gamma, onto `target` (the screen by default).
   function draw(seconds, target = null) {
     for (const {texture, pan} of panning) texture.offset.set(pan[0] * seconds % 1, pan[1] * seconds % 1);
+    if (map && map.sky && map.sky.rate) skyTurn.copy(unrealTurn(map.sky.rotator.map((a, i) => a + map.sky.rate[i] * seconds)));
     if (target) frame.setSize(target.width, target.height);
     renderer.setRenderTarget(frame);
     renderer.clear();
@@ -188,7 +202,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     seconds += delta;
     draw(seconds);
   });
-  window.skinnerUnrealMaps = {renderer, scene, camera, draw, showViewpoint};  // For checks in a hidden page, where no frame is drawn.
+  window.skinnerUnrealMaps = {renderer, scene, camera, draw, showViewpoint, unrealTurn};  // For checks in a hidden page, where no frame is drawn.
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   // Each game's folder is remembered on its own (Unreal's under the key it had before UT maps).

@@ -262,8 +262,13 @@ def build_map(library, level, default):
 
     # ponytail: one sky for the whole map, as every zone of the install's maps links to the same one (227's per-zone
     # SkyZoneInfoTag is set nowhere); pick per zone if a map ever sets it.
+    # ZoneInfo.LinkToSkybox (both games' script): the last SkyZoneInfo, or the last whose bHighDetail equals the level's
+    # bHighDetailMode. UT links in PreBeginPlay, before the client's detail is known, so the low-detail one (Facing
+    # Worlds' Earth only matches with it, checked in UT 469); 227 shows the high-detail one (its SpireVillage shots fit
+    # it a little better).
+    high = 'botpack' not in library.files
     skies = list(actors_of(level, layout['actors'], {'SkyZoneInfo'}).values())
-    skies = [props for props in skies if props.get('bHighDetail')] or skies
+    skies = [props for props in skies if bool(props.get('bHighDetail')) == high] or skies
     sky = skies[-1] if skies else None
 
     textures, images, missing = {}, {}, []
@@ -646,8 +651,13 @@ def build_map(library, level, default):
     if sky:  # Its place, and its turn in the page's axes (the reflection M of viewer() on both sides).
         axes = np.array([[0, -1, 0], [0, 0, 1], [1, 0, 0]])
         turn = axes @ np.array(rotation(*vector(sky, 'Rotation', '3i'))) @ axes.T
-        sky = dict(origin=[round(float(c), 3) for c in viewer([vector(sky, 'Location')])[0]],
-                   rotation=[round(float(c), 6) for c in turn.flatten()])
+        found = sky
+        sky = dict(origin=[round(float(c), 3) for c in viewer([vector(found, 'Location')])[0]],
+                   rotation=[round(float(c), 6) for c in turn.flatten()], rotator=list(vector(found, 'Rotation', '3i')))
+        # A sky zone the game moves turns by RotationRate (pitch, yaw, roll a second; Physics rotating, a fixed
+        # direction): only one placed not static, as a static actor is never moved (Facing Worlds' and 6 more of UT's).
+        if not found.get('bStatic', True) and found.get('Physics') == 5 and found.get('bFixedRotationDir'):
+            sky['rate'] = list(vector(found, 'RotationRate', '3i'))
     scene = dict(name=level.path.stem, title=info.get('Title', ''), author=info.get('Author', ''), version=level.version,
                  vertices=len(positions), indices=len(indices), lightmap=[atlas_width, atlas_height], colors=True,
                  actors=counts, groups=table, viewpoints=views, sky=sky,

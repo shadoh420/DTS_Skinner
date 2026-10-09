@@ -123,6 +123,17 @@ class UTMapInstallTest(unittest.TestCase):
         self.assertTrue(np.allclose(scene['viewpoints'][0]['origin'], viewer([vector(camera, 'Location')])[0], atol=1e-3))
         self.assertEqual(scene['actors']['failed'], [])
 
+    def test_rotating_low_detail_sky(self):
+        # UT links zones to the low-detail sky (Facing Worlds' Earth, checked in UT 469), and Facing Worlds' sky turns.
+        library = Library(UT_INSTALL)
+        engine = library.package('engine')
+        level = Package(UT_INSTALL / 'Maps' / 'CTF-Face.unr')
+        sky = build_map(library, level, (engine, engine.export_by_path(('Engine', 'DefaultTexture'), 'Texture')))[0]['sky']
+        layout = level.level(level.find({'Level'})[0])
+        low = [props for props in actors_of(level, layout['actors'], {'SkyZoneInfo'}).values() if not props.get('bHighDetail')]
+        self.assertTrue(np.allclose(sky['origin'], viewer([vector(low[-1], 'Location')])[0], atol=1e-3))
+        self.assertEqual(sky['rate'], [37, 256, 768])
+
 
 class LightColorTest(unittest.TestCase):
     def test_hue_saturation_brightness(self):

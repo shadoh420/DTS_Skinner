@@ -89,9 +89,12 @@ was read as the format reference; no code was copied.
   the surface's front side; the LevelInfo for zone 0; 1 where the zone does not set it: ZoneInfo's default, read from
   Engine.u). 83 maps have some.
 - **The sky**: a fake-backdrop surface is a window onto the sky zone, a small room elsewhere in the map seen from its
-  `SkyZoneInfo` with the view turned by that actor's `Rotation`. Every zone links to the same one, as 227's
-  `ZoneInfo.LinkToSkybox` picks it: the last SkyZoneInfo in the map, or the last high-detail one (most maps have a
-  low- and a high-detail sky; the game runs in high detail). The page draws the level from the sky zone first, then
+  `SkyZoneInfo` with the view turned by that actor's `Rotation`. Every zone links to the same one, as
+  `ZoneInfo.LinkToSkybox` picks it in both games: the last SkyZoneInfo in the map, or the last whose `bHighDetail`
+  equals the level's `bHighDetailMode` (most maps have a low- and a high-detail sky). 227 shows the high-detail one
+  (SpireVillage's 227 shots fit it a little better: 0.74 / 0.59 / 0.97 against 0.70 / 0.52 / 0.96); UT links in
+  PreBeginPlay, before the client's detail is known, and shows the low-detail one (Facing Worlds' Earth only matches
+  with it, checked in UT 469). The page draws the level from the sky zone first, then
   the level over it, the backdrop surfaces drawing nothing but hiding what is behind them. 68 maps show a sky; Inter3,
   Inter4 and Inter14 have backdrops but no sky zone, and the game draws those as ordinary surfaces, as the page does.
   227's per-zone `SkyZoneInfoTag` is set nowhere in the install, so one sky per map.
@@ -192,9 +195,11 @@ reads the game (no code copied):
   shots (D3D11 renderer, Brightness 0.7: the settings of the install it was measured on; UT 469 ships 1.0) of three
   starts: DM-Deck16][ 1.01, DM-Morpheus 0.94, DM-Turbine 1.11 (game / page on screen; 227's curve left them 1.23,
   1.11 and 1.55 and the dark tones up to three times too dark).
-- **Rotating skies**: 12 UT maps (Facing Worlds among them) and 6 of Unreal's turn their sky zone (`Physics`
-  rotating, `RotationRate`); the page shows it as the map starts, still. Where several SkyZoneInfos exist the page
-  takes the first, which on every such map but Intro1 and Intro2 is the one flagged `bHighDetail`.
+- **Rotating skies**: a sky zone placed not static with `Physics` rotating and a fixed direction turns by its
+  `RotationRate` (pitch, yaw, roll a second) as the game runs, and the page turns it the same way from the map's
+  start: 7 UT maps (CTF-Face, CTF-Face-SE, CTF-Face][, CTF-Orbital, DM-Phobos, DM-SpaceNoxx, DOM-MetalDream). Sky
+  zones left static (the class default) never move in the game, whatever their `Physics`: 5 more UT maps and 5 of
+  Unreal's set a rate on one.
 - **Fog** is not drawn. 41 maps have fog zones (volumetric fog: spheres of fog around lights, drawn as seen from the
   camera, so nothing to bake), one zone uses 227's distance fog (DmRetrospective).
 
@@ -234,8 +239,10 @@ the range above; a falloff without SurrealEngine's flat top made the views 1.3 t
 - UT game run (UT 469, scratch INIs: windowed 1024 x 768, D3D11 as the install plays fullscreen, its Brightness 0.7,
   no bots; `C:\UnrealTournament` unchanged by file manifest): the pre-match camera at a PlayerStart of DM-Deck16][,
   CTF-Face, DM-Morpheus and DM-Turbine. Each shot matched against all the page's starts (block correlation 0.83 to
-  0.93 for the three DM maps); the display power fitted from them (see Display brightness). CTF-Face matches no start
-  (0.49), probably because its sky (most of the frame) had turned about 140 degrees in roll by the shot.
+  0.93 for the three DM maps); the display power fitted from them (see Display brightness). CTF-Face matched no start
+  (0.49) with the sky still and high-detail; with the low-detail sky turning, start 13 matches at 0.82 when the sky has
+  turned 39 to 40 seconds (0.01 at 0 seconds), Earth's limb across the top as in the game. The shot was taken about 34
+  seconds after the game was launched; why the fit lands a few seconds later is not known.
 
 - Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots and a third run on Glathriel2
   (same guarded setup; the install unchanged by file manifest). Not checked in the game:
