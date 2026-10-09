@@ -37,6 +37,15 @@ class UnrealMapInstallTest(unittest.TestCase):
                 self.assertAlmostEqual(scene['viewpoints'][0]['origin'][1], (-480 + 62) / 52.5, places=3)
             self.assertEqual(scene['missing'], [])
             self.assertNotIn('missing.png', images)
+            groups = scene['groups']
+            # Translucent drops masked; auto-panning surfaces carry their rate.
+            self.assertFalse([group for group in groups if group['flags'] & 0x6 == 0x6])
+            self.assertTrue([group for group in groups if group.get('pan')])
+            if name == 'Vortex2':  # Its grates' texture is bMasked though the surfaces are not flagged masked.
+                self.assertTrue(all(group['flags'] & 0x2 for group in groups if 'mgratem' in group['texture']))
+            else:  # Abyss shows its sky zone through its backdrops.
+                self.assertEqual(len(scene['sky']['rotation']), 9)
+                self.assertTrue([group for group in groups if group['flags'] & 0x80])
 
 
 class UnrealMapRouteTest(unittest.TestCase):

@@ -9,6 +9,13 @@ Every node with corners is drawn, on its surface; the game draws the same polygo
 reference only, walks the same node list). Invisible surfaces and zone portals are left out: the game never draws them.
 
 - Texture coordinates: u = ((P - base) . U + PanU) / (USize * DrawScale), v likewise; row 0 is the image's top.
+- Poly flags (SurrealEngine's precedence): the texture's own PolyFlags join the surface's, and a bMasked texture masks
+  (palette index 0 clear; an assumption: 765 opaque cobweb and grate polygons would otherwise draw their colour 0);
+  translucent drops masked. Auto-panning surfaces move 64 texels a second times their zone's TexUPanSpeed or
+  TexVPanSpeed (1 unless the ZoneInfo sets it; the zone on the surface's front side, the LevelInfo for zone 0).
+- Sky: fake-backdrop surfaces show the sky zone, the level seen from the SkyZoneInfo every zone links to
+  (ZoneInfo.LinkToSkybox: the last one in the map, or the last high-detail one) with the view turned by its
+  Rotation. With no SkyZoneInfo the game draws them as ordinary surfaces (Inter3, Inter4, Inter14).
 - Placement as the model importer's: Unreal is x forward, y right, z up; the page's (x, y, z) is (-y, z, x) / 52.5,
   in metres. Each polygon is wound so that it faces along its surface's normal, counter-clockwise seen from the front.
 - Viewpoints: the cutscene maps' CS_Camera actors, the PlayerStarts (at the eye of a player standing on the solid
@@ -29,11 +36,11 @@ from PIL import Image
 
 try:
     from tools.import_diabotical_models import safe
-    from tools.import_unreal import GAMES, SCALE, Library, Package
+    from tools.import_unreal import GAMES, SCALE, Library, Package, rotation
     from tools.local_data import LOCAL_DATA
 except ImportError:  # Run as a script from tools/.
     from import_diabotical_models import safe
-    from import_unreal import GAMES, SCALE, Library, Package
+    from import_unreal import GAMES, SCALE, Library, Package, rotation
     from local_data import LOCAL_DATA
 
 INVISIBLE, MASKED, TRANSLUCENT, NOT_SOLID, MODULATED, FAKE_BACKDROP, TWO_SIDED = 0x1, 0x2, 0x4, 0x8, 0x40, 0x80, 0x100
@@ -90,6 +97,20 @@ def build_map(library, level, default):
     info = next(iter(actors_of(level, layout['actors'], {'LevelInfo'}).values()), {})
     if info.get('DefaultTexture'):  # What the level draws where a surface has no texture; Engine's otherwise.
         default = level, info['DefaultTexture']
+    zones = {}
+
+    def zone(index):
+        """Properties of zone `index`'s ZoneInfo: the LevelInfo's for zone 0 or a zone without one."""
+        if index not in zones:
+            ref = model['zones'][index][0] if 0 < index < len(model['zones']) else 0
+            zones[index] = level.properties(ref) if ref > 0 else info
+        return zones[index]
+
+    # ponytail: one sky for the whole map, as every zone of the install's maps links to the same one (227's per-zone
+    # SkyZoneInfoTag is set nowhere); pick per zone if a map ever sets it.
+    skies = list(actors_of(level, layout['actors'], {'SkyZoneInfo'}).values())
+    skies = [props for props in skies if props.get('bHighDetail')] or skies
+    sky = skies[-1] if skies else None
 
     textures, images, missing = {}, {}, []
 
@@ -109,7 +130,8 @@ def build_map(library, level, default):
                 scale = props.get('DrawScale', 1.0) or 1.0
                 png = safe(image[0]) + '.png'
                 images[png] = image[1]
-                textures[ref] = (png, image[1].width * scale, image[1].height * scale, props.get('PolyFlags', 0))
+                own = props.get('PolyFlags', 0) | (MASKED if props.get('bMasked') else 0)
+                textures[ref] = (png, image[1].width * scale, image[1].height * scale, own)
         return textures[ref]
 
     groups, flipped, polygons, floors = {}, 0, 0, []
@@ -123,6 +145,15 @@ def build_map(library, level, default):
         flags = surf['flags'] | own  # The game adds the texture's own flags to the surface's.
         if flags & INVISIBLE:
             continue
+        if flags & TRANSLUCENT:
+            flags &= ~MASKED
+        if not sky:
+            flags &= ~FAKE_BACKDROP
+        pan = (0, 0)
+        if flags & (AUTO_U_PAN | AUTO_V_PAN):
+            front = zone(node['zones'][1])
+            pan = (round(64 * front.get('TexUPanSpeed', 1.0) / width, 6) if flags & AUTO_U_PAN else 0,
+                   round(64 * front.get('TexVPanSpeed', 1.0) / height, 6) if flags & AUTO_V_PAN else 0)
         corners = points[[verts[node['pool'] + n][0] for n in range(node['count'])]]
         if not flags & NOT_SOLID and vectors[surf['normal']][2] > 0:
             floors.extend(corners[[0, k, k + 1]] for k in range(1, len(corners) - 1))
@@ -137,11 +168,11 @@ def build_map(library, level, default):
             placed, uv = placed[::-1], uv[::-1]
             flipped += 1
         polygons += 1
-        groups.setdefault((png, flags & DRAWN_FLAGS), []).append((placed, uv))
+        groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv))
 
     positions, uvs, indices, table = [], [], [], []
     count = 0
-    for (png, flags), polys in sorted(groups.items()):
+    for (png, flags, pan), polys in sorted(groups.items()):
         start = len(indices)
         for placed, uv in polys:
             n = len(placed)
@@ -149,7 +180,7 @@ def build_map(library, level, default):
             uvs.append(uv)
             indices.extend(x for k in range(1, n - 1) for x in (count, count + k, count + k + 1))
             count += n
-        table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start))
+        table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start, **({'pan': pan} if any(pan) else {})))
     positions = np.concatenate(positions).astype('<f4') if positions else np.zeros((0, 3), '<f4')
     uvs = np.concatenate(uvs).astype('<f4') if uvs else np.zeros((0, 2), '<f4')
     geometry = positions.tobytes() + uvs.tobytes() + np.asarray(indices, '<u4').tobytes()
@@ -171,8 +202,15 @@ def build_map(library, level, default):
     if not views:
         middle = viewer(points).mean(0) if len(points) else np.zeros(3)
         views.append(dict(origin=[round(float(x), 3) for x in middle], yaw=0, pitch=0))
+    if not any(group['flags'] & FAKE_BACKDROP for group in table):
+        sky = None  # Nothing shows it.
+    if sky:  # Its place, and its turn in the page's axes (the reflection M of viewer() on both sides).
+        axes = np.array([[0, -1, 0], [0, 0, 1], [1, 0, 0]])
+        turn = axes @ np.array(rotation(*vector(sky, 'Rotation', '3i'))) @ axes.T
+        sky = dict(origin=[round(float(c), 3) for c in viewer([vector(sky, 'Location')])[0]],
+                   rotation=[round(float(c), 6) for c in turn.flatten()])
     scene = dict(name=level.path.stem, title=info.get('Title', ''), author=info.get('Author', ''), version=level.version,
-                 vertices=len(positions), indices=len(indices), groups=table, viewpoints=views,
+                 vertices=len(positions), indices=len(indices), groups=table, viewpoints=views, sky=sky,
                  polygons=polygons, flipped=flipped, missing=sorted(missing))
     return scene, geometry, images
 

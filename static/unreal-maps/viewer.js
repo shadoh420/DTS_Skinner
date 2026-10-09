@@ -11,9 +11,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const canvas = $('c');
   const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.autoClear = false;  // The sky is drawn first, then the level over it.
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60, 1, .05, 5000);
+  const camera = new THREE.PerspectiveCamera(60, 1, .05, 5000), skyCamera = new THREE.PerspectiveCamera(60, 1, .05, 5000);
   camera.rotation.order = 'YXZ';
+  const skyTurn = new THREE.Quaternion();
   const data = '/unreal-map-data/unreal/';
   let speed = 8, missing = 0, ready = false, map = null;
   const showStatus = text => { $('status').textContent = text; };
@@ -35,9 +37,29 @@ window.addEventListener('DOMContentLoaded', async () => {
     return textures.get(file);
   }
 
-  // Poly flags (UnObjBas.h EPolyFlags): masked 0x2, fake backdrop 0x80 (where the sky shows), two-sided 0x100.
-  const MASKED = 0x2, FAKE_BACKDROP = 0x80, TWO_SIDED = 0x100;
-  const hidden = new THREE.MeshBasicMaterial({visible: false});
+  // Poly flags (EPolyFlags): masked 0x2, translucent 0x4, modulated 0x40, fake backdrop 0x80 (where the sky shows),
+  // two-sided 0x100. Blending as the game's OpenGL device draws them: translucent adds the texture over what is behind
+  // (one, one minus source colour), modulated doubles what is behind by it (destination colour, source colour); neither
+  // hides what is behind it from later surfaces.
+  const MASKED = 0x2, TRANSLUCENT = 0x4, MODULATED = 0x40, FAKE_BACKDROP = 0x80, TWO_SIDED = 0x100;
+  const panning = [];
+  function surfaceMaterial(group, texture) {
+    const side = group.flags & TWO_SIDED ? THREE.DoubleSide : THREE.FrontSide;
+    // A backdrop is a hole onto the sky drawn before the level: it keeps the level behind it hidden, draws nothing.
+    if (group.flags & FAKE_BACKDROP) return new THREE.MeshBasicMaterial({colorWrite: false, side});
+    if (texture && group.pan) {  // Auto-panning: its own copy of the texture, moved each frame.
+      texture = texture.clone();
+      texture.needsUpdate = true;
+      panning.push({texture, pan: group.pan});
+    }
+    const common = {map: texture, color: texture ? 0xffffff : 0x808080, side};
+    if (group.flags & (TRANSLUCENT | MODULATED)) {
+      const add = group.flags & TRANSLUCENT;
+      return new THREE.MeshBasicMaterial({...common, transparent: true, depthWrite: false, blending: THREE.CustomBlending,
+        blendSrc: add ? THREE.OneFactor : THREE.DstColorFactor, blendDst: add ? THREE.OneMinusSrcColorFactor : THREE.SrcColorFactor});
+    }
+    return new THREE.MeshBasicMaterial({...common, alphaTest: group.flags & MASKED ? .5 : 0});
+  }
   async function buildWorld(buffer) {
     const vertices = map.vertices, geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buffer, 0, vertices * 3), 3));
@@ -45,11 +67,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, vertices * 20, map.indices), 1));
     const materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
-      // ponytail: the sky is phase 2; until then the backdrop is left open to the clear colour.
-      if (group.flags & FAKE_BACKDROP) return hidden;
-      const texture = await loadTexture(group.texture);
-      return new THREE.MeshBasicMaterial({map: texture, color: texture ? 0xffffff : 0x808080,
-        side: group.flags & TWO_SIDED ? THREE.DoubleSide : THREE.FrontSide, alphaTest: group.flags & MASKED ? .5 : 0});
+      return surfaceMaterial(group, group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
     }));
     scene.add(new THREE.Mesh(geometry, materials));
   }
@@ -71,6 +89,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // The game's field of view is horizontal; Three's is vertical.
     camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
     camera.updateProjectionMatrix();
+    skyCamera.fov = camera.fov;
+    skyCamera.aspect = camera.aspect;
+    skyCamera.updateProjectionMatrix();
   }
   // A viewpoint's yaw turns from Unreal's x (the page's +z) toward its y (the page's -x); pitch is up.
   function showViewpoint(index) {
@@ -111,8 +132,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.addEventListener('keyup', event => keys.delete(event.code));
 
-  const draw = () => renderer.render(scene, camera);
+  // The sky zone is the level seen from the SkyZoneInfo, turned with the view and by the zone's own rotation; the
+  // level is drawn over it, its backdrops leaving it showing.
+  function draw(seconds) {
+    for (const {texture, pan} of panning) texture.offset.set(pan[0] * seconds % 1, pan[1] * seconds % 1);
+    renderer.clear();
+    if (map && map.sky) {
+      skyCamera.position.fromArray(map.sky.origin);
+      skyCamera.quaternion.copy(skyTurn).multiply(camera.quaternion);
+      renderer.render(scene, skyCamera);
+      renderer.clearDepth();
+    }
+    renderer.render(scene, camera);
+  }
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
+  let seconds = 0;
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
     camera.getWorldDirection(forward);
@@ -120,7 +154,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
     move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
-    draw();
+    seconds += delta;
+    draw(seconds);
   });
   window.skinnerUnrealMaps = {renderer, scene, camera, draw, showViewpoint};  // For checks in a hidden page, where no frame is drawn.
 
@@ -160,6 +195,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('map').value = mapId;
     map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
     document.title = `${map.title || map.name} — Unreal Maps`;
+    if (map.sky) skyTurn.setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...map.sky.rotation)));
     applySettings();
     showViewpoint(0);
     await buildWorld(await (await get(`${data}maps/${mapId}/geometry.bin`)).arrayBuffer());

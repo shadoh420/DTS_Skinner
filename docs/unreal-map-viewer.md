@@ -4,10 +4,11 @@ A free-flight preview of the maps of your Unreal install (Unreal Gold, OldUnreal
 `Maps`, 43 of them Return to Na Pali's in `Maps\UPak`). Open **Unreal Maps** from Skinner's home page. Unreal
 Tournament's maps (same format) come later on the same page.
 
-This first stage draws each level's BSP surfaces with their textures, evenly lit. Not drawn yet: lighting
-(lightmaps, zone ambient light, fog), the sky seen through fake-backdrop surfaces, translucent and modulated blending,
-placed actors (decorations, pickups, monsters) and movers. The page is plain Three.js, like the Q3 one; nothing of
-the game is compiled in.
+The page draws each level's BSP surfaces with their textures, evenly lit: masked, translucent, modulated and
+two-sided as the game draws them, auto-panning where the game pans them, and the sky zone seen through the sky
+surfaces. Not drawn yet: lighting (lightmaps, zone ambient light, fog), animated and wavy textures, mirrors, placed
+actors (decorations, pickups, monsters) and movers. The page is plain Three.js, like the Q3 one; nothing of the game
+is compiled in.
 
 ## Importing maps
 
@@ -55,11 +56,31 @@ was read as the format reference; no code was copied.
   no pixels: fire gets a still from its sparks (as for models), wet and ice textures show their source texture
   undistorted, water and wave textures calm water. One 227 texture format is not decoded (19, `UWindow.BlackTexture`
   on DmRetrospective) and is drawn flat in its stored average colour.
+- **Surface flags** follow the game's OpenGL drawing (as SurrealEngine reads it): masked surfaces cut out palette
+  index 0; translucent ones add their texture over what is behind them (one, one minus source colour) and modulated
+  ones multiply it by twice their texture (destination colour, source colour), neither hiding what is behind them
+  from later surfaces; translucent drops masked; two-sided surfaces show both faces. A texture marked `bMasked`
+  masks its surfaces even where they are not flagged masked: 765 opaque polygons (cobwebs, grates; Glathriel2,
+  DmExar, Toxic, Crashsite1, Vortex2…) would otherwise draw solid colour 0 around them. That is an assumption, not
+  yet checked in the game.
+- **Auto-panning** surfaces move 64 texels a second times their zone's `TexUPanSpeed` / `TexVPanSpeed` (the zone on
+  the surface's front side; the LevelInfo for zone 0; 1 where the zone does not set it, assumed from Unreal's
+  ZoneInfo defaults, which sit behind its bytecode). 83 maps have some.
+- **The sky**: a fake-backdrop surface is a window onto the sky zone, a small room elsewhere in the map seen from its
+  `SkyZoneInfo` with the view turned by that actor's `Rotation`. Every zone links to the same one, as 227's
+  `ZoneInfo.LinkToSkybox` picks it: the last SkyZoneInfo in the map, or the last high-detail one (most maps have a
+  low- and a high-detail sky; the game runs in high detail). The page draws the level from the sky zone first, then
+  the level over it, the backdrop surfaces drawing nothing but hiding what is behind them. 68 maps show a sky; Inter3,
+  Inter4 and Inter14 have backdrops but no sky zone, and the game draws those as ordinary surfaces, as the page does.
+  227's per-zone `SkyZoneInfoTag` is set nowhere in the install, so one sky per map.
 
 ## Checks
 
 - `tests/test_unreal_map.py`: a 1998 map (Vortex2, version 61) and a Return to Na Pali one (Abyss, version 68) read
-  exactly, wind their polygons as above and resolve every texture; the page's routes and the import guard.
+  exactly, wind their polygons as above and resolve every texture; translucent drops masked, panning rates, Vortex2's
+  bMasked grates masked, Abyss's sky; the page's routes and the import guard.
+- Browser sweep with surface flags and skies (2026-10-09): all 102 maps load without console errors; NyLeve's sky
+  room (mountain panorama, sun, clouds) shows through its sky surfaces, Vortex2's grates are see-through.
 - Browser sweep (2026-10-09, scratch data): all 102 maps load on the page; 98 show surfaces at their first
   viewpoint, and the 4 that did not (End, Intro1, Intro2, UGCredits: cutscene and credits maps whose PlayerStart
   sees nothing or a black room) now open at their cutscene camera, except UGCredits, whose credits are movers.
