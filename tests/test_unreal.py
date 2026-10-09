@@ -3,13 +3,14 @@ import json
 from pathlib import Path
 import struct
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
 from PIL import Image
 
 from app import app
-from tools.import_unreal import fire_pixels, import_catalog
+from tools.import_unreal import fire_pixels, import_catalog, slot_texture
 
 NAMES = ['None', 'Core', 'Engine', 'Class', 'Package', 'Texture', 'Palette', 'LodMesh', 'Test', 'Skins', 'Pal', 'Own',
          'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System', 'DefaultSkinName', 'Body2']
@@ -138,6 +139,13 @@ class UnrealImportTest(unittest.TestCase):
                 client = app.test_client()
                 self.assertEqual(len(client.get('/list_models?game=ut').json), 1)
                 self.assertEqual(client.get('/export_glb/box?game=ut').status_code, 200)
+
+    def test_empty_slot_takes_the_nearest_filled_slot_below(self):
+        # UT's Bin2: its faces use empty slot 2 and the game draws slot 1's texture; slot 0 has nothing below.
+        package = SimpleNamespace(ref_path=lambda ref: ('Botpack', 'bin2M'), exports=[{'name': 'bin2M'}])
+        mesh = {'textures': [0, 7, 0]}
+        self.assertEqual(slot_texture(None, {}, {}, package, 1, mesh, 2), (package, 7))
+        self.assertIsNone(slot_texture(None, {}, {}, package, 1, mesh, 0))
 
     def test_fire_rises_from_its_spark(self):
         # One sparkle at the bottom middle of a 16 x 16 rising fire: heat above it, none below the bottom rows.

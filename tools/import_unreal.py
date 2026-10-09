@@ -30,8 +30,10 @@ object reference is a compact index: n > 0 is export n-1, n < 0 import -n-1, 0 n
   UClass flags, GUID, dependencies, package imports, within, config name, then its default properties. Classes
   with bytecode of their own (29 of 850 in the stock packages) are skipped. Actors placed in the maps (Maps/**.unr,
   their properties over their class's) vote too: the Panel's glass is set only there. The pick most classes and
-  placed actors showing the mesh agree on wins; otherwise the same slot of a same-named mesh in another package
-  (UnrealI repeats some of UnrealShare's); then, as the game does, Engine's DefaultTexture. A mesh's own texture
+  placed actors showing the mesh agree on wins; otherwise the mesh's nearest filled slot below (UT's Bin2 faces use
+  its empty slot 2 and the game draws slot 1's recycling bin, checked in 469 on DM-Pressure, 2026-10-09; with no
+  slot below, 227 draws DefaultTexture); then the same slot of a same-named mesh in another package (UnrealI
+  repeats some of UnrealShare's); then, as the game does, Engine's DefaultTexture. A mesh's own texture
   stays even where a class reskins it (Brute2, the Skaarj colours): those are variants.
 - UT's players get their skins at run time from the class's DefaultSkinName "Package.Base" (a str property: compact
   length, text, NUL): slot n is the skin package's texture Base{n+1} (SoldierSkins.blkt1..blkt4, the face
@@ -585,7 +587,8 @@ def build_model(mesh, slot_of, frame=0, game='unreal'):
 def slot_texture(library, skins, meshes, package, ref, mesh, index):
     """(package, texture reference) for slot `index` of mesh export `ref`: the mesh's own; for an empty slot, the
     texture most of the classes showing the mesh give it (MultiSkins, Skin, then Texture, as the game picks); then
-    the same slot of a same-named mesh in another package. None when nothing fills it."""
+    the mesh's nearest filled slot below it; then the same slot of a same-named mesh in another package. None when
+    nothing fills it."""
     own = mesh['textures'][index] if index < len(mesh['textures']) else 0
     if own:
         return package, own
@@ -596,6 +599,9 @@ def slot_texture(library, skins, meshes, package, ref, mesh, index):
             votes.setdefault(pick[0].ref_path(pick[1]), []).append(pick)
     if votes:
         return max(sorted(votes.items()), key=lambda item: len(item[1]))[1][0]
+    lower = next((t for t in reversed(mesh['textures'][:index]) if t), 0)
+    if lower:
+        return package, lower
     for other, other_mesh in meshes.get(package.exports[ref - 1]['name'].lower(), ()):
         textures = other_mesh['textures']
         if other is not package and index < len(textures) and textures[index]:
