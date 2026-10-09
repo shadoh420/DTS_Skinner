@@ -1,0 +1,170 @@
+/* Vanilla Three.js free-flight viewer for the pack written by tools/import_unreal_map.py.
+   Positions are already in Three's axes and metres; each polygon faces counter-clockwise. */
+'use strict';
+window.addEventListener('DOMContentLoaded', async () => {
+  const $ = id => document.getElementById(id);
+  const storageKey = 'skinner.unrealmaps';
+  const settings = {fov: 90, invertX: false, invertY: false};
+  try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
+  const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
+
+  const canvas = $('c');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, 1, .05, 5000);
+  camera.rotation.order = 'YXZ';
+  const data = '/unreal-map-data/unreal/';
+  let speed = 8, missing = 0, ready = false, map = null;
+  const showStatus = text => { $('status').textContent = text; };
+  const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing textures` : 'Map ready'} · speed ${speed.toFixed(1)} m/s`);
+
+  async function get(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${url} (${response.status})`);
+    return response;
+  }
+  const loader = new THREE.TextureLoader(), textures = new Map();
+  function loadTexture(file) {
+    if (!textures.has(file)) textures.set(file, new Promise(resolve => loader.load(data + 'textures/' + file, texture => {
+      texture.flipY = false;  // The game's v runs down the image, as the rows do without the flip.
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.anisotropy = 8;
+      resolve(texture);
+    }, undefined, () => { missing++; resolve(null); })));
+    return textures.get(file);
+  }
+
+  // Poly flags (UnObjBas.h EPolyFlags): masked 0x2, fake backdrop 0x80 (where the sky shows), two-sided 0x100.
+  const MASKED = 0x2, FAKE_BACKDROP = 0x80, TWO_SIDED = 0x100;
+  const hidden = new THREE.MeshBasicMaterial({visible: false});
+  async function buildWorld(buffer) {
+    const vertices = map.vertices, geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buffer, 0, vertices * 3), 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(buffer, vertices * 12, vertices * 2), 2));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, vertices * 20, map.indices), 1));
+    const materials = await Promise.all(map.groups.map(async (group, index) => {
+      geometry.addGroup(group.start, group.count, index);
+      // ponytail: the sky is phase 2; until then the backdrop is left open to the clear colour.
+      if (group.flags & FAKE_BACKDROP) return hidden;
+      const texture = await loadTexture(group.texture);
+      return new THREE.MeshBasicMaterial({map: texture, color: texture ? 0xffffff : 0x808080,
+        side: group.flags & TWO_SIDED ? THREE.DoubleSide : THREE.FrontSide, alphaTest: group.flags & MASKED ? .5 : 0});
+    }));
+    scene.add(new THREE.Mesh(geometry, materials));
+  }
+
+  function showNotes() {
+    const parts = [];
+    if ((map.missing || []).length) parts.push('Textures the game files do not hold, drawn grey: ' + map.missing.join('; '));
+    if (missing) parts.push(`${missing} textures of the pack did not load`);
+    $('mapNotes').textContent = parts.length ? ' This map — ' + parts.join('. ') + '.' : '';
+  }
+  $('notes').after(Object.assign(document.createElement('span'), {id: 'mapNotes'}));
+
+  function applySettings() {
+    for (const id of ['invertX', 'invertY']) $(id).checked = settings[id];
+    $('fov').value = settings.fov;
+    const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
+    renderer.setSize(main.clientWidth, main.clientHeight, false);
+    camera.aspect = aspect;
+    // The game's field of view is horizontal; Three's is vertical.
+    camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
+    camera.updateProjectionMatrix();
+  }
+  // A viewpoint's yaw turns from Unreal's x (the page's +z) toward its y (the page's -x); pitch is up.
+  function showViewpoint(index) {
+    const view = map && map.viewpoints[index];
+    if (!view) return;
+    camera.position.fromArray(view.origin);
+    camera.rotation.set(THREE.MathUtils.degToRad(view.pitch), Math.PI - THREE.MathUtils.degToRad(view.yaw), 0);
+  }
+
+  $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 90)); save(); applySettings(); });
+  for (const id of ['invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  $('reset').addEventListener('click', () => { speed = 8; showViewpoint(0); if (ready) showReady(); });
+  new ResizeObserver(applySettings).observe(canvas.parentElement);
+
+  // Captured mouse and plain drag share one look function: mouse right looks right, mouse up looks up.
+  const keys = new Set();
+  let dragging = false;
+  canvas.addEventListener('mousedown', () => {
+    dragging = true;
+    try { Promise.resolve(canvas.requestPointerLock()).catch(() => { /* Drag-to-look still works. */ }); } catch (_) { /* Same. */ }
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+  window.addEventListener('blur', () => { dragging = false; keys.clear(); });
+  document.addEventListener('mousemove', event => {
+    if (!dragging && document.pointerLockElement !== canvas) return;
+    camera.rotation.y -= event.movementX * .0025 * (settings.invertX ? -1 : 1);
+    camera.rotation.x = Math.max(-1.55, Math.min(1.55, camera.rotation.x - event.movementY * .0025 * (settings.invertY ? -1 : 1)));
+  });
+  canvas.addEventListener('wheel', event => {
+    event.preventDefault();
+    speed = Math.max(.5, Math.min(500, speed * (event.deltaY < 0 ? 1.2 : 1 / 1.2)));
+    if (ready) showReady();
+  }, {passive: false});
+  document.addEventListener('keydown', event => {
+    if (event.target.matches('input:not([type=checkbox]), select')) return;
+    if (/^Digit[1-9]$/.test(event.code)) showViewpoint(Number(event.code.slice(5)) - 1);
+    if (/^(Key[WASD]|Space|Shift(Left|Right))$/.test(event.code)) { keys.add(event.code); event.preventDefault(); }
+  });
+  document.addEventListener('keyup', event => keys.delete(event.code));
+
+  const draw = () => renderer.render(scene, camera);
+  const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
+  renderer.setAnimationLoop(() => {
+    const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
+    camera.getWorldDirection(forward);
+    right.crossVectors(forward, camera.up).normalize();
+    move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
+    move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
+    if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
+    draw();
+  });
+  window.skinnerUnrealMaps = {renderer, scene, camera, draw, showViewpoint};  // For checks in a hidden page, where no frame is drawn.
+
+  $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
+  $('import').addEventListener('click', async () => {
+    const path = $('gamePath').value.trim() || $('gamePath').placeholder;
+    $('import').disabled = true;
+    $('importStatus').textContent = 'Importing maps… a full install takes about a minute.';
+    try {
+      const response = await fetch('/import_unreal_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({path, replace: $('replace').checked})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Import failed');
+      try { localStorage.setItem(storageKey + '.game', path); } catch (_) { /* Path is simply not remembered. */ }
+      const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
+      $('importStatus').textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length} already imported` +
+        (failed.length ? `, failed ${failed.length} (${failed.join('; ')})` : '') + '.';
+      if (result.imported.length && !failed.length && !map) location.reload();
+    } catch (error) { $('importStatus').textContent = error.message; }
+    finally { $('import').disabled = false; }
+  });
+  try { $('gamePath').value = localStorage.getItem(storageKey + '.game') || ''; } catch (_) { /* Field stays empty. */ }
+
+  try {
+    let maps = [];
+    try { maps = await (await get(data + 'index.json')).json(); } catch (_) { /* No pack yet. */ }
+    if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
+    let mapId = new URLSearchParams(location.search).get('map') || '';
+    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === 'nyleve') || maps[0]).id;
+    const byGroup = new Map();
+    for (const item of maps) byGroup.set(item.group, [...(byGroup.get(item.group) || []), item]);
+    $('map').replaceChildren(...[...byGroup].map(([group, items]) => {
+      const element = Object.assign(document.createElement('optgroup'), {label: group});
+      element.append(...items.map(item => new Option(item.title ? `${item.name} · ${item.title}` : item.name, item.id)));
+      return element;
+    }));
+    $('map').value = mapId;
+    map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
+    document.title = `${map.title || map.name} — Unreal Maps`;
+    applySettings();
+    showViewpoint(0);
+    await buildWorld(await (await get(`${data}maps/${mapId}/geometry.bin`)).arrayBuffer());
+    showNotes();
+    ready = true;
+    showReady();
+  } catch (error) { showStatus('Map could not load: ' + error.message); }
+});

@@ -268,8 +268,8 @@ class Package:
                 value = self.index()
                 if kind == 6:
                     value = self.names[value]
-            elif kind == 13:  # str: (from version 64) a compact length, then the characters and a NUL
-                if self.version >= 64:
+            elif kind in (7, 13):  # string[n] (fixed size), or str: (from version 64) a compact length first
+                if kind == 13 and self.version >= 64:
                     self.index()
                 value = self.data[self.at:start + size].split(b'\0')[0].decode('latin-1')
             else:
@@ -340,6 +340,98 @@ class Package:
             mesh['points'] = [self.unpack('3f') for _ in range(self.index())]
             mesh['frame_verts'], mesh['frames'] = len(mesh['points']), 1
         return mesh
+
+    def text(self):
+        """A string: (from version 64) a compact length, the characters and a NUL; before, characters up to a NUL."""
+        if self.version >= 64:
+            length = self.index()
+            start, end = self.at, self.at + length
+        else:
+            start, end = self.at, self.data.index(b'\0', self.at) + 1
+        self.at = end
+        return self.data[start:end].split(b'\0')[0].decode('latin-1')
+
+    def ended(self, ref):
+        """Raise unless the last read stopped exactly at the end of export `ref`."""
+        export = self.exports[ref - 1]
+        off = self.at - export['offset'] - export['size']
+        if off:
+            raise ValueError(f"{export['name']} read ends {off} bytes off its end")
+
+    def level(self, ref):
+        """Level export `ref`: its actors (references, 0 for an empty slot) and its Model, the level's BSP."""
+        self.properties(ref)
+        count, _max = self.unpack('ii')
+        actors = [self.index() for _ in range(count)]
+        for _ in range(4):  # URL protocol, host, map, portal
+            self.text()
+        for _ in range(self.index()):  # URL options
+            self.text()
+        self.unpack('iI')  # URL port, valid
+        return dict(actors=actors, model=self.index())
+
+    def model(self, ref):
+        """Model export `ref` (a level's BSP, or a brush's): dict of vectors, points, nodes, surfs, verts, zones,
+        lightmaps, light_bits, lights. Up to version 61 the first five are objects of their own (Vectors, BspNodes,
+        BspSurfs, Verts: u32 count and max, then the items); from 62 they are inline, led by compact counts."""
+        self.properties(ref)
+        self.unpack('6fB' + ('ffff' if self.version > 61 else 'fff'))  # UPrimitive bounds
+        vector = lambda: self.unpack('3f')
+
+        def node():  # plane, zone mask, flags, then vertex pool, surf, back, front, coplanar, two bounds, two zones
+            plane = self.unpack('4f')
+            self.unpack('QB')
+            pool, surf, back, front, _plane, _cbound, _rbound, zone0, zone1 = (self.index() for _ in range(9))
+            count, leaf0, leaf1 = self.unpack('Bii')
+            return dict(plane=plane, pool=pool, surf=surf, count=count, back=back, front=front, zones=(zone0, zone1),
+                        leaves=(leaf0, leaf1))
+
+        def surf():  # texture, poly flags, base point, normal, U, V vectors, lightmap, brush poly, pan U, V, actor
+            texture, (flags,) = self.index(), self.unpack('I')
+            base, normal, u, v, lightmap, _poly = (self.index() for _ in range(6))
+            pan = self.unpack('hh')
+            return dict(texture=texture, flags=flags, base=base, normal=normal, u=u, v=v, lightmap=lightmap, pan=pan,
+                        actor=self.index())
+
+        zone = lambda: (self.index(), self.unpack('QQ'))  # zone actor, connectivity, visibility
+        if self.version <= 61:
+            out, refs = {}, [self.index() for _ in range(5)]
+            after = self.at
+            for key, item, sub in zip(('vectors', 'points', 'nodes', 'surfs', 'verts'),
+                                      (vector, vector, node, surf, lambda: (self.index(), self.index())), refs):
+                self.properties(sub)
+                out[key] = [item() for _ in range(self.unpack('ii')[0])]
+                if key == 'nodes':
+                    out['zones'] = [zone() for _ in range(self.index())]
+                if key == 'verts':
+                    self.index()  # shared sides
+                self.ended(sub)
+            self.at = after
+        else:
+            out = {key: [item() for _ in range(self.index())] for key, item in
+                   (('vectors', vector), ('points', vector), ('nodes', node), ('surfs', surf),
+                    ('verts', lambda: (self.index(), self.index())))}
+            self.unpack('i')  # shared sides
+            out['zones'] = [zone() for _ in range(self.unpack('i')[0])]
+        self.index()  # Polys
+        # Lightmap entries: offset into the light bits, pan, U and V size, U and V scale, first of its light actors.
+        out['lightmaps'] = [dict(offset=self.unpack('i')[0], pan=self.unpack('3f'), size=(self.index(), self.index()),
+                                 scale=self.unpack('ff'), lights=self.unpack('i')[0]) for _ in range(self.index())]
+        count = self.index()
+        out['light_bits'] = self.data[self.at:self.at + count]
+        self.at += count
+        for _ in range(self.index()):  # bounds
+            self.unpack('6fB')
+        for _ in range(self.index()):  # leaf hulls
+            self.unpack('i')
+        for _ in range(self.index()):  # leaves: zone, permeating, volumetric, visible zones
+            self.index(), self.index(), self.index(), self.unpack('Q')
+        out['lights'] = [self.index() for _ in range(self.index())]
+        if self.version <= 61:
+            self.index(), self.index()
+        self.unpack('ii')  # root outside, linked
+        self.ended(ref)
+        return out
 
 
 class Library:
@@ -463,8 +555,8 @@ class Library:
         return self.textures[key]
 
 
-def decode_texture(library, package, ref):
-    """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear."""
+def texture_mips(package, ref):
+    """(properties, [(data, width, height) of each mip]) of texture export `ref`; leaves package.at after them."""
     props = package.properties(ref)
     mips = []
     for _ in range(package.unpack('B')[0]):
@@ -475,14 +567,31 @@ def decode_texture(library, package, ref):
         package.at += size
         width, height, _u, _v = package.unpack('IIBB')
         mips.append((data, width, height))
+    return props, mips
+
+
+def decode_texture(library, package, ref):
+    """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear.
+    Procedural textures, whose mips are empty because the game draws them as it runs, get a still: fire from its
+    sparks; wet and ice textures their SourceTexture's pixels (undistorted) in their own palette; water and wave
+    textures calm water, index 128 everywhere (SurrealEngine's water shade for a flat surface)."""
+    props, mips = texture_mips(package, ref)
     if not mips:
         raise ValueError('no mips')
     data, width, height = mips[0]
     kind = props.get('Format', 0)
-    if kind == 0 and len(data) < width * height and package.ref_name(package.exports[ref - 1]['cls']) == 'FireTexture':
+    cls = package.ref_name(package.exports[ref - 1]['cls'])
+    if kind == 0 and len(data) < width * height and cls == 'FireTexture':
         sparks = [package.unpack('8B') for _ in range(package.index())]  # type, heat, x, y, four by type
         data = fire_pixels(props, sparks, props.get('UClamp', width), props.get('VClamp', height))
         width, height = props.get('UClamp', width), props.get('VClamp', height)
+    elif kind == 0 and len(data) < width * height:
+        source = cls in ('WetTexture', 'IceTexture') and library.resolve(package, props.get('SourceTexture', 0))
+        source = source and texture_mips(*source)[1]
+        if source and source[0][1:] == (width, height) and len(source[0][0]) >= width * height:
+            data = source[0][0]
+        elif cls in ('WaterTexture', 'WaveTexture', 'WetTexture', 'IceTexture'):
+            data = bytes([128]) * (width * height)
     if kind == 0:
         found = library.resolve(package, props.get('Palette', 0))
         if not found:
@@ -501,6 +610,11 @@ def decode_texture(library, package, ref):
         return Image.frombytes('RGBA', (width, height), data, 'bcn', {3: 1, 6: 2, 7: 3}[kind])
     if kind == 5:
         return Image.frombytes('RGBA', (width, height), data, 'raw', 'BGRA')
+    if isinstance(props.get('MipZero'), bytes) and len(props['MipZero']) == 4:
+        # ponytail: a format not decoded here (227's 19: UWindow.BlackTexture, on DmRetrospective's walls) is drawn
+        # flat in its MipZero, the texture's average colour; decode the format if one shows detail.
+        r, g, b, _a = props['MipZero']
+        return Image.new('RGBA', (width, height), (r, g, b, 255))
     raise ValueError(f'texture format {kind}')
 
 
