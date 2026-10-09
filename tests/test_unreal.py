@@ -9,7 +9,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from app import app
-from tools.import_unreal import import_catalog
+from tools.import_unreal import fire_pixels, import_catalog
 
 NAMES = ['None', 'Core', 'Engine', 'Class', 'Package', 'Texture', 'Palette', 'LodMesh', 'Test', 'Skins', 'Pal', 'Own',
          'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System']
@@ -117,6 +117,14 @@ class UnrealImportTest(unittest.TestCase):
                 self.assertEqual(len(client.get('/list_models?game=unreal').json), 1)
                 self.assertEqual(client.get('/texture/unrealshare.skins.own.png?game=unreal').status_code, 200)
                 self.assertEqual(client.get('/export_glb/box?game=unreal').status_code, 200)
+
+    def test_fire_rises_from_its_spark(self):
+        # One sparkle at the bottom middle of a 16 x 16 rising fire: heat above it, none below the bottom rows.
+        pixels = fire_pixels({'RenderHeat': 240, 'bRising': True}, [(1, 255, 8, 14, 0, 0, 0, 0)], 16, 16)
+        rows = [sum(pixels[y * 16:(y + 1) * 16]) for y in range(16)]
+        self.assertGreater(rows[10], 0)
+        self.assertGreater(rows[13], rows[4])
+        self.assertEqual(len(pixels), 256)
 
 
 if __name__ == '__main__':

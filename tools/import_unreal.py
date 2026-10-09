@@ -19,15 +19,17 @@ object reference is a compact index: n > 0 is export n-1, n < 0 import -n-1, 0 n
   texture.
 - Texture: properties (Palette, Format, bMasked...), u8 mip count, each mip (from version 63 a u32 skip offset)
   compact size, data, u32 width, height, u8 bits. Format 0 is 8-bit, coloured from the Palette object (compact
-  count of RGBA); bMasked makes index 0 clear. A FireTexture's mips are empty (the game draws it as it runs); its
-  palette as a ramp stands in. Formats 3/6/7 are DXT1/3/5, 5 BGRA.
+  count of RGBA); bMasked makes index 0 clear. A FireTexture's mips are empty (the game draws it as it runs): after
+  them come its sparks (compact count, 8 bytes each), from which fire_pixels draws a still. Formats 3/6/7 are
+  DXT1/3/5, 5 BGRA.
 - Empty slots: the game fills a mesh's empty Textures slot from the actor's MultiSkins[slot], Skin, then Texture.
   Those are class defaults: a class export (no properties) is UField super and next, UStruct script text,
   children, friendly name, line, text position, script size and bytecode, UState masks, label table and flags,
   UClass flags, GUID, dependencies, package imports, within, config name, then its default properties. Classes
-  with bytecode of their own (29 of 850 in the stock packages) are skipped. The pick most classes showing the mesh
-  agree on wins; otherwise the same slot of a same-named mesh in another package (UnrealI repeats some of
-  UnrealShare's).
+  with bytecode of their own (29 of 850 in the stock packages) are skipped. Actors placed in the maps (Maps/**.unr,
+  their properties over their class's) vote too: the Panel's glass is set only there. The pick most classes and
+  placed actors showing the mesh agree on wins; otherwise the same slot of a same-named mesh in another package
+  (UnrealI repeats some of UnrealShare's).
 - Placement: the mesh's own Scale, Origin and RotOrigin (#exec MESH ORIGIN); Unreal is x forward, y right, z up.
   Corners wind clockwise seen from the front. Checked on the UPak drop box, whose "FIELD LOGISTICS" reads right.
 - OldUnreal 227's packages: an export flagged 0x100 carries 4 more bytes in the export table.
@@ -41,8 +43,10 @@ import argparse
 import json
 import math
 from pathlib import Path
+import random
 import struct
 
+import numpy as np
 from PIL import Image
 
 try:
@@ -58,6 +62,7 @@ CATEGORY = {'unrealshare': 'Unreal', 'unreali': 'Unreal', 'upak': 'Return to Na 
 # 0x100 two-sided; 0x01 invisible draws nothing.
 INVISIBLE, MASKED, TRANSLUCENT, ENVIRONMENT, MODULATED, TWO_SIDED = 0x01, 0x02, 0x04, 0x10, 0x40, 0x100
 # The sequence whose first frame is shown, first found; otherwise frame 0 (often mid-stride in a pawn's All).
+MESH_PROPERTIES = ('Mesh', 'PlayerViewMesh', 'PickupViewMesh', 'ThirdPersonMesh')
 POSES = ('still', 'breath', 'breath1', 'idle', 'breath2', 'stand', 'look')
 
 
@@ -296,6 +301,7 @@ class Library:
     """The install's packages by name, opened on first use, and their textures as images."""
 
     def __init__(self, install):
+        self.maps = sorted((install / 'Maps').rglob('*.unr')) if (install / 'Maps').is_dir() else []
         self.files = {path.stem.lower(): path for folder in ('System', 'Textures') if (install / folder).is_dir()
                       for path in (install / folder).iterdir() if path.suffix.lower() in ('.u', '.utx')}
         self.packages, self.textures = {}, {}
@@ -318,8 +324,9 @@ class Library:
         return (target, found) if found else None
 
     def class_skins(self):
-        """{mesh path in lower case: [(Skin, Texture, {slot: MultiSkins}) of each class whose defaults show the mesh]},
-        each texture a (package, reference) pair, a class's defaults over its parents'."""
+        """{mesh path in lower case: [(Skin, Texture, {slot: MultiSkins}) of each class whose defaults show the mesh,
+        and of each actor of such a class placed in a map]}, each texture a (package, reference) pair; a class's
+        defaults over its parents', a placed actor's properties over its class's."""
         classes = {}
         for name in sorted(self.files):
             package = self.package(name) if self.files[name].suffix.lower() == '.u' else None
@@ -333,22 +340,47 @@ class Library:
                         key = tuple(p.lower() for p in package.ref_path(ref))
                         parent = found[0] and tuple(p.lower() for p in package.ref_path(found[0]))
                         classes[key] = parent, {k: (package, v) for k, v in found[1].items()}
-        skins = {}
+        merged_classes = {}
         for key in classes:
             chain, merged = [], {}
             while key in classes and key not in chain:
                 chain.append(key)
                 key = classes[key][0]
-            for key in reversed(chain):
-                merged.update(classes[key][1])
-            texture = lambda name: merged[name] if name in merged and merged[name][1] and \
-                merged[name][0].ref_path(merged[name][1])[0].lower() != 'engine' else None  # Engine's are editor icons.
+            for link in reversed(chain):
+                merged.update(classes[link][1])
+            merged_classes[chain[0]] = merged
+        skins = {}
+
+        def vote(merged):
+            def texture(name):
+                found = merged.get(name)
+                # Engine's textures are editor icons.
+                return found if found and found[1] and found[0].ref_path(found[1])[0].lower() != 'engine' else None
+
             multi = {int(k[11:-1]) if '[' in k else 0: texture(k) for k in merged if k.startswith('MultiSkins')}
-            for prop in ('Mesh', 'PlayerViewMesh', 'PickupViewMesh', 'ThirdPersonMesh'):
+            for prop in MESH_PROPERTIES:
                 package, ref = merged.get(prop, (None, 0))
                 if ref and isinstance(ref, int):
                     mesh = tuple(p.lower() for p in package.ref_path(ref))
                     skins.setdefault(mesh, []).append((texture('Skin'), texture('Texture'), multi))
+
+        for merged in merged_classes.values():
+            vote(merged)
+        shown = {key for key, merged in merged_classes.items() if any(prop in merged for prop in MESH_PROPERTIES)}
+        for path in self.maps:
+            try:
+                level = Package(path)
+            except (OSError, ValueError, struct.error, IndexError):
+                continue
+            for ref, export in enumerate(level.exports, 1):
+                if export['cls'] < 0 and export['size'] > 0:
+                    key = tuple(p.lower() for p in level.ref_path(export['cls']))
+                    if key in shown:
+                        try:
+                            placed = level.properties(ref)
+                        except (struct.error, IndexError):
+                            continue
+                        vote(dict(merged_classes[key], **{k: (level, v) for k, v in placed.items()}))
         return skins
 
     def texture(self, package, ref):
@@ -384,8 +416,9 @@ def decode_texture(library, package, ref):
     data, width, height = mips[0]
     kind = props.get('Format', 0)
     if kind == 0 and len(data) < width * height and package.ref_name(package.exports[ref - 1]['cls']) == 'FireTexture':
-        # A fire texture is drawn as the game runs; its palette as a ramp, hottest at the bottom, stands in.
-        data = bytes(row * 256 // height for row in range(height) for _ in range(width))
+        sparks = [package.unpack('8B') for _ in range(package.index())]  # type, heat, x, y, four by type
+        data = fire_pixels(props, sparks, props.get('UClamp', width), props.get('VClamp', height))
+        width, height = props.get('UClamp', width), props.get('VClamp', height)
     if kind == 0:
         found = library.resolve(package, props.get('Palette', 0))
         if not found:
@@ -405,6 +438,49 @@ def decode_texture(library, package, ref):
     if kind == 5:
         return Image.frombytes('RGBA', (width, height), data, 'raw', 'BGRA')
     raise ValueError(f'texture format {kind}')
+
+
+FIRE_BLUR = 12
+DRIFTS = (4, 5, 6, 13, 14)  # spark kinds that send out drifting particles: blaze, oz, cone, emit, fountain
+
+
+def fire_pixels(props, sparks, width, height, seed=1):
+    """A still of a fire texture, which the game draws as it runs: each frame its sparks heat pixels (drifting
+    particles for the blaze and emit kinds, points jittered over their A x B area for the rest), then every pixel
+    takes the average of its row's three and the next row's one, less a loss set by RenderHeat, the picture moving
+    up a row when bRising. After two heights of frames it has settled; the brightest of the last FIRE_BLUR frames
+    is kept, as the eye sees the moving sparks. SurrealEngine's fire was the reference for
+    the rules; this is a smaller approximation of the same idea, not the game's exact output."""
+    rng = random.Random(seed)
+    heat = np.zeros((height, width), np.int32)
+    loss = 1 - (255 - props.get('RenderHeat', 0)) / 16
+    drifts, seen = [], np.zeros((height, width))  # drifts: x, y, speed x, speed y, heat, decay
+    for frame in range(2 * height):
+        for kind, value, x, y, a, b, c, d in sparks:
+            if kind == 0:  # burn
+                heat[y % height, x % width] = rng.randrange(256)
+            elif kind in DRIFTS and rng.random() < .25 and len(drifts) < 1024:
+                if kind == 13:
+                    speed = ((a ^ 128) - 128) / 128, ((b ^ 128) - 128) / 128
+                else:
+                    speed = rng.uniform(-1, 1), (rng.uniform(-1, 1) if kind == 4 else -.5)
+                drifts.append([x + .5, y + .5, *speed, value, d if kind == 13 else 5])
+            elif kind not in DRIFTS:
+                heat[(y + (rng.randrange(256) * b + 128) // 256) % height,
+                     (x + (rng.randrange(256) * a + 128) // 256) % width] = value
+        for drift in drifts:
+            drift[4] -= drift[5]
+            if drift[4] > 0:
+                heat[int(drift[1]) % height, int(drift[0]) % width] = drift[4]
+                drift[0] += drift[2]
+                drift[1] += drift[3]
+        drifts = [drift for drift in drifts if drift[4] > 0]
+        source = np.roll(heat, -1, axis=0) if props.get('bRising') else heat
+        total = np.roll(source, 1, axis=1) + source + np.roll(source, -1, axis=1) + np.roll(source, -1, axis=0)
+        heat = np.clip(total / 4 + loss, 0, 255).astype(np.int32)
+        if frame >= 2 * height - FIRE_BLUR:
+            seen = np.maximum(seen, heat)
+    return seen.astype(np.uint8).tobytes()
 
 
 def rotation(pitch, yaw, roll):
