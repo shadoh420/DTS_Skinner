@@ -1,8 +1,9 @@
 # Unreal map viewer
 
 A free-flight preview of the maps of your Unreal install (Unreal Gold, OldUnreal 227: 102 `.unr` files under
-`Maps`, 43 of them Return to Na Pali's in `Maps\UPak`). Open **Unreal Maps** from Skinner's home page. Unreal
-Tournament's maps (same format) come later on the same page.
+`Maps`, 43 of them Return to Na Pali's in `Maps\UPak`) and of your Unreal Tournament install (UT 469: 96 maps), on
+one page. Open **Unreal Maps** from Skinner's home page; the map list holds both games, grouped Unreal, Return to Na
+Pali and Unreal Tournament.
 
 The page draws each level's BSP surfaces with their textures and the map's own lighting (lightmaps rebuilt from its
 lights and shadow bits, zone ambient light, the game's default display brightness): masked, translucent, modulated
@@ -14,11 +15,14 @@ is compiled in.
 
 ## Importing maps
 
-Open **Import maps** on the page, enter your Unreal folder (`C:\Unreal` when left empty) and press **Import**. Every
-map under `Maps` is read with the textures it uses; the game folder is only read. A full import takes about three
-minutes (most of it rebuilding the lightmaps) and writes about 260 MB to `local-data/unreal-maps/unreal`:
+Open **Import maps** on the page, pick the game (Unreal or Unreal Tournament), enter its folder (`C:\Unreal` or
+`C:\UnrealTournament` when left empty) and press **Import**. Every map under `Maps` is read with the textures it
+uses; the game folder is only read. A full import takes two to three minutes (most of it rebuilding the lightmaps) and
+writes about 260 MB (Unreal) or 230 MB (UT) to `local-data/unreal-maps/unreal` or `local-data/unreal-maps/ut`:
 
-- `index.json`: one entry per map (id, file name, the LevelInfo's title, group).
+- `index.json`: one entry per map (id, file name, the LevelInfo's title, group). The id is the file name in lower
+  case, UT's `][` written `-ii` (`CTF-Face][` is `ctf-face-ii`, beside `ctf-face`); the page names a map `GAME/ID`
+  (`?map=ut/ctf-face`; a bare id is Unreal's, as links had it before UT maps).
 - `maps/ID/scene.json`: texture groups, viewpoints, counts, the lightmap atlas's size; `maps/ID/geometry.bin`:
   float32 positions (x, y, z), float32 texture coordinates (u, v), float32 lightmap coordinates (u, v), uint8 RGBA
   vertex colours (the meshes' light; white elsewhere), uint32 triangle indices, one after the other; `maps/ID/lightmap.png`: the map's lightmaps in one atlas. A pack from before
@@ -27,7 +31,14 @@ minutes (most of it rebuilding the lightmaps) and writes about 260 MB to `local-
   (a re-import rewrites them).
 
 Maps already imported are skipped unless **Re-import existing maps** is ticked. From a shell:
-`python tools/import_unreal_map.py --install C:/Unreal [--replace]`.
+`python tools/import_unreal_map.py --install C:/Unreal [--replace]`, or
+`--install C:/UnrealTournament --game ut` for UT.
+
+UT's maps are read the same way as Unreal's (same package and level layout, the same lights and actors); what is UT's
+own: ScriptedTextures (monitor screens, scrolling scrolls), whose pixels a script draws as the game runs, are drawn
+with their SourceTexture (no text); and maps whose game is an intro or the credits open on their camera path or
+SpectatorCam (see How a map is read). Over the 96 maps: 6,141 meshes, 502 movers, none failing or unread; one texture
+missing (CTF-EpicBoy's `Screenshot`, saved in the map without pixels).
 
 ## Controls
 
@@ -37,7 +48,10 @@ map's viewpoints: its cutscene cameras (Intro1, Intro2 and End only), its Player
 on the floor below them (39 + 23 units over it, as the game spawns one; invisible floors count, as the game collides
 with them; a start more than 200 units over any floor keeps its own height: DmRetrospective's stands on a mesh, and
 Dark's, Endgame's, Abyss's and Glathriel1's first starts are 380 to 990 units up, the player dropping from there), and
-where each of its camera paths starts.
+where each of its camera paths starts. A map whose game (the LevelInfo's DefaultGameType) is an intro or the credits
+flies the player along its camera path or shows a SpectatorCam, so those views come first: UT's CityIntro opens on its
+flyby's start and Entry and UT-Logo-Map on the UT logo, Unreal's castle flyby (Unreal) and Upack on their camera
+path. The two credits maps (UGCredits, UTcredits) draw their text by script and stay black.
 
 ## How a map is read
 

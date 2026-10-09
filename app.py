@@ -264,11 +264,15 @@ def import_unreal_maps_route():
         return jsonify(error='Expected a small JSON import request.'), 400
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
-        return jsonify(error='Enter your Unreal folder.'), 400
+        return jsonify(error='Enter your game folder.'), 400
+    game = payload.get('game', 'unreal')
+    if game not in ('unreal', 'ut'):
+        return jsonify(error='Unknown game.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        return jsonify(import_unreal_maps(payload['path'].strip(), local_data_dir / 'unreal-maps' / 'unreal', payload.get('replace') is True))
+        return jsonify(import_unreal_maps(payload['path'].strip(), local_data_dir / 'unreal-maps' / game,
+                                          payload.get('replace') is True, game))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:

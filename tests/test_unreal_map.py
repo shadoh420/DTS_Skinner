@@ -8,7 +8,7 @@ import numpy as np
 
 from app import app
 from tools.import_unreal import Library, Package
-from tools.import_unreal_map import build_map, light_color
+from tools.import_unreal_map import actors_of, build_map, light_color, vector, viewer
 
 INSTALL = Path('C:/Unreal')
 
@@ -103,6 +103,27 @@ class UnrealMapInstallTest(unittest.TestCase):
         self.assertEqual(library.texture(package, ref, masked=True)[1].getextrema()[3][0], 0)
 
 
+UT_INSTALL = Path('C:/UnrealTournament')
+
+
+@unittest.skipUnless((UT_INSTALL / 'Maps' / 'UT-Logo-Map.unr').is_file(), 'needs the UT install at C:/UnrealTournament')
+class UTMapInstallTest(unittest.TestCase):
+    def test_scripted_texture_and_menu_camera(self):
+        library = Library(UT_INSTALL)
+        # A ScriptedTexture's pixels are drawn by script as the game runs: its SourceTexture stands in.
+        package = library.package('indus7')
+        ref = next(n for n, export in enumerate(package.exports, 1) if export['name'] == 'Monitor1')
+        self.assertEqual(library.texture(package, ref)[1].size, (128, 128))
+        # A map whose game is an intro (UT's menu backdrop) opens on its SpectatorCam, not its PlayerStart.
+        engine = library.package('engine')
+        level = Package(UT_INSTALL / 'Maps' / 'UT-Logo-Map.unr')
+        scene = build_map(library, level, (engine, engine.export_by_path(('Engine', 'DefaultTexture'), 'Texture')))[0]
+        layout = level.level(level.find({'Level'})[0])
+        camera = next(iter(actors_of(level, layout['actors'], {'SpectatorCam'}).values()))
+        self.assertTrue(np.allclose(scene['viewpoints'][0]['origin'], viewer([vector(camera, 'Location')])[0], atol=1e-3))
+        self.assertEqual(scene['actors']['failed'], [])
+
+
 class LightColorTest(unittest.TestCase):
     def test_hue_saturation_brightness(self):
         self.assertTrue(np.allclose(light_color(0, 255, 255), .5))  # Saturation 255: white; a full light lights 1.
@@ -124,6 +145,10 @@ class UnrealMapRouteTest(unittest.TestCase):
                 self.assertEqual(client.get('/maps/unreal/').status_code, 200)
                 self.assertEqual(client.get('/unreal-map-data/unreal/index.json').json, [])
                 self.assertEqual(client.post('/import_unreal_maps', json={'path': ' '}).status_code, 400)
+                self.assertEqual(client.post('/import_unreal_maps', json={'path': 'C:/UT', 'game': 'q3'}).status_code, 400)
+                with patch('app.import_unreal_maps', return_value=dict(imported=[], skipped=[], failed={})) as imported:
+                    self.assertEqual(client.post('/import_unreal_maps', json={'path': 'C:/UT', 'game': 'ut'}).status_code, 200)
+                self.assertEqual(imported.call_args.args, ('C:/UT', Path(folder) / 'unreal-maps' / 'ut', False, 'ut'))
                 self.assertEqual(client.post('/import_unreal_maps', json={'path': 'C:/Unreal'},
                                              headers={'Origin': 'http://elsewhere.test'}).status_code, 403)
 

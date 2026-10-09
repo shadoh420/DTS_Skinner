@@ -38,6 +38,7 @@ import itertools
 import json
 import math
 from pathlib import Path
+import re
 import struct
 
 import numpy as np
@@ -618,8 +619,15 @@ def build_map(library, level, default):
 
     # The cutscene maps (Intro1, Intro2, End) are seen through their CS_Camera actors (their PlayerStart sees
     # nothing), then PlayerStarts at a standing player's eye, then where each InterpolationPoint camera path starts.
+    # Maps whose game is an intro or the credits (UT's CityIntro and menu maps, Unreal's castle flyby, the credits)
+    # fly the player along their camera path or show a SpectatorCam: those come before the PlayerStarts.
     views, floors = [], np.array(floors + invisible_floors).reshape(-1, 3, 3)
-    for classes in ({'CS_Camera'}, {'PlayerStart'}, {'InterpolationPoint'}):
+    game_type = info.get('DefaultGameType')
+    game_type = level.ref_name(game_type) if isinstance(game_type, int) and game_type else ''
+    order = ({'CS_Camera'}, {'PlayerStart'}, {'InterpolationPoint'})
+    if re.search('intro|credits', game_type, re.I):
+        order = ({'CS_Camera'}, {'InterpolationPoint'}, {'SpectatorCam'}, {'PlayerStart'})
+    for classes in order:
         for props in actors_of(level, layout['actors'], classes).values():
             if props.get('Position', 0):
                 continue
@@ -663,7 +671,7 @@ def import_maps(install, output, replace=False, game='unreal'):
     result, written = dict(imported=[], skipped=[], failed={}), set()
     taken = set()
     for path in library.maps:
-        ident = safe(path.stem.lower())
+        ident = safe(path.stem.lower().replace('][', '-ii'))  # UT's sequels: CTF-Face][ beside CTF-Face.
         if ident in taken:
             ident = safe(f'{path.parent.name}_{path.stem}'.lower())
         taken.add(ident)

@@ -17,7 +17,8 @@
     <button id="reset">Reset view</button>
     <details id="importPanel"><summary>Import maps</summary>
       <div class="import">
-        <label>Unreal folder <input id="gamePath" placeholder="C:\Unreal"></label>
+        <select id="importGame" aria-label="Game to import"><option value="unreal">Unreal</option><option value="ut">Unreal Tournament</option></select>
+        <label>Game folder <input id="gamePath" placeholder="C:\Unreal"></label>
         <label><input id="replace" type="checkbox"> Re-import existing maps</label>
         <button id="import">Import</button>
         <span id="importStatus" role="status">Imports every map under Maps, with the textures it uses. The game folder is only read.</span>
@@ -27,6 +28,6 @@
   <main><canvas id="c"></canvas></main>
   <footer><span id="status" role="status">Loading map…</span>
     <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
-    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay or audio. The level's BSP surfaces are drawn with their textures and the map's own lighting (its lights, shadows and zone ambient light, at the game's default brightness; flickering and pulsing lights at their average, lights switched on by triggers off): masked, translucent, modulated and two-sided as the game draws them, panning where the game pans them, and the sky zone seen through the sky surfaces. Placed actors stand where the game starts them: decorations, pickups and monsters as meshes in one pose, doors and lifts (movers) at their first position. Not drawn: fog, sprites and particle effects, animated and wavy textures, mirrors.</span></details></footer>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay or audio. The level's BSP surfaces are drawn with their textures and the map's own lighting (its lights, shadows and zone ambient light, at the game's default brightness; flickering and pulsing lights at their average, lights switched on by triggers off): masked, translucent, modulated and two-sided as the game draws them, panning where the game pans them, and the sky zone seen through the sky surfaces. Unreal (Gold, with OldUnreal 227) and Unreal Tournament maps alike. Placed actors stand where the game starts them: decorations, pickups and monsters as meshes in one pose, doors and lifts (movers) at their first position. Not drawn: fog, sprites and particle effects, animated and wavy textures, mirrors.</span></details></footer>
 </body>
 </html>

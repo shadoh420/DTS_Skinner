@@ -29,7 +29,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       'void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(power)), 1.); }'})));
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
   const fitFrame = () => { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); frame.setSize(Math.max(size.x, 1), Math.max(size.y, 1)); };
-  const data = '/unreal-map-data/unreal/';
+  const GAMES = [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
+  let data = '/unreal-map-data/unreal/';  // The shown map's pack.
   let speed = 8, missing = 0, ready = false, map = null;
   const showStatus = text => { $('status').textContent = text; };
   const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing textures` : 'Map ready'} · speed ${speed.toFixed(1)} m/s`);
@@ -189,39 +190,57 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.skinnerUnrealMaps = {renderer, scene, camera, draw, showViewpoint};  // For checks in a hidden page, where no frame is drawn.
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
+  // Each game's folder is remembered on its own (Unreal's under the key it had before UT maps).
+  const pathKey = () => storageKey + ($('importGame').value === 'unreal' ? '.game' : '.game.' + $('importGame').value);
+  const showPath = () => {
+    $('gamePath').placeholder = GAMES.find(([id]) => id === $('importGame').value)[1];
+    try { $('gamePath').value = localStorage.getItem(pathKey()) || ''; } catch (_) { $('gamePath').value = ''; }
+  };
+  $('importGame').addEventListener('change', showPath);
   $('import').addEventListener('click', async () => {
-    const path = $('gamePath').value.trim() || $('gamePath').placeholder;
+    const path = $('gamePath').value.trim() || $('gamePath').placeholder, chosen = $('importGame').value;
     $('import').disabled = true;
-    $('importStatus').textContent = 'Importing maps… a full install takes about three minutes.';
+    $('importStatus').textContent = 'Importing maps… a full install takes two to three minutes.';
     try {
       const response = await fetch('/import_unreal_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({path, replace: $('replace').checked})});
+        body: JSON.stringify({path, game: chosen, replace: $('replace').checked})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Import failed');
-      try { localStorage.setItem(storageKey + '.game', path); } catch (_) { /* Path is simply not remembered. */ }
+      try { localStorage.setItem(pathKey(), path); } catch (_) { /* Path is simply not remembered. */ }
       const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
       $('importStatus').textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length} already imported` +
         (failed.length ? `, failed ${failed.length} (${failed.join('; ')})` : '') + '.';
-      if (result.imported.length && !failed.length && !map) location.reload();
+      // Reload to list a game's maps the first time they arrive.
+      if (result.imported.length && !failed.length && (!map || !$('map').querySelector(`option[value^="${chosen}/"]`))) location.reload();
     } catch (error) { $('importStatus').textContent = error.message; }
     finally { $('import').disabled = false; }
   });
-  try { $('gamePath').value = localStorage.getItem(storageKey + '.game') || ''; } catch (_) { /* Field stays empty. */ }
+  showPath();
 
   try {
-    let maps = [];
-    try { maps = await (await get(data + 'index.json')).json(); } catch (_) { /* No pack yet. */ }
+    // Both games' maps in one list, each as GAME/ID; a game not imported yet has no index.
+    const maps = [];
+    for (const [id] of GAMES) {
+      try { maps.push(...(await (await get(`/unreal-map-data/${id}/index.json`)).json()).map(item => ({...item, game: id, key: `${id}/${item.id}`}))); }
+      catch (_) { /* Not imported. */ }
+    }
     if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
-    let mapId = new URLSearchParams(location.search).get('map') || '';
-    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === 'nyleve') || maps[0]).id;
+    let key = new URLSearchParams(location.search).get('map') || '';
+    if (!key.includes('/')) key = 'unreal/' + key;  // Links from before UT maps name an Unreal map alone.
+    const item = maps.find(found => found.key === key) || maps.find(found => found.key === 'unreal/nyleve') || maps[0];
     const byGroup = new Map();
-    for (const item of maps) byGroup.set(item.group, [...(byGroup.get(item.group) || []), item]);
+    for (const found of maps) byGroup.set(found.group, [...(byGroup.get(found.group) || []), found]);
     $('map').replaceChildren(...[...byGroup].map(([group, items]) => {
       const element = Object.assign(document.createElement('optgroup'), {label: group});
-      element.append(...items.map(item => new Option(item.title ? `${item.name} · ${item.title}` : item.name, item.id)));
+      element.append(...items.map(found => new Option(found.title ? `${found.name} · ${found.title}` : found.name, found.key)));
       return element;
     }));
-    $('map').value = mapId;
+    $('map').value = item.key;
+    data = `/unreal-map-data/${item.game}/`;
+    // Offer the import of the game whose maps are not there yet.
+    const absent = GAMES.find(([id]) => !maps.some(found => found.game === id));
+    if (absent) { $('importGame').value = absent[0]; showPath(); }
+    const mapId = item.id;
     map = {...await (await get(`${data}maps/${mapId}/scene.json`)).json(), id: mapId};
     document.title = `${map.title || map.name} — Unreal Maps`;
     if (map.sky) skyTurn.setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...map.sky.rotation)));

@@ -668,8 +668,9 @@ def decode_texture(library, package, ref, masked=False):
     """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear, and with
     `masked` any palette texture's (the game masks a texture wherever a surface is drawn masked: map surfaces).
     Procedural textures, whose mips are empty because the game draws them as it runs, get a still: fire from its
-    sparks; wet and ice textures their SourceTexture's pixels (undistorted) in their own palette; water and wave
-    textures calm water, index 128 everywhere (SurrealEngine's water shade for a flat surface)."""
+    sparks; wet, ice and (UT's) scripted textures their SourceTexture's pixels (undistorted; no text a script draws) in
+    their own palette; water and wave textures calm water, index 128 everywhere (SurrealEngine's water shade for a flat
+    surface)."""
     props, mips = texture_mips(package, ref)
     if not mips:
         raise ValueError('no mips')
@@ -681,7 +682,7 @@ def decode_texture(library, package, ref, masked=False):
         data = fire_pixels(props, sparks, props.get('UClamp', width), props.get('VClamp', height))
         width, height = props.get('UClamp', width), props.get('VClamp', height)
     elif kind == 0 and len(data) < width * height:
-        source = cls in ('WetTexture', 'IceTexture') and library.resolve(package, props.get('SourceTexture', 0))
+        source = cls in ('WetTexture', 'IceTexture', 'ScriptedTexture') and library.resolve(package, props.get('SourceTexture', 0))
         source = source and texture_mips(*source)[1]
         if source and source[0][1:] == (width, height) and len(source[0][0]) >= width * height:
             data = source[0][0]
