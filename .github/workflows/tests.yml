@@ -1,0 +1,22 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unittest:
+    runs-on: windows-latest
+    env:
+      # The tests never read the LFS textures (static/textures/t2); skipping them keeps LFS bandwidth at zero.
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+      - run: pip install -r requirements.txt
+      # Install-dependent tests skip on the runner (no game folders); the Node tests run on the runner's Node.
+      - run: python -B -m unittest discover -s tests -v

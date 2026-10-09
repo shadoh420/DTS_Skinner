@@ -35,6 +35,7 @@ from tools.import_starsiege import import_catalog as import_starsiege_catalog
 from tools.import_earthsiege import import_catalog as import_earthsiege_catalog
 from tools.import_redbaron import import_catalog as import_redbaron_catalog
 from tools.import_unreal import import_catalog as import_unreal_catalog
+from tools.import_unreal_map import import_maps as import_unreal_maps
 
 # --- System Tray Imports ---
 try:
@@ -78,32 +79,11 @@ pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
 
-# Source directories (can be used by list_models for discovery if desired, but not for on-demand export)
-# dts_source_dir = root / "tools" / "dts_files"
-# interior_source_dir = root / "tools" / "interior_files"
-
-# Exporter imports are no longer needed here if we pre-process everything
-# exporter_script_module_dir = root / "tools"
-# if str(exporter_script_module_dir) not in sys.path:
-#     sys.path.insert(0, str(exporter_script_module_dir))
-# run_dts_exporter = None
-# run_interior_exporter = None
-# try:
-#     # from export_model import main as run_dts_exporter_func
-#     # run_dts_exporter = run_dts_exporter_func
-#     # print("Successfully imported run_dts_exporter from export_model.")
-#     # from export_interior import main as run_interior_exporter_func
-#     # run_interior_exporter = run_interior_exporter_func
-#     # print("Successfully imported run_interior_exporter from export_interior.")
-# except ImportError as e:
-#     print(f"INFO: Exporter functions not imported (expected for pre-processing workflow): {e}")
-# except Exception as e:
-#     print(f"An unexpected error occurred importing exporters (expected for pre-processing workflow): {e}")
-
 
 # --- Flask App Setup ---
 app = Flask(__name__, static_folder=str(static_dir), template_folder=str(templates_dir))
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Default origins: only the host the page was opened on (localhost / 127.0.0.1 / [::1]), not any site.
+socketio = SocketIO(app)
 
 # --- Global variable to control Flask server thread ---
 flask_server_thread = None
@@ -238,6 +218,41 @@ def import_q3_maps_route():
     try:
         return jsonify(import_q3_maps(payload['game'].strip(), local_data_dir / 'q3-maps', payload.get('replace') is True))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/unreal/')
+def unreal_maps_viewer():
+    response = send_from_directory(static_dir / 'unreal-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/unreal-map-data/<path:filename>')
+def unreal_map_data(filename):
+    return send_from_directory(local_data_dir / 'unreal-maps', filename)
+
+
+@app.route('/import_unreal_maps', methods=['POST'])
+def import_unreal_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your game folder.'), 400
+    game = payload.get('game', 'unreal')
+    if game not in ('unreal', 'ut'):
+        return jsonify(error='Unknown game.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_unreal_maps(payload['path'].strip(), local_data_dir / 'unreal-maps' / game,
+                                          payload.get('replace') is True, game))
+    except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
         import_lock.release()
@@ -828,20 +843,8 @@ def open_textures_folder(icon=None, item=None):
 def open_browser(icon=None, item=None):
     webbrowser.open_new_tab(f"http://localhost:{server_port}/")
 
-# Add a shutdown route for programmatic server stop
-@app.route('/shutdown_server_please', methods=['GET','POST']) # Allow GET for easy browser call during dev
-def shutdown_server():
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        print('Not running with the Werkzeug Server or shutdown not supported.')
-        # For non-Werkzeug or if direct shutdown fails, rely on os._exit in quit_application
-        return 'Server shutdown failed (not Werkzeug or not supported).'
-    func()
-    print("Server shutdown initiated via /shutdown_server_please route.")
-    return 'Server shutting down...'
-
 def quit_application(icon=None, item=None):
-    global tray_icon_instance, flask_server_thread
+    global tray_icon_instance
     print("Quit application called.")
     
     if HAS_PYSTRAY and tray_icon_instance:
@@ -849,26 +852,10 @@ def quit_application(icon=None, item=None):
         tray_icon_instance.stop() # This should allow the tray_icon_instance.run() to unblock
 
     stop_watcher()
-    
-    print("Attempting to shut down Flask server via HTTP request...")
-    try:
-        # Make a request to the shutdown route
-        import urllib.request
-        with urllib.request.urlopen(f"http://localhost:{server_port}/shutdown_server_please", timeout=2):
-            pass
-    except Exception as e:
-        print(f"Could not reach shutdown route (server might be already down or unresponsive): {e}")
-
-    stop_event.set() # Signal Flask thread to stop if it's in a loop (less relevant with socketio.run)
-
-    if flask_server_thread and flask_server_thread.is_alive():
-        print("Waiting for Flask server thread to join...")
-        flask_server_thread.join(timeout=5) # Wait for the thread to finish
-        if flask_server_thread.is_alive():
-            print("Flask server thread did not join in time.")
-
+    stop_event.set()
+    # Werkzeug 3 has no request-side shutdown; the server thread is a daemon, so exiting the process ends it.
     print("Exiting application with os._exit(0)...")
-    os._exit(0) # Force exit if threads are stuck
+    os._exit(0)
 
 
 def setup_tray_icon():
@@ -929,14 +916,6 @@ if __name__ == "__main__":
             if item.name != 'animations':
                 shutil.move(item, local_data_dir / item.name)
     print(f"Imported data: {local_data_dir}")
-    # No longer need to check for exporter imports here if using pre-processing
-    # if run_dts_exporter is None or run_interior_exporter is None:
-    #      print("CRITICAL WARNING: One or more exporter functions could not be imported. On-demand export WILL FAIL.")
-    
-    # Ensure necessary directories exist
-    # (root / "tools").mkdir(parents=True, exist_ok=True) # tools dir for batch scripts
-    # dts_source_dir.mkdir(parents=True, exist_ok=True)    # if you still want to scan them
-    # interior_source_dir.mkdir(parents=True, exist_ok=True) # if you still want to scan them
     textures_dir.mkdir(parents=True, exist_ok=True)
     model_json_dir.mkdir(parents=True, exist_ok=True) # Crucial for pre-processing
 

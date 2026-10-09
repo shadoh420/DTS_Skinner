@@ -33,6 +33,7 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, D
 - **T2 Maps** opens a free-flight preview of Tribes 2 missions with terrain, buildings, placed objects, sky, water and fog: every stock, Classic and Team Rabbit 2 map of your own install, imported from the page's **Import maps** panel; see [T2 map setup and limitations](docs/t2-map-viewer.md).
 - **T1 Maps** opens a free-flight preview of Starsiege: Tribes missions: every map in your own install plus custom missions, imported from the page's **Import maps** panel; see [T1 map setup and limitations](docs/t1-map-viewer.md).
 - **Q3 Maps** opens a free-flight preview of Quake 3 Arena maps with lightmaps, curved surfaces, shader effects, skies and pickups: every map of your own install, stock, Team Arena and custom pk3s, imported from the page's **Import maps** panel; see [Q3 map setup and limitations](docs/q3-map-viewer.md).
+- **Unreal Maps** opens a free-flight preview of the maps of your Unreal install (Unreal Gold with OldUnreal 227, Return to Na Pali included) and your Unreal Tournament install (UT 469), in one list: the level's BSP surfaces with their textures and the map's own lighting (lightmaps rebuilt from its lights and shadow bits), masked, translucent and panning as in the game, the sky zone through the sky surfaces, and the placed meshes and movers where the game starts them, imported per game from the page's **Import maps** panel; see [Unreal map viewer](docs/unreal-map-viewer.md).
 - **Reflex Maps** opens Reflex Arena maps to walk through (Quake 3-style movement, teleporters and jump pads) and edits their brushes, textured from the game's materials or any of Skinner's texture libraries (and the game's textures become a fourth library for models): **0** switches to edit mode as in the game, with the game's editor controls (drag to move, Alt to lift, Shift-drag a face, 1–8 to create brushes, volumes and entities, V for vertex mode, B to bridge two faces, C to clip, numpad +/− to turn, the texture keys on one or several faces, mirroring, prefabs made, broken, updated and edited in place, N for properties, K/M materials, G clone, Z/X undo), and brushes are also carved, hollowed, merged and split, and the map is saved back as a `.map` file. Maps are lit as the game lights them: the light probes of the map's baked `.light`, its lights and the sun. Import your install's maps (and Workshop maps) from the page, or open a `.map` file directly; see [Reflex map viewer and brush editor](docs/reflex-map-viewer.md).
 - **N64 Maps** opens a free-flight preview of [L. Spiro](https://github.com/L-Spiro)'s N64 level conversions (GoldenEye 007, Perfect Dark, Diddy Kong Racing and more; OBJ + MTL + PNG made for Blender), listed by game: no maps come with Skinner, import your own folder of the conversions from the page's **Import maps** panel. Surfaces are drawn as L. Spiro's Blender material script draws them (unlit, texture times the level's vertex colours, with the clamp, mirror, see-through and decal flags in the material names).
 - **Diabotical Maps** opens a free-flight preview of Diabotical maps' blocks in their materials' textures: the game's maps and the ones you made in its editor, imported from the page's **Import maps** panel; see [Diabotical map viewer](docs/diabotical-map-viewer.md).
@@ -46,6 +47,8 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, D
 3. Choose a model, select a material and texture, then click **Apply to slot**.
 
 If the browser doesn't open, visit `http://localhost:5000/`. Starting it again while it runs just opens the browser on it. Quit through the app's system-tray menu.
+
+`SkinnerApp.exe` is not code-signed, so Windows SmartScreen may warn the first time it runs; "More info" then "Run anyway" starts it. Check the ZIP against the `.sha256` file published with the release first (`certutil -hashfile DTS-Skinner-vN-Windows.zip SHA256` on Windows, `sha256sum -c` elsewhere).
 
 **Controls:** drag to orbit, wheel to zoom, right-drag to pan. **Walk / Fly** (Shift + backtick) uses WASD and Q/E; Escape returns to orbit. Position and rotation changes are preview-only.
 
@@ -78,3 +81,8 @@ Viewport checks: `node tools/check_viewport_workshop.cjs http://127.0.0.1:5000 b
 See [animation and export details](ANIMATION_EXPORT.md) and [T2 coverage and limitations](T2_IMPORT.md).
 
 Built with Python and Three.js. Inspired by [exogen's T2 Model Skinner](https://github.com/exogen/t2-model-skinner). N64 map support thanks to [L. Spiro](https://github.com/L-Spiro), whose level conversions and Blender material rules it follows, used with permission.
+
+## License
+
+Skinner's own code is released under the [MIT License](LICENSE). The games' models and textures, the conversion packs and the vendored third-party code (see `static/t2-maps/THIRD-PARTY-NOTICES.txt`) keep their own owners and licences.
+The Tribes 1 and 2 content that ships with releases is covered by [NOTICE.md](NOTICE.md); [RELEASING.md](RELEASING.md) is the release recipe.
