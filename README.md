@@ -78,3 +78,7 @@ Viewport checks: `node tools/check_viewport_workshop.cjs http://127.0.0.1:5000 b
 See [animation and export details](ANIMATION_EXPORT.md) and [T2 coverage and limitations](T2_IMPORT.md).
 
 Built with Python and Three.js. Inspired by [exogen's T2 Model Skinner](https://github.com/exogen/t2-model-skinner). N64 map support thanks to [L. Spiro](https://github.com/L-Spiro), whose level conversions and Blender material rules it follows, used with permission.
+
+## License
+
+Skinner's own code is released under the [MIT License](LICENSE). The games' models and textures, the conversion packs and the vendored third-party code (see `static/t2-maps/THIRD-PARTY-NOTICES.txt`) keep their own owners and licences.
