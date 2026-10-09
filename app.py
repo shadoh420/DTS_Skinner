@@ -104,7 +104,8 @@ import_lock = threading.Lock()
 
 # --- Flask App Setup ---
 app = Flask(__name__, static_folder=str(static_dir), template_folder=str(templates_dir))
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Default origins: only the host the page was opened on (localhost / 127.0.0.1 / [::1]), not any site.
+socketio = SocketIO(app)
 
 # --- Global variable to control Flask server thread ---
 flask_server_thread = None
@@ -864,20 +865,8 @@ def open_textures_folder(icon=None, item=None):
 def open_browser(icon=None, item=None):
     webbrowser.open_new_tab(f"http://localhost:{server_port}/")
 
-# Add a shutdown route for programmatic server stop
-@app.route('/shutdown_server_please', methods=['GET','POST']) # Allow GET for easy browser call during dev
-def shutdown_server():
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        print('Not running with the Werkzeug Server or shutdown not supported.')
-        # For non-Werkzeug or if direct shutdown fails, rely on os._exit in quit_application
-        return 'Server shutdown failed (not Werkzeug or not supported).'
-    func()
-    print("Server shutdown initiated via /shutdown_server_please route.")
-    return 'Server shutting down...'
-
 def quit_application(icon=None, item=None):
-    global tray_icon_instance, flask_server_thread
+    global tray_icon_instance
     print("Quit application called.")
     
     if HAS_PYSTRAY and tray_icon_instance:
@@ -885,26 +874,10 @@ def quit_application(icon=None, item=None):
         tray_icon_instance.stop() # This should allow the tray_icon_instance.run() to unblock
 
     stop_watcher()
-    
-    print("Attempting to shut down Flask server via HTTP request...")
-    try:
-        # Make a request to the shutdown route
-        import urllib.request
-        with urllib.request.urlopen(f"http://localhost:{server_port}/shutdown_server_please", timeout=2):
-            pass
-    except Exception as e:
-        print(f"Could not reach shutdown route (server might be already down or unresponsive): {e}")
-
-    stop_event.set() # Signal Flask thread to stop if it's in a loop (less relevant with socketio.run)
-
-    if flask_server_thread and flask_server_thread.is_alive():
-        print("Waiting for Flask server thread to join...")
-        flask_server_thread.join(timeout=5) # Wait for the thread to finish
-        if flask_server_thread.is_alive():
-            print("Flask server thread did not join in time.")
-
+    stop_event.set()
+    # Werkzeug 3 has no request-side shutdown; the server thread is a daemon, so exiting the process ends it.
     print("Exiting application with os._exit(0)...")
-    os._exit(0) # Force exit if threads are stuck
+    os._exit(0)
 
 
 def setup_tray_icon():
