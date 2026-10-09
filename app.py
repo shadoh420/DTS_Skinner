@@ -79,28 +79,6 @@ pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
 
-# Source directories (can be used by list_models for discovery if desired, but not for on-demand export)
-# dts_source_dir = root / "tools" / "dts_files"
-# interior_source_dir = root / "tools" / "interior_files"
-
-# Exporter imports are no longer needed here if we pre-process everything
-# exporter_script_module_dir = root / "tools"
-# if str(exporter_script_module_dir) not in sys.path:
-#     sys.path.insert(0, str(exporter_script_module_dir))
-# run_dts_exporter = None
-# run_interior_exporter = None
-# try:
-#     # from export_model import main as run_dts_exporter_func
-#     # run_dts_exporter = run_dts_exporter_func
-#     # print("Successfully imported run_dts_exporter from export_model.")
-#     # from export_interior import main as run_interior_exporter_func
-#     # run_interior_exporter = run_interior_exporter_func
-#     # print("Successfully imported run_interior_exporter from export_interior.")
-# except ImportError as e:
-#     print(f"INFO: Exporter functions not imported (expected for pre-processing workflow): {e}")
-# except Exception as e:
-#     print(f"An unexpected error occurred importing exporters (expected for pre-processing workflow): {e}")
-
 
 # --- Flask App Setup ---
 app = Flask(__name__, static_folder=str(static_dir), template_folder=str(templates_dir))
@@ -938,14 +916,6 @@ if __name__ == "__main__":
             if item.name != 'animations':
                 shutil.move(item, local_data_dir / item.name)
     print(f"Imported data: {local_data_dir}")
-    # No longer need to check for exporter imports here if using pre-processing
-    # if run_dts_exporter is None or run_interior_exporter is None:
-    #      print("CRITICAL WARNING: One or more exporter functions could not be imported. On-demand export WILL FAIL.")
-    
-    # Ensure necessary directories exist
-    # (root / "tools").mkdir(parents=True, exist_ok=True) # tools dir for batch scripts
-    # dts_source_dir.mkdir(parents=True, exist_ok=True)    # if you still want to scan them
-    # interior_source_dir.mkdir(parents=True, exist_ok=True) # if you still want to scan them
     textures_dir.mkdir(parents=True, exist_ok=True)
     model_json_dir.mkdir(parents=True, exist_ok=True) # Crucial for pre-processing
 

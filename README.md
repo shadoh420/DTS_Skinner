@@ -48,6 +48,8 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, D
 
 If the browser doesn't open, visit `http://localhost:5000/`. Starting it again while it runs just opens the browser on it. Quit through the app's system-tray menu.
 
+`SkinnerApp.exe` is not code-signed, so Windows SmartScreen may warn the first time it runs; "More info" then "Run anyway" starts it. Check the ZIP against the `.sha256` file published with the release first (`certutil -hashfile DTS-Skinner-vN-Windows.zip SHA256` on Windows, `sha256sum -c` elsewhere).
+
 **Controls:** drag to orbit, wheel to zoom, right-drag to pan. **Walk / Fly** (Shift + backtick) uses WASD and Q/E; Escape returns to orbit. Position and rotation changes are preview-only.
 
 ### Texture workshop
@@ -83,3 +85,4 @@ Built with Python and Three.js. Inspired by [exogen's T2 Model Skinner](https://
 ## License
 
 Skinner's own code is released under the [MIT License](LICENSE). The games' models and textures, the conversion packs and the vendored third-party code (see `static/t2-maps/THIRD-PARTY-NOTICES.txt`) keep their own owners and licences.
+The Tribes 1 and 2 content that ships with releases is covered by [NOTICE.md](NOTICE.md); [RELEASING.md](RELEASING.md) is the release recipe.
