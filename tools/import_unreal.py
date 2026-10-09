@@ -1,6 +1,8 @@
-"""Unreal (1998) and Return to Na Pali: an install's meshes into the model browser as game unreal.
+"""Unreal (1998) and Return to Na Pali, or Unreal Tournament (UT99): an install's meshes into the model browser as
+game unreal, or ut.
 
 python tools/import_unreal.py --install C:/Unreal
+python tools/import_unreal.py --game ut --install C:/UnrealTournament
 
 Read from the install's packages (System/*.u for the meshes, Textures/*.utx and the .u files for their skins). A
 package starts with a u32 0x9E2A83C1, u16 version (61 for 1998's files, 69 for OldUnreal 227's), u16 licensee, u32
@@ -29,7 +31,13 @@ object reference is a compact index: n > 0 is export n-1, n < 0 import -n-1, 0 n
   with bytecode of their own (29 of 850 in the stock packages) are skipped. Actors placed in the maps (Maps/**.unr,
   their properties over their class's) vote too: the Panel's glass is set only there. The pick most classes and
   placed actors showing the mesh agree on wins; otherwise the same slot of a same-named mesh in another package
-  (UnrealI repeats some of UnrealShare's); then, as the game does, Engine's DefaultTexture.
+  (UnrealI repeats some of UnrealShare's); then, as the game does, Engine's DefaultTexture. A mesh's own texture
+  stays even where a class reskins it (Brute2, the Skaarj colours): those are variants.
+- UT's players get their skins at run time from the class's DefaultSkinName "Package.Base" (a str property: compact
+  length, text, NUL): slot n is the skin package's texture Base{n+1} (SoldierSkins.blkt1..blkt4, the face
+  included), or Base itself for the bonus pack's models (TCowMeshSkins.WarCow). The player menu's and the ladder
+  trophy's meshes (SelectionMesh, SpecialMesh, named as text) wear the same; a weapon's MuzzleFlashMesh wears its
+  MuzzleFlashTexture.
 - Placement: the mesh's own Scale, Origin and RotOrigin (#exec MESH ORIGIN); Unreal is x forward, y right, z up.
   Corners wind clockwise seen from the front. Checked against the game (227, 2026-10-09): the UPak drop box's
   "FIELD LOGISTICS / UMS" reads the same way, and players hold their weapon in the left hand, where Male1's weapon
@@ -38,8 +46,8 @@ object reference is a compact index: n > 0 is export n-1, n < 0 import -n-1, 0 n
 
 SurrealEngine (github.com/dpjudas/SurrealEngine) was read as a format reference; no code was copied.
 
-Written (under local-data/unreal): catalog.json, model_json/MODEL.json and textures/*.png (kept when already there,
-so edits survive).
+Written (under local-data/unreal, or local-data/ut): catalog.json, model_json/MODEL.json and textures/*.png (kept
+when already there, so edits survive).
 """
 import argparse
 import json
@@ -59,7 +67,9 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
 
 SCALE = 1 / 52.5  # Unreal units to metres: the community's usual 52.5 to a metre.
-CATEGORY = {'unrealshare': 'Unreal', 'unreali': 'Unreal', 'upak': 'Return to Na Pali'}
+CATEGORY = {'unrealshare': 'Unreal', 'unreali': 'Unreal', 'upak': 'Return to Na Pali', 'botpack': 'Unreal Tournament',
+            'relics': 'Relics', 'epiccustommodels': 'Bonus Pack'}
+GAMES = {'unreal': 'UnrealShare', 'ut': 'Botpack'}  # Game id: the package its install must have.
 # Mesh poly flags: 0x02 masked (palette index 0 clear), 0x04 translucent, 0x10 environment mapped, 0x40 modulated,
 # 0x100 two-sided; 0x01 invisible draws nothing.
 INVISIBLE, MASKED, TRANSLUCENT, ENVIRONMENT, MODULATED, TWO_SIDED = 0x01, 0x02, 0x04, 0x10, 0x40, 0x100
@@ -238,6 +248,10 @@ class Package:
                 value = self.index()
                 if kind == 6:
                     value = self.names[value]
+            elif kind == 13:  # str: (from version 64) a compact length, then the characters and a NUL
+                if self.version >= 64:
+                    self.index()
+                value = self.data[self.at:start + size].split(b'\0')[0].decode('latin-1')
             else:
                 value = self.data[start:start + size]
             self.at = start + size
@@ -360,11 +374,29 @@ class Library:
                 return found if found and found[1] and found[0].ref_path(found[1])[0].lower() != 'engine' else None
 
             multi = {int(k[11:-1]) if '[' in k else 0: texture(k) for k in merged if k.startswith('MultiSkins')}
-            for prop in MESH_PROPERTIES:
-                package, ref = merged.get(prop, (None, 0))
-                if ref and isinstance(ref, int):
-                    mesh = tuple(p.lower() for p in package.ref_path(ref))
-                    skins.setdefault(mesh, []).append((texture('Skin'), texture('Texture'), multi))
+            skin = texture('Skin')
+            # UT's players take their skins at run time from DefaultSkinName "Package.Base": slot n is Base{n+1}
+            # (SoldierSkins.blkt1..blkt4); a bonus pack model's Base is its Skin (TCowMeshSkins.WarCow).
+            package_name, _, base = str(merged.get('DefaultSkinName', (None, ''))[1]).partition('.')
+            skin_package = base and self.package(package_name)
+            if skin_package:
+                for slot in range(8):
+                    found = skin_package.export_by_path((package_name, f'{base}{slot + 1}'), 'Texture')
+                    if found and not multi.get(slot):
+                        multi[slot] = skin_package, found
+                found = skin_package.export_by_path((package_name, base), 'Texture')
+                skin = skin or found and (skin_package, found)
+            shown = [tuple(p.lower() for p in package.ref_path(ref)) for package, ref in
+                     (merged.get(prop, (None, 0)) for prop in MESH_PROPERTIES) if ref and isinstance(ref, int)]
+            # The player menu and the ladder's trophy show the player's skins on these, named as text.
+            shown += [tuple(merged[prop][1].lower().split('.')) for prop in ('SelectionMesh', 'SpecialMesh')
+                      if isinstance(merged.get(prop, (None, 0))[1], str)]
+            for mesh in shown:
+                skins.setdefault(mesh, []).append((skin, texture('Texture'), multi))
+            package, ref = merged.get('MuzzleFlashMesh', (None, 0))  # UT weapons draw it with MuzzleFlashTexture.
+            if ref and isinstance(ref, int):
+                skins.setdefault(tuple(p.lower() for p in package.ref_path(ref)), []).append(
+                    (texture('MuzzleFlashTexture'), None, {}))
 
         for merged in merged_classes.values():
             vote(merged)
@@ -514,7 +546,7 @@ def material_settings(flags):
     return settings
 
 
-def build_model(mesh, slot_of, frame=0):
+def build_model(mesh, slot_of, frame=0, game='unreal'):
     """Geometry of `mesh` at animation frame `frame`; slot_of(texture slot, poly flags) gives a PNG name, or None (not
     drawn). Faces with the same PNG and flags share a material."""
     rows = rotation(*mesh['rot'])
@@ -545,7 +577,7 @@ def build_model(mesh, slot_of, frame=0):
     for number, key in enumerate(keys):
         groups.append(dict(start=len(indices), count=len(slots[key]), materialIndex=number))
         indices.extend(slots[key])
-    return dict(game='unreal', winding='ccw', vertices=[round(c, 4) for v in vertices for c in v],
+    return dict(game=game, winding='ccw', vertices=[round(c, 4) for v in vertices for c in v],
                 uvs=[round(v, 5) for v in uvs], indices=indices, groups=groups, material_names=[k[0] for k in keys],
                 material_textures=[k[0] for k in keys], material_settings=[material_settings(k[1]) for k in keys])
 
@@ -571,12 +603,14 @@ def slot_texture(library, skins, meshes, package, ref, mesh, index):
     return None
 
 
-def import_catalog(install, output):
-    """Import every mesh in the System packages of the Unreal install `install` into `output`."""
+def import_catalog(install, output, game='unreal'):
+    """Import every mesh in the System packages of the Unreal (game unreal) or Unreal Tournament (ut) install
+    `install` into `output`."""
     install, output = Path(install).expanduser(), Path(output)
     library = Library(install)
-    if not library.package('unrealshare'):
-        raise ValueError(f'No Unreal install (System/UnrealShare.u) in {install}')
+    if not library.package(GAMES[game]):
+        title = 'Unreal Tournament' if game == 'ut' else 'Unreal'
+        raise ValueError(f'No {title} install (System/{GAMES[game]}.u) in {install}')
     for sub in ('model_json', 'textures'):
         (output / sub).mkdir(parents=True, exist_ok=True)
     found, meshes = [], {}
@@ -603,7 +637,7 @@ def import_catalog(install, output):
         if model in taken:
             model = safe(f'{package.path.stem}_{mesh_name}')
         taken.add(model)
-        item = dict(model_name=model, display_name=mesh_name, texture_name='', game='unreal',
+        item = dict(model_name=model, display_name=mesh_name, texture_name='', game=game,
                     category=CATEGORY.get(source, package.path.stem), status='ready')
         if not isinstance(mesh, dict):
             catalog.append(dict(item, status=f'failed: {mesh}'))
@@ -624,7 +658,7 @@ def import_catalog(install, output):
         names = {seq['name'].lower(): seq for seq in mesh['seqs']}
         pose = next((names[name] for name in POSES if name in names), None)
         try:
-            data = build_model(mesh, slot_of, pose['start'] if pose and pose['start'] < mesh['frames'] else 0)
+            data = build_model(mesh, slot_of, pose['start'] if pose and pose['start'] < mesh['frames'] else 0, game)
         except (struct.error, ValueError, IndexError, KeyError) as exc:
             catalog.append(dict(item, status=f'failed: {exc}'))
             continue
@@ -647,5 +681,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--install', type=Path, required=True)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--game', choices=GAMES, default='unreal')
     args = parser.parse_args()
-    print(import_catalog(args.install, args.output or LOCAL_DATA / 'unreal'))
+    print(import_catalog(args.install, args.output or LOCAL_DATA / args.game, args.game))

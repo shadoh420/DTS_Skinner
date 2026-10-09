@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
   const compare = (a, b) => a.localeCompare(b, 'en', {numeric: true, sensitivity: 'base'});
-  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 'ss', 'es1', 'es2', 'rb3d', 'unreal'];  // Games with an import box (<id>Import).
+  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut'];  // Games with an import box (<id>Import).
   const scene = new THREE.Scene();
   scene.add(new THREE.AmbientLight(0xffffff, .6));
   const light = new THREE.DirectionalLight(0xffffff, .8);
@@ -429,7 +429,7 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.minFilter = flags & 128 ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
       texture.generateMipmaps = !(flags & 128);
     }
-    if (gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal') {
+    if (gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut') {
       texture.wrapS = texture.wrapT = settings.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       texture.magFilter = THREE.LinearFilter;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -529,8 +529,8 @@ window.addEventListener('DOMContentLoaded', () => {
           blending: flags & 8 ? THREE.AdditiveBlending : flags & 16 ? THREE.SubtractiveBlending : THREE.NormalBlending
         }));
         // Diabotical's and Reflex's imports write the same shader settings for their cutout (foliage) and blended materials.
-        // Unreal's mesh poly flags (two-sided, masked, translucent, modulated, environment) come as the same settings.
-        if ((gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
+        // Unreal's and UT's mesh poly flags (two-sided, masked, translucent, modulated, environment) come as the same settings.
+        if ((gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
       }
       if (serial !== loadSerial) { disposeMaterials(newMaterials); return; }
       const geometry = new THREE.BufferGeometry();
@@ -765,7 +765,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (serial === catalogSerial) await loadModel(true);
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
-  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus']]) {
+  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus'], ['ut', 'importUt', 'utPath', 'utImportStatus']]) {
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();
       if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }

@@ -1,4 +1,4 @@
-"""Unreal import (tools/import_unreal.py): package tables, LodMesh, palette textures and class default skins."""
+"""Unreal and UT import (tools/import_unreal.py): package tables, LodMesh, palette textures and class default skins."""
 import json
 from pathlib import Path
 import struct
@@ -12,7 +12,7 @@ from app import app
 from tools.import_unreal import fire_pixels, import_catalog
 
 NAMES = ['None', 'Core', 'Engine', 'Class', 'Package', 'Texture', 'Palette', 'LodMesh', 'Test', 'Skins', 'Pal', 'Own',
-         'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System']
+         'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System', 'DefaultSkinName', 'Body2']
 
 
 def index(value):
@@ -31,10 +31,13 @@ def name(text):
 
 
 def props(*tags):
-    """Tagged properties: (name, type, data) with an object or bool value; bools carry theirs in 0x80."""
+    """Tagged properties: (name, type, data) with an object, str or bool value; bools carry theirs in 0x80."""
     out = b''
     for prop, kind, data in tags:
-        if kind == 3:  # bool: size code 5 with a zero size byte, value in the array bit
+        if kind == 13:  # str: size code 5 with a one-byte size; a compact length, the text and a NUL
+            data = index(len(data) + 1) + data.encode() + b'\0'
+            out += name(prop) + bytes([0x50 | kind, len(data)]) + data
+        elif kind == 3:  # bool: size code 5 with a zero size byte, value in the array bit
             out += name(prop) + bytes([0x53 | (0x80 if data else 0), 0])
         else:  # object: size code 0, a one-byte compact reference
             out += name(prop) + bytes([kind]) + data
@@ -63,22 +66,25 @@ def lod_mesh(textures):
     return out
 
 
-def class_defaults(mesh, skin):
-    """Class BoxDeco: no bytecode; defaults Mesh and Skin."""
+def class_defaults(mesh, skin, skin_name=None):
+    """Class BoxDeco: no bytecode; defaults Mesh, Skin and (as UT's players have) DefaultSkinName."""
     out = index(0) * 4 + name('BoxDeco') + struct.pack('<III', 0, 0, 0) + b'\0' * 22 + b'\0' * 20
     out += index(0) + index(0) + index(0) + name('System')  # dependencies, imports, within, config
-    return out + props(('Mesh', 5, index(mesh)), ('Skin', 5, index(skin)))
+    return out + props(('Mesh', 5, index(mesh)), ('Skin', 5, index(skin)),
+                       *([('DefaultSkinName', 13, skin_name)] if skin_name else []))
 
 
-def package():
+def package(skin_name=None):
     """Test.u: Skins.Pal (palette), Skins.Own (masked) and Skins.Given (textures), Box (LodMesh with slot 1 empty) and
-    BoxDeco (a class showing Box with Skin Given)."""
+    BoxDeco (a class showing Box with Skin Given); with `skin_name`, BoxDeco's DefaultSkinName, and a texture Body2."""
     imports = [('Core', 'Package', 0, 'Engine'), ('Core', 'Class', -1, 'Texture'), ('Core', 'Class', -1, 'Palette'),
                ('Core', 'Class', -1, 'LodMesh')]
     palette = name('None') + index(256) + bytes(c for i in range(256) for c in (i, 255 - i, 7, 0))
     exports = [(0, 0, 'Skins', b''), (-3, 1, 'Pal', palette), (-2, 1, 'Own', texture(2, bytes([0, 1, 2, 3]), True)),
                (-2, 1, 'Given', texture(2, bytes([9, 9, 9, 9]), False)), (-4, 0, 'Box', lod_mesh([3, 0])),
-               (0, 0, 'BoxDeco', class_defaults(5, 4))]
+               (0, 0, 'BoxDeco', class_defaults(5, 4, skin_name))]
+    if skin_name:
+        exports.append((-2, 0, 'Body2', texture(2, bytes([5, 5, 5, 5]), False)))
     names = b''.join(index(len(n) + 1) + n.encode() + b'\0' + struct.pack('<I', 0) for n in NAMES)
     import_table = b''.join(name(a) + name(b) + struct.pack('<i', outer) + name(c) for a, b, outer, c in imports)
     at = 40 + len(names) + len(import_table)
@@ -117,6 +123,21 @@ class UnrealImportTest(unittest.TestCase):
                 self.assertEqual(len(client.get('/list_models?game=unreal').json), 1)
                 self.assertEqual(client.get('/texture/unrealshare.skins.own.png?game=unreal').status_code, 200)
                 self.assertEqual(client.get('/export_glb/box?game=unreal').status_code, 200)
+
+    def test_ut_player_skins_from_default_skin_name(self):
+        # UT's players name their skins: slot 1 takes Body2 from DefaultSkinName "Botpack.Body" over the class Skin.
+        with tempfile.TemporaryDirectory() as folder:
+            install, output = Path(folder) / 'UnrealTournament', Path(folder) / 'out'
+            (install / 'System').mkdir(parents=True)
+            (install / 'System' / 'Botpack.u').write_bytes(package('Botpack.Body'))
+            self.assertEqual(import_catalog(install, output, 'ut'), {'entries': 1, 'ready': 1})
+            data = json.loads((output / 'model_json' / 'box.json').read_text())
+            self.assertEqual(data['material_textures'], ['botpack.body2.png', 'botpack.skins.own.png'])
+            self.assertEqual(json.loads((output / 'catalog.json').read_text())[0]['category'], 'Unreal Tournament')
+            with patch.dict('app.pack_dirs', ut=output):
+                client = app.test_client()
+                self.assertEqual(len(client.get('/list_models?game=ut').json), 1)
+                self.assertEqual(client.get('/export_glb/box?game=ut').status_code, 200)
 
     def test_fire_rises_from_its_spark(self):
         # One sparkle at the bottom middle of a 16 x 16 rising fire: heat above it, none below the bottom rows.
