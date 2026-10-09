@@ -29,9 +29,11 @@ object reference is a compact index: n > 0 is export n-1, n < 0 import -n-1, 0 n
   with bytecode of their own (29 of 850 in the stock packages) are skipped. Actors placed in the maps (Maps/**.unr,
   their properties over their class's) vote too: the Panel's glass is set only there. The pick most classes and
   placed actors showing the mesh agree on wins; otherwise the same slot of a same-named mesh in another package
-  (UnrealI repeats some of UnrealShare's).
+  (UnrealI repeats some of UnrealShare's); then, as the game does, Engine's DefaultTexture.
 - Placement: the mesh's own Scale, Origin and RotOrigin (#exec MESH ORIGIN); Unreal is x forward, y right, z up.
-  Corners wind clockwise seen from the front. Checked on the UPak drop box, whose "FIELD LOGISTICS" reads right.
+  Corners wind clockwise seen from the front. Checked against the game (227, 2026-10-09): the UPak drop box's
+  "FIELD LOGISTICS / UMS" reads the same way, and players hold their weapon in the left hand, where Male1's weapon
+  triangle is.
 - OldUnreal 227's packages: an export flagged 0x100 carries 4 more bytes in the export table.
 
 SurrealEngine (github.com/dpjudas/SurrealEngine) was read as a format reference; no code was copied.
@@ -589,6 +591,11 @@ def import_catalog(install, output):
             if isinstance(mesh, dict):
                 meshes.setdefault(package.exports[ref - 1]['name'].lower(), []).append((package, mesh))
     skins = library.class_skins()
+    # A slot nothing fills is drawn with Engine's DefaultTexture: the Eightball's first-person hand and the candle
+    # flames show it in game (227, checked 2026-10-09).
+    engine = library.package('engine')
+    default = engine and engine.export_by_path(('Engine', 'DefaultTexture'), 'Texture')
+    default = default and (engine, default)
     catalog, textures, taken = [], {}, set()
     for source, package, ref, mesh in found:
         mesh_name = package.exports[ref - 1]['name']
@@ -605,7 +612,7 @@ def import_catalog(install, output):
         def slot_of(index, flags):
             if flags & INVISIBLE:
                 return None
-            pick = slot_texture(library, skins, meshes, package, ref, mesh, index)
+            pick = slot_texture(library, skins, meshes, package, ref, mesh, index) or default
             texture = pick and library.texture(*pick)
             if not texture:
                 textures['missing.png'] = None
