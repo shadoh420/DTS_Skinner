@@ -12,7 +12,7 @@ from PIL import Image
 
 # Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
 # tools/import_reflex_map.py; textures only).
-TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d')
+TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal')
 
 
 def normalize_transform(value=None):
