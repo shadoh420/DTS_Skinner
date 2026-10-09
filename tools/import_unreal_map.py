@@ -60,8 +60,10 @@ GROUPS = {'upak': 'Return to Na Pali'}
 # A player stands on the floor below its PlayerStart, its centre CollisionHeight over it and its eye BaseEyeHeight over
 # that (UnrealShare's Human: 39 and 23; the game's eye, checked on NyLeve's start, 2026-10-09).
 HEIGHT, EYE, RADIUS = 39, 23, 17  # and its CollisionRadius
-# The floors are the BSP's and the movers' (SkyCaves' starts stand on a mover). ponytail: meshes are no floors (the game
-# collides with their cylinders), so a start more than this over a floor (two of DmRadikus') keeps its own height.
+# The floors are the BSP's, invisible ones included (DmDeck16's, Terraniux's and Inter3's starts stand on them), and the
+# movers' (SkyCaves' starts). ponytail: meshes are no floors (the game collides with their cylinders), so a start more
+# than this over a floor keeps its own height: DmRetrospective's on a mesh, and Dark's, Endgame's, Abyss's and
+# Glathriel1's first starts, 380 to 990 units over anything (the player drops from there).
 MAX_DROP = 200
 
 
@@ -301,6 +303,11 @@ def build_map(library, level, default):
         if node['count'] < 3 or not 0 <= node['surf'] < len(model['surfs']):
             continue
         surf = model['surfs'][node['surf']]
+        corners = points[[verts[node['pool'] + n][0] for n in range(node['count'])]]
+        if not surf['flags'] & (NOT_SOLID | PORTAL) and vectors[surf['normal']][2] > 0:  # Invisible floors block too.
+            floors.extend(corners[[0, k, k + 1]] for k in range(1, len(corners) - 1))
+            reach = listed(model, model['lightmaps'][surf['lightmap']]) if 0 <= surf['lightmap'] < len(model['lightmaps']) else None
+            floor_lights.extend([reach] * (len(corners) - 2))
         if surf['flags'] & (INVISIBLE | PORTAL):
             continue
         png, width, height, own = texture_of(level, surf['texture'])
@@ -316,11 +323,6 @@ def build_map(library, level, default):
             front = zone(node['zones'][1])
             pan = (round(64 * front.get('TexUPanSpeed', 1.0) / width, 6) if flags & AUTO_U_PAN else 0,
                    round(64 * front.get('TexVPanSpeed', 1.0) / height, 6) if flags & AUTO_V_PAN else 0)
-        corners = points[[verts[node['pool'] + n][0] for n in range(node['count'])]]
-        if not flags & NOT_SOLID and vectors[surf['normal']][2] > 0:
-            floors.extend(corners[[0, k, k + 1]] for k in range(1, len(corners) - 1))
-            reach = listed(model, model['lightmaps'][surf['lightmap']]) if 0 <= surf['lightmap'] < len(model['lightmaps']) else None
-            floor_lights.extend([reach] * (len(corners) - 2))
         base, u, v = points[surf['base']], vectors[surf['u']], vectors[surf['v']]
         uv = np.stack([((corners - base) @ u + surf['pan'][0]) / width, ((corners - base) @ v + surf['pan'][1]) / height], 1)
         # Lightmap texels (s, t), texel i's centre at s = i + 0.5; unlit surfaces and those without a lightmap take

@@ -73,6 +73,12 @@ class UnrealMapInstallTest(unittest.TestCase):
         top = positions[indices[field[0]['start']:field[0]['start'] + field[0]['count']], 1].max()
         self.assertLess(top, scene['viewpoints'][0]['origin'][1] - (39 + 23) / 52.5)
 
+    def test_texture_saved_without_its_group(self):
+        # UGCredits asks for UGoldCredits.Logos.Legend; the package holds Legend without a group (the only such case).
+        library, level = Library(INSTALL), Package(INSTALL / 'Maps' / 'UGCredits.unr')
+        ref = next(-(i + 1) for i, found in enumerate(level.imports) if found['name'] == 'Legend')
+        self.assertEqual(library.texture(level, ref)[1].size, (256, 256))
+
     def test_class_defaults_behind_bytecode(self):
         # Placed lights and zones leave out what equals their class's defaults; scripted classes keep theirs after
         # their bytecode, and 227 moved UnrealI's lights into UnrealShare.

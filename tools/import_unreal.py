@@ -544,8 +544,13 @@ class Library:
         if ref == 0:
             return None
         path = package.ref_path(ref)
+        cls = package.imports[-ref - 1]['class_name']
         target = self.package(path[0])
-        found = target and target.export_by_path(path, package.imports[-ref - 1]['class_name'])
+        found = target and target.export_by_path(path, cls)
+        if target and not found:  # UGCredits asks for UGoldCredits.Logos.Legend, saved without its group: the only match.
+            same = [n for n, e in enumerate(target.exports, 1) if e['name'].lower() == path[-1].lower()
+                    and target.ref_name(e['cls']).lower() == cls.lower()]
+            found = same[0] if len(same) == 1 else None
         return (target, found) if found else None
 
     def class_skins(self):

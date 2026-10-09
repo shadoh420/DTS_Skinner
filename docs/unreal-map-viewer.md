@@ -34,8 +34,10 @@ Maps already imported are skipped unless **Re-import existing maps** is ticked. 
 Click the view to capture the mouse (or drag to look), **WASD** to move, **Space** up, **Shift** down, the wheel
 changes speed (8 m/s at first, about the game's running speed), **Esc** releases the mouse, **1–9** jump to the
 map's viewpoints: its cutscene cameras (Intro1, Intro2 and End only), its PlayerStarts at the eye of a player standing
-on the floor below them (39 + 23 units over it, as the game spawns one; a start more than 200 units over the level's
-floor, standing on something not drawn yet, keeps its own height), and where each of its camera paths starts.
+on the floor below them (39 + 23 units over it, as the game spawns one; invisible floors count, as the game collides
+with them; a start more than 200 units over any floor keeps its own height: DmRetrospective's stands on a mesh, and
+Dark's, Endgame's, Abyss's and Glathriel1's first starts are 380 to 990 units up, the player dropping from there), and
+where each of its camera paths starts.
 
 ## How a map is read
 
@@ -119,8 +121,13 @@ Every actor the map places, unless it is hidden (`bHidden`), is read over its cl
   down the BSP from the root to the leaf its location falls in.
 
 Over the 102 maps: 9,476 meshes and 2,874 movers drawn; 9 actors not read (227's StaticMesh, on DmRiot, its movers
-among them). A mesh corner shared by triangles with the same texture is stored once. Not drawn: sprites (DrawType
-sprite: torch flames' glow, coronas), particle emitters, decals, the monsters' weapons.
+among them; a format of 227's own, left unread). A mesh corner shared by triangles with the same texture is stored
+once. Not drawn: sprites, decals, the monsters' weapons, and 227's emitters (Emitter, WeatherEmitter, MeshEmitter,
+SpriteEmitter: 77) and coronas (DynamicCorona: 526 on DmRetrospective and EntryII). The sprites a
+player would see are lens-flare glows: 8 on Unreal, one each on Intro1, Intro2 and End, 2 on Endgame, 52 ScaledSprites
+on DmRetrospective. TriggerLights (436), ExplodingWalls (94) and BreakingGlass (120) are sprites their defaults leave
+unhidden, but the game does not draw them (a TriggerLight 87 units in front of a 227 camera on Glathriel2 shows
+nothing), and neither does the page.
 
 The mesh light is a proxy where it matters most: lit with every light in range, MarineBox6 on Glathriel2 took half its
 light from wide fill lights behind walls and came out about three times too bright. The game lights an actor only with
@@ -183,8 +190,10 @@ the range above; a falloff without SurrealEngine's flat top made the views 1.3 t
 - Placed actors (2026-10-09): `tests/test_unreal_map.py` checks Vortex2's and Abyss's meshes and movers (none failing,
   meshes lit). Browser sweep with actors: all 102 maps load without errors or console warnings, a median 92 % of the
   first view drawn; SkyCaves' and IsvKran32's starts now stand on movers (49 % and 40 % drawn before, 100 % and 98 %
-  now). Not checked in the game: two of DmRadikus' starts still float more than 200 units over anything drawn;
-  UGCredits' two UGoldCredits textures are not decoded.
+  now). DmRadikus' starts all stand on a drawn floor (an earlier note said two floated; a raycast down from each eye
+  finds the floor 62 units under it). UGCredits' two UGoldCredits textures are found: the package saved
+  `Logos.Legend` and `Wall.ugoldcredits12` without their groups, and the import takes the only export of that name and
+  class (the only two such imports in the install; not checked in the game).
 - Game run 4 (227, same guarded setup, install unchanged by file manifest; cameras by `viewclass X` repeated K times,
   K counted over the map's actors of class X, only classes whose every actor is static or never deleted):
   SpireVillage's start stood inside Mover0's purple force field on the page; in the game a Trigger under the start
