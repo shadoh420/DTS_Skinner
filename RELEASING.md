@@ -17,9 +17,11 @@ time on the build machine: the suite, PyInstaller and the smoke test each run al
    Tribes 1 animation caches stay under `local-data/animations`.
 6. **Smoke-test a copy** on a spare port with `SKINNER_DATA_DIR` pointing at a scratch folder: run an import (from
    the app page, or with curl and an `Origin` header, since imports refuse foreign requests), then `list_models`
-   and one `export_glb`; `python tools/check_packaged.py http://127.0.0.1:PORT` checks the catalogs. Stop **both**
-   `SkinnerApp.exe` processes afterwards (PyInstaller bootloader and child).
-7. **Zip and hash.** From v25: `python tools/split_release.py dist/vN-package/DTS-Skinner dist/vN vN` writes the app ZIP and
+   and one `export_glb`; `python tools/check_packaged.py http://127.0.0.1:PORT` checks the catalogs. Stop every
+   `SkinnerApp.exe` afterwards (`tasklist | findstr SkinnerApp`; the one-folder build ran as a single process for v25,
+   the old single-file build as two) and check the port no longer answers.
+7. **Zip and hash.** From v25: `python tools/split_release.py dist/vN-package/DTS-Skinner dist/vN vN` (run it from the export, since the
+   script lives on `main` and an older branch's worktree may not have it) writes the app ZIP and
    the data ZIP with their `.sha256` files; if the data ZIP's hash equals the last data release's, upload only the
    app ZIP and link the data release in the notes. Write `.sha256` files with LF line endings (Python text mode
    on Windows gives CRLF, which breaks `sha256sum -c`).
