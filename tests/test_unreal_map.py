@@ -59,6 +59,20 @@ class UnrealMapInstallTest(unittest.TestCase):
                 self.assertEqual(len(scene['sky']['rotation']), 9)
                 self.assertTrue([group for group in groups if group['flags'] & 0x80])
 
+    def test_mover_opened_at_spawn(self):
+        # SpireVillage's start stands in a force field (Mover0, TriggerToggle) that a Trigger under the start lowers
+        # 272 units as the player lands (checked in 227, 2026-10-09): drawn open, its top under the start's floor.
+        library = Library(INSTALL)
+        engine = library.package('engine')
+        scene, geometry, _, _ = build_map(library, Package(INSTALL / 'Maps' / 'SpireVillage.unr'),
+                                          (engine, engine.export_by_path(('Engine', 'DefaultTexture'), 'Texture')))
+        positions = np.frombuffer(geometry, '<f4', scene['vertices'] * 3).reshape(-1, 3)
+        indices = np.frombuffer(geometry, '<u4', offset=scene['vertices'] * 32)
+        field = [g for g in scene['groups'] if g['texture'] == 'alfafx.lion4.png']
+        self.assertEqual(len(field), 1)
+        top = positions[indices[field[0]['start']:field[0]['start'] + field[0]['count']], 1].max()
+        self.assertLess(top, scene['viewpoints'][0]['origin'][1] - (39 + 23) / 52.5)
+
     def test_class_defaults_behind_bytecode(self):
         # Placed lights and zones leave out what equals their class's defaults; scripted classes keep theirs after
         # their bytecode, and 227 moved UnrealI's lights into UnrealShare.

@@ -59,7 +59,7 @@ DRAWN_FLAGS = MASKED | TRANSLUCENT | MODULATED | FAKE_BACKDROP | TWO_SIDED | AUT
 GROUPS = {'upak': 'Return to Na Pali'}
 # A player stands on the floor below its PlayerStart, its centre CollisionHeight over it and its eye BaseEyeHeight over
 # that (UnrealShare's Human: 39 and 23; the game's eye, checked on NyLeve's start, 2026-10-09).
-HEIGHT, EYE = 39, 23
+HEIGHT, EYE, RADIUS = 39, 23, 17  # and its CollisionRadius
 # The floors are the BSP's and the movers' (SkyCaves' starts stand on a mover). ponytail: meshes are no floors (the game
 # collides with their cylinders), so a start more than this over a floor (two of DmRadikus') keeps its own height.
 MAX_DROP = 200
@@ -403,7 +403,10 @@ def build_map(library, level, default):
             matrix = np.array(rotation(*rotator)) @ scale
             return matrix, np.asarray(location, np.float64) - matrix @ pivot
 
-        start, traced = pose(props.get('KeyNum', 0)), pose(props.get('BrushRaytraceKey', 0))
+        key = props.get('KeyNum', 0)
+        if props.get('InitialState') == 'TriggerToggle' and str(props.get('Tag')).lower() in spawn_events:
+            key = props.get('NumKeys', 2) - 1  # Toggled open by the player landing at the start, and stays open.
+        start, traced = pose(key), pose(props.get('BrushRaytraceKey', 0))
         number = zone_at(start[1] + start[0] @ pivot)
         front = zone(number)
         brush_lights = ['end' if r == 0 else r > 0 and light_of(actor(r)) or None for r in brush['lights']]
@@ -521,6 +524,25 @@ def build_map(library, level, default):
             groups.setdefault(group, []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
         return True
 
+    def events_at_spawn():
+        """Events of the active proximity Triggers a player touches on landing below a PlayerStart (SpireVillage's
+        arrival force field and Nalic2's and VeloraEnd's arrival doors open so, checked in 227 on SpireVillage)."""
+        found = {}
+        for ref in layout['actors']:
+            if ref > 0:
+                info = library.class_info(level.ref_path(level.exports[ref - 1]['cls']))
+                found[ref] = info, {**info[0], **level.properties(ref)}
+        starts = [np.array(vector(props, 'Location')) for (_, _, names), props in found.values() if 'PlayerStart' in names]
+        events = set()
+        for (_, _, names), props in found.values():
+            if 'Trigger' in names and props.get('Event') and props.get('TriggerType', 0) in (0, 1) and props.get('bInitiallyActive', True):
+                d = np.array(vector(props, 'Location'))
+                radius, height = props.get('CollisionRadius', 40), props.get('CollisionHeight', 40)
+                if any(np.hypot(*(s - d)[:2]) < radius + RADIUS and -height - HEIGHT < (s - d)[2] < height + HEIGHT + MAX_DROP for s in starts):
+                    events.add(str(props['Event']).lower())
+        return events
+
+    spawn_events = events_at_spawn()
     meshes, counts = {}, dict(meshes=0, movers=0, unread=0, failed=[])
     def placed_order():
         movers = [r for r in layout['actors'] if r > 0 and 'Mover' in library.class_info(level.ref_path(level.exports[r - 1]['cls']))[2]]

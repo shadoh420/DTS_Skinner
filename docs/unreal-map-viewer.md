@@ -101,7 +101,9 @@ Every actor the map places, unless it is hidden (`bHidden`), is read over its cl
   are mirrored through `MainScale` (a −1); each polygon is wound to face its turned normal. Their lightmaps are the
   brush Model's own (one entry per brush poly, its own light list and shadow bits), rebuilt as the level's, at the pose
   the editor raytraced them (`BrushRaytraceKey`). Their upward faces are floors for the viewpoints (SkyCaves' starts
-  stand on one).
+  stand on one). A `TriggerToggle` mover whose tag a proximity Trigger fires as a player lands below a PlayerStart is
+  drawn at its last key: it opens in the first second and stays open (SpireVillage's arrival force field, Nalic2's and
+  VeloraEnd's arrival doors). Movers that close again (`TriggerControl`, `TriggerOpenTimed`) keep their saved pose.
 - **Meshes** (DrawType mesh): the mesh at its `AnimSequence` frame (`AnimFrame` into it; with none, the first of
   still, breath, idle..., as the model browser poses them), at `Location + PrePivot + Rotation × DrawScale × point`
   (SurrealEngine's reading). Each texture slot as the game picks it: `MultiSkins[i]`, then `Skin` (slot 0, or a slot
@@ -180,9 +182,15 @@ the range above; a falloff without SurrealEngine's flat top made the views 1.3 t
 - Placed actors (2026-10-09): `tests/test_unreal_map.py` checks Vortex2's and Abyss's meshes and movers (none failing,
   meshes lit). Browser sweep with actors: all 102 maps load without errors or console warnings, a median 92 % of the
   first view drawn; SkyCaves' and IsvKran32's starts now stand on movers (49 % and 40 % drawn before, 100 % and 98 %
-  now). Not checked in the game: SpireVillage's start now stands inside a mover with purple walls (`Mover0`); two of
-  DmRadikus' starts still float more than 200 units over anything drawn; UGCredits' two UGoldCredits textures are not
-  decoded.
+  now). Not checked in the game: two of DmRadikus' starts still float more than 200 units over anything drawn;
+  UGCredits' two UGoldCredits textures are not decoded.
+- Game run 4 (227, same guarded setup, install unchanged by file manifest; cameras by `viewclass X` repeated K times,
+  K counted over the map's actors of class X, only classes whose every actor is static or never deleted):
+  SpireVillage's start stood inside Mover0's purple force field on the page; in the game a Trigger under the start
+  lowers it 272 units as the player lands (now drawn so: block correlation 0.94, game/page 1.05). From two path nodes
+  and a plant: walls and ground 0.96–1.11, the Titan 1.06; a plant leaf around the camera (the camera inside Plant14)
+  0.58, too bright on the page (two-sided faces lit by |cos|; one view only, left). Vortex2: start 1.03 (correlation 0.92), a
+  hall from PlayerStart1 0.92; the view of the door Mover1 is in a fog zone (fog not drawn), its layout matches.
 
 - Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots and a third run on Glathriel2
   (same guarded setup; the install unchanged by file manifest). Not checked in the game:
