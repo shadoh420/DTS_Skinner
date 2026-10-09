@@ -52,7 +52,7 @@ except ImportError:  # Run as a script from tools/.
     from import_diabotical_models import safe
     from local_data import LOCAL_DATA
 
-SCALE = 1 / 52.5  # Unreal units to metres, as the games' own speed readouts count them.
+SCALE = 1 / 52.5  # Unreal units to metres: the community's usual 52.5 to a metre.
 CATEGORY = {'unrealshare': 'Unreal', 'unreali': 'Unreal', 'upak': 'Return to Na Pali'}
 # Mesh poly flags: 0x02 masked (palette index 0 clear), 0x04 translucent, 0x10 environment mapped, 0x40 modulated,
 # 0x100 two-sided; 0x01 invisible draws nothing.
@@ -383,9 +383,9 @@ def decode_texture(library, package, ref):
         raise ValueError('no mips')
     data, width, height = mips[0]
     kind = props.get('Format', 0)
-    if kind == 0 and len(data) < width * height:
+    if kind == 0 and len(data) < width * height and package.ref_name(package.exports[ref - 1]['cls']) == 'FireTexture':
         # A fire texture is drawn as the game runs; its palette as a ramp, hottest at the bottom, stands in.
-        data = bytes(255 - row * 256 // height for row in range(height) for _ in range(width))
+        data = bytes(row * 256 // height for row in range(height) for _ in range(width))
     if kind == 0:
         found = library.resolve(package, props.get('Palette', 0))
         if not found:
