@@ -22,8 +22,8 @@ From a checkout the same import runs as:
 python tools/import_t2_map.py --game-base C:/Dynamix/Tribes2/GameData [--replace]
 ```
 
-The game folder is only read. Output goes to `local-data/t2-maps` (ignored by
-Git; next to the executable in a packaged build). Only these archives are read,
+The game folder is only read. Output goes to `local-data/t2-maps` (in `%LOCALAPPDATA%/DTS-Skinner`,
+shared by every build and checkout). Only these archives are read,
 in this order, later ones winning; loose files and other archives are not:
 
 `base`, `scripts`, `missions`, `shapes`, `interiors`, `textures`, `skins`,
