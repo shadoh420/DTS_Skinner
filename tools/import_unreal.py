@@ -395,6 +395,25 @@ class Package:
         if off:
             raise ValueError(f"{export['name']} read ends {off} bytes off its end")
 
+    def polys(self, ref):
+        """Polys export `ref` (a brush's polygons, in its own space): [dict(base, normal, u, v, points, flags, texture,
+        brush_poly, pan)]; u32 count and max, then each: compact corner count, base, normal, U, V, the corners, poly
+        flags, actor, texture, item name, link, brush poly, pan U and V."""
+        self.properties(ref)
+        out = []
+        for _ in range(self.unpack('ii')[0]):
+            count = self.index()
+            base, normal, u, v = (self.unpack('3f') for _ in range(4))
+            points = [self.unpack('3f') for _ in range(count)]
+            flags, = self.unpack('I')
+            self.index()  # actor
+            texture = self.index()
+            self.index(), self.index()  # item name, link
+            out.append(dict(base=base, normal=normal, u=u, v=v, points=points, flags=flags, texture=texture,
+                            brush_poly=self.index(), pan=self.unpack('hh')))
+        self.ended(ref)
+        return out
+
     def level(self, ref):
         """Level export `ref`: its actors (references, 0 for an empty slot) and its Model, the level's BSP."""
         self.properties(ref)
@@ -408,7 +427,7 @@ class Package:
         return dict(actors=actors, model=self.index())
 
     def model(self, ref):
-        """Model export `ref` (a level's BSP, or a brush's): dict of vectors, points, nodes, surfs, verts, zones,
+        """Model export `ref` (a level's BSP, or a brush's): dict of vectors, points, nodes, surfs, verts, zones, polys,
         lightmaps, light_bits, lights. Up to version 61 the first five are objects of their own (Vectors, BspNodes,
         BspSurfs, Verts: u32 count and max, then the items); from 62 they are inline, led by compact counts."""
         self.properties(ref)
@@ -436,6 +455,10 @@ class Package:
             after = self.at
             for key, item, sub in zip(('vectors', 'points', 'nodes', 'surfs', 'verts'),
                                       (vector, vector, node, surf, lambda: (self.index(), self.index())), refs):
+                if sub <= 0:  # A brush's Model may have no BSP.
+                    out[key] = []
+                    out.setdefault('zones', [])
+                    continue
                 self.properties(sub)
                 out[key] = [item() for _ in range(self.unpack('ii')[0])]
                 if key == 'nodes':
@@ -450,7 +473,7 @@ class Package:
                     ('verts', lambda: (self.index(), self.index())))}
             self.unpack('i')  # shared sides
             out['zones'] = [zone() for _ in range(self.unpack('i')[0])]
-        self.index()  # Polys
+        out['polys'] = self.index()  # A brush's polygons (a Polys export), or 0.
         # Lightmap entries: offset into the light bits, pan, U and V size, U and V scale, first of its light actors.
         out['lightmaps'] = [dict(offset=self.unpack('i')[0], pan=self.unpack('3f'), size=(self.index(), self.index()),
                                  scale=self.unpack('ff'), lights=self.unpack('i')[0]) for _ in range(self.index())]
@@ -482,11 +505,15 @@ class Library:
 
     def class_properties(self, path):
         """Default properties of class `path` (package, name) over its parents', scripted classes included (raw
-        values: an object reference is its own package's). A class its package does not hold is taken from the
-        install's code package that does (227 moved UnrealI's Lantern, TriggerLight... into UnrealShare)."""
+        values: an object reference is its own package's, see class_info). A class its package does not hold is taken
+        from the install's code package that does (227 moved UnrealI's Lantern, TriggerLight... into UnrealShare)."""
+        return self.class_info(path)[0]
+
+    def class_info(self, path):
+        """(defaults, {property: package it was set in}, [class names from `path` up to Object]) of class `path`."""
         key = tuple(p.lower() for p in path)
         if key not in self.classes:
-            self.classes[key] = {}  # Also ends a loop.
+            self.classes[key] = {}, {}, [path[-1]]  # Also ends a loop.
             found = None
             for name in [path[0]] + sorted(self.files):
                 package = self.package(name) if self.files.get(name.lower(), Path()).suffix.lower() == '.u' else None
@@ -499,7 +526,9 @@ class Library:
                 defaults = None
             if defaults:
                 parent, props = defaults
-                self.classes[key] = {**(self.class_properties(package.ref_path(parent)) if parent else {}), **props}
+                above = self.class_info(package.ref_path(parent)) if parent else ({}, {}, [])
+                self.classes[key] = ({**above[0], **props}, {**above[1], **{k: package for k in props}},
+                                     [path[-1]] + above[2])
         return self.classes[key]
 
     def package(self, name):
@@ -751,25 +780,34 @@ def material_settings(flags):
     return settings
 
 
-def build_model(mesh, slot_of, frame=0, game='unreal', style_flags=0):
-    """Geometry of `mesh` at animation frame `frame`; slot_of(texture slot, poly flags) gives a PNG name, or None (not
-    drawn). Faces with the same PNG and flags share a material."""
+def mesh_points(mesh, frame=0):
+    """Unreal points (x, y, z) of `mesh` at animation frame `frame`, after the mesh's own origin, scale and rotation."""
     rows = rotation(*mesh['rot'])
     base = frame * mesh['frame_verts']
     points = []
     packed = mesh['verts'][base:base + mesh['frame_verts']]
     for point in mesh['points'] if 'points' in mesh else map(unpack_vertex, packed):
         v = [(c - o) * s for c, o, s in zip(point, mesh['origin'], mesh['scale'])]
-        x, y, z = (sum(row[k] * v[k] for k in range(3)) for row in rows)
-        points.append((-y * SCALE, z * SCALE, x * SCALE))  # x forward, y right, z up -> y up, +z forward.
+        points.append(tuple(sum(row[k] * v[k] for k in range(3)) for row in rows))
+    return points
+
+
+def mesh_faces(mesh):
+    """[corner a, b, c, (poly flags, texture slot)] of `mesh`, each corner (point index, u, v), clockwise from the front."""
     if 'faces' in mesh:
         wedges, special = mesh['wedges'], mesh['special_verts']
-        faces = [[(special + wedges[w][0], wedges[w][1], wedges[w][2]) for w in face[:3]] + [mesh['materials'][face[3]]]
-                 for face in mesh['faces']]
-    else:
-        faces = [[(t[i], t[3 + 2 * i], t[4 + 2 * i]) for i in range(3)] + [(t[9], t[10])] for t in mesh['tris']]
+        return [[(special + wedges[w][0], wedges[w][1], wedges[w][2]) for w in face[:3]] + [mesh['materials'][face[3]]]
+                for face in mesh['faces']]
+    return [[(t[i], t[3 + 2 * i], t[4 + 2 * i]) for i in range(3)] + [(t[9], t[10])] for t in mesh['tris']]
+
+
+def build_model(mesh, slot_of, frame=0, game='unreal', style_flags=0):
+    """Geometry of `mesh` at animation frame `frame`; slot_of(texture slot, poly flags) gives a PNG name, or None (not
+    drawn). Faces with the same PNG and flags share a material."""
+    # x forward, y right, z up -> y up, +z forward.
+    points = [(-y * SCALE, z * SCALE, x * SCALE) for x, y, z in mesh_points(mesh, frame)]
     vertices, uvs, slots = [], [], {}
-    for a, b, c, (flags, texture) in faces:
+    for a, b, c, (flags, texture) in mesh_faces(mesh):
         flags |= style_flags
         png = slot_of(texture, flags)
         if png is None or max(a[0], b[0], c[0]) >= len(points):

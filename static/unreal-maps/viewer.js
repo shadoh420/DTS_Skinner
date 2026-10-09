@@ -66,7 +66,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       texture.needsUpdate = true;
       panning.push({texture, pan: group.pan});
     }
-    const common = {map: texture, color: texture ? 0xffffff : 0x808080, side, ...(lightMap ? {lightMap, lightMapIntensity: 2} : {})};
+    // Meshes carry their light in vertex colours (their lightmap texel is white); the level's colours are white.
+    const common = {map: texture, color: texture ? 0xffffff : 0x808080, side, vertexColors: !!map.colors,
+      ...(lightMap ? {lightMap, lightMapIntensity: 2} : {})};
     if (group.flags & (TRANSLUCENT | MODULATED)) {
       const add = group.flags & TRANSLUCENT;
       return new THREE.MeshBasicMaterial({...common, transparent: true, depthWrite: false, blending: THREE.CustomBlending,
@@ -85,7 +87,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       lightMap.generateMipmaps = false;
       lightMap.minFilter = THREE.LinearFilter;
     }
-    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, vertices * (map.lightmap ? 28 : 20), map.indices), 1));
+    if (map.colors) geometry.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buffer, vertices * 28, vertices * 4), 4, true));
+    const indexAt = vertices * (map.colors ? 32 : map.lightmap ? 28 : 20);
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, indexAt, map.indices), 1));
     const materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
       return surfaceMaterial(group, group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
@@ -188,7 +192,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('import').addEventListener('click', async () => {
     const path = $('gamePath').value.trim() || $('gamePath').placeholder;
     $('import').disabled = true;
-    $('importStatus').textContent = 'Importing maps… a full install takes two to three minutes.';
+    $('importStatus').textContent = 'Importing maps… a full install takes about three minutes.';
     try {
       const response = await fetch('/import_unreal_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({path, replace: $('replace').checked})});

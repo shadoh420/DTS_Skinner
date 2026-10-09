@@ -28,14 +28,21 @@ class UnrealMapInstallTest(unittest.TestCase):
             self.assertGreater(scene['polygons'], 1000)
             # Unreal's corners wind clockwise seen from the front; all but a few semisolid faces are reversed.
             self.assertGreater(scene['flipped'], scene['polygons'] - 10)
-            self.assertEqual(len(geometry), scene['vertices'] * 28 + scene['indices'] * 4)
-            indices = np.frombuffer(geometry, '<u4', offset=scene['vertices'] * 28)
+            self.assertEqual(len(geometry), scene['vertices'] * 32 + scene['indices'] * 4)
+            indices = np.frombuffer(geometry, '<u4', offset=scene['vertices'] * 32)
             self.assertLess(int(indices.max()), scene['vertices'])
             # The lightmaps: one atlas, lit and shadowed (not one flat value), every corner inside it.
             self.assertEqual(list(atlas.size), scene['lightmap'])
             self.assertGreater(np.asarray(atlas).std(), 10)
             uv2 = np.frombuffer(geometry, '<f4', scene['vertices'] * 2, scene['vertices'] * 20)
             self.assertTrue(0 <= uv2.min() and uv2.max() <= 1)
+            # Placed actors: meshes and movers, none failing; meshes lit at their vertices (not all white).
+            actors = scene['actors']
+            self.assertEqual(actors['failed'], [])
+            self.assertGreater(actors['meshes'], 20)
+            self.assertGreater(actors['movers'], 10)
+            colors = np.frombuffer(geometry, np.uint8, scene['vertices'] * 4, scene['vertices'] * 28).reshape(-1, 4)
+            self.assertGreater((colors[:, :3] < 255).any(1).sum(), 1000)
             self.assertEqual(sum(group['count'] for group in scene['groups']), scene['indices'])
             self.assertTrue(scene['viewpoints'])
             if name == 'Vortex2':  # Its start stands on the floor at -480: the eye 39 + 23 over it, as in the game.

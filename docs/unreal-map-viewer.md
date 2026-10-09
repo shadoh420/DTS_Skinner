@@ -7,20 +7,21 @@ Tournament's maps (same format) come later on the same page.
 The page draws each level's BSP surfaces with their textures and the map's own lighting (lightmaps rebuilt from its
 lights and shadow bits, zone ambient light, the game's default display brightness): masked, translucent, modulated
 and two-sided as the game draws them, auto-panning where the game pans them, and the sky zone seen through the sky
-surfaces. Not drawn yet: fog, animated and wavy textures, mirrors, placed actors (decorations, pickups, monsters) and
-movers. The page is plain Three.js, like the Q3 one; nothing of the game
+surfaces, and the placed actors where the game starts them: decorations, pickups and monsters as meshes, movers
+(doors, lifts) at their first position. Not drawn: fog, sprites, coronas and particle effects, animated and wavy
+textures, mirrors. The page is plain Three.js, like the Q3 one; nothing of the game
 is compiled in.
 
 ## Importing maps
 
 Open **Import maps** on the page, enter your Unreal folder (`C:\Unreal` when left empty) and press **Import**. Every
-map under `Maps` is read with the textures it uses; the game folder is only read. A full import takes two to three
-minutes (most of it rebuilding the lightmaps) and writes about 180 MB to `local-data/unreal-maps/unreal`:
+map under `Maps` is read with the textures it uses; the game folder is only read. A full import takes about three
+minutes (most of it rebuilding the lightmaps) and writes about 260 MB to `local-data/unreal-maps/unreal`:
 
 - `index.json`: one entry per map (id, file name, the LevelInfo's title, group).
 - `maps/ID/scene.json`: texture groups, viewpoints, counts, the lightmap atlas's size; `maps/ID/geometry.bin`:
-  float32 positions (x, y, z), float32 texture coordinates (u, v), float32 lightmap coordinates (u, v), uint32
-  triangle indices, one after the other; `maps/ID/lightmap.png`: the map's lightmaps in one atlas. A pack from before
+  float32 positions (x, y, z), float32 texture coordinates (u, v), float32 lightmap coordinates (u, v), uint8 RGBA
+  vertex colours (the meshes' light; white elsewhere), uint32 triangle indices, one after the other; `maps/ID/lightmap.png`: the map's lightmaps in one atlas. A pack from before
   the lighting (no `lightmap` in its scene) has no lightmap coordinates and is drawn evenly lit.
 - `textures/*.png`: the textures, shared by every map and named `package.group.name`, kept when already there
   (a re-import rewrites them).
@@ -90,6 +91,41 @@ was read as the format reference; no code was copied.
   227 moved UnrealI's light decorations (Lantern, TriggerLight...) into UnrealShare; a class its package does not
   hold is taken from the code package that does.
 
+## Placed actors
+
+Every actor the map places, unless it is hidden (`bHidden`), is read over its class's defaults:
+
+- **Movers** (any class that is a Mover) draw their brush's polygons (the brush Model's `Polys`: corners, base, normal,
+  U, V and pan in the brush's own space) where the mover starts: `BasePos + KeyPos[KeyNum]` and `BaseRot +
+  KeyRot[KeyNum]`, as Mover's BeginPlay places it, then `Location + Rotation × MainScale × (point − PrePivot)`. Some
+  are mirrored through `MainScale` (a −1); each polygon is wound to face its turned normal. Their lightmaps are the
+  brush Model's own (one entry per brush poly, its own light list and shadow bits), rebuilt as the level's, at the pose
+  the editor raytraced them (`BrushRaytraceKey`). Their upward faces are floors for the viewpoints (SkyCaves' starts
+  stand on one).
+- **Meshes** (DrawType mesh): the mesh at its `AnimSequence` frame (`AnimFrame` into it; with none, the first of
+  still, breath, idle..., as the model browser poses them), at `Location + PrePivot + Rotation × DrawScale × point`
+  (SurrealEngine's reading). Each texture slot as the game picks it: `MultiSkins[i]`, then `Skin` (slot 0, or a slot
+  the mesh leaves empty), the mesh's own, `Texture` (not Engine's editor icons), the last `MultiSkins` set, then
+  Engine's default texture. `Style` adds masked, translucent or modulated. Monsters stand where they are placed, in
+  that pose; their weapons are not drawn.
+- **Mesh light** is worked out at each vertex as the lightmaps are, without shadows: the zone's ambient light and the
+  actor's `AmbientGlow` (255 pulses: 0.3, its average), plus `ScaleGlow ×` each light's colour × 2 × falloff × the
+  incidence on the vertex's normal (both sides where a face is two-sided); unlit (texture as it is) when `bUnlit` or
+  outside every zone. The page carries it in vertex colours and points the meshes at a white lightmap texel.
+- **Zones**: the saved `Region` is often stale (zone 0), so an actor's zone is found as the game does when it starts:
+  down the BSP from the root to the leaf its location falls in.
+
+Over the 102 maps: 9,476 meshes and 2,874 movers drawn; 9 actors not read (227's StaticMesh, on DmRiot, its movers
+among them). A mesh corner shared by triangles with the same texture is stored once. Not drawn: sprites (DrawType
+sprite: torch flames' glow, coronas), particle emitters, decals, the monsters' weapons.
+
+The mesh light is a proxy where it matters most: lit with every light in range, MarineBox6 on Glathriel2 took half its
+light from wide fill lights behind walls and came out about three times too bright. The game lights an actor only with
+lights that reach it; the import takes the lights the editor listed (raytraced) for the floor surface beneath the
+actor, or every light in range with no floor below. Against the Glathriel2 run's shots (on screen, game / page): the
+box 0.76, the big plant 0.91, a Skaarj 0.69, a torch sconce 1.23, a hanging lantern 0.82; the level's own surfaces in
+the same views 0.75–0.97.
+
 ## Lighting
 
 The game keeps each surface's light as a **lightmap entry** (an offset into the light bits, a pan, a size in texels
@@ -140,6 +176,13 @@ lights explain it (0.75 and 0.33). Linear brightness, scaled so a full white lig
 the range above; a falloff without SurrealEngine's flat top made the views 1.3 to 2 times too dark.
 
 ## Checks
+
+- Placed actors (2026-10-09): `tests/test_unreal_map.py` checks Vortex2's and Abyss's meshes and movers (none failing,
+  meshes lit). Browser sweep with actors: all 102 maps load without errors or console warnings, a median 92 % of the
+  first view drawn; SkyCaves' and IsvKran32's starts now stand on movers (49 % and 40 % drawn before, 100 % and 98 %
+  now). Not checked in the game: SpireVillage's start now stands inside a mover with purple walls (`Mover0`); two of
+  DmRadikus' starts still float more than 200 units over anything drawn; UGCredits' two UGoldCredits textures are not
+  decoded.
 
 - Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots and a third run on Glathriel2
   (same guarded setup; the install unchanged by file manifest). Not checked in the game:
