@@ -16,14 +16,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   const camera = new THREE.PerspectiveCamera(60, 1, .05, 5000), skyCamera = new THREE.PerspectiveCamera(60, 1, .05, 5000);
   camera.rotation.order = 'YXZ';
   const skyTurn = new THREE.Quaternion();
-  // The game's display gamma: its OpenGL device ramps the screen (and its screenshots) by pow(c, 1 / (2.5 * Brightness)),
-  // Brightness 0.5 by default. Fitted to 227 shots of NyLeve's and Vortex2's starts, so the frame is drawn
-  // into a target and ramped onto the screen, after blending.
-  const BRIGHTNESS = .5;
+  // The game's display gamma, as a power on the finished frame (drawn into a target and ramped onto the screen, after
+  // blending). Unreal: 227's OpenGL device ramps by pow(c, 1 / (2.5 * Brightness)), Brightness 0.5 by default (fitted to
+  // 227 shots of NyLeve's and Vortex2's starts). UT: 0.67, fitted to UT 469 shots (D3D11, Brightness 0.7) of
+  // DM-Deck16][, DM-Morpheus and DM-Turbine's starts.
+  const POWER = {unreal: 1 / (2.5 * .5), ut: .67};
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4});
   const ramp = new THREE.Scene(), flat = new THREE.Camera();
   ramp.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-    uniforms: {frame: {value: frame.texture}, power: {value: 1 / (2.5 * BRIGHTNESS)}}, depthTest: false, depthWrite: false,
+    uniforms: {frame: {value: frame.texture}, power: {value: POWER.unreal}}, depthTest: false, depthWrite: false,
     vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
     fragmentShader: 'uniform sampler2D frame; uniform float power; varying vec2 at;' +
       'void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(power)), 1.); }'})));
@@ -237,6 +238,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }));
     $('map').value = item.key;
     data = `/unreal-map-data/${item.game}/`;
+    ramp.children[0].material.uniforms.power.value = POWER[item.game];
     // Offer the import of the game whose maps are not there yet.
     const absent = GAMES.find(([id]) => !maps.some(found => found.game === id));
     if (absent) { $('importGame').value = absent[0]; showPath(); }

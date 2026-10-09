@@ -188,7 +188,13 @@ reads the game (no code copied):
   `pow(c, 1 / (2.5 × Brightness))`, Brightness 0.5 by default. The page draws the frame into a target and ramps it
   onto the screen the same way, after blending. This is fitted, not read from 227's code: aligned 227 shots of
   NyLeve's and Vortex2's starts match the page within about 20 % per brightness band only with it (the darkest,
-  near-black bands excepted, which the game lifts further).
+  near-black bands excepted, which the game lifts further). UT maps are ramped by `pow(c, 0.67)`, fitted to UT 469
+  shots (D3D11 renderer, Brightness 0.7: the settings of the install it was measured on; UT 469 ships 1.0) of three
+  starts: DM-Deck16][ 1.01, DM-Morpheus 0.94, DM-Turbine 1.11 (game / page on screen; 227's curve left them 1.23,
+  1.11 and 1.55 and the dark tones up to three times too dark).
+- **Rotating skies**: 12 UT maps (Facing Worlds among them) and 6 of Unreal's turn their sky zone (`Physics`
+  rotating, `RotationRate`); the page shows it as the map starts, still. Where several SkyZoneInfos exist the page
+  takes the first, which on every such map but Intro1 and Intro2 is the one flagged `bHighDetail`.
 - **Fog** is not drawn. 41 maps have fog zones (volumetric fog: spheres of fog around lights, drawn as seen from the
   camera, so nothing to bake), one zone uses 227's distance fog (DmRetrospective).
 
@@ -225,6 +231,11 @@ the range above; a falloff without SurrealEngine's flat top made the views 1.3 t
   game draws no flame where the page drew TorchFlame1's; with Light actors left out the view matches (block
   correlation 0.50 -> 0.75; where the flame was, 1.02). The rock right in front of the camera reads 1.50 (the
   TorchFlames' own flickering light, two actors in the install; left). The sconce view put the camera inside a mesh.
+- UT game run (UT 469, scratch INIs: windowed 1024 x 768, D3D11 as the install plays fullscreen, its Brightness 0.7,
+  no bots; `C:\UnrealTournament` unchanged by file manifest): the pre-match camera at a PlayerStart of DM-Deck16][,
+  CTF-Face, DM-Morpheus and DM-Turbine. Each shot matched against all the page's starts (block correlation 0.83 to
+  0.93 for the three DM maps); the display power fitted from them (see Display brightness). CTF-Face matches no start
+  (0.49), probably because its sky (most of the frame) had turned about 140 degrees in roll by the shot.
 
 - Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots and a third run on Glathriel2
   (same guarded setup; the install unchanged by file manifest). Not checked in the game:
