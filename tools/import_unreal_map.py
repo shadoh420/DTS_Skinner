@@ -23,12 +23,18 @@ reference only, walks the same node list). Invisible surfaces and zone portals a
   floor below, HEIGHT + EYE over it), the first point of each InterpolationPoint camera path; yaw and pitch are 65536
   to a turn, yaw 0 along x.
 
+- Lighting: each lit surface's lightmap is rebuilt from the lights its lightmap entry lists, their shadow bits and the
+  zone's ambient light (see lightmap(); docs/unreal-map-viewer.md has the rules and how they were checked).
+
 Written under local-data/unreal-maps/GAME: index.json (one entry per map), maps/ID/scene.json (texture groups,
-viewpoints, counts) with maps/ID/geometry.bin (float32 positions xyz, float32 texture uv, uint32 triangle indices,
-one after the other), and textures/*.png shared by every map (kept when already there, rewritten by --replace).
+viewpoints, counts, the lightmap atlas's size) with maps/ID/geometry.bin (float32 positions xyz, float32 texture uv,
+float32 lightmap uv, uint32 triangle indices, one after the other) and maps/ID/lightmap.png, and textures/*.png shared
+by every map (kept when already there, rewritten by --replace).
 """
 import argparse
+import itertools
 import json
+import math
 from pathlib import Path
 import struct
 
@@ -73,6 +79,111 @@ def vector(props, name, fmt='3f'):
     return struct.unpack('<' + fmt, raw) if isinstance(raw, bytes) and len(raw) == 12 else (0, 0, 0)
 
 
+def light_color(hue, saturation, brightness):
+    """(r, g, b) of a light's or zone's hue, saturation and brightness (0-255 each; saturation 255 is white), as
+    SurrealEngine reads the game: value 6.512735 * sqrt(brightness) of 255, so 0.408 at most."""
+    if brightness <= 0:
+        return np.zeros(3)
+    value = 6.512735 * math.sqrt(brightness)
+    if saturation >= 250:
+        return np.full(3, value / 255)
+    grey = saturation / 2.5 + (2 if saturation / 2.5 > 32 else 0)
+    sector, part = divmod(hue / 85, 1)
+    low = grey * value / 104
+    rise, fall = part * value + low * (1 - part), (1 - part) * value + low * part
+    return np.array(((fall, rise, low), (low, fall, rise), (rise, low, fall))[min(int(sector), 2)]) / 255
+
+
+LIGHT_AVERAGE = {2: .65, 3: .5, 4: .5, 5: .5, 7: .8}  # LT_Pulse, LT_Blink, LT_Flicker, LT_Strobe, LT_SubtlePulse
+
+
+def light_of(props):
+    """What a light actor's (class defaults merged) properties light with, or None when it gives none: location,
+    radius, colour, effect, spot axis and cone."""
+    kind = props.get('LightType', 0)
+    # A changing light is drawn at its average brightness (a page shows one still): pulse 0.65 + 0.35 sin, subtle
+    # pulse 0.8 + 0.2 sin, blink, strobe and flicker on half the time. ponytail: the palette ones as steady.
+    brightness = props.get('LightBrightness', 0) * LIGHT_AVERAGE.get(kind, 1)
+    # A TriggerLight (bInitiallyOn False by default) that starts off gives no light until triggered.
+    if not kind or brightness <= 0 or not props.get('bInitiallyOn', True):
+        return None
+    pitch, yaw, roll = vector(props, 'Rotation', '3i')
+    return dict(location=np.array(vector(props, 'Location')), radius=(int(props.get('LightRadius', 0)) + 1) * 25,
+                color=light_color(props.get('LightHue', 0), props.get('LightSaturation', 0), brightness),
+                effect=props.get('LightEffect', 0), axis=np.array(rotation(pitch, yaw, roll))[:, 0],
+                cone=props.get('LightCone', 0))
+
+
+# Light effects (ELightEffect) drawn other than the plain one: static spot and spotlight, non-incidence, shell, omni
+# bump map (none), cylinder. ponytail: the waving, flickering and turning ones light as the plain one, still.
+STATIC_SPOT, SPOTLIGHT, NON_INCIDENCE, SHELL, OMNI_BUMP_MAP, CYLINDER = 8, 12, 13, 14, 15, 17
+
+
+def lightmap(model, entry, base, u, v, normal, ambient, lights):
+    """Light (h, w, 3), 0 to 1, of lightmap entry `entry` on a surface (base point, U and V vectors, normal): the
+    zone's ambient colour plus, for each light the entry lists, its shadow bits (blurred 3 by 3 with weights summing
+    to 2) times its falloff and incidence times its colour, each light at most 1 a channel. Texel (i, j) is the point
+    of the surface's plane where U.(P - base) = PanX + i UScale and V.(P - base) = PanY + j VScale."""
+    width, height = entry['size']
+    pitch = (width + 7) // 8
+    solve = np.linalg.pinv(np.array([u, v, normal], np.float64))  # Pseudo: Crashsite has U along V.
+    cu, cv = np.meshgrid(entry['pan'][0] + np.arange(width) * entry['scale'][0],
+                         entry['pan'][1] + np.arange(height) * entry['scale'][1])
+    points = np.asarray(base) + np.stack([cu, cv, np.zeros_like(cu)], -1) @ solve.T
+    unit = np.asarray(normal) / np.linalg.norm(normal)
+    light = np.broadcast_to(ambient, (height, width, 3)).copy()
+    for index in itertools.count() if entry['lights'] >= 0 else ():
+        found = lights[entry['lights'] + index]
+        if found == 'end':
+            break
+        start = entry['offset'] + index * pitch * height
+        if start + pitch * height > len(model['light_bits']):
+            raise ValueError('a lightmap reads past the light bits')
+        if found is None:
+            continue
+        bits = np.frombuffer(model['light_bits'], np.uint8, pitch * height, start).reshape(height, pitch)
+        lit = np.pad(np.unpackbits(bits, 1, bitorder='little')[:, :width].astype(np.float64), 1, mode='edge')
+        shadow = sum(weight * lit[1 + dy:1 + dy + height, 1 + dx:1 + dx + width]
+                     for dy in (-1, 0, 1) for dx in (-1, 0, 1) for weight in [(.5, .25, .125)[abs(dx) + abs(dy)]])
+        to_light = found['location'] - points
+        distance = np.maximum(np.linalg.norm(to_light, axis=-1), 1e-6)
+        near = distance / found['radius']
+        effect = found['effect']
+        if effect == NON_INCIDENCE:
+            strength = np.maximum(1 - near, 0)
+        elif effect == SHELL:
+            strength = np.where((near > .8) & (near < 1), 1 - 10 * np.abs(near - .9), 0)
+        elif effect == CYLINDER:
+            strength = np.maximum(1 - (to_light[..., 0] ** 2 + to_light[..., 1] ** 2) / found['radius'] ** 2, 0)
+        elif effect == OMNI_BUMP_MAP:
+            strength = np.zeros_like(near)
+        else:
+            facing = np.abs(to_light @ unit) / distance
+            strength = np.where(near < 1, np.minimum((1 + 2 * near ** 3 - 3 * near ** 2) / near, 1), 0) * facing
+            if effect in (STATIC_SPOT, SPOTLIGHT):
+                edge = 1 - found['cone'] / 255
+                along = -(to_light @ found['axis']) / distance
+                spot = 1 - np.minimum((1 - along) / (1 - edge), 1) if edge < 1 else np.zeros_like(near)
+                strength = strength * spot ** 2
+        light += np.minimum(shadow[..., None] * strength[..., None] * found['color'], 1)
+    return np.minimum(light, 1)
+
+
+def pack(sizes):
+    """(atlas width, height, [(x, y) of each (w, h) size]): shelves of tiles, tallest first, each with a 1-texel
+    border."""
+    area = sum((w + 2) * (h + 2) for w, h in sizes)
+    width = max(64, max((w + 2 for w, _ in sizes), default=0), 1 << math.ceil(math.log2(max(math.sqrt(area * 1.15), 1))))
+    places, x, y, shelf = [None] * len(sizes), 0, 0, 0
+    for n in sorted(range(len(sizes)), key=lambda n: -sizes[n][1]):
+        w, h = sizes[n][0] + 2, sizes[n][1] + 2
+        if x + w > width:
+            x, y, shelf = 0, y + shelf, 0
+        places[n] = x, y
+        x, shelf = x + w, max(shelf, h)
+    return width, y + shelf, places
+
+
 def floor_below(floors, x, y, z):
     """Height of the highest of the upward triangles `floors` (n, 3, 3: Unreal points) under (x, y) below z, or None."""
     if not len(floors):
@@ -88,7 +199,7 @@ def floor_below(floors, x, y, z):
 
 
 def build_map(library, level, default):
-    """(scene, geometry bytes, {png: image}) of map package `level`."""
+    """(scene, geometry bytes, {png: image}, lightmap atlas image) of map package `level`."""
     found = level.find({'Level'})
     if not found:
         raise ValueError('no Level export')
@@ -98,13 +209,21 @@ def build_map(library, level, default):
     info = next(iter(actors_of(level, layout['actors'], {'LevelInfo'}).values()), {})
     if info.get('DefaultTexture'):  # What the level draws where a surface has no texture; Engine's otherwise.
         default = level, info['DefaultTexture']
-    zones = {}
+    zones, actors = {}, {}
+
+    def actor(ref):
+        """Placed actor `ref`'s properties over its class's defaults."""
+        if ref not in actors:
+            actors[ref] = {**library.class_properties(level.ref_path(level.exports[ref - 1]['cls'])), **level.properties(ref)}
+        return actors[ref]
 
     def zone(index):
         """Properties of zone `index`'s ZoneInfo: the LevelInfo's for zone 0 or a zone without one."""
         if index not in zones:
             ref = model['zones'][index][0] if 0 < index < len(model['zones']) else 0
-            zones[index] = level.properties(ref) if ref > 0 else info
+            ref = ref if ref > 0 else next((r for r in layout['actors'] if r > 0 and
+                                            level.ref_name(level.exports[r - 1]['cls']) == 'LevelInfo'), 0)
+            zones[index] = actor(ref) if ref > 0 else {}
         return zones[index]
 
     # ponytail: one sky for the whole map, as every zone of the install's maps links to the same one (227's per-zone
@@ -162,31 +281,59 @@ def build_map(library, level, default):
             floors.extend(corners[[0, k, k + 1]] for k in range(1, len(corners) - 1))
         base, u, v = points[surf['base']], vectors[surf['u']], vectors[surf['v']]
         uv = np.stack([((corners - base) @ u + surf['pan'][0]) / width, ((corners - base) @ v + surf['pan'][1]) / height], 1)
+        # Lightmap texels (s, t), texel i's centre at s = i + 0.5; unlit surfaces and those without a lightmap take
+        # the texture as it is (the neutral tile, half of the 2x the game multiplies lightmaps by).
+        tile, st = None, np.zeros((len(corners), 2))
+        if not flags & UNLIT and 0 <= surf['lightmap'] < len(model['lightmaps']):
+            entry = model['lightmaps'][surf['lightmap']]
+            tile = surf['lightmap'], node['zones'][1]  # The front zone's ambient light.
+            st = np.stack([((corners - base) @ u - entry['pan'][0]) / entry['scale'][0] + .5,
+                           ((corners - base) @ v - entry['pan'][1]) / entry['scale'][1] + .5], 1)
         placed = viewer(corners)
         # Newell's normal of the corners in the page's axes, counter-clockwise; reverse them when it points away
         # from the surface's normal.
         nxt = np.roll(placed, -1, 0)
         newell = np.cross(placed, nxt).sum(0)
         if newell @ viewer([vectors[surf['normal']]])[0] < 0:
-            placed, uv = placed[::-1], uv[::-1]
+            placed, uv, st = placed[::-1], uv[::-1], st[::-1]
             flipped += 1
         polygons += 1
-        groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv))
+        groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv, st, tile))
 
-    positions, uvs, indices, table = [], [], [], []
+    # The lightmaps, rebuilt from the lights and shadow bits the map keeps, in one atlas.
+    lights = ['end' if ref == 0 else ref > 0 and light_of(actor(ref)) or None for ref in model['lights']]
+    surf_of = {s['lightmap']: s for s in reversed(model['surfs'])}
+    keys = sorted({tile for polys in groups.values() for *_, tile in polys if tile})
+    tiles = [np.full((1, 1, 3), .5)]
+    for index, front in keys:
+        surf = surf_of[index]
+        found = zone(front)
+        ambient = light_color(found.get('AmbientHue', 0), found.get('AmbientSaturation', 255), found.get('AmbientBrightness', 0))
+        tiles.append(lightmap(model, model['lightmaps'][index], points[surf['base']], vectors[surf['u']],
+                              vectors[surf['v']], vectors[surf['normal']], ambient, lights))
+    atlas_width, atlas_height, places = pack([(t.shape[1], t.shape[0]) for t in tiles])
+    atlas = np.zeros((atlas_height, atlas_width, 3))
+    for (x, y), t in zip(places, tiles):
+        atlas[y:y + t.shape[0] + 2, x:x + t.shape[1] + 2] = np.pad(t, ((1, 1), (1, 1), (0, 0)), mode='edge')
+    corner = {key: (x + 1, y + 1) for key, (x, y) in zip([None] + keys, places)}
+
+    positions, uvs, uv2s, indices, table = [], [], [], [], []
     count = 0
     for (png, flags, pan), polys in sorted(groups.items()):
         start = len(indices)
-        for placed, uv in polys:
+        for placed, uv, st, tile in polys:
             n = len(placed)
             positions.append(placed)
             uvs.append(uv)
+            uv2s.append((st + (corner[tile] if tile else (corner[None][0] + .5, corner[None][1] + .5))) / (atlas_width, atlas_height))
             indices.extend(x for k in range(1, n - 1) for x in (count, count + k, count + k + 1))
             count += n
         table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start, **({'pan': pan} if any(pan) else {})))
     positions = np.concatenate(positions).astype('<f4') if positions else np.zeros((0, 3), '<f4')
     uvs = np.concatenate(uvs).astype('<f4') if uvs else np.zeros((0, 2), '<f4')
-    geometry = positions.tobytes() + uvs.tobytes() + np.asarray(indices, '<u4').tobytes()
+    uv2s = np.concatenate(uv2s).astype('<f4') if uv2s else np.zeros((0, 2), '<f4')
+    geometry = positions.tobytes() + uvs.tobytes() + uv2s.tobytes() + np.asarray(indices, '<u4').tobytes()
+    atlas = Image.fromarray(np.round(atlas * 255).astype(np.uint8), 'RGB')
 
     # The cutscene maps (Intro1, Intro2, End) are seen through their CS_Camera actors (their PlayerStart sees
     # nothing), then PlayerStarts at a standing player's eye, then where each InterpolationPoint camera path starts.
@@ -213,9 +360,9 @@ def build_map(library, level, default):
         sky = dict(origin=[round(float(c), 3) for c in viewer([vector(sky, 'Location')])[0]],
                    rotation=[round(float(c), 6) for c in turn.flatten()])
     scene = dict(name=level.path.stem, title=info.get('Title', ''), author=info.get('Author', ''), version=level.version,
-                 vertices=len(positions), indices=len(indices), groups=table, viewpoints=views, sky=sky,
+                 vertices=len(positions), indices=len(indices), lightmap=[atlas_width, atlas_height], groups=table, viewpoints=views, sky=sky,
                  polygons=polygons, flipped=flipped, missing=sorted(missing))
-    return scene, geometry, images
+    return scene, geometry, images, atlas
 
 
 def import_maps(install, output, replace=False, game='unreal'):
@@ -243,7 +390,7 @@ def import_maps(install, output, replace=False, game='unreal'):
             result['skipped'].append(ident)
             continue
         try:
-            scene, geometry, images = build_map(library, Package(path), default)
+            scene, geometry, images, atlas = build_map(library, Package(path), default)
         except (OSError, ValueError, struct.error, IndexError, KeyError) as exc:
             result['failed'][path.stem] = str(exc)
             continue
@@ -254,6 +401,7 @@ def import_maps(install, output, replace=False, game='unreal'):
                 written.add(png)
         folder.mkdir(parents=True, exist_ok=True)
         (folder / 'geometry.bin').write_bytes(geometry)
+        atlas.save(folder / 'lightmap.png')
         (folder / 'scene.json').write_text(json.dumps(scene, separators=(',', ':')), encoding='utf-8')
         group = GROUPS.get(path.parent.name.lower(), 'Unreal Tournament' if game == 'ut' else 'Unreal')
         index[ident] = dict(id=ident, name=path.stem, title=scene['title'], group=group)

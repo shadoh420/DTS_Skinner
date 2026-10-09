@@ -192,27 +192,61 @@ class Package:
                           for n, e in enumerate(self.exports, 1)}
         return self.paths.get((tuple(p.lower() for p in path), cls.lower()))
 
-    def class_defaults(self, ref):
-        """(super class reference, default properties) of class export `ref`, or None for a class with its own
-        bytecode (the class's code, not its functions'), which is read token by token and not decoded here."""
+    def class_defaults(self, ref, scripted=False):
+        """(super class reference, default properties) of class export `ref`. A class with its own bytecode (the
+        class's code, not its functions') gives None, unless `scripted`: then its defaults are found by trying each
+        offset after the bytecode's start for the class tail (state and class header, dependencies on classes,
+        package imports, defaults) that ends exactly at the export's end, and taking the first."""
         export = self.exports[ref - 1]
+        end = export['offset'] + export['size']
         self.at = export['offset']
         parent = self.index()
         for _ in range(4):  # next, script text, children, friendly name
             self.index()
         _line, _text, script = self.unpack('III')
-        if script:
+        if not script:
+            return parent, self.class_tail()
+        if not scripted:
             return None
+        # ponytail: the bytecode is stored token by token (not ScriptSize bytes) and not decoded; the earliest offset
+        # whose tail parses to the end was the defaults on every class checked (Actor, ZoneInfo, LevelInfo, Mover in
+        # Unreal 227 and UT 469: Actor's DrawType 1, ZoneInfo's TexUPanSpeed 1.0). Decode the bytecode if one misreads.
+        for at in range(self.at, end):
+            self.at = at
+            try:
+                found = self.class_tail(checked=True)
+            except (struct.error, IndexError, UnicodeDecodeError):
+                found = None
+            if found is not None and self.at == end:
+                return parent, found
+        return None
+
+    def class_tail(self, checked=False):
+        """The defaults after a class's bytecode at self.at; `checked`: None unless its dependencies are classes and
+        the names it reads exist."""
+        def name():
+            at = self.index()
+            if checked and not 0 <= at < len(self.names):
+                raise IndexError(at)
+
+        def is_class(ref):
+            return self.exports[ref - 1]['cls'] == 0 if ref > 0 else ref < 0 and self.imports[-ref - 1]['class_name'] == 'Class'
+
         self.at += 22 + 4 * (self.version <= 61) + 20  # state masks, label table, flags; class flags and GUID
-        for _ in range(self.index()):  # dependencies
-            self.index()
+        count = self.index()
+        if checked and not 0 < count < 1000:
+            return None
+        for _ in range(count):  # dependencies: a class, deep, script text CRC
+            ref = self.index()
+            if checked and not is_class(ref):
+                return None
             self.at += 8
         for _ in range(self.index()):  # package imports
-            self.index()
+            name()
         if self.version >= 62:
             self.index()  # within
-            self.index()  # config name
-        return parent, self.tagged()
+            name()  # config name
+        return self.tagged(checked)
 
     def find(self, cls_names):
         """Export numbers (1-based references) whose class name is in `cls_names`."""
@@ -230,11 +264,14 @@ class Package:
                 self.index()
         return self.tagged()
 
-    def tagged(self):
-        """Tagged properties at self.at, up to the name None."""
+    def tagged(self, checked=False):
+        """Tagged properties at self.at, up to the name None; `checked` raises IndexError on a negative name index."""
         props = {}
         while True:
-            name = self.names[self.index()]
+            at = self.index()
+            if checked and at < 0:
+                raise IndexError(at)
+            name = self.names[at]
             if name == 'None':
                 return props
             info = self.data[self.at]
@@ -441,7 +478,29 @@ class Library:
         self.maps = sorted((install / 'Maps').rglob('*.unr')) if (install / 'Maps').is_dir() else []
         self.files = {path.stem.lower(): path for folder in ('System', 'Textures') if (install / folder).is_dir()
                       for path in (install / folder).iterdir() if path.suffix.lower() in ('.u', '.utx')}
-        self.packages, self.textures = {}, {}
+        self.packages, self.textures, self.classes = {}, {}, {}
+
+    def class_properties(self, path):
+        """Default properties of class `path` (package, name) over its parents', scripted classes included (raw
+        values: an object reference is its own package's). A class its package does not hold is taken from the
+        install's code package that does (227 moved UnrealI's Lantern, TriggerLight... into UnrealShare)."""
+        key = tuple(p.lower() for p in path)
+        if key not in self.classes:
+            self.classes[key] = {}  # Also ends a loop.
+            found = None
+            for name in [path[0]] + sorted(self.files):
+                package = self.package(name) if self.files.get(name.lower(), Path()).suffix.lower() == '.u' else None
+                found = package and package.export_by_path((package.path.stem, path[-1]), 'None')
+                if found:
+                    break
+            try:
+                defaults = found and package.class_defaults(found, scripted=True)
+            except (struct.error, IndexError):
+                defaults = None
+            if defaults:
+                parent, props = defaults
+                self.classes[key] = {**(self.class_properties(package.ref_path(parent)) if parent else {}), **props}
+        return self.classes[key]
 
     def package(self, name):
         name = name.lower()
