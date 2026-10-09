@@ -80,11 +80,13 @@ def vector(props, name, fmt='3f'):
 
 
 def light_color(hue, saturation, brightness):
-    """(r, g, b) of a light's or zone's hue, saturation and brightness (0-255 each; saturation 255 is white), as
-    SurrealEngine reads the game: value 6.512735 * sqrt(brightness) of 255, so 0.408 at most."""
+    """(r, g, b) of a light's or zone's hue, saturation and brightness (0-255 each; saturation 255 is white): the
+    brightest channel brightness / 255 / 2, so a white light of 255 lights a fully lit texel (shadow weights summing to
+    2) to exactly 1. Linear, not SurrealEngine's 6.512735 * sqrt(brightness), which lit Glathriel2's dim lights (brightness
+    80 and under) 2.7 times too strongly against 227 (fitted on ten views, 2026-10-09); hue and saturation as it reads them."""
     if brightness <= 0:
         return np.zeros(3)
-    value = 6.512735 * math.sqrt(brightness)
+    value = 127.5 * brightness / 255
     if saturation >= 250:
         return np.full(3, value / 255)
     grey = saturation / 2.5 + (2 if saturation / 2.5 > 32 else 0)

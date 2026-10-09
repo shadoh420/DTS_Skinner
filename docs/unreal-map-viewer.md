@@ -106,8 +106,10 @@ reads the game (no code copied):
   units, and the incidence `|cos|` of the angle to the surface's normal. Spot lights narrow it to their cone
   (`LightCone`), non-incidence lights drop the angle, cylinder lights (3,412 of the install's) fall off with the
   distance across, not up; the waving and turning effects light as plain ones.
-- **Colour**: value `6.512735 × √LightBrightness` of 255, so 0.408 at most; `LightSaturation` 255 is white, lower is
-  more of the `LightHue` (three 85-wide sectors, red, green, blue).
+- **Colour**: the brightest channel is `LightBrightness / 255 / 2`, so a white light of 255 lights a fully lit texel
+  to exactly 1; `LightSaturation` 255 is white, lower is more of the `LightHue` (three 85-wide sectors, red, green,
+  blue). Linear in brightness, measured in the game (below): SurrealEngine's `6.512735 × √LightBrightness` lit dim
+  lights 2.7 times too strongly.
 - The zone's ambient light (`AmbientBrightness`, `AmbientHue`, `AmbientSaturation`, the zone on the surface's front
   side) starts every texel; the lights add up from it, and the lightmap stops at 1.
 - Lights that change as the game runs are drawn at their average: pulse 0.65 of their brightness, subtle pulse 0.8,
@@ -119,25 +121,35 @@ reads the game (no code copied):
 - **Display brightness**: the game's OpenGL device ramps the finished screen, and its screenshots, by
   `pow(c, 1 / (2.5 × Brightness))`, Brightness 0.5 by default. The page draws the frame into a target and ramps it
   onto the screen the same way, after blending. This is fitted, not read from 227's code: aligned 227 shots of
-  NyLeve's and Vortex2's starts match the page within 2–18 % per brightness band only with it.
+  NyLeve's and Vortex2's starts match the page within about 20 % per brightness band only with it (the darkest,
+  near-black bands excepted, which the game lifts further).
 - **Fog** is not drawn. 41 maps have fog zones (volumetric fog: spheres of fog around lights, drawn as seen from the
   camera, so nothing to bake), one zone uses 227's distance fog (DmRetrospective).
 
-Checked against 227 shots (block means of the whole frame, HUD rows left out; game / page): NyLeve's start 0.87,
-NyLeve's sky zone 0.93, Vortex2's start 0.95, NaliC2 from its first BlockMonsters 1.04 (its sky room now lit red and
-purple as in the game). Glathriel2's start comes out 1.65 times too bright (0.60): most of its light comes from dim
-lights of very wide radius (brightness 8 to 80 over 1,000 to 2,000 units), where the falloff's flat top (full light
-out to half the radius) is the likeliest cause; not settled without a game run that measures one such light alone.
+Checked against 227 shots (block means of the whole frame, HUD rows left out; game / page, on screen): NyLeve's
+start 1.14, NyLeve's sky zone 1.25, Vortex2's start 1.11, NaliC2 from its first BlockMonsters 1.16 (its sky room lit
+red and purple as in the game), Glathriel2 from its start and nine actors 0.82–1.19. With SurrealEngine's square-root
+brightness these were 0.86, 0.93, 0.96, 1.04 and 0.40–1.27.
+
+How the brightness rule was found (third game run, 2026-10-09): Glathriel2 seen from its start and from nine actors
+whose class occurs once in the map (`viewclass X`, `behindview 0`). The page's lighting there was split into parts by
+which lights give it, each part rendered alone from the same views, and the game's frame (gamma undone) fitted as a sum
+of the parts. Lights brighter than 80 came out right (0.93), dimmer ones 2.7 times too strong (0.37), whatever their
+radius (wide 0.36, narrow 0.39), saturation (0.34, 0.42) or distance; nor did keeping each surface's four strongest
+lights explain it (0.75 and 0.33). Linear brightness, scaled so a full white light lights 1, brings every view within
+the range above; a falloff without SurrealEngine's flat top made the views 1.3 to 2 times too dark.
 
 ## Checks
 
-- Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots. Not checked in the game:
+- Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots and a third run on Glathriel2
+  (same guarded setup; the install unchanged by file manifest). Not checked in the game:
   modulated surfaces lightmapped (as SurrealEngine draws them), the cylinder and spot light shapes, the averages for
   changing lights.
 - Browser sweep with lighting (2026-10-09, scratch data): all 102 maps load without console errors; at their first
-  viewpoint a median 95 % of the view is drawn. Two first views are almost black and plausibly so in the game too
+  viewpoint a median 91 % of the view is drawn. Four first views are almost black and plausibly so in the game too
   (not checked): Abyss's start faces a dirt wall lit only at a grazing angle, in a fog zone; NaliBoat's looks across
-  open water at night, mostly shadowed from its one light. UGCredits stays black (its credits are movers).
+  open water at night, mostly shadowed from its one light; DKNightOp and ExtremeDark are dark by design. UGCredits
+  stays black (its credits are movers).
 
 - `tests/test_unreal_map.py`: a 1998 map (Vortex2, version 61) and a Return to Na Pali one (Abyss, version 68) read
   exactly, wind their polygons as above and resolve every texture; translucent drops masked, panning rates, Vortex2's

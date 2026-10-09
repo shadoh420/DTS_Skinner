@@ -78,7 +78,8 @@ class UnrealMapInstallTest(unittest.TestCase):
 
 class LightColorTest(unittest.TestCase):
     def test_hue_saturation_brightness(self):
-        self.assertTrue(np.allclose(light_color(0, 255, 255), 104.000038 / 255, atol=1e-4))  # Saturation 255: white.
+        self.assertTrue(np.allclose(light_color(0, 255, 255), .5))  # Saturation 255: white; a full light lights 1.
+        self.assertTrue(np.allclose(light_color(0, 255, 51), .1))  # Linear in brightness (checked in 227).
         self.assertTrue(np.array_equal(light_color(40, 0, 0), np.zeros(3)))
         red, green, blue = light_color(0, 0, 255)  # Hue 0, full colour: red only.
         self.assertGreater(red, .4)

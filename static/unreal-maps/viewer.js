@@ -17,7 +17,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   camera.rotation.order = 'YXZ';
   const skyTurn = new THREE.Quaternion();
   // The game's display gamma: its OpenGL device ramps the screen (and its screenshots) by pow(c, 1 / (2.5 * Brightness)),
-  // Brightness 0.5 by default. Matched to 227 shots of NyLeve's and Vortex2's starts once applied, so the frame is drawn
+  // Brightness 0.5 by default. Fitted to 227 shots of NyLeve's and Vortex2's starts, so the frame is drawn
   // into a target and ramped onto the screen, after blending.
   const BRIGHTNESS = .5;
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4});
