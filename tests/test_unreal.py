@@ -13,7 +13,7 @@ from app import app
 from tools.import_unreal import fire_pixels, import_catalog, slot_texture
 
 NAMES = ['None', 'Core', 'Engine', 'Class', 'Package', 'Texture', 'Palette', 'LodMesh', 'Test', 'Skins', 'Pal', 'Own',
-         'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System', 'DefaultSkinName', 'Body2']
+         'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System', 'DefaultSkinName', 'Body2', 'SkeletalMesh']
 
 
 def index(value):
@@ -75,14 +75,18 @@ def class_defaults(mesh, skin, skin_name=None):
                        *([('DefaultSkinName', 13, skin_name)] if skin_name else []))
 
 
-def package(skin_name=None):
+def package(skin_name=None, skeletal=False):
     """Test.u: Skins.Pal (palette), Skins.Own (masked) and Skins.Given (textures), Box (LodMesh with slot 1 empty) and
-    BoxDeco (a class showing Box with Skin Given); with `skin_name`, BoxDeco's DefaultSkinName, and a texture Body2."""
+    BoxDeco (a class showing Box with Skin Given); with `skin_name`, BoxDeco's DefaultSkinName, and a texture Body2;
+    `skeletal` makes Box a SkeletalMesh with the same corners as float reference points."""
     imports = [('Core', 'Package', 0, 'Engine'), ('Core', 'Class', -1, 'Texture'), ('Core', 'Class', -1, 'Palette'),
-               ('Core', 'Class', -1, 'LodMesh')]
+               ('Core', 'Class', -1, 'SkeletalMesh' if skeletal else 'LodMesh')]
+    box = lod_mesh([3, 0])
+    if skeletal:  # no float wedges, then the points (bones and weights are not read)
+        box += index(0) + index(4) + struct.pack('<12f', 10, 0, 10, 10, -10, 0, 10, 10, 0, -10, 0, 10)
     palette = name('None') + index(256) + bytes(c for i in range(256) for c in (i, 255 - i, 7, 0))
     exports = [(0, 0, 'Skins', b''), (-3, 1, 'Pal', palette), (-2, 1, 'Own', texture(2, bytes([0, 1, 2, 3]), True)),
-               (-2, 1, 'Given', texture(2, bytes([9, 9, 9, 9]), False)), (-4, 0, 'Box', lod_mesh([3, 0])),
+               (-2, 1, 'Given', texture(2, bytes([9, 9, 9, 9]), False)), (-4, 0, 'Box', box),
                (0, 0, 'BoxDeco', class_defaults(5, 4, skin_name))]
     if skin_name:
         exports.append((-2, 0, 'Body2', texture(2, bytes([5, 5, 5, 5]), False)))
@@ -139,6 +143,19 @@ class UnrealImportTest(unittest.TestCase):
                 client = app.test_client()
                 self.assertEqual(len(client.get('/list_models?game=ut').json), 1)
                 self.assertEqual(client.get('/export_glb/box?game=ut').status_code, 200)
+
+    def test_skeletal_mesh_reference_pose(self):
+        # UT's SkeletalChars: a SkeletalMesh draws its float reference points as a LodMesh draws its packed vertices.
+        with tempfile.TemporaryDirectory() as folder:
+            boxes = []
+            for skeletal in (False, True):
+                install, output = Path(folder) / f'ut{skeletal}', Path(folder) / f'out{skeletal}'
+                (install / 'System').mkdir(parents=True)
+                (install / 'System' / 'Botpack.u').write_bytes(package(skeletal=skeletal))
+                self.assertEqual(import_catalog(install, output, 'ut'), {'entries': 1, 'ready': 1})
+                boxes.append(json.loads((output / 'model_json' / 'box.json').read_text()))
+            self.assertEqual(boxes[1]['vertices'], boxes[0]['vertices'])
+            self.assertEqual(boxes[1]['material_textures'], boxes[0]['material_textures'])
 
     def test_empty_slot_takes_the_nearest_filled_slot_below(self):
         # UT's Bin2: its faces use empty slot 2 and the game draws slot 1's texture; slot 0 has nothing below.

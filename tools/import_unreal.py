@@ -45,6 +45,12 @@ object reference is a compact index: n > 0 is export n-1, n < 0 import -n-1, 0 n
   "FIELD LOGISTICS / UMS" reads the same way, and players hold their weapon in the left hand, where Male1's weapon
   triangle is.
 - OldUnreal 227's packages: an export flagged 0x100 carries 4 more bytes in the export table.
+- SkeletalMesh (UT's SkeletalChars: Xan Mark II, WarBoss): a LodMesh (no packed vertices), then MeshScaleMax and
+  LOD settings (f f f u32 f f), remapped animation vertices, u32, float wedges (none), the reference pose's points
+  (f x, y, z; placed like packed vertices), bones, weights, local points, depth, animation, weapon bone and adjust.
+  Drawn in the reference pose, standing with the arms a little out; the right hand bone lands on the right.
+- UT ships UnrealShare and UnrealI: game ut leaves their meshes to game unreal (the same models: 251 of 344 byte
+  for byte, the rest re-imported by OldUnreal 227).
 
 SurrealEngine (github.com/dpjudas/SurrealEngine) was read as a format reference; no code was copied.
 
@@ -70,8 +76,15 @@ except ImportError:  # Run as a script from tools/.
 
 SCALE = 1 / 52.5  # Unreal units to metres: the community's usual 52.5 to a metre.
 CATEGORY = {'unrealshare': 'Unreal', 'unreali': 'Unreal', 'upak': 'Return to Na Pali', 'botpack': 'Unreal Tournament',
-            'relics': 'Relics', 'epiccustommodels': 'Bonus Pack'}
+            'relics': 'Relics', 'epiccustommodels': 'Bonus Pack', 'skeletalchars': 'Skeletal Characters'}
 GAMES = {'unreal': 'UnrealShare', 'ut': 'Botpack'}  # Game id: the package its install must have.
+# UT ships Unreal's packages; their meshes are the unreal game's (the same models; OldUnreal 227's are re-imports of
+# some), so ut lists only its own. They are still read for their skins and same-named meshes.
+SKIP = {'ut': ('unrealshare', 'unreali')}
+# Skins only a class's script puts on (no class default holds them): UT's skeletal players, from the no-team branch
+# of WarBoss's and XanMk2's SetMultiSkin (their source ships in SkeletalChars.u).
+RUNTIME_SKINS = {('skeletalchars', 'warmachineboss'): ('SkeletalChars', 'Skins', 'WarBlue'),
+                 ('skeletalchars', 'newxan'): ('SkeletalChars', 'Skins', 'XanTitanium')}
 # Mesh poly flags: 0x02 masked (palette index 0 clear), 0x04 translucent, 0x10 environment mapped, 0x40 modulated,
 # 0x100 two-sided; 0x01 invisible draws nothing.
 INVISIBLE, MASKED, TRANSLUCENT, ENVIRONMENT, MODULATED, TWO_SIDED = 0x01, 0x02, 0x04, 0x10, 0x40, 0x100
@@ -300,7 +313,7 @@ class Package:
                 self.unpack('f')
         mesh = dict(cls=cls, verts=verts, tris=tris, seqs=seqs, textures=textures, frame_verts=frame_verts,
                     frames=frames, scale=scale, origin=origin, rot=rot, special_verts=0)
-        if cls == 'LodMesh':
+        if cls in ('LodMesh', 'SkeletalMesh'):
             for _ in range(2):  # collapse points, face levels
                 count = self.index()
                 self.at += 2 * count
@@ -312,6 +325,15 @@ class Package:
             count = self.index()  # special faces
             self.at += 8 * count
             _model, mesh['special_verts'] = self.unpack('II')
+        if cls == 'SkeletalMesh':  # UT's: the reference pose's points as floats (bones and weights not read)
+            self.unpack('fffIff')  # LOD settings
+            count = self.index()  # remapped animation vertices
+            self.at += 2 * count
+            self.unpack('I')
+            count = self.index()  # float wedges (none in UT's)
+            self.at += 12 * count
+            mesh['points'] = [self.unpack('3f') for _ in range(self.index())]
+            mesh['frame_verts'], mesh['frames'] = len(mesh['points']), 1
         return mesh
 
 
@@ -554,8 +576,9 @@ def build_model(mesh, slot_of, frame=0, game='unreal'):
     rows = rotation(*mesh['rot'])
     base = frame * mesh['frame_verts']
     points = []
-    for packed in mesh['verts'][base:base + mesh['frame_verts']]:
-        v = [(c - o) * s for c, o, s in zip(unpack_vertex(packed), mesh['origin'], mesh['scale'])]
+    packed = mesh['verts'][base:base + mesh['frame_verts']]
+    for point in mesh['points'] if 'points' in mesh else map(unpack_vertex, packed):
+        v = [(c - o) * s for c, o, s in zip(point, mesh['origin'], mesh['scale'])]
         x, y, z = (sum(row[k] * v[k] for k in range(3)) for row in rows)
         points.append((-y * SCALE, z * SCALE, x * SCALE))  # x forward, y right, z up -> y up, +z forward.
     if 'faces' in mesh:
@@ -592,6 +615,10 @@ def slot_texture(library, skins, meshes, package, ref, mesh, index):
     own = mesh['textures'][index] if index < len(mesh['textures']) else 0
     if own:
         return package, own
+    runtime = RUNTIME_SKINS.get(tuple(p.lower() for p in package.ref_path(ref)))
+    runtime = runtime and package.export_by_path(runtime, 'Texture')
+    if runtime:
+        return package, runtime
     votes = {}
     for skin, texture, multi in skins.get(tuple(p.lower() for p in package.ref_path(ref)), ()):
         pick = multi.get(index) or skin or texture
@@ -622,12 +649,13 @@ def import_catalog(install, output, game='unreal'):
     found, meshes = [], {}
     for source in sorted(name for name, path in library.files.items() if path.suffix.lower() == '.u'):
         package = library.package(source)
-        for ref in package.find({'LodMesh', 'Mesh'}):
+        for ref in package.find({'LodMesh', 'Mesh', 'SkeletalMesh'}):
             try:
                 mesh = package.mesh(ref)
             except (struct.error, ValueError, IndexError, KeyError) as exc:
                 mesh = exc
-            found.append((source, package, ref, mesh))
+            if source not in SKIP.get(game, ()):
+                found.append((source, package, ref, mesh))
             if isinstance(mesh, dict):
                 meshes.setdefault(package.exports[ref - 1]['name'].lower(), []).append((package, mesh))
     skins = library.class_skins()
