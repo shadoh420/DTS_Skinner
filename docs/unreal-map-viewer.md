@@ -19,7 +19,8 @@ and writes about 140 MB to `local-data/unreal-maps/unreal`:
 - `index.json`: one entry per map (id, file name, the LevelInfo's title, group).
 - `maps/ID/scene.json`: texture groups, viewpoints, counts; `maps/ID/geometry.bin`: float32 positions (x, y, z),
   float32 texture coordinates (u, v), uint32 triangle indices, one after the other.
-- `textures/*.png`: the textures, shared by every map and named `package.group.name`, kept when already there.
+- `textures/*.png`: the textures, shared by every map and named `package.group.name`, kept when already there
+  (a re-import rewrites them).
 
 Maps already imported are skipped unless **Re-import existing maps** is ticked. From a shell:
 `python tools/import_unreal_map.py --install C:/Unreal [--replace]`.
@@ -60,9 +61,10 @@ was read as the format reference; no code was copied.
   index 0; translucent ones add their texture over what is behind them (one, one minus source colour) and modulated
   ones multiply it by twice their texture (destination colour, source colour), neither hiding what is behind them
   from later surfaces; translucent drops masked; two-sided surfaces show both faces. A texture marked `bMasked`
-  masks its surfaces even where they are not flagged masked: 765 opaque polygons (cobwebs, grates; Glathriel2,
-  DmExar, Toxic, Crashsite1, Vortex2…) would otherwise draw solid colour 0 around them. That is an assumption, not
-  yet checked in the game.
+  masks its surfaces even where they are not flagged masked (765 opaque polygons: cobwebs, grates; Glathriel2's
+  cobwebs are see-through in the game), and a surface flagged masked cuts out index 0 of a texture that is not
+  `bMasked` (NyLeve's sky panorama of mountains, `SkyBox.lnd_1..4`, cut out in the game), so the pack writes every
+  palette texture with index 0 clear; opaque surfaces ignore it.
 - **Auto-panning** surfaces move 64 texels a second times their zone's `TexUPanSpeed` / `TexVPanSpeed` (the zone on
   the surface's front side; the LevelInfo for zone 0; 1 where the zone does not set it, assumed from Unreal's
   ZoneInfo defaults, which sit behind its bytecode). 83 maps have some.
@@ -73,6 +75,9 @@ was read as the format reference; no code was copied.
   the level over it, the backdrop surfaces drawing nothing but hiding what is behind them. 68 maps show a sky; Inter3,
   Inter4 and Inter14 have backdrops but no sky zone, and the game draws those as ordinary surfaces, as the page does.
   227's per-zone `SkyZoneInfoTag` is set nowhere in the install, so one sky per map.
+  Checked in the game: the sky through NyLeve's backdrop is the sky zone's own view, unmoved by the viewer and
+  turned with the view; NaliC2's sky, turned 180°, shows the same part of its panorama as the game. Whether a 90° turn
+  (Eldora, DmDeathFan) goes the game's way round is not checked: a 180° turn reads the same either way.
 
 ## Checks
 
@@ -81,6 +86,10 @@ was read as the format reference; no code was copied.
   bMasked grates masked, Abyss's sky; the page's routes and the import guard.
 - Browser sweep with surface flags and skies (2026-10-09): all 102 maps load without console errors; NyLeve's sky
   room (mountain panorama, sun, clouds) shows through its sky surfaces, Vortex2's grates are see-through.
+- Second game run (227, same guarded setup, install unchanged by manifest, 2026-10-09): Glathriel2's start, NyLeve
+  from its first AlarmPoint and from its sky zone, NaliC2 from its first BlockMonsters (`viewclass` then
+  `behindview 0`) match the page in layout; the first try showed a black band where the page drew the sky
+  panorama's index 0 opaque, fixed as above. Colours still differ: the game lights the sky rooms (NaliC2's red).
 - Browser sweep (2026-10-09, scratch data): all 102 maps load on the page; 98 show surfaces at their first
   viewpoint, and the 4 that did not (End, Intro1, Intro2, UGCredits: cutscene and credits maps whose PlayerStart
   sees nothing or a black room) now open at their cutscene camera, except UGCredits, whose credits are movers.

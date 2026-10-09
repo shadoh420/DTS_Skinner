@@ -10,8 +10,9 @@ reference only, walks the same node list). Invisible surfaces and zone portals a
 
 - Texture coordinates: u = ((P - base) . U + PanU) / (USize * DrawScale), v likewise; row 0 is the image's top.
 - Poly flags (SurrealEngine's precedence): the texture's own PolyFlags join the surface's, and a bMasked texture masks
-  (palette index 0 clear; an assumption: 765 opaque cobweb and grate polygons would otherwise draw their colour 0);
-  translucent drops masked. Auto-panning surfaces move 64 texels a second times their zone's TexUPanSpeed or
+  even surfaces not flagged masked (Glathriel2's cobwebs in 227); translucent drops masked. A masked surface cuts out
+  palette index 0 whether or not its texture is bMasked (NyLeve's sky panorama in 227), so every palette texture of
+  the pack is written with index 0 clear; opaque surfaces ignore alpha. Auto-panning surfaces move 64 texels a second times their zone's TexUPanSpeed or
   TexVPanSpeed (1 unless the ZoneInfo sets it; the zone on the surface's front side, the LevelInfo for zone 0).
 - Sky: fake-backdrop surfaces show the sky zone, the level seen from the SkyZoneInfo every zone links to
   (ZoneInfo.LinkToSkybox: the last one in the map, or the last high-detail one) with the view turned by its
@@ -24,7 +25,7 @@ reference only, walks the same node list). Invisible surfaces and zone portals a
 
 Written under local-data/unreal-maps/GAME: index.json (one entry per map), maps/ID/scene.json (texture groups,
 viewpoints, counts) with maps/ID/geometry.bin (float32 positions xyz, float32 texture uv, uint32 triangle indices,
-one after the other), and textures/*.png shared by every map (kept when already there).
+one after the other), and textures/*.png shared by every map (kept when already there, rewritten by --replace).
 """
 import argparse
 import json
@@ -119,7 +120,9 @@ def build_map(library, level, default):
         default texture."""
         if ref not in textures:
             pick = (level, ref) if ref else default
-            image = pick and library.texture(*pick)
+            # Index 0 clear on every palette texture: where a surface is masked the game cuts it out (even where
+            # the texture is not bMasked: the sky panoramas), and opaque surfaces ignore alpha.
+            image = pick and library.texture(*pick, masked=True)
             if not image:
                 textures[ref] = ('missing.png', 64, 64, 0)
                 images['missing.png'] = None
@@ -228,7 +231,7 @@ def import_maps(install, output, replace=False, game='unreal'):
     (output / 'textures').mkdir(parents=True, exist_ok=True)
     index_path = output / 'index.json'
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}
-    result = dict(imported=[], skipped=[], failed={})
+    result, written = dict(imported=[], skipped=[], failed={}), set()
     taken = set()
     for path in library.maps:
         ident = safe(path.stem.lower())
@@ -246,8 +249,9 @@ def import_maps(install, output, replace=False, game='unreal'):
             continue
         for png, image in images.items():
             target = output / 'textures' / png
-            if not target.is_file():
+            if png not in written and (replace or not target.is_file()):  # A re-import rewrites them once.
                 (image or Image.new('RGB', (8, 8), '#808080')).save(target)
+                written.add(png)
         folder.mkdir(parents=True, exist_ok=True)
         (folder / 'geometry.bin').write_bytes(geometry)
         (folder / 'scene.json').write_text(json.dumps(scene, separators=(',', ':')), encoding='utf-8')

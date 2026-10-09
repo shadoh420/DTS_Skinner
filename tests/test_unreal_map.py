@@ -47,6 +47,15 @@ class UnrealMapInstallTest(unittest.TestCase):
                 self.assertEqual(len(scene['sky']['rotation']), 9)
                 self.assertTrue([group for group in groups if group['flags'] & 0x80])
 
+    def test_masked_surfaces_cut_out_palette_index_0(self):
+        # NyLeve's sky panorama is drawn masked though its texture is not bMasked (checked in 227, 2026-10-09): the
+        # map pack's copy is clear at index 0, the model browser's is not.
+        library = Library(INSTALL)
+        package = library.package('skybox')
+        ref = package.export_by_path(('SkyBox', 'lnd_1'), 'Texture')
+        self.assertEqual(library.texture(package, ref)[1].getextrema()[3], (255, 255))
+        self.assertEqual(library.texture(package, ref, masked=True)[1].getextrema()[3][0], 0)
+
 
 class UnrealMapRouteTest(unittest.TestCase):
     def test_page_data_and_import_guard(self):

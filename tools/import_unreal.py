@@ -539,19 +539,20 @@ class Library:
                         vote(dict(merged_classes[key], **{k: (level, v) for k, v in placed.items()}))
         return skins
 
-    def texture(self, package, ref):
-        """(package.group.name, RGBA image) of texture reference `ref`, or None when it is missing or unreadable."""
+    def texture(self, package, ref, masked=False):
+        """(package.group.name, RGBA image) of texture reference `ref`, or None when it is missing or unreadable;
+        `masked` clears palette index 0 even where the texture is not bMasked (see decode_texture)."""
         found = self.resolve(package, ref)
         if not found:
             return None
         package, ref = found
-        key = package.ref_path(ref)
+        key = package.ref_path(ref), masked
         if key not in self.textures:
             try:
-                image = decode_texture(self, package, ref)
+                image = decode_texture(self, package, ref, masked)
             except (struct.error, ValueError, KeyError, IndexError, OSError):
                 image = None
-            self.textures[key] = image and ('.'.join(key), image)
+            self.textures[key] = image and ('.'.join(key[0]), image)
         return self.textures[key]
 
 
@@ -570,8 +571,9 @@ def texture_mips(package, ref):
     return props, mips
 
 
-def decode_texture(library, package, ref):
-    """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear.
+def decode_texture(library, package, ref, masked=False):
+    """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear, and with
+    `masked` any palette texture's (the game masks a texture wherever a surface is drawn masked: map surfaces).
     Procedural textures, whose mips are empty because the game draws them as it runs, get a still: fire from its
     sparks; wet and ice textures their SourceTexture's pixels (undistorted) in their own palette; water and wave
     textures calm water, index 128 everywhere (SurrealEngine's water shade for a flat surface)."""
@@ -601,7 +603,7 @@ def decode_texture(library, package, ref):
         count = palette.index()
         colours = bytearray(palette.data[palette.at:palette.at + 4 * count])
         colours[3::4] = b'\xff' * count
-        if props.get('bMasked'):
+        if props.get('bMasked') or masked:
             colours[3] = 0
         image = Image.frombytes('P', (width, height), data)
         image.putpalette(bytes(colours), 'RGBA')
