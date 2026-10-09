@@ -562,7 +562,9 @@ def build_map(library, level, default):
         defaults, sources, names = library.class_info(level.ref_path(level.exports[ref - 1]['cls']))
         placed = level.properties(ref)
         props = {**defaults, **placed}
-        if props.get('bHidden'):
+        # Lights are not drawn in the game though some leave bHidden off (227, Glathriel2: TriggerLight's sprite 87 units
+        # and TorchFlame's 192-unit flame mesh 275 units in front of the camera both showed nothing).
+        if props.get('bHidden') or 'Light' in names:
             continue
 
         def obj(name):
