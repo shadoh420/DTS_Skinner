@@ -40,8 +40,8 @@ Browse, reskin, and export models from **Starsiege: Tribes, Tribes 2, Quake 3, D
 
 ## Getting started
 
-1. Download and extract the release ZIP into a writable folder.
-2. Run `SkinnerApp.exe`. Keep `_internal`, `static` and `local-data` (its animation caches) beside it. Imported maps, models and tags go to
+1. Download the release's app ZIP (`DTS-Skinner-vN-Windows.zip`) and, the first time, the data ZIP (`DTS-Skinner-data-Windows.zip`: the stock Tribes 1 and 2 models, textures and animation caches; the release notes link the one to use). Extract both into the same writable folder. They fill one `DTS-Skinner` folder. For a new release, extract its app ZIP over that folder. The data ZIP is needed again only when the notes say it changed. Without it, the app runs but lists no Tribes 1 or 2 models.
+2. Run `SkinnerApp.exe`. Keep `_internal` and `local-data` (its animation caches) beside it. Imported maps, models and tags go to
    `%LOCALAPPDATA%\DTS-Skinner\local-data`, shared by every release, so a new release opens with them
    (an older release's `local-data` next to the app is moved there on first start).
 3. Choose a model, select a material and texture, then click **Apply to slot**.

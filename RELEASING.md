@@ -19,11 +19,13 @@ time on the build machine: the suite, PyInstaller and the smoke test each run al
    the app page, or with curl and an `Origin` header, since imports refuse foreign requests), then `list_models`
    and one `export_glb`; `python tools/check_packaged.py http://127.0.0.1:PORT` checks the catalogs. Stop **both**
    `SkinnerApp.exe` processes afterwards (PyInstaller bootloader and child).
-7. **Zip and hash.** From v25: `python tools/split_release.py dist/vN-package dist/vN vN` writes the app ZIP and
+7. **Zip and hash.** From v25: `python tools/split_release.py dist/vN-package/DTS-Skinner dist/vN vN` writes the app ZIP and
    the data ZIP with their `.sha256` files; if the data ZIP's hash equals the last data release's, upload only the
    app ZIP and link the data release in the notes. Write `.sha256` files with LF line endings (Python text mode
    on Windows gives CRLF, which breaks `sha256sum -c`).
 8. **Publish.** `gh release create vN --target FULLSHA` with the ZIPs and checksums; `--target` needs a branch
-   name or a full SHA. The notes say what is new and whether the data ZIP changed.
+   name or a full SHA. The notes say what is new and whether the data ZIP changed. v25 is the first split release,
+   so it also publishes `DTS-Skinner-data-Windows.zip` as its own release tagged `data-1` (about 504 MB) and links
+   it from the notes; later data releases are `data-2`, `data-3` and so on.
 9. **Afterwards.** Delete `dist/v(N-1)` and `dist/v(N-1)-package` once vN is confirmed; keep the newest pair
    for the next package step and for `check_packaged.py`.
