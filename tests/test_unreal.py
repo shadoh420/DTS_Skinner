@@ -13,7 +13,8 @@ from app import app
 from tools.import_unreal import fire_pixels, import_catalog, slot_texture
 
 NAMES = ['None', 'Core', 'Engine', 'Class', 'Package', 'Texture', 'Palette', 'LodMesh', 'Test', 'Skins', 'Pal', 'Own',
-         'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System', 'DefaultSkinName', 'Body2', 'SkeletalMesh']
+         'Given', 'Box', 'BoxDeco', 'Mesh', 'Skin', 'bMasked', 'System', 'DefaultSkinName', 'Body2', 'SkeletalMesh',
+         'Style']
 
 
 def index(value):
@@ -67,18 +68,19 @@ def lod_mesh(textures):
     return out
 
 
-def class_defaults(mesh, skin, skin_name=None):
-    """Class BoxDeco: no bytecode; defaults Mesh, Skin and (as UT's players have) DefaultSkinName."""
+def class_defaults(mesh, skin, skin_name=None, style=None):
+    """Class BoxDeco: no bytecode; defaults Mesh, Skin, (as UT's players have) DefaultSkinName and Style."""
     out = index(0) * 4 + name('BoxDeco') + struct.pack('<III', 0, 0, 0) + b'\0' * 22 + b'\0' * 20
     out += index(0) + index(0) + index(0) + name('System')  # dependencies, imports, within, config
     return out + props(('Mesh', 5, index(mesh)), ('Skin', 5, index(skin)),
-                       *([('DefaultSkinName', 13, skin_name)] if skin_name else []))
+                       *([('DefaultSkinName', 13, skin_name)] if skin_name else []),
+                       *([('Style', 1, bytes([style]))] if style else []))
 
 
-def package(skin_name=None, skeletal=False):
+def package(skin_name=None, skeletal=False, style=None):
     """Test.u: Skins.Pal (palette), Skins.Own (masked) and Skins.Given (textures), Box (LodMesh with slot 1 empty) and
     BoxDeco (a class showing Box with Skin Given); with `skin_name`, BoxDeco's DefaultSkinName, and a texture Body2;
-    `skeletal` makes Box a SkeletalMesh with the same corners as float reference points."""
+    `skeletal` makes Box a SkeletalMesh with the same corners as float reference points; `style` BoxDeco's Style."""
     imports = [('Core', 'Package', 0, 'Engine'), ('Core', 'Class', -1, 'Texture'), ('Core', 'Class', -1, 'Palette'),
                ('Core', 'Class', -1, 'SkeletalMesh' if skeletal else 'LodMesh')]
     box = lod_mesh([3, 0])
@@ -87,7 +89,7 @@ def package(skin_name=None, skeletal=False):
     palette = name('None') + index(256) + bytes(c for i in range(256) for c in (i, 255 - i, 7, 0))
     exports = [(0, 0, 'Skins', b''), (-3, 1, 'Pal', palette), (-2, 1, 'Own', texture(2, bytes([0, 1, 2, 3]), True)),
                (-2, 1, 'Given', texture(2, bytes([9, 9, 9, 9]), False)), (-4, 0, 'Box', box),
-               (0, 0, 'BoxDeco', class_defaults(5, 4, skin_name))]
+               (0, 0, 'BoxDeco', class_defaults(5, 4, skin_name, style))]
     if skin_name:
         exports.append((-2, 0, 'Body2', texture(2, bytes([5, 5, 5, 5]), False)))
     names = b''.join(index(len(n) + 1) + n.encode() + b'\0' + struct.pack('<I', 0) for n in NAMES)
@@ -156,6 +158,17 @@ class UnrealImportTest(unittest.TestCase):
                 boxes.append(json.loads((output / 'model_json' / 'box.json').read_text()))
             self.assertEqual(boxes[1]['vertices'], boxes[0]['vertices'])
             self.assertEqual(boxes[1]['material_textures'], boxes[0]['material_textures'])
+
+    def test_class_style_translucent(self):
+        # A class drawing the mesh in STY_Translucent (3), as UT's weapons draw their muzzle flash: every face blends.
+        with tempfile.TemporaryDirectory() as folder:
+            install, output = Path(folder) / 'Unreal', Path(folder) / 'out'
+            (install / 'System').mkdir(parents=True)
+            (install / 'System' / 'UnrealShare.u').write_bytes(package(style=3))
+            import_catalog(install, output)
+            data = json.loads((output / 'model_json' / 'box.json').read_text())
+            blends = [s.get('blend') for s in data['material_settings']]
+            self.assertEqual(blends, [['gl_one', 'gl_one_minus_src_color']] * 2)
 
     def test_empty_slot_takes_the_nearest_filled_slot_below(self):
         # UT's Bin2: its faces use empty slot 2 and the game draws slot 1's texture; slot 0 has nothing below.

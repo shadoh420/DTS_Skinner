@@ -34,7 +34,9 @@ object reference is a compact index: n > 0 is export n-1, n < 0 import -n-1, 0 n
   its empty slot 2 and the game draws slot 1's recycling bin, checked in 469 on DM-Pressure, 2026-10-09; with no
   slot below, 227 draws DefaultTexture); then the same slot of a same-named mesh in another package (UnrealI
   repeats some of UnrealShare's); then, as the game does, Engine's DefaultTexture. A mesh's own texture
-  stays even where a class reskins it (Brute2, the Skaarj colours): those are variants.
+  stays even where a class reskins it (Brute2, the Skaarj colours): those are variants. The classes and placed
+  actors also vote on the actor's Style (none set counts as normal; a tie stays normal): masked, translucent or
+  modulated adds that flag to every face, as the game draws the actor (UT's muzzle flashes: MuzzleFlashStyle).
 - UT's players get their skins at run time from the class's DefaultSkinName "Package.Base" (a str property: compact
   length, text, NUL): slot n is the skin package's texture Base{n+1} (SoldierSkins.blkt1..blkt4, the face
   included), or Base itself for the bonus pack's models (TCowMeshSkins.WarCow). The player menu's and the ladder
@@ -58,6 +60,7 @@ Written (under local-data/unreal, or local-data/ut): catalog.json, model_json/MO
 when already there, so edits survive).
 """
 import argparse
+import collections
 import json
 import math
 from pathlib import Path
@@ -88,6 +91,8 @@ RUNTIME_SKINS = {('skeletalchars', 'warmachineboss'): ('SkeletalChars', 'Skins',
 # Mesh poly flags: 0x02 masked (palette index 0 clear), 0x04 translucent, 0x10 environment mapped, 0x40 modulated,
 # 0x100 two-sided; 0x01 invisible draws nothing.
 INVISIBLE, MASKED, TRANSLUCENT, ENVIRONMENT, MODULATED, TWO_SIDED = 0x01, 0x02, 0x04, 0x10, 0x40, 0x100
+# An actor's Style (ERenderStyle: 2 masked, 3 translucent, 4 modulated) adds its flag to every face of its mesh.
+STYLE_FLAGS = {2: MASKED, 3: TRANSLUCENT, 4: MODULATED}
 # The sequence whose first frame is shown, first found; otherwise frame 0 (often mid-stride in a pawn's All).
 MESH_PROPERTIES = ('Mesh', 'PlayerViewMesh', 'PickupViewMesh', 'ThirdPersonMesh')
 POSES = ('still', 'breath', 'breath1', 'idle', 'breath2', 'stand', 'look')
@@ -364,8 +369,8 @@ class Library:
         return (target, found) if found else None
 
     def class_skins(self):
-        """{mesh path in lower case: [(Skin, Texture, {slot: MultiSkins}) of each class whose defaults show the mesh,
-        and of each actor of such a class placed in a map]}, each texture a (package, reference) pair; a class's
+        """{mesh path in lower case: [(Skin, Texture, {slot: MultiSkins}, Style) of each class whose defaults show the
+        mesh, and of each actor of such a class placed in a map]}, each texture a (package, reference) pair; a class's
         defaults over its parents', a placed actor's properties over its class's."""
         classes = {}
         for name in sorted(self.files):
@@ -416,11 +421,12 @@ class Library:
             shown += [tuple(merged[prop][1].lower().split('.')) for prop in ('SelectionMesh', 'SpecialMesh')
                       if isinstance(merged.get(prop, (None, 0))[1], str)]
             for mesh in shown:
-                skins.setdefault(mesh, []).append((skin, texture('Texture'), multi))
-            package, ref = merged.get('MuzzleFlashMesh', (None, 0))  # UT weapons draw it with MuzzleFlashTexture.
+                skins.setdefault(mesh, []).append((skin, texture('Texture'), multi, merged.get('Style', (0, None))[1]))
+            # UT weapons draw it with MuzzleFlashTexture in MuzzleFlashStyle.
+            package, ref = merged.get('MuzzleFlashMesh', (None, 0))
             if ref and isinstance(ref, int):
                 skins.setdefault(tuple(p.lower() for p in package.ref_path(ref)), []).append(
-                    (texture('MuzzleFlashTexture'), None, {}))
+                    (texture('MuzzleFlashTexture'), None, {}, merged.get('MuzzleFlashStyle', (0, None))[1]))
 
         for merged in merged_classes.values():
             vote(merged)
@@ -570,7 +576,7 @@ def material_settings(flags):
     return settings
 
 
-def build_model(mesh, slot_of, frame=0, game='unreal'):
+def build_model(mesh, slot_of, frame=0, game='unreal', style_flags=0):
     """Geometry of `mesh` at animation frame `frame`; slot_of(texture slot, poly flags) gives a PNG name, or None (not
     drawn). Faces with the same PNG and flags share a material."""
     rows = rotation(*mesh['rot'])
@@ -589,6 +595,7 @@ def build_model(mesh, slot_of, frame=0, game='unreal'):
         faces = [[(t[i], t[3 + 2 * i], t[4 + 2 * i]) for i in range(3)] + [(t[9], t[10])] for t in mesh['tris']]
     vertices, uvs, slots = [], [], {}
     for a, b, c, (flags, texture) in faces:
+        flags |= style_flags
         png = slot_of(texture, flags)
         if png is None or max(a[0], b[0], c[0]) >= len(points):
             continue
@@ -620,7 +627,7 @@ def slot_texture(library, skins, meshes, package, ref, mesh, index):
     if runtime:
         return package, runtime
     votes = {}
-    for skin, texture, multi in skins.get(tuple(p.lower() for p in package.ref_path(ref)), ()):
+    for skin, texture, multi, _style in skins.get(tuple(p.lower() for p in package.ref_path(ref)), ()):
         pick = multi.get(index) or skin or texture
         if pick:
             votes.setdefault(pick[0].ref_path(pick[1]), []).append(pick)
@@ -689,10 +696,15 @@ def import_catalog(install, output, game='unreal'):
             textures[png] = texture[1]
             return png
 
+        # The Style most of the classes and placed actors showing the mesh draw it in (none set: normal).
+        styles = collections.Counter(vote[3] for vote in skins.get(tuple(p.lower() for p in package.ref_path(ref)), ()))
+        style = max(styles, key=lambda s: (styles[s], s is None)) if styles else None  # a tie stays normal
+        style_flags = STYLE_FLAGS.get(style, 0)
         names = {seq['name'].lower(): seq for seq in mesh['seqs']}
         pose = next((names[name] for name in POSES if name in names), None)
         try:
-            data = build_model(mesh, slot_of, pose['start'] if pose and pose['start'] < mesh['frames'] else 0, game)
+            data = build_model(mesh, slot_of, pose['start'] if pose and pose['start'] < mesh['frames'] else 0, game,
+                               style_flags)
         except (struct.error, ValueError, IndexError, KeyError) as exc:
             catalog.append(dict(item, status=f'failed: {exc}'))
             continue
