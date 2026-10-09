@@ -102,8 +102,9 @@ Every actor the map places, unless it is hidden (`bHidden`), is read over its cl
   brush Model's own (one entry per brush poly, its own light list and shadow bits), rebuilt as the level's, at the pose
   the editor raytraced them (`BrushRaytraceKey`). Their upward faces are floors for the viewpoints (SkyCaves' starts
   stand on one). A `TriggerToggle` mover whose tag a proximity Trigger fires as a player lands below a PlayerStart is
-  drawn at its last key: it opens in the first second and stays open (SpireVillage's arrival force field, Nalic2's and
-  VeloraEnd's arrival doors). Movers that close again (`TriggerControl`, `TriggerOpenTimed`) keep their saved pose.
+  drawn at its last key: it opens in the first second and stays open (SpireVillage's arrival force field, checked in the
+  game; Nalic2's and VeloraEnd's arrival doors, the same pattern). Movers that close again (`TriggerControl`,
+  `TriggerOpenTimed`) keep their saved pose.
 - **Meshes** (DrawType mesh): the mesh at its `AnimSequence` frame (`AnimFrame` into it; with none, the first of
   still, breath, idle..., as the model browser poses them), at `Location + PrePivot + Rotation × DrawScale × point`
   (SurrealEngine's reading). Each texture slot as the game picks it: `MultiSkins[i]`, then `Skin` (slot 0, or a slot
@@ -189,7 +190,7 @@ the range above; a falloff without SurrealEngine's flat top made the views 1.3 t
   SpireVillage's start stood inside Mover0's purple force field on the page; in the game a Trigger under the start
   lowers it 272 units as the player lands (now drawn so: block correlation 0.94, game/page 1.05). From two path nodes
   and a plant: walls and ground 0.96–1.11, the Titan 1.06; a plant leaf around the camera (the camera inside Plant14)
-  0.58, too bright on the page (two-sided faces lit by |cos|; one view only, left). Vortex2: start 1.03 (correlation 0.92), a
+  0.58, too bright on the page (the leaf's back face, lit by |cos| as two-sided; the game may light only the front side: one view only, left). Vortex2: start 1.03 (correlation 0.92), a
   hall from PlayerStart1 0.92; the view of the door Mover1 is in a fog zone (fog not drawn), its layout matches.
 
 - Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots and a third run on Glathriel2
