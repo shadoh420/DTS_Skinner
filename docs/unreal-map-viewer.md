@@ -115,8 +115,12 @@ Every actor the map places, unless it is hidden (`bHidden`), is read over its cl
   that pose; their weapons are not drawn.
 - **Mesh light** is worked out at each vertex as the lightmaps are, without shadows: the zone's ambient light and the
   actor's `AmbientGlow` (255 pulses: 0.3, its average), plus `ScaleGlow ×` each light's colour × 2 × falloff × the
-  incidence on the vertex's normal (both sides where a face is two-sided); unlit (texture as it is) when `bUnlit` or
-  outside every zone. The page carries it in vertex colours and points the meshes at a white lightmap texel.
+  incidence on the vertex's normal (both sides where a face is two-sided). Unlit meshes and faces (`bUnlit`, unlit
+  faces, outside every zone) are drawn at `ScaleGlow / 2 + AmbientGlow` of the texture: SpireVillage's Plant14 (bUnlit)
+  read 0.58 of the page's full texture on screen in 227, 0.5 before the display's gamma, and 1.00 after the change
+  (the palm beside it 0.89 before, 1.12 after). Unlit flames (TorchFlame, Flame) follow the same rule, not checked in
+  the game. A leaf's back face lit only on its front (`max(cos, 0)`) changed nothing there: the leaf is unlit. The page
+  carries it in vertex colours and points the meshes at a white lightmap texel.
 - **Zones**: the saved `Region` is often stale (zone 0), so an actor's zone is found as the game does when it starts:
   down the BSP from the root to the leaf its location falls in.
 
@@ -199,8 +203,8 @@ the range above; a falloff without SurrealEngine's flat top made the views 1.3 t
   SpireVillage's start stood inside Mover0's purple force field on the page; in the game a Trigger under the start
   lowers it 272 units as the player lands (now drawn so: block correlation 0.94, game/page 1.05). From two path nodes
   and a plant: walls and ground 0.96–1.11, the Titan 1.06; a plant leaf around the camera (the camera inside Plant14)
-  0.58, too bright on the page (the leaf's back face, lit by |cos| as two-sided; the game may light only the front side: one view only, left). Vortex2: start 1.03 (correlation 0.92), a
-  hall from PlayerStart1 0.92; the view of the door Mover1 is in a fog zone (fog not drawn), its layout matches.
+  0.58, too bright on the page: Plant14 is bUnlit, now drawn at half the texture (1.00 after; see Mesh light). Vortex2:
+  start 1.03 (correlation 0.92), a hall from PlayerStart1 0.92; the view of the door Mover1 is in a fog zone (fog not drawn), its layout matches.
 
 - Lighting (2026-10-09): the comparisons above, from the earlier runs' 227 screenshots and a third run on Glathriel2
   (same guarded setup; the install unchanged by file manifest). Not checked in the game:

@@ -498,11 +498,14 @@ def build_map(library, level, default):
             np.logical_or.at(two_sided, corners[:, k], np.array([f & TWO_SIDED > 0 for *_, f in faces]))
         normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-9)
         number = zone_at(world.mean(0))
+        glow = props.get('AmbientGlow', 0)
+        glow = .3 if glow == 255 else glow / 255  # 255 pulses, 0.3 on average (SurrealEngine's reading).
+        # Unlit (bUnlit, unlit faces, outside every zone): half the texture at ScaleGlow 1, plus the glow (SpireVillage's
+        # Plant14 in 227: 0.58 of the page's full texture on screen, 0.5 before the display's gamma).
+        unlit = min(props.get('ScaleGlow', 1.0) / 2 + glow, 1) / 2
         if props.get('bUnlit') or number == 0:  # The game draws an actor outside every zone unlit.
-            light = np.full((len(world), 3), .5)
+            light = np.full((len(world), 3), unlit)
         else:
-            glow = props.get('AmbientGlow', 0)
-            glow = .3 if glow == 255 else glow / 255  # 255 pulses, 0.3 on average (SurrealEngine's reading).
             reach = np.linalg.norm(world - middle, axis=1).max()
             # ponytail: the game lights actors only with the lights that reach them; the editor's light list of the
             # floor surface beneath stands in for that (MarineBox6 on Glathriel2 took half its light through walls);
@@ -521,7 +524,7 @@ def build_map(library, level, default):
         for group, (corners, triangles) in batches.items():
             keys = list(corners)
             ids = [key[0] for key in keys]
-            color = np.where(np.array([key[3] for key in keys])[:, None], .5, light[ids])
+            color = np.where(np.array([key[3] for key in keys])[:, None], unlit, light[ids])
             uv = np.array([(key[1] / 255, key[2] / 255) for key in keys])
             groups.setdefault(group, []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
         return True
