@@ -192,27 +192,61 @@ class Package:
                           for n, e in enumerate(self.exports, 1)}
         return self.paths.get((tuple(p.lower() for p in path), cls.lower()))
 
-    def class_defaults(self, ref):
-        """(super class reference, default properties) of class export `ref`, or None for a class with its own
-        bytecode (the class's code, not its functions'), which is read token by token and not decoded here."""
+    def class_defaults(self, ref, scripted=False):
+        """(super class reference, default properties) of class export `ref`. A class with its own bytecode (the
+        class's code, not its functions') gives None, unless `scripted`: then its defaults are found by trying each
+        offset after the bytecode's start for the class tail (state and class header, dependencies on classes,
+        package imports, defaults) that ends exactly at the export's end, and taking the first."""
         export = self.exports[ref - 1]
+        end = export['offset'] + export['size']
         self.at = export['offset']
         parent = self.index()
         for _ in range(4):  # next, script text, children, friendly name
             self.index()
         _line, _text, script = self.unpack('III')
-        if script:
+        if not script:
+            return parent, self.class_tail()
+        if not scripted:
             return None
+        # ponytail: the bytecode is stored token by token (not ScriptSize bytes) and not decoded; the earliest offset
+        # whose tail parses to the end was the defaults on every class checked (Actor, ZoneInfo, LevelInfo, Mover in
+        # Unreal 227 and UT 469: Actor's DrawType 1, ZoneInfo's TexUPanSpeed 1.0). Decode the bytecode if one misreads.
+        for at in range(self.at, end):
+            self.at = at
+            try:
+                found = self.class_tail(checked=True)
+            except (struct.error, IndexError, UnicodeDecodeError):
+                found = None
+            if found is not None and self.at == end:
+                return parent, found
+        return None
+
+    def class_tail(self, checked=False):
+        """The defaults after a class's bytecode at self.at; `checked`: None unless its dependencies are classes and
+        the names it reads exist."""
+        def name():
+            at = self.index()
+            if checked and not 0 <= at < len(self.names):
+                raise IndexError(at)
+
+        def is_class(ref):
+            return self.exports[ref - 1]['cls'] == 0 if ref > 0 else ref < 0 and self.imports[-ref - 1]['class_name'] == 'Class'
+
         self.at += 22 + 4 * (self.version <= 61) + 20  # state masks, label table, flags; class flags and GUID
-        for _ in range(self.index()):  # dependencies
-            self.index()
+        count = self.index()
+        if checked and not 0 < count < 1000:
+            return None
+        for _ in range(count):  # dependencies: a class, deep, script text CRC
+            ref = self.index()
+            if checked and not is_class(ref):
+                return None
             self.at += 8
         for _ in range(self.index()):  # package imports
-            self.index()
+            name()
         if self.version >= 62:
             self.index()  # within
-            self.index()  # config name
-        return parent, self.tagged()
+            name()  # config name
+        return self.tagged(checked)
 
     def find(self, cls_names):
         """Export numbers (1-based references) whose class name is in `cls_names`."""
@@ -230,11 +264,14 @@ class Package:
                 self.index()
         return self.tagged()
 
-    def tagged(self):
-        """Tagged properties at self.at, up to the name None."""
+    def tagged(self, checked=False):
+        """Tagged properties at self.at, up to the name None; `checked` raises IndexError on a negative name index."""
         props = {}
         while True:
-            name = self.names[self.index()]
+            at = self.index()
+            if checked and at < 0:
+                raise IndexError(at)
+            name = self.names[at]
             if name == 'None':
                 return props
             info = self.data[self.at]
@@ -268,8 +305,8 @@ class Package:
                 value = self.index()
                 if kind == 6:
                     value = self.names[value]
-            elif kind == 13:  # str: (from version 64) a compact length, then the characters and a NUL
-                if self.version >= 64:
+            elif kind in (7, 13):  # string[n] (fixed size), or str: (from version 64) a compact length first
+                if kind == 13 and self.version >= 64:
                     self.index()
                 value = self.data[self.at:start + size].split(b'\0')[0].decode('latin-1')
             else:
@@ -341,6 +378,121 @@ class Package:
             mesh['frame_verts'], mesh['frames'] = len(mesh['points']), 1
         return mesh
 
+    def text(self):
+        """A string: (from version 64) a compact length, the characters and a NUL; before, characters up to a NUL."""
+        if self.version >= 64:
+            length = self.index()
+            start, end = self.at, self.at + length
+        else:
+            start, end = self.at, self.data.index(b'\0', self.at) + 1
+        self.at = end
+        return self.data[start:end].split(b'\0')[0].decode('latin-1')
+
+    def ended(self, ref):
+        """Raise unless the last read stopped exactly at the end of export `ref`."""
+        export = self.exports[ref - 1]
+        off = self.at - export['offset'] - export['size']
+        if off:
+            raise ValueError(f"{export['name']} read ends {off} bytes off its end")
+
+    def polys(self, ref):
+        """Polys export `ref` (a brush's polygons, in its own space): [dict(base, normal, u, v, points, flags, texture,
+        brush_poly, pan)]; u32 count and max, then each: compact corner count, base, normal, U, V, the corners, poly
+        flags, actor, texture, item name, link, brush poly, pan U and V."""
+        self.properties(ref)
+        out = []
+        for _ in range(self.unpack('ii')[0]):
+            count = self.index()
+            base, normal, u, v = (self.unpack('3f') for _ in range(4))
+            points = [self.unpack('3f') for _ in range(count)]
+            flags, = self.unpack('I')
+            self.index()  # actor
+            texture = self.index()
+            self.index(), self.index()  # item name, link
+            out.append(dict(base=base, normal=normal, u=u, v=v, points=points, flags=flags, texture=texture,
+                            brush_poly=self.index(), pan=self.unpack('hh')))
+        self.ended(ref)
+        return out
+
+    def level(self, ref):
+        """Level export `ref`: its actors (references, 0 for an empty slot) and its Model, the level's BSP."""
+        self.properties(ref)
+        count, _max = self.unpack('ii')
+        actors = [self.index() for _ in range(count)]
+        for _ in range(4):  # URL protocol, host, map, portal
+            self.text()
+        for _ in range(self.index()):  # URL options
+            self.text()
+        self.unpack('iI')  # URL port, valid
+        return dict(actors=actors, model=self.index())
+
+    def model(self, ref):
+        """Model export `ref` (a level's BSP, or a brush's): dict of vectors, points, nodes, surfs, verts, zones, polys,
+        lightmaps, light_bits, lights. Up to version 61 the first five are objects of their own (Vectors, BspNodes,
+        BspSurfs, Verts: u32 count and max, then the items); from 62 they are inline, led by compact counts."""
+        self.properties(ref)
+        self.unpack('6fB' + ('ffff' if self.version > 61 else 'fff'))  # UPrimitive bounds
+        vector = lambda: self.unpack('3f')
+
+        def node():  # plane, zone mask, flags, then vertex pool, surf, back, front, coplanar, two bounds, two zones
+            plane = self.unpack('4f')
+            self.unpack('QB')
+            pool, surf, back, front, _plane, _cbound, _rbound, zone0, zone1 = (self.index() for _ in range(9))
+            count, leaf0, leaf1 = self.unpack('Bii')
+            return dict(plane=plane, pool=pool, surf=surf, count=count, back=back, front=front, zones=(zone0, zone1),
+                        leaves=(leaf0, leaf1))
+
+        def surf():  # texture, poly flags, base point, normal, U, V vectors, lightmap, brush poly, pan U, V, actor
+            texture, (flags,) = self.index(), self.unpack('I')
+            base, normal, u, v, lightmap, _poly = (self.index() for _ in range(6))
+            pan = self.unpack('hh')
+            return dict(texture=texture, flags=flags, base=base, normal=normal, u=u, v=v, lightmap=lightmap, pan=pan,
+                        actor=self.index())
+
+        zone = lambda: (self.index(), self.unpack('QQ'))  # zone actor, connectivity, visibility
+        if self.version <= 61:
+            out, refs = {}, [self.index() for _ in range(5)]
+            after = self.at
+            for key, item, sub in zip(('vectors', 'points', 'nodes', 'surfs', 'verts'),
+                                      (vector, vector, node, surf, lambda: (self.index(), self.index())), refs):
+                if sub <= 0:  # A brush's Model may have no BSP.
+                    out[key] = []
+                    out.setdefault('zones', [])
+                    continue
+                self.properties(sub)
+                out[key] = [item() for _ in range(self.unpack('ii')[0])]
+                if key == 'nodes':
+                    out['zones'] = [zone() for _ in range(self.index())]
+                if key == 'verts':
+                    self.index()  # shared sides
+                self.ended(sub)
+            self.at = after
+        else:
+            out = {key: [item() for _ in range(self.index())] for key, item in
+                   (('vectors', vector), ('points', vector), ('nodes', node), ('surfs', surf),
+                    ('verts', lambda: (self.index(), self.index())))}
+            self.unpack('i')  # shared sides
+            out['zones'] = [zone() for _ in range(self.unpack('i')[0])]
+        out['polys'] = self.index()  # A brush's polygons (a Polys export), or 0.
+        # Lightmap entries: offset into the light bits, pan, U and V size, U and V scale, first of its light actors.
+        out['lightmaps'] = [dict(offset=self.unpack('i')[0], pan=self.unpack('3f'), size=(self.index(), self.index()),
+                                 scale=self.unpack('ff'), lights=self.unpack('i')[0]) for _ in range(self.index())]
+        count = self.index()
+        out['light_bits'] = self.data[self.at:self.at + count]
+        self.at += count
+        for _ in range(self.index()):  # bounds
+            self.unpack('6fB')
+        for _ in range(self.index()):  # leaf hulls
+            self.unpack('i')
+        for _ in range(self.index()):  # leaves: zone, permeating, volumetric, visible zones
+            self.index(), self.index(), self.index(), self.unpack('Q')
+        out['lights'] = [self.index() for _ in range(self.index())]
+        if self.version <= 61:
+            self.index(), self.index()
+        self.unpack('ii')  # root outside, linked
+        self.ended(ref)
+        return out
+
 
 class Library:
     """The install's packages by name, opened on first use, and their textures as images."""
@@ -349,7 +501,35 @@ class Library:
         self.maps = sorted((install / 'Maps').rglob('*.unr')) if (install / 'Maps').is_dir() else []
         self.files = {path.stem.lower(): path for folder in ('System', 'Textures') if (install / folder).is_dir()
                       for path in (install / folder).iterdir() if path.suffix.lower() in ('.u', '.utx')}
-        self.packages, self.textures = {}, {}
+        self.packages, self.textures, self.classes = {}, {}, {}
+
+    def class_properties(self, path):
+        """Default properties of class `path` (package, name) over its parents', scripted classes included (raw
+        values: an object reference is its own package's, see class_info). A class its package does not hold is taken
+        from the install's code package that does (227 moved UnrealI's Lantern, TriggerLight... into UnrealShare)."""
+        return self.class_info(path)[0]
+
+    def class_info(self, path):
+        """(defaults, {property: package it was set in}, [class names from `path` up to Object]) of class `path`."""
+        key = tuple(p.lower() for p in path)
+        if key not in self.classes:
+            self.classes[key] = {}, {}, [path[-1]]  # Also ends a loop.
+            found = None
+            for name in [path[0]] + sorted(self.files):
+                package = self.package(name) if self.files.get(name.lower(), Path()).suffix.lower() == '.u' else None
+                found = package and package.export_by_path((package.path.stem, path[-1]), 'None')
+                if found:
+                    break
+            try:
+                defaults = found and package.class_defaults(found, scripted=True)
+            except (struct.error, IndexError):
+                defaults = None
+            if defaults:
+                parent, props = defaults
+                above = self.class_info(package.ref_path(parent)) if parent else ({}, {}, [])
+                self.classes[key] = ({**above[0], **props}, {**above[1], **{k: package for k in props}},
+                                     [path[-1]] + above[2])
+        return self.classes[key]
 
     def package(self, name):
         name = name.lower()
@@ -364,8 +544,13 @@ class Library:
         if ref == 0:
             return None
         path = package.ref_path(ref)
+        cls = package.imports[-ref - 1]['class_name']
         target = self.package(path[0])
-        found = target and target.export_by_path(path, package.imports[-ref - 1]['class_name'])
+        found = target and target.export_by_path(path, cls)
+        if target and not found:  # UGCredits asks for UGoldCredits.Logos.Legend, saved without its group: the only match.
+            same = [n for n, e in enumerate(target.exports, 1) if e['name'].lower() == path[-1].lower()
+                    and target.ref_name(e['cls']).lower() == cls.lower()]
+            found = same[0] if len(same) == 1 else None
         return (target, found) if found else None
 
     def class_skins(self):
@@ -447,24 +632,25 @@ class Library:
                         vote(dict(merged_classes[key], **{k: (level, v) for k, v in placed.items()}))
         return skins
 
-    def texture(self, package, ref):
-        """(package.group.name, RGBA image) of texture reference `ref`, or None when it is missing or unreadable."""
+    def texture(self, package, ref, masked=False):
+        """(package.group.name, RGBA image) of texture reference `ref`, or None when it is missing or unreadable;
+        `masked` clears palette index 0 even where the texture is not bMasked (see decode_texture)."""
         found = self.resolve(package, ref)
         if not found:
             return None
         package, ref = found
-        key = package.ref_path(ref)
+        key = package.ref_path(ref), masked
         if key not in self.textures:
             try:
-                image = decode_texture(self, package, ref)
+                image = decode_texture(self, package, ref, masked)
             except (struct.error, ValueError, KeyError, IndexError, OSError):
                 image = None
-            self.textures[key] = image and ('.'.join(key), image)
+            self.textures[key] = image and ('.'.join(key[0]), image)
         return self.textures[key]
 
 
-def decode_texture(library, package, ref):
-    """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear."""
+def texture_mips(package, ref):
+    """(properties, [(data, width, height) of each mip]) of texture export `ref`; leaves package.at after them."""
     props = package.properties(ref)
     mips = []
     for _ in range(package.unpack('B')[0]):
@@ -475,14 +661,33 @@ def decode_texture(library, package, ref):
         package.at += size
         width, height, _u, _v = package.unpack('IIBB')
         mips.append((data, width, height))
+    return props, mips
+
+
+def decode_texture(library, package, ref, masked=False):
+    """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear, and with
+    `masked` any palette texture's (the game masks a texture wherever a surface is drawn masked: map surfaces).
+    Procedural textures, whose mips are empty because the game draws them as it runs, get a still: fire from its
+    sparks; wet, ice and (UT's) scripted textures their SourceTexture's pixels (undistorted; no text a script draws) in
+    their own palette; water and wave textures calm water, index 128 everywhere (SurrealEngine's water shade for a flat
+    surface)."""
+    props, mips = texture_mips(package, ref)
     if not mips:
         raise ValueError('no mips')
     data, width, height = mips[0]
     kind = props.get('Format', 0)
-    if kind == 0 and len(data) < width * height and package.ref_name(package.exports[ref - 1]['cls']) == 'FireTexture':
+    cls = package.ref_name(package.exports[ref - 1]['cls'])
+    if kind == 0 and len(data) < width * height and cls == 'FireTexture':
         sparks = [package.unpack('8B') for _ in range(package.index())]  # type, heat, x, y, four by type
         data = fire_pixels(props, sparks, props.get('UClamp', width), props.get('VClamp', height))
         width, height = props.get('UClamp', width), props.get('VClamp', height)
+    elif kind == 0 and len(data) < width * height:
+        source = cls in ('WetTexture', 'IceTexture', 'ScriptedTexture') and library.resolve(package, props.get('SourceTexture', 0))
+        source = source and texture_mips(*source)[1]
+        if source and source[0][1:] == (width, height) and len(source[0][0]) >= width * height:
+            data = source[0][0]
+        elif cls in ('WaterTexture', 'WaveTexture', 'WetTexture', 'IceTexture'):
+            data = bytes([128]) * (width * height)
     if kind == 0:
         found = library.resolve(package, props.get('Palette', 0))
         if not found:
@@ -492,7 +697,7 @@ def decode_texture(library, package, ref):
         count = palette.index()
         colours = bytearray(palette.data[palette.at:palette.at + 4 * count])
         colours[3::4] = b'\xff' * count
-        if props.get('bMasked'):
+        if props.get('bMasked') or masked:
             colours[3] = 0
         image = Image.frombytes('P', (width, height), data)
         image.putpalette(bytes(colours), 'RGBA')
@@ -501,6 +706,11 @@ def decode_texture(library, package, ref):
         return Image.frombytes('RGBA', (width, height), data, 'bcn', {3: 1, 6: 2, 7: 3}[kind])
     if kind == 5:
         return Image.frombytes('RGBA', (width, height), data, 'raw', 'BGRA')
+    if isinstance(props.get('MipZero'), bytes) and len(props['MipZero']) == 4:
+        # ponytail: a format not decoded here (227's 19: UWindow.BlackTexture, on DmRetrospective's walls) is drawn
+        # flat in its MipZero, the texture's average colour; decode the format if one shows detail.
+        r, g, b, _a = props['MipZero']
+        return Image.new('RGBA', (width, height), (r, g, b, 255))
     raise ValueError(f'texture format {kind}')
 
 
@@ -576,25 +786,34 @@ def material_settings(flags):
     return settings
 
 
-def build_model(mesh, slot_of, frame=0, game='unreal', style_flags=0):
-    """Geometry of `mesh` at animation frame `frame`; slot_of(texture slot, poly flags) gives a PNG name, or None (not
-    drawn). Faces with the same PNG and flags share a material."""
+def mesh_points(mesh, frame=0):
+    """Unreal points (x, y, z) of `mesh` at animation frame `frame`, after the mesh's own origin, scale and rotation."""
     rows = rotation(*mesh['rot'])
     base = frame * mesh['frame_verts']
     points = []
     packed = mesh['verts'][base:base + mesh['frame_verts']]
     for point in mesh['points'] if 'points' in mesh else map(unpack_vertex, packed):
         v = [(c - o) * s for c, o, s in zip(point, mesh['origin'], mesh['scale'])]
-        x, y, z = (sum(row[k] * v[k] for k in range(3)) for row in rows)
-        points.append((-y * SCALE, z * SCALE, x * SCALE))  # x forward, y right, z up -> y up, +z forward.
+        points.append(tuple(sum(row[k] * v[k] for k in range(3)) for row in rows))
+    return points
+
+
+def mesh_faces(mesh):
+    """[corner a, b, c, (poly flags, texture slot)] of `mesh`, each corner (point index, u, v), clockwise from the front."""
     if 'faces' in mesh:
         wedges, special = mesh['wedges'], mesh['special_verts']
-        faces = [[(special + wedges[w][0], wedges[w][1], wedges[w][2]) for w in face[:3]] + [mesh['materials'][face[3]]]
-                 for face in mesh['faces']]
-    else:
-        faces = [[(t[i], t[3 + 2 * i], t[4 + 2 * i]) for i in range(3)] + [(t[9], t[10])] for t in mesh['tris']]
+        return [[(special + wedges[w][0], wedges[w][1], wedges[w][2]) for w in face[:3]] + [mesh['materials'][face[3]]]
+                for face in mesh['faces']]
+    return [[(t[i], t[3 + 2 * i], t[4 + 2 * i]) for i in range(3)] + [(t[9], t[10])] for t in mesh['tris']]
+
+
+def build_model(mesh, slot_of, frame=0, game='unreal', style_flags=0):
+    """Geometry of `mesh` at animation frame `frame`; slot_of(texture slot, poly flags) gives a PNG name, or None (not
+    drawn). Faces with the same PNG and flags share a material."""
+    # x forward, y right, z up -> y up, +z forward.
+    points = [(-y * SCALE, z * SCALE, x * SCALE) for x, y, z in mesh_points(mesh, frame)]
     vertices, uvs, slots = [], [], {}
-    for a, b, c, (flags, texture) in faces:
+    for a, b, c, (flags, texture) in mesh_faces(mesh):
         flags |= style_flags
         png = slot_of(texture, flags)
         if png is None or max(a[0], b[0], c[0]) >= len(points):
