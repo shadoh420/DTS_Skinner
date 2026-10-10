@@ -1,12 +1,14 @@
-/* BSP29 indexed materials for the shared free-flight viewer. Light values address the original software colormap. */
+/* Quake indexed materials: original software colormap, or rerelease RGB lightmaps with fullbright bypass. */
 'use strict';
 window.quakeMaps = {
   time: {value: 0},
-  material(group, texture, lightMap, colormap) {
+  material(group, texture, lightMap, colormap, rgbLighting, skybox) {
+    if (group.kind === 'sky' && skybox) return window.quake2Maps.material(group, texture, lightMap);
     if (!texture || !colormap) return new THREE.MeshBasicMaterial({color: 0xff00ff});
     return new THREE.ShaderMaterial({
       uniforms: {indices: {value: texture}, lights: {value: lightMap}, colors: {value: colormap},
         seconds: this.time, size: {value: new THREE.Vector2(...group.size)},
+        rgbLighting: {value: !!rgbLighting},
         kind: {value: group.kind === 'sky' ? 1 : group.kind === 'turbulent' ? 2 : 0}},
       vertexShader: `
         attribute vec2 uv2;
@@ -23,6 +25,7 @@ window.quakeMaps = {
         uniform float seconds;
         uniform vec2 size;
         uniform int kind;
+        uniform bool rgbLighting;
         varying vec2 texUV, lightUV;
         varying vec3 world;
         // Manual repeat keeps NPOT index images intact on WebGL1: automatic resizing would invent indices.
@@ -44,6 +47,11 @@ window.quakeMaps = {
             vec2 st = texUV * size;
             vec2 warp = sin(st.yx * .125 + seconds) * 8.;
             gl_FragColor = color(pixel((st + warp) / size), 32.);
+          } else if (rgbLighting) {
+            float index = pixel(texUV);
+            vec3 base = color(index, 32.).rgb;
+            vec3 illumination = texture2D(lights, lightUV).rgb * (255. / 128.);
+            gl_FragColor = vec4(index >= 224. ? base : min(base * illumination, vec3(1.)), 1.);
           } else {
             // RG stores a 16-bit fixed-point colormap coordinate. Bilinear sampling interpolates luxels
             // before the high byte selects a row, just as software Quake interpolates blocklights.
