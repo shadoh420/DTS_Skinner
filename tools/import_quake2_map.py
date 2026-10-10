@@ -56,7 +56,7 @@ def upload_texture(texture, palette):
     return Image.fromarray(np.minimum(rgb * INTENSITY, 255).astype(np.uint8))
 
 
-def read_bsp(data, files):
+def read_bsp(data, files, *, texture_loader=None):
     if len(data) < 160 or data[:4] != b'IBSP' or struct.unpack_from('<i', data, 4)[0] != 38:
         raise ValueError('Expected IBSP version 38')
     lumps = []
@@ -86,7 +86,9 @@ def read_bsp(data, files):
         name = asset_name(row[10].split(b'\0')[0].decode('latin1'))
         path = 'textures/' + name + '.wal'
         if path not in cache:
-            if path in files:
+            if texture_loader is not None:
+                cache[path] = texture_loader(name)
+            elif path in files:
                 cache[path] = dict(read_wal(files[path][0]), name=name)
             else:
                 cache[path] = dict(name=name, width=16, height=16, missing=True,
@@ -183,7 +185,7 @@ def ordered_starts(bsp, game):
     return [e for e in ordered if not excluded(e, game)]
 
 
-def instances(bsp, game='quake2'):
+def instances(bsp, game='quake2', *, open_at_start=True):
     """Initial brush states: medium SP, or deathmatch filtering for CTF; motion frozen."""
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], angles=[0., 0., 0.], state='world', guess=False)]
     skipped = []
@@ -260,7 +262,8 @@ def instances(bsp, game='quake2'):
             state = 'authored origin; expansion plat2 activation/top state not verified'
             guess = True
         result.append(dict(model=number, entity=index, classname=cls, offset=offset.tolist(), angles=turn.tolist(), state=state, guess=guess))
-    open_doors_at_start(bsp, result, game)
+    if open_at_start:
+        open_doors_at_start(bsp, result, game)
     return result, skipped
 
 
