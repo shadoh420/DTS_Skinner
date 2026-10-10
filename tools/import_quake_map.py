@@ -476,6 +476,25 @@ def build_item(raw, palette, name):
                 for i, g in enumerate(data['groups'])], metadata=dict(pose='BSP item box', lighting='fullbright texture')), textures
 
 
+def hull_landing(bsp, origin, hull=1):
+    """Origin height where the player's box (the world's hull 1, clip brushes included) comes to rest falling from
+    `origin`, or None when it starts in solid. Faces alone miss invisible clip floors (mg1's mge2m1 start)."""
+    def contents(point):
+        node = bsp['models'][0][9 + hull]
+        while node >= 0:
+            plane, front, back = bsp['clipnodes'][node]
+            *normal, dist, kind = bsp['planes'][plane]
+            side = (point[kind] if kind < 3 else np.dot(normal, point)) - dist
+            node = front if side >= 0 else back
+        return node
+    point = np.array(origin, float)
+    if not 0 <= bsp['models'][0][9 + hull] < len(bsp['clipnodes']) or contents(point) == -2:  # No hull, or CONTENTS_SOLID.
+        return None
+    while point[2] > -32768 and contents(point - (0, 0, 1)) != -2:
+        point[2] -= 1  # ponytail: 1-unit march, a few thousand node walks at most per start.
+    return point[2]
+
+
 def build_map(raw, name, game='quake', lit=None):
     bsp = read_bsp(raw)
     bsp['rerelease'] = game in RERELEASE
@@ -484,11 +503,17 @@ def build_map(raw, name, game='quake', lit=None):
     data = geometry(bsp, placed)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp, game)
+
+    def floor_under(eye):
+        """Brush entities' floors come from faces; the world's own, clip brushes included, from hull 1."""
+        floor = floor_below(data['floors'], *eye)
+        landing = hull_landing(bsp, np.array(eye) - (0, 0, 22)) if floor is not None else None
+        return max(floor, landing - 24) if landing is not None else floor
     for view in views:
         # The game drops a spawned player onto the floor below (standing at floor + 24, eyes 22 higher): e1m8's and
         # hipend's starts float well above it (checked in WinQuake). Intermission cameras stay where they are.
         origin = np.array(view['native_origin'])
-        floor = floor_below(data['floors'], *origin) if view['classname'] != 'info_intermission' else None
+        floor = floor_under(origin) if view['classname'] != 'info_intermission' else None
         if floor is not None and origin[2] > floor + 46:
             origin[2] = floor + 46
             view.update(origin=(origin[[1, 2, 0]] * SCALE).tolist(), native_origin=origin.tolist())
@@ -496,7 +521,7 @@ def build_map(raw, name, game='quake', lit=None):
     checks = []
     for view in views:
         origin = view['native_origin']
-        floor = floor_below(data['floors'], *origin)
+        floor = floor_under(origin)
         checks.append(dict(classname=view['classname'], inside_bounds=bool(((origin >= bounds[0]) & (origin <= bounds[1])).all()),
                            floor_z=floor, eye_above_floor=origin[2] - floor if floor is not None else None))
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(),
