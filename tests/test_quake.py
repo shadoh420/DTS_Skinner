@@ -11,7 +11,7 @@ import zipfile
 from PIL import Image
 
 from app import app
-from tools.import_quake import build_model, import_catalog, read_mdl, read_pak
+from tools.import_quake import build_model, import_catalog, read_install, read_mdl, read_pak
 from tools.model_data import load_model_data
 
 INSTALL = Path('C:/Program Files (x86)/Steam/steamapps/common/Quake')
@@ -53,6 +53,44 @@ def install_at(folder):
 
 
 class QuakeImportTest(unittest.TestCase):
+    def test_pack_layering_duplicates_boxes_and_palette(self):
+        from tests.test_quake_maps import bsp
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for game in ('id1', 'hipnotic', 'rogue'):
+                (root / game).mkdir()
+            base = [('gfx/palette.lmp', PALETTE), ('progs/player.mdl', mdl()), ('progs/eyes.mdl', mdl()),
+                    ('maps/b_same.bsp', bsp()), ('maps/b_other.bsp', bsp())]
+            (root / 'id1/PAK0.PAK').write_bytes(pak(base))
+            (root / 'id1/PAK1.PAK').write_bytes(pak([('progs/player.mdl', mdl(True))]))
+            (root / 'hipnotic/pak0.pak').write_bytes(pak([('progs/player.mdl', mdl(True)), ('progs/eyes.mdl', mdl(True)),
+                                                       ('maps/b_same.bsp', bsp()), ('maps/b_other.bsp', bsp(names=('brick',)))]))
+            alternate = bytes([19, 27, 35]) * 256
+            (root / 'rogue/pak0.pak').write_bytes(pak([('gfx/palette.lmp', alternate), ('progs/player.mdl', mdl()),
+                                                    ('progs/ogre.mdl', mdl())]))
+            hip, records, counts = read_install(root, 'hipnotic')
+            self.assertEqual(hip['gfx/palette.lmp'][0], PALETTE)
+            self.assertEqual(hip['progs/eyes.mdl'][0], mdl(True))
+            self.assertEqual((len(records), counts['pak0.pak']['directory']), (4, 4))
+            rogue, _, _ = read_install(root, 'rogue')
+            self.assertEqual(rogue['progs/eyes.mdl'][0], mdl())  # No sibling-pack leakage.
+            self.assertEqual(rogue['gfx/palette.lmp'][0], alternate)
+            report = import_catalog(root, root / 'out')
+            self.assertEqual((report['ready'], report['duplicates'], report['renamed']), (8, 2, 3))
+            rows = json.loads((root / 'out/catalog.json').read_text())
+            names = {r['model_name'] for r in rows}
+            self.assertIn('player', names)
+            self.assertIn('rogue_player', names)
+            self.assertIn('hipnotic_eyes', names)
+            self.assertNotIn('hipnotic_player', names)
+            self.assertNotIn('hipnotic_b_same_bsp', names)
+            self.assertIn('hipnotic_b_other_bsp', names)
+            self.assertEqual(next(r for r in rows if r['model_name'] == 'rogue_ogre')['category'], 'Dissolution of Eternity: Monsters')
+            for name, color in (('hipnotic_eyes', (0, 255, 7)), ('rogue_player', (19, 27, 35))):
+                with Image.open(root / 'out/textures' / (name + '.png')) as image:
+                    self.assertEqual(image.getpixel((0, 0)), color)
+            self.assertTrue(all(r['status'] != 'pending' for r in report['results']))
+
     def test_first_pose_skin_groups_and_seam(self):
         for grouped in (False, True):
             with self.subTest(grouped=grouped):
@@ -154,7 +192,8 @@ class QuakeInstallTest(unittest.TestCase):
         self.assertEqual(sum(n.endswith('.mdl') for _, n in expected), 79)
         with tempfile.TemporaryDirectory() as folder:
             output = Path(folder)
-            report = import_catalog(INSTALL, output)
+            with patch('tools.import_quake.available_games', return_value=['quake']):
+                report = import_catalog(INSTALL, output)
             self.assertCountEqual([(r['pak'], r['source']) for r in report['results']], expected)
             self.assertEqual((report['ready'], report['mdl_entries'], report['mdl_skipped'], report['overridden']),
                              (92, 79, 0, 0))
@@ -168,6 +207,37 @@ class QuakeInstallTest(unittest.TestCase):
                 data = load_model_data(path)
                 with Image.open(output / 'textures' / data['material_textures'][0]) as image:
                     image.verify()
+
+    def check_pack(self, game, mdl_count, boxes, sprites, renamed):
+        raw = (INSTALL / game / 'pak0.pak').read_bytes()
+        offset, size = struct.unpack_from('<ii', raw, 4)
+        names = [raw[i:i + 56].split(b'\0')[0].decode().lower() for i in range(offset, offset + size, 64)]
+        expected = [n for n in names if (n.startswith('progs/') and n.endswith(('.mdl', '.spr', '.bsp')))
+                    or (n.startswith('maps/b_') and n.endswith('.bsp'))]
+        self.assertEqual(sum(n.endswith('.mdl') for n in expected), mdl_count)
+        with tempfile.TemporaryDirectory() as folder:
+            with patch('tools.import_quake.available_games', return_value=['quake', game]):
+                report = import_catalog(INSTALL, Path(folder))
+            records = [r for r in report['results'] if r['game'] == game]
+            self.assertCountEqual([r['source'] for r in records], expected)
+            self.assertEqual(report['pak_counts'][f'{game}/pak0.pak']['directory'], len(names))
+            self.assertEqual(sum(r['status'] == 'ready' for r in records), mdl_count + boxes)
+            self.assertEqual(sum(r['status'] == 'skipped' for r in records), sprites)
+            self.assertEqual(sum(r.get('renamed', False) for r in records), renamed)
+            self.assertTrue(all(r.get('reason') for r in records if r['status'] == 'skipped'))
+            for record in records:
+                if record['status'] == 'ready':
+                    model = load_model_data(Path(folder) / 'model_json' / (record['model'] + '.json'))
+                    self.assertTrue(model['indices'])
+                    self.assertTrue(all((Path(folder) / 'textures' / png).is_file() for png in model['material_textures']))
+
+    @unittest.skipUnless((INSTALL / 'hipnotic/pak0.pak').is_file(), 'needs Scourge of Armagon')
+    def test_hipnotic_directory(self):
+        self.check_pack('hipnotic', 23, 0, 2, 0)
+
+    @unittest.skipUnless((INSTALL / 'rogue/pak0.pak').is_file(), 'needs Dissolution of Eternity')
+    def test_rogue_directory(self):
+        self.check_pack('rogue', 64, 6, 0, 10)
 
 
 if __name__ == '__main__':

@@ -249,7 +249,8 @@ def import_quake_maps_route():
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        return jsonify(import_quake_maps(payload['path'].strip(), local_data_dir / 'quake-maps', payload.get('replace') is True))
+        return jsonify(import_quake_maps(payload['path'].strip(), local_data_dir / 'quake-maps',
+                                         payload.get('replace') is True, payload.get('game', 'quake')))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:

@@ -1,4 +1,4 @@
-"""Quake (1996): classic id1 PAK0/PAK1 MDL models, first pose and first skin, as game quake.
+"""Quake (1996) and classic mission-pack models, first pose and first skin, as game quake.
 
 python tools/import_quake.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake"
 
@@ -21,9 +21,22 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
 
 MONSTERS = {'boss', 'demon', 'dog', 'enforcer', 'fish', 'hknight', 'knight', 'ogre', 'oldone', 'shalrath',
-            'shambler', 'soldier', 'tarbaby', 'wizard', 'zombie'}
+            'shambler', 'soldier', 'tarbaby', 'wizard', 'zombie', 'armabody', 'armalegs', 'grem', 'scor',
+            'spikmine', 'dragon', 'eel2', 'lavaman', 'morph_az', 'morph_eg', 'morph_gr', 'mummy', 's_wrath', 'wrath'}
 EFFECTS = {'bolt', 'bolt2', 'bolt3', 'flame', 'flame2', 'grenade', 'k_spike', 'laser', 'lavaball', 'missile',
-           's_light', 's_spike', 'spike', 'teleport', 'v_spike', 'w_spike', 'zom_gib'}
+           's_light', 's_spike', 'spike', 'teleport', 'v_spike', 'w_spike', 'zom_gib', 'lasrspik', 'lavarock',
+           'proxbomb', 'beam', 'fireball', 'lspike', 'plasma', 'sphere', 'w_ball', 'eelhead', 'hook'}
+GAMES = {'quake': 'Quake (1996)', 'hipnotic': 'Scourge of Armagon', 'rogue': 'Dissolution of Eternity'}
+
+
+def install_root(install):
+    path = Path(install).expanduser()
+    return path.parent if path.name.lower() in ('id1', 'hipnotic', 'rogue') else path
+
+
+def available_games(install):
+    root = install_root(install)
+    return ['quake'] + [game for game in ('hipnotic', 'rogue') if (root / game).is_dir()]
 
 
 def read_pak(data):
@@ -46,14 +59,19 @@ def read_pak(data):
     return entries
 
 
-def read_install(install):
-    """Effective id1 entries, every source record, and per-PAK counts; later entries win."""
-    install = Path(install).expanduser()
-    folder = install / 'id1' if (install / 'id1').is_dir() else install
+def read_install(install, game='quake'):
+    """Effective layered files; records/counts cover only this campaign's own PAK directories."""
+    if not isinstance(game, str) or game not in GAMES:
+        raise ValueError('Expected quake, hipnotic or rogue')
+    root = install_root(install)
+    folder = root / ('id1' if game == 'quake' else game)
+    if game == 'quake' and not folder.is_dir():
+        folder = Path(install).expanduser()
     paths = {p.name.lower(): p for p in folder.iterdir() if p.is_file()} if folder.is_dir() else {}
     if 'pak0.pak' not in paths:
-        raise ValueError(f'No classic Quake id1/PAK0.PAK in {install}')
-    files, records, counts = {}, [], {}
+        raise ValueError(f'No classic Quake {folder.name}/PAK0.PAK in {install}')
+    files = {} if game == 'quake' else read_install(install)[0]
+    records, counts = [], {}
     for pak in ('pak0.pak', 'pak1.pak'):
         if pak not in paths:
             continue
@@ -62,9 +80,9 @@ def read_install(install):
                            spr=sum(n.startswith('progs/') and n.endswith('.spr') for n, _ in entries),
                            bsp=sum(n.endswith('.bsp') for n, _ in entries))
         for name, data in entries:
-            if name in files:
+            if name in files and files[name][2]['game'] == game:
                 files[name][2].update(status='overridden', reason=f'Overridden by {pak}:{name}')
-            record = dict(pak=pak, source=name, status='pending')
+            record = dict(game=game, pak=pak, source=name, status='pending')
             files[name] = data, pak, record
             records.append(record)
     palette = files.get('gfx/palette.lmp', (b'',))[0]
@@ -176,9 +194,9 @@ def build_model(mesh, texture):
 def category(name):
     if name in MONSTERS:
         return 'Monsters'
-    if name in ('player', 'eyes'):
+    if name in ('player', 'eyes', 'playham'):
         return 'Player'
-    if name.startswith(('h_', 'gib')) or name in EFFECTS:
+    if name.startswith(('h_', 'gib', 'rubble', 's_wrtgb')) or 'gib' in name or name in EFFECTS:
         return 'Gibs/Effects'
     if name.startswith(('v_', 'g_')):
         return 'Weapons'
@@ -186,60 +204,77 @@ def category(name):
 
 
 def import_catalog(install, output):
-    """Import the classic install's id1 (or id1 itself), never mission packs or rerelease."""
+    """Import id1 and any adjacent classic packs into one catalog; preserve edited PNGs."""
     output = Path(output)
-    files, records, counts = read_install(install)
-    records = [r for r in records if (r['source'].startswith('progs/') and r['source'].endswith(('.mdl', '.spr', '.bsp')))
-               or item_box(r['source'])]
-    palette = files['gfx/palette.lmp'][0]
+    base = read_install(install)[0]
+    all_records, pak_counts, catalog, taken, base_models = [], {}, [], set(), {}
     for sub in ('model_json', 'textures'):
         (output / sub).mkdir(parents=True, exist_ok=True)
-    catalog, taken = [], set()
-    for record in records:
-        if record['status'] == 'overridden':
-            continue
-        name = record['source']
-        stem, suffix = name.split('/', 1)[1].rsplit('.', 1)
-        model = safe(stem if suffix == 'mdl' else f'{stem}_{suffix}')
-        item = dict(model_name=model, display_name=name.split('/', 1)[1], texture_name='', game='quake',
-                    category=category(stem), status='ready', source=f"{record['pak']}:{name}")
-        try:
-            if suffix == 'spr':
-                raise ValueError('Sprite (.spr), not an MDL; sprite decoding is not included')
-            if suffix == 'bsp' and not item_box(name):
-                raise ValueError('Non-item BSP brush model; use the maps import')
-            if model in taken:
-                raise ValueError('Output model name collision')
-            taken.add(model)
-            if suffix == 'bsp':
-                if __package__:
-                    from .import_quake_map import build_item
+    for game in available_games(install):
+        files, records, counts = read_install(install, game)
+        records = [r for r in records if (r['source'].startswith('progs/') and r['source'].endswith(('.mdl', '.spr', '.bsp')))
+                   or item_box(r['source'])]
+        all_records.extend(records)
+        pak_counts.update({(pak if game == 'quake' else f'{game}/{pak}'): count for pak, count in counts.items()})
+        palette = files['gfx/palette.lmp'][0]
+        for record in records:
+            if record['status'] == 'overridden':
+                continue
+            name = record['source']
+            stem, suffix = name.split('/', 1)[1].rsplit('.', 1)
+            model = safe(stem if suffix == 'mdl' else f'{stem}_{suffix}')
+            if game != 'quake' and name in base and files[name][0] == base[name][0] and name in base_models:
+                record.update(status='duplicate', model=base_models[name], reason='Byte-identical to id1; listed once in its category')
+                continue
+            renamed = game != 'quake' and name in base
+            if game != 'quake':
+                model = f'{game}_{model}'
+            record.update(model=model, renamed=renamed)
+            label = '' if game == 'quake' else GAMES[game] + ': '
+            item = dict(model_name=model, display_name=label + name.split('/', 1)[1], texture_name='', game='quake',
+                        campaign=game, category=label + category(stem), status='ready', source=f"{game}/{record['pak']}:{name}")
+            try:
+                if suffix == 'spr':
+                    raise ValueError('Sprite (.spr), not an MDL; sprite decoding is not included')
+                if suffix == 'bsp' and not item_box(name):
+                    raise ValueError('Non-item BSP brush model; use the maps import')
+                if model in taken:
+                    raise ValueError('Output model name collision')
+                taken.add(model)
+                if suffix == 'bsp':
+                    if __package__:
+                        from .import_quake_map import build_item
+                    else:
+                        from import_quake_map import build_item
+                    data, images = build_item(files[name][0], palette, model)
+                    for png, image in images.items():
+                        if not (output / 'textures' / png).is_file():
+                            image.save(output / 'textures' / png)
                 else:
-                    from import_quake_map import build_item
-                data, images = build_item(files[name][0], palette, model)
-                for png, image in images.items():
-                    if not (output / 'textures' / png).is_file():
-                        image.save(output / 'textures' / png)
-            else:
-                mesh = read_mdl(files[name][0])
-                png = model + '.png'
-                data = build_model(mesh, png)
-                target = output / 'textures' / png
-                if not target.is_file():
-                    palette_image(mesh['skin'], (mesh['width'], mesh['height']), palette).save(target)
-            data['metadata']['source'] = item['source']
-            (output / 'model_json' / f'{model}.json').write_text(json.dumps(data, separators=(',', ':')), encoding='utf-8')
-            item['texture_name'] = data['material_textures'][0]
-            record['status'] = 'ready'
-        except ValueError as exc:
-            record.update(status='skipped', reason=str(exc))
-            item.update(status='skipped', reason=str(exc))
-        catalog.append(item)
+                    mesh = read_mdl(files[name][0])
+                    png = model + '.png'
+                    data = build_model(mesh, png)
+                    target = output / 'textures' / png
+                    if not target.is_file():
+                        palette_image(mesh['skin'], (mesh['width'], mesh['height']), palette).save(target)
+                data['metadata']['source'] = item['source']
+                (output / 'model_json' / f'{model}.json').write_text(json.dumps(data, separators=(',', ':')), encoding='utf-8')
+                item['texture_name'] = data['material_textures'][0]
+                record['status'] = 'ready'
+                if game == 'quake':
+                    base_models[name] = model
+            except ValueError as exc:
+                record.update(status='skipped', reason=str(exc))
+                item.update(status='skipped', reason=str(exc))
+            catalog.append(item)
+    records, counts = all_records, pak_counts
     report = dict(entries=len(catalog), ready=sum(e['status'] == 'ready' for e in catalog), pak_counts=counts,
                   mdl_entries=sum(c['mdl'] for c in counts.values()),
                   bsp_items=sum(item_box(r['source']) for r in records),
                   mdl_skipped=sum(r['status'] == 'skipped' and r['source'].endswith('.mdl') for r in records),
-                  overridden=sum(r['status'] == 'overridden' for r in records), results=records)
+                  overridden=sum(r['status'] == 'overridden' for r in records),
+                  duplicates=sum(r['status'] == 'duplicate' for r in records),
+                  renamed=sum(r.get('renamed', False) and r['status'] == 'ready' for r in records), results=records)
     (output / 'catalog.json').write_text(json.dumps(catalog, indent=1), encoding='utf-8')
     (output / 'import-report.json').write_text(json.dumps(report, indent=1), encoding='utf-8')
     return report

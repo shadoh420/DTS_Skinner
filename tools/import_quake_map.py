@@ -18,11 +18,11 @@ import numpy as np
 from PIL import Image
 
 try:
-    from tools.import_quake import item_box, palette_image, read_install, safe
+    from tools.import_quake import GAMES, available_games, item_box, palette_image, read_install, safe
     from tools.import_unreal_map import floor_below, pack
     from tools.local_data import LOCAL_DATA
 except ImportError:
-    from import_quake import item_box, palette_image, read_install, safe
+    from import_quake import GAMES, available_games, item_box, palette_image, read_install, safe
     from import_unreal_map import floor_below, pack
     from local_data import LOCAL_DATA
 
@@ -189,12 +189,21 @@ def brightness_curve(data, palette):
 
 def vector(entity, key='origin'):
     values = [float(x) for x in entity.get(key, '0 0 0').split()]
-    if len(values) != 3 or not all(math.isfinite(v) for v in values):
+    if not 1 <= len(values) <= 3 or not all(math.isfinite(v) for v in values):
         raise ValueError(f'Invalid entity {key}')
-    return np.array(values)
+    # ED_ParseEpair leaves omitted vector components zero (r1m4 has an intermission mangle of "20").
+    return np.array(values + [0.] * (3 - len(values)))
 
 
-def instances(bsp):
+def rotation(angles):
+    pitch, yaw, roll = np.radians(angles)
+    cp, sp, cy, sy, cr, sr = math.cos(pitch), math.sin(pitch), math.cos(yaw), math.sin(yaw), math.cos(roll), math.sin(roll)
+    return np.array([[cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+                     [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+                     [-sp, cp * sr, cp * cr]])
+
+
+def instances(bsp, game='quake'):
     """Normal-skill single player, no runes; brush spawn positions after train initialization."""
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], state='world')]
     skipped = []
@@ -204,8 +213,18 @@ def instances(bsp):
             continue
         classname = entity.get('classname', '')
         flags = int(entity.get('spawnflags', '0'))
-        if classname.startswith('trigger_') or flags & 512:
-            skipped.append(dict(entity=index, classname=classname, reason='trigger volume' if classname.startswith('trigger_') else 'excluded on normal skill'))
+        reason = 'trigger volume' if classname.startswith('trigger_') else 'excluded on normal skill' if flags & 512 else None
+        if classname.startswith('monster_'):
+            reason = 'QuakeC replaces the authored brush with an MDL; placed monsters are not included'
+        if game == 'hipnotic':
+            if classname in ('func_particlefield', 'func_multi_exploder', 'path_follow', 'func_togglewall'):
+                reason = 'Hipnotic QuakeC clears model/modelindex; non-rendered volume'
+            if classname == 'func_movewall' and not flags & 1:
+                reason = 'Hipnotic collision helper without VISIBLE (1); QuakeC clears model'
+        if game == 'rogue' and classname == 'func_ctf_wall':
+            reason = 'Rogue QuakeC removes CTF walls outside CTF; preview uses single player'
+        if reason:
+            skipped.append(dict(entity=index, classname=classname, reason=reason))
             continue
         number = int(model[1:])
         if not 0 < number < len(bsp['models']):
@@ -213,15 +232,18 @@ def instances(bsp):
         bounds = bsp['models'][number]
         mins, size = np.array(bounds[:3]) - 1, np.array(bounds[3:6]) - np.array(bounds[:3]) + 2
         offset, state = vector(entity), 'authored origin; movement angles cleared'
+        angles = np.zeros(3)
+        guess = classname not in ('func_wall', 'func_button', 'func_door', 'func_door_secret', 'func_plat', 'func_train', 'func_illusionary')
         if classname == 'func_plat' and not entity.get('targetname'):
             offset[2] -= float(entity.get('height', '0')) or size[2] - 8
             state = 'bottom (untargeted plat); height or size_z - 8'
-        elif classname == 'func_train':
+        elif classname == 'func_train' or (game == 'hipnotic' and classname == 'func_train2'):
             target = next((e for e in bsp['entities'] if e.get('targetname') == entity.get('target') and entity.get('target')), None)
             if target is None:
                 raise ValueError(f'func_train {index} has no first path corner')
             offset = vector(target) - mins
             state = 'first path corner minus model mins (after initialization, before travel)'
+            guess = False
         elif classname == 'func_door' and flags & 1:
             angle = float(entity.get('angle', '0'))
             direction = np.array([0, 0, 1 if angle == -1 else -1]) if angle in (-1, -2) else np.array([math.cos(math.radians(angle)), math.sin(math.radians(angle)), 0])
@@ -230,7 +252,39 @@ def instances(bsp):
             state = 'DOOR_START_OPEN; moved by projected size minus lip'
         elif classname == 'func_door':
             state = 'closed'
-        result.append(dict(model=number, entity=index, classname=classname, offset=offset.tolist(), state=state))
+        elif game == 'rogue' and classname == 'func_new_plat':
+            height = float(entity.get('height', '0'))
+            if (flags & 3 or (not flags & 4 and flags & 16)) and height <= 0:
+                offset[2] -= abs(height) or size[2] - 8
+                state = 'newplats.qc: negative/default height starts at pos2 (bottom)'
+            else:
+                state = 'newplats.qc: positive height or elevator stays at authored origin'
+            guess = False
+        elif game == 'rogue' and classname == 'func_elvtr_button':
+            state, guess = 'elevator button unpressed at authored origin', False
+        elif game == 'hipnotic' and classname in ('func_breakawaywall', 'func_bobbingwater'):
+            state, guess = 'authored origin before breaking/bobbing', False
+        elif game == 'hipnotic' and classname in ('rotate_object', 'func_movewall'):
+            # Hipnotic QBSP has already made rotate_object vertices relative to info_rotate.
+            # Adding its compiled origin once restores the authored rest position; do not subtract the pivot again.
+            state, guess = 'compiled pivot origin, zero rotation at rest', False
+            controller = next((e for e in bsp['entities'] if e.get('classname', '').startswith('func_rotate_')
+                               and e.get('target') and e['target'] == entity.get('targetname')
+                               and not int(e.get('spawnflags', '0')) & 512), None)
+            if controller and controller['classname'] == 'func_rotate_train':
+                target = next((e for e in bsp['entities'] if e.get('targetname') == controller.get('path') and controller.get('path')), None)
+                if target is None:
+                    state, guess = 'authored origin; rotating train has no first path_rotate', True
+                else:
+                    offset += vector(target) - vector(controller)
+                    if classname == 'rotate_object':
+                        angles = vector(target, 'angles') if int(target.get('spawnflags', '0')) & 2 else vector(controller, 'angles')
+                    state = 'hiprot.qc: first path_rotate translation; rotate_object uses initial path/controller angles'
+            elif classname == 'rotate_object':
+                angles = vector(entity, 'angles')
+            else:
+                state = 'VISIBLE collision helper at authored origin'
+        result.append(dict(model=number, entity=index, classname=classname, offset=offset.tolist(), angles=angles.tolist(), state=state, guess=guess))
     return result, skipped
 
 
@@ -261,11 +315,12 @@ def geometry(bsp, placed, light=True):
         first, count = model[14:16]
         if first < 0 or count < 0 or first + count > len(bsp['faces']):
             raise ValueError('Invalid model face range')
+        matrix = rotation(instance.get('angles', [0, 0, 0]))
         for number in range(first, first + count):
             face = face_data(bsp, number)
             if face['kind'] == 'hidden':
                 continue
-            points = face['points'] + instance['offset']
+            points = face['points'] @ matrix.T + instance['offset']
             face['placed_points'] = points
             if light:
                 tiles.append(light_codes(face, bsp['lighting']))
@@ -273,7 +328,7 @@ def geometry(bsp, placed, light=True):
             audit.append(dict(face=number, entity=instance['entity'], texture=face['texture']['name'], kind=face['kind'],
                               texturemins=face['mins'].tolist(), luxels=face['size'].tolist(), lightofs=face['lightofs'],
                               styles=face['styles'], missing=face['texture'].get('missing', False)))
-            if face['kind'] == 'normal' and face['normal'][2] > 0:
+            if face['kind'] == 'normal' and (matrix @ face['normal'])[2] > 0:
                 floors.extend((points[0], points[k], points[k + 1]) for k in range(1, len(points) - 1))
     if not faces:
         raise ValueError('No visible BSP faces')
@@ -322,9 +377,9 @@ def build_item(raw, palette, name):
                 for i, g in enumerate(data['groups'])], metadata=dict(pose='BSP item box', lighting='fullbright texture')), textures
 
 
-def build_map(raw, name):
+def build_map(raw, name, game='quake'):
     bsp = read_bsp(raw)
-    placed, skipped = instances(bsp)
+    placed, skipped = instances(bsp, game)
     data = geometry(bsp, placed)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp)
@@ -338,7 +393,7 @@ def build_map(raw, name):
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(),
                      data['uv2'].astype('<f4').tobytes(), np.array(data['indices'], '<u4').tobytes()))
     info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})
-    scene = dict(name=name, title=info.get('message', ''), format='quake-bsp29', vertices=len(points), indices=len(data['indices']),
+    scene = dict(name=name, game=game, title=info.get('message', ''), format='quake-bsp29', vertices=len(points), indices=len(data['indices']),
                  lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views, bounds=bounds.tolist(),
                  instances=placed, skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
                  assumptions=['normal skill, single player, no runes', 'all light styles held at m (264)',
@@ -346,9 +401,11 @@ def build_map(raw, name):
     return scene, blob, data['textures'], data['atlas']
 
 
-def import_maps(install, output, replace=False):
-    files, records, counts = read_install(install)
+def import_maps(install, output, replace=False, game='quake'):
+    files, records, counts = read_install(install, game)
     output = Path(output)
+    if game != 'quake':
+        output /= game
     palette = files['gfx/palette.lmp'][0]
     colormap = files.get('gfx/colormap.lmp', (b'',))[0]
     lut = colormap_image(colormap, palette)
@@ -357,7 +414,8 @@ def import_maps(install, output, replace=False):
     curve = brightness_curve(colormap, palette)
     (output / 'brightness.json').write_text(json.dumps(curve, indent=2), encoding='utf-8')
     records = [r for r in records if r['source'].endswith('.bsp')]
-    result = dict(imported=[], skipped=[], failed={}, pak_counts=counts, bsp_entries=len(records), results=records)
+    result = dict(game=game, imported=[], skipped=[], failed={}, pak_counts=counts, bsp_entries=len(records), results=records,
+                  palette_source=files['gfx/palette.lmp'][2]['game'], colormap_source=files['gfx/colormap.lmp'][2]['game'])
     index = []
     for record in records:
         name = record['source']
@@ -375,7 +433,7 @@ def import_maps(install, output, replace=False):
                 record.update(status='skipped', reason='Already imported; use --replace to rebuild')
                 result['skipped'].append(name)
             else:
-                scene, blob, textures, atlas = build_map(files[name][0], ident)
+                scene, blob, textures, atlas = build_map(files[name][0], ident, game)
                 for png, tex in textures.items():
                     target = output / 'textures' / png
                     if not target.is_file() or replace:
@@ -389,7 +447,7 @@ def import_maps(install, output, replace=False):
                 result['imported'].append(ident)
             if scene['missing']:
                 record['warnings'] = scene['missing']
-            index.append(dict(id=ident, name=ident, title=scene['title'], group='Quake (1996)'))
+            index.append(dict(id=ident, name=ident, title=scene['title'], group=GAMES[game]))
         except (ValueError, IndexError, struct.error) as exc:
             record.update(status='skipped', reason=str(exc))
             result['failed'][name] = str(exc)
@@ -403,5 +461,12 @@ if __name__ == '__main__':
     parser.add_argument('--install', type=Path, required=True)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--replace', action='store_true')
+    parser.add_argument('--game', choices=['all', *GAMES], default='all', help='Default: id1 and every installed classic mission pack')
     args = parser.parse_args()
-    print(json.dumps(import_maps(args.install, args.output or LOCAL_DATA / 'quake-maps', args.replace), indent=1))
+    output = args.output or LOCAL_DATA / 'quake-maps'
+    if args.game == 'all':
+        result = {game: import_maps(args.install, output, args.replace, game) for game in available_games(args.install)}
+        (output / 'import-packs-report.json').write_text(json.dumps(result, indent=1), encoding='utf-8')
+    else:
+        result = import_maps(args.install, output, args.replace, args.game)
+    print(json.dumps(result, indent=1))

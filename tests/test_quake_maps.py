@@ -11,7 +11,7 @@ import numpy as np
 from app import app
 from tools.import_quake import import_catalog
 from tools.import_quake_map import (brightness_curve, build_item, build_map, colormap_image, face_data, import_maps,
-                                   instances, light_codes, read_bsp, surface_kind, viewpoints)
+                                   geometry, instances, light_codes, read_bsp, surface_kind, viewpoints)
 from tests.test_quake import INSTALL, PALETTE, pak
 
 
@@ -40,6 +40,75 @@ def bsp(names=('stone',), styles=(0, 255, 255, 255), values=(64,), side=0):
 
 
 class QuakeMapsTest(unittest.TestCase):
+    def test_pack_map_overrides_palette_fallback_and_routes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for game in ('id1', 'hipnotic', 'rogue'):
+                (root / game).mkdir()
+            table = bytes(range(256)) * 64
+            (root / 'id1/PAK0.PAK').write_bytes(pak([('gfx/palette.lmp', PALETTE), ('gfx/colormap.lmp', table),
+                                                   ('maps/start.bsp', bsp()), ('maps/base.bsp', bsp())]))
+            (root / 'hipnotic/pak0.pak').write_bytes(pak([('maps/start.bsp', bsp().replace(b'Synthetic map', b'Hipnotic test'))]))
+            alternate = bytes([19, 27, 35]) * 256
+            (root / 'rogue/pak0.pak').write_bytes(pak([('gfx/palette.lmp', alternate), ('gfx/colormap.lmp', table[::-1]),
+                                                    ('maps/start.bsp', bsp().replace(b'Synthetic map', b'Rogue testing')),
+                                                    ('maps/b_test.bsp', bsp())]))
+            with patch('app.local_data_dir', root):
+                client = app.test_client()
+                for game, title, total, palette_source in (('quake', 'Synthetic map', 2, 'quake'),
+                                                          ('hipnotic', 'Hipnotic test', 1, 'quake'),
+                                                          ('rogue', 'Rogue testing', 2, 'rogue')):
+                    response = client.post('/import_quake_maps', json=dict(path=str(root), game=game))
+                    self.assertEqual(response.status_code, 200, response.json)
+                    self.assertEqual(response.json['bsp_entries'], total)
+                    self.assertEqual(response.json['palette_source'], palette_source)
+                    self.assertEqual(response.json['colormap_source'], palette_source)
+                    prefix = '' if game == 'quake' else game + '/'
+                    with client.get('/quake-map-data/' + prefix + 'maps/start/scene.json') as scene:
+                        self.assertEqual(scene.json['title'], title)
+                        self.assertEqual(scene.json['game'], game)
+                    with client.get('/quake-map-data/' + prefix + 'index.json') as index:
+                        self.assertEqual(len(index.json), 2 if game == 'quake' else 1)
+                for game in ('rerelease', '../id1', [], None):
+                    self.assertEqual(client.post('/import_quake_maps', json=dict(path=str(root), game=game)).status_code, 422)
+
+    def test_mission_pack_brush_spawn_rules(self):
+        data = read_bsp(bsp())
+        data['models'] *= 10
+        data['entities'] += [dict(classname='info_rotate', targetname='pivot', origin='100 200 300'),
+                             dict(classname='rotate_object', model='*1', target='pivot', targetname='rot', origin='100 200 300'),
+                             dict(classname='func_rotate_train', target='rot', path='first', origin='100 200 300'),
+                             dict(classname='path_rotate', targetname='first', origin='110 220 330', angles='0 90 0', spawnflags='2'),
+                             dict(classname='func_movewall', model='*2', targetname='rot'),
+                             dict(classname='func_movewall', model='*3', targetname='rot', spawnflags='1'),
+                             dict(classname='func_togglewall', model='*4'),
+                             dict(classname='func_particlefield', model='*5'),
+                             dict(classname='func_multi_exploder', model='*6'),
+                             dict(classname='path_follow', model='*7'),
+                             dict(classname='monster_shambler', model='*8')]
+        placed, skipped = instances(data, 'hipnotic')
+        self.assertEqual([p['model'] for p in placed], [0, 1, 3])
+        self.assertEqual(len(skipped), 6)
+        self.assertEqual(placed[1]['offset'], [110, 220, 330])
+        self.assertEqual(placed[1]['angles'], [0, 90, 0])
+        self.assertEqual(placed[2]['offset'], [10, 20, 30])
+        points = geometry(data, placed[1:2], light=False)['points']
+        self.assertTrue(((points[:, 0] >= 78) & (points[:, 0] <= 110)).all())
+        self.assertTrue(((points[:, 1] >= 220) & (points[:, 1] <= 252)).all())
+        data['entities'][4]['classname'] = 'func_rotate_door'
+        placed, _ = instances(data, 'hipnotic')
+        self.assertEqual(placed[1]['offset'], [100, 200, 300])  # Compiled pivot added exactly once.
+        self.assertEqual(placed[1]['angles'], [0, 0, 0])
+        data['entities'] = [dict(classname='func_new_plat', model='*1', height=h, spawnflags=f)
+                            for h, f in (('40', '16'), ('-40', '16'), ('0', '16'), ('-40', '4'), ('-40', '1'))]
+        data['entities'] += [dict(classname='func_ctf_wall', model='*2'), dict(classname='func_elvtr_button', model='*3'),
+                             dict(classname='unknown_brush', model='*4', origin='7 8 9')]
+        placed, skipped = instances(data, 'rogue')
+        self.assertEqual([p['offset'][2] for p in placed[1:6]], [0, -40, -58, 0, -40])
+        self.assertEqual(len(skipped), 1)
+        self.assertTrue(placed[-1]['guess'])
+        self.assertEqual(placed[-1]['offset'], [7, 8, 9])
+
     def test_extents_winding_and_multiple_styles(self):
         data = read_bsp(bsp(styles=(0, 3, 255, 255), values=(64, 32)))
         face = face_data(data, 0)
@@ -98,6 +167,8 @@ class QuakeMapsTest(unittest.TestCase):
         self.assertEqual(viewpoints(data)[0]['native_origin'], [4, 5, 28])
         self.assertEqual(viewpoints(data)[1]['native_origin'], [1, 2, 3])
         self.assertEqual((viewpoints(data)[1]['pitch'], viewpoints(data)[1]['yaw']), (-20, -240))
+        data['entities'][0]['mangle'] = '20'  # The shipped Rogue r1m4 uses a short vector.
+        self.assertEqual((viewpoints(data)[1]['pitch'], viewpoints(data)[1]['yaw']), (-20, 0))
 
     def test_binary_atlas_item_and_routes(self):
         scene, blob, textures, atlas = build_map(bsp(), 'test')
@@ -145,6 +216,38 @@ class QuakeMapsTest(unittest.TestCase):
 @unittest.skipUnless((INSTALL / 'id1/PAK0.PAK').is_file() and (INSTALL / 'id1/PAK1.PAK').is_file(),
                      'needs the classic registered Quake install')
 class QuakeMapsInstallTest(unittest.TestCase):
+    def check_pack(self, game, count, boxes):
+        raw = (INSTALL / game / 'pak0.pak').read_bytes()
+        offset, size = struct.unpack_from('<ii', raw, 4)
+        expected = [raw[i:i + 56].split(b'\0')[0].decode().lower() for i in range(offset, offset + size, 64)
+                    if raw[i:i + 56].split(b'\0')[0].endswith(b'.bsp')]
+        self.assertEqual(len(expected), count)
+        with tempfile.TemporaryDirectory() as folder:
+            result = import_maps(INSTALL, Path(folder), game=game)
+            self.assertEqual(result['failed'], {})
+            self.assertEqual((len(result['imported']), len(result['skipped'])), (count - boxes, boxes))
+            self.assertEqual(result['pak_counts']['pak0.pak']['directory'], size // 64)
+            self.assertCountEqual([r['source'] for r in result['results']], expected)
+            self.assertTrue(all(r.get('reason') for r in result['results'] if r['status'] != 'imported'))
+            for ident in result['imported']:
+                root = Path(folder) / game
+                scene = json.loads((root / 'maps' / ident / 'scene.json').read_text())
+                blob = (root / 'maps' / ident / 'geometry.bin').read_bytes()
+                self.assertTrue(np.isfinite(np.frombuffer(blob, '<f4', scene['vertices'] * 7)).all(), ident)
+                self.assertTrue(scene['viewpoint_checks'][0]['inside_bounds'], ident)
+                self.assertGreater(scene['viewpoint_checks'][0]['eye_above_floor'], 0, ident)
+                self.assertEqual(scene['missing'], [], ident)
+                self.assertTrue(all((root / 'textures' / g['texture']).is_file() for g in scene['groups']), ident)
+                self.assertTrue(all(min(f['luxels']) > 0 for f in scene['faces']), ident)
+
+    @unittest.skipUnless((INSTALL / 'hipnotic/pak0.pak').is_file(), 'needs Scourge of Armagon')
+    def test_hipnotic_directory_and_geometry(self):
+        self.check_pack('hipnotic', 18, 0)
+
+    @unittest.skipUnless((INSTALL / 'rogue/pak0.pak').is_file(), 'needs Dissolution of Eternity')
+    def test_rogue_directory_and_geometry(self):
+        self.check_pack('rogue', 23, 6)
+
     def test_full_directory_count_and_geometry(self):
         expected = []
         for name in ('PAK0.PAK', 'PAK1.PAK'):

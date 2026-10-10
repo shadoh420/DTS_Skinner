@@ -21,7 +21,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // blending). Unreal: 227's OpenGL device ramps by pow(c, 1 / (2.5 * Brightness)), Brightness 0.5 by default (fitted to
   // 227 shots of NyLeve's and Vortex2's starts). UT: 0.67, fitted to UT 469 shots (D3D11, Brightness 0.7) of
   // DM-Deck16][, DM-Morpheus and DM-Turbine's starts.
-  const POWER = {unreal: 1 / (2.5 * .5), ut: .67, quake: 1};
+  const POWER = {unreal: 1 / (2.5 * .5), ut: .67, quake: 1, hipnotic: 1, rogue: 1};
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4});
   const ramp = new THREE.Scene(), flat = new THREE.Camera();
   ramp.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
@@ -31,8 +31,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       'void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(power)), 1.); }'})));
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
   const fitFrame = () => { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); frame.setSize(Math.max(size.x, 1), Math.max(size.y, 1)); };
-  const GAMES = quake ? [['quake', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']] : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
-  const dataRoot = id => quake ? '/quake-map-data/' : `/unreal-map-data/${id}/`;
+  const GAMES = quake ? ['quake', 'hipnotic', 'rogue'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
+  const dataRoot = id => quake ? `/quake-map-data/${id === 'quake' ? '' : id + '/'}` : `/unreal-map-data/${id}/`;
   let data = dataRoot(GAMES[0][0]);  // The shown map's pack.
   let speed = 8, missing = 0, ready = false, map = null;
   const showStatus = text => { $('status').textContent = text; };
