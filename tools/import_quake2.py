@@ -38,7 +38,7 @@ def asset_name(name):
     return posixpath.normpath(name.replace('\\', '/')).lower()
 
 
-def read_install(install):
+def read_install(install, maps=False):
     root = Path(install).expanduser()
     if (root / 'baseq2').is_dir():
         root /= 'baseq2'
@@ -51,7 +51,8 @@ def read_install(install):
     def layer(entries, origin):
         counts[origin] = dict(directory=len(entries), md2=sum(n.endswith('.md2') for n, _ in entries),
                               sp2=sum(n.endswith('.sp2') for n, _ in entries),
-                              pcx=sum(n.endswith('.pcx') for n, _ in entries))
+                              pcx=sum(n.endswith('.pcx') for n, _ in entries),
+                              bsp=sum(n.endswith('.bsp') for n, _ in entries))
         for name, data in entries:
             name = asset_name(name)
             record = dict(pak=origin, source=name, status='pending')
@@ -65,12 +66,14 @@ def read_install(install):
 
     for pak in paks:
         layer(read_pak(pak.read_bytes()), pak.name.lower())
-    # Only read loose assets needed by this models job; never traverse sibling campaigns.
-    loose = sorted(p for directory in ('models', 'players', 'sprites', 'pics')
+    # Only read relevant loose assets; never traverse sibling campaigns.
+    directories = ('models', 'players', 'sprites', 'pics') + (('maps', 'textures', 'env') if maps else ())
+    suffixes = ('.md2', '.pcx', '.sp2') + (('.bsp', '.wal', '.tga') if maps else ())
+    loose = sorted(p for directory in directories
                    for p in (root / directory).rglob('*')
-                   if p.is_file() and p.suffix.lower() in ('.md2', '.pcx', '.sp2'))
+                   if p.is_file() and p.suffix.lower() in suffixes)
     layer([(p.relative_to(root).as_posix().lower(), p.read_bytes()) for p in loose], 'loose')
-    return files, [r for r in records if r['source'].endswith(('.md2', '.sp2'))], counts
+    return files, [r for r in records if r['source'].endswith('.bsp' if maps else ('.md2', '.sp2'))], counts
 
 
 def read_md2(data):

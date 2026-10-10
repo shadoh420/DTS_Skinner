@@ -38,6 +38,7 @@ from tools.import_unreal import import_catalog as import_unreal_catalog
 from tools.import_quake import import_catalog as import_quake_catalog
 from tools.import_quake2 import import_catalog as import_quake2_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
+from tools.import_quake2_map import import_maps as import_quake2_maps
 from tools.import_unreal_map import import_maps as import_unreal_maps
 
 # --- System Tray Imports ---
@@ -252,6 +253,37 @@ def import_quake_maps_route():
     try:
         return jsonify(import_quake_maps(payload['path'].strip(), local_data_dir / 'quake-maps',
                                          payload.get('replace') is True, payload.get('game', 'quake')))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+@app.route('/maps/quake2/')
+def quake2_maps_viewer():
+    response = send_from_directory(static_dir / 'quake2-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/quake2-map-data/<path:filename>')
+def quake2_map_data(filename):
+    return send_from_directory(local_data_dir / 'quake2-maps', filename)
+
+
+@app.route('/import_quake2_maps', methods=['POST'])
+def import_quake2_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your classic Quake II folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_quake2_maps(payload['path'].strip(), local_data_dir / 'quake2-maps',
+                                         payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
