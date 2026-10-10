@@ -43,7 +43,7 @@ def t1_building_names(model_dir):
             for name in json.loads(path.read_text(encoding='utf-8'))['models']}
 
 
-MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'ge')
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'ge')
 _families_lock = threading.Lock()
 
 

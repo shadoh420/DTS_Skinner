@@ -56,7 +56,7 @@ def upload_texture(texture, palette):
     return Image.fromarray(np.minimum(rgb * INTENSITY, 255).astype(np.uint8))
 
 
-def read_bsp(data, files):
+def read_bsp(data, files, *, texture_loader=None):
     if len(data) < 160 or data[:4] != b'IBSP' or struct.unpack_from('<i', data, 4)[0] != 38:
         raise ValueError('Expected IBSP version 38')
     lumps = []
@@ -86,7 +86,9 @@ def read_bsp(data, files):
         name = asset_name(row[10].split(b'\0')[0].decode('latin1'))
         path = 'textures/' + name + '.wal'
         if path not in cache:
-            if path in files:
+            if texture_loader is not None:
+                cache[path] = texture_loader(name)
+            elif path in files:
                 cache[path] = dict(read_wal(files[path][0]), name=name)
             else:
                 cache[path] = dict(name=name, width=16, height=16, missing=True,
@@ -183,7 +185,7 @@ def ordered_starts(bsp, game):
     return [e for e in ordered if not excluded(e, game)]
 
 
-def instances(bsp, game='quake2'):
+def instances(bsp, game='quake2', *, open_at_start=True):
     """Initial brush states: medium SP, or deathmatch filtering for CTF; motion frozen."""
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], angles=[0., 0., 0.], state='world', guess=False)]
     skipped = []
@@ -260,7 +262,8 @@ def instances(bsp, game='quake2'):
             state = 'authored origin; expansion plat2 activation/top state not verified'
             guess = True
         result.append(dict(model=number, entity=index, classname=cls, offset=offset.tolist(), angles=turn.tolist(), state=state, guess=guess))
-    open_doors_at_start(bsp, result, game)
+    if open_at_start:
+        open_doors_at_start(bsp, result, game)
     return result, skipped
 
 
@@ -344,10 +347,12 @@ def warp_polygons(points):
     return [np.array([center, a, b]) for a, b in zip(points, np.roll(points, -1, axis=0))]
 
 
-def geometry(bsp, placed, game='quake2'):
+def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=None):
     dark = frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
                      and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags') or 0) & 1
                      and not excluded(e, game) and game != 'ctf')  # SP_light frees lights in deathmatch.
+    if dark_styles is not None:
+        dark = frozenset(dark_styles)
     faces, tiles, audit, floors = [], [], [], []
     for instance in placed:
         first, count = bsp['models'][instance['model']][10:12]
@@ -355,7 +360,7 @@ def geometry(bsp, placed, game='quake2'):
             raise ValueError('Invalid BSP38 model face range')
         matrix = rotation(instance['angles'])
         for number in range(first, first + count):
-            face = face_data(bsp, number)
+            face = face_reader(bsp, number)
             if face['kind'] == 'hidden':
                 continue
             points = face['points'] @ matrix.T + instance['offset']
@@ -363,7 +368,8 @@ def geometry(bsp, placed, game='quake2'):
                 vectors = np.array(bsp['texinfo'][bsp['faces'][number][4]][:8]).reshape(2, 4)
                 for polygon in warp_polygons(face['points']):
                     faces.append(dict(face, points=polygon, placed_points=polygon @ matrix.T + instance['offset'],
-                                      st=polygon @ vectors[:, :3].T))  # SubdividePolygon omits texinfo offsets for warp ST.
+                                      st=polygon @ vectors[:, :3].T,
+                                      light_st=polygon @ vectors[:, :3].T + vectors[:, 3]))  # Warp texture ST omits offsets; lightmaps do not.
                     tiles.append(lightmap_rgb(face, bsp['lighting'], dark))
             else:
                 faces.append(dict(face, placed_points=points))
@@ -394,7 +400,7 @@ def geometry(bsp, placed, game='quake2'):
         tile = tiles[index]
         h, w = tile.shape[:2]
         atlas[y:y + h + 2, x:x + w + 2] = np.pad(tile, ((1, 1), (1, 1), (0, 0)), mode='edge')
-        coords = (face['st'] - face['mins']) / 16 if not face['unlit'] else np.zeros_like(face['st'])
+        coords = (face.get('light_st', face['st']) - face['mins']) / 16 if not face['unlit'] else np.zeros_like(face['st'])
         uv2.extend((coords + [x + 1.5, y + 1.5]) / [width, height])
     indices, table = [], []
     for group in groups.values():
