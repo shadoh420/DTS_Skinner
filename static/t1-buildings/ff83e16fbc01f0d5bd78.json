@@ -1,0 +1,344 @@
+{
+  "models": {
+    "flaghut": {
+      "sha256": "9fafc210206e14808f467bd652d8caab926ca5887c24f259275592488bd56e00",
+      "source": "flaghut"
+    },
+    "sbunker": {
+      "sha256": "53ded023b401125d49117edd8cb5d7127bd7c795a35253b61b0abc8ab0e50e2d",
+      "source": "sbunker"
+    }
+  },
+  "pairs": [],
+  "skipped": [
+    "floatpad",
+    "flytower",
+    "tank16"
+  ],
+  "sources": {
+    "flaghut": {
+      "earlier_candidates_failed": [],
+      "member": "flaghut.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\MistyLinks.mis",
+      "mission_sha256": "ad6abb107cfacc3ac026e09dd1f3a021e76dec608192d111f3f129fcbbdadd2e",
+      "model": "flaghut",
+      "palette": "lush.day.ppl",
+      "palette_error": null,
+      "resources": {
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "dark_64b.bmp": "9b467de2c69cc63b3f62ddd439ee80ef197d5c1f30f3a1578a5c66cbf739250a",
+        "ds_ablative.bmp": "45a92a8b77ad73cdc4a118991103781363157af9cc13282da06ff7b9c966d6e6",
+        "ext_grey.bmp": "65a209b8f4e64bed1090ed9905d72c6868ca6cac21c03e1f547983dcc09d430c",
+        "ext_stone7.bmp": "1b148fe8887d101a27734328f27b11a1624cc88ba73235c6aa7ed0a69a9afe88",
+        "flaghut-00.dig": "461dce4680b8bc242573a47eb6bae21fab4fd268fa0d55668a2f7737dddcb0ef",
+        "flaghut.dis": "cd1fdae22d791bbe285bec497f2c155ca0d5d688f07b463bb1258612ce831150",
+        "flaghut.dml": "5ea9f82e761d780123a5f0af57281d4efd0f4409730470910972e5750f8f16b3",
+        "iconcretebock1.bmp": "bd41e2d69962d5388009e97fe78ced5fb11d35d3434c37cb27e6e713067fa9e9",
+        "lush.day.ppl": "005592e5876b16d9d6ac41d6b6b4e091fa50d09ae91a54e245823b12e80c6f79"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "2f175d9bc83e70de6121688316221970c2224e73c4e60d3be9b18fef8a47a99c",
+          "volume": "lushWorld.vol"
+        },
+        {
+          "sha256": "1c48870747039253ed3a491cf0dd68c5d97f082f68d50330818ac627333576d0",
+          "volume": "lushTerrain.vol"
+        },
+        {
+          "sha256": "af91029418db3114af4c8ede557514134dd5acc71588757a489faf55cdf06922",
+          "volume": "lushDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "d554838b94208a67241f63bd9f9b70a674d85749ea02b901dc2c9033000e6278",
+          "volume": "MistyLinks.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "sbunker": {
+      "earlier_candidates_failed": [],
+      "member": "sbunker.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\MistyLinks.mis",
+      "mission_sha256": "ad6abb107cfacc3ac026e09dd1f3a021e76dec608192d111f3f129fcbbdadd2e",
+      "model": "sbunker",
+      "palette": "lush.day.ppl",
+      "palette_error": null,
+      "resources": {
+        "base.emblem3.bmp": "3349cb9180bc12e4156871d79d3a2c824a46c6889092b057a74f3405b3360c1b",
+        "base.emblem4.bmp": "813995f7a8def7a02ef2498f9c7531f25d965629b9545112705f1bd8225d82a8",
+        "base.emblem7.bmp": "ea64a376267f948439ec246da8777de9fe193134648657f58a3046de4fea229c",
+        "base_rock.bmp": "e15864d95eba42acf50eeee675a6ee9e82dd0776da69694920f38c3f5ee31920",
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "carpet_base.bmp": "e954c74650c85271e590a0cf3b85f9b90529bfb5f222ceec251f762c4b22c9e6",
+        "dark_16b.bmp": "07a3c3e1b2a6797b4a8030689c32a5dac7e7b0573cf1c87ce67b645d1899d3cc",
+        "ext_grey.bmp": "65a209b8f4e64bed1090ed9905d72c6868ca6cac21c03e1f547983dcc09d430c",
+        "ext_grey5.bmp": "35a6871cbfbbf103edf646c7349d2e83b445b230384c6104e6b45a42c7adedd6",
+        "ext_grey9.bmp": "dacba7db738f5b5055237d3e98f5fe73fc6275bdc2dc218eb4dc94d43f7aec56",
+        "lush.day.ppl": "005592e5876b16d9d6ac41d6b6b4e091fa50d09ae91a54e245823b12e80c6f79",
+        "metal_ft.bmp": "f76bcb7fe9be892a3ce63c02fbccaa6c44d203355f5a52d2b390ddc91c9c7105",
+        "plainemb9.bmp": "824dbbbee181c948cc0df2f40659d93d1a0f27cfd23d8d94b3201d14838ec08b",
+        "sbunker-00.dig": "238b327fb67443ecadab4a4981a90ac2497c36a4ea0d4fec99d710dc2783011f",
+        "sbunker.dis": "fbc57d8b73df6ff5c3344ae3662a382ebca856a6c4b125caf00bdb19ce40441a",
+        "sbunker.dml": "d43e81eb164fceca8d524e947c8c81acff13b36e836ac21658aa0fc7a7c02908"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "2f175d9bc83e70de6121688316221970c2224e73c4e60d3be9b18fef8a47a99c",
+          "volume": "lushWorld.vol"
+        },
+        {
+          "sha256": "1c48870747039253ed3a491cf0dd68c5d97f082f68d50330818ac627333576d0",
+          "volume": "lushTerrain.vol"
+        },
+        {
+          "sha256": "af91029418db3114af4c8ede557514134dd5acc71588757a489faf55cdf06922",
+          "volume": "lushDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "d554838b94208a67241f63bd9f9b70a674d85749ea02b901dc2c9033000e6278",
+          "volume": "MistyLinks.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        }
+      ],
+      "warnings": []
+    }
+  },
+  "textures": [
+    {
+      "building": "flaghut",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "flaghut",
+      "collision": false,
+      "pixel_sha256": "64f808f3f91c8a98eca56a8b29a114c22e9790b8b9f50e0d42f00f9c0fec4800",
+      "requested": "ext_grey.png",
+      "reused": true,
+      "stored": "ext_grey.png"
+    },
+    {
+      "building": "flaghut",
+      "collision": false,
+      "pixel_sha256": "572e8ed2c745761b9f6cd42ea24bd5caf1e7457fae27bdb30c3eaaeed49fdacf",
+      "requested": "ext_stone7.png",
+      "reused": true,
+      "stored": "ext_stone7.png"
+    },
+    {
+      "building": "flaghut",
+      "collision": false,
+      "pixel_sha256": "b94defbc3a5c6f2e34773c4c6c5d2a25a5a6597ce023b7c324aaa221c63c72f0",
+      "requested": "dark_64b.png",
+      "reused": true,
+      "stored": "dark_64b.png"
+    },
+    {
+      "building": "flaghut",
+      "collision": false,
+      "pixel_sha256": "9b04b835ac329ad7f30bddbc2e0654cbc2db41456af07cb911da7b701551b698",
+      "requested": "ds_ablative.png",
+      "reused": true,
+      "stored": "ds_ablative.png"
+    },
+    {
+      "building": "flaghut",
+      "collision": false,
+      "pixel_sha256": "0ba460e975e0a243c970ed203ec2b298b74311a8eba68dcdd9e4809da54ea286",
+      "requested": "iconcretebock1.png",
+      "reused": true,
+      "stored": "iconcretebock1.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "bea8fd1b5c80b8279ce0e84368aad4615d286852657cf60b80e2aeafde98ee2f",
+      "requested": "ext_grey5.png",
+      "reused": true,
+      "stored": "ext_grey5.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "2a219a225eff1571f25e9a7387adcbe64347ac2a7194b79901bc6299609ae7f5",
+      "requested": "metal_ft.png",
+      "reused": true,
+      "stored": "metal_ft.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "62bb1e0a9bacd8be748ad6a9e834ddd844ee7342a12419b85c511f4d2c2f1fa6",
+      "requested": "base_rock.png",
+      "reused": true,
+      "stored": "base_rock.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "64f808f3f91c8a98eca56a8b29a114c22e9790b8b9f50e0d42f00f9c0fec4800",
+      "requested": "ext_grey.png",
+      "reused": true,
+      "stored": "ext_grey.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "4de370f6a9e6cc0974accfcd95da4472d451236594ce2854162a5d439e846bd5",
+      "requested": "plainemb9.png",
+      "reused": true,
+      "stored": "plainemb9.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "6f1113c7de58dc9c8bb9e6b4b0cb0dcb0f50cfe4aa110d0e585ddf49e8bfb5d1",
+      "requested": "dark_16b.png",
+      "reused": true,
+      "stored": "dark_16b.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "d22b06909a73ea75f4d370d2fbfb4e295c55e24ace469ecf80329742735001b7",
+      "requested": "base.emblem7.png",
+      "reused": true,
+      "stored": "base.emblem7.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "90c5d3751f943cdc04bcb557f6fbd6c0467b791afa954b4924505df7bc5eb594",
+      "requested": "carpet_base.png",
+      "reused": true,
+      "stored": "carpet_base.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "1b398309bf1624fb3161344cf893aae5cc649242f2a6736ed9b0055b63386301",
+      "requested": "base.emblem3.png",
+      "reused": true,
+      "stored": "base.emblem3.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "570de80af81e58b3c0c85f1b745a9bc282a898ceb938f0ba4a8bb1b16191f276",
+      "requested": "base.emblem4.png",
+      "reused": true,
+      "stored": "base.emblem4.png"
+    },
+    {
+      "building": "sbunker",
+      "collision": false,
+      "pixel_sha256": "733ae25e4c3deb17f48f9764c27a28d95dc336804aa2bebee1112d568a38bc8b",
+      "requested": "ext_grey9.png",
+      "reused": true,
+      "stored": "ext_grey9.png"
+    }
+  ],
+  "unplaced": {
+    "block1": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\IceRidge_deluxe.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\MM_extras.vol"
+    ],
+    "box": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\box.vol"
+    ],
+    "building1": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\deadlyvalley.vol"
+    ],
+    "dnbase1": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol"
+    ],
+    "lookoutzc": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\QuickSand.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol"
+    ],
+    "mcommand": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\QuickSand.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol"
+    ],
+    "newbase": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\antarcticspell.vol"
+    ],
+    "newcap": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\antarcticspell.vol"
+    ],
+    "ras": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\FeudingNeighbors.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\OmicronIVPart1.vol"
+    ],
+    "sdbase": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol"
+    ],
+    "siam": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\Frost_Giant.vol"
+    ],
+    "spier1": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\QuickSand.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol"
+    ],
+    "tower1": [
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\QuickSand.vol",
+      "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\ReZCustom.vol"
+    ]
+  }
+}
