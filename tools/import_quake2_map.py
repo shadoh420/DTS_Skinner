@@ -344,10 +344,12 @@ def warp_polygons(points):
     return [np.array([center, a, b]) for a, b in zip(points, np.roll(points, -1, axis=0))]
 
 
-def geometry(bsp, placed, game='quake2'):
+def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=None):
     dark = frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
                      and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags') or 0) & 1
                      and not excluded(e, game) and game != 'ctf')  # SP_light frees lights in deathmatch.
+    if dark_styles is not None:
+        dark = frozenset(dark_styles)
     faces, tiles, audit, floors = [], [], [], []
     for instance in placed:
         first, count = bsp['models'][instance['model']][10:12]
@@ -355,7 +357,7 @@ def geometry(bsp, placed, game='quake2'):
             raise ValueError('Invalid BSP38 model face range')
         matrix = rotation(instance['angles'])
         for number in range(first, first + count):
-            face = face_data(bsp, number)
+            face = face_reader(bsp, number)
             if face['kind'] == 'hidden':
                 continue
             points = face['points'] @ matrix.T + instance['offset']
@@ -363,7 +365,8 @@ def geometry(bsp, placed, game='quake2'):
                 vectors = np.array(bsp['texinfo'][bsp['faces'][number][4]][:8]).reshape(2, 4)
                 for polygon in warp_polygons(face['points']):
                     faces.append(dict(face, points=polygon, placed_points=polygon @ matrix.T + instance['offset'],
-                                      st=polygon @ vectors[:, :3].T))  # SubdividePolygon omits texinfo offsets for warp ST.
+                                      st=polygon @ vectors[:, :3].T,
+                                      light_st=polygon @ vectors[:, :3].T + vectors[:, 3]))  # Warp texture ST omits offsets; lightmaps do not.
                     tiles.append(lightmap_rgb(face, bsp['lighting'], dark))
             else:
                 faces.append(dict(face, placed_points=points))
@@ -394,7 +397,7 @@ def geometry(bsp, placed, game='quake2'):
         tile = tiles[index]
         h, w = tile.shape[:2]
         atlas[y:y + h + 2, x:x + w + 2] = np.pad(tile, ((1, 1), (1, 1), (0, 0)), mode='edge')
-        coords = (face['st'] - face['mins']) / 16 if not face['unlit'] else np.zeros_like(face['st'])
+        coords = (face.get('light_st', face['st']) - face['mins']) / 16 if not face['unlit'] else np.zeros_like(face['st'])
         uv2.extend((coords + [x + 1.5, y + 1.5]) / [width, height])
     indices, table = [], []
     for group in groups.values():

@@ -106,7 +106,7 @@ def read_asset(entry):
         return read_entry(stream, entry) if 'offset' in entry else stream.read()
 
 
-def read_install(install):
+def read_install(install, maps=False):
     root = Path(install).expanduser()
     if (root / 'data').is_dir():
         root /= 'data'
@@ -127,20 +127,23 @@ def read_install(install):
                                             reason=f'{"Byte-identical to" if identical else "Overridden by"} {origin}:{name}')
             entry.update(record=row, pak=origin)
             files[name] = entry
-            if name.startswith('models/') or name.endswith(MODEL_SUFFIXES + ('.sp2',)):
+            if name.startswith('models/') or name.endswith(MODEL_SUFFIXES + ('.sp2',)) or (maps and name.endswith('.bsp')):
                 records.append(row)
 
     for pak in paks:
         with pak.open('rb') as stream:
             entries = pak_directory(stream)
         layer([dict(e, path=pak) for e in entries], pak.name.lower())
-    loose = sorted(p for folder in ('models', 'skins', 'pics', 'textures') for p in (root / folder).rglob('*')
-                   if p.is_file() and (folder == 'models' or p.suffix.lower() in IMAGE_SUFFIXES + MODEL_SUFFIXES + ('.pal', '.sp2')))
+    loose = sorted(p for folder in ('models', 'skins', 'pics', 'textures') + (('maps', 'env') if maps else ())
+                   for p in (root / folder).rglob('*') if p.is_file()
+                   and (folder == 'models' or p.suffix.lower() in IMAGE_SUFFIXES + MODEL_SUFFIXES + ('.pal', '.sp2') + (('.bsp',) if maps else ())))
+    if maps:
+        loose += sorted(p for p in root.iterdir() if p.is_file() and p.name.lower() in ('aidata.vsc', 'aidata.cs2', 'aidata.csv'))
     layer([dict(name=asset_name(p.relative_to(root).as_posix()), path=p) for p in loose], 'loose')
     return files, records, counts
 
 
-def read_dkm(data):
+def read_dkm(data, frame_number=0):
     if len(data) < 80 or data[:4] != b'DKMD':
         raise ValueError('Expected DKMD header')
     h = struct.unpack_from('<20i', data)
@@ -153,6 +156,8 @@ def read_dkm(data):
     stride = 4 if version == 1 else 5
     if min(verts, sts, tris, frames, surfaces) <= 0 or min(skins, commands) < 0 or frame_size < 40 + verts * stride:
         raise ValueError('Invalid DKM counts or frame size')
+    if not 0 <= frame_number < frames:
+        frame_number = 0  # Retail alias renderer falls back to frame zero.
     if not all(math.isfinite(v) for v in origin) or end > len(data) or end < 80:
         raise ValueError('Invalid DKM origin or end')
     # The older .dkm2 has an 80-byte header and no sequence table.
@@ -217,17 +222,18 @@ def read_dkm(data):
         draws.append(dict(count=count, skin=skin, surface=surface, corners=corners, undefined_uvs=invalid))
     if commands and (not terminated or not draws):
         raise ValueError('Empty or unterminated DKM GL command stream')
-    points, pose = [], ''
+    points, normal_indices, pose = [], [], ''
     for frame in range(frames):
         at = frame_at + frame * frame_size
         transform = struct.unpack_from('<6f', data, at)
         if not all(math.isfinite(v) for v in transform) or min(transform[:3]) < 0:
             raise ValueError('Invalid DKM frame scale/translate')
-        if frame:
+        if frame != frame_number:
             continue
         pose = data[at + 24:at + 40].split(b'\0')[0].decode('latin1')
         for i in range(verts):
             start = at + 40 + i * stride
+            normal_indices.append(data[start + stride - 1])
             if version == 1:
                 xyz = data[start:start + 3]
             else:
@@ -239,7 +245,7 @@ def read_dkm(data):
     sequences = []
     for name, first, last in struct.iter_unpack('<16s2i', data[sequence_at:sequence_at + sequence_count * 24]):
         sequences.append(dict(name=name.split(b'\0')[0].decode('latin1'), first=first, last=last))
-    return dict(points=points, st=list(struct.iter_unpack('<2h', data[st_at:st_at + sts * 4])),
+    return dict(points=points, normal_indices=normal_indices, st=list(struct.iter_unpack('<2h', data[st_at:st_at + sts * 4])),
                 triangles=triangles, surfaces=surface_rows, skin_names=names, version=version,
                 frames=frames, pose=pose, origin=origin, sequences=sequences,
                 triangle_uv_frames=sorted(set(t[1] for t in triangles)), draws=draws,
@@ -247,7 +253,7 @@ def read_dkm(data):
                 undefined_uvs=undefined_uvs)
 
 
-def build_model(mesh, textures):
+def build_model(mesh, textures, include_normals=False, visible_only=False):
     result = dict(game='daikatana', winding='ccw', vertices=[], uvs=[], indices=[], groups=[],
                   material_names=[], material_textures=[], material_settings=[],
                   metadata={k: mesh[k] for k in ('version', 'pose', 'frames', 'origin', 'skin_names', 'surfaces', 'sequences', 'triangle_uv_frames', 'geometry_source', 'undefined_uvs')})
@@ -269,11 +275,16 @@ def build_model(mesh, textures):
                                                        triangles=[t[2:] for t in mesh['triangles'] if t[0] == index])
     for (index, skin, undefined), part_mesh in parts.items():
         surface = mesh['surfaces'][index]
+        if visible_only and surface['flags'] & 1:
+            continue
         triangles = part_mesh['triangles']
         if not triangles:
             continue
         texture = textures[skin] if textures and not undefined else 'missing_skin.png'
         part = build_md2_model(dict(mesh, **part_mesh), texture)
+        if include_normals:
+            corners = dict.fromkeys((t[c], t[c + 3]) for t in triangles for c in (0, 2, 1))
+            result.setdefault('normal_indices', []).extend(mesh['normal_indices'][v] for v, uv in corners)
         vertex_base = len(result['vertices']) // 3
         result['groups'].append(dict(start=len(result['indices']), count=len(part['indices']), materialIndex=len(result['material_names'])))
         result['vertices'].extend(part['vertices'])
