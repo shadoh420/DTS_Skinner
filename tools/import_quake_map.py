@@ -146,10 +146,11 @@ def face_data(bsp, number):
                 texture=texture, kind=surface_kind(texture['name']), styles=tail[:4], lightofs=tail[4])
 
 
-def light_codes(face, lighting):
+def light_codes(face, lighting, dark=frozenset()):
     """Software R_BuildLightMap's fixed-point colormap coordinate, before luxel interpolation.
 
-    All present styles use 'm': (ord('m')-ord('a'))*22 = 264. VID_CBITS=6, hence the >>2 conversion;
+    Present styles use 'm': (ord('m')-ord('a'))*22 = 264, except `dark` ones, switchable lights that start off
+    ('a' = 0; hipend's start, checked in WinQuake). VID_CBITS=6, hence the >>2 conversion;
     the high byte selects one of colormap.lmp's 64 rows. An entirely unlit BSP is fullbright.
     """
     w, h = map(int, face['size'])
@@ -165,7 +166,8 @@ def light_codes(face, lighting):
                 break
             if offset + w * h > len(lighting):
                 raise ValueError(f"Face {face['number']} lightmap exceeds lighting lump")
-            total += np.frombuffer(lighting[offset:offset + w * h], np.uint8).astype(np.int64) * 264
+            if style not in dark:
+                total += np.frombuffer(lighting[offset:offset + w * h], np.uint8).astype(np.int64) * 264
             offset += w * h
     return np.maximum(64, (255 * 256 - total) >> 2).astype(np.uint16).reshape(h, w)
 
@@ -310,6 +312,9 @@ def viewpoints(bsp):
 
 def geometry(bsp, placed, light=True):
     faces, tiles, audit, floors = [], [], [], []
+    # QuakeC's light spawn: a targeted light flagged START_OFF (1) sets its style to 'a' until triggered.
+    dark = frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
+                     and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags', '0')) & 1)
     for instance in placed:
         model = bsp['models'][instance['model']]
         first, count = model[14:16]
@@ -323,7 +328,7 @@ def geometry(bsp, placed, light=True):
             points = face['points'] @ matrix.T + instance['offset']
             face['placed_points'] = points
             if light:
-                tiles.append(light_codes(face, bsp['lighting']))
+                tiles.append(light_codes(face, bsp['lighting'], dark))
             faces.append(face)
             audit.append(dict(face=number, entity=instance['entity'], texture=face['texture']['name'], kind=face['kind'],
                               texturemins=face['mins'].tolist(), luxels=face['size'].tolist(), lightofs=face['lightofs'],
@@ -383,6 +388,14 @@ def build_map(raw, name, game='quake'):
     data = geometry(bsp, placed)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp)
+    for view in views:
+        # The game drops a spawned player onto the floor below (standing at floor + 24, eyes 22 higher): e1m8's and
+        # hipend's starts float well above it (checked in WinQuake). Intermission cameras stay where they are.
+        origin = np.array(view['native_origin'])
+        floor = floor_below(data['floors'], *origin) if view['classname'] != 'info_intermission' else None
+        if floor is not None and origin[2] > floor + 46:
+            origin[2] = floor + 46
+            view.update(origin=(origin[[1, 2, 0]] * SCALE).tolist(), native_origin=origin.tolist())
     bounds = np.array(bsp['models'][0][:6]).reshape(2, 3)
     checks = []
     for view in views:
@@ -396,7 +409,7 @@ def build_map(raw, name, game='quake'):
     scene = dict(name=name, game=game, title=info.get('message', ''), format='quake-bsp29', vertices=len(points), indices=len(data['indices']),
                  lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views, bounds=bounds.tolist(),
                  instances=placed, skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
-                 assumptions=['normal skill, single player, no runes', 'all light styles held at m (264)',
+                 assumptions=['normal skill, single player, no runes', 'light styles held at m (264), switchable lights that start off at a (0)',
                               'brushes at spawn; trains initialized at first corner, before travel', 'animated textures held at +0/+a'])
     return scene, blob, data['textures'], data['atlas']
 

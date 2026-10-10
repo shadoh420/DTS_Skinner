@@ -117,6 +117,8 @@ class QuakeMapsTest(unittest.TestCase):
         codes = light_codes(face, data['lighting'])
         self.assertEqual(codes.shape, (3, 3))
         self.assertTrue((codes == (65280 - 96 * 264) >> 2).all())
+        # A switchable light that starts off adds nothing (style 'a').
+        self.assertTrue((light_codes(face, data['lighting'], frozenset({3})) == (65280 - 64 * 264) >> 2).all())
         # Off-axis/non-integral minima use floor, maxima use ceil, not rounded sizes.
         data['texinfo'][0] = (1, 0, 0, -17, 0, 1, 0, -1, 0, 0)
         face = face_data(data, 0)
@@ -235,7 +237,7 @@ class QuakeMapsInstallTest(unittest.TestCase):
                 blob = (root / 'maps' / ident / 'geometry.bin').read_bytes()
                 self.assertTrue(np.isfinite(np.frombuffer(blob, '<f4', scene['vertices'] * 7)).all(), ident)
                 self.assertTrue(scene['viewpoint_checks'][0]['inside_bounds'], ident)
-                self.assertGreater(scene['viewpoint_checks'][0]['eye_above_floor'], 0, ident)
+                self.assertTrue(0 < scene['viewpoint_checks'][0]['eye_above_floor'] <= 46, ident)  # Dropped to the floor as in the game.
                 self.assertEqual(scene['missing'], [], ident)
                 self.assertTrue(all((root / 'textures' / g['texture']).is_file() for g in scene['groups']), ident)
                 self.assertTrue(all(min(f['luxels']) > 0 for f in scene['faces']), ident)
@@ -270,7 +272,7 @@ class QuakeMapsInstallTest(unittest.TestCase):
                 self.assertTrue(np.isfinite(floats).all(), ident)
                 self.assertTrue(scene['viewpoint_checks'][0]['inside_bounds'], ident)
                 self.assertIsNotNone(scene['viewpoint_checks'][0]['floor_z'], ident)
-                self.assertGreater(scene['viewpoint_checks'][0]['eye_above_floor'], 0, ident)
+                self.assertTrue(0 < scene['viewpoint_checks'][0]['eye_above_floor'] <= 46, ident)  # Dropped to the floor as in the game.
                 self.assertEqual(scene['missing'], ['__missing_miptex_46'] if ident == 'e2m3' else [], ident)
                 self.assertTrue(all((root / 'textures' / g['texture']).is_file() for g in scene['groups']), ident)
 
