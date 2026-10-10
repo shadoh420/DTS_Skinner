@@ -170,8 +170,10 @@ class BuildingTests(unittest.TestCase):
         b = copy.deepcopy(a)
         b['vertices'][0] = .0001
         self.assertFalse(compare_geometry(a, b)['equal'])
-        self.assertEqual(team_pairs(['hilde_be', 'hilde_ds', 'be_rig', 'ds_rig', 'ccbeaglelz', 'ccdswordlz', 'foo_be']),
-                         [('be_rig', 'ds_rig', 'rig'), ('ccbeaglelz', 'ccdswordlz', 'cclz'), ('hilde_be', 'hilde_ds', 'hilde')])
+        self.assertEqual(team_pairs(['hilde_be', 'hilde_ds', 'be_rig', 'ds_rig', 'ccbeaglelz', 'ccdswordlz', 'foo_be',
+                                     'storkbe', 'storkds', 'dxberad', 'dxdsrad', 'berc', 'dsrc']),
+                         [('be_rig', 'ds_rig', 'rig'), ('berc', 'dsrc', 'rc'), ('ccbeaglelz', 'ccdswordlz', 'cclz'),
+                          ('dxberad', 'dxdsrad', 'dxrad'), ('hilde_be', 'hilde_ds', 'hilde'), ('storkbe', 'storkds', 'stork')])
 
     def test_local_game_catalog_names_each_building_by_its_mission(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -204,11 +206,11 @@ class BuildingTests(unittest.TestCase):
             # ...and alone it still converts, with that slot left empty and the texture recorded.
             alone = add_buildings(base, [bad], root / 'alone')
             self.assertEqual(len(alone['sources']['house']['missing_textures']), 1)
-            # A building no mission can read at all still stops the batch before anything is written.
+            # A building no mission can read at all is reported as failed and skipped; the others are still added.
             broken = mission(root / 'broken', 'C', {}, ['house'])
-            with self.assertRaisesRegex(ValueError, 'No usable placing mission'):
-                add_buildings(base, [broken], root / 'none')
-            self.assertFalse((root / 'none').exists())
+            result = add_buildings(base, [broken], root / 'none')
+            self.assertEqual(list(result['failed']), ['house'])
+            self.assertEqual(result['models'], {})
 
     def test_mount_precedence_and_loose_base_fallback(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1,0 +1,1940 @@
+{
+  "failed": {},
+  "models": {
+    "block1": {
+      "sha256": "e4c3b8623a219e03cf4d97b2e4cab1cbcde689a38c5f42c5e6b7271f39142d03",
+      "source": "block1"
+    },
+    "box": {
+      "sha256": "6fc3d9d461cca262629f6e094ce926699e614f1a828d276acb63e8308e2cbf7b",
+      "source": "box"
+    },
+    "building1": {
+      "sha256": "0bfa134a94318e2f00fa95a17c9c37cc29dfe0d11d5430f9da6419e851050764",
+      "source": "building1"
+    },
+    "dnbase1": {
+      "sha256": "66b13ebc48dceb858da63c8fe1972188f6079b013b6b163dff01ae4477056dcd",
+      "source": "dnbase1"
+    },
+    "mcommand": {
+      "sha256": "7e4456f3f1d643622510e00826552c063fadcfbbb593ae92fc98b27c9433a83b",
+      "source": "mcommand"
+    },
+    "newbase": {
+      "sha256": "e19c47494b39531db01c1a9eaecf1e8610fafc421e5cbcd3f6d92a554a7ccff7",
+      "source": "newbase"
+    },
+    "newcap": {
+      "sha256": "470d15a80a65dd4d481702d0a4470e313c9802c0619c0bfb492791714d55cd0d",
+      "source": "newcap"
+    },
+    "ras": {
+      "sha256": "57973c7d17e8e6ca75fe720f8ba07bbfc3a3d11d60f0bd16098de68e6328f237",
+      "source": "ras"
+    },
+    "sdbase": {
+      "sha256": "cf83f8b27d86459760042e311252560bc2be89c9f11249915a695983ea65490f",
+      "source": "sdbase"
+    },
+    "spier1": {
+      "sha256": "63a9fab1a3b17995b6bffd5e1ed91ec2dfb7c426f4996cc2a68c9477f43a0416",
+      "source": "spier1"
+    }
+  },
+  "pairs": [],
+  "skipped": [
+    "acommand",
+    "aflagcolumn",
+    "aflagcolumn3",
+    "aflagcolumn4",
+    "aflagcrash",
+    "aflagkeel",
+    "aflagroom",
+    "ampipecon",
+    "apipecon",
+    "arena2",
+    "aw_fin",
+    "aw_pod",
+    "aw_pod_lid",
+    "aw_sub",
+    "awarehouse",
+    "base1",
+    "base2",
+    "base3",
+    "base4",
+    "base6",
+    "base7",
+    "bashaped",
+    "batower",
+    "batower2",
+    "be_rig",
+    "beacon",
+    "bedrop",
+    "belcargo1",
+    "belcargo2",
+    "belcargo3",
+    "belcargo4",
+    "belfloatingpad",
+    "belfloatingpad2",
+    "bemfloatingpad",
+    "bescargo1",
+    "bescargo2",
+    "bescargo3",
+    "besfloatingpad",
+    "betower1",
+    "betower2",
+    "betower4",
+    "betower5",
+    "block2",
+    "bunker",
+    "bunker10",
+    "bunker14cm",
+    "bunker2",
+    "bunker4",
+    "bunker6",
+    "bunker6a",
+    "bunker8",
+    "bunker9",
+    "catwalka",
+    "catwalkb",
+    "cbridge1",
+    "cbridge1end",
+    "cc_wall",
+    "ccbeaglelz",
+    "ccbox",
+    "ccbunker",
+    "cccargoprism",
+    "cccommtower",
+    "ccdswordlz",
+    "ccradartower",
+    "ccwall_end",
+    "challs2",
+    "command1",
+    "command2",
+    "common1",
+    "coplcargo1",
+    "coplcargo2",
+    "coplcargo3",
+    "coplcargo4",
+    "coplfloatingpad",
+    "coplfloatingpad2",
+    "copmfloatingpad",
+    "copscargo1",
+    "copscargo2",
+    "copscargo3",
+    "copsfloatingpad",
+    "cotpdrop",
+    "crevase3",
+    "crevase4",
+    "cube",
+    "dcolumn1",
+    "drock1",
+    "ds_rig",
+    "dsdrop",
+    "dslcargo1",
+    "dslcargo2",
+    "dslcargo3",
+    "dslcargo4",
+    "dslfloatingpad",
+    "dslfloatingpad2",
+    "dsmfloatingpad",
+    "dsscargo1",
+    "dsscargo2",
+    "dsscargo3",
+    "dssfloatingpad",
+    "ebunker",
+    "ehoverpost",
+    "einterface",
+    "elablock",
+    "emeblock",
+    "erampost",
+    "eround",
+    "esmall2",
+    "esmblock",
+    "etower",
+    "etruin1",
+    "etruin2",
+    "etruin3",
+    "etruin4",
+    "etruintop",
+    "ewarehouse",
+    "ewedge",
+    "expbridge",
+    "expbridgecap",
+    "factory",
+    "fc_fireblade",
+    "fc_logopanel",
+    "fc_thunderwolf",
+    "flaghut",
+    "flatbrdg1024",
+    "flatbrdg512",
+    "flatbrdgcap",
+    "float1",
+    "float2",
+    "float3",
+    "float4",
+    "floating1",
+    "floatpad",
+    "flytower",
+    "fmpipecon",
+    "gbedrop",
+    "gcotpdrop",
+    "gdsdrop",
+    "gswdrop",
+    "helibunker_be",
+    "helibunker_ds",
+    "hoverpost",
+    "iblock",
+    "iceoutcrop",
+    "id_uplinktower",
+    "idariel",
+    "idhangar",
+    "idtower",
+    "iflagroom",
+    "imp_outpost",
+    "iobservation",
+    "jcbase",
+    "jcbridgend1",
+    "jcbridgend2",
+    "jcbridgespan1",
+    "jcbridgespan2",
+    "jctower_base",
+    "kiel",
+    "lcargo1",
+    "lcargo2",
+    "lightstand",
+    "logo1",
+    "logo2",
+    "logo3",
+    "lookout2",
+    "lookout_flyer",
+    "lookoutzc",
+    "lrock1",
+    "lrock2",
+    "lrock3",
+    "lrock4",
+    "lrock5",
+    "lrock6",
+    "minesign",
+    "mis_ob1",
+    "mis_ob2",
+    "mis_ob3",
+    "mis_ob4",
+    "mis_ob5",
+    "mm_bridge",
+    "mm_hangar",
+    "mx3",
+    "observation",
+    "phoenixtower",
+    "sbunker",
+    "sc_flagstand",
+    "sc_uplinktower",
+    "scargo1",
+    "scargo2",
+    "scargo3",
+    "sensor_tower",
+    "srock1",
+    "srock2",
+    "srock3",
+    "srock3lg",
+    "srock4",
+    "srock5",
+    "srock5lg",
+    "sw_base",
+    "sw_listening",
+    "sw_sign",
+    "sw_turretbase",
+    "swdrop",
+    "swlcargo1",
+    "swlcargo2",
+    "swlcargo3",
+    "swlcargo4",
+    "swlfloatingpad1",
+    "swlfloatingpad2",
+    "swmfloatingpad",
+    "swscargo1",
+    "swscargo2",
+    "swscargo3",
+    "swsfloatingpad",
+    "swsfloatingpad2",
+    "tank",
+    "tank10",
+    "tank11",
+    "tank12",
+    "tank13",
+    "tank14",
+    "tank15",
+    "tank16",
+    "tank17",
+    "tank18",
+    "tank2",
+    "tank3",
+    "tank4",
+    "tank5",
+    "tank6",
+    "tank7",
+    "tank8",
+    "tank9",
+    "tblock",
+    "tcol1",
+    "tcol2",
+    "tcol3",
+    "tcol4",
+    "tcol5",
+    "tcol6",
+    "tcol7",
+    "tcol8",
+    "tower1",
+    "tunnel",
+    "turretbase",
+    "underground8",
+    "w64center",
+    "w64corner",
+    "w64elev",
+    "w64elevlink1",
+    "w64elevplat",
+    "w64end",
+    "w64gate",
+    "w64gatedoor",
+    "w64long",
+    "w64short",
+    "watchtower"
+  ],
+  "sources": {
+    "block1": {
+      "earlier_candidates_failed": [],
+      "member": "block1.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\IceRidge_deluxe.mis",
+      "mission_sha256": "c3019f5784d2f8a16514efba7aff63d294d2939e5cb503f9e7c995b3628ef882",
+      "model": "block1",
+      "palette": "Ice.day.ppl",
+      "palette_error": null,
+      "resources": {
+        "Ice.day.ppl": "c191f84cd569d5384b9aa0e1719317954fc66b7e1f03902aa186cdb3007c6dea",
+        "base_rock.bmp": "e15864d95eba42acf50eeee675a6ee9e82dd0776da69694920f38c3f5ee31920",
+        "block1-00.dig": "d05fd49ebba6ab35a11c3c507fa09de12f40a674ef21530fbcda239c2f5121eb",
+        "block1.dis": "aef23fbc578d30d38a0cd25d317925cdd8e0f31de726056cfabc59f192c33504",
+        "block1.dml": "14225411f7187dfff3312028e5f45cd42135c3f6b4867827daec48f812fe228b",
+        "redstripe2.bmp": "18d64427b2c55d7314f021eaf21ea1d3a0313c29f3932988141c40e27de9e22a",
+        "wall_3.bmp": "29449d2f266d0ead65219fdbc1f2bd4bf752e5fd937702aef1a7741d38a28033"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "6b7a2ff0590d8d53c78827a2e46065943fab1e4e93e7dab85aec5c47ada4bf44",
+          "volume": "iceWorld.vol"
+        },
+        {
+          "sha256": "42bc39f92152c1876ef2fd9a922348bfabd25bd7c3cf8e7344376f840b0ddfac",
+          "volume": "iceTerrain.vol"
+        },
+        {
+          "sha256": "deaf278b846054717ecf3d06e2eabaf3c69bd9838165b1505ed819cecc752593",
+          "volume": "iceDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "551516f32f3e8c7850b667dc6056a42a5a28ffdec6028fa4b359a7c36f1b43a3",
+          "volume": "IceRidge_deluxe.ted"
+        },
+        {
+          "sha256": "fd4aaa34dd60c25f50be0a5a5a1015c968d78c1c6b9ec77df24ee18505a1bb68",
+          "volume": "JC_extras.vol"
+        },
+        {
+          "sha256": "13354999cf8ed7e31c7ccb14ff6056c88a81f95b039f1a5d0621543ac4689f95",
+          "volume": "DOX_textures.vol"
+        },
+        {
+          "sha256": "5edc3981f6a137b1420eaa44cbedf73a1a893fb13a4d3cce4f09887d8c6681a5",
+          "volume": "MM_extras.vol"
+        },
+        {
+          "sha256": "516fd732d8994f4017ddcefbba58140c4286bb57fd7d36d0235125bc9d8bc690",
+          "volume": "SC_extras.vol"
+        },
+        {
+          "sha256": "f231f21638aa3aa046617b9efb33bf685532881ee424b4fbfd4309bedeffc761",
+          "volume": "IceRidge_deluxe.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "box": {
+      "earlier_candidates_failed": [],
+      "member": "box.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\FeudingNeighbors.mis",
+      "mission_sha256": "31180c77178785f5b8542b9460187adc9f3e7cc46ade10bda5ebf0e170a584e6",
+      "model": "box",
+      "palette": "lush.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "box-00.dig": "c8dbcb35e7eeec0792f8f9b7fa97cb336ebb1babdf18cc2ef2efe9600cf3dab1",
+        "box.dis": "9cd9068965e91a0b3d6652b1717fe7ed2a5637866731bc2f94b76871b3a44c1e",
+        "box.dml": "fa354def371ddcae1608c83bf645d8a242806c274203c129e517e9f3f9267a3c",
+        "cold_ft.bmp": "aa1bed189d788eb8ea5bd737dabc915b76255ad4affe48999662ae2068d59844",
+        "dark_wt.bmp": "65868766e0d3df31879fd608bdc2695118c06e326a9db4b0da2c4ce716a09a39",
+        "ext_grey9.bmp": "dacba7db738f5b5055237d3e98f5fe73fc6275bdc2dc218eb4dc94d43f7aec56",
+        "lush.night.ppl": "b7fc91e467d57e058f37e520120e136a8873a55343231be2351bdfe76a6ea9e2",
+        "special_warm.bmp": "e043680cc69a38c5c60cabca4c2da1b9fc3e0ad8420f10f230dde19acffb5825"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "2f175d9bc83e70de6121688316221970c2224e73c4e60d3be9b18fef8a47a99c",
+          "volume": "lushWorld.vol"
+        },
+        {
+          "sha256": "1c48870747039253ed3a491cf0dd68c5d97f082f68d50330818ac627333576d0",
+          "volume": "lushTerrain.vol"
+        },
+        {
+          "sha256": "af91029418db3114af4c8ede557514134dd5acc71588757a489faf55cdf06922",
+          "volume": "lushDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "39494539fc2b8f11f3d39e211a517fc89e686d046dedbcd5d1030ad5877e4b45",
+          "volume": "FeudingNeighbors.ted"
+        },
+        {
+          "sha256": "fa41d5ad4f1014c340789aadc0a9d708bdd77c2bc811df4a5a019c32c77fc068",
+          "volume": "FeudingNeighbors.vol"
+        },
+        {
+          "sha256": "03bbc66420ab0ac50315ccd587d883038c4ed98c839ae9fbe7f84ad13de08fe1",
+          "volume": "box.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "building1": {
+      "earlier_candidates_failed": [],
+      "member": "building1.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\DeadlyValley.mis",
+      "mission_sha256": "60d491d036e8b6d2932d7e2ad48df850001a5d34c03f91bfdfbd6646ccc5eab3",
+      "model": "building1",
+      "palette": "mars.day.ppl",
+      "palette_error": null,
+      "resources": {
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "bmarble.bmp": "caa6f20442d85572f4ce185857ab4c147c67b1b12db6201393930eb6239147f1",
+        "building1-00.dig": "16b1e54366a5e1e0a1585f198f19c6907f08a7f0ea7de65eaec323d1fcb65d80",
+        "building1.dis": "906a582b63069a9fa9bbbcfec7f1a8460836ab6a839f697410d6ecdecb56b90f",
+        "building1.dml": "36a1b6056f604f1df500718f6db71d44ecf6685acbd930efb2207d309d7ef637",
+        "cold_16b.bmp": "a460ab0f0599377900df4468be9cb0155c13bad6e84a7c6065f321304d3099a7",
+        "column.bmp": "a5f62d8c26c9c97359b3f183be20ef01c67fa8e9c26a2ebf6d0fdbf7d57b6ce6",
+        "ds_bottom.bmp": "750939d372cdc5113ec6c7890b88f57a703ac81e60237c145064ef008e3dfe71",
+        "exdoorborder.bmp": "b414f12a30a99ca543638d6eb620844e76c1738d3e4247d74e716e070a824397",
+        "exseemed.bmp": "6e62a27b038d134d4206e19ae59ed87b60652b7f63992b5d8c0afe6c2730ddd3",
+        "ext_grey.bmp": "65a209b8f4e64bed1090ed9905d72c6868ca6cac21c03e1f547983dcc09d430c",
+        "iconcretebock.bmp": "d88f446d03a3c30de9c3486a0bc9dacdc6917b2b455a4056e05fa8ac26a15774",
+        "idkmetal.bmp": "b06322b85060876181f9dd8034cd56b24b8547550bcfd9d96f458492c6c65856",
+        "iltconcrete.bmp": "caafab1bd1bd0a723ec3dd87564f6139636b8300da9a3ceeb0cfcef11adc7d52",
+        "iltmetal.bmp": "a07e1a94dee13b10001a4f46d2f6a9c38b5dd7c7bfcfcb4dd745d1c39e56f3aa",
+        "light.bmp": "3f7cc7eae12ff0103095ccfa609a2689feec25143f558100eea8322230bc0c6a",
+        "mars.day.ppl": "6d6f0bb46e323767f7aaab0d7a88d40206e064eca813d8783c2dd7fdfbd59a0c",
+        "pannel3.bmp": "ae8d80a7362637b483d1cbd2f57fa3b34c38955b620b3447b2c8ef2d79ba750d",
+        "piston.bmp": "44a28656821d8ebe7e442633bac5fea6f60e823083656258f3886968a8c1a6b4",
+        "post.bmp": "dd2d052f301462749f7a5f6730b7f75ff33e6d0db31ee896adf386a099a2d994",
+        "rock.bmp": "09e6e62d3b367e71b234f5aa2cfca407577261fa38370f6040e7026293f6ca68",
+        "special_warm.bmp": "e043680cc69a38c5c60cabca4c2da1b9fc3e0ad8420f10f230dde19acffb5825",
+        "steel_16b.bmp": "c00d2aa4fdd39bdd56f26347bf31a962b16625347ea1a40d85026ce6deffd9d9",
+        "tech3.bmp": "298c984a05f0ff61dc070653e3cd8b659753289eefaefa685e1f3aaab2440b37",
+        "tunnel2.bmp": "06d5041fd8206c66eed922fd7f6ae7126a286da6e42767944dd8769afdf9e286"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "5db6d9e120b99869a8c71e527f884b8912a377fe807625df305ca4ef526ad0c5",
+          "volume": "marsWorld.vol"
+        },
+        {
+          "sha256": "3df0113415c303e228fb6124681a938c4c2f24a9ba5bbfddd86074fd43719051",
+          "volume": "marsTerrain.vol"
+        },
+        {
+          "sha256": "78242ed87d830a2f5ed713cee4bc3a6d20e3fac78f260e94664ebd94752d67df",
+          "volume": "marsDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "087a79db21166c9f25242cb5f180b1b26b5863306df006e6ca7a1fbaf313cae0",
+          "volume": "DeadlyValley.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "dnbase1": {
+      "earlier_candidates_failed": [],
+      "member": "dnbase1.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\desertnights.mis",
+      "mission_sha256": "b6bf45a226543a65eb2479423920470593b409c56da85056d2893c4922e99d60",
+      "model": "dnbase1",
+      "palette": "alien.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "alien.night.ppl": "8ec2fd4a154990b8101aaa4e5de1b00a14a2fa8d83df440b20756712b9b07f80",
+        "base_rock.bmp": "e15864d95eba42acf50eeee675a6ee9e82dd0776da69694920f38c3f5ee31920",
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "dnbase1-00.dig": "9abc1db2b8ec1a139da395d0c7460ee0c07179000b11e161feb8f5dbef25d68b",
+        "dnbase1.dis": "31abe0407cd5d8d7ba34670eb235761320cc611ebe6a9e5bca7b1fee8fa96b10",
+        "dnbase1.dml": "4a3152b41cafe799f95abd1a51d15104ddf38bb6fd2ee9e25c364158ba464a7d",
+        "ds_bottom.bmp": "750939d372cdc5113ec6c7890b88f57a703ac81e60237c145064ef008e3dfe71",
+        "excommand.bmp": "ef0a3f0b3f5dde0507f68d5f51cd5a30f21d2100e81d909c6515ca63b0544346",
+        "exseemed.bmp": "6e62a27b038d134d4206e19ae59ed87b60652b7f63992b5d8c0afe6c2730ddd3",
+        "ext_grey.bmp": "65a209b8f4e64bed1090ed9905d72c6868ca6cac21c03e1f547983dcc09d430c",
+        "extech.bmp": "64ce77e71282f221a3c05f0b4b11fb0d6829a3ea9051f23d26d1ef4433e1271a",
+        "floor2.bmp": "27b6220e7992b86e4c2f6378ae6384ccc4795e1691a072a8c2de94675211017b",
+        "greyrib.bmp": "b99a44686d9e7561939ee31b12e9b1eef148cee51e18d0a2a9a72f2d52702e52",
+        "iltconcrete.bmp": "caafab1bd1bd0a723ec3dd87564f6139636b8300da9a3ceeb0cfcef11adc7d52",
+        "ivent.bmp": "e7df88e0de2af98c83d6e82eb27508d2ab77a180b9c99972bfc52aa6d33374ce",
+        "rock.bmp": "09e6e62d3b367e71b234f5aa2cfca407577261fa38370f6040e7026293f6ca68",
+        "techwall.bmp": "9637ba61f920cacfdb1763b37eb8bc9b1400a7538c0cfb00a087703b49dae554",
+        "wall1.bmp": "c2a75a85540067db191ad35febcf2cc68177fde471ad6aa3a472467accd55d59",
+        "warm_32b.bmp": "4cd0e69c6bac702bf861666c8dc0492a36e96eaa7ead6e0d7df174a00e19fc5e"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "05b30351188e57a1dd6e40ca53c5de4ed1bb4a533f50215f2009728a996b7e49",
+          "volume": "alienWorld.vol"
+        },
+        {
+          "sha256": "ef603d91cee2adffc2d4ef4ad7a24e514741aaad99dd3fc4c0dbc36b9659a060",
+          "volume": "alienTerrain.vol"
+        },
+        {
+          "sha256": "a2026904b699317ae3a087f9a2840f41d3b2ae5820e5b8c1706ce3eedae00f3c",
+          "volume": "alienDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "263178a05509f70fcc88bd970c92c2431f0900380fe453f7b834fe4bafb60028",
+          "volume": "desertnights.ted"
+        },
+        {
+          "sha256": "f368d4913f15e3814e3d3a6ef198ec5de61d79b25c78caf4a350612840c1c283",
+          "volume": "desertnights.vol"
+        },
+        {
+          "sha256": "373b48457f942fa050a484d6828a912c40c4a1a211f61de6c8608e9bf8c7c598",
+          "volume": "dn-sounds.vol"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "mcommand": {
+      "earlier_candidates_failed": [],
+      "member": "mcommand.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\QuickSand.mis",
+      "mission_sha256": "68eef8743dd25b703892041438f0d273eca865d20a9e0721ef8686ad2d8b77c5",
+      "model": "mcommand",
+      "palette": "desert.day.ppl",
+      "palette_error": null,
+      "resources": {
+        "cold_16b.bmp": "a460ab0f0599377900df4468be9cb0155c13bad6e84a7c6065f321304d3099a7",
+        "dark_wt.bmp": "65868766e0d3df31879fd608bdc2695118c06e326a9db4b0da2c4ce716a09a39",
+        "desert.day.ppl": "82c26919ebf6279766a34b97da63f90bf6775ea406dfa10aae83ad5996fc328e",
+        "display_cammera.bmp": "a4753fb4a2697c89d43441e44b76420aecd75be5d1187cd8f84ae0aae71134fc",
+        "display_comm.bmp": "2a5ac6ee3fa7c5c8b7b8603653216a090051556ef85cb4cc58a0ef4dccb56ee6",
+        "dropwolf3.bmp": "70846f4efa40141e114b381a8bfd9e46f9ed278172ef1726aacdeb049b9c7b29",
+        "ds_bottom.bmp": "750939d372cdc5113ec6c7890b88f57a703ac81e60237c145064ef008e3dfe71",
+        "ext_grey6.bmp": "bb255237485f627a28536bb7295a2601eb441c815ee4e7671982eb852373d00d",
+        "igrate.bmp": "504e9f69442c775db6befa98371f3a089dd88e7df2ccc14d0fb69bfdcf7d777b",
+        "mcommand-00.dig": "0625de6f70c32ce66716efcfa50b1035d56338a67c4537095690c73c12a289f0",
+        "mcommand.dis": "cae1317ab5b0483b6729d0f44d61571792202a0c4606bef51dd4f6f57400a4e0",
+        "mcommand.dml": "1186209e8ebfd4884b45d7d7ffc536b23198ff54616c1b8709a94f944144a193",
+        "redgrate.bmp": "83c1fc077abb48f96088f3dbdd059448a6dd73562fd9ccf653b2ce70c6429327",
+        "redylight.bmp": "70188cbebf8b3e7ca2b64ff47b0b1d1abe47a5a5d1ed280855c5acc72e995de1",
+        "steel_16b.bmp": "c00d2aa4fdd39bdd56f26347bf31a962b16625347ea1a40d85026ce6deffd9d9",
+        "sworddrop3.bmp": "fe5968e82eac6befd353258a37bf55f0f346fba2e04e8ce8568909df38562316",
+        "warm_32b.bmp": "4cd0e69c6bac702bf861666c8dc0492a36e96eaa7ead6e0d7df174a00e19fc5e",
+        "wolf_shipffinal.bmp": "d229fadde607dc5daa4847b96f8566af213c0c6fb8a68abe3fac3aeab9649af1"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "780f9f15884794c4d4798457c96cea2461a8d3d64bb6a76fd3cf1728f7637e9c",
+          "volume": "desertWorld.vol"
+        },
+        {
+          "sha256": "b879d15fc30f7e4b7c88f4baf5304625ca32c5d5ece5a123440c8ed02ab25d78",
+          "volume": "desertTerrain.vol"
+        },
+        {
+          "sha256": "b3d2bc6c4d595d3a68379d42dd1b9c6ae957bdb20c020bd71269326622652e6b",
+          "volume": "desertDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "de532bb4c38ee7dd128a64443128d81d9a51a310b2895426e4ebc4a7e2a203e2",
+          "volume": "titanDML.vol"
+        },
+        {
+          "sha256": "13354999cf8ed7e31c7ccb14ff6056c88a81f95b039f1a5d0621543ac4689f95",
+          "volume": "DOX_textures.vol"
+        },
+        {
+          "sha256": "c64e42c059dab2244d56870f495ef062af6a9e5da753976b198e684dcefc9562",
+          "volume": "SW_extras.vol"
+        },
+        {
+          "sha256": "8fa49ad441c8e21baf2302df871d7a9f4a51a3e2d2dec5593d504101b1f8d0f9",
+          "volume": "QuickSand.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        },
+        {
+          "sha256": "01379b3f1b9aa72a2191e119787305fc7d916a42895b5612a75abb8b9830feee",
+          "volume": "QuickSand.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "newbase": {
+      "earlier_candidates_failed": [],
+      "member": "newbase.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\antarcticspell.mis",
+      "mission_sha256": "393e916d621bd1c7078ac52f74fe532adb25f6b490e96822d9be8d8c1f4a26e2",
+      "model": "newbase",
+      "palette": "ice.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "Newbase-00.dig": "bb8b39d6fb043ea2a515597460cab5d80efad82d5c67c98faa4a0589468f825f",
+        "Newbase.dml": "cae0f11f606dcc311eed4ad6cab9039e1c0797f46602bc5ddeb5cd475e1b0b5a",
+        "base_marble.bmp": "772933e6bbdd0cac67f0ffab6e03d997871eb23c8731a002c056374ba9048503",
+        "base_rock.bmp": "e15864d95eba42acf50eeee675a6ee9e82dd0776da69694920f38c3f5ee31920",
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "bsteel.bmp": "23d3ab608ffdd7def37cb253f087bf7309f98feae32506a436f7b41ebef015e9",
+        "eagle.bmp": "32b2cf7a4f55910ea02be3f122979ff9271f6f245a1a6c4faa0d4f2980a1b9b5",
+        "exdoorborder.bmp": "b414f12a30a99ca543638d6eb620844e76c1738d3e4247d74e716e070a824397",
+        "exgrate2.bmp": "125963ff8bc16a8b0a4e268e88a5721dff4d4a5527e9d67e1e00c543e03da7b3",
+        "exseemed.bmp": "6e62a27b038d134d4206e19ae59ed87b60652b7f63992b5d8c0afe6c2730ddd3",
+        "ext_grey.bmp": "65a209b8f4e64bed1090ed9905d72c6868ca6cac21c03e1f547983dcc09d430c",
+        "ext_grey2.bmp": "03d779bb09dae10d2e4a4c16e7c3497769a7b8ee79ea6231b9c3afb6c87cc1c6",
+        "ext_grey3.bmp": "c806f5048d6762b30d093df2d949278b7d55f3bacd513b20f0f24d1c5cf55185",
+        "ext_stone6.bmp": "11d884af63af0cecaddca76c0cef5ec535481298c3a042d138dc4de47d07616d",
+        "exterior.bmp": "fe808042f3912599e3394606f604ea78c96922d17d8f25e2cc42d470e2cc23fa",
+        "ice.night.ppl": "27107c90391688617a1675b418ab4ef4e711f3eadad520d126a3ba79be666ce4",
+        "idkmetalstrip.bmp": "86c3e443e658c64f5e396c10d37720d055439dc61b3b6b22f095cc70cc2b7ce8",
+        "igrate.bmp": "504e9f69442c775db6befa98371f3a089dd88e7df2ccc14d0fb69bfdcf7d777b",
+        "light_metal.bmp": "607c27b8537b3f2fecbec8992cb3cbd3c5bbf173ef3948169477b6d15e5dd366",
+        "newbase.dis": "1dcc525a3868fd9b8f1a272d50da07ae8dad5b08baef068a6b5af098bab002ae",
+        "rock.bmp": "09e6e62d3b367e71b234f5aa2cfca407577261fa38370f6040e7026293f6ca68",
+        "vent.bmp": "f9650788a018265ab8447c6af79fa3608269bdbede06a3b063a428917d62af1e",
+        "warm_32b.bmp": "4cd0e69c6bac702bf861666c8dc0492a36e96eaa7ead6e0d7df174a00e19fc5e"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "6b7a2ff0590d8d53c78827a2e46065943fab1e4e93e7dab85aec5c47ada4bf44",
+          "volume": "iceWorld.vol"
+        },
+        {
+          "sha256": "42bc39f92152c1876ef2fd9a922348bfabd25bd7c3cf8e7344376f840b0ddfac",
+          "volume": "iceTerrain.vol"
+        },
+        {
+          "sha256": "deaf278b846054717ecf3d06e2eabaf3c69bd9838165b1505ed819cecc752593",
+          "volume": "iceDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "27903a787acb5557697cf88bc64c55b743cfcc90b198d5bf8bb79e2616c124bd",
+          "volume": "AntarcticSpell.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        },
+        {
+          "sha256": "7dceb8aeb23e66072cd07dbf9fde27920a9295d00979dc0081fcc0398b290522",
+          "volume": "antarcticspell.vol"
+        },
+        {
+          "sha256": "90ba7ef97d0c0afb020f510a3f014fe82f56f88badf5b1a36269cb501298d1b0",
+          "volume": "as-sounds.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "newcap": {
+      "earlier_candidates_failed": [],
+      "member": "newcap.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\antarcticspell.mis",
+      "mission_sha256": "393e916d621bd1c7078ac52f74fe532adb25f6b490e96822d9be8d8c1f4a26e2",
+      "model": "newcap",
+      "palette": "ice.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "Newcap-00.dig": "ccca3f1157170ab4956cb2ba26148856f579a37e2140b8fd6b4b86d0ae02815a",
+        "Newcap.dml": "c328780244edd19b8f4ac00f45442c6edfec570dfb45bc1aa552af6317944712",
+        "base_cold.bmp": "a853b82b1e7ae6d900d80cd1f3554c55b89e92a4b652b60cfd9a36cf8fd400de",
+        "base_marble.bmp": "772933e6bbdd0cac67f0ffab6e03d997871eb23c8731a002c056374ba9048503",
+        "base_rock.bmp": "e15864d95eba42acf50eeee675a6ee9e82dd0776da69694920f38c3f5ee31920",
+        "droppheonix1.bmp": "aea8ec6b414a85ee755d43e0171c9a62c318c8e842b3168f1eb499ec2ff3015a",
+        "exgrate2.bmp": "125963ff8bc16a8b0a4e268e88a5721dff4d4a5527e9d67e1e00c543e03da7b3",
+        "exstrip.bmp": "3eab6a23ccf614613564234384b6050b39ddbd343aeb7e3213d0ef1d393ddef2",
+        "ext_grey.bmp": "65a209b8f4e64bed1090ed9905d72c6868ca6cac21c03e1f547983dcc09d430c",
+        "ext_grey9.bmp": "dacba7db738f5b5055237d3e98f5fe73fc6275bdc2dc218eb4dc94d43f7aec56",
+        "ice.night.ppl": "27107c90391688617a1675b418ab4ef4e711f3eadad520d126a3ba79be666ce4",
+        "iltconcrete.bmp": "caafab1bd1bd0a723ec3dd87564f6139636b8300da9a3ceeb0cfcef11adc7d52",
+        "itube.bmp": "6502d06fe0454b5df783ff3eaa4818651175d6217c3dfbcb98fddc33168a8c3c",
+        "newcap.dis": "4235ad0588a98d1c3d0135fc04362f747f8e6392d3dbc1e0c9e2c4f0c077ce04",
+        "pannel3.bmp": "ae8d80a7362637b483d1cbd2f57fa3b34c38955b620b3447b2c8ef2d79ba750d",
+        "vent.bmp": "f9650788a018265ab8447c6af79fa3608269bdbede06a3b063a428917d62af1e"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "6b7a2ff0590d8d53c78827a2e46065943fab1e4e93e7dab85aec5c47ada4bf44",
+          "volume": "iceWorld.vol"
+        },
+        {
+          "sha256": "42bc39f92152c1876ef2fd9a922348bfabd25bd7c3cf8e7344376f840b0ddfac",
+          "volume": "iceTerrain.vol"
+        },
+        {
+          "sha256": "deaf278b846054717ecf3d06e2eabaf3c69bd9838165b1505ed819cecc752593",
+          "volume": "iceDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "27903a787acb5557697cf88bc64c55b743cfcc90b198d5bf8bb79e2616c124bd",
+          "volume": "AntarcticSpell.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        },
+        {
+          "sha256": "7dceb8aeb23e66072cd07dbf9fde27920a9295d00979dc0081fcc0398b290522",
+          "volume": "antarcticspell.vol"
+        },
+        {
+          "sha256": "90ba7ef97d0c0afb020f510a3f014fe82f56f88badf5b1a36269cb501298d1b0",
+          "volume": "as-sounds.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "ras": {
+      "earlier_candidates_failed": [],
+      "member": "ras.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\FeudingNeighbors.mis",
+      "mission_sha256": "31180c77178785f5b8542b9460187adc9f3e7cc46ade10bda5ebf0e170a584e6",
+      "model": "ras",
+      "palette": "lush.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "base_rock.bmp": "e15864d95eba42acf50eeee675a6ee9e82dd0776da69694920f38c3f5ee31920",
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "cold_ft.bmp": "aa1bed189d788eb8ea5bd737dabc915b76255ad4affe48999662ae2068d59844",
+        "ext_grey9.bmp": "dacba7db738f5b5055237d3e98f5fe73fc6275bdc2dc218eb4dc94d43f7aec56",
+        "lush.night.ppl": "b7fc91e467d57e058f37e520120e136a8873a55343231be2351bdfe76a6ea9e2",
+        "ras-00.dig": "a878041f286bd8ecbca14bb70737a034848d3b591d3c320c69071d56a0e620ff",
+        "ras.dis": "8dd091b6600d9697b7fb5dfd86549fe81deef59c3d6d507c5a0aa2acd0e78eac",
+        "ras.dml": "c2dd78ba5547398765d86fd89a56c7fe1e5f007d1804eba7945ae0a8d5da3ee5",
+        "warm_wt.bmp": "e8624caf181ecf6f466a483d3492f675afb9e256d2c7b25227a5f708ffca7aaf"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "2f175d9bc83e70de6121688316221970c2224e73c4e60d3be9b18fef8a47a99c",
+          "volume": "lushWorld.vol"
+        },
+        {
+          "sha256": "1c48870747039253ed3a491cf0dd68c5d97f082f68d50330818ac627333576d0",
+          "volume": "lushTerrain.vol"
+        },
+        {
+          "sha256": "af91029418db3114af4c8ede557514134dd5acc71588757a489faf55cdf06922",
+          "volume": "lushDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "39494539fc2b8f11f3d39e211a517fc89e686d046dedbcd5d1030ad5877e4b45",
+          "volume": "FeudingNeighbors.ted"
+        },
+        {
+          "sha256": "fa41d5ad4f1014c340789aadc0a9d708bdd77c2bc811df4a5a019c32c77fc068",
+          "volume": "FeudingNeighbors.vol"
+        },
+        {
+          "sha256": "03bbc66420ab0ac50315ccd587d883038c4ed98c839ae9fbe7f84ad13de08fe1",
+          "volume": "box.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "sdbase": {
+      "earlier_candidates_failed": [],
+      "member": "sdbase.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\StoneDust.mis",
+      "mission_sha256": "3286b05cbb29954fa78b62cb4b625bd9fb3003565ded6c524e94801c070d95a7",
+      "model": "sdbase",
+      "palette": "alien.day.ppl",
+      "palette_error": null,
+      "resources": {
+        "alien.day.ppl": "35adc2f823d4f842c56c0cbc16efedd012da7f13b669b7f1fe18e9d401d4ca5e",
+        "band.bmp": "445a745e5bec99bfc0609c0174ec662b61e115713861e41c9afa1e2fe00b6316",
+        "base_rock.bmp": "e15864d95eba42acf50eeee675a6ee9e82dd0776da69694920f38c3f5ee31920",
+        "base_steel.bmp": "a7d6c51ee72e2e7bd14cddf082820a2c62bde3a1885844183cd4506e1d329957",
+        "bsteel.bmp": "23d3ab608ffdd7def37cb253f087bf7309f98feae32506a436f7b41ebef015e9",
+        "dark_32b.bmp": "b9158ae40e4e0f77e63167aba3310a654e09695ea8f788d915e936c215e3191a",
+        "iltconcrete.bmp": "caafab1bd1bd0a723ec3dd87564f6139636b8300da9a3ceeb0cfcef11adc7d52",
+        "rock.bmp": "09e6e62d3b367e71b234f5aa2cfca407577261fa38370f6040e7026293f6ca68",
+        "sdbase-00.dig": "4d2c0309f4272ea23a1933aedb396480ceee304e2f3917c3c61a727d94235b9d",
+        "sdbase.dis": "5544df8e6005e14d6aef3fe74a70000415775ccb3a1b1450e014ad06c8de2da3",
+        "sdbase.dml": "0f38296835ddb2bdeb40a9cec415087501910bf316558437f90382c16f0c49ea"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "05b30351188e57a1dd6e40ca53c5de4ed1bb4a533f50215f2009728a996b7e49",
+          "volume": "alienWorld.vol"
+        },
+        {
+          "sha256": "ef603d91cee2adffc2d4ef4ad7a24e514741aaad99dd3fc4c0dbc36b9659a060",
+          "volume": "alienTerrain.vol"
+        },
+        {
+          "sha256": "a2026904b699317ae3a087f9a2840f41d3b2ae5820e5b8c1706ce3eedae00f3c",
+          "volume": "alienDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "1ce7bf6835a58bbd8b9f80b9536c69ff528d1c77d4c0acef025ed1703edf2abb",
+          "volume": "StoneDust.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        }
+      ],
+      "warnings": []
+    },
+    "spier1": {
+      "earlier_candidates_failed": [],
+      "member": "spier1.dis",
+      "missing_textures": [],
+      "mission": "C:\\Program Files (x86)\\Dynamix\\TRIBES11\\base\\missions\\QuickSand.mis",
+      "mission_sha256": "68eef8743dd25b703892041438f0d273eca865d20a9e0721ef8686ad2d8b77c5",
+      "model": "spier1",
+      "palette": "desert.day.ppl",
+      "palette_error": null,
+      "resources": {
+        "cold_16b.bmp": "a460ab0f0599377900df4468be9cb0155c13bad6e84a7c6065f321304d3099a7",
+        "desert.day.ppl": "82c26919ebf6279766a34b97da63f90bf6775ea406dfa10aae83ad5996fc328e",
+        "ext_stone4.bmp": "1fe39a32ad470856e0d06aca56eb670d7af0ae457f5bfa52b8304d23b2d81063",
+        "gold_32b.bmp": "9ab7345482f4fe2c5141cbc666169520f7a4664326206a43bd05a933cb90479e",
+        "light_metal.bmp": "607c27b8537b3f2fecbec8992cb3cbd3c5bbf173ef3948169477b6d15e5dd366",
+        "marble_32b.bmp": "2a970cd8e9770f53755cb5ecf0d6f144b6ee49624f5e0f8b156bef2830d9145d",
+        "marble_64b.bmp": "59da0ef13888850d62c37e0b8e6d565172b086a7fe135b70c5a6276e4f7cb533",
+        "plainemb10.bmp": "70846f4efa40141e114b381a8bfd9e46f9ed278172ef1726aacdeb049b9c7b29",
+        "special_warm.bmp": "e043680cc69a38c5c60cabca4c2da1b9fc3e0ad8420f10f230dde19acffb5825",
+        "spier1-00.dig": "49d00d1cfd4c65f4928b5468f8e67aaa2e025b41f617b2aaa5519c667fad0c90",
+        "spier1-01.dig": "e0dcb196fb8b4af37bc47cc0fc978638a0bfcea686ba6da6b2c60a8b6e6e9f02",
+        "spier1-02.dig": "1d0fe10c08276a8edb094614931b6a5c10c7d9827f5c6335857cd2ce83f2457f",
+        "spier1.dis": "f4513b5bdc8e3cb46417efe849024c1ca43e6697bbdbf41bf95843a2bc0b84a4",
+        "spier1.dml": "c31e29311895ba810ba564cd52a8a9b604641ac32663001e9fefed3a8b479088",
+        "warm_32b.bmp": "4cd0e69c6bac702bf861666c8dc0492a36e96eaa7ead6e0d7df174a00e19fc5e",
+        "warm_ft.bmp": "2ac1de72d01819a2250bd2877d1d1b93729352f69312e4e710badabefac509ec"
+      },
+      "volumes": [
+        {
+          "sha256": "041c0f70560a226ce71cfe4f7fce10a3f33ec40f5583efeab40bde0bc2fe5653",
+          "volume": "Interface.vol"
+        },
+        {
+          "sha256": "99bffc476411a0d2dfb27e78ea21cce41b86bbc554c077e6a576ab274838d269",
+          "volume": "Entities.vol"
+        },
+        {
+          "sha256": "780f9f15884794c4d4798457c96cea2461a8d3d64bb6a76fd3cf1728f7637e9c",
+          "volume": "desertWorld.vol"
+        },
+        {
+          "sha256": "b879d15fc30f7e4b7c88f4baf5304625ca32c5d5ece5a123440c8ed02ab25d78",
+          "volume": "desertTerrain.vol"
+        },
+        {
+          "sha256": "b3d2bc6c4d595d3a68379d42dd1b9c6ae957bdb20c020bd71269326622652e6b",
+          "volume": "desertDML.vol"
+        },
+        {
+          "sha256": "e208eb5cef289c5e226f43cb620e6caa5b7f86ced1dadde96b91e5fa03ff75a0",
+          "volume": "savanaDML.vol"
+        },
+        {
+          "sha256": "4e2dd2bf7240c3bde7ffc3fc1496923cd97117df71e6ceda91bcaf6dc7e26b11",
+          "volume": "human1DML.vol"
+        },
+        {
+          "sha256": "de532bb4c38ee7dd128a64443128d81d9a51a310b2895426e4ebc4a7e2a203e2",
+          "volume": "titanDML.vol"
+        },
+        {
+          "sha256": "13354999cf8ed7e31c7ccb14ff6056c88a81f95b039f1a5d0621543ac4689f95",
+          "volume": "DOX_textures.vol"
+        },
+        {
+          "sha256": "c64e42c059dab2244d56870f495ef062af6a9e5da753976b198e684dcefc9562",
+          "volume": "SW_extras.vol"
+        },
+        {
+          "sha256": "8fa49ad441c8e21baf2302df871d7a9f4a51a3e2d2dec5593d504101b1f8d0f9",
+          "volume": "QuickSand.ted"
+        },
+        {
+          "sha256": "e90c325adf15d638f0bf3aa6704a108901b39ac4b96ba94ab562b0e3f332e141",
+          "volume": "ReZCustom.vol"
+        },
+        {
+          "sha256": "01379b3f1b9aa72a2191e119787305fc7d916a42895b5612a75abb8b9830feee",
+          "volume": "QuickSand.vol"
+        }
+      ],
+      "warnings": []
+    }
+  },
+  "textures": [
+    {
+      "building": "block1",
+      "collision": false,
+      "pixel_sha256": "a79a1f9d25d6235de29d070d33fc2c20e76aa6ba061820bf59d0c252a0ebc098",
+      "requested": "redstripe2.png",
+      "reused": true,
+      "stored": "redstripe2.png"
+    },
+    {
+      "building": "block1",
+      "collision": false,
+      "pixel_sha256": "62bb1e0a9bacd8be748ad6a9e834ddd844ee7342a12419b85c511f4d2c2f1fa6",
+      "requested": "base_rock.png",
+      "reused": true,
+      "stored": "base_rock.png"
+    },
+    {
+      "building": "block1",
+      "collision": false,
+      "pixel_sha256": "c90707b9df33b4b1f89271185c63700dea8c9615bcf6631ffda5a85b4a1be178",
+      "requested": "wall_3.png",
+      "reused": true,
+      "stored": "wall_3.png"
+    },
+    {
+      "building": "box",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "box",
+      "collision": false,
+      "pixel_sha256": "9e7093d7297e5ed037aa78d6d20206ba8bbd03325a03d485f17fcc9c8674b595",
+      "requested": "dark_wt.png",
+      "reused": true,
+      "stored": "dark_wt.png"
+    },
+    {
+      "building": "box",
+      "collision": false,
+      "pixel_sha256": "6af6185698ba250c4625ec4c412cb9f186be7bbe48342dabd2a56cf439cc2241",
+      "requested": "cold_ft.png",
+      "reused": true,
+      "stored": "cold_ft.png"
+    },
+    {
+      "building": "box",
+      "collision": false,
+      "pixel_sha256": "733ae25e4c3deb17f48f9764c27a28d95dc336804aa2bebee1112d568a38bc8b",
+      "requested": "ext_grey9.png",
+      "reused": true,
+      "stored": "ext_grey9.png"
+    },
+    {
+      "building": "box",
+      "collision": false,
+      "pixel_sha256": "713ff8e5db1e8cd1a2d0b2511535d3aad4e4835435a312e5c8df391d2c69b519",
+      "requested": "special_warm.png",
+      "reused": true,
+      "stored": "special_warm.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "f73c9c48c4ce974be1ac871359c19dc57bd6630dc1a2ad9f22b373e683911930",
+      "requested": "steel_16b.png",
+      "reused": true,
+      "stored": "steel_16b.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "713ff8e5db1e8cd1a2d0b2511535d3aad4e4835435a312e5c8df391d2c69b519",
+      "requested": "special_warm.png",
+      "reused": true,
+      "stored": "special_warm.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "66db99d05147f0ccb0e77598c65d75dca65fd53af55e73479414372dc8e9b128",
+      "requested": "idkmetal.png",
+      "reused": true,
+      "stored": "idkmetal.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "88ef7b833d33c6e2a780731405e73241ef96d332cababd01e79327579d6ebca7",
+      "requested": "tech3.png",
+      "reused": false,
+      "stored": "tech3.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "988899cf5223587d72e9d4d0ae61d7aa5e7e5ceb4415356dbb1669baca4219f6",
+      "requested": "iconcretebock.png",
+      "reused": true,
+      "stored": "iconcretebock.png"
+    },
+    {
+      "building": "building1",
+      "collision": true,
+      "pixel_sha256": "7a7236d595ab11a624a0cd8674cac4643c139ec9d94fc38953caff8f130e706c",
+      "requested": "rock.png",
+      "reused": false,
+      "stored": "building1_rock.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "6cf3395c1e6d23778a97ff650e202ea885f27900093b3b1f7e7dc5d55cfb70fa",
+      "requested": "bmarble.png",
+      "reused": false,
+      "stored": "bmarble.png"
+    },
+    {
+      "building": "building1",
+      "collision": true,
+      "pixel_sha256": "0a42431869010251f0de0ee8c70ee2e9558a80793459623f08901172cf3f9ec9",
+      "requested": "light.png",
+      "reused": false,
+      "stored": "building1_light.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "cf59d47b13cd28b2623e7153292f85ff176a59d8b117929f0370325762e830d3",
+      "requested": "tunnel2.png",
+      "reused": false,
+      "stored": "tunnel2.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "a9246df8ee610f58129ee01ad48363ac7deb6727bde7268a33a8d28af661eae2",
+      "requested": "cold_16b.png",
+      "reused": true,
+      "stored": "cold_16b.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "e48cffc7da5e2f530fd380bb94bbeaefb3af03414c0f994668ee0feded0f2045",
+      "requested": "iltmetal.png",
+      "reused": true,
+      "stored": "iltmetal.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "a87a81b2cc7e6774153fba02cc20c107872c74440d3ca359dd64e47751a99e9c",
+      "requested": "post.png",
+      "reused": false,
+      "stored": "post.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "5c151050e1d20e5f1ccf8ae501e84ae1828c331af49d71d7efc59744222495cf",
+      "requested": "piston.png",
+      "reused": true,
+      "stored": "piston.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "148d35eee957a8d125a1a501cc02b9c55844d04b1be3d99018ae2ed96ae0dbfe",
+      "requested": "iltconcrete.png",
+      "reused": true,
+      "stored": "iltconcrete.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "24899f5d4507ce33f42a199f566033d3d401ce3ffa594db20c061a1e81ddd024",
+      "requested": "pannel3.png",
+      "reused": false,
+      "stored": "pannel3.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "7476ba93ce4c6c358973acbe8c80b279d41f79e6637ebb950df7b83a7b28611d",
+      "requested": "column.png",
+      "reused": false,
+      "stored": "column.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "8c871fcb285666466524005ec6867987502b1db123461352483086d0eb7dd42d",
+      "requested": "ds_bottom.png",
+      "reused": true,
+      "stored": "ds_bottom.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "feaee5145e2a9fce1d85ba55de6b86a811b86e9cbc36a57e980298d59e578872",
+      "requested": "exseemed.png",
+      "reused": false,
+      "stored": "exseemed.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "1472e4c7f887b889c9a80ef84ecfcf5de65b9ff749f4a3b8cce683a7f0096bcc",
+      "requested": "exdoorborder.png",
+      "reused": false,
+      "stored": "exdoorborder.png"
+    },
+    {
+      "building": "building1",
+      "collision": false,
+      "pixel_sha256": "64f808f3f91c8a98eca56a8b29a114c22e9790b8b9f50e0d42f00f9c0fec4800",
+      "requested": "ext_grey.png",
+      "reused": true,
+      "stored": "ext_grey.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "8c871fcb285666466524005ec6867987502b1db123461352483086d0eb7dd42d",
+      "requested": "ds_bottom.png",
+      "reused": true,
+      "stored": "ds_bottom.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": true,
+      "pixel_sha256": "6c937308cf987dfee4a5bd569ca0703a767373d72f790afb14d949f6db161822",
+      "requested": "wall1.png",
+      "reused": false,
+      "stored": "dnbase1_wall1.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "6a667373566981080588e6b4807b6ba9a819ecd6d2383f3e967db13fbee0ad03",
+      "requested": "extech.png",
+      "reused": false,
+      "stored": "extech.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "9da269f9c75e4595ab3f8eddc673cce04708213fe5360e4412da1ea98877a62d",
+      "requested": "excommand.png",
+      "reused": false,
+      "stored": "excommand.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "a421eba5e4eb77913a78970f2828fb83c4ee895c49ef6208b955c05e20205268",
+      "requested": "floor2.png",
+      "reused": false,
+      "stored": "floor2.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "efe0b68fd0d37c014d66f45d61fc7945e650f969c0ba3323e4c0c256cc65e1b7",
+      "requested": "techwall.png",
+      "reused": false,
+      "stored": "techwall.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "64f808f3f91c8a98eca56a8b29a114c22e9790b8b9f50e0d42f00f9c0fec4800",
+      "requested": "ext_grey.png",
+      "reused": true,
+      "stored": "ext_grey.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "feaee5145e2a9fce1d85ba55de6b86a811b86e9cbc36a57e980298d59e578872",
+      "requested": "exseemed.png",
+      "reused": true,
+      "stored": "exseemed.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": true,
+      "pixel_sha256": "7a7236d595ab11a624a0cd8674cac4643c139ec9d94fc38953caff8f130e706c",
+      "requested": "rock.png",
+      "reused": false,
+      "stored": "dnbase1_rock.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "890692a9ef9797a4fc568939412bbe4fd76104066bf7a6eb12884412eececd98",
+      "requested": "warm_32b.png",
+      "reused": true,
+      "stored": "warm_32b.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "148d35eee957a8d125a1a501cc02b9c55844d04b1be3d99018ae2ed96ae0dbfe",
+      "requested": "iltconcrete.png",
+      "reused": true,
+      "stored": "iltconcrete.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "a58bf8e349486df2de4d294df0960be9c736552b550e747dba25aa9955453662",
+      "requested": "ivent.png",
+      "reused": true,
+      "stored": "ivent.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "ccce77ab46c61a89a02d7d67635d313cc2c032b23be5adb295ca8fdf7908291e",
+      "requested": "greyrib.png",
+      "reused": true,
+      "stored": "greyrib.png"
+    },
+    {
+      "building": "dnbase1",
+      "collision": false,
+      "pixel_sha256": "62bb1e0a9bacd8be748ad6a9e834ddd844ee7342a12419b85c511f4d2c2f1fa6",
+      "requested": "base_rock.png",
+      "reused": true,
+      "stored": "base_rock.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "981d233254365aa37ef01f015e495fec9fd3e231f17b6d1f9893229edc5ecede",
+      "requested": "wolf_shipffinal.png",
+      "reused": true,
+      "stored": "wolf_shipFfinal.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "29a4f1a346df9c485e7711a418e2b518452b53d782763008569856f8d2a02092",
+      "requested": "sworddrop3.png",
+      "reused": true,
+      "stored": "sworddrop3.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "8c871fcb285666466524005ec6867987502b1db123461352483086d0eb7dd42d",
+      "requested": "ds_bottom.png",
+      "reused": true,
+      "stored": "ds_bottom.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "0bc6f31938d19c0373b7e25810ac90e080543e7b71e90d348bdfaaae06b77695",
+      "requested": "redgrate.png",
+      "reused": true,
+      "stored": "redgrate.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "9e7093d7297e5ed037aa78d6d20206ba8bbd03325a03d485f17fcc9c8674b595",
+      "requested": "dark_wt.png",
+      "reused": true,
+      "stored": "dark_wt.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "890692a9ef9797a4fc568939412bbe4fd76104066bf7a6eb12884412eececd98",
+      "requested": "warm_32b.png",
+      "reused": true,
+      "stored": "warm_32b.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "4c8f35a34c982cdeddcbf0fb45ca32439edb73c8fa86ea160975a1953bde1465",
+      "requested": "redylight.png",
+      "reused": true,
+      "stored": "redylight.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "e73d8c01457fe66403827d5127cee558930e4813b853b6130a5195aa2671f12f",
+      "requested": "dropwolf3.png",
+      "reused": true,
+      "stored": "dropwolf3.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "a9246df8ee610f58129ee01ad48363ac7deb6727bde7268a33a8d28af661eae2",
+      "requested": "cold_16b.png",
+      "reused": true,
+      "stored": "cold_16b.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "2a34be995154b0c320a830db7656f00d9ddb86d342c71eb620344d508f959fd1",
+      "requested": "display_comm.png",
+      "reused": true,
+      "stored": "display_comm.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "535a4f0ec0917e3d9d9f4d282e4ddb549fbef475eddb10860952ddcfc597178a",
+      "requested": "display_cammera.png",
+      "reused": true,
+      "stored": "display_cammera.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "cf51ae463492a2f525d13ce9f67ce36e874a4e1350fe86075f51106f3c8d6fd9",
+      "requested": "igrate.png",
+      "reused": true,
+      "stored": "igrate.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "1cd5cdfd299bbd9c84eb9169ae686ef237a5d3af9d17b663b02dcb9a8d5a4720",
+      "requested": "ext_grey6.png",
+      "reused": true,
+      "stored": "ext_grey6.png"
+    },
+    {
+      "building": "mcommand",
+      "collision": false,
+      "pixel_sha256": "f73c9c48c4ce974be1ac871359c19dc57bd6630dc1a2ad9f22b373e683911930",
+      "requested": "steel_16b.png",
+      "reused": true,
+      "stored": "steel_16b.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "64f808f3f91c8a98eca56a8b29a114c22e9790b8b9f50e0d42f00f9c0fec4800",
+      "requested": "ext_grey.png",
+      "reused": true,
+      "stored": "ext_grey.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "7c977a99d4dd20873b5718701d68f2d1e28ae737987626b9e6a3c215ea586b74",
+      "requested": "eagle.png",
+      "reused": false,
+      "stored": "eagle.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "feaee5145e2a9fce1d85ba55de6b86a811b86e9cbc36a57e980298d59e578872",
+      "requested": "exseemed.png",
+      "reused": true,
+      "stored": "exseemed.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "eb0a503df8dd44903c3039e5a902e00c18f3a242ff8d82abf7df60fb690d6a9b",
+      "requested": "ext_stone6.png",
+      "reused": true,
+      "stored": "ext_stone6.png"
+    },
+    {
+      "building": "newbase",
+      "collision": true,
+      "pixel_sha256": "7a7236d595ab11a624a0cd8674cac4643c139ec9d94fc38953caff8f130e706c",
+      "requested": "rock.png",
+      "reused": false,
+      "stored": "newbase_rock.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "43dd9d8f083b8537067545af3f03e0d8831b6dc1cb7404ae653ea9a46d1197f8",
+      "requested": "bsteel.png",
+      "reused": false,
+      "stored": "bsteel.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "b3cb6a05b6ee5f5315228c059ab6d1ba57497e1ce399df879abca96a1df1b515",
+      "requested": "exterior.png",
+      "reused": false,
+      "stored": "exterior.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "1a21ac16618a791adc27295ab0ca78a52da79f4d3ed6ccef1b9e94eef9e75154",
+      "requested": "base_marble.png",
+      "reused": true,
+      "stored": "base_marble.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "84eee87cfaf7178e14641437e79211c0321adb2dadd29e1b7349e2938433c0fb",
+      "requested": "vent.png",
+      "reused": false,
+      "stored": "vent.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "9b097c72c7dd6d2249a5760e48c3324abfe17dbf1ddc54c881ce618c412ca88b",
+      "requested": "ext_grey2.png",
+      "reused": true,
+      "stored": "ext_grey2.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "180a4bd78422fbd4187eed6c01e9c5e1aa14ff951048b17f5d0dd9ffd061efa4",
+      "requested": "idkmetalstrip.png",
+      "reused": true,
+      "stored": "idkmetalstrip.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "cf51ae463492a2f525d13ce9f67ce36e874a4e1350fe86075f51106f3c8d6fd9",
+      "requested": "igrate.png",
+      "reused": true,
+      "stored": "igrate.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "62bb1e0a9bacd8be748ad6a9e834ddd844ee7342a12419b85c511f4d2c2f1fa6",
+      "requested": "base_rock.png",
+      "reused": true,
+      "stored": "base_rock.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "75c1b502fc4c48c78d4d82751158fa01e426dc43e1c65ac78e9a9492f5fabcd9",
+      "requested": "exgrate2.png",
+      "reused": false,
+      "stored": "exgrate2.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "1472e4c7f887b889c9a80ef84ecfcf5de65b9ff749f4a3b8cce683a7f0096bcc",
+      "requested": "exdoorborder.png",
+      "reused": true,
+      "stored": "exdoorborder.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "d6ae6cf2c295653100320604812757a36e364441e9ee8e0cac8e9a28dd7c3a03",
+      "requested": "ext_grey3.png",
+      "reused": true,
+      "stored": "ext_grey3.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "328bee96cc74babb7aa6b7adc2bff47c6eef93cb51452c6c037a55140a310d41",
+      "requested": "light_metal.png",
+      "reused": true,
+      "stored": "light_metal.png"
+    },
+    {
+      "building": "newbase",
+      "collision": false,
+      "pixel_sha256": "890692a9ef9797a4fc568939412bbe4fd76104066bf7a6eb12884412eececd98",
+      "requested": "warm_32b.png",
+      "reused": true,
+      "stored": "warm_32b.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "ac10805350a91535bbfcd64253b429a2438048e10ab78981af48ba5a02edbb9d",
+      "requested": "droppheonix1.png",
+      "reused": true,
+      "stored": "droppheonix1.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "84eee87cfaf7178e14641437e79211c0321adb2dadd29e1b7349e2938433c0fb",
+      "requested": "vent.png",
+      "reused": true,
+      "stored": "vent.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "148d35eee957a8d125a1a501cc02b9c55844d04b1be3d99018ae2ed96ae0dbfe",
+      "requested": "iltconcrete.png",
+      "reused": true,
+      "stored": "iltconcrete.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "40bf06836601447acc49c38495b557912a7c81f902dd214c9b3934e01fba8e65",
+      "requested": "base_cold.png",
+      "reused": true,
+      "stored": "base_cold.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "1a21ac16618a791adc27295ab0ca78a52da79f4d3ed6ccef1b9e94eef9e75154",
+      "requested": "base_marble.png",
+      "reused": true,
+      "stored": "base_marble.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "24899f5d4507ce33f42a199f566033d3d401ce3ffa594db20c061a1e81ddd024",
+      "requested": "pannel3.png",
+      "reused": true,
+      "stored": "pannel3.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "64f808f3f91c8a98eca56a8b29a114c22e9790b8b9f50e0d42f00f9c0fec4800",
+      "requested": "ext_grey.png",
+      "reused": true,
+      "stored": "ext_grey.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "733ae25e4c3deb17f48f9764c27a28d95dc336804aa2bebee1112d568a38bc8b",
+      "requested": "ext_grey9.png",
+      "reused": true,
+      "stored": "ext_grey9.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "62bb1e0a9bacd8be748ad6a9e834ddd844ee7342a12419b85c511f4d2c2f1fa6",
+      "requested": "base_rock.png",
+      "reused": true,
+      "stored": "base_rock.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "8c589997aa862eeaaa1020d76eae2226c81d9cc1e00e3525c63b193f75b429e0",
+      "requested": "itube.png",
+      "reused": true,
+      "stored": "itube.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "75c1b502fc4c48c78d4d82751158fa01e426dc43e1c65ac78e9a9492f5fabcd9",
+      "requested": "exgrate2.png",
+      "reused": true,
+      "stored": "exgrate2.png"
+    },
+    {
+      "building": "newcap",
+      "collision": false,
+      "pixel_sha256": "40555da8d958802528cb53b279a13b49f739c0b62765ec7899337dff3cc91057",
+      "requested": "exstrip.png",
+      "reused": false,
+      "stored": "exstrip.png"
+    },
+    {
+      "building": "ras",
+      "collision": false,
+      "pixel_sha256": "62bb1e0a9bacd8be748ad6a9e834ddd844ee7342a12419b85c511f4d2c2f1fa6",
+      "requested": "base_rock.png",
+      "reused": true,
+      "stored": "base_rock.png"
+    },
+    {
+      "building": "ras",
+      "collision": false,
+      "pixel_sha256": "9ab254fc53b5f0269efe5ceb5cfe1b9c4155079c225820b50039370cf0be8b21",
+      "requested": "warm_wt.png",
+      "reused": true,
+      "stored": "warm_wt.png"
+    },
+    {
+      "building": "ras",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "ras",
+      "collision": false,
+      "pixel_sha256": "6af6185698ba250c4625ec4c412cb9f186be7bbe48342dabd2a56cf439cc2241",
+      "requested": "cold_ft.png",
+      "reused": true,
+      "stored": "cold_ft.png"
+    },
+    {
+      "building": "ras",
+      "collision": false,
+      "pixel_sha256": "733ae25e4c3deb17f48f9764c27a28d95dc336804aa2bebee1112d568a38bc8b",
+      "requested": "ext_grey9.png",
+      "reused": true,
+      "stored": "ext_grey9.png"
+    },
+    {
+      "building": "sdbase",
+      "collision": false,
+      "pixel_sha256": "148d35eee957a8d125a1a501cc02b9c55844d04b1be3d99018ae2ed96ae0dbfe",
+      "requested": "iltconcrete.png",
+      "reused": true,
+      "stored": "iltconcrete.png"
+    },
+    {
+      "building": "sdbase",
+      "collision": false,
+      "pixel_sha256": "43dd9d8f083b8537067545af3f03e0d8831b6dc1cb7404ae653ea9a46d1197f8",
+      "requested": "bsteel.png",
+      "reused": true,
+      "stored": "bsteel.png"
+    },
+    {
+      "building": "sdbase",
+      "collision": false,
+      "pixel_sha256": "a61fa3ebf5f560da55572099717b22c0fa4228edd80c4d4e82ccb4114c45cfa3",
+      "requested": "dark_32b.png",
+      "reused": true,
+      "stored": "dark_32b.png"
+    },
+    {
+      "building": "sdbase",
+      "collision": false,
+      "pixel_sha256": "62bb1e0a9bacd8be748ad6a9e834ddd844ee7342a12419b85c511f4d2c2f1fa6",
+      "requested": "base_rock.png",
+      "reused": true,
+      "stored": "base_rock.png"
+    },
+    {
+      "building": "sdbase",
+      "collision": false,
+      "pixel_sha256": "b0c1166b97adb89a983ea81121eeee804ec84f950643be6db1c100aaaacfbfc1",
+      "requested": "base_steel.png",
+      "reused": true,
+      "stored": "base_steel.png"
+    },
+    {
+      "building": "sdbase",
+      "collision": true,
+      "pixel_sha256": "7a7236d595ab11a624a0cd8674cac4643c139ec9d94fc38953caff8f130e706c",
+      "requested": "rock.png",
+      "reused": false,
+      "stored": "sdbase_rock.png"
+    },
+    {
+      "building": "sdbase",
+      "collision": false,
+      "pixel_sha256": "6478b4c353574f4805f82bcba245a1a832bcdb37d7d01f6152327b5b9446ecad",
+      "requested": "band.png",
+      "reused": false,
+      "stored": "band.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "e73d8c01457fe66403827d5127cee558930e4813b853b6130a5195aa2671f12f",
+      "requested": "plainemb10.png",
+      "reused": true,
+      "stored": "plainemb10.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "328bee96cc74babb7aa6b7adc2bff47c6eef93cb51452c6c037a55140a310d41",
+      "requested": "light_metal.png",
+      "reused": true,
+      "stored": "light_metal.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "a9246df8ee610f58129ee01ad48363ac7deb6727bde7268a33a8d28af661eae2",
+      "requested": "cold_16b.png",
+      "reused": true,
+      "stored": "cold_16b.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "d2f8562fb31f1b69ed403e234d566c88848e8739d515b853187cbfba976ed1da",
+      "requested": "marble_64b.png",
+      "reused": true,
+      "stored": "marble_64b.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "4d5dc0e1b7eefb4c9354bb4548a6cc2d22228d5ee50b091c285f4b5774245db4",
+      "requested": "ext_stone4.png",
+      "reused": true,
+      "stored": "ext_stone4.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "060660810835a1ab2e0af8e495ad818043012ab68f256d81e52852c04e2e4271",
+      "requested": "marble_32b.png",
+      "reused": true,
+      "stored": "marble_32b.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "e1e22fad71172d8db7e7a88e41a610b60cbf4027cd49b09f720877ce1db030e9",
+      "requested": "warm_ft.png",
+      "reused": true,
+      "stored": "warm_ft.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "890692a9ef9797a4fc568939412bbe4fd76104066bf7a6eb12884412eececd98",
+      "requested": "warm_32b.png",
+      "reused": true,
+      "stored": "warm_32b.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "713ff8e5db1e8cd1a2d0b2511535d3aad4e4835435a312e5c8df391d2c69b519",
+      "requested": "special_warm.png",
+      "reused": true,
+      "stored": "special_warm.png"
+    },
+    {
+      "building": "spier1",
+      "collision": false,
+      "pixel_sha256": "f6c1aa6ea4b8718f3cbe7d8d0bb83e514ca1ba6efea72708be9631f7bebbe5d1",
+      "requested": "gold_32b.png",
+      "reused": true,
+      "stored": "gold_32b.png"
+    }
+  ],
+  "unplaced": {}
+}

@@ -97,14 +97,16 @@ class Textures:
 
 
 def team_pairs(names):
-    """Explicit irregular team names plus BE/DS tokens at either end of a stem."""
+    """Explicit irregular team names plus any two stems that differ by one BE/DS swap (be_rig, hilde_be, storkbe,
+    dxberad/dxdsrad, berc/dsrc); only identical geometry is merged, so a false match just keeps both."""
     names = set(names)
     pairs = {('ccbeaglelz', 'ccdswordlz', 'cclz')}
     for name in names:
-        if name.startswith('be_'):
-            pairs.add((name, 'ds_' + name[3:], name[3:]))
-        if name.endswith('_be'):
-            pairs.add((name, name[:-3] + '_ds', name[:-3]))
+        for i in range(len(name) - 1):
+            if name[i:i + 2] == 'be':
+                neutral = re.sub(r'_+', '_', name[:i] + name[i + 2:]).strip('_')
+                if neutral:
+                    pairs.add((name, name[:i] + 'ds' + name[i + 2:], neutral))
     return sorted(pair for pair in pairs if pair[0] in names and pair[1] in names)
 
 
@@ -276,7 +278,7 @@ def add_buildings(game_base, missions, static=ROOT / 'static', resources=(), als
             if name.endswith('.dis'):
                 archived[interior_stem(name)].append(str(path))
 
-    report = dict(models={}, sources={}, pairs=[], textures=[], skipped=sorted(known & placed.keys()),
+    report = dict(models={}, sources={}, pairs=[], textures=[], skipped=sorted(known & placed.keys()), failed={},
                   unplaced={k: sorted(set(v)) for k, v in sorted(archived.items()) if k not in placed and k not in known})
     converted, pngs = {}, Textures(static / 'textures')
     for stem in sorted(placed.keys() - known):
@@ -295,8 +297,9 @@ def add_buildings(game_base, missions, static=ROOT / 'static', resources=(), als
             failures.append(dict(mission=str(path), error='missing textures: ' + ', '.join(provenance['missing_textures'])))
             incomplete = incomplete or (model, textures, provenance)
         else:
-            if not incomplete:
-                raise ValueError(f'No usable placing mission for {stem}: {failures}')
+            if not incomplete:  # No placing mission can read it (e.g. its .dis is absent): reported, the rest go on.
+                report['failed'][stem] = failures
+                continue
             model, textures, provenance = incomplete
         provenance['earlier_candidates_failed'] = failures
         # A texture the files lack becomes an untextured-slot label, as the stock catalog writes them.
@@ -311,11 +314,14 @@ def add_buildings(game_base, missions, static=ROOT / 'static', resources=(), als
     for left, right, neutral in team_pairs(converted):
         evidence = compare_geometry(converted[left], converted[right])
         evidence.update(left=left, right=right, neutral=neutral)
-        if evidence['equal']:
-            if neutral in existing or neutral in converted or neutral in output_names.values():
-                raise ValueError('Neutral building name already occupied: ' + neutral)
+        taken = neutral in existing or neutral in converted or neutral in output_names.values()
+        merged = output_names[left] != left or output_names[right] != right  # already in another pair
+        if evidence['equal'] and not taken and not merged:
             output_names[left] = output_names[right] = neutral
-        evidence['decision'] = 'one neutral model; both texture sets' if evidence['equal'] else 'keep both geometries'
+            evidence['decision'] = 'one neutral model; both texture sets'
+        else:
+            evidence['decision'] = ('keep both geometries' if not evidence['equal'] else
+                                    f'same geometry, kept both: {neutral} is taken' if taken else 'same geometry, kept both: already merged')
         report['pairs'].append(evidence)
     output = {}
     for stem, model in converted.items():
@@ -406,7 +412,9 @@ def main():
     try:
         shipped = ROOT / 'static'
         # A local game's folder holds only what the shipped T1 catalog lacks.
-        also_skip = t1_catalog_names(shipped / 'model_json') if args.static.resolve() != shipped.resolve() else ()
+        also_skip = [*t1_catalog_names(shipped / 'model_json'),  # and the stems shipped under another name (be_rig -> rig)
+                     *(stem for path in (shipped / 't1-buildings').glob('*.json')
+                       for stem in json.loads(path.read_text(encoding='utf-8'))['sources'])] if args.static.resolve() != shipped.resolve() else ()
         report = add_buildings(args.game_base, args.mission, args.static, args.resources or (), also_skip, args.catalog or 't1')
         if args.report:
             write_new(args.report, encoded(report))
@@ -422,6 +430,8 @@ def main():
         print(pair['left'], '/', pair['right'], ':', pair['decision'])
     for stem, archives in report['unplaced'].items():
         print(f'UNPLACED: {stem}: {archives}; no mission palette chosen')
+    for stem, failures in report['failed'].items():
+        print(f'FAILED: {stem}: {failures}')
 
 
 if __name__ == '__main__':
