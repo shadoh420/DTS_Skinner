@@ -3,7 +3,8 @@
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
-  const storageKey = 'skinner.unrealmaps';
+  const quake = document.body.dataset.game === 'quake';
+  const storageKey = quake ? 'skinner.quakemaps' : 'skinner.unrealmaps';
   const settings = {fov: 90, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
@@ -20,7 +21,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // blending). Unreal: 227's OpenGL device ramps by pow(c, 1 / (2.5 * Brightness)), Brightness 0.5 by default (fitted to
   // 227 shots of NyLeve's and Vortex2's starts). UT: 0.67, fitted to UT 469 shots (D3D11, Brightness 0.7) of
   // DM-Deck16][, DM-Morpheus and DM-Turbine's starts.
-  const POWER = {unreal: 1 / (2.5 * .5), ut: .67};
+  const POWER = {unreal: 1 / (2.5 * .5), ut: .67, quake: 1, hipnotic: 1, rogue: 1};
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4});
   const ramp = new THREE.Scene(), flat = new THREE.Camera();
   ramp.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
@@ -30,8 +31,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       'void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(power)), 1.); }'})));
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
   const fitFrame = () => { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); frame.setSize(Math.max(size.x, 1), Math.max(size.y, 1)); };
-  const GAMES = [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
-  let data = '/unreal-map-data/unreal/';  // The shown map's pack.
+  const GAMES = quake ? ['quake', 'hipnotic', 'rogue'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
+  const dataRoot = id => quake ? `/quake-map-data/${id === 'quake' ? '' : id + '/'}` : `/unreal-map-data/${id}/`;
+  let data = dataRoot(GAMES[0][0]);  // The shown map's pack.
   let speed = 8, missing = 0, ready = false, map = null;
   const showStatus = text => { $('status').textContent = text; };
   const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing textures` : 'Map ready'} · speed ${speed.toFixed(1)} m/s`);
@@ -45,8 +47,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   function loadTexture(file) {
     if (!textures.has(file)) textures.set(file, new Promise(resolve => loader.load(data + 'textures/' + file, texture => {
       texture.flipY = false;  // The game's v runs down the image, as the rows do without the flip.
-      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.anisotropy = 8;
+      texture.wrapS = texture.wrapT = quake ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
+      texture.anisotropy = quake ? 1 : 8;
+      if (quake) { texture.magFilter = texture.minFilter = THREE.NearestFilter; texture.generateMipmaps = false; }
       resolve(texture);
     }, undefined, () => { missing++; resolve(null); })));
     return textures.get(file);
@@ -59,7 +62,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   const MASKED = 0x2, TRANSLUCENT = 0x4, MODULATED = 0x40, FAKE_BACKDROP = 0x80, TWO_SIDED = 0x100;
   const panning = [];
   let lightMap = null;  // The map's lightmaps in one atlas: the game draws texture x lightmap x 2.
+  let quakeColormap = null;
   function surfaceMaterial(group, texture) {
+    if (quake) return window.quakeMaps.material(group, texture, lightMap, quakeColormap);
     const side = group.flags & TWO_SIDED ? THREE.DoubleSide : THREE.FrontSide;
     // A backdrop is a hole onto the sky drawn before the level: it keeps the level behind it hidden, draws nothing.
     if (group.flags & FAKE_BACKDROP) return new THREE.MeshBasicMaterial({colorWrite: false, side});
@@ -92,6 +97,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.colors) geometry.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buffer, vertices * 28, vertices * 4), 4, true));
     const indexAt = vertices * (map.colors ? 32 : map.lightmap ? 28 : 20);
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, indexAt, map.indices), 1));
+    if (quake) quakeColormap = await loadTexture('colormap.png');
     const materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
       return surfaceMaterial(group, group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
@@ -173,6 +179,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // on by its rate where the game turns it); the level is drawn over it, its backdrops leaving it showing; then the
   // display gamma, onto `target` (the screen by default).
   function draw(seconds, target = null) {
+    if (quake) window.quakeMaps.time.value = seconds;
     for (const {texture, pan} of panning) texture.offset.set(pan[0] * seconds % 1, pan[1] * seconds % 1);
     if (map && map.sky && map.sky.rate) skyTurn.copy(unrealTurn(map.sky.rotator.map((a, i) => a + map.sky.rate[i] * seconds)));
     if (target) frame.setSize(target.width, target.height);
@@ -202,7 +209,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     seconds += delta;
     draw(seconds);
   });
-  window.skinnerUnrealMaps = {renderer, scene, camera, draw, showViewpoint, unrealTurn};  // For checks in a hidden page, where no frame is drawn.
+  window[quake ? 'skinnerQuakeMaps' : 'skinnerUnrealMaps'] = {renderer, scene, camera, draw, showViewpoint, unrealTurn};  // For checks in a hidden page, where no frame is drawn.
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   // Each game's folder is remembered on its own (Unreal's under the key it had before UT maps).
@@ -215,18 +222,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('import').addEventListener('click', async () => {
     const path = $('gamePath').value.trim() || $('gamePath').placeholder, chosen = $('importGame').value;
     $('import').disabled = true;
-    $('importStatus').textContent = 'Importing maps… a full install takes two to three minutes.';
+    $('importStatus').textContent = quake ? 'Importing classic Quake maps…' : 'Importing maps… a full install takes two to three minutes.';
     try {
-      const response = await fetch('/import_unreal_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      const response = await fetch(quake ? '/import_quake_maps' : '/import_unreal_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({path, game: chosen, replace: $('replace').checked})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Import failed');
       try { localStorage.setItem(pathKey(), path); } catch (_) { /* Path is simply not remembered. */ }
       const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
-      $('importStatus').textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length} already imported` +
+      $('importStatus').textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length}${quake ? '' : ' already imported'}` +
         (failed.length ? `, failed ${failed.length} (${failed.join('; ')})` : '') + '.';
       // Reload to list a game's maps the first time they arrive.
-      if (result.imported.length && !failed.length && (!map || !$('map').querySelector(`option[value^="${chosen}/"]`))) location.reload();
+      if (result.imported.length && !failed.length && (quake || !map || !$('map').querySelector(`option[value^="${chosen}/"]`))) location.reload();
     } catch (error) { $('importStatus').textContent = error.message; }
     finally { $('import').disabled = false; }
   });
@@ -236,13 +243,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Both games' maps in one list, each as GAME/ID; a game not imported yet has no index.
     const maps = [];
     for (const [id] of GAMES) {
-      try { maps.push(...(await (await get(`/unreal-map-data/${id}/index.json`)).json()).map(item => ({...item, game: id, key: `${id}/${item.id}`}))); }
+      try { maps.push(...(await (await get(`${dataRoot(id)}index.json`)).json()).map(item => ({...item, game: id, key: `${id}/${item.id}`}))); }
       catch (_) { /* Not imported. */ }
     }
     if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
     let key = new URLSearchParams(location.search).get('map') || '';
-    if (!key.includes('/')) key = 'unreal/' + key;  // Links from before UT maps name an Unreal map alone.
-    const item = maps.find(found => found.key === key) || maps.find(found => found.key === 'unreal/nyleve') || maps[0];
+    if (!key.includes('/')) key = GAMES[0][0] + '/' + key;  // Links from before UT maps name an Unreal map alone.
+    const item = maps.find(found => found.key === key) || maps.find(found => found.key === (quake ? 'quake/start' : 'unreal/nyleve')) || maps[0];
     const byGroup = new Map();
     for (const found of maps) byGroup.set(found.group, [...(byGroup.get(found.group) || []), found]);
     $('map').replaceChildren(...[...byGroup].map(([group, items]) => {
@@ -251,14 +258,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       return element;
     }));
     $('map').value = item.key;
-    data = `/unreal-map-data/${item.game}/`;
+    data = dataRoot(item.game);
     ramp.children[0].material.uniforms.power.value = POWER[item.game];
     // Offer the import of the game whose maps are not there yet.
     const absent = GAMES.find(([id]) => !maps.some(found => found.game === id));
     if (absent) { $('importGame').value = absent[0]; showPath(); }
     const mapId = item.id;
     map = {...await (await get(`${data}maps/${mapId}/scene.json`)).json(), id: mapId};
-    document.title = `${map.title || map.name} — Unreal Maps`;
+    document.title = `${map.title || map.name} — ${quake ? 'Quake' : 'Unreal'} Maps`;
     if (map.sky) skyTurn.setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...map.sky.rotation)));
     applySettings();
     showViewpoint(0);
