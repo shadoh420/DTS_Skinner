@@ -27,6 +27,7 @@ if __package__ in (None, ''):
 from tools.import_t1_map import (Install, bitmap_png, export_mounted_interior,
                                  mission_resources, parse_mission, read_palettes, walk)
 from tools.model_data import t1_catalog_names
+from tools.texture_workshop import write_json_atomic
 
 ROOT = Path(__file__).resolve().parents[1]
 TOLERANCE = 1e-5  # Absolute exported-coordinate noise; no translation, rotation or scale alignment.
@@ -242,11 +243,14 @@ def export_building(install, mission, nodes, stem, instance):
                                 resources=resources, volumes=volumes, warnings=warnings, missing_textures=missing)
 
 
-def add_buildings(game_base, missions, static=ROOT / 'static', resources=()):
-    """Stage all conversions before creating files. Returns the additive family receipt."""
+def add_buildings(game_base, missions, static=ROOT / 'static', resources=(), also_skip=(), game='t1'):
+    """Stage all conversions before creating files. Returns the additive family receipt.
+
+    also_skip: other catalogs' model names (the shipped T1 catalog when writing a local game's folder)."""
     install, static = Install(game_base, resources), Path(static)
     model_dir = static / 'model_json'
     existing = {name.lower() for name in t1_catalog_names(model_dir)} if model_dir.exists() else set()
+    existing |= {name.lower() for name in also_skip}
     known = set(existing)
     for path in (static / 't1-buildings').glob('*.json'):
         receipt = json.loads(path.read_text(encoding='utf-8'))
@@ -281,6 +285,8 @@ def add_buildings(game_base, missions, static=ROOT / 'static', resources=()):
         for path, nodes, instance in placed[stem]:
             try:
                 model, textures, provenance = export_building(install, path, nodes, stem, instance)
+                if game != 't1':  # A local game's models name it, so their textures come from its own library.
+                    model['game'] = model['metadata']['game'] = game
             except (ValueError, KeyError, IndexError, OSError, struct.error) as error:
                 failures.append(dict(mission=str(path), error=str(error)))
                 continue
@@ -371,6 +377,20 @@ def handoff(report):
     return '\n'.join(lines).encode('utf-8')
 
 
+def write_catalog(static, game):
+    """A local game's catalog.json (local-data/<game>): every converted model, its family the mission that places it."""
+    static, families = Path(static), {}
+    for path in (static / 't1-buildings').glob('*.json'):
+        for source in json.loads(path.read_text(encoding='utf-8'))['sources'].values():
+            families.setdefault(source['model'], Path(source['mission']).stem)
+    entries = []
+    for name in t1_catalog_names(static / 'model_json'):
+        textures = json.loads((static / 'model_json' / (name + '.json')).read_text(encoding='utf-8'))['material_textures']
+        entries.append(dict(model_name=name, display_name=name, game=game, category=families.get(name, 'Other'),
+                            texture_name=next((t for t in textures if t and not t.startswith('[')), ''), status='ready'))
+    write_json_atomic(static / 'catalog.json', entries)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--game-base', required=True, type=Path, help='read-only Tribes install or base folder')
@@ -378,14 +398,21 @@ def main():
     parser.add_argument('--static', type=Path, default=ROOT / 'static', help='catalog destination (default: repository static/)')
     parser.add_argument('--report', type=Path, help='also write a JSON receipt and sibling .md handoff; never overwrite either')
     parser.add_argument('--resources', type=Path, action='append', help='another mod folder the missions mount volumes from (e.g. dox, lt); repeatable')
+    parser.add_argument('--catalog', metavar='GAME', help="also write --static/catalog.json for a local game (e.g. ge, with --static "
+                                                          "<local-data>/ge); each model's family is its placing mission")
     args = parser.parse_args()
     if args.report and args.report.suffix.lower() != '.json':
         parser.error('--report must end in .json (its companion handoff ends in .md)')
     try:
-        report = add_buildings(args.game_base, args.mission, args.static, args.resources or ())
+        shipped = ROOT / 'static'
+        # A local game's folder holds only what the shipped T1 catalog lacks.
+        also_skip = t1_catalog_names(shipped / 'model_json') if args.static.resolve() != shipped.resolve() else ()
+        report = add_buildings(args.game_base, args.mission, args.static, args.resources or (), also_skip, args.catalog or 't1')
         if args.report:
             write_new(args.report, encoded(report))
             write_new(args.report.with_suffix('.md'), handoff(report))
+        if args.catalog:
+            write_catalog(args.static, args.catalog)
     except (ValueError, OSError) as error:
         parser.exit(1, str(error) + '\n')
     print(f"Added {len(report['models'])} models from {len(report['sources'])} interiors; skipped {len(report['skipped'])} existing.")

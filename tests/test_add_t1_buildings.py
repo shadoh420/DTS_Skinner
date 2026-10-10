@@ -17,7 +17,7 @@ import zipfile
 from PIL import Image
 
 from tools.add_t1_buildings import (Textures, add_buildings, compare_geometry, encoded,
-                                    export_building, handoff, team_pairs, write_new)
+                                    export_building, handoff, team_pairs, write_catalog, write_new)
 from tools.animate_t1 import load_animated_model
 from tools.import_t1_map import Install, export_mounted_interior, mission_resources, parse_mission, walk
 from tools.model_data import load_model_data, t1_building_names, t1_catalog_names
@@ -172,6 +172,21 @@ class BuildingTests(unittest.TestCase):
         self.assertFalse(compare_geometry(a, b)['equal'])
         self.assertEqual(team_pairs(['hilde_be', 'hilde_ds', 'be_rig', 'ds_rig', 'ccbeaglelz', 'ccdswordlz', 'foo_be']),
                          [('be_rig', 'ds_rig', 'rig'), ('ccbeaglelz', 'ccdswordlz', 'cclz'), ('hilde_be', 'hilde_ds', 'hilde')])
+
+    def test_local_game_catalog_names_each_building_by_its_mission(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'base').mkdir()
+            caves = mission(root / 'mod', 'Caves', dict(interior('house', 'wall.png'), **{'wall.png': png('red')}), ['house'])
+            local = root / 'local' / 'ge'
+            # What the shipped catalog already has is not copied into a local game.
+            self.assertEqual(add_buildings(root / 'base', [caves], root / 'skipped', also_skip=['House'])['models'], {})
+            add_buildings(root / 'base', [caves], local, game='ge')
+            self.assertEqual(json.loads((local / 'model_json' / 'house.json').read_text(encoding='utf-8'))['game'], 'ge')
+            write_catalog(local, 'ge')
+            catalog = json.loads((local / 'catalog.json').read_text(encoding='utf-8'))
+            self.assertEqual(catalog, [dict(model_name='house', display_name='house', game='ge', category='Caves',
+                                            texture_name='wall.png', status='ready')])
 
     def test_failed_mission_tries_next_and_failed_batch_writes_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
