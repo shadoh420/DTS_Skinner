@@ -245,6 +245,16 @@ class Quake2MapsTest(unittest.TestCase):
         self.assertEqual((views[-1]['yaw'], views[-1]['pitch'], views[-1]['roll']), (-90, -10, 5))
         self.assertTrue(all(v['native_origin'][2] <= v['authored_origin'][2] + 22 for v in views[:-1]))
 
+    def test_maps_with_only_named_starts_open_at_the_measured_one(self):
+        data = read_bsp(bsp(), files())
+        data['entities'] = [dict(classname='worldspawn'), dict(classname='info_player_start', targetname='mine2', origin='16 16 96'),
+                            dict(classname='info_player_start', targetname='mintro', origin='32 16 96')]
+        floors = geometry(data, instances(data)[0])['floors']
+        self.assertEqual(viewpoints(data, floors)[0]['targetname'], 'mine2')  # First in the file elsewhere.
+        data['name'] = 'mine1'
+        self.assertEqual([v['targetname'] for v in viewpoints(data, floors)], ['mintro', 'mine2'])
+        self.assertEqual(viewpoints(data, floors, 'xatrix')[0]['targetname'], 'mine2')  # Keyed by game too.
+
     def test_invalid_data_and_import_routes(self):
         for data in (b'', wal()[:-1], wal()[:32] + struct.pack('<I', 0) + wal()[36:]):
             with self.assertRaises(ValueError):
@@ -354,6 +364,8 @@ class Quake2MapsInstallTest(unittest.TestCase):
                 starts = [v for v in scene['viewpoints'] if v['classname'] == 'info_player_start' and not v['targetname']]
                 if starts:
                     self.assertEqual(scene['viewpoints'][0], starts[0])
+                if name in ('mine1', 'city2'):
+                    self.assertEqual(scene['viewpoints'][0]['targetname'], {'mine1': 'mintro', 'city2': 'city2NL'}[name])
             self.assertEqual(count, 628)
 
 

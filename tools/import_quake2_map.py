@@ -161,9 +161,18 @@ def excluded(entity, game):
     return bool(int(entity.get('spawnflags') or 0) & (2048 if game == 'ctf' else 512))
 
 
+# Maps with only named starts: a fresh `map NAME` takes the first start G_Find meets, and edict slots freed while
+# spawning are reused, so it is not always the first in the file. Measured with viewpos in Yamagi Quake II 8.70a
+# on every such map of baseq2, xatrix and rogue; the rest take the first named start.
+FRESH_START = {('quake2', 'mine1'): 'mintro', ('quake2', 'mine2'): 'mine1', ('quake2', 'mine3'): 'mine2a',
+               ('quake2', 'mine4'): 'mine3', ('quake2', 'power2'): 'power1', ('quake2', 'waste1'): 'power2',
+               ('quake2', 'waste2'): 'waste1', ('quake2', 'city2'): 'city2NL'}
+
+
 def ordered_starts(bsp, game):
     starts = [e for e in bsp['entities'] if e.get('classname') == 'info_player_start']
-    ordered = [e for e in starts if not e.get('targetname')] + [e for e in starts if e.get('targetname')]
+    fresh = FRESH_START.get((game, bsp.get('name')))
+    ordered = sorted(starts, key=lambda e: (bool(e.get('targetname')), e.get('targetname') != fresh))
     if game == 'ctf':
         # CTFSelectSpawnPoint chooses a team spot on entry; make the red team's first
         # authored spot deterministic, with all other team/DM spots available to inspect.
@@ -423,6 +432,7 @@ def skybox(info, files):
 
 def build_map(raw, name, files, palette, game='quake2'):
     bsp = read_bsp(raw, files)
+    bsp['name'] = name
     placed, skipped = instances(bsp, game)
     data = geometry(bsp, placed, game)
     points = data['points'][:, [1, 2, 0]] * SCALE
