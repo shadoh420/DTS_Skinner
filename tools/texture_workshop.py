@@ -124,16 +124,22 @@ def save_tags(path, game, filename, tags):
             entries[filename] = tags
         else:
             entries.pop(filename, None)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = None
-        try:
-            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as stream:
-                temporary = stream.name
-                json.dump(data, stream, indent=2, ensure_ascii=False)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, path)
-        finally:
-            if temporary and os.path.exists(temporary):
-                os.unlink(temporary)
+        write_json_atomic(path, data)
     return tags
+
+
+def write_json_atomic(path, data):
+    """Replace a user data file in one step, so a crash never leaves half a file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as stream:
+            temporary = stream.name
+            json.dump(data, stream, indent=2, ensure_ascii=False)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)

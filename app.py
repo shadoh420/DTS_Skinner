@@ -4,7 +4,7 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, TEXTURE_GAMES, MODEL_GAMES
+from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, TEXTURE_GAMES, MODEL_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
@@ -554,7 +554,7 @@ def list_models():
         if not catalog.exists():
             return jsonify([])
         entries = json.loads(catalog.read_text(encoding="utf-8"))
-        return jsonify(sorted(entries, key=lambda x: model_sort_key(x["model_name"])))
+        return jsonify(with_families(sorted(entries, key=lambda x: model_sort_key(x["model_name"]))))
     # List models based on existing .json files in static/model_json/
     models = []
     if model_json_dir.exists():
@@ -574,7 +574,37 @@ def list_models():
     models.sort(key=lambda x: model_sort_key(x["model_name"]))
     if not models:
         print(f"No pre-processed .json models found in {model_json_dir}. Please run batch export scripts.")
-    return jsonify(models)
+    return jsonify(with_families(models))
+
+
+def with_families(entries):
+    """The user's own families replace the imported category; import_category keeps the original."""
+    try:
+        families = read_families(local_data_dir / 'model-families.json').get(selected_game(), {})
+    except (OSError, ValueError) as exc:
+        print(f"Model families not applied: {exc}")
+        return entries
+    for entry in entries:
+        if entry["model_name"] in families:
+            entry["import_category"] = entry.get("category")
+            entry["category"] = families[entry["model_name"]]
+    return entries
+
+
+@app.route('/model_families', methods=['POST'])
+def set_model_families():
+    if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        return jsonify(error='Families must be edited from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 1_000_000:
+        return jsonify(error='Expected a JSON families request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) != {'models', 'family'}:
+        return jsonify(error='Expected models and family.'), 400
+    try:
+        family = save_families(local_data_dir / 'model-families.json', selected_game(), payload['models'], payload['family'])
+        return jsonify(family=family, models=payload['models'])
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
 
 
 @app.route('/q3_inventory')

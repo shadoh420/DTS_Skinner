@@ -45,6 +45,11 @@
       <input id="modelSearch" type="search" placeholder="Name or family…" autocomplete="off">
       <label for="categorySelect">Family</label>
       <select id="categorySelect"><option value="">All families</option></select>
+      <details id="familyEditor"><summary>Sort into families</summary>
+        <label for="familyName">Family name</label><input id="familyName" list="familyNames" placeholder="New or existing family…" autocomplete="off"><datalist id="familyNames"></datalist>
+        <div class="button-row"><button id="moveSelected">Move selected</button><button id="moveShown">Move all shown</button></div>
+        <p id="familyStatus" class="hint" role="status">Moves the selected model, or every model the search and family filter show, into the named family; a new name makes a new family. Leave the name empty to put models back in the family their import gave them.</p>
+      </details>
       <div id="modelCount" class="subtle"></div>
       <a id="coverageReport" class="hint" href="/static/t2/inventory.json" target="_blank" hidden>View T2 inventory &amp; coverage report</a>
       <label class="sr-only" for="modelSelect">Available models</label>
