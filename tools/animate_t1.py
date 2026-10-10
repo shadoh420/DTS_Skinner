@@ -95,6 +95,11 @@ def _matrix(a, b=None, weight=0.):
 
 def load_animated_model(name, source_path, preview_data):
     """Return normalized geometry and named, timed baked source sequences."""
+    if preview_data.get('metadata', {}).get('source_format') == 'dis':
+        result = copy.deepcopy(preview_data)
+        result['animation_clips'] = []
+        result['metadata']['animation_status'] = 'Static DIS interior; no DTS model sequences'
+        return result
     path = _source(name, source_path)
     result = copy.deepcopy(preview_data)
     metadata = result.setdefault('metadata', {})
@@ -267,7 +272,7 @@ def main():
     import argparse
     import gzip
     import json
-    from tools.model_data import load_model_data
+    from tools.model_data import load_model_data, t1_catalog_names
 
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
@@ -277,7 +282,7 @@ def main():
     parser.add_argument('--source', type=Path, default=None)
     parser.add_argument('--output', type=Path, default=root / 'local-data/animations/t1')
     args = parser.parse_args()
-    names = ((root / 'model_catalog.txt').read_text().splitlines() if args.all else [args.bake])
+    names = (t1_catalog_names(root / 'static/model_json') if args.all else [args.bake])
     args.output.mkdir(parents=True, exist_ok=True)
     summary = dict(models=0, animated_models=0, clips=0, frames=0, bytes=0, errors=[])
     for name in names:

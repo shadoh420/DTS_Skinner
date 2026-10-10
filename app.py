@@ -4,7 +4,7 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, TEXTURE_GAMES, MODEL_GAMES
+from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, t1_building_names, TEXTURE_GAMES, MODEL_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
@@ -558,6 +558,7 @@ def list_models():
     # List models based on existing .json files in static/model_json/
     models = []
     if model_json_dir.exists():
+        buildings = t1_building_names(model_json_dir)
         for f_path in model_json_dir.iterdir():
             if not f_path.is_file() or f_path.suffix.casefold() != '.json':
                 continue
@@ -567,7 +568,7 @@ def list_models():
             guessed_texture_name = default_texture(model_name_stem)
             # 'type' is not strictly needed if all are JSON, but can be kept if UI uses it.
             models.append({"model_name": model_name_stem, "texture_name": guessed_texture_name,
-                           "game": "t1", "category": "Complete T1 catalog", "status": "ready"})
+                           "game": "t1", "category": "Custom map buildings" if model_name_stem in buildings else "Complete T1 catalog", "status": "ready"})
     else:
         print(f"Model JSON directory not found: {model_json_dir}")
         

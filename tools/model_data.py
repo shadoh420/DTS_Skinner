@@ -31,6 +31,18 @@ def model_sort_key(name):
     return parts, name.casefold(), name
 
 
+def t1_catalog_names(model_dir):
+    """The shipped JSON files are the T1 catalog; manifests live outside this folder."""
+    return sorted((p.stem for p in pathlib.Path(model_dir).iterdir()
+                   if p.is_file() and p.suffix.casefold() == '.json'), key=model_sort_key)
+
+
+def t1_building_names(model_dir):
+    """Additive conversion receipts also identify the bundled custom-building family."""
+    return {name for path in (pathlib.Path(model_dir).parent / 't1-buildings').glob('*.json')
+            for name in json.loads(path.read_text(encoding='utf-8'))['models']}
+
+
 MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2')
 _families_lock = threading.Lock()
 
