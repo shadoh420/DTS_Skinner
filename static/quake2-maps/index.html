@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — Quake II Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/quake2-maps/materials.js"></script>
+  <script defer src="/static/unreal-maps/viewer.js"></script>
+</head>
+<body data-game="quake2">
+  <header><a href="/">← Models</a><strong>Quake II Maps</strong>
+    <select id="map" aria-label="Map"></select>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="130" value="90"></label>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+    <details id="importPanel"><summary>Import maps</summary>
+      <div class="import">
+        <select id="importGame" aria-label="Game to import"><option value="quake2">Quake II</option><option value="xatrix">The Reckoning</option><option value="rogue">Ground Zero</option><option value="ctf">CTF</option></select>
+        <label>Game folder <input id="gamePath" placeholder="C:\Program Files (x86)\Steam\steamapps\common\Quake 2\baseq2"></label>
+        <label><input id="replace" type="checkbox"> Re-import existing maps</label>
+        <button id="import">Import</button>
+        <span id="importStatus" role="status">Enter your classic Quake II install or baseq2 folder. The game folder is only read.</span>
+      </div>
+    </details>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading map…</span>
+    <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
+    <details><summary>Preview notes</summary><span id="notes">Free flight without collision, gameplay or audio. Classic Quake II, The Reckoning, Ground Zero and CTF surfaces with OpenGL-style colour lighting, sky boxes, flowing and turbulent surfaces. Player starts drop to the floor. Expansion maps use medium skill single player; CTF uses deathmatch filtering and starts at the first red team spot. Brushes hold their initial positions; unverified expansion lifts hold their authored position. Light styles stay normal except single-player lights that start off, animated textures at their first frame. Not drawn: placed monsters/items, sprites, dynamic lights, fog or rerelease content.</span></details>
+  </footer>
+</body>
+</html>
