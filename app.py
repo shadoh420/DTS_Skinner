@@ -35,6 +35,7 @@ from tools.import_starsiege import import_catalog as import_starsiege_catalog
 from tools.import_earthsiege import import_catalog as import_earthsiege_catalog
 from tools.import_redbaron import import_catalog as import_redbaron_catalog
 from tools.import_unreal import import_catalog as import_unreal_catalog
+from tools.import_quake import import_catalog as import_quake_catalog
 from tools.import_unreal_map import import_maps as import_unreal_maps
 
 # --- System Tray Imports ---
@@ -74,7 +75,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -582,6 +583,7 @@ def import_reflex():
 @app.route('/import_rb3d', methods=['POST'])
 @app.route('/import_unreal', methods=['POST'])
 @app.route('/import_ut', methods=['POST'])
+@app.route('/import_quake', methods=['POST'])
 def import_conversion_pack():
     game = request.path.removeprefix('/import_')
     if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
@@ -600,6 +602,8 @@ def import_conversion_pack():
             return jsonify(import_earthsiege_catalog(payload['path'].strip(), pack_dirs[game], game))
         if game in ('unreal', 'ut'):
             return jsonify(import_unreal_catalog(payload['path'].strip(), pack_dirs[game], game))
+        if game == 'quake':
+            return jsonify(import_quake_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'rb3d':
             return jsonify(import_redbaron_catalog(payload['path'].strip(), pack_dirs[game]))
         importer = {'ta': import_ta_catalog, 'tv': import_tv_catalog, 'ss': import_starsiege_catalog}[game]
@@ -646,7 +650,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:
