@@ -87,7 +87,7 @@ def read_asset(entry):
         return read_entry(stream, entry) if 'offset' in entry else stream.read()
 
 
-def read_install(install):
+def read_install(install, *, maps=False):
     """Low to high priority: stem-mounted DATs, anox0..9.zip, loose anoxdata.
 
     Retail anox.exe 00440189..004401AF mounts in this order; anoxaux
@@ -110,7 +110,7 @@ def read_install(install):
                 files[name]['record'].update(status='overridden', reason=f'Overridden by {origin}:{name}')
             entry.update(record=row, pak=origin)
             files[name] = entry
-            if name.endswith(MODEL_SUFFIXES):
+            if name.endswith(MODEL_SUFFIXES + (('.bsp',) if maps else ())):
                 records.append(row)
 
     for path in archives:
@@ -223,7 +223,7 @@ def read_md2(data):
         raise ValueError('MD2 commands do not end in a single terminator')
     if sum(len(s['triangles']) for s in surfaces) != tris:
         raise ValueError('MD2 surface triangle counts do not sum to the header count')
-    return dict(layout, points=points, normal_indices=normals, skin_names=names, surfaces=surfaces,
+    return dict(layout, points=points, frame_translate=values[3:], normal_indices=normals, skin_names=names, surfaces=surfaces,
                 frames=frames, pose=data[frame_at + 24:frame_at + 40].split(b'\0')[0].decode('latin1'))
 
 

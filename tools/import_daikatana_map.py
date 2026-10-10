@@ -481,7 +481,7 @@ def scenery(bsp, table):
     return drawn, skipped
 
 
-def light_point(bsp, origin, dark):
+def light_point(bsp, origin, dark, *, face_reader=face_data):
     # ref_gl 100093B0: near child, node surfaces, far child. Native tests
     # integer texture coordinates against extents, not polygon containment.
     if not bsp['lighting']:
@@ -491,7 +491,7 @@ def light_point(bsp, origin, dark):
     def sample(first, count, point):
         for i in range(first, first + count):
             if i not in cache:
-                cache[i] = face_data(bsp, i)
+                cache[i] = face_reader(bsp, i)
             face = cache[i]
             if face['flags'] & (SKY | WARP) or face['flags'] == FOG | FULLBRIGHT:
                 continue
