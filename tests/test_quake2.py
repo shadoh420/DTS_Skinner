@@ -46,6 +46,44 @@ def md2(skins=('models/test/skin.pcx',), x=2):
 
 
 class Quake2Test(unittest.TestCase):
+    def test_campaign_layering_skin_supply_and_version_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, output = Path(tmp), Path(tmp) / 'out'
+            for game in ('baseq2', 'xatrix', 'rogue'):
+                (root / game).mkdir()
+            (root / 'baseq2/pak0.pak').write_bytes(pak([
+                ('models/test/tris.md2', md2()), ('models/test/skin.pcx', pcx(7)),
+                ('models/same/tris.md2', md2(x=9)),
+                ('models/alias/tris.md2', md2(x=9)),
+                ('players/male/w_extra.md2', md2(('models/extra/skin.pcx',)))]))
+            (root / 'xatrix/pak0.pak').write_bytes(pak([
+                ('models/test/tris.md2', md2(x=4)), ('models/test/skin.pcx', pcx(21)),
+                ('models/same/tris.md2', md2(x=9)), ('models/extra/skin.pcx', pcx(31))]))
+            (root / 'rogue/pak0.pak').write_bytes(pak([('models/rogue/tris.md2', md2(x=5)),
+                                                     ('models/alias/tris.md2', md2(x=9))]))
+            base, rows, _ = read_install(root)
+            overlay, own, _ = read_install(root, game='xatrix', base=base)
+            sibling, _, _ = read_install(root, game='rogue', base=base)
+            self.assertEqual(overlay['models/test/skin.pcx'][0], pcx(21))
+            self.assertEqual(sibling['models/test/skin.pcx'][0], pcx(7))
+            self.assertNotIn('models/extra/skin.pcx', sibling)
+            self.assertTrue(all(r['status'] == 'pending' for r in rows))  # Overlays cannot mutate base inventory.
+            self.assertEqual(len(own), 2)
+            report = import_catalog(root, output)
+            rows = {(r['game'], r['source']): r for r in report['results']}
+            self.assertEqual(rows['xatrix', 'models/same/tris.md2']['status'], 'duplicate')
+            self.assertEqual(rows['rogue', 'models/alias/tris.md2']['status'], 'duplicate')
+            extra = rows['quake2', 'players/male/w_extra.md2']
+            self.assertEqual(extra['skin_game'], 'xatrix')
+            self.assertIn('supplied', extra['skin_reason'])
+            for game, color in (('quake2', 7), ('xatrix', 21), ('rogue', 7)):
+                name = 'models/rogue/tris.md2' if game == 'rogue' else 'models/test/tris.md2'
+                model = rows[game, name]['model']
+                self.assertEqual(model.startswith(game + '_'), game != 'quake2')
+                data = json.loads((output / 'model_json' / (model + '.json')).read_text())
+                with Image.open(output / 'textures' / data['material_textures'][0]) as image:
+                    self.assertEqual(image.getpixel((0, 0))[2], color)
+
     def test_first_frame_st_winding_and_palette(self):
         mesh = read_md2(md2())
         self.assertEqual(mesh['points'], [(14, -17, 50), (14, -5, 34), (14, -17, 34)])
@@ -183,7 +221,7 @@ class Quake2InstallTest(unittest.TestCase):
         self.assertEqual(sum(n.endswith('.md2') for n in loose), 82)
         self.assertEqual(sum(n.endswith('.pcx') for n in loose), 60)
         expected.extend(('loose', n) for n in loose if n.endswith(('.md2', '.sp2')))
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, patch('tools.import_quake2.available_games', return_value=['quake2']):
             report = import_catalog(INSTALL, tmp)
             self.assertCountEqual([(r['pak'], r['source']) for r in report['results']], expected)
             self.assertEqual((report['ready'], report['md2_entries'], report['duplicates'], report['md2_skipped'], report['overridden']),
@@ -204,6 +242,49 @@ class Quake2InstallTest(unittest.TestCase):
             defaults = {r['source']: r['skin'] for r in report['results'] if r['source'].startswith('players/') and r['source'].endswith('/tris.md2')}
             self.assertEqual(defaults, {f'players/{p}/tris.md2': f'players/{p}/{s}.pcx' for p, s in
                                         (('male', 'grunt'), ('female', 'athena'), ('cyborg', 'oni911'))})
+
+    def check_pack(self, game, directory, models):
+        from tools.import_quake2 import read_pak
+        entries = read_pak((INSTALL.parent / game / 'pak0.pak').read_bytes())
+        expected = [n for n, _ in entries if n.endswith(('.md2', '.sp2'))]
+        self.assertEqual(len(entries), directory)
+        self.assertEqual(sum(n.endswith('.md2') for n in expected), models)
+        with tempfile.TemporaryDirectory() as tmp:
+            report = import_catalog(INSTALL, tmp)
+            rows = [r for r in report['results'] if r['game'] == game]
+            self.assertCountEqual([r['source'] for r in rows], expected)
+            self.assertEqual(report['campaigns'][game]['ready'], models)
+            self.assertTrue(all(r['skin'] for r in rows if r['status'] == 'ready'))
+            self.assertTrue(all(r['status'] != 'pending' for r in rows))
+
+    @unittest.skipUnless((INSTALL.parent / 'xatrix/pak0.pak').is_file(), 'needs The Reckoning')
+    def test_reckoning_inventory(self):
+        self.check_pack('xatrix', 832, 30)
+
+    @unittest.skipUnless((INSTALL.parent / 'rogue/pak0.pak').is_file(), 'needs Ground Zero')
+    def test_ground_zero_inventory(self):
+        self.check_pack('rogue', 1983, 70)
+
+    @unittest.skipUnless((INSTALL.parent / 'ctf/pak0.pak').is_file(), 'needs CTF')
+    def test_ctf_inventory(self):
+        self.check_pack('ctf', 169, 11)
+
+    @unittest.skipUnless(all((INSTALL.parent / g / 'pak0.pak').is_file() for g in ('xatrix', 'rogue', 'ctf')), 'needs all packs')
+    def test_all_22_missing_player_skins_resolved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = import_catalog(INSTALL, tmp)
+            weapons = ('w_chainfist', 'w_disrupt', 'w_etfrifle', 'w_phalanx', 'w_plasma', 'w_plauncher', 'w_ripper')
+            rows = [r for r in report['results'] if r['game'] == 'quake2' and r['status'] == 'ready'
+                    and r['source'].startswith('players/') and
+                    (Path(r['source']).stem in weapons or r['source'] == 'players/crakhor/w_shotgun.md2')]
+            self.assertEqual(len(rows), 22)
+            for row in rows:
+                self.assertTrue(row['skin'], row)
+                self.assertEqual(row['skin_game'], 'quake2' if row['source'].endswith('w_shotgun.md2') else
+                                 'xatrix' if Path(row['source']).stem in ('w_phalanx', 'w_ripper') else 'rogue')
+                data = json.loads((Path(tmp) / 'model_json' / (row['model'] + '.json')).read_text())
+                self.assertNotEqual(data['material_textures'][0], 'missing_skin.png')
+                self.assertTrue((Path(tmp) / 'textures' / data['material_textures'][0]).is_file())
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-"""Quake II baseq2 MD2 models: first frame, named PCX skins, as game quake2.
+"""Quake II and installed xatrix/rogue/ctf MD2 models, as game quake2.
 
 python tools/import_quake2.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake 2/baseq2"
 
@@ -6,8 +6,9 @@ Numbered PAKs layer in numeric order, then loose model/skin files override them.
 Writes catalog.json, model_json, textures and import-report.json; existing PNG edits survive.
 Player body defaults: male/grunt, female/athena, cyborg/oni911. Other PCXs remain in the library.
 Missing skins try the named basename beside the model, then skin.pcx (body models may use
-another non-icon body PCX). Otherwise an explicit missing-skin checker is used, never a pack
-outside baseq2. Sprites are reported as skipped. No animation, maps or mission-pack imports.
+another non-icon body PCX). Base player weapons may resolve missing named skins from the
+installed packs; crakhor's absent shotgun skin uses the stock male weapon atlas. Other
+missing skins use a checker. Packs independently overlay baseq2. No animation or sprites.
 """
 import argparse
 import hashlib
@@ -31,6 +32,17 @@ except ImportError:
     from local_data import LOCAL_DATA
 
 PLAYER_SKINS = {'male': 'grunt', 'female': 'athena', 'cyborg': 'oni911'}
+GAMES = {'quake2': 'Quake II', 'xatrix': 'The Reckoning', 'rogue': 'Ground Zero', 'ctf': 'CTF'}
+
+
+def base_folder(install):
+    root = Path(install).expanduser()
+    return root / 'baseq2' if (root / 'baseq2').is_dir() else root
+
+
+def available_games(install):
+    root = base_folder(install)
+    return ['quake2'] + [g for g in GAMES if g != 'quake2' and (root.parent / g / 'pak0.pak').is_file()]
 
 
 def asset_name(name):
@@ -38,15 +50,19 @@ def asset_name(name):
     return posixpath.normpath(name.replace('\\', '/')).lower()
 
 
-def read_install(install, maps=False):
-    root = Path(install).expanduser()
-    if (root / 'baseq2').is_dir():
-        root /= 'baseq2'
+def read_install(install, maps=False, game='quake2', base=None):
+    """Return layered assets, but inventory only this campaign's own directory entries."""
+    if game not in GAMES:
+        raise ValueError(f'Unknown Quake II campaign: {game}')
+    root = base_folder(install)
+    inherited = {} if game == 'quake2' else (base if base is not None else read_install(install, maps)[0])
+    if game != 'quake2':
+        root = root.parent / game
     paks = sorted((p for p in root.iterdir() if p.is_file() and re.fullmatch(r'pak\d+\.pak', p.name.lower())),
                   key=lambda p: int(p.stem[3:])) if root.is_dir() else []
     if not any(p.name.lower() == 'pak0.pak' for p in paks):
-        raise ValueError(f'No Quake II baseq2/pak0.pak in {install}')
-    files, records, counts = {}, [], {}
+        raise ValueError(f'No Quake II {game} pak0.pak in {root}')
+    files, records, counts = dict(inherited), [], {}
 
     def layer(entries, origin):
         counts[origin] = dict(directory=len(entries), md2=sum(n.endswith('.md2') for n, _ in entries),
@@ -55,8 +71,8 @@ def read_install(install, maps=False):
                               bsp=sum(n.endswith('.bsp') for n, _ in entries))
         for name, data in entries:
             name = asset_name(name)
-            record = dict(pak=origin, source=name, status='pending')
-            if name in files:
+            record = dict(game=game, pak=origin, source=name, status='pending')
+            if name in files and files[name][2]['game'] == game:
                 previous = files[name]
                 identical = previous[0] == data
                 previous[2].update(status='duplicate' if identical else 'overridden',
@@ -176,27 +192,44 @@ def choose_skin(name, mesh, files):
     for candidate in candidates:
         if candidate in files:
             return candidate, f'Missing named skin {named or "(none)"}; same-folder PCX fallback'
-    return '', f'Missing named skin {named or "(none)"}; missing-skin checker fallback (baseq2 only)'
+    if name == 'players/crakhor/w_shotgun.md2' and 'players/male/weapon.pcx' in files:
+        return 'players/male/weapon.pcx', 'Missing crakhor weapon.pcx; stock male shotgun atlas fallback (136x60), approximate skin'
+    return '', f'Missing named skin {named or "(none)"}; missing-skin checker fallback'
 
 
 def import_catalog(install, output):
     output = Path(output)
-    files, records, counts = read_install(install)
+    base, base_records, base_counts = read_install(install)
+    campaigns = {'quake2': (base, base_records, base_counts)}
+    for game in available_games(install)[1:]:
+        campaigns[game] = read_install(install, game=game, base=base)
+    # Supplemental PCXs only for unresolved base skins; never leak sibling overrides into a pack.
+    supplemented = dict(base)
+    for assets, _, _ in list(campaigns.values())[1:]:
+        for name, entry in assets.items():
+            if name.endswith('.pcx'):
+                supplemented.setdefault(name, entry)
+    campaigns['quake2'] = supplemented, base_records, base_counts
+    records = [r for _, rows, _ in campaigns.values() for r in rows]
+    counts = {f'{game}/{pak}': count for game, (_, _, inventory) in campaigns.items() for pak, count in inventory.items()}
     for sub in ('model_json', 'textures'):
         (output / sub).mkdir(parents=True, exist_ok=True)
-    catalog, seen, taken, texture_records = [], {}, set(), {}
+    catalog, seen, path_seen, taken, texture_records = [], {}, {}, set(), {}
 
     def texture(name):
-        if name in texture_records:
-            record = texture_records[name]
+        source_game = files[name][2]['game']
+        key = source_game, name
+        if key in texture_records:
+            record = texture_records[key]
             if record['status'] == 'skipped':
                 raise ValueError(record['reason'])
             return record['texture']
-        png = safe(name.removesuffix('.pcx')) + '.png'
+        prefix = '' if source_game == 'quake2' else source_game + '_'
+        png = prefix + safe(name.removesuffix('.pcx')) + '.png'
         if any(r.get('texture') == png for r in texture_records.values()):
-            png = safe(name.removesuffix('.pcx')) + '_' + hashlib.sha256(name.encode()).hexdigest()[:12] + '.png'
-        record = dict(source=name, texture=png)
-        texture_records[name] = record
+            png = prefix + safe(name.removesuffix('.pcx')) + '_' + hashlib.sha256(name.encode()).hexdigest()[:12] + '.png'
+        record = dict(game=source_game, source=name, texture=png)
+        texture_records[key] = record
         try:
             image = read_pcx(files[name][0])
             target = output / 'textures' / png
@@ -212,17 +245,23 @@ def import_catalog(install, output):
         if record['status'] != 'pending':
             continue
         name = record['source']
-        model = safe(name.rsplit('.', 1)[0])
+        game = record['game']
+        files = campaigns[game][0]
+        prefix = '' if game == 'quake2' else game + '_'
+        model = prefix + safe(name.rsplit('.', 1)[0])
         record['model'] = model
-        item = dict(model_name=model, display_name=name, texture_name='', game='quake2',
-                    category=category(name), status='ready', source=f"{record['pak']}:{name}")
+        item = dict(model_name=model, display_name=(GAMES[game] + ': ' if prefix else '') + name, texture_name='', game='quake2',
+                    category=(GAMES[game] + ': ' if prefix else '') + category(name), status='ready', source=f"{game}/{record['pak']}:{name}")
         try:
             if name.endswith('.sp2'):
                 raise ValueError('Sprite (.sp2), not an MD2; sprite decoding is not included')
             raw = files[name][0]
             mesh = read_md2(raw)
             skin, reason = choose_skin(name, mesh, files)
-            record.update(skin=skin, skin_reason=reason)
+            skin_game = files[skin][2]['game'] if skin else ''
+            if skin and game == 'quake2' and skin_game != game:
+                reason = f'Named skin supplied by installed {skin_game}/{files[skin][1]}'
+            record.update(skin=skin, skin_reason=reason, skin_game=skin_game)
             # Include every named skin and adjacent PCX, including player alternatives and portraits.
             folder = str(PurePosixPath(name).parent)
             related = set(n for n in mesh['skin_names'] if n in files and n.endswith('.pcx'))
@@ -247,19 +286,22 @@ def import_catalog(install, output):
                     image.putdata([(255, 0, 255), (32, 32, 32), (32, 32, 32), (255, 0, 255)])
                     image.save(target)
             digest = hashlib.sha256(raw).hexdigest()
-            if digest in seen:
-                record.update(status='duplicate', model=seen[digest], reason='Byte-identical MD2; listed once')
+            retained = path_seen.get((name, digest)) or seen.get((game, digest))
+            if retained:
+                record.update(status='duplicate', model=retained, reason='Byte-identical MD2; listed once')
+                path_seen[name, digest] = retained
                 continue
             if model in taken:
                 model += '_' + hashlib.sha256(name.encode()).hexdigest()[:12]
                 record['model'] = item['model_name'] = model
             taken.add(model)
             data = build_model(mesh, png)
-            data['metadata'].update(source=item['source'], skin=record['skin'], skin_reason=reason)
+            data['metadata'].update(source=item['source'], skin=record['skin'], skin_reason=reason, skin_game=skin_game)
             (output / 'model_json' / f'{model}.json').write_text(json.dumps(data, separators=(',', ':')), encoding='utf-8')
             item['texture_name'] = png
             record['status'] = 'ready'
-            seen[digest] = model
+            seen[game, digest] = model
+            path_seen[name, digest] = model
         except ValueError as exc:
             record.update(status='skipped', reason=str(exc))
             item.update(status='skipped', reason=str(exc))
@@ -271,6 +313,13 @@ def import_catalog(install, output):
                   duplicates=sum(r['status'] == 'duplicate' for r in records),
                   textures=sum(r['status'] == 'ready' for r in texture_records.values()),
                   texture_results=list(texture_records.values()), results=records)
+    report['campaigns'] = {game: dict(pak_counts=inventory,
+        md2_entries=sum(c['md2'] for c in inventory.values()),
+        ready=sum(r['status'] == 'ready' for r in rows),
+        duplicates=sum(r['status'] == 'duplicate' for r in rows),
+        skipped=sum(r['status'] == 'skipped' for r in rows),
+        overridden=sum(r['status'] == 'overridden' for r in rows))
+        for game, (_, rows, inventory) in campaigns.items()}
     (output / 'catalog.json').write_text(json.dumps(catalog, indent=1), encoding='utf-8')
     (output / 'import-report.json').write_text(json.dumps(report, indent=1), encoding='utf-8')
     return report

@@ -1,6 +1,6 @@
-"""Quake II baseq2 BSP38 maps, ref_gl 3.20 lighting, static brush spawn states.
+"""Quake II and installed xatrix/rogue/ctf BSP38 maps, ref_gl 3.20 lighting.
 
-python tools/import_quake2_map.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake 2/baseq2" [--replace]
+python tools/import_quake2_map.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake 2/baseq2" [--replace] [--game all|quake2|xatrix|rogue|ctf]
 
 Data defaults to SKINNER_DATA_DIR/quake2-maps. No placed MD2s or gameplay simulation.
 Reference settings: intensity=2, gl_modulate=1, vid_gamma=1; light styles held at m,
@@ -19,12 +19,12 @@ import numpy as np
 from PIL import Image
 
 try:
-    from tools.import_quake2 import asset_name, read_install, read_pcx, safe
+    from tools.import_quake2 import GAMES, available_games, asset_name, read_install, read_pcx, safe
     from tools.import_quake_map import SCALE, entities, face_data as quake_face_data, floor_below, pack, rotation, vector
     from tools.import_quake import palette_image
     from tools.local_data import LOCAL_DATA
 except ImportError:
-    from import_quake2 import asset_name, read_install, read_pcx, safe
+    from import_quake2 import GAMES, available_games, asset_name, read_install, read_pcx, safe
     from import_quake_map import SCALE, entities, face_data as quake_face_data, floor_below, pack, rotation, vector
     from import_quake import palette_image
     from local_data import LOCAL_DATA
@@ -157,8 +157,25 @@ def movedir(entity):
     return rotation(a)[:, 0]
 
 
-def instances(bsp):
-    """g_func.c/g_misc.c initial medium-skill SP states, before continuous motion."""
+def excluded(entity, game):
+    return bool(int(entity.get('spawnflags') or 0) & (2048 if game == 'ctf' else 512))
+
+
+def ordered_starts(bsp, game):
+    starts = [e for e in bsp['entities'] if e.get('classname') == 'info_player_start']
+    ordered = [e for e in starts if not e.get('targetname')] + [e for e in starts if e.get('targetname')]
+    if game == 'ctf':
+        # CTFSelectSpawnPoint chooses a team spot on entry; make the red team's first
+        # authored spot deterministic, with all other team/DM spots available to inspect.
+        ordered = [e for cls in ('info_player_team1', 'info_player_team2')
+                   for e in bsp['entities'] if e.get('classname') == cls]
+    for cls in ('info_player_deathmatch', 'info_player_intermission'):
+        ordered += [e for e in bsp['entities'] if e.get('classname') == cls]
+    return [e for e in ordered if not excluded(e, game)]
+
+
+def instances(bsp, game='quake2'):
+    """Initial brush states: medium SP, or deathmatch filtering for CTF; motion frozen."""
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], angles=[0., 0., 0.], state='world', guess=False)]
     skipped = []
     invisible = {'func_areaportal', 'func_killbox', 'func_timer'}
@@ -167,16 +184,18 @@ def instances(bsp):
              'turret_base', 'turret_breach', 'target_character'}
     for index, entity in enumerate(bsp['entities']):
         cls, model = entity.get('classname', ''), entity.get('model', '')
-        if not model.startswith('*') and cls not in invisible:
+        if not model.startswith('*') and not cls.startswith('func_') and cls != 'rotating_light':
             continue
-        flags = int(entity.get('spawnflags', '0'))
-        reason = 'excluded on medium skill' if flags & 512 else 'trigger volume' if cls.startswith('trigger_') else ''
+        flags = int(entity.get('spawnflags') or 0)
+        reason = ('excluded in deathmatch/CTF' if game == 'ctf' else 'excluded on medium skill') if excluded(entity, game) else 'trigger volume' if cls.startswith('trigger_') else ''
         if cls in invisible:
             reason = 'non-rendered game logic'
         if cls == 'func_wall' and flags & 7 and not flags & 4:
             reason = 'trigger-spawn wall without START_ON; SVF_NOCLIENT'
         if cls in ('func_explosive', 'func_object') and flags & 1:
             reason = 'TRIGGER_SPAWN; SVF_NOCLIENT until used'
+        if not reason and not model.startswith('*'):
+            reason = 'no inline brush model; point entities/placed MD2s are outside this preview'
         if reason:
             skipped.append(dict(entity=index, classname=cls, reason=reason, guess=False))
             continue
@@ -199,7 +218,7 @@ def instances(bsp):
                 state = 'targeted plat at top until used'
         elif cls == 'func_train':
             targets = [e for e in bsp['entities'] if entity.get('target') and e.get('targetname') == entity['target']
-                       and not int(e.get('spawnflags', '0')) & 512]
+                       and not excluded(e, game)]
             if targets:
                 offset = vector(targets[0]) - mins
                 state, guess = 'first path corner minus inline model mins, before travel', len(targets) > 1
@@ -228,17 +247,22 @@ def instances(bsp):
         elif cls == 'target_character':
             state = 'digit brush; game starts at blank frame 12, preview holds first texture frame'
             guess = True
+        elif cls == 'func_plat2':
+            state = 'authored origin; expansion plat2 activation/top state not verified'
+            guess = True
         result.append(dict(model=number, entity=index, classname=cls, offset=offset.tolist(), angles=turn.tolist(), state=state, guess=guess))
-    open_doors_at_start(bsp, result)
+    open_doors_at_start(bsp, result, game)
     return result, skipped
 
 
-def open_doors_at_start(bsp, result):
+def open_doors_at_start(bsp, result, game='quake2'):
     """Doors without targetname or health get a trigger field (their team's bounds + 60 units sideways,
     Think_SpawnDoorTrigger): a player who starts inside it opens the whole team at once (ware1, checked in
     Yamagi Quake II's gl1)."""
-    starts = [e for e in bsp['entities'] if e.get('classname') == 'info_player_start' and not int(e.get('spawnflags', '0')) & 512]
-    start = next((e for e in starts if not e.get('targetname')), starts[0] if starts else None)
+    starts = ordered_starts(bsp, game)
+    if game != 'ctf':
+        starts = [e for e in starts if e['classname'] == 'info_player_start']
+    start = starts[0] if starts and starts[0]['classname'] != 'info_player_intermission' else None
     if start is None:
         return
     low, high = vector(start) + (-16, -16, -24), vector(start) + (16, 16, 32)  # The player's box.
@@ -255,7 +279,7 @@ def open_doors_at_start(bsp, result):
             continue
         for item in team:
             entity, bounds = bsp['entities'][item['entity']], bsp['models'][item['model']]
-            flags, size = int(entity.get('spawnflags', '0')), np.array(bounds[3:6]) - np.array(bounds[:3]) + 2
+            flags, size = int(entity.get('spawnflags') or 0), np.array(bounds[3:6]) - np.array(bounds[:3]) + 2
             if item['classname'] == 'func_door':
                 direction = movedir(entity)
                 lip = float(entity.get('lip', '0')) or 8
@@ -266,15 +290,10 @@ def open_doors_at_start(bsp, result):
             item['state'] = 'open: the player starts inside its trigger field'
 
 
-def viewpoints(bsp, floors):
-    starts = [e for e in bsp['entities'] if e.get('classname') == 'info_player_start']
-    ordered = [e for e in starts if not e.get('targetname')] + [e for e in starts if e.get('targetname')]
-    for cls in ('info_player_deathmatch', 'info_player_intermission'):
-        ordered += [e for e in bsp['entities'] if e.get('classname') == cls]
+def viewpoints(bsp, floors, game='quake2'):
+    ordered = ordered_starts(bsp, game)
     views = []
     for entity in ordered:
-        if int(entity.get('spawnflags', '0')) & 512:
-            continue
         origin, turn = vector(entity), angles(entity)
         start = origin.copy()
         camera = entity['classname'] == 'info_player_intermission'
@@ -316,10 +335,10 @@ def warp_polygons(points):
     return [np.array([center, a, b]) for a, b in zip(points, np.roll(points, -1, axis=0))]
 
 
-def geometry(bsp, placed):
+def geometry(bsp, placed, game='quake2'):
     dark = frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
-                     and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags', '0')) & 1
-                     and not int(e.get('spawnflags', '0')) & 512)
+                     and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags') or 0) & 1
+                     and not excluded(e, game) and game != 'ctf')  # SP_light frees lights in deathmatch.
     faces, tiles, audit, floors = [], [], [], []
     for instance in placed:
         first, count = bsp['models'][instance['model']][10:12]
@@ -402,38 +421,41 @@ def skybox(info, files):
     return dict(name=name, rotate=float(info.get('skyrotate', '0')), axis=axis.tolist(), faces=sources, missing=missing), images
 
 
-def build_map(raw, name, files, palette):
+def build_map(raw, name, files, palette, game='quake2'):
     bsp = read_bsp(raw, files)
-    placed, skipped = instances(bsp)
-    data = geometry(bsp, placed)
+    placed, skipped = instances(bsp, game)
+    data = geometry(bsp, placed, game)
     points = data['points'][:, [1, 2, 0]] * SCALE
-    views = viewpoints(bsp, data['floors'])
+    views = viewpoints(bsp, data['floors'], game)
     info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})
     sky, images = skybox(info, files)
     for png, tex in data['textures'].items():
         images[png] = upload_texture(tex, palette)
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(),
                      data['uv2'].astype('<f4').tobytes(), np.array(data['indices'], '<u4').tobytes()))
-    scene = dict(name=name, title=info.get('message', ''), game='quake2', format='quake2-bsp38',
+    scene = dict(name=name, title=info.get('message', ''), game=game, format='quake2-bsp38',
                  vertices=len(points), indices=len(data['indices']), lightmap=list(data['atlas'].size),
                  groups=data['groups'], viewpoints=views, bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(),
                  instances=placed, skipped_entities=skipped, faces=data['audit'], skybox=sky,
                  entity_classes=dict(Counter(e.get('classname', '') for e in bsp['entities'])), dark_styles=data['dark'],
                  missing=sorted({f['texture'] for f in data['audit'] if f['missing'] and f['kind'] != 'sky'} | set(sky['missing'])),
                  lighting=dict(renderer='ref_gl 3.20', intensity=2, gl_modulate=1, vid_gamma=1, normal_style=1),
-                 assumptions=['medium skill single player', 'styles m except START_OFF styles a',
+                 assumptions=[('CTF deathmatch filtering; first authored red team start' if game == 'ctf' else 'medium skill single player'),
+                              ('styles m; SP_light removed in deathmatch' if game == 'ctf' else 'styles m except START_OFF styles a'),
                               'initial brush states, trains at first corner before travel', 'animated textures at first texinfo frame'])
     return scene, blob, images, data['atlas']
 
 
-def import_maps(install, output, replace=False):
-    files, records, counts = read_install(install, maps=True)
+def import_maps(install, output, replace=False, game='quake2'):
+    files, records, counts = read_install(install, maps=True, game=game)
     colormap = files.get('pics/colormap.pcx', (b'',))[0]
     read_pcx(colormap)  # Validate the palette source before slicing its trailing palette.
     palette = colormap[-768:]
     output = Path(output)
+    if game != 'quake2':
+        output /= game
     (output / 'textures').mkdir(parents=True, exist_ok=True)
-    result = dict(game='quake2', imported=[], skipped=[], failed={}, bsp_entries=len(records), pak_counts=counts, results=records)
+    result = dict(game=game, imported=[], skipped=[], failed={}, bsp_entries=len(records), pak_counts=counts, results=records)
     index = []
     for record in records:
         name = record['source']
@@ -451,7 +473,7 @@ def import_maps(install, output, replace=False):
                 record.update(status='skipped', reason='Already imported; use --replace to rebuild')
                 result['skipped'].append(name)
             else:
-                scene, blob, images, atlas = build_map(files[name][0], ident, files, palette)
+                scene, blob, images, atlas = build_map(files[name][0], ident, files, palette, game)
                 for png, image in images.items():
                     target = output / 'textures' / png
                     if replace or not target.is_file():
@@ -464,7 +486,7 @@ def import_maps(install, output, replace=False):
                 result['imported'].append(ident)
             if scene['missing']:
                 record['warnings'] = scene['missing']
-            index.append(dict(id=ident, name=ident, title=scene['title'], group='Quake II'))
+            index.append(dict(id=ident, name=ident, title=scene['title'], group=GAMES[game]))
         except (ValueError, IndexError, struct.error) as exc:
             record.update(status='skipped', reason=str(exc))
             result['failed'][name] = str(exc)
@@ -478,5 +500,12 @@ if __name__ == '__main__':
     parser.add_argument('--install', type=Path, required=True)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--replace', action='store_true')
+    parser.add_argument('--game', choices=['all', *GAMES], default='all', help='Default: baseq2 and every installed classic pack')
     args = parser.parse_args()
-    print(json.dumps(import_maps(args.install, args.output or LOCAL_DATA / 'quake2-maps', args.replace), indent=1))
+    output = args.output or LOCAL_DATA / 'quake2-maps'
+    if args.game == 'all':
+        result = {game: import_maps(args.install, output, args.replace, game) for game in available_games(args.install)}
+        (output / 'import-packs-report.json').write_text(json.dumps(result, indent=1), encoding='utf-8')
+    else:
+        result = import_maps(args.install, output, args.replace, args.game)
+    print(json.dumps(result, indent=1))

@@ -25,9 +25,11 @@ def wal(pixel=42):
     return struct.pack('<32s6I32s3i', b'test', 16, 16, *offsets, b'', 0, 0, 0) + body
 
 
-def bsp(flags=0, styles=(0, 255, 255, 255), samples=((64, 128, 32),)):
+def bsp(flags=0, styles=(0, 255, 255, 255), samples=((64, 128, 32),), entity_lump=None):
     lumps = [b''] * 19
     lumps[0] = b'{"classname" "worldspawn" "message" "RGB map"}\n{"classname" "info_player_start" "origin" "16 16 96" "angle" "90"}\0'
+    if entity_lump is not None:
+        lumps[0] = entity_lump
     lumps[1] = struct.pack('<4fi', 0, 0, 1, 0, 2)
     lumps[2] = struct.pack('<12f', 0, 0, 0, 32, 0, 0, 32, 32, 0, 0, 32, 0)
     lumps[5] = struct.pack('<8fii32si', 1, 0, 0, 0, 0, 1, 0, 0, flags, 0, b'test', -1)
@@ -53,6 +55,66 @@ def files():
 
 
 class Quake2MapsTest(unittest.TestCase):
+    def test_pack_assets_and_routes_are_isolated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for game in ('baseq2', 'xatrix', 'rogue', 'ctf'):
+                (root / game).mkdir()
+            (root / 'baseq2/pak0.pak').write_bytes(pak([(n, e[0]) for n, e in files().items()]
+                                                     + [('maps/test.bsp', bsp())]))
+            (root / 'xatrix/pak0.pak').write_bytes(pak([('maps/test.bsp', bsp()), ('textures/test.wal', wal(9)),
+                ('pics/colormap.pcx', pcx(29)), ('env/unit1_rt.tga', files()['env/unit1_bk.tga'][0])]))
+            (root / 'rogue/pak0.pak').write_bytes(pak([('maps/test.bsp', bsp())]))
+            (root / 'ctf/pak0.pak').write_bytes(pak([('maps/test.bsp', bsp(entity_lump=
+                b'{"classname" "worldspawn"}\n{"classname" "info_player_team1" "origin" "16 16 96"}\0'))]))
+            with patch('app.local_data_dir', root / 'out'):
+                client = app.test_client()
+                for game, color in (('quake2', (84, 255, 14)), ('xatrix', (18, 255, 58)),
+                                    ('rogue', (84, 255, 14)), ('ctf', (84, 255, 14))):
+                    response = client.post('/import_quake2_maps', json=dict(path=str(root), game=game))
+                    self.assertEqual(response.status_code, 200, response.json)
+                    self.assertEqual(response.json['bsp_entries'], 1)
+                    prefix = '/quake2-map-data/' + (game + '/' if game != 'quake2' else '')
+                    with client.get(prefix + 'maps/test/scene.json') as response:
+                        scene = response.json
+                    self.assertEqual(scene['game'], game)
+                    self.assertEqual(scene['viewpoints'][0]['classname'], 'info_player_team1' if game == 'ctf' else 'info_player_start')
+                    with client.get(prefix + 'textures/' + scene['groups'][0]['texture']) as response:
+                        with Image.open(io.BytesIO(response.data)) as image:
+                            self.assertEqual(image.getpixel((0, 0)), color)
+                    self.assertFalse(scene['missing'])
+                self.assertEqual(client.post('/import_quake2_maps', json=dict(path=str(root), game='../rogue')).status_code, 400)
+
+    def test_ctf_filter_team_views_and_expansion_brush_fallback(self):
+        data = read_bsp(bsp(), files())
+        data['models'] *= 6
+        data['entities'] = [dict(classname='worldspawn'),
+            dict(classname='info_player_team2', origin='16 16 96'),
+            dict(classname='info_player_team1', origin='16 16 96', spawnflags='2048'),
+            dict(classname='info_player_team1', origin='16 16 96', spawnflags='512'),
+            dict(classname='func_wall', model='*1', spawnflags='512'),
+            dict(classname='func_wall', model='*2', spawnflags='2048'),
+            dict(classname='func_door', model='*3', angle='-1'),
+            dict(classname='func_plat2', model='*4', origin='1 2 3'),
+            dict(classname='func_object_repair', origin='9 9 9')]
+        placed, skipped = instances(data, 'ctf')
+        models = {p['model']: p for p in placed}
+        self.assertIn(1, models)
+        self.assertNotIn(2, models)
+        self.assertTrue(models[3]['state'].startswith('open'))
+        self.assertEqual(models[4]['offset'], [1, 2, 3])
+        self.assertTrue(models[4]['guess'])
+        floors = geometry(data, [placed[0]], 'ctf')['floors']
+        views = viewpoints(data, floors, 'ctf')
+        self.assertEqual([v['classname'] for v in views], ['info_player_team1', 'info_player_team2'])
+        self.assertEqual([v['native_origin'][2] for v in views], [46, 46])
+        self.assertTrue(any(r['classname'] == 'func_object_repair' for r in skipped))
+        data['entities'].append(dict(classname='light', style='32', spawnflags='1'))
+        self.assertEqual(geometry(data, [placed[0]], 'ctf')['dark'], [])
+        for game in ('xatrix', 'rogue'):
+            data['entities'].append(dict(classname='info_player_start', origin='16 16 96'))
+            self.assertTrue(next(p for p in instances(data, game)[0] if p['model'] == 3)['state'].startswith('open'))
+
     def test_wal_extents_orientation_and_first_texture_frame(self):
         texture = read_wal(wal())
         self.assertEqual((texture['width'], texture['height'], texture['pixels']), (16, 16, bytes([42]) * 256))
@@ -129,7 +191,7 @@ class Quake2MapsTest(unittest.TestCase):
                  dict(classname='func_plat', model='*3', height='40'),
                  dict(classname='func_plat', model='*4', targetname='lift'),
                  dict(classname='func_train', model='*5', target='corner'),
-                 dict(classname='path_corner', targetname='corner', origin='100 200 300'),
+                 dict(classname='path_corner', targetname='corner', origin='100 200 300', spawnflags=''),
                  dict(classname='func_wall', model='*6', spawnflags='1'),
                  dict(classname='func_wall', model='*7', spawnflags='5'),
                  dict(classname='func_explosive', model='*8', spawnflags='1'),
@@ -224,6 +286,42 @@ class Quake2MapsTest(unittest.TestCase):
 
 @unittest.skipUnless((INSTALL / 'pak0.pak').is_file() and (INSTALL / 'pak1.pak').is_file(), 'needs classic Quake II baseq2')
 class Quake2MapsInstallTest(unittest.TestCase):
+    def check_pack(self, game, expected):
+        from tools.import_quake2 import read_pak
+        entries = read_pak((INSTALL.parent / game / 'pak0.pak').read_bytes())
+        names = [n for n, _ in entries if n.endswith('.bsp')]
+        self.assertEqual(len(names), expected)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = import_maps(INSTALL, root, game=game)
+            self.assertCountEqual([r['source'] for r in report['results']], names)
+            self.assertEqual((len(report['imported']), report['skipped'], report['failed']), (expected, [], {}))
+            for name in report['imported']:
+                scene = json.loads((root / game / 'maps' / name / 'scene.json').read_text())
+                self.assertFalse(scene['missing'], (game, name, scene['missing']))
+                self.assertEqual(scene['game'], game)
+                for view in scene['viewpoints']:
+                    if view['classname'] == 'info_player_intermission':
+                        self.assertEqual(view['native_origin'], view['authored_origin'])
+                    else:
+                        self.assertIsNotNone(view['floor_z'], (game, name, view))
+                        self.assertLessEqual(view['eye_above_floor'], 46.0001, (game, name, view))
+                        self.assertLessEqual(view['native_origin'][2], view['authored_origin'][2] + 22.0001)
+                if game == 'ctf':
+                    self.assertEqual(scene['viewpoints'][0]['classname'], 'info_player_team1')
+
+    @unittest.skipUnless((INSTALL.parent / 'xatrix/pak0.pak').is_file(), 'needs The Reckoning')
+    def test_reckoning_maps(self):
+        self.check_pack('xatrix', 25)
+
+    @unittest.skipUnless((INSTALL.parent / 'rogue/pak0.pak').is_file(), 'needs Ground Zero')
+    def test_ground_zero_maps(self):
+        self.check_pack('rogue', 32)
+
+    @unittest.skipUnless((INSTALL.parent / 'ctf/pak0.pak').is_file(), 'needs CTF')
+    def test_ctf_maps(self):
+        self.check_pack('ctf', 5)
+
     def test_all_maps_and_player_floors(self):
         expected = []
         for pak_name in ('pak0.pak', 'pak1.pak', 'pak2.pak'):

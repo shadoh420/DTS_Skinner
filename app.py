@@ -279,11 +279,13 @@ def import_quake2_maps_route():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
         return jsonify(error='Enter your classic Quake II folder.'), 400
+    if payload.get('game', 'quake2') not in ('quake2', 'xatrix', 'rogue', 'ctf'):
+        return jsonify(error='Choose Quake II, The Reckoning, Ground Zero or CTF.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
         return jsonify(import_quake2_maps(payload['path'].strip(), local_data_dir / 'quake2-maps',
-                                         payload.get('replace') is True))
+                                         payload.get('replace') is True, payload.get('game', 'quake2')))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
