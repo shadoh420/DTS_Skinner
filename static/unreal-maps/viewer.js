@@ -22,7 +22,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // blending). Unreal: 227's OpenGL device ramps by pow(c, 1 / (2.5 * Brightness)), Brightness 0.5 by default (fitted to
   // 227 shots of NyLeve's and Vortex2's starts). UT: 0.67, fitted to UT 469 shots (D3D11, Brightness 0.7) of
   // DM-Deck16][, DM-Morpheus and DM-Turbine's starts.
-  const POWER = {unreal: 1 / (2.5 * .5), ut: .67, quake: 1, hipnotic: 1, rogue: 1, quake2: 1, xatrix: 1, ctf: 1};
+  const POWER = {unreal: 1 / (2.5 * .5), ut: .67, quake: 1, hipnotic: 1, rogue: 1, quake2: 1, xatrix: 1, ctf: 1,
+    qextras: 1, dopa: 1, mg1: 1, mg3: 1, qctf: 1};
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4});
   const ramp = new THREE.Scene(), flat = new THREE.Camera();
   ramp.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
@@ -32,7 +33,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       'void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(power)), 1.); }'})));
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
   const fitFrame = () => { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); frame.setSize(Math.max(size.x, 1), Math.max(size.y, 1)); };
-  const GAMES = quake2 ? ['quake2', 'xatrix', 'rogue', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake 2\\baseq2']) : quake ? ['quake', 'hipnotic', 'rogue'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
+  const GAMES = quake2 ? ['quake2', 'xatrix', 'rogue', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake 2\\baseq2']) : quake ? ['quake', 'hipnotic', 'rogue', 'qextras', 'dopa', 'mg1', 'mg3', 'qctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
   const dataRoot = id => quake2 ? `/quake2-map-data/${id === 'quake2' ? '' : id + '/'}` : quake ? `/quake-map-data/${id === 'quake' ? '' : id + '/'}` : `/unreal-map-data/${id}/`;
   let data = dataRoot(GAMES[0][0]);  // The shown map's pack.
   let speed = 8, missing = 0, ready = false, map = null;
@@ -67,7 +68,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   let quakeColormap = null;
   function surfaceMaterial(group, texture) {
     if (quake2) return window.quake2Maps.material(group, texture, lightMap);
-    if (quake) return window.quakeMaps.material(group, texture, lightMap, quakeColormap);
+    if (quake) return window.quakeMaps.material(group, texture, lightMap, quakeColormap, map.lighting === 'rgb', map.skybox);
     const side = group.flags & TWO_SIDED ? THREE.DoubleSide : THREE.FrontSide;
     // A backdrop is a hole onto the sky drawn before the level: it keeps the level behind it hidden, draws nothing.
     if (group.flags & FAKE_BACKDROP) return new THREE.MeshBasicMaterial({colorWrite: false, side});
@@ -102,6 +103,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, indexAt, map.indices), 1));
     if (quake) quakeColormap = await loadTexture('colormap.png');
     if (quake2) await window.quake2Maps.loadSky(map.skybox, loadTexture);
+    if (quake && map.skybox) await window.quake2Maps.loadSky(map.skybox, loadTexture);
     const materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
       return surfaceMaterial(group, !quake2 && group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
@@ -111,7 +113,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   function showNotes() {
     const parts = [];
-    if ((map.missing || []).length) parts.push('Textures the game files do not hold, drawn grey: ' + map.missing.join('; '));
+    if (quake) {
+      const guesses = [...new Set((map.instances || []).filter(item => item.guess).map(item => item.classname))];
+      if (guesses.length) parts.push('Brush positions not verified, shown at authored origin: ' + guesses.join(', '));
+      const unhandled = (map.bspx || []).filter(item => !item.handled && item.reason === 'not handled').map(item => item.name);
+      if (unhandled.length) parts.push('BSPX extensions not handled: ' + unhandled.join(', '));
+    }
+    if ((map.missing || []).length) parts.push((quake ? 'Missing source textures (fallback shown): ' : 'Textures the game files do not hold, drawn grey: ') + map.missing.join('; '));
     if (missing) parts.push(`${missing} textures of the pack did not load`);
     $('mapNotes').textContent = parts.length ? ' This map — ' + parts.join('. ') + '.' : '';
   }

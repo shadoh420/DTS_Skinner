@@ -1,9 +1,10 @@
-"""Classic Quake BSP29 maps and BSP item boxes. No placed MDLs or gameplay simulation.
+"""Quake BSP29/BSP2/2PSB maps and BSP item boxes. No placed MDLs or gameplay simulation.
 
 python tools/import_quake_map.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake" [--replace]
+Use --game qextras|dopa|mg1|mg3|qctf for rerelease maps; default all includes installed classic and rerelease games.
 
-The pack uses the Unreal page's position/UV/UV2/index binary layout. Quake materials instead sample indexed
-textures through the actual software colormap: no fitted RGB multiplier or display gamma. Source units map to
+The pack uses the Unreal page's position/UV/UV2/index binary layout. Classic maps sample indexed textures through
+the software colormap; rerelease QLIT maps use RGB light / 128, with fullbrights unlit. Source units map to
 viewer metres at 1/32, with (x,y,z) -> (y,z,x). Model exports keep native units, as the MDL importer does.
 """
 import argparse
@@ -18,11 +19,11 @@ import numpy as np
 from PIL import Image
 
 try:
-    from tools.import_quake import GAMES, available_games, item_box, palette_image, read_install, safe
+    from tools.import_quake import GAMES, RERELEASE, available_games, item_box, palette_image, read_install, safe
     from tools.import_unreal_map import floor_below, pack
     from tools.local_data import LOCAL_DATA
 except ImportError:
-    from import_quake import GAMES, available_games, item_box, palette_image, read_install, safe
+    from import_quake import GAMES, RERELEASE, available_games, item_box, palette_image, read_install, safe
     from import_unreal_map import floor_below, pack
     from local_data import LOCAL_DATA
 
@@ -55,13 +56,17 @@ def entities(data):
 
 
 def read_bsp(data):
-    if len(data) < 124 or struct.unpack_from('<i', data)[0] != 29:
-        raise ValueError('Expected Quake BSP version 29')
+    if len(data) < 124 or data[:4] not in (struct.pack('<i', 29), b'BSP2', b'2PSB'):
+        raise ValueError('Expected Quake BSP29, BSP2 or 2PSB')
+    extended = data[:4] in (b'BSP2', b'2PSB')
+    bounds = '6f' if data[:4] == b'BSP2' else '6h'
     lumps = []
+    end = 124
     for offset, size in struct.iter_unpack('<ii', data[4:124]):
         if offset < 0 or size < 0 or offset + size > len(data):
             raise ValueError('Invalid BSP lump range')
         lumps.append(data[offset:offset + size])
+        end = max(end, offset + size)
 
     def rows(index, fmt):
         if len(lumps[index]) % struct.calcsize('<' + fmt):
@@ -69,11 +74,28 @@ def read_bsp(data):
         return list(struct.iter_unpack('<' + fmt, lumps[index]))
 
     bsp = dict(entities=entities(lumps[0]), planes=rows(1, '4fi'), points=rows(3, '3f'),
-               texinfo=rows(6, '8fii'), faces=rows(7, 'Hhihh4Bi'), lighting=lumps[8],
-               edges=rows(12, '2H'), surfedges=[r[0] for r in rows(13, 'i')], models=rows(14, '9f7i'))
+               texinfo=rows(6, '8fii'), faces=rows(7, '5i4Bi' if extended else 'Hhihh4Bi'), lighting=lumps[8],
+               nodes=rows(5, '3i' + bounds + '2I' if extended else 'i2h6h2H'),
+               clipnodes=rows(9, '3i' if extended else 'i2h'),
+               leaves=rows(10, '2i' + bounds + '2I4B' if extended else '2i6h2H4B'),
+               marksurfaces=[r[0] for r in rows(11, 'I' if extended else 'H')],
+               edges=rows(12, '2I' if extended else '2H'), surfedges=[r[0] for r in rows(13, 'i')], models=rows(14, '9f7i'),
+               format='quake-' + (data[:4].decode('ascii').lower() if extended else 'bsp29'), bspx={})
+    end = (end + 3) & ~3
+    if data[end:end + 4] == b'BSPX':
+        if end + 8 > len(data):
+            raise ValueError('Truncated BSPX header')
+        count = struct.unpack_from('<i', data, end + 4)[0]
+        if count < 0 or end + 8 + count * 32 > len(data):
+            raise ValueError('Invalid BSPX directory')
+        for name, offset, size in struct.iter_unpack('<24sii', data[end + 8:end + 8 + count * 32]):
+            name = name.split(b'\0')[0].decode('ascii')
+            if name in bsp['bspx'] or offset < 0 or size < 0 or offset + size > len(data):
+                raise ValueError('Invalid BSPX lump')
+            bsp['bspx'][name] = data[offset:offset + size]
     if not bsp['models']:
         raise ValueError('BSP has no world model')
-    for key in ('planes', 'points', 'texinfo', 'models'):
+    for key in ('planes', 'points', 'texinfo', 'models', 'nodes', 'leaves'):
         if any(not math.isfinite(v) for row in bsp[key] for v in row):
             raise ValueError(f'Non-finite BSP {key}')
     textures, blob = [], lumps[2]
@@ -95,6 +117,44 @@ def read_bsp(data):
                              pixels=blob[offset + first:offset + first + width * height]))
     bsp['textures'] = textures
     return bsp
+
+
+def colored_lighting(bsp, lit=None):
+    """QLIT v1 uses three RGB bytes for each byte of the mono lighting lump, including style planes."""
+    rgb = None
+    source = 'colormap'
+    if lit is not None:
+        if len(lit) < 8 or lit[:8] != b'QLIT\x01\0\0\0':
+            raise ValueError('Expected QLIT version 1')
+        rgb, source = lit[8:], '.lit'
+    elif 'RGBLIGHTING' in bsp['bspx']:
+        rgb, source = bsp['bspx']['RGBLIGHTING'], 'BSPX RGBLIGHTING'
+    if rgb is not None:
+        if len(rgb) != 3 * len(bsp['lighting']):
+            raise ValueError('RGB lighting length must be three times the BSP lighting length')
+        bsp['rgb_lighting'] = rgb
+    return source
+
+
+def light_rgb(face, lighting, dark=frozenset()):
+    """RGB analogue of normal style 264/256, capped to 255; shader applies texel * light / 128."""
+    w, h = map(int, face['size'])
+    if face['kind'] != 'normal' or not lighting:
+        return np.full((1, 1, 3), 128, dtype=np.uint8)
+    if w <= 0 or h <= 0 or w * h > 1_000_000:
+        raise ValueError('Invalid lightmap extent')
+    total = np.zeros(w * h * 3, dtype=np.int64)
+    offset = face['lightofs'] * 3
+    if offset >= 0:
+        for style in face['styles']:
+            if style == 255:
+                break
+            if offset + w * h * 3 > len(lighting):
+                raise ValueError(f"Face {face['number']} exceeds RGB lighting lump")
+            if style not in dark:
+                total += np.frombuffer(lighting[offset:offset + w * h * 3], np.uint8).astype(np.int64) * 264
+            offset += w * h * 3
+    return np.minimum(255, total >> 8).astype(np.uint8).reshape(h, w, 3)
 
 
 def surface_kind(name):
@@ -140,6 +200,11 @@ def face_data(bsp, number):
         texture = next((t for t in bsp['textures'] if t and t['name'] == first_name), texture)
     vectors = np.array(texinfo[:8]).reshape(2, 4)
     st = points @ vectors[:, :3].T + vectors[:, 3]
+    if bsp.get('rerelease'):
+        # Native float arithmetic matters at exact luxel boundaries: mgdm3's -0.8 * 440 rounds to -352,
+        # whereas promoting the stored float to double invents an extra column at -352.000005.
+        p, v = points.astype(np.float32), vectors.astype(np.float32)
+        st = ((p[:, 0, None] * v[:, 0] + p[:, 1, None] * v[:, 1]) + p[:, 2, None] * v[:, 2]) + v[:, 3]
     # CalcSurfaceExtents: floor/ceil texture-space bounds at 16 units, including both endpoint luxels.
     lo, hi = np.floor(st.min(axis=0) / 16).astype(int), np.ceil(st.max(axis=0) / 16).astype(int)
     return dict(number=number, points=points, normal=normal, st=st, mins=lo * 16, size=hi - lo + 1,
@@ -190,7 +255,7 @@ def brightness_curve(data, palette):
 
 
 def vector(entity, key='origin'):
-    values = [float(x) for x in entity.get(key, '0 0 0').split()]
+    values = [float(x.rstrip(',')) for x in (entity.get(key) or '0 0 0').split()]
     if not 1 <= len(values) <= 3 or not all(math.isfinite(v) for v in values):
         raise ValueError(f'Invalid entity {key}')
     # ED_ParseEpair leaves omitted vector components zero (r1m4 has an intermission mangle of "20").
@@ -214,8 +279,18 @@ def instances(bsp, game='quake'):
         if not model.startswith('*'):
             continue
         classname = entity.get('classname', '')
-        flags = int(entity.get('spawnflags', '0'))
+        flags = int(float(entity.get('spawnflags') or '0'))
         reason = 'trigger volume' if classname.startswith('trigger_') else 'excluded on normal skill' if flags & 512 else None
+        if game == 'qctf':
+            reason = 'trigger volume' if classname.startswith('trigger_') else 'excluded in deathmatch' if flags & 2048 else None
+        if game in RERELEASE and not classname:
+            reason = 'entity without classname; engine discards it'
+        if game in ('dopa', 'mg1', 'mg3') and classname == 'hub_trigger_changelevel':
+            reason = 'hub changelevel trigger volume'
+        if game == 'mg3' and classname in ('func_door', 'func_door_secret') and flags & 32768:
+            reason = 'RemovedOutsideCoop: COOP_ONLY (32768); single player'
+        if game in ('dopa', 'mg1') and classname == 'func_bossgate' and flags & 64:
+            reason = 'misc.qc: inverse boss gate (64) removed with no runes'
         if classname.startswith('monster_'):
             reason = 'QuakeC replaces the authored brush with an MDL; placed monsters are not included'
         if game == 'hipnotic':
@@ -237,7 +312,7 @@ def instances(bsp, game='quake'):
         angles = np.zeros(3)
         guess = classname not in ('func_wall', 'func_button', 'func_door', 'func_door_secret', 'func_plat', 'func_train', 'func_illusionary')
         if classname == 'func_plat' and not entity.get('targetname'):
-            offset[2] -= float(entity.get('height', '0')) or size[2] - 8
+            offset[2] -= float((entity.get('height') or '0')) or size[2] - 8
             state = 'bottom (untargeted plat); height or size_z - 8'
         elif classname == 'func_train' or (game == 'hipnotic' and classname == 'func_train2'):
             target = next((e for e in bsp['entities'] if e.get('targetname') == entity.get('target') and entity.get('target')), None)
@@ -247,15 +322,28 @@ def instances(bsp, game='quake'):
             state = 'first path corner minus model mins (after initialization, before travel)'
             guess = False
         elif classname == 'func_door' and flags & 1:
-            angle = float(entity.get('angle', '0'))
+            angle = float(entity.get('angle') or '0')
             direction = np.array([0, 0, 1 if angle == -1 else -1]) if angle in (-1, -2) else np.array([math.cos(math.radians(angle)), math.sin(math.radians(angle)), 0])
-            lip = float(entity.get('lip', '0')) or 8
+            lip = float((entity.get('lip') or '0')) or 8
             offset += direction * (abs(float(direction @ size)) - lip)
             state = 'DOOR_START_OPEN; moved by projected size minus lip'
         elif classname == 'func_door':
             state = 'closed'
+        elif game in ('dopa', 'mg1') and classname == 'func_bossgate':
+            state, guess = 'misc.qc: boss gate at authored origin with no runes', False
+        elif game in ('dopa', 'mg1', 'mg3') and classname == 'rotate_object_continuously':
+            if np.any(vector(entity, 'pos2')):
+                offset = vector(entity, 'pos2')
+            state, guess = 'rotate.qc: pos2 if nonzero, otherwise compiled origin; zero angles before rotation', False
+        elif game in ('dopa', 'mg1', 'mg3') and classname in ('func_explode', 'func_hurt', 'func_toss', 'func_bob', 'func_breakable'):
+            # The spawn functions setmodel/setorigin at the authored position. Bob/toss movement is frozen before ticks.
+            state, guess = 'progs.dat: authored origin before bob/toss/break/explode; movement frozen', False
+            if classname in ('func_hurt', 'func_toss', 'func_bob', 'func_breakable'):
+                angles = vector(entity, 'angles')
+        elif game in ('dopa', 'mg1', 'mg3') and classname in ('mge2m2_electrode_button', 'func_axe_button'):
+            state, guess = 'progs.dat: calls func_button; unpressed at authored origin', False
         elif game == 'rogue' and classname == 'func_new_plat':
-            height = float(entity.get('height', '0'))
+            height = float((entity.get('height') or '0'))
             if (flags & 3 or (not flags & 4 and flags & 16)) and height <= 0:
                 offset[2] -= abs(height) or size[2] - 8
                 state = 'newplats.qc: negative/default height starts at pos2 (bottom)'
@@ -272,7 +360,7 @@ def instances(bsp, game='quake'):
             state, guess = 'compiled pivot origin, zero rotation at rest', False
             controller = next((e for e in bsp['entities'] if e.get('classname', '').startswith('func_rotate_')
                                and e.get('target') and e['target'] == entity.get('targetname')
-                               and not int(e.get('spawnflags', '0')) & 512), None)
+                               and not int(float(e.get('spawnflags') or '0')) & 512), None)
             if controller and controller['classname'] == 'func_rotate_train':
                 target = next((e for e in bsp['entities'] if e.get('targetname') == controller.get('path') and controller.get('path')), None)
                 if target is None:
@@ -280,7 +368,7 @@ def instances(bsp, game='quake'):
                 else:
                     offset += vector(target) - vector(controller)
                     if classname == 'rotate_object':
-                        angles = vector(target, 'angles') if int(target.get('spawnflags', '0')) & 2 else vector(controller, 'angles')
+                        angles = vector(target, 'angles') if int(float(target.get('spawnflags') or '0')) & 2 else vector(controller, 'angles')
                     state = 'hiprot.qc: first path_rotate translation; rotate_object uses initial path/controller angles'
             elif classname == 'rotate_object':
                 angles = vector(entity, 'angles')
@@ -290,15 +378,20 @@ def instances(bsp, game='quake'):
     return result, skipped
 
 
-def viewpoints(bsp):
+def viewpoints(bsp, game='quake'):
     views = []
-    for classname in ('info_player_start', 'info_player_deathmatch', 'info_intermission'):
+    classes = ('info_player_start', 'info_player_deathmatch', 'info_intermission')
+    if game == 'qctf':
+        classes = ('info_player_team1', 'info_player_team2', 'info_player_deathmatch', 'info_player_start', 'info_intermission')
+    for classname in classes:
         for entity in bsp['entities']:
             if entity.get('classname') != classname:
                 continue
+            if game in RERELEASE and int(float(entity.get('spawnflags') or '0')) & (2048 if game == 'qctf' else 512):
+                continue
             origin = vector(entity)
             origin[2] += 0 if classname == 'info_intermission' else 22
-            angle = float(entity.get('angle', '0'))
+            angle = float(entity.get('angle') or '0')
             pitch = 0
             if classname == 'info_intermission' and 'mangle' in entity:
                 angles = vector(entity, 'mangle')
@@ -313,8 +406,8 @@ def viewpoints(bsp):
 def geometry(bsp, placed, light=True):
     faces, tiles, audit, floors = [], [], [], []
     # QuakeC's light spawn: a targeted light flagged START_OFF (1) sets its style to 'a' until triggered.
-    dark = frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
-                     and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags', '0')) & 1)
+    dark = frozenset(int(float(e['style'])) for e in bsp['entities'] if e.get('classname', '').startswith('light')
+                     and int(float(e.get('style') or '0')) >= 32 and int(float(e.get('spawnflags') or '0')) & 1)
     for instance in placed:
         model = bsp['models'][instance['model']]
         first, count = model[14:16]
@@ -328,7 +421,8 @@ def geometry(bsp, placed, light=True):
             points = face['points'] @ matrix.T + instance['offset']
             face['placed_points'] = points
             if light:
-                tiles.append(light_codes(face, bsp['lighting'], dark))
+                tiles.append(light_rgb(face, bsp['rgb_lighting'], dark) if 'rgb_lighting' in bsp
+                             else light_codes(face, bsp['lighting'], dark))
             faces.append(face)
             audit.append(dict(face=number, entity=instance['entity'], texture=face['texture']['name'], kind=face['kind'],
                               texturemins=face['mins'].tolist(), luxels=face['size'].tolist(), lightofs=face['lightofs'],
@@ -353,8 +447,8 @@ def geometry(bsp, placed, light=True):
         if light:
             x, y = places[index]
             tile = tiles[index]
-            rgb = np.stack((tile >> 8, tile & 255, np.zeros_like(tile)), axis=-1).astype(np.uint8)
-            h, w = tile.shape
+            rgb = tile if tile.ndim == 3 else np.stack((tile >> 8, tile & 255, np.zeros_like(tile)), axis=-1).astype(np.uint8)
+            h, w = tile.shape[:2]
             atlas[y:y + h + 2, x:x + w + 2] = np.pad(rgb, ((1, 1), (1, 1), (0, 0)), mode='edge')
             coords = (face['st'] - face['mins']) / 16 if (w, h) != (1, 1) else np.zeros_like(face['st'])
             uv2.extend((coords + [x + 1.5, y + 1.5]) / [width, height])
@@ -382,17 +476,44 @@ def build_item(raw, palette, name):
                 for i, g in enumerate(data['groups'])], metadata=dict(pose='BSP item box', lighting='fullbright texture')), textures
 
 
-def build_map(raw, name, game='quake'):
+def hull_landing(bsp, origin, hull=1):
+    """Origin height where the player's box (the world's hull 1, clip brushes included) comes to rest falling from
+    `origin`, or None when it starts in solid. Faces alone miss invisible clip floors (mg1's mge2m1 start)."""
+    def contents(point):
+        node = bsp['models'][0][9 + hull]
+        while node >= 0:
+            plane, front, back = bsp['clipnodes'][node]
+            *normal, dist, kind = bsp['planes'][plane]
+            side = (point[kind] if kind < 3 else np.dot(normal, point)) - dist
+            node = front if side >= 0 else back
+        return node
+    point = np.array(origin, float)
+    if not 0 <= bsp['models'][0][9 + hull] < len(bsp['clipnodes']) or contents(point) == -2:  # No hull, or CONTENTS_SOLID.
+        return None
+    while point[2] > -32768 and contents(point - (0, 0, 1)) != -2:
+        point[2] -= 1  # ponytail: 1-unit march, a few thousand node walks at most per start.
+    return point[2]
+
+
+def build_map(raw, name, game='quake', lit=None):
     bsp = read_bsp(raw)
+    bsp['rerelease'] = game in RERELEASE
+    lighting = colored_lighting(bsp, lit)
     placed, skipped = instances(bsp, game)
     data = geometry(bsp, placed)
     points = data['points'][:, [1, 2, 0]] * SCALE
-    views = viewpoints(bsp)
+    views = viewpoints(bsp, game)
+
+    def floor_under(eye):
+        """Brush entities' floors come from faces; the world's own, clip brushes included, from hull 1."""
+        floor = floor_below(data['floors'], *eye)
+        landing = hull_landing(bsp, np.array(eye) - (0, 0, 22)) if floor is not None else None
+        return max(floor, landing - 24) if landing is not None else floor
     for view in views:
         # The game drops a spawned player onto the floor below (standing at floor + 24, eyes 22 higher): e1m8's and
         # hipend's starts float well above it (checked in WinQuake). Intermission cameras stay where they are.
         origin = np.array(view['native_origin'])
-        floor = floor_below(data['floors'], *origin) if view['classname'] != 'info_intermission' else None
+        floor = floor_under(origin) if view['classname'] != 'info_intermission' else None
         if floor is not None and origin[2] > floor + 46:
             origin[2] = floor + 46
             view.update(origin=(origin[[1, 2, 0]] * SCALE).tolist(), native_origin=origin.tolist())
@@ -400,18 +521,39 @@ def build_map(raw, name, game='quake'):
     checks = []
     for view in views:
         origin = view['native_origin']
-        floor = floor_below(data['floors'], *origin)
+        floor = floor_under(origin)
         checks.append(dict(classname=view['classname'], inside_bounds=bool(((origin >= bounds[0]) & (origin <= bounds[1])).all()),
                            floor_z=floor, eye_above_floor=origin[2] - floor if floor is not None else None))
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(),
                      data['uv2'].astype('<f4').tobytes(), np.array(data['indices'], '<u4').tobytes()))
     info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})
-    scene = dict(name=name, game=game, title=info.get('message', ''), format='quake-bsp29', vertices=len(points), indices=len(data['indices']),
+    scene = dict(name=name, game=game, title=info.get('message', ''), format=bsp['format'], vertices=len(points), indices=len(data['indices']),
+                 lighting='rgb' if 'rgb_lighting' in bsp else 'colormap', lighting_source=lighting,
+                 bspx=[dict(name=n, bytes=len(d), handled=n == 'RGBLIGHTING' and lighting == 'BSPX RGBLIGHTING',
+                            reason='external .lit takes precedence' if n == 'RGBLIGHTING' and lit is not None else
+                            'RGB lighting' if n == 'RGBLIGHTING' else 'not handled') for n, d in bsp['bspx'].items()],
                  lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views, bounds=bounds.tolist(),
                  instances=placed, skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
-                 assumptions=['normal skill, single player, no runes', 'light styles held at m (264), switchable lights that start off at a (0)',
+                 assumptions=['CTF deathmatch filtering; first authored team 1 start' if game == 'qctf' else 'normal skill, single player, no runes', 'light styles held at m (264), switchable lights that start off at a (0)',
                               'brushes at spawn; trains initialized at first corner, before travel', 'animated textures held at +0/+a'])
     return scene, blob, data['textures'], data['atlas']
+
+
+def rerelease_sky(info, files):
+    """Worldspawn _sky names the gfx/env/<prefix>{rt,bk,lf,ft,up,dn}.tga set in mg1/mg3."""
+    name = info.get('_sky') or info.get('sky')
+    if not name:
+        return None, {}
+    if __package__:
+        from .import_quake2_map import skybox
+    else:
+        from import_quake2_map import skybox
+    sky, images = skybox(dict(sky=name), {n.removeprefix('gfx/'): d for n, d in files.items() if n.startswith('gfx/env/')})
+    for face in sky['faces'].values():
+        if face['source']:
+            face['source'] = 'gfx/' + face['source']
+    sky['lookup'] = 'worldspawn _sky/sky; gfx/env/<prefix><suffix>.tga'
+    return sky, images
 
 
 def import_maps(install, output, replace=False, game='quake'):
@@ -426,19 +568,32 @@ def import_maps(install, output, replace=False, game='quake'):
     lut.save(output / 'textures/colormap.png')
     curve = brightness_curve(colormap, palette)
     (output / 'brightness.json').write_text(json.dumps(curve, indent=2), encoding='utf-8')
+    external_assets = [dict(source=r['source'], kind='skybox face' if r['source'].startswith('gfx/env/') else
+                            'model skin; not applied to BSP miptex or embedded MDL skin')
+                       for r in records if r['source'].endswith('.tga')]
     records = [r for r in records if r['source'].endswith('.bsp')]
     result = dict(game=game, imported=[], skipped=[], failed={}, pak_counts=counts, bsp_entries=len(records), results=records,
-                  palette_source=files['gfx/palette.lmp'][2]['game'], colormap_source=files['gfx/colormap.lmp'][2]['game'])
+                  palette_source=files['gfx/palette.lmp'][2]['game'], colormap_source=files['gfx/colormap.lmp'][2]['game'],
+                  external_assets=external_assets)
     index = []
     for record in records:
         name = record['source']
+        raw = files[name][0]
+        record['format'] = {b'BSP2': 'BSP2', b'2PSB': '2PSB', b'\x1d\0\0\0': 'BSP29'}.get(raw[:4], 'unknown')
         if record['status'] == 'overridden':
             continue
+        reason = None
         if item_box(name) or not name.startswith('maps/'):
-            record.update(status='skipped', reason='BSP item box; imported by the quake models importer' if item_box(name) else 'Not a maps/*.bsp level')
+            reason = 'BSP item box; imported by the quake models importer' if item_box(name) else 'Not a maps/*.bsp level (archived source/test asset)'
+        elif game in RERELEASE and (name.startswith(('maps/test/', 'maps/bmodel/')) or name == 'maps/test_ctf.bsp'):
+            reason = 'Test map' if not name.startswith('maps/bmodel/') else 'External brush model, not a level'
+        elif game == 'qextras' and not (name.startswith('maps/vault/') or name in ('maps/dm7.bsp', 'maps/dm8.bsp', 'maps/base32b.bsp', 'maps/death32c.bsp')):
+            reason = 'Classic level already represented by the classic Quake group'
+        if reason:
+            record.update(status='skipped', reason=reason)
             result['skipped'].append(name)
             continue
-        ident = safe(Path(name).stem)
+        ident = safe(name[5:-4].replace('/', '_'))
         folder = output / 'maps' / ident
         try:
             if not replace and all((folder / f).is_file() for f in ('scene.json', 'geometry.bin', 'lightmap.png')):
@@ -446,7 +601,18 @@ def import_maps(install, output, replace=False, game='quake'):
                 record.update(status='skipped', reason='Already imported; use --replace to rebuild')
                 result['skipped'].append(name)
             else:
-                scene, blob, textures, atlas = build_map(files[name][0], ident, game)
+                lit = files.get(name[:-4] + '.lit') if game in RERELEASE else None
+                scene, blob, textures, atlas = build_map(raw, ident, game, lit[0] if lit else None)
+                if game in RERELEASE:
+                    bsp = read_bsp(raw)
+                    info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})
+                    sky, images = rerelease_sky(info, files)
+                    scene['skybox'] = sky if sky and not sky['missing'] else None
+                    scene['external_textures'] = dict(sky=sky, surfaces='embedded miptex; no established external replacement lookup')
+                    if sky and sky['missing']:
+                        scene['missing'].extend(sky['missing'])
+                    for png, image in images.items():
+                        image.save(output / 'textures' / png)
                 for png, tex in textures.items():
                     target = output / 'textures' / png
                     if not target.is_file() or replace:
@@ -460,6 +626,8 @@ def import_maps(install, output, replace=False, game='quake'):
                 result['imported'].append(ident)
             if scene['missing']:
                 record['warnings'] = scene['missing']
+            record.update(bspx=scene.get('bspx', []), lighting=scene.get('lighting_source', 'colormap'),
+                          brush_guesses=sum(p.get('guess', False) for p in scene['instances']))
             index.append(dict(id=ident, name=ident, title=scene['title'], group=GAMES[game]))
         except (ValueError, IndexError, struct.error) as exc:
             record.update(status='skipped', reason=str(exc))
@@ -474,7 +642,7 @@ if __name__ == '__main__':
     parser.add_argument('--install', type=Path, required=True)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--replace', action='store_true')
-    parser.add_argument('--game', choices=['all', *GAMES], default='all', help='Default: id1 and every installed classic mission pack')
+    parser.add_argument('--game', choices=['all', *GAMES], default='all', help='Default: all installed classic and rerelease campaigns')
     args = parser.parse_args()
     output = args.output or LOCAL_DATA / 'quake-maps'
     if args.game == 'all':

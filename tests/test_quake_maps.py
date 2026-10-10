@@ -11,7 +11,7 @@ import numpy as np
 from app import app
 from tools.import_quake import import_catalog
 from tools.import_quake_map import (brightness_curve, build_item, build_map, colormap_image, face_data, import_maps,
-                                   geometry, instances, light_codes, read_bsp, surface_kind, viewpoints)
+                                   geometry, hull_landing, instances, light_codes, read_bsp, surface_kind, viewpoints)
 from tests.test_quake import INSTALL, PALETTE, pak
 
 
@@ -144,6 +144,12 @@ class QuakeMapsTest(unittest.TestCase):
                 self.assertEqual(light_codes(face, b'bad').tolist(), [[8192]])
         self.assertEqual(face_data(read_bsp(bsp(names=('+1foo', '+0foo'))), 0)['texture']['name'], '+0foo')
         self.assertEqual(face_data(read_bsp(bsp(names=('+bfoo', '+afoo'))), 0)['texture']['name'], '+afoo')
+
+    def test_player_lands_on_the_hull_floor(self):
+        # Hull 1's only node: solid below z = 100 (a clip floor with no faces), empty above.
+        data = dict(models=[[0.] * 9 + [0, 0, 0, 0, 0, 0, 0]], planes=[(0., 0., 1., 100., 2)], clipnodes=[(0, -1, -2)])
+        self.assertEqual(hull_landing(data, (8, 8, 200)), 100)
+        self.assertIsNone(hull_landing(data, (8, 8, 50)))  # A start inside solid keeps the face floor.
 
     def test_brush_spawn_positions_and_viewpoints(self):
         data = read_bsp(bsp())
