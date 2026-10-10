@@ -3,7 +3,7 @@
 python tools/import_quake.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake"
 
 PAK1 overrides PAK0. Writes catalog.json, model_json/*.json, textures/*.png and import-report.json;
-existing PNG edits survive. Sprites and brush models are listed but not decoded. No maps or animation.
+existing PNG edits survive. BSP item boxes share the map decoder; sprites are listed but not decoded. No animation.
 """
 import argparse
 import json
@@ -44,6 +44,43 @@ def read_pak(data):
             raise ValueError(f'Invalid PACK entry range: {name}')
         entries.append((name, data[start:start + length]))
     return entries
+
+
+def read_install(install):
+    """Effective id1 entries, every source record, and per-PAK counts; later entries win."""
+    install = Path(install).expanduser()
+    folder = install / 'id1' if (install / 'id1').is_dir() else install
+    paths = {p.name.lower(): p for p in folder.iterdir() if p.is_file()} if folder.is_dir() else {}
+    if 'pak0.pak' not in paths:
+        raise ValueError(f'No classic Quake id1/PAK0.PAK in {install}')
+    files, records, counts = {}, [], {}
+    for pak in ('pak0.pak', 'pak1.pak'):
+        if pak not in paths:
+            continue
+        entries = read_pak(paths[pak].read_bytes())
+        counts[pak] = dict(directory=len(entries), mdl=sum(n.startswith('progs/') and n.endswith('.mdl') for n, _ in entries),
+                           spr=sum(n.startswith('progs/') and n.endswith('.spr') for n, _ in entries),
+                           bsp=sum(n.endswith('.bsp') for n, _ in entries))
+        for name, data in entries:
+            if name in files:
+                files[name][2].update(status='overridden', reason=f'Overridden by {pak}:{name}')
+            record = dict(pak=pak, source=name, status='pending')
+            files[name] = data, pak, record
+            records.append(record)
+    palette = files.get('gfx/palette.lmp', (b'',))[0]
+    if len(palette) != 768:
+        raise ValueError('Missing or invalid gfx/palette.lmp (expected 256 RGB colours)')
+    return files, records, counts
+
+
+def palette_image(pixels, size, palette):
+    image = Image.frombytes('P', size, pixels)
+    image.putpalette(palette)
+    return image.convert('RGB')  # Index 255 is opaque in classic MDLs and BSPs too.
+
+
+def item_box(name):
+    return name.startswith('maps/b_') and name.endswith('.bsp')
 
 
 def read_mdl(data):
@@ -150,29 +187,11 @@ def category(name):
 
 def import_catalog(install, output):
     """Import the classic install's id1 (or id1 itself), never mission packs or rerelease."""
-    install, output = Path(install).expanduser(), Path(output)
-    folder = install / 'id1' if (install / 'id1').is_dir() else install
-    paths = {p.name.lower(): p for p in folder.iterdir() if p.is_file()} if folder.is_dir() else {}
-    if 'pak0.pak' not in paths:
-        raise ValueError(f'No classic Quake id1/PAK0.PAK in {install}')
-    files, records, counts = {}, [], {}
-    for pak in ('pak0.pak', 'pak1.pak'):
-        if pak not in paths:
-            continue
-        entries = read_pak(paths[pak].read_bytes())
-        models = [(n, d) for n, d in entries if n.startswith('progs/') and n.endswith(('.mdl', '.spr', '.bsp'))]
-        counts[pak] = dict(directory=len(entries), mdl=sum(n.endswith('.mdl') for n, _ in models),
-                           spr=sum(n.endswith('.spr') for n, _ in models), bsp=sum(n.endswith('.bsp') for n, _ in models))
-        for name, data in entries:
-            if name in files:
-                files[name][2].update(status='overridden', reason=f'Overridden by {pak}:{name}')
-            record = dict(pak=pak, source=name, status='pending')
-            files[name] = data, pak, record
-            if name.startswith('progs/') and name.endswith(('.mdl', '.spr', '.bsp')):
-                records.append(record)
-    palette = files.get('gfx/palette.lmp', (b'',))[0]
-    if len(palette) != 768:
-        raise ValueError('Missing or invalid gfx/palette.lmp (expected 256 RGB colours)')
+    output = Path(output)
+    files, records, counts = read_install(install)
+    records = [r for r in records if (r['source'].startswith('progs/') and r['source'].endswith(('.mdl', '.spr', '.bsp')))
+               or item_box(r['source'])]
+    palette = files['gfx/palette.lmp'][0]
     for sub in ('model_json', 'textures'):
         (output / sub).mkdir(parents=True, exist_ok=True)
     catalog, taken = [], set()
@@ -180,29 +199,37 @@ def import_catalog(install, output):
         if record['status'] == 'overridden':
             continue
         name = record['source']
-        stem, suffix = name[6:].rsplit('.', 1)
+        stem, suffix = name.split('/', 1)[1].rsplit('.', 1)
         model = safe(stem if suffix == 'mdl' else f'{stem}_{suffix}')
-        item = dict(model_name=model, display_name=name[6:], texture_name='', game='quake',
+        item = dict(model_name=model, display_name=name.split('/', 1)[1], texture_name='', game='quake',
                     category=category(stem), status='ready', source=f"{record['pak']}:{name}")
         try:
             if suffix == 'spr':
                 raise ValueError('Sprite (.spr), not an MDL; sprite decoding is not included')
-            if suffix == 'bsp':
-                raise ValueError('BSP brush model, not an MDL; deferred to the maps job')
+            if suffix == 'bsp' and not item_box(name):
+                raise ValueError('Non-item BSP brush model; use the maps import')
             if model in taken:
                 raise ValueError('Output model name collision')
             taken.add(model)
-            mesh = read_mdl(files[name][0])
-            png = model + '.png'
-            data = build_model(mesh, png)
+            if suffix == 'bsp':
+                if __package__:
+                    from .import_quake_map import build_item
+                else:
+                    from import_quake_map import build_item
+                data, images = build_item(files[name][0], palette, model)
+                for png, image in images.items():
+                    if not (output / 'textures' / png).is_file():
+                        image.save(output / 'textures' / png)
+            else:
+                mesh = read_mdl(files[name][0])
+                png = model + '.png'
+                data = build_model(mesh, png)
+                target = output / 'textures' / png
+                if not target.is_file():
+                    palette_image(mesh['skin'], (mesh['width'], mesh['height']), palette).save(target)
             data['metadata']['source'] = item['source']
-            target = output / 'textures' / png
-            if not target.is_file():
-                image = Image.frombytes('P', (mesh['width'], mesh['height']), mesh['skin'])
-                image.putpalette(palette)
-                image.convert('RGB').save(target)  # Index 255 is opaque in classic MDLs too.
             (output / 'model_json' / f'{model}.json').write_text(json.dumps(data, separators=(',', ':')), encoding='utf-8')
-            item['texture_name'] = png
+            item['texture_name'] = data['material_textures'][0]
             record['status'] = 'ready'
         except ValueError as exc:
             record.update(status='skipped', reason=str(exc))
@@ -210,6 +237,7 @@ def import_catalog(install, output):
         catalog.append(item)
     report = dict(entries=len(catalog), ready=sum(e['status'] == 'ready' for e in catalog), pak_counts=counts,
                   mdl_entries=sum(c['mdl'] for c in counts.values()),
+                  bsp_items=sum(item_box(r['source']) for r in records),
                   mdl_skipped=sum(r['status'] == 'skipped' and r['source'].endswith('.mdl') for r in records),
                   overridden=sum(r['status'] == 'overridden' for r in records), results=records)
     (output / 'catalog.json').write_text(json.dumps(catalog, indent=1), encoding='utf-8')

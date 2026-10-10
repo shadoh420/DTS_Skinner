@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — Quake Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/quake-maps/materials.js"></script>
+  <script defer src="/static/unreal-maps/viewer.js"></script>
+</head>
+<body data-game="quake">
+  <header><a href="/">← Models</a><strong>Quake Maps</strong>
+    <select id="map" aria-label="Map"></select>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="130" value="90"></label>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+    <details id="importPanel"><summary>Import maps</summary>
+      <div class="import">
+        <select id="importGame" aria-label="Game to import"><option value="quake">Quake (1996)</option></select>
+        <label>Game folder <input id="gamePath" placeholder="C:\Program Files (x86)\Steam\steamapps\common\Quake"></label>
+        <label><input id="replace" type="checkbox"> Re-import existing maps</label>
+        <button id="import">Import</button>
+        <span id="importStatus" role="status">Imports classic id1 maps from PAK0/PAK1. The game folder is only read. Import models on the Models page to add the BSP item boxes.</span>
+      </div>
+    </details>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading map…</span>
+    <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
+    <details><summary>Preview notes</summary><span id="notes">Free flight without collision, gameplay or audio. Classic world surfaces and brush entities at their initial positions, with palette lighting, fullbright texels, scrolling sky and warped liquids. Starts at the player start; light styles stay at normal brightness and animated textures use their first frame. Normal skill, no runes. Doors start closed unless marked start-open; untargeted lifts start down and trains start at their first path corner. Not drawn: placed MDL monsters/items, sprites, fog, dynamic lights or mission-pack/rerelease content.</span></details>
+  </footer>
+</body>
+</html>

@@ -518,7 +518,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const filename = names[index];
         const key = textureKey(index), flags = gameId === 't2' ? flagsFor(index) : 0;
         const map = cache.has(key) ? await cache.get(key) : null;
-        const Material = $('lighting').checked && !(flags & 32) ? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
+        const Material = $('lighting').checked && !(flags & 32) && !settingsFor(index).unlit ? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
         // Red Baron's alpha is a colour key: cut out, still writing depth, so stacked wings hide each other.
         const transparent = Boolean(flags & (4 | 8 | 16)) || Boolean(map && map.userData.alpha && gameId !== 'rb3d');
         newMaterials.push(new Material({

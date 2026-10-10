@@ -149,7 +149,7 @@ class QuakeInstallTest(unittest.TestCase):
             offset, size = struct.unpack_from('<ii', raw, 4)
             for at in range(offset, offset + size, 64):
                 name = raw[at:at + 56].split(b'\0')[0].decode('ascii').lower()
-                if name.startswith('progs/') and name.endswith(('.mdl', '.spr', '.bsp')):
+                if (name.startswith('progs/') and name.endswith(('.mdl', '.spr', '.bsp'))) or (name.startswith('maps/b_') and name.endswith('.bsp')):
                     expected.append((pak_name.lower(), name))
         self.assertEqual(sum(n.endswith('.mdl') for _, n in expected), 79)
         with tempfile.TemporaryDirectory() as folder:
@@ -157,12 +157,13 @@ class QuakeInstallTest(unittest.TestCase):
             report = import_catalog(INSTALL, output)
             self.assertCountEqual([(r['pak'], r['source']) for r in report['results']], expected)
             self.assertEqual((report['ready'], report['mdl_entries'], report['mdl_skipped'], report['overridden']),
-                             (79, 79, 0, 0))
+                             (92, 79, 0, 0))
             skipped = [r for r in report['results'] if r['status'] != 'ready']
             self.assertEqual(len(skipped), 3)
             self.assertTrue(all(r['source'].endswith('.spr') and r['reason'] for r in skipped))
             models = list((output / 'model_json').glob('*.json'))
-            self.assertEqual(len(models), 79)
+            self.assertEqual(len(models), 92)
+            self.assertEqual(report['bsp_items'], 13)
             for path in models:
                 data = load_model_data(path)
                 with Image.open(output / 'textures' / data['material_textures'][0]) as image:
