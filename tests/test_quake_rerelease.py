@@ -227,7 +227,7 @@ class RereleaseInstallTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             result = import_catalog(INSTALL, folder)
             for game, count in (('mg1', 8), ('mg3', 54), ('qctf', 4)):
-                records = [r for r in result['results'] if r['game'] == game]
+                records = [r for r in result['results'] if r['game'] == game and r['source'].endswith('.mdl')]
                 self.assertEqual(len(records), count)
                 self.assertTrue(all(r['status'] == 'ready' for r in records))
                 self.assertEqual(result['pak_counts'][f'{game}/pak0.pak']['mdl'], count)
@@ -236,7 +236,7 @@ class RereleaseInstallTest(unittest.TestCase):
                 compared = result['rerelease_comparison'][game]
                 self.assertEqual(compared['total'], count)
                 self.assertEqual(compared['different'] + compared['identical'] + len(compared['added']), count)
-            self.assertFalse(any(r['game'] in ('qextras', 'dopa') for r in result['results']))
+            self.assertFalse(any(r['game'] in ('qextras', 'dopa') and r['source'].endswith('.mdl') for r in result['results']))
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-"""Quake and installed classic/rerelease add-on MDLs, first pose and first skin, as game quake.
+"""Quake classic/add-on MDLs and rerelease enhanced MD5s, first pose/skin, as game quake.
 
 python tools/import_quake.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake"
 
@@ -83,6 +83,8 @@ def read_install(install, game='quake'):
             continue
         entries = read_pak(paths[pak].read_bytes())
         counts[pak] = dict(directory=len(entries), mdl=sum(n.startswith('progs/') and n.endswith('.mdl') for n, _ in entries),
+                           md5mesh=sum(n.startswith('progs/') and n.endswith('.md5mesh') for n, _ in entries),
+                           md5anim=sum(n.startswith('progs/') and n.endswith('.md5anim') for n, _ in entries),
                            spr=sum(n.startswith('progs/') and n.endswith('.spr') for n, _ in entries),
                            bsp=sum(n.endswith('.bsp') for n, _ in entries))
         for name, data in entries:
@@ -210,20 +212,21 @@ def category(name):
 
 
 def import_catalog(install, output):
-    """Import classic games and mg1/mg3/CTF MDLs; preserve edited PNGs. MD5s are not imported."""
+    """Import classic models and rerelease add-ons/enhanced models; preserve edited PNGs."""
     output = Path(output)
     base = read_install(install)[0]
     all_records, pak_counts, catalog, taken, base_models = [], {}, [], set(), {}
     for sub in ('model_json', 'textures'):
         (output / sub).mkdir(parents=True, exist_ok=True)
     for game in available_games(install):
-        if game in ('qextras', 'dopa'):
+        if game == 'dopa':
             continue
         files, records, counts = read_install(install, game)
-        records = [r for r in records if (r['source'].startswith('progs/') and r['source'].endswith(('.mdl', '.spr', '.bsp')))
+        records = [r for r in records if (r['source'].startswith('progs/') and r['source'].endswith(('.mdl', '.spr', '.bsp', '.md5mesh')))
                    or item_box(r['source'])]
         if game in RERELEASE:
-            records = [r for r in records if r['source'].endswith('.mdl')]
+            suffixes = ('.md5mesh',) if game == 'qextras' else ('.mdl', '.md5mesh')
+            records = [r for r in records if r['source'].endswith(suffixes)]
         all_records.extend(records)
         pak_counts.update({(pak if game == 'quake' else f'{game}/{pak}'): count for pak, count in counts.items()})
         palette = files['gfx/palette.lmp'][0]
@@ -232,17 +235,23 @@ def import_catalog(install, output):
                 continue
             name = record['source']
             stem, suffix = name.split('/', 1)[1].rsplit('.', 1)
-            model = safe(stem if suffix == 'mdl' else f'{stem}_{suffix}')
+            enhanced = suffix == 'md5mesh'
+            model = safe(f'{stem}_enhanced' if enhanced else stem if suffix == 'mdl' else f'{stem}_{suffix}')
             if game not in RERELEASE and game != 'quake' and name in base and files[name][0] == base[name][0] and name in base_models:
                 record.update(status='duplicate', model=base_models[name], reason='Byte-identical to id1; listed once in its category')
                 continue
             renamed = game != 'quake' and name in base
-            if game != 'quake':
+            if game not in ('quake', 'qextras'):
                 model = f'{game}_{model}'
             record.update(model=model, renamed=renamed)
             label = '' if game == 'quake' else GAMES[game] + ': '
             item = dict(model_name=model, display_name=label + name.split('/', 1)[1], texture_name='', game='quake',
                         campaign=game, category=label + category(stem), status='ready', source=f"{game}/{record['pak']}:{name}")
+            if enhanced:
+                label = 'Quake' if game == 'qextras' else GAMES[game]
+                kind = category(stem.split('_')[0] if stem in ('dog_explosive', 'ogre_rocket', 'shambler_blood') else stem)
+                item.update(display_name=('' if game == 'qextras' else label + ': ') + stem + ' (enhanced)',
+                            category=label + ' (enhanced): ' + kind)
             try:
                 if suffix == 'spr':
                     raise ValueError('Sprite (.spr), not an MDL; sprite decoding is not included')
@@ -251,7 +260,27 @@ def import_catalog(install, output):
                 if model in taken:
                     raise ValueError('Output model name collision')
                 taken.add(model)
-                if suffix == 'bsp':
+                if enhanced:
+                    if __package__:
+                        from .import_quake_md5 import read_mesh, read_anim, resolve_skin, build_model as build_md5
+                    else:
+                        from import_quake_md5 import read_mesh, read_anim, resolve_skin, build_model as build_md5
+                    mesh = read_mesh(files[name][0])
+                    animation_name = name.removesuffix('.md5mesh') + '.md5anim'
+                    animation = read_anim(files[animation_name][0], mesh['joints']) if animation_name in files else None
+                    textures, skins = [], []
+                    for index, part in enumerate(mesh['meshes']):
+                        image, skin = resolve_skin(part['shader'], files)
+                        png = model + (f'_{index}' if index else '') + '.png'
+                        textures.append(png)
+                        skins.append(skin)
+                        if not (output / 'textures' / png).is_file():
+                            image.save(output / 'textures' / png)
+                    data = build_md5(mesh, animation, textures)
+                    data['metadata'].update(skin_sources=skins, animation=animation_name if animation else None)
+                    record.update(pose=data['metadata']['pose'], skins=skins,
+                                  hierarchy_differs=data['metadata']['hierarchy_differs'])
+                elif suffix == 'bsp':
                     if __package__:
                         from .import_quake_map import build_item
                     else:
@@ -279,7 +308,9 @@ def import_catalog(install, output):
             catalog.append(item)
     records, counts = all_records, pak_counts
     report = dict(entries=len(catalog), ready=sum(e['status'] == 'ready' for e in catalog), pak_counts=counts,
-                  mdl_entries=sum(c['mdl'] for c in counts.values()),
+                  mdl_entries=sum(r['source'].endswith('.mdl') for r in records),
+                  md5_entries=sum(r['source'].endswith('.md5mesh') for r in records),
+                  md5_ready=sum(r['source'].endswith('.md5mesh') and r['status'] == 'ready' for r in records),
                   bsp_items=sum(item_box(r['source']) for r in records),
                   mdl_skipped=sum(r['status'] == 'skipped' and r['source'].endswith('.mdl') for r in records),
                   overridden=sum(r['status'] == 'overridden' for r in records),
