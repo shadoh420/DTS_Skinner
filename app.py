@@ -37,8 +37,10 @@ from tools.import_redbaron import import_catalog as import_redbaron_catalog
 from tools.import_unreal import import_catalog as import_unreal_catalog
 from tools.import_quake import import_catalog as import_quake_catalog
 from tools.import_quake2 import import_catalog as import_quake2_catalog
+from tools.import_daikatana import import_catalog as import_daikatana_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
 from tools.import_quake2_map import import_maps as import_quake2_maps
+from tools.import_daikatana_map import import_maps as import_daikatana_maps
 from tools.import_unreal_map import import_maps as import_unreal_maps
 
 # --- System Tray Imports ---
@@ -78,7 +80,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -286,6 +288,38 @@ def import_quake2_maps_route():
     try:
         return jsonify(import_quake2_maps(payload['path'].strip(), local_data_dir / 'quake2-maps',
                                          payload.get('replace') is True, payload.get('game', 'quake2')))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/daikatana/')
+def daikatana_maps_viewer():
+    response = send_from_directory(static_dir / 'daikatana-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/daikatana-map-data/<path:filename>')
+def daikatana_map_data(filename):
+    return send_from_directory(local_data_dir / 'daikatana-maps', filename)
+
+
+@app.route('/import_daikatana_maps', methods=['POST'])
+def import_daikatana_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your Daikatana data folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_daikatana_maps(payload['path'].strip(), local_data_dir / 'daikatana-maps',
+                                         payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
@@ -653,6 +687,7 @@ def import_reflex():
 @app.route('/import_ut', methods=['POST'])
 @app.route('/import_quake', methods=['POST'])
 @app.route('/import_quake2', methods=['POST'])
+@app.route('/import_daikatana', methods=['POST'])
 def import_conversion_pack():
     game = request.path.removeprefix('/import_')
     if request.headers.get('Origin', request.host_url.rstrip('/')) != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
@@ -671,6 +706,8 @@ def import_conversion_pack():
             return jsonify(import_earthsiege_catalog(payload['path'].strip(), pack_dirs[game], game))
         if game in ('unreal', 'ut'):
             return jsonify(import_unreal_catalog(payload['path'].strip(), pack_dirs[game], game))
+        if game == 'daikatana':
+            return jsonify(import_daikatana_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'quake2':
             return jsonify(import_quake2_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'quake':
@@ -721,7 +758,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:
