@@ -4,10 +4,11 @@ import json
 import math
 import pathlib
 import re
+import threading
 if __package__:
-    from .texture_workshop import TEXTURE_GAMES, normalize_transform
+    from .texture_workshop import TEXTURE_GAMES, normalize_transform, write_json_atomic
 else:
-    from texture_workshop import normalize_transform
+    from texture_workshop import normalize_transform, write_json_atomic
 
 TEXTURE_MAPPINGS = {
     "disc": "stock_disc.png",
@@ -30,7 +31,56 @@ def model_sort_key(name):
     return parts, name.casefold(), name
 
 
-MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox')
+def t1_catalog_names(model_dir):
+    """The shipped JSON files are the T1 catalog; manifests live outside this folder."""
+    return sorted((p.stem for p in pathlib.Path(model_dir).iterdir()
+                   if p.is_file() and p.suffix.casefold() == '.json'), key=model_sort_key)
+
+
+def t1_building_names(model_dir):
+    """Additive conversion receipts also identify the bundled custom-building family."""
+    return {name for path in (pathlib.Path(model_dir).parent / 't1-buildings').glob('*.json')
+            for name in json.loads(path.read_text(encoding='utf-8'))['models']}
+
+
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'ge')
+_families_lock = threading.Lock()
+
+
+def read_families(path):
+    """The user's own families: {game: {model_name: family}}, laid over the imports' categories."""
+    path = pathlib.Path(path)
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(data, dict) or any(game not in MODEL_GAMES or not isinstance(entries, dict)
+                                          or not all(isinstance(k, str) and isinstance(v, str) for k, v in entries.items())
+                                          for game, entries in data.items()):
+        raise ValueError('Invalid model families file; existing data was preserved')
+    return data
+
+
+def save_families(path, game, models, family):
+    """Move models into a family; an empty family puts them back in their imported one."""
+    if game not in MODEL_GAMES:
+        raise ValueError('Unknown model game')
+    if not isinstance(models, list) or not models or not all(isinstance(m, str) and 0 < len(m) <= 200 for m in models):
+        raise ValueError('Expected a list of model names')
+    if not isinstance(family, str):
+        raise ValueError('Expected a family name')
+    family = ' '.join(family.split())
+    if len(family) > 80:
+        raise ValueError('Family names are at most 80 characters')
+    with _families_lock:
+        data = read_families(path)
+        entries = data.setdefault(game, {})
+        for name in models:
+            if family:
+                entries[name] = family
+            else:
+                entries.pop(name, None)
+        write_json_atomic(path, data)
+    return family
 
 
 def material_texture_refs(data, material_overrides=None):

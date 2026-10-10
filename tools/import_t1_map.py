@@ -30,6 +30,7 @@ import export_interior  # noqa: E402
 import export_model  # noqa: E402
 from interior_module import dml as interior_dml, interiorshape  # noqa: E402
 from local_data import LOCAL_DATA  # noqa: E402
+from tools.model_data import t1_building_names  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -627,13 +628,14 @@ def placement(position, rotation):
 class Install:
     """Read-only view of a Tribes `base` folder: loose files, volumes and script datablocks."""
 
-    def __init__(self, game_base):
+    def __init__(self, game_base, resources=()):
         game_base = Path(game_base)
         if (game_base / 'base').is_dir():
             game_base = game_base / 'base'
         if not game_base.is_dir():
             raise ValueError('Game folder not found: %s' % game_base)
         self.base = game_base
+        self.resources = [Path(folder) for folder in resources]  # Other mods' folders a mission collection mounts from (dox, lt).
         self._folders, self._volumes, self._hashes, self._scripts, self._everything = {}, {}, {}, {}, None
         self.converted = {}  # (interior bytes hash, palette name) -> exported model file
 
@@ -708,12 +710,10 @@ def map_id(name):
     return re.sub(r'[^a-z0-9_-]', '_', name.lower())
 
 
-def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_json'):
-    """Write one mission's pack to root/maps/<id>; returns its scene. Shared textures go to root/textures."""
-    mission = parse_mission(mission_path.read_text(encoding='cp1252', errors='replace'))
-    nodes = list(walk(mission))
+def mission_resources(install, mission_path, nodes):
+    """Mount a mission's resources in game order; shared by map and catalog imports."""
     # A mod keeps its volumes beside its missions folder (opencall3/opencall3.zip, opencall3/missions/*.mis).
-    folders = [mission_path.parent, mission_path.parent.parent, install.base / 'missions', install.base]
+    folders = [mission_path.parent, mission_path.parent.parent, install.base / 'missions', install.base, *install.resources]
     resources, provenance, warnings = {}, [], []
     for node, _ in nodes:
         if node['class'] != 'simvolume' or not node['fields'].get('filename'):
@@ -734,6 +734,46 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         if not path:
             raise ValueError('Required map resource missing: ' + name)
         return path.read_bytes()
+
+    return folders, resources, provenance, warnings, read
+
+
+def export_mounted_interior(stem, source, read, texture_png):
+    """Export mounted DIS/DML/DIG bytes with decoded PNG sizes, without writing a catalog.
+
+    texture_png(name) returns PNG bytes or None. Map imports tolerate absent textures;
+    catalog callers can reject them. All exporter writes stay in a temporary directory.
+    """
+    with tempfile.TemporaryDirectory() as directory:
+        work = Path(directory)
+        (work / (stem + '.dis')).write_bytes(source)
+        shape = interiorshape.interiorshape()
+        shape.load_binary(source)
+        for item in shape.get_dml_list()[:1] + shape.get_dig_list():
+            name = item.decode('cp1252')
+            if Path(name).name != name or '\\' in name:
+                raise ValueError('Interior resource must be a filename: ' + name)
+            (work / name).write_bytes(read(name))
+        materials = interior_dml.dml()
+        materials.load_binary(read(shape.get_dml_list()[0].decode('cp1252')))
+        for material in materials.materials:
+            name = material.name
+            png = texture_png(name) if name.strip() else None
+            if png:
+                (work / (Path(name).stem + '.png')).write_bytes(png)
+        with contextlib.redirect_stdout(io.StringIO()):
+            export_interior.main(str(work / (stem + '.dis')), str(work), str(work), str(work))
+        model = json.loads((work / (stem + '.json')).read_text(encoding='utf-8'))
+        if not model.get('vertices'):
+            raise ValueError('Nothing to draw')
+        return model
+
+
+def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_json'):
+    """Write one mission's pack to root/maps/<id>; returns its scene. Shared textures go to root/textures."""
+    mission = parse_mission(mission_path.read_text(encoding='cp1252', errors='replace'))
+    nodes = list(walk(mission))
+    folders, resources, provenance, warnings, read = mission_resources(install, mission_path, nodes)
 
     def first(kind):
         return next((node['fields'] for node, _ in nodes if node['class'] == kind), {})
@@ -802,20 +842,14 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                 try:
                     (work / (stem + suffix)).write_bytes(source)
                     if kind == 'interior':
-                        shape = interiorshape.interiorshape()
-                        shape.load_binary(source)
-                        for name in [item.decode('cp1252') for item in shape.get_dml_list()[:1] + shape.get_dig_list()]:
-                            (work / name).write_bytes(read(name))
-                        for name in material_names(shape.get_dml_list()[0].decode('cp1252')):
-                            png = texture(name) if name.strip() else None
-                            if png:  # The exporter reads texture sizes from PNG files beside the geometry.
-                                shutil.copyfile(root / 'textures' / png, work / (Path(name).stem + '.png'))
-                    with contextlib.redirect_stdout(io.StringIO()):
-                        if kind == 'interior':
-                            export_interior.main(str(work / (stem + suffix)), str(work), str(work), str(work))
-                        else:
+                        def decoded(name):
+                            png = texture(name)
+                            return (root / 'textures' / png).read_bytes() if png else None
+                        model = export_mounted_interior(stem, source, read, decoded)
+                    else:
+                        with contextlib.redirect_stdout(io.StringIO()):
                             export_model.main(str(work / (stem + suffix)), str(work))
-                    model = json.loads((work / (stem + '.json')).read_text(encoding='utf-8'))
+                        model = json.loads((work / (stem + '.json')).read_text(encoding='utf-8'))
                     if not model.get('vertices'):
                         raise ValueError('Nothing to draw')  # The shape exporter writes an empty model for meshes it cannot read.
                     # Names in brackets stand for slots without a texture; a texture the install lacks stays empty.
@@ -888,7 +922,10 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                    'wind': floats(weather.get('wind', '0 0 0'))} if weather.get('suspendrendering', '').lower() == 'false' else None
     except (KeyError, ValueError):
         weather = None
-    models = {path.stem.lower(): path.stem for path in model_dir.glob('*.json')}
+    # The browser's custom buildings use one chosen mission palette. Maps must keep
+    # exporting their own mounted version (and vertex order for lightmap UVs).
+    custom_buildings = t1_building_names(model_dir)
+    models = {path.stem.lower(): path.stem for path in model_dir.glob('*.json') if path.stem not in custom_buildings}
     shapes = install.shapes(mission_path.parent)
     objects, viewpoints, missing, unlit = [], [], set(), set()
     zones, bots = rpg_places(nodes)

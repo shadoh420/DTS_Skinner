@@ -6,6 +6,7 @@ The server must be the packaged candidate. This check does not start/stop apps.
 import io
 import json
 from pathlib import Path
+import re
 import sys
 from urllib.parse import urlencode, quote
 from urllib.request import urlopen
@@ -25,6 +26,14 @@ def check(base, games=('t1','t2','q3')):
         catalog = json.loads(get('/list_models?' + urlencode({'game': game})))
         if inventory:
             expected = (root/inventory).read_text(encoding='utf-8').splitlines()
+            if game == 't1':
+                # Keep this standalone checker stdlib-only, including natural catalog order.
+                shipped = sorted((p.stem for p in (root / 'static/model_json').iterdir()
+                                  if p.is_file() and p.suffix.casefold() == '.json'),
+                                 key=lambda name: (tuple(int(p) if p.isdecimal() else p.casefold()
+                                                         for p in re.split(r'(\d+)', name)), name.casefold(), name))
+                assert set(expected) <= set(shipped), 'Original T1 catalog lost models'
+                expected = shipped
         else:
             from tools.import_q3 import current_import
             from tools.local_data import LOCAL_DATA
