@@ -40,11 +40,13 @@ from tools.import_quake2 import import_catalog as import_quake2_catalog
 from tools.import_daikatana import import_catalog as import_daikatana_catalog
 from tools.import_anachronox import import_catalog as import_anachronox_catalog
 from tools.import_sin import import_catalog as import_sin_catalog
+from tools.import_azrael import import_catalog as import_azrael_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
 from tools.import_quake2_map import import_maps as import_quake2_maps
 from tools.import_daikatana_map import import_maps as import_daikatana_maps
 from tools.import_anachronox_map import import_maps as import_anachronox_maps
 from tools.import_sin_map import import_maps as import_sin_maps
+from tools.import_azrael_map import import_maps as import_azrael_maps
 from tools.import_redbaron_map import import_maps as import_redbaron_maps
 from tools.import_unreal_map import import_maps as import_unreal_maps
 
@@ -85,7 +87,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'ge')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'azrael', 'ge')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -327,6 +329,39 @@ def import_daikatana_maps_route():
                                          payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/azrael/')
+def azrael_maps_viewer():
+    response = send_from_directory(static_dir / 'azrael-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/azrael-map-data/<path:filename>')
+def azrael_map_data(filename):
+    return send_from_directory(local_data_dir / 'azrael-maps', filename)
+
+
+@app.route('/import_azrael_maps', methods=['POST'])
+def import_azrael_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json:
+        return jsonify(error='Expected JSON.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error="Enter your Azrael's Tear folder."), 400
+    if payload.get('game', 'azrael') != 'azrael':
+        return jsonify(error="Unknown Azrael's Tear section."), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_azrael_maps(payload['path'].strip(), local_data_dir / 'azrael-maps', payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 400
     finally:
         import_lock.release()
 
@@ -821,6 +856,7 @@ def import_reflex():
 @app.route('/import_quake', methods=['POST'])
 @app.route('/import_quake2', methods=['POST'])
 @app.route('/import_daikatana', methods=['POST'])
+@app.route('/import_azrael', methods=['POST'])
 @app.route('/import_sin', methods=['POST'])
 @app.route('/import_anachronox', methods=['POST'])
 def import_conversion_pack():
@@ -841,6 +877,8 @@ def import_conversion_pack():
             return jsonify(import_earthsiege_catalog(payload['path'].strip(), pack_dirs[game], game))
         if game in ('unreal', 'ut'):
             return jsonify(import_unreal_catalog(payload['path'].strip(), pack_dirs[game], game))
+        if game == 'azrael':
+            return jsonify(import_azrael_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'sin':
             return jsonify(import_sin_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'anachronox':
@@ -897,7 +935,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'ge'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'azrael', 'ge'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:
