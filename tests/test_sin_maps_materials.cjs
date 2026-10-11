@@ -37,4 +37,14 @@ assert.equal(additive.blendDst, 201);
 assert.equal(additive.depthWrite, false);
 // Existing Q2 material retains its own FLOWING interpretation.
 assert.equal(context.window.quake2Maps.material(group, surface, {}).uniforms.flowing.value, true);
+const blend = (map, position) => Array.from(context.window.sinMaps.viewBlend(map, position));
+const water = {root: 0, nodes: [[1, 0, 0, 64, -2, -1]], color: [0, 0, 1], alpha: .1};
+assert.deepEqual(blend({water}, {x: 0, y: 0, z: 3}), [0, 0, 1, .1]);
+assert.deepEqual(blend({water}, {x: 0, y: 0, z: 1}), [0, 0, 0, 0]);
+assert.deepEqual(blend({}, {x: 0, y: 0, z: 3}), [0, 0, 0, 0]);
+assert.deepEqual(blend(null, {x: 0, y: 0, z: 3}), [0, 0, 0, 0]);
+assert.deepEqual(blend({water: {...water, root: -2, nodes: []}}, {x: 0, y: 0, z: 1}), [0, 0, 1, .1]);
+const viewer = fs.readFileSync('static/unreal-maps/viewer.js', 'utf8');
+assert.match(viewer.split('\n').find(line => line.includes('document.title =')), /sin \? 'SiN' :/);
+assert.match(viewer, /new THREE.Vector4\(0, 0, 0, 0\)/); // Other pages keep zero blend.
 console.log('SiN material contracts OK (no WebGL/render acceptance claimed)');

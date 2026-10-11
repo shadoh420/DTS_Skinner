@@ -352,11 +352,9 @@ def warp_polygons(points):
 
 
 def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=None, lightmap_reader=lightmap_rgb):
-    dark = frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
+    dark = frozenset(dark_styles) if dark_styles is not None else frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
                      and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags') or 0) & 1
                      and not excluded(e, game) and game != 'ctf')  # SP_light frees lights in deathmatch.
-    if dark_styles is not None:
-        dark = frozenset(dark_styles)
     faces, tiles, audit, floors = [], [], [], []
     for instance in placed:
         first, count = bsp['models'][instance['model']][10:12]

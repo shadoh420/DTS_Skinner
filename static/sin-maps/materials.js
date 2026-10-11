@@ -2,6 +2,17 @@
 'use strict';
 window.sinMaps = {
   intensity: 1,
+  viewBlend(map, position) {
+    const water = map && map.water;
+    if (!water) return [0, 0, 0, 0];
+    const [x, y, z] = [position.z * 32, position.x * 32, position.y * 32];
+    let node = water.root;
+    while (node >= 0) {
+      const p = water.nodes[node];
+      node = p[p[0] * x + p[1] * y + p[2] * z - p[3] >= 0 ? 4 : 5];
+    }
+    return node === -2 ? [...water.color, water.alpha] : [0, 0, 0, 0];
+  },
   async load(map, loadTexture) {
     this.intensity = (map.lighting || {}).intensity || 1;
     window.quake2Maps.time.value = 0;

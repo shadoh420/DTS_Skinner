@@ -81,6 +81,9 @@ class SinMapsTest(unittest.TestCase):
             self.assertEqual(translucent['alpha'], .75)
             self.assertTrue(translucent['unlit'])
             self.assertFalse(translucent['settings']['flowing'])
+            for value, alpha, unlit in ((5., 0., True), (-2., 1., False)):
+                face = maps.face_data(maps.read_bsp(bsp(translucence=value), files), 0)
+                self.assertEqual((face['alpha'], face['unlit']), (alpha, unlit))
             scene, _, _, _ = maps.build_map(bsp(), 'test', files)
             self.assertFalse(scene['palette']['applied'])
             self.assertEqual(scene['lighting']['intensity'], 1)
@@ -127,6 +130,7 @@ class SinMapsTest(unittest.TestCase):
             self.assertEqual(len(scene['model_failures']), 1)
             self.assertEqual(len(scene['omitted_models']), 4)
             self.assertEqual(scene['viewpoints'][0]['floor_z'], 0)
+            self.assertEqual(scene['viewpoints'][0]['native_origin'][2], 66)
             self.assertEqual(len(blob), scene['vertices'] * 28 + scene['indices'] * 4)
             self.assertTrue(maps.excluded({'spawnflags': '2048'}, True))
             self.assertFalse(maps.excluded({'spawnflags': '512'}, True))
@@ -160,6 +164,85 @@ class SinMapsTest(unittest.TestCase):
             self.assertEqual(placed[4]['angles'], [0, 45, 0])
             scene, _, _, _ = maps.build_map(bsp(entities=b'{"classname" "worldspawn"}\0'), 'credits', files)
             self.assertEqual(scene['viewpoints'][0]['classname'], 'fallback_camera')
+
+    def test_text_light_styles_and_explicit_q2_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            files = fixture(Path(tmp))
+            entities = b'{"classname" "worldspawn"}\n'
+            for style in ('flicker_pattern', 'named_light', '  +32suffix'):
+                entities += ('{"classname" "light" "style" "%s" "spawnflags" "1"}\n' % style).encode()
+            scene, _, _, _ = maps.build_map(bsp(entities=entities), 'test', files)
+            self.assertEqual(scene['dark_styles'], [32])
+            self.assertEqual(maps.light_style({'style': '-2.5'}), -2)
+            self.assertEqual(maps.light_style({}), 0)
+            # An explicit empty override must bypass the Q2 int parser, too.
+            world = maps.read_bsp(bsp(entities=entities), files)
+            result = q2.geometry(world, maps.instances(world)[0], face_reader=maps.face_data, dark_styles=[])
+            self.assertEqual(result['dark'], [])
+
+    def test_startup_visibility_stops_at_yields_and_unknown_conditions(self):
+        entities = [{'classname': 'worldspawn'},
+                    {'classname': 'func_scriptmodel', 'model': 'hero.def', 'targetname': 'standin'},
+                    {'classname': 'func_scriptobject', 'model': '*1', 'targetname': 'switch'},
+                    {'classname': 'func_scriptmodel', 'model': 'hero.def', 'targetname': 'later'}]
+        script = '''parm.index = 1
+loop:
+thread helper
+parm.index += 1
+parm.index ifgreater 2 goto done
+goto loop
+done:
+thread intro
+$switch hide // hidden brush, not just models
+$later hide
+$later show
+waitForPlayer
+$switch show
+end
+helper:
+game.unknown ifequal 1 goto delayed
+$later hide
+end
+intro:
+$standin hide
+wait 1
+$standin show
+end
+delayed:
+$later hide
+end
+'''
+        hidden, limits = maps.startup_visibility(script, entities)
+        self.assertEqual(set(hidden), {1, 2})
+        self.assertTrue(any('condition' in s for s in limits))
+        world = {'entities': entities, 'models': [(0,) * 12] * 2, 'script_hidden': hidden}
+        self.assertEqual(len(maps.instances(world)[0]), 1)
+        self.assertEqual([m['entity'] for m in maps.scenery(world)[0]], [3])
+        self.assertIn('Startup script hide', maps.scenery(world)[1][0]['reason'])
+        hidden, limits = maps.startup_visibility('loop:\ngoto loop', entities)
+        self.assertEqual(hidden, {})
+        self.assertIn('limit', limits[0])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); files = fixture(root)
+            source = root / 'setup.scr'; source.write_text(script)
+            files['maps/test.scr'] = {'path': source}
+            raw = bsp(entities=('\n'.join('{' + ' '.join(f'"{k}" "{v}"' for k, v in e.items()) + '}'
+                                       for e in entities)).encode())
+            scene, _, _, _ = maps.build_map(raw, 'test', files)
+            self.assertTrue(scene['script']['found'])
+            self.assertEqual([m['entity'] for m in scene['models']], [3])
+
+    def test_pruned_water_contents_and_world_defaults(self):
+        # Right half is water. Two dry children collapse, including solid/lava priority.
+        world = dict(models=[(0,) * 9 + (0, 0, 0)], nodes=[(0, -1, 1), (1, -2, -3)],
+                     planes=[(1, 0, 0, 64), (0, 0, 1, 10)], leaves=[(32,), (0,), (33,)], info={})
+        water = maps.water_volume(world)
+        self.assertEqual(water, dict(root=0, nodes=[[1, 0, 0, 64, -2, -1]], color=[0, 0, 1], alpha=.1))
+        world['leaves'][0] = (40,)
+        self.assertIsNone(maps.water_volume(world))
+        world['leaves'] = [(32,)] * 3
+        world['info'] = {'watercolor': '.2 .3 .4', 'wateralpha': '.25'}
+        self.assertEqual(maps.water_volume(world), dict(root=-2, nodes=[], color=[.2, .3, .4], alpha=.25))
 
     def test_section_import_routes_and_every_bsp_accounted(self):
         with tempfile.TemporaryDirectory() as tmp:

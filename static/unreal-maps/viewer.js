@@ -31,10 +31,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4});
   const ramp = new THREE.Scene(), flat = new THREE.Camera();
   ramp.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-    uniforms: {frame: {value: frame.texture}, power: {value: POWER.unreal}}, depthTest: false, depthWrite: false,
+    uniforms: {frame: {value: frame.texture}, power: {value: POWER.unreal}, viewBlend: {value: new THREE.Vector4(0, 0, 0, 0)}}, depthTest: false, depthWrite: false,
     vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
-    fragmentShader: 'uniform sampler2D frame; uniform float power; varying vec2 at;' +
-      'void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(power)), 1.); }'})));
+    fragmentShader: 'uniform sampler2D frame; uniform float power; uniform vec4 viewBlend; varying vec2 at;' +
+      'void main() { gl_FragColor = vec4(mix(pow(texture2D(frame, at).rgb, vec3(power)), viewBlend.rgb, viewBlend.a), 1.); }'})));
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
   const fitFrame = () => { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); frame.setSize(Math.max(size.x, 1), Math.max(size.y, 1)); };
   const GAMES = sin ? ['sin', '2015', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\SiN 1']) : anachronox ? [['anachronox', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Anachronox']] : daikatana ? [['daikatana', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Daikatana\\data']] : quake2 ? ['quake2', 'xatrix', 'rogue', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake 2\\baseq2']) : quake ? ['quake', 'hipnotic', 'rogue', 'qextras', 'dopa', 'mg1', 'mg3', 'qctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
@@ -203,6 +203,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // on by its rate where the game turns it); the level is drawn over it, its backdrops leaving it showing; then the
   // display gamma, onto `target` (the screen by default).
   function draw(seconds, target = null) {
+    if (sin) ramp.children[0].material.uniforms.viewBlend.value.fromArray(window.sinMaps.viewBlend(map, camera.position));
     if (quake) window.quakeMaps.time.value = seconds;
     if (quake2) window.quake2Maps.time.value = seconds;
     for (const {texture, pan} of panning) texture.offset.set(pan[0] * seconds % 1, pan[1] * seconds % 1);
@@ -290,7 +291,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (absent) { $('importGame').value = absent[0]; showPath(); }
     const mapId = item.id;
     map = {...await (await get(`${data}maps/${mapId}/scene.json`)).json(), id: mapId};
-    document.title = `${map.title || map.name} — ${anachronox ? 'Anachronox' : daikatana ? 'Daikatana' : quake2 ? 'Quake II' : quake ? 'Quake' : 'Unreal'} Maps`;
+    document.title = `${map.title || map.name} — ${sin ? 'SiN' : anachronox ? 'Anachronox' : daikatana ? 'Daikatana' : quake2 ? 'Quake II' : quake ? 'Quake' : 'Unreal'} Maps`;
     if (map.sky) skyTurn.setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...map.sky.rotation)));
     applySettings();
     showViewpoint(0);

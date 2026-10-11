@@ -27,6 +27,7 @@ FORMATS = {1: '4fi', 2: '3f', 4: '3i6h2H', 5: '8fi64sifii8f32s', 6: 'Hhihh16Bii'
            14: '3i', 15: 'Hhi', 17: '2i', 18: '2i', 19: 'i6f32s'}
 MASKED, SKY, WARP, NONLIT, NOFILTER, CONVEYOR, NODRAW, WAVY = 2, 4, 8, 16, 32, 64, 128, 0x400
 TRANSLATE, USECOLOR, ADD = 0x2000000, 0x8000, 0x100000
+VIEWHEIGHT = 66  # gamex86 1009565D / 10098FB1: Player viewheight = 0x42.
 
 
 def lighting_profile(install=None, files=None, game='sin'):
@@ -163,8 +164,6 @@ def read_bsp(raw, files, profile=None):
     for row in rows[5]:
         if not all(math.isfinite(v) for v in (row[11], *row[14:22])):
             raise ValueError('Non-finite RBSP surface properties')
-        if not 0 <= row[16] <= 1:
-            raise ValueError('Invalid RBSP translucence')
     validate_collision(bsp)
     return bsp
 
@@ -176,7 +175,8 @@ def face_data(bsp, index):
     translucence = row[16]  # byte offset 124, csurface_t +0x58.
     kind = 'sky' if flags & SKY else 'hidden' if flags & NODRAW else 'turbulent' if flags & (WARP | WAVY) else 'normal'
     face.update(kind=kind, unlit=bool(flags & (SKY | WARP | WAVY | NONLIT | ADD) or translucence > 0),
-                alpha=1 if flags & ADD else 1 - translucence, styles=bsp['faces'][index][5:21], lightofs=bsp['faces'][index][21],
+                # ref_gl supplies 1-translucence to glColor4f; GL clamps its alpha to [0,1].
+                alpha=1 if flags & ADD else max(0., min(1., 1 - translucence)), styles=bsp['faces'][index][5:21], lightofs=bsp['faces'][index][21],
                 material_key=ti, settings=dict(masked=bool(flags & MASKED and not flags & ADD), nofilter=bool(flags & NOFILTER),
                     nonlit=1 if flags & ADD else row[15] if flags & NONLIT else 1 / bsp['profile']['intensity'],
                     blend='add' if flags & ADD else '', flowing=bool(flags & TRANSLATE),
@@ -226,6 +226,86 @@ def excluded(entity, dm=False):
     return bool(flags & (0x800 if dm else 0x200 | 0x2000))
 
 
+def light_style(entity):
+    # Light constructor 1008241F..10082445 uses atoi, not a float or pattern parser.
+    match = re.match(r'\s*([+-]?[0-9]+)', entity.get('style', ''))
+    return int(match[1]) if match else 0
+
+
+def startup_visibility(text, entities):
+    """Read only visibility before each startup thread's first yield, never run game commands.
+
+    Literal targets and numeric setup loops suffice for common map initializers. Stop a
+    thread at unknown control flow; runtime triggers, external scripts and motion stay static.
+    """
+    clean = re.sub(r'"(?:\\.|[^"\\])*"|/\*[\s\S]*?\*/|//[^\r\n]*',
+                   lambda m: m[0] if m[0].startswith('"') else '\n' * m[0].count('\n'), text)
+    lines = [(i + 1, [t.strip('"') for t in re.findall(r'"(?:\\.|[^"\\])*"|[^\s]+', line)])
+             for i, line in enumerate(clean.splitlines()) if line.strip()]
+    labels = {words[0][:-1]: i + 1 for i, (_, words) in enumerate(lines) if words[0].endswith(':')}
+    visible, shared, limits = {}, {}, set()
+    budget = 4096
+
+    def run(at, depth=0):
+        nonlocal budget
+        local = {}
+
+        def value(token):
+            if token.startswith(('local.', 'parm.', 'level.', 'game.')):
+                return (local if token.startswith('local.') else shared).get(token)
+            try: return float(token)
+            except ValueError: return token
+
+        while at < len(lines):
+            line, words = lines[at]; at += 1; budget -= 1
+            if budget < 0 or depth > 16:
+                limits.add('Startup visibility instruction/depth limit'); return
+            command = words[0].lower()
+            if command.endswith(':'): continue
+            if len(words) > 1 and words[1].lower().startswith('if'):
+                op = words[1].lower()
+                a, b = value(words[0]), value(words[2]) if len(words) > 2 else None
+                if op not in ('ifequal', 'ifnotequal', 'ifgreater', 'ifless') or not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+                    limits.add(f'Unresolved startup condition at line {line}'); return
+                condition = {'ifequal': a == b, 'ifnotequal': a != b, 'ifgreater': a > b, 'ifless': a < b}[op]
+                if not condition: continue
+                words = words[3:]
+                if not words: return
+                command = words[0].lower()
+            if command.startswith('wait') or command in ('pause', 'end'):
+                return
+            if command in ('goto', 'thread'):
+                label = words[1] if len(words) == 2 else ''
+                if label not in labels:
+                    limits.add(f'Unresolved startup {command} at line {line}')
+                    if command == 'goto': return
+                elif command == 'goto': at = labels[label]
+                else: run(labels[label], depth + 1)
+            elif len(words) == 2 and words[1].lower() in ('hide', 'show', 'remove'):
+                target = value(words[0])
+                if not isinstance(target, str) or not target.startswith('$'):
+                    limits.add(f'Unresolved visibility target at line {line}'); continue
+                for i, e in enumerate(entities):
+                    if target == '$' + e.get('targetname', '') and visible.get(i, ('', 0))[0] != 'remove':
+                        visible[i] = (words[1].lower(), line)
+            elif len(words) >= 2 and words[0].startswith(('local.', 'parm.', 'level.', 'game.')):
+                variables = local if words[0].startswith('local.') else shared
+                op = words[1].lower(); rhs = value(words[2]) if len(words) == 3 else None
+                if op == '=': variables[words[0]] = rhs
+                elif op in ('+=', '-=') and isinstance(rhs, (int, float)) and isinstance(value(words[0]), (int, float)):
+                    variables[words[0]] = value(words[0]) + rhs * (1 if op == '+=' else -1)
+                else: variables.pop(words[0], None)
+    run(0)
+    return {i: f'Startup script {op} at line {line}' for i, (op, line) in visible.items() if op != 'show'}, sorted(limits)
+
+
+def script_visibility(bsp, name, files):
+    source = sin.checked_name(bsp['info'].get('script') or f'maps/{name}.scr')
+    if source not in files: return {}, dict(source=source, found=False)
+    hidden, limits = startup_visibility(sin.read_asset(files[source], max_bytes=1024 * 1024).decode('latin1'), bsp['entities'])
+    return hidden, dict(source=source, found=True, hidden=hidden, limits=limits)
+
+
 def instances(bsp, dm=False):
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], angles=[0., 0., 0.], state='world', guess=False)]
     omitted = []
@@ -233,7 +313,7 @@ def instances(bsp, dm=False):
         model, cls = e.get('model', ''), e.get('classname', '').lower()
         if not model.startswith('*'): continue
         row = dict(entity=i, classname=e.get('classname', ''), model=model)
-        reason = 'Excluded by deathmatch/medium single-player spawnflags' if excluded(e, dm) else ''
+        reason = bsp.get('script_hidden', {}).get(i, '') or ('Excluded by deathmatch/medium single-player spawnflags' if excluded(e, dm) else '')
         if cls.startswith('trigger_') or cls in ('func_areaportal', 'func_scriptorigin', 'func_clipbox', 'func_remove'):
             reason = reason or 'Invisible control/collision brush'
         if reason:
@@ -271,7 +351,7 @@ def scenery(bsp, dm=False):
         cls, model = e.get('classname', ''), e.get('model', '')
         if cls.lower() == 'worldspawn' or model.startswith('*'): continue
         row = dict(entity=i, classname=cls)
-        reason = 'Excluded by deathmatch/medium single-player spawnflags' if excluded(e, dm) else ''
+        reason = bsp.get('script_hidden', {}).get(i, '') or ('Excluded by deathmatch/medium single-player spawnflags' if excluded(e, dm) else '')
         if cls.lower().startswith(('trigger_', 'info_', 'light', 'path_', 'fx_', 'func_spawn', 'func_remove')) or cls.lower() in (
                 'waypoint', 'lensflare', 'func_camera', 'func_scriptorigin', 'func_beam', 'func_exploder', 'func_multi_exploder'):
             reason = reason or 'Control, delayed spawn, light, particle or camera entity; no initial polygon model'
@@ -362,14 +442,41 @@ def viewpoints(bsp, floors, dm=False):
         if not camera:
             floor = hull_floor(bsp, start, mins=(-16, -16, 0), maxs=(16, 16, 72))
             if floor is None: floor = floor_below(floors, *start)
-            eye[2] = (min(start[2], floor) if floor is not None else start[2]) + 64
+            eye[2] = (min(start[2], floor) if floor is not None else start[2]) + VIEWHEIGHT
         views.append(dict(origin=(eye[[1, 2, 0]] * SCALE).tolist(), native_origin=eye.tolist(), authored_origin=start.tolist(),
             yaw=-float(turn[1]), pitch=-float(turn[0]), roll=float(turn[2]), floor_z=floor, classname=e['classname']))
     if not views:
-        eye = floors[0].mean(axis=0) + [0, 0, 64] if len(floors) else np.array(bsp['models'][0][:6]).reshape(2, 3).mean(axis=0)
+        eye = floors[0].mean(axis=0) + [0, 0, VIEWHEIGHT] if len(floors) else np.array(bsp['models'][0][:6]).reshape(2, 3).mean(axis=0)
         views.append(dict(origin=(eye[[1, 2, 0]] * SCALE).tolist(), native_origin=eye.tolist(), yaw=0, pitch=0,
                           classname='fallback_camera', reason='No start; first floor triangle or world bounds center'))
     return views
+
+
+def water_volume(bsp):
+    """Collapse the world BSP to a small wet/dry tree for camera point contents."""
+    if not bsp['nodes']:
+        return None
+    root, nodes, mapped = bsp['models'][0][9], [], {}
+    stack = [(root, False)]
+    while stack:
+        i, ready = stack.pop()
+        if i in mapped: continue
+        if i < 0:
+            contents = bsp['leaves'][-1 - i][0]
+            mapped[i] = -2 if contents & 32 and not contents & 9 else -1
+        elif not ready:
+            stack.extend([(i, True), (bsp['nodes'][i][1], False), (bsp['nodes'][i][2], False)])
+        else:
+            plane, front, back = bsp['nodes'][i][:3]
+            front, back = mapped[front], mapped[back]
+            mapped[i] = front if front == back else len(nodes)
+            if front != back: nodes.append([*bsp['planes'][plane][:4], front, back])
+    if mapped[root] == -1: return None
+    # World defaults and contents selection: gamex86 100DF50B..5AB / 1009CBC4..CC07.
+    info = bsp['info']
+    return dict(root=mapped[root], nodes=nodes,
+                color=vector(info, 'watercolor').tolist() if 'watercolor' in info else [0, 0, 1],
+                alpha=max(0., min(1., number(info, 'wateralpha', .1))))
 
 
 def skybox(info, files, profile):
@@ -386,10 +493,11 @@ def skybox(info, files, profile):
 
 def build_map(raw, name, files, game='sin', profile=None):
     bsp = read_bsp(raw, files, profile)
+    bsp['script_hidden'], script = script_visibility(bsp, name, files)
     dm = deathmatch(bsp, game, files, name)
     placed, skipped = instances(bsp, dm)
-    dark = [int(number(e, 'style')) for e in bsp['entities'] if e.get('classname', '').lower() == 'light'
-            and number(e, 'style') >= 32 and int(number(e, 'spawnflags')) & 1 and not excluded(e, dm)] if not dm else []
+    dark = [light_style(e) for e in bsp['entities'] if e.get('classname', '').lower() == 'light'
+            and light_style(e) >= 32 and int(number(e, 'spawnflags')) & 1 and not excluded(e, dm)] if not dm else []
     data = q2.geometry(bsp, placed, face_reader=face_data, dark_styles=dark,
                        lightmap_reader=lambda f, l, d: lightmap(f, l, d, bsp['profile']['gl_modulate']))
     views = viewpoints(bsp, data['floors'], dm)
@@ -407,15 +515,17 @@ def build_map(raw, name, files, game='sin', profile=None):
     scene = dict(name=name, title=bsp['info'].get('message', name), game=game, format='sin-rbsp1',
         vertices=len(points), indices=len(data['indices']), lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views,
         bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(), instances=placed, skipped_entities=skipped,
-        models=models, omitted_models=omitted, model_failures=failures, faces=data['audit'], skybox=sky,
+        models=models, omitted_models=omitted, model_failures=failures, faces=data['audit'], skybox=sky, water=water_volume(bsp), script=script,
         lump_sizes=bsp['lump_sizes'], entity_classes=dict(Counter(e.get('classname', '') for e in bsp['entities'])),
         dark_styles=dark, missing=sorted({r['source'] for r in missing}), missing_reasons=missing, lighting=bsp['profile'],
         palette=dict(source=palette if palette in files else 'pics/default.pal', applied=False,
                      reason='Renderer palette tables serve indexed/shared-palette paths; true-colour SWL keeps its own RGB'),
         assumptions=['Deathmatch filtering' if dm else 'Medium single player; developer and coop off, high detail',
-                     'Texture and sky animation held at first frame', 'No save-state or script execution'],
+                     'Texture and sky animation held at first frame', 'Startup script visibility only; no save-state or runtime scripts'],
         gaps=['Particles, sprites, lens flares, dynamic lights and scripted spawns are omitted',
               'Model lighting is a uniform lightmap sample; skeletal attachments and runtime skins are omitted',
+              'Startup visibility stops at waits and unresolved conditions; external scripts and computed targets are not evaluated',
+              'Underwater tint uses world water contents; moving liquid brushes and underwater distortion are omitted',
               'Script movers hold authored transforms; later activator-dependent door motion is omitted',
               'Mirrors, environment maps, consoles and animated surface damage are ordinary first-frame surfaces',
               'No world fog path found in the inspected renderer; wavy vertex displacement is approximated by static warp UVs'])
