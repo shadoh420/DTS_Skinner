@@ -166,8 +166,8 @@ def meshes(data):
     return out
 
 
-def build_model(data, slots_of):
-    """Geometry, UVs and material slots of a shape; slots_of(material index) gives a PNG name or None (not drawn)."""
+def build_model(data, slots_of, smooth_of=None):
+    """Geometry/slots; slots_of(index) gives a PNG or None. Optional smooth_of(index) selects vertex normals."""
     vertices, normals, uvs, slots = [], [], [], {}
     for points, texture, faces in meshes(data):
         for face in faces:
@@ -185,7 +185,10 @@ def build_model(data, slots_of):
                     u, v = texture[corner] if corner < len(texture) else (0.5, 0.5)
                     triangles.append(len(vertices) // 3)
                     vertices.extend((-x * SCALE, z * SCALE, y * SCALE))  # Z-up, +y forward -> y-up, +z forward.
-                    normals.extend((-normal[0], normal[2], normal[1]))
+                    # Maps honor DML smooth lighting. Existing model callers
+                    # retain their authored face-normal output by default.
+                    n = points[point][3:] if smooth_of and smooth_of(face[9]) else normal
+                    normals.extend((-n[0], n[2], n[1]))
                     uvs.extend((u, v))  # v 0 is the bitmap's top row, as in the viewer.
     names = sorted(slots)
     indices, groups = [], []
