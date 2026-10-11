@@ -333,6 +333,7 @@ window.addEventListener('DOMContentLoaded', () => {
     stopWalking();
     const serial = ++catalogSerial;
     game = $('gameSelect').value;
+    Object.assign(document.body.dataset, {notesPage: `models/${game}`, notesSubject: ''});  // until a model loads
     const gameId = game;
     ++loadSerial;
     if (request) request.abort();

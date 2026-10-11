@@ -26,7 +26,7 @@ from tools.local_data import LOCAL_DATA
 from tools.model_data import read_families, save_families, t1_building_names, t1_catalog_names
 
 ROOT = Path(__file__).resolve().parents[1]
-FOLDER_ORDER = ('armors', 'weapons', 'vehicles', 'turrets', 'stations', 'sensors', 'misc', 'packs')
+FOLDER_ORDER = ('armors', 'weapons', 'vehicles', 'turrets', 'stations', 'misc', 'sensors', 'packs')
 TOP_LEVEL = {'debris': 'Debris', 'marker': 'Markers', 'moveable': 'Moveables', 'staticshape': 'StaticShapes',
              'shockwave': 'Shockwaves', 'item': 'Items'}
 

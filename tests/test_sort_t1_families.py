@@ -24,7 +24,7 @@ class SortT1FamiliesTests(unittest.TestCase):
                 (items / name).write_text(text)
             names = ['larmor', 'grenade', 'sensor_small', 'shield', 'newdoor5', 'bedrop', 'Base1', 'hilde_be', 'staff']
             families, shared = sort_families(names, items, {'bedrop', 'base1', 'hilde_be'}, {'hilde_be'})
-            self.assertEqual(families, {'larmor': 'Armors', 'grenade': 'Misc', 'sensor_small': 'Sensors', 'shield': 'Armors',
+            self.assertEqual(families, {'larmor': 'Armors', 'grenade': 'Misc', 'sensor_small': 'Misc', 'shield': 'Armors',
                                         'newdoor5': 'Moveables', 'bedrop': 'Dropships', 'Base1': 'InteriorShapes'})
             # A shapeFile reference beats a projectile's; shapes still shared are reported.
             self.assertEqual(shared, {'sensor_small': ['Misc', 'Sensors'], 'shield': ['Armors', 'Turrets']})
