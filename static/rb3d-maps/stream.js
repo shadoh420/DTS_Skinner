@@ -2,11 +2,41 @@
    two in-flight chunk requests. Evicted geometry/materials/textures are disposed. */
 'use strict';
 window.rb3dMaps = {
+  fogRange(height, lighting) {
+    // 0043EF20..0043F2DB. Visibility slider defaults to 100/100.
+    const scale = 2 ** lighting.terrainScale;
+    const base = Math.trunc(.35 * 52800 * 8) >> lighting.terrainScale;
+    const cells = Math.trunc(Math.trunc(base * (.65 + .35 * lighting.visibility)) *
+      (1 + Math.max(0, height / .0381 * .000005)));
+    const distance = cells * scale;
+    const weather = {3: [.75, .9], 4: [.5, .75], 5: [.25, .5]}[lighting.weather] || [1, 1];
+    return [Math.trunc(.7 * weather[0] * distance) * .0381,
+      Math.trunc(weather[1] * distance) * .0381];
+  },
   async start({scene, camera, map, data, get}) {
     const $ = id => document.getElementById(id);
     const loaded = new Map(), pending = new Set(), errors = new Map();
     let region, generation = 0, elapsed = 1, wanted = new Set();
     let playerMesh = null;
+    let lighting = map.lighting;
+    const nativeLight = lighting?.model === 'baron-glide';
+    const uniforms = {rbToward: {value: new THREE.Vector3()}, rbIntensity: {value: 1},
+      rbAmbient: {value: .5}, rbFogRange: {value: new THREE.Vector2()}};
+    function environment() {
+      if (!nativeLight) return;
+      uniforms.rbToward.value.fromArray(lighting.toward);
+      uniforms.rbIntensity.value = lighting.intensity;
+      uniforms.rbAmbient.value = lighting.ambient;
+      const range = window.rb3dMaps.fogRange(camera.position.y, lighting);
+      uniforms.rbFogRange.value.fromArray(range);
+      // The shared viewer owns the haze toggle. Its normal fog shader is
+      // replaced below, while retaining that toggle and the accepted colour.
+      if (scene.fog && camera.far !== range[1]) {
+        camera.far = range[1];
+        camera.updateProjectionMatrix();
+      }
+    }
+    environment();
     const textures = new Map(), models = new Map();
     async function texture(name) {
       if (!textures.has(name)) textures.set(name, {refs: 0, promise: new Promise((resolve, reject) => {
@@ -44,10 +74,43 @@ window.rb3dMaps = {
       });
       scene.remove(group);
     }
-    async function material(name) {
+    async function material(name, shade = false) {
       const tex = await texture(name);
       const mat = new THREE.MeshBasicMaterial({map: tex, side: THREE.DoubleSide, alphaTest: .5});
       mat.userData.texture = name;
+      if (nativeLight) {
+        mat.onBeforeCompile = shader => {
+          Object.assign(shader.uniforms, uniforms);
+          shader.vertexShader = `uniform vec3 rbToward;
+uniform float rbIntensity, rbAmbient;
+uniform vec2 rbFogRange;
+varying float rbLight, rbFog, rbW;
+` + shader.vertexShader;
+          shader.vertexShader = shader.vertexShader.replace('#include <fog_vertex>', `
+// 004C5040 -> 004ED3BA: radial distance, fixed-point ramp, >>7.
+float haze = clamp((length(mvPosition.xyz) - rbFogRange.x) /
+  (rbFogRange.y - rbFogRange.x), 0.0, 1.0);
+rbFog = min(255.0, floor((haze * 65535.0 + .5) / 128.0)) / 255.0;
+${shade ? `vec3 n = normalize(mat3(modelMatrix) * normal);
+// 0051B6E0, 004D3900, 004ED100: ambient fixed16 + diffuse fixed16.
+rbLight = min(1.0, floor(rbAmbient * 65536.0 +
+  max(0.0, dot(n, rbToward)) * rbIntensity * 65535.0 + .5) / 65280.0);` : 'rbLight = 1.0;'}
+// Glide iterates RGB/alpha in screen space; only texture coordinates use W.
+rbW = gl_Position.w;
+rbLight *= rbW;
+rbFog *= rbW;
+`);
+          shader.fragmentShader = 'varying float rbLight, rbFog, rbW;\n' + shader.fragmentShader;
+          shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>',
+            '#include <color_fragment>\ndiffuseColor.rgb *= rbLight / rbW;');
+          shader.fragmentShader = shader.fragmentShader.replace('#include <fog_fragment>', `
+#ifdef USE_FOG
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, rbFog / rbW);
+#endif
+`);
+        };
+        mat.customProgramCacheKey = () => 'rb3d-glide-' + Number(shade);
+      }
       return mat;
     }
     async function object(obj, parent) {
@@ -65,6 +128,7 @@ window.rb3dMaps = {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(model.vertices, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(model.uvs, 2));
+      if (model.normals) geometry.setAttribute('normal', new THREE.Float32BufferAttribute(model.normals, 3));
       geometry.setIndex(model.indices);
       const mats = [];
       // Register resources on the group before awaiting so a failed material
@@ -72,7 +136,10 @@ window.rb3dMaps = {
       const mesh = new THREE.Mesh(geometry, mats);
       parent.add(mesh);
       for (const slot of model.groups) geometry.addGroup(slot.start, slot.count, slot.materialIndex);
-      for (const name of model.material_textures) mats.push(await material(name));
+      for (let i = 0; i < model.material_textures.length; i++) {
+        const shade = model.groups.some(g => g.materialIndex === i && g.shade > 0);
+        mats.push(await material(model.material_textures[i], shade && !!model.normals));
+      }
       mesh.matrix.fromArray(obj.matrix);
       mesh.matrixAutoUpdate = false;
       if (obj.player) playerMesh = mesh;
@@ -84,16 +151,18 @@ window.rb3dMaps = {
       try {
         const desc = await (await get(data + key + '.json')).json();
         const binary = await (await get(data + key + '.bin')).arrayBuffer();
-        if (binary.byteLength !== desc.vertices * 20) throw new Error('Invalid terrain buffer size');
+        const stride = desc.stride || 5; // Older packs still load, without invented normals.
+        if (![5, 8].includes(stride) || binary.byteLength !== desc.vertices * stride * 4) throw new Error('Invalid terrain buffer size');
         const geometry = new THREE.BufferGeometry();
-        const vertices = new THREE.InterleavedBuffer(new Float32Array(binary), 5);
+        const vertices = new THREE.InterleavedBuffer(new Float32Array(binary), stride);
         geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(vertices, 3, 0));
         geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(vertices, 2, 3));
+        if (stride === 8) geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(vertices, 3, 5));
         const mats = [];
         group.add(new THREE.Mesh(geometry, mats));
         for (const slot of desc.groups) {
           geometry.addGroup(slot.start, slot.count, mats.length);
-          mats.push(await material(slot.texture));
+          mats.push(await material(slot.texture, stride === 8));
         }
         // Sequential object work yields to the browser; no thousands-wide promise fanout.
         for (let i = 0; i < desc.objects.length; i++) {
@@ -128,6 +197,11 @@ window.rb3dMaps = {
         const next = await (await get(data + `regions/${id}/index.json`)).json();
         if (token !== generation) return;
         region = next;
+        if (nativeLight) {
+          if (!map.world && next.lighting) lighting = next.lighting;
+          lighting.terrainScale = next.terrainScale ?? lighting.terrainScale;
+          environment();
+        }
         const types = {0: 'Airfield', 1: 'Town', 2: 'Military depot', 3: 'Rail yard',
           4: 'Bridge', 5: 'Factory', 7: 'Village', 8: 'Village'};
         $('jump').replaceChildren(new Option('Jump to a landmark…', ''), ...region.jumps.map((j, i) =>
@@ -155,6 +229,7 @@ window.rb3dMaps = {
     } catch (error) { dispose(mission); throw error; }
     await selectRegion(map.region, false);
     return delta => {
+      environment();
       if (playerMesh) {
         const e = playerMesh.matrix.elements;
         playerMesh.visible = Math.hypot(camera.position.x - e[12], camera.position.y - e[13], camera.position.z - e[14]) > 8;

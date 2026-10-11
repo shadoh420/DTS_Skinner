@@ -85,6 +85,78 @@ def world():
 
 
 class RedBaronMapsTest(unittest.TestCase):
+    def test_shape_shading_modes_and_opt_in_vertex_normals(self):
+        from tests.test_redbaron import material
+        from unittest.mock import patch
+        data = struct.pack('<HHIII', 0x1e, 0x14, 0, 3, 1) + b''.join(
+            material(2, 0, mode, 0, 0, 0xffffff, 0, 0) for mode in range(3))
+        self.assertEqual(rb.material_shading(data), [0, 1, 2])
+        points = [(0,0,0, 1,0,0), (1,0,0, 0,1,0), (0,1,0, 0,0,1), (0,0,0, 0,0,-1)]
+        face = (0,1,2,2, 0,0,0,0, 3,0)
+        with patch('tools.import_redbaron.meshes', return_value=[(points, [], [face])]):
+            original = rb.build_model(b'', lambda _: 'test.png')
+            flat = rb.build_model(b'', lambda _: 'test.png', lambda _: False)
+            smooth = rb.build_model(b'', lambda _: 'test.png', lambda _: True)
+        self.assertEqual(original, flat)  # Model catalog output is unchanged.
+        self.assertEqual(original['normals'], [0,-1,0]*3)
+        self.assertEqual(smooth['normals'], [0,1,0, 0,0,1, -1,0,0])
+        self.assertEqual(original['vertices'], smooth['vertices'])
+
+    def test_height_normals_include_neighbours_and_preserve_flat_ground(self):
+        plane = lambda x, y: 2*x + 3*y + 100
+        def leaf(x, y, step):
+            return (x, y, step, [plane(px, py) for px, py in
+                    ((x,y), (x,y+step), (x+step,y+step), (x+step,y))], 'test.dml', 0, (x,y,step), 0)
+        # Different leaf sizes meet at a chunk edge. The canonical sample
+        # spacing and halo query must give exactly the same normal there.
+        left = rb.terrain_normals([leaf(0, 0, 4)], plane, 2)
+        right = rb.terrain_normals([leaf(4, 0, 2), leaf(4, 2, 2)], plane, 2)
+        expected = (2/math.sqrt(14), 1/math.sqrt(14), -3/math.sqrt(14))
+        for point in ((4, 0), (4, 4)):
+            self.assertEqual(left[point], right[point])
+            for a, b in zip(left[point], expected):
+                self.assertAlmostEqual(a, b)
+        flat = rb.terrain_normals([(0, 0, 2, [5]*4)])
+        self.assertEqual(set(flat.values()), {(0, 1, 0)})
+        # Only the true world edge uses this-height fallback.
+        edge = rb.terrain_normals([leaf(0, 0, 2)], lambda x, y: plane(x,y) if x >= 0 else None, 2)
+        self.assertAlmostEqual(edge[0,0][0] / edge[0,0][1], 1)
+
+    def test_height_sampler_diagonal_and_bounded_cache(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp, 'tiny.ted')
+            path.write_bytes(volume(ted_members(), True))
+            field = rb.TerrainHeights(rb.Ted(path))
+            self.assertIsNone(field.height(-1, 0))
+            self.assertIsNone(field.height(0, 9))
+            self.assertIsNotNone(field.height(8, 8))
+            # Use a saddle to distinguish the two triangle interpolations.
+            field.cell = lambda _: ([], {(0, 0, 4): [0, 8, 0, 8]})
+            self.assertEqual(field.height(2, 2), 0)
+            field.cell = lambda _: ([], {(0, 0, 4): [8, 0, 8, 0]})
+            self.assertEqual(field.height(2, 2), 0)
+            self.assertEqual(rb.terrain_triangles([8, 0, 8, 0]), ((0,1,3), (1,2,3)))
+
+    def test_native_sun_clock_and_neutral_colour(self):
+        world_settings = dict(day=2421745, time=39600000, region=3, weather=1)
+        light = rb.native_lighting(world_settings, 39932920)
+        self.assertAlmostEqual(sum(n*n for n in light['toward']), 1)
+        self.assertAlmostEqual(light['sunElevation'], 63.304386, places=4)
+        self.assertAlmostEqual(light['sunAzimuth'], 157.259346, places=4)
+        def shade(normal):
+            return min(1, (light['ambient']*65536 + max(0, sum(a*b for a,b in
+                zip(normal, light['toward']))) * light['intensity']*65535) / 65280)
+        self.assertEqual(shade((0, 1, 0)), 1)  # Accepted flat palette colour.
+        self.assertEqual(shade(light['toward']), 1)
+        self.assertLess(shade(tuple(-n for n in light['toward'])), .51)
+        earlier = rb.native_lighting(world_settings, 6*3600000)
+        later = rb.native_lighting(world_settings, 18*3600000)
+        self.assertLess(earlier['toward'][0], 0)
+        self.assertGreater(later['toward'][0], 0)
+        night = rb.native_lighting(dict(world_settings, time=0))
+        self.assertLess(night['intensity'], .3)
+        self.assertAlmostEqual(night['toward'][1], math.sin(math.radians(11.25)))
+
     def test_native_non_drawable_layout_objects_stay_in_report(self):
         from unittest.mock import Mock
         rows = [struct.pack('<BBB4fB', 8, index, variant, 10, 20, 30, 0, 0)
@@ -223,8 +295,8 @@ class RedBaronMapsTest(unittest.TestCase):
             rb.terrain_chunk(leaves[:1], assets, target)
             raw = target.read_bytes()
             self.assertEqual(struct.unpack_from('<2f', raw, 12), (0, 1))
-            self.assertEqual(struct.unpack_from('<2f', raw, 32), (0, .5))
-            self.assertEqual(struct.unpack_from('<2f', raw, 52), (.5, .5))
+            self.assertEqual(struct.unpack_from('<2f', raw, 44), (0, .5))
+            self.assertEqual(struct.unpack_from('<2f', raw, 76), (.5, .5))
 
     def test_multiplayer_bank_and_seasonal_names(self):
         self.assertEqual(rb.terrain_material('multi2.dml'), 'smulti2.dml')
@@ -283,6 +355,7 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertAlmostEqual(result[0]['matrix'][13], 340 * rb.SCALE)
             model = json.loads((root / 'models' / result[0]['model']).read_text())
             self.assertEqual([g['count'] for g in model['groups']], [6, 3])
+            self.assertEqual([g['shade'] for g in model['groups']], [1, 1])
             self.assertFalse(assets.report['missingShapes'])
             with Image.open(root / 'textures' / model['material_textures'][0]) as image:
                 self.assertEqual(image.getpixel((0, 0))[3], 0)
@@ -314,7 +387,8 @@ class RedBaronMapsTest(unittest.TestCase):
             pack = output / report['pack']
             desc = json.loads((pack / 'regions/0/0.json').read_text())
             raw = (pack / 'regions/0/0.bin').read_bytes()
-            self.assertEqual(len(raw), desc['vertices'] * 20)
+            self.assertEqual(desc['stride'], 8)
+            self.assertEqual(len(raw), desc['vertices'] * 32)
             self.assertEqual(struct.unpack_from('<3f', raw), (0, 0, 0))
             self.assertEqual(rb.import_maps(install, output)['skipped'], ['Western Front and single missions'])
             self.assertEqual(before, {p.relative_to(install): p.read_bytes() for p in install.rglob('*') if p.is_file()})

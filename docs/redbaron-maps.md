@@ -18,7 +18,7 @@ Output is `<LOCAL_DATA>/rb3d-maps/`. `--output` overrides that folder. `--replac
 
 Every `Single/*.MIS` is attempted, with its companion DAT and NUL-terminated DSC briefing. Failed missions remain in the map list with their reason. Shared asset failures also produce a row for every TED and MIS. Placements outside root terrain cells are counted and retained as `outsideObjects` in the region manifest, rather than silently discarded. Later flights are listed in scene/report metadata rather than spawned before their authored time. Campaign missions are skipped: this importer does not run their generator.
 
-This is an **incomplete preview**, not a faithful reproduction of the requested game start. The report sets `complete: false`. Authored terrain, material colours, landmarks, brigade layouts, aircraft types and formation offsets are read. Native sky/weather, palette lighting and haze distance, procedural clutter, damage appearance, campaign/date movement and simulation warm-up remain unresolved. The game and browser have not been run for this work.
+This is an **incomplete preview**, not a faithful reproduction of the requested game start. The report sets `complete: false`. Authored terrain, material colours, landmarks, brigade layouts, aircraft types and formation offsets are read. Terrain normals, sun direction and distance haze now follow the recovered Glide equations described below. Native sky/weather animation, time-of-day palette recolouring, procedural clutter, damage appearance, campaign/date movement and simulation warm-up remain unresolved. Claude supplied game/browser comparisons; no game or browser was run for this implementation.
 
 ## Terrain volumes
 
@@ -109,7 +109,31 @@ They change palette/shading data too, so there is no season switch in this versi
 
 Fog colour is palette index **47** for all five banks (`005830A4`, installed by `00444BB7`; consumed at `004ED33D`; Glide fog colour call `004EEE6F`). The sampled summer/ground palette yields RGB **159,183,195**. The preview reads this colour from the mounted ground SPL, rather than hardcoding it.
 
-The rest remains incomplete. The adapter draws palette-coloured textures unlit. Its linear 12–18 km haze and solid background are clearly labelled preview defaults, **not measured game fog or sky**. `004447A0` clamps a global palette haze value to 0–255; `004ED320` combines palette and per-vertex fog, and `004EEE59` enables Glide fog. Native shade ramps, time-of-day palette transformations, distance mapping and sky/cloud rendering are not yet reproduced. DAT day/time/weather remain in scene metadata for the next comparison.
+### Terrain light and haze (Follow-up 3)
+
+Glide terrain uses computed normals, not a shade byte stored in each TED square. `004C42D0`–`004C4428` takes half the difference between the two neighbouring heights on each axis, uses the grid spacing for the vertical component, and normalizes. A missing neighbour uses the current height. The on-disk DML shading mode is at material record +16 (runtime +1c): 0 unlit, 1 flat, 2 smooth. Although the sampled terrain DMLs store 1, the **Glide mode-4 override** at `00440033`–`00440050`, `00440162`–`00440177` selects 2. `00522063` identifies renderer 4 by its Glide surface constructor. The importer exports smooth height-field normals with neighbouring-cell queries and a nine-cell cache. Samples use the finest world grid; native camera-dependent LOD and its coarser normal sampling are not reproduced. `005437D0` selects the lower diagonal of a saddle; chunk triangles and height interpolation now follow it.
+
+The scene initializes ambient RGB to `0.5 * 65536` (`00532DD8`, `00532F17`–`00532F49`). The directional evaluator adds `max(0, -dot(normal, lightDirection)) * intensity * 65535` (`0051B6E0`–`0051B7DA`). The result is rounded and capped at 65535 (`004D3900`, `00547EB0`); Glide receives RGB divided by 256 (`004ED100`–`004ED17E`, flat-face equivalent `004ED190`). The adapter applies the equivalent multiplier, capped at white. Neutral terms therefore leave the accepted texture/palette colours unchanged. **The `vertex +4 >> 7` term at `004ED3BA` is fog alpha, not terrain light.** The RGB shade terms are +8/+c/+10. The Glide RGB path does not need the software renderer's SPL shade-table lookup.
+
+Sun direction comes from DAT Julian day, regional latitude/longitude, and the authored player's start time. The importer ports the game's simplified celestial calculation (`004AAF90`, `004D0A10`, `004ABAC0`, `00523AD0`), including the single-precision epoch store. It does not substitute a modern astronomical library. Elevation-dependent sun/moon brightness is evaluated by `0049E9C0`; the scene intensity is `min(1, sun + .2 * moon + .05)` (`00409CF0`). The light elevation is clamped to at least 11.25 degrees (`0049EADC`). Mission warm-up remains approximated by the authored birth time. Free flight uses the existing sample day at noon, recomputed for each region.
+
+Terrain haze uses **radial camera distance per vertex** (`004C5081`), a 0–65535 ramp (`004C508D`–`004C50C6`, `0048C350`), then `>>7` and saturation at 255 (`004ED3BA`–`004ED408`). Full Glide haze thus occurs about halfway through the nominal ramp. The vertex shader computes that value; RGB and haze use screen-linear interpolation while texture UVs retain perspective correction. The accepted SPL index-47 haze colour is unchanged.
+
+`0043EF20`–`0043F2DB` computes the range. With world-grid exponent `s`, visibility slider `v` in 0–1, and camera altitude `h` in native units:
+
+```
+baseCells = trunc(.35 * 52800 * 8) >> s
+cells = trunc(trunc(baseCells * (.65 + .35*v)) * (1 + max(0, h*.000005)))
+view = cells << s
+start = trunc(.7 * weatherStart * view)
+end = trunc(weatherEnd * view)
+```
+
+Weather codes 3/4/5 use start/end multipliers `.75/.9`, `.5/.75`, `.25/.5`; other codes use `1/1`. Distances are converted with SCALE. The adapter uses the binary's default maximum visibility (`00580858 = 100`, `00411B30`) and updates the range as the camera climbs. At sea level on the shipped exponent-11 terrain, nominal start/end are **3932.644/5618.074 m**, with full Glide haze at about **4772 m**. These replace the 12–18 km preview. The haze checkbox still works. The import does not read the user's graphics preferences, so a changed native visibility slider must be accounted for when comparing.
+
+Shapes retain their own DML mode: unlit parts stay unlit; flat parts use their authored face normals, and smooth parts use authored vertex normals (`0051D112`–`0051D153`, `0051D170`–`0051D23F`). The shared model reader gains an optional smooth-normal callback; existing model-catalog callers and output are unchanged. Only the maps importer opts in. Both shape and terrain materials use the same scene sun and haze shader. Animated clouds, palette recolouring at dusk/night, transient global haze overlays (`004447A0`) and moving cloud shadows remain outside this implementation; the accepted solid sky colour remains.
+
+Refresh the pack to obtain normals and lighting metadata. New terrain records are eight little-endian floats (`xyz, uv, normal`), identified by `stride: 8`; old five-float packs still load with their old unlit appearance. Source measurements and numeric probes establish the implemented equations, **not rendered parity**. In particular, most vertices near the TUTOR3 birth point still saturate at white under the recovered ambient/sun light; stronger shade occurs on steeper Alsace slopes. Claude must compare the new haze and lighting against the supplied banked capture rather than treating synthetic tests as visual acceptance.
 
 ## Verification
 

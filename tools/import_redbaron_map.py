@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import math
+from functools import lru_cache
 from pathlib import Path
 import re
 import struct
@@ -575,7 +576,9 @@ class Assets:
         try:
             if name not in self.files:
                 raise ValueError('not in volumes')
-            mats = self.material(name[:4] + '9' + name[5:-4] + '.dml')
+            dml_name = name[:4] + '9' + name[5:-4] + '.dml'
+            mats = self.material(dml_name)
+            modes = material_shading(self.files[dml_name]())
             def slot(index):
                 if not 0 <= index < len(mats):
                     raise ValueError('Shape material index out of range')
@@ -593,7 +596,14 @@ class Assets:
                             self.report['warnings'].add(f'{name}: paint {preferred} absent; using {value}')
                     return self.slot((kind, value, flags)) or self.solid((255, 0, 255))
                 return self.slot(mats[index])
-            model = build_model(self.files[name](), slot)
+            def shaded_slot(index):
+                texture = slot(index)
+                return f'{modes[index]}:{texture}' if texture else None
+            model = build_model(self.files[name](), shaded_slot, lambda index: modes[index] == 2)
+            for group in model['groups']:
+                group['shade'] = int(model['material_textures'][group['materialIndex']].split(':', 1)[0])
+            for field in ('material_names', 'material_textures'):
+                model[field] = [n.split(':', 1)[1] for n in model[field]]
             if not model['indices']:
                 raise ValueError('no supported visible geometry')
             target = name[:-4] + (f'_{squadron:02x}' if squadron is not None else '') + '.json'
@@ -669,12 +679,94 @@ def landmark_jump(place, objects):
                 matrix=[*right, 0, *up, 0, *back, 0, *eye, 1])
 
 
-def terrain_chunk(leaves, assets, path):
-    """One bounded chunk: interleaved float32 xyz/uv, six vertices per square.
+def material_shading(data):
+    """Serialized DML +16 -> material +1C: 0 unlit, 1 flat, 2 smooth."""
+    at, modes = 16, []
+    for _ in range(struct.unpack_from('<I', data, 8)[0]):
+        modes.append(struct.unpack_from('<I', data, at + 16)[0])
+        size = struct.unpack_from('<I', data, at + 4)[0]
+        at += 8 + size + (size & 1)
+    return modes
+
+
+def terrain_triangles(heights):
+    """005437D0: split across the lower pair of opposite corners."""
+    return ((0, 1, 3), (1, 2, 3)) if heights[0] + heights[2] > heights[1] + heights[3] else ((0, 1, 2), (0, 2, 3))
+
+
+class TerrainHeights:
+    """Bounded, lazy height queries including the adjacent root cells.
+
+    Retain nine decoded cells, not a second copy of a whole front. Interpolate
+    across coarse squares when a finer neighbour asks for a midpoint normal.
+    """
+    def __init__(self, ted):
+        self.ted = ted
+        self.cells = {(c[0], c[1]): c for c in ted.root_cells()}
+        self.size = next(iter(self.cells.values()))[2]
+        self.cell = lru_cache(maxsize=9)(self._cell)
+
+    def _cell(self, key):
+        leaves = list(self.ted.leaves(*self.cells[key]))
+        squares = {(v[0], v[1], v[2]): v[3] for v in leaves}
+        return leaves, squares
+
+    def height(self, x, y):
+        x0, y0, x1, y1 = self.ted.bounds
+        if not x0 <= x <= x1 or not y0 <= y <= y1:
+            return None
+        cx = x0 + min((x - x0) // self.size, (x1 - x0) // self.size - 1) * self.size
+        cy = y0 + min((y - y0) // self.size, (y1 - y0) // self.size - 1) * self.size
+        if (cx, cy) not in self.cells:
+            return None
+        _, squares = self.cell((cx, cy))
+        step, sx, sy = self.size, cx, cy
+        while step:
+            h = squares.get((sx, sy, step))
+            if h is not None:
+                u, v = (x - sx) / step, (y - sy) / step
+                if h[0] + h[2] > h[1] + h[3]:
+                    return (h[0] + u * (h[3] - h[0]) + v * (h[1] - h[0]) if u + v <= 1 else
+                            h[2] + (1-u) * (h[1] - h[2]) + (1-v) * (h[3] - h[2]))
+                return (h[0] + v * (h[1] - h[0]) + u * (h[2] - h[1]) if v >= u else
+                        h[0] + u * (h[3] - h[0]) + v * (h[2] - h[3]))
+            step //= 2
+            if x >= sx + step:
+                sx += step
+            if y >= sy + step:
+                sy += step
+        return None
+
+
+def terrain_normals(leaves, height_at=None, spacing=None):
+    """004C42D0: central height differences, missing neighbour = this height."""
+    vertices = {}
+    for x, y, step, heights, *_ in leaves:
+        for point, height in zip(((x, y), (x, y+step), (x+step, y+step), (x+step, y)), heights):
+            old = vertices.get(point)
+            if old is None or step < old[1]:
+                vertices[point] = height, step
+    def sample(x, y, fallback):
+        value = height_at(x, y) if height_at else vertices.get((x, y), (None,))[0]
+        return fallback if value is None else value
+    result = {}
+    for (x, y), (h, step) in vertices.items():
+        step = spacing or step
+        dx = (sample(x-step, y, h) - sample(x+step, y, h)) / 2
+        dy = (sample(x, y-step, h) - sample(x, y+step, h)) / 2
+        length = math.sqrt(dx*dx + dy*dy + step*step)
+        result[x, y] = (-dx / length, step / length, dy / length)
+    return result
+
+
+def terrain_chunk(leaves, assets, path, height_at=None, spacing=None):
+    """One bounded chunk: float32 xyz/uv/normal, six vertices per square.
 
     DML variants use mirror/rotate bits 3/4/5. FF material inheritance keeps
     the ancestor's texture footprint rather than repeating it on every leaf.
     """
+    leaves = list(leaves)
+    normals = terrain_normals(leaves, height_at, spacing)
     groups = {}
     flags_seen = Counter()
     for x, y, step, heights, dml, index, texture_square, flags in leaves:
@@ -694,41 +786,95 @@ def terrain_chunk(leaves, assets, path):
         if orientation & 32:
             uv = [(v, 1 - u) for u, v in uv]
         values = groups.setdefault(texture, array('f'))
-        for corner in (0, 1, 2, 0, 2, 3):
+        for corner in (c for triangle in terrain_triangles(heights) for c in triangle):
             px, py = coords[corner]
-            values.extend((-px * SCALE, heights[corner] * SCALE, py * SCALE, *uv[corner]))
+            values.extend((-px * SCALE, heights[corner] * SCALE, py * SCALE, *uv[corner], *normals[px, py]))
         flags_seen[flags] += 1
     path.parent.mkdir(parents=True, exist_ok=True)
     slots, start = [], 0
     with path.open('wb') as f:
         for texture, values in sorted(groups.items()):
-            count = len(values) // 5
+            count = len(values) // 8
             if sys.byteorder != 'little':
                 values.byteswap()
             f.write(values.tobytes())
             slots.append(dict(texture=texture, start=start, count=count))
             start += count
-    return dict(groups=slots, vertices=start, squares=start // 6,
+    return dict(groups=slots, vertices=start, squares=start // 6, stride=8,
                 squareFlags=dict(flags_seen))
 
 
 PREVIEW_LIMITS = [
     'Summer only: fall and winter replace ground palettes and shading tables as well as bitmaps',
-    'Palette colours are preserved; Glide palette shading, sky, weather and distance haze are not yet reproduced',
-    'Terrain diagonal and texture rotation need comparison with the game',
+    'Native sunlight and distance haze use the default maximum visibility; animated sky and weather effects are not reproduced',
+    'Terrain lighting uses the exported finest height field; native distance-dependent mesh LOD still needs comparison',
     'Landmark layouts are placed; procedural ground clutter and date-dependent front-line objects are not yet reproduced',
 ]
 
 
+def native_lighting(world, start_time=None):
+    """Baron.exe's celestial model and Glide light, not a modern sun ephemeris.
+
+    004AAF90 (clock), 004D0A10 / 00486390 (sun/moon), 004ABAC0
+    (latitude rotation), 0049E9C0 (brightness), 00409CF0 (light intensity).
+    Keep the single-precision epoch store: at Julian-day magnitudes it matters.
+    """
+    f32 = lambda n: struct.unpack('<f', struct.pack('<f', n))[0]
+    latitude, longitude = ORIGINS[world['region']]
+    local = world['time'] * f32(.001) + longitude * 240
+    total = world['day'] * 86400 + local
+    epoch = f32(total)
+    year_rate = f32(3.1688763613146875e-8)
+    rotation = ((total * year_rate - local * f32(1 / 86400) + f32(.536916)) % 1) * 360
+    if start_time is not None:
+        rotation -= (start_time - world['time']) / 1000 / 240
+    phase = (epoch * year_rate + f32(.5285826921463013)) % 1
+    angle = f32(phase * 360)
+    declination = math.cos(angle * .017453292522222223) * 23.5
+
+    def body(azimuth, elevation):
+        # 00523AD0 / 00523C70, specialized to (0, latitude-90, rotation).
+        a, b, d = map(math.radians, (azimuth-rotation, latitude-90, elevation))
+        x = math.sin(a) * math.cos(d)
+        y = math.cos(b) * math.cos(a) * math.cos(d) - math.sin(b) * math.sin(d)
+        z = math.sin(b) * math.cos(a) * math.cos(d) + math.cos(b) * math.sin(d)
+        altitude = math.degrees(math.asin(max(-1, min(1, z))))
+        az = math.atan2(x, y)
+        return az, altitude
+
+    azimuth, elevation = body(angle, declination)
+    moon_angle = ((epoch * f32(4.236246979871794e-7) + .0625) % 1) * 360
+    _, moon_elevation = body(moon_angle, 0)
+
+    def brightness(altitude):
+        h = altitude + 3
+        if h > 2:
+            return .75 + .25 * math.sin((h-2) / 91 * math.pi/2)
+        if h > -2:
+            return .5 + .25 * math.sin((h+2) / 4 * math.pi/2)
+        if h > -11.25:
+            return .5 * math.sin((h+11.25) / 9.25 * math.pi/2)
+        return 0
+
+    intensity = min(1, brightness(elevation) + .2 * brightness(moon_elevation) + .05)
+    # The light direction stops descending at 11.25 degrees (0049EADC).
+    altitude = math.radians(max(11.25, elevation))
+    toward = [-math.sin(azimuth) * math.cos(altitude), math.sin(altitude), math.cos(azimuth) * math.cos(altitude)]
+    return dict(model='baron-glide', toward=toward, ambient=.5, intensity=intensity,
+                sunElevation=elevation, sunAzimuth=math.degrees(azimuth) % 360,
+                day=world['day'], time=world['time'] if start_time is None else start_time,
+                weather=world['weather'], visibility=1, terrainScale=11,
+                fogColourIndex=47, fogColourSource='ground SPL palette',
+                distanceModel='radial per-vertex 16-bit ramp, >>7, saturated at 255',
+                shading='Glide smooth terrain normals; DML unlit/flat/smooth shapes')
+
+
 def scene_base(name, assets):
-    # Explicit preview defaults, not measurements claimed to come from Baron.exe.
     return dict(mission=name, haze=assets.haze,
-                terrain=dict(visibleDistance=18000, hazeDistance=12000),
+                terrain=dict(visibleDistance=147456*SCALE, hazeDistance=103219*SCALE),
                 sun=dict(ambient=[1, 1, 1], intensity=[0, 0, 0], azimuth=0, incidence=0),
                 viewpoints=[], objects=[], warnings=list(PREVIEW_LIMITS), season='summer',
-                lighting=dict(fogColourIndex=47, fogColourSource='ground SPL palette',
-                              distanceModel='preview linear 12-18 km; not native Glide fog',
-                              shading='unlit palette colours; native shade ramps pending'))
+                lighting=native_lighting(dict(day=2421745, time=43200000, region=0, weather=1)))
 
 
 def export_region(path, region, assets):
@@ -745,10 +891,12 @@ def export_region(path, region, assets):
         objects.extend(placed)
         jumps.append(landmark_jump(place, placed))
     chunks, total, assigned = [], 0, set()
+    heights = TerrainHeights(ted)
     for number, cell in enumerate(ted.root_cells()):
         x, y, step = cell[:3]
         name = f'regions/{region}/{number}'
-        geometry = terrain_chunk(ted.leaves(*cell), assets, assets.output / (name + '.bin'))
+        geometry = terrain_chunk(heights.cell((x, y))[0], assets, assets.output / (name + '.bin'),
+                                 heights.height, 1 << ted.scale)
         chunk_objects = [o for o in objects if x <= -o['matrix'][12] / SCALE < x + step
                          and y <= o['matrix'][14] / SCALE < y + step]
         geometry['objects'] = chunk_objects
@@ -760,7 +908,8 @@ def export_region(path, region, assets):
     if outside:
         assets.report['warnings'].add(f'BARON{region}.TED: {len(outside)} objects outside root cells; retained in region manifest')
     centre = [(ted.bounds[0] + ted.bounds[2]) / 2, (ted.bounds[1] + ted.bounds[3]) / 2, 1500 / SCALE]
-    result = dict(id=region, name=REGIONS[region], chunks=chunks, jumps=jumps,
+    result = dict(id=region, name=REGIONS[region], chunks=chunks, jumps=jumps, terrainScale=ted.scale,
+                  lighting=native_lighting(dict(day=2421745, time=43200000, region=region, weather=1)),
                   origin=ORIGINS[region], bounds=ted.bounds,
                   brigades=brigades, outsideObjects=outside,
                   viewpoint=jumps[0]['matrix'] if jumps else matrix(centre, camera=True),
@@ -791,6 +940,8 @@ def export_mission(mis_path, companions, regions, assets, formation_data):
     # special takeoff/linked-flight paths remain a game-comparison gate.
     start_time = player['time']
     result = scene_base(mis_path.stem, assets)
+    result['lighting'] = native_lighting(world, start_time)
+    result['lighting']['terrainScale'] = regions[region].get('terrainScale', 11)
     result.update(region=region, regions=[dict(id=region, name=REGIONS[region])], world=world, flights=mission['flights'])
     result['missionSource'] = {k: v for k, v in mission.items() if k not in ('flights', 'player', 'playerSlot')}
     result['warnings'].extend([
