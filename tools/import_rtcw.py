@@ -68,24 +68,27 @@ class Game:
     Both include pak0; opposite-mode prefixes are excluded. Own prefix sorts
     as zz_, then descending lexical order. All asset paths remain virtual.
     """
+    sections, directory, mode_paks = SECTIONS, 'Main', True
+    loose_folders = ('models', 'textures', 'scripts', 'maps')
+
     def __init__(self, install, section='sp'):
-        if section not in SECTIONS:
+        if section not in self.sections:
             raise ValueError('Unknown RTCW section')
         self.section = section
         root = Path(install).expanduser()
-        root = root / 'Main' if (root / 'Main').is_dir() else root
+        root = root / self.directory if (root / self.directory).is_dir() else root
         if not root.is_dir():
             raise ValueError('RTCW Main folder not found')
         self.assets, self.sources, self.issues = {}, [], []
         opposite = 'mp_' if section == 'sp' else 'sp_'
-        packs = [p for p in root.iterdir() if p.suffix.lower() == '.pk3' and not p.name.lower().startswith(opposite)]
+        packs = [p for p in root.iterdir() if p.suffix.lower() == '.pk3' and (not self.mode_paks or not p.name.lower().startswith(opposite))]
         if len(packs) > 1024:
             raise ValueError('Too many RTCW archives')
         def order(p):
             n = p.name.lower()
-            return 'zz_' + n[3:] if n.startswith(section + '_') else n
+            return 'zz_' + n[3:] if self.mode_paks and n.startswith(section + '_') else n
         loose = {}
-        for folder in ('models', 'textures', 'scripts', 'maps'):
+        for folder in self.loose_folders:
             for path in sorted((root / folder).rglob('*')):
                 if path.is_file() and path.resolve().is_relative_to(root.resolve()):
                     name = checked_name(path.relative_to(root).as_posix())
@@ -109,7 +112,7 @@ class Game:
             except (OSError, ValueError, zipfile.BadZipFile) as exc:
                 self.issues.append(dict(source=path.name, reason=str(exc)))
             self.sources.append((path.name, files))
-        self.sources.insert(0 if section == 'mp' else len(self.sources), ('loose', loose))
+        self.sources.insert(0 if section == 'mp' or not self.mode_paks else len(self.sources), ('loose', loose))
         for _, files in self.sources:
             for name, entry in files.items():
                 self.assets.setdefault(name, entry)
@@ -259,44 +262,50 @@ def read_mds(raw, frame=0):
         if not 0 <= bi < nb: raise ValueError('MDS tag bone outside skeleton')
         mat,pos = bone(bi)
         tags[string(raw[at:at+64])] = (*pos,*sum(mat,()))
-    surfaces, offset = [], os
+    surfaces = skeletal_surfaces(raw, os, ns, end, bones)
+    return dict(surfaces=surfaces,tags=tags,frame_count=nf)
+
+
+def skeletal_surfaces(raw, offset, ns, end, bones, vertex_header=32, header_size=120):
+    nb = len(bones)
+    surfaces = []
     for _ in range(ns):
-        span(offset,1,176,end,120)
+        span(offset,1,176,end,header_size)
         name, shader = string(raw[offset+4:offset+68]),string(raw[offset+68:offset+132])
         _, _, back, nv, ov, ntri, tri, collapse, nr, refs, size = struct.unpack_from('<11i',raw,offset+132)
         if not (0 < nv <= 6000 and 0 < ntri <= 8192 and 0 <= nr <= nb and size >= 176 and back == -offset):
             raise ValueError('Invalid MDS surface counts/header offset')
-        span(offset,1,size,end,120)
-        for off,count,stride in ((tri,ntri,12),(collapse,nv,4),(refs,nr,4),(ov,nv,32)):
+        span(offset,1,size,end,header_size)
+        for off,count,stride in ((tri,ntri,12),(collapse,nv,4),(refs,nr,4),(ov,nv,vertex_header)):
             span(off,count,stride,size,176)
         referenced = struct.unpack_from('<'+'i'*nr,raw,offset+refs)
         if any(b < 0 or b >= nb for b in referenced): raise ValueError('Invalid MDS bone reference')
         vertices, normals, uvs = [], [], []
         at = ov
         for _ in range(nv):
-            span(at,1,32,size,176)
+            span(at,1,vertex_header,size,176)
             normal = finite(struct.unpack_from('<3f',raw,offset+at))
             uvs.extend(finite(struct.unpack_from('<2f',raw,offset+at+12)))
             nw = struct.unpack_from('<i',raw,offset+at+20)[0]
             if not 0 < nw <= nb: raise ValueError('Invalid MDS weight count')
-            span(at+32,nw,20,size,176)
+            span(at+vertex_header,nw,20,size,176)
             point, total = [0.,0.,0.], 0.
             for j in range(nw):
-                bi,w,x,y,z = struct.unpack_from('<if3f',raw,offset+at+32+j*20)
+                bi,w,x,y,z = struct.unpack_from('<if3f',raw,offset+at+vertex_header+j*20)
                 finite((w,x,y,z))
                 if not 0 <= bi < nb or not 0 <= w <= 1: raise ValueError('Invalid MDS weight')
-                mat,pos = bone(bi)
+                mat,pos = bones[bi]
                 for k in range(3): point[k] += w*(sum(a*b for a,b in zip(mat[k],(x,y,z)))+pos[k])
                 if j == 0: normals.extend(sum(a*b for a,b in zip(row,normal)) for row in mat)
                 total += w
             if abs(total-1) > .02: raise ValueError('MDS weights do not sum to one')
             vertices.extend(point)
-            at += 32+nw*20
+            at += vertex_header+nw*20
         indices = list(struct.unpack_from('<'+'i'*(ntri*3),raw,offset+tri))
         if any(i < 0 or i >= nv for i in indices): raise ValueError('MDS triangle index outside surface')
         surfaces.append(dict(name=name,shaders=[shader],vertices=vertices,normals=normals,uvs=uvs,indices=indices))
         offset += size
-    return dict(surfaces=surfaces,tags=tags,frame_count=nf)
+    return surfaces
 
 
 def read_model(raw, frame=0):
