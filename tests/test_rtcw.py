@@ -1,5 +1,6 @@
 """Synthetic RTCW fixtures; optional single-file retail probes are opt-in."""
 import io
+import hashlib
 import json
 import math
 import os
@@ -94,6 +95,139 @@ def install(root):
 
 
 class RTCWTests(unittest.TestCase):
+    def test_catalog_shares_source_images_and_prunes_audit_only_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'out'
+            extra=io.BytesIO();Image.new('RGBA',(2,2),'yellow').save(extra,'TGA')
+            pk3(root/'pak0.pk3',[('models/sp.mdc',mdc()),('models/test/diffuse.tga',image_bytes()),
+                ('models/unused.skin',b'part,models/unused'),('models/unused.tga',extra.getvalue())])
+            # A different winning archive member/path with identical source bytes also shares.
+            pk3(root/'mp_pak0.pk3',[('models/mp.mdc',mdc()),('models/mp.skin',b'part,models/other'),
+                ('models/other.tga',image_bytes())])
+            report=import_catalog(root,out)
+            self.assertEqual(report['texture_library']['after'],1)
+            self.assertFalse(report['texture_library']['retained_unreferenced'])
+            self.assertFalse(report['texture_library']['duplicate_groups'])
+            self.assertTrue(report['texture_library']['removed'])
+            refs={t for p in (out/'model_json').glob('*.json') for t in json.loads(p.read_text())['material_textures']}
+            self.assertEqual(refs,{p.name for p in (out/'textures').glob('*.png')})
+            # MP's path sorts before SP's even though SP is converted first.
+            self.assertEqual(refs,{'models_other__'+hashlib.sha256(image_bytes()).hexdigest()[:12]+'.png'})
+            again=import_catalog(root,out)
+            self.assertEqual(again['texture_library']['before'],1)
+            self.assertEqual(refs,{p.name for p in (out/'textures').glob('*.png')})
+
+    def test_catalog_migrates_legacy_copies_without_losing_edits(self):
+        for edit_mp in (False,True):
+            with self.subTest(edit_mp=edit_mp),tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp);out=root/'out';tex=out/'textures'
+                pk3(root/'pak0.pk3',[('models/sp.mdc',mdc()),('models/test/diffuse.tga',image_bytes()),
+                    ('models/unused.skin',b'part,models/unused'),('models/unused.tga',image_bytes())])
+                pk3(root/'mp_pak0.pk3',[('models/mp.mdc',mdc())])
+                legacy={s:Textures(Game(root,s),tex).resolve('models/test/diffuse')[0] for s in ('sp','mp')}
+                orphan=Textures(Game(root),tex).resolve('models/unused')[0]
+                Image.new('RGBA',(2,2),'purple').save(tex/orphan)
+                orphan_bytes=(tex/orphan).read_bytes()
+                if edit_mp:Image.new('RGBA',(2,2),'red').save(tex/legacy['mp'])
+                mp_bytes=(tex/legacy['mp']).read_bytes()
+                report=import_catalog(root,out)
+                self.assertEqual(report['texture_library']['after'],3 if edit_mp else 2)
+                self.assertFalse((tex/legacy['sp']).exists())
+                self.assertEqual((tex/orphan).read_bytes(),orphan_bytes)
+                self.assertEqual(report['texture_library']['retained_unreferenced'],[orphan])
+                cat=json.loads((out/'catalog.json').read_text())
+                mp=next(r for r in cat if r['model_name'].startswith('mp_') and r['status']=='ready')
+                if edit_mp:
+                    self.assertEqual(mp['texture_name'],legacy['mp'])
+                    self.assertEqual((tex/legacy['mp']).read_bytes(),mp_bytes)
+                else:self.assertFalse((tex/legacy['mp']).exists())
+                # A shared canonical PNG remains editable and survives even after its models disappear.
+                canonical=next(tex.glob('models_test_diffuse__*.png'))
+                Image.new('RGBA',(2,2),'blue').save(canonical);edited=canonical.read_bytes()
+                import_catalog(root,out)
+                self.assertEqual(canonical.read_bytes(),edited)
+                import_catalog(root,out,model_filter='no-such-model')
+                self.assertEqual(canonical.read_bytes(),edited)
+                self.assertEqual((tex/orphan).read_bytes(),orphan_bytes)
+                # A later source update matching a saved edit must not erase its edit history.
+                replacement=io.BytesIO();Image.new('RGBA',(2,2),'purple').save(replacement,'TGA')
+                pk3(root/'sp_pak1.pk3',[('models/unused.tga',replacement.getvalue())])
+                import_catalog(root,out)
+                self.assertEqual((tex/orphan).read_bytes(),orphan_bytes)
+
+    def test_catalog_retires_unchanged_previous_output_but_keeps_unknown_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'out'
+            pk3(root/'pak0.pk3',[('models/sp.mdc',mdc()),('models/test/diffuse.tga',image_bytes())])
+            import_catalog(root,out)
+            generated=next((out/'textures').glob('*.png'))
+            unknown=out/'textures/user.png';Image.new('RGBA',(1,1),'red').save(unknown)
+            report=import_catalog(root,out,model_filter='no-such-model')
+            self.assertFalse(generated.exists());self.assertTrue(unknown.is_file())
+            self.assertEqual(report['texture_library']['after'],1)
+            self.assertEqual(report['texture_library']['retained_unreferenced'],['user.png'])
+
+    def test_catalog_keeps_distinct_source_bytes_even_with_identical_pixels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'out'
+            png=io.BytesIO()
+            with Image.open(io.BytesIO(image_bytes())) as image:image.save(png,'PNG')
+            pk3(root/'pak0.pk3',[('models/sp.mdc',mdc()),('models/test/diffuse.tga',image_bytes())])
+            pk3(root/'mp_pak0.pk3',[('models/mp.mdc',mdc()),('models/mp.skin',b'part,models/other'),('models/other.png',png.getvalue())])
+            report=import_catalog(root,out)['texture_library']
+            self.assertEqual(report['after'],2)
+            self.assertEqual(len(report['duplicate_groups']),1)
+            self.assertEqual(len(report['duplicate_groups'][0]),2)
+
+    def test_catalog_whiteimage_is_shared_and_unused_copies_are_pruned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'out'
+            pk3(root/'pak0.pk3',[('models/sp.mdc',mdc()),('scripts/white.shader',b'models/test/diffuse\n{\n { map $whiteimage }\n}')])
+            pk3(root/'mp_pak0.pk3',[('models/mp.mdc',mdc())])
+            report=import_catalog(root,out)['texture_library']
+            self.assertEqual(report['after'],1);self.assertFalse(report['retained_unreferenced'])
+            name=next((out/'textures').glob('*.png')).name
+            self.assertEqual(import_catalog(root,out)['texture_library']['after'],1)
+            self.assertEqual(name,next((out/'textures').glob('*.png')).name)
+
+    def test_catalog_migrates_hash_names_and_preserves_edited_hash_files(self):
+        for edited in (False,True):
+            with self.subTest(edited=edited),tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp);out=root/'out';tex=out/'textures';tex.mkdir(parents=True)
+                pk3(root/'pak0.pk3',[('models/sp.mdc',mdc()),('models/test/diffuse.tga',image_bytes())])
+                pk3(root/'mp_pak0.pk3',[('models/mp.mdc',mdc())])
+                digest=hashlib.sha256(image_bytes()).hexdigest()
+                old=tex/('image_'+digest+'.png')
+                with Image.open(io.BytesIO(image_bytes())) as image:image.convert('RGBA').save(old)
+                baseline=hashlib.sha256(old.read_bytes()).hexdigest()
+                (out/'texture-manifest.json').write_text(json.dumps({old.name:baseline}))
+                if edited:Image.new('RGBA',(2,2),'red').save(old)
+                before=old.read_bytes();report=import_catalog(root,out)
+                expected=old.name if edited else 'models_test_diffuse__'+digest[:12]+'.png'
+                self.assertEqual({p.name for p in tex.glob('*.png')},{expected})
+                refs={t for p in (out/'model_json').glob('*.json') for t in json.loads(p.read_text())['material_textures']}
+                self.assertEqual(refs,{expected});self.assertFalse(report['texture_library']['duplicate_groups'])
+                self.assertEqual((tex/expected).read_bytes(),before)
+                import_catalog(root,out)
+                self.assertEqual((tex/expected).read_bytes(),before)
+                if edited:
+                    import_catalog(root,out,model_filter='no-such-model')
+                    self.assertEqual(old.read_bytes(),before)
+
+    def test_catalog_name_uses_smallest_winning_path_not_shadowed_or_first_seen(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'out'
+            different=io.BytesIO();Image.new('RGBA',(2,2),'red').save(different,'TGA')
+            pk3(root/'pak0.pk3',[('models/sp.mdc',mdc()),('models/test/diffuse.tga',image_bytes()),
+                ('models/aaa.tga',image_bytes()),('MODELS/Best.tga',image_bytes())])
+            # The lexically first path is shadowed in both mounts by different bytes.
+            pk3(root/'sp_pak1.pk3',[('models/aaa.tga',different.getvalue())])
+            pk3(root/'mp_pak1.pk3',[('models/aaa.tga',different.getvalue()),('models/mp.mdc',mdc())])
+            report=import_catalog(root,out)
+            name='models_best__'+hashlib.sha256(image_bytes()).hexdigest()[:12]+'.png'
+            self.assertEqual({p.name for p in (out/'textures').glob('*.png')},{name})
+            self.assertEqual(report['texture_library']['after'],1)
+
     def test_mdc_base_compressed_and_tags(self):
         from tests.test_q3 import md3
         native = read_model(md3(),1)

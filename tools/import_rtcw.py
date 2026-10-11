@@ -6,12 +6,16 @@ Format rules: iortcw qfiles.h, tr_model.c, tr_animation.c and cg_players.c.
 import argparse
 from collections import Counter
 import hashlib
+import io
 import json
 import math
 from pathlib import Path, PurePosixPath
 import re
 import struct
 import zipfile
+import zlib
+
+from PIL import Image
 
 try:
     from tools import import_q3 as q3
@@ -402,6 +406,104 @@ class Textures(q3.Textures):
         return result
 
 
+class CatalogTextures(Textures):
+    """Catalog-only source sharing; the map importer keeps its own image pipeline."""
+    def __init__(self, game, library):
+        super().__init__(game, library.output)
+        self.game, self.library, self.converted = game, library, {}
+
+    def convert(self, key):
+        legacy = self.prefix+q3.asset_name(key)+'.png'
+        filename = self.library.convert(legacy, self.game.read(key), key)
+        self.converted[legacy] = filename
+        return filename
+
+    def resolve(self, shader):
+        filename, warnings, settings = super().resolve(shader)
+        target = self.shaders.get(q3.shader_key(shader), {}).get('target', q3.key_name(shader))
+        if target == '$whiteimage':
+            legacy = self.prefix+q3.asset_name(target)+'.png'
+            self.converted[legacy] = self.library.convert(legacy, None, target)
+        filename = self.converted.get(filename, filename)
+        self.cache[shader] = filename, warnings, settings
+        self.results[shader].update(texture=filename,
+            status='resolved' if (self.output/filename).is_file() else 'unresolved')
+        return self.cache[shader]
+
+
+class TextureLibrary:
+    """Keep source-identical images shared, and retire only provably generated PNGs."""
+    def __init__(self, root, games):
+        self.output = root/'textures'
+        self.output.mkdir(parents=True, exist_ok=True)
+        self.manifest = root/'texture-manifest.json'
+        self.generated = json.loads(self.manifest.read_text()) if self.manifest.is_file() else {}
+        # A manifest is local state, never authority to remove arbitrary paths.
+        self.generated = {n:h for n,h in self.generated.items()
+                          if Path(n).name == n and n.endswith('.png') and re.fullmatch(r'[0-9a-f]{64}', str(h))}
+        self.images = {}
+        self.names, self.sources = {}, {}
+        for game in games:
+            for name, asset in game.assets.items():
+                if PurePosixPath(name).suffix in IMAGE_EXTS:
+                    self.sources.setdefault(asset['content_id'], []).append((name, asset))
+        self.before = len(list(self.output.glob('*.png')))
+
+    def convert(self, legacy, raw, source_path):
+        digest = hashlib.sha256(raw if raw is not None else b'RTCW $whiteimage').hexdigest()
+        if digest not in self.names:
+            smallest = q3.key_name(source_path)
+            if raw is not None:
+                identity = f'{zlib.crc32(raw):08x}:{len(raw)}'
+                # CRC/size only narrows candidates; SHA256 proves sharing. Loose
+                # images have no ZIP identity and must also be considered.
+                candidates = self.sources.get(identity, [])+self.sources.get(None, [])
+                for name, asset in sorted(candidates, key=lambda row:row[0]):
+                    if name >= smallest: break
+                    try: matches = hashlib.sha256(asset['read']()).hexdigest() == digest
+                    except (OSError, ValueError, zipfile.BadZipFile): continue
+                    if matches:
+                        smallest = name
+                        break
+            self.names[digest] = q3.asset_name(smallest).rsplit('__',1)[0]+'__'+digest[:12]+'.png'
+        filename = self.names[digest]
+        png = None
+        if digest not in self.images or not (self.output/filename).exists():
+            if raw is None:
+                image = Image.new('RGBA',(1,1),'white')
+            else:
+                with Image.open(io.BytesIO(raw)) as source: image = source.convert('RGBA')
+            encoded = io.BytesIO();image.save(encoded, 'PNG')
+            png = encoded.getvalue()
+            self.images[digest] = hashlib.sha256(png).hexdigest()
+        baseline = self.images[digest]
+        for previous in (legacy, 'image_'+digest+'.png'):
+            old = self.output/previous
+            if old.is_file():
+                original = self.generated.setdefault(previous, baseline)
+                if hashlib.sha256(old.read_bytes()).hexdigest() != original:
+                    return previous  # Preserve edited material bytes and assignments.
+        self.generated.setdefault(filename, baseline)
+        if not (self.output/filename).exists(): (self.output/filename).write_bytes(png)
+        return filename
+
+    def finish(self, used):
+        removed = []
+        for name, baseline in list(self.generated.items()):
+            path = self.output/name
+            if name not in used and path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == baseline:
+                path.unlink();removed.append(name)
+            if not path.exists(): del self.generated[name]
+        q3.json_write(self.manifest, self.generated)
+        files = sorted(p.name for p in self.output.glob('*.png'))
+        groups = {}
+        for name in files:
+            groups.setdefault(hashlib.sha256((self.output/name).read_bytes()).hexdigest(), []).append(name)
+        return dict(before=self.before, after=len(files), referenced=len(set(files)&used),
+                    retained_unreferenced=sorted(set(files)-used), removed=sorted(removed),
+                    duplicate_groups=[names for names in groups.values() if len(names)>1])
+
+
 def idle_pose(game, folder):
     name = folder+'/wolfanim.cfg'
     if name not in game.assets:
@@ -596,10 +698,13 @@ def import_catalog(install, output, model_filter=None):
     output = Path(output)
     (output/'model_json').mkdir(parents=True,exist_ok=True)
     catalog, results, sections, skin_results, texture_results = [], [], {}, [], []
+    games = {section:Game(install,section) for section in SECTIONS}
+    library = TextureLibrary(output, games.values())
+    used_textures = set()
     sp_appearances = {}
     for section,label in SECTIONS.items():
-        game = Game(install,section)
-        resolver = Textures(game,output/'textures')
+        game = games[section]
+        resolver = CatalogTextures(game,library)
         seen, selected_skins, selected_shaders = {}, set(), set()
         for spec in model_specs(game):
             name = spec['source']
@@ -645,6 +750,7 @@ def import_catalog(install, output, model_filter=None):
                     continue
                 seen[digest] = ident
                 q3.json_write(output/'model_json'/(ident+'.json'),data)
+                used_textures.update(data['material_textures'])
                 item.update(texture_name=data['material_textures'][0],warnings=data['warnings'])
                 row.update(status='ready',metadata=metadata,triangles=len(data['indices'])//3)
             except (OSError,ValueError,zipfile.BadZipFile,struct.error) as exc:
@@ -690,6 +796,9 @@ def import_catalog(install, output, model_filter=None):
         skin_file_status=dict(Counter(r['status'] for r in skin_results)),
         unresolved_skin_reasons=dict(Counter(w for r in texture_results if r['status']=='unresolved' for w in r['warnings'])))
     q3.json_write(output/'catalog.json',catalog)
+    report['texture_library'] = library.finish(used_textures)
+    for record in texture_results:
+        record['catalog_used'] = record['texture'] in used_textures
     q3.json_write(output/'import-report.json',report)
     return report
 
