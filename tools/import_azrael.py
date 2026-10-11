@@ -4,10 +4,12 @@ python tools/import_azrael.py --install "C:/Program Files (x86)/GOG Galaxy/Games
 
 CD entries are read on demand, never extracted. The CD, scene, image and ANI
 readers are also usable by map importers. Characters use their ANI resting pose;
-other rigs use their earliest key time. Existing PNG edits survive.
+other rigs use their earliest key time. ANI clips (or a rig's key range) are baked
+into animations/*.json.gz for GLB export. Existing PNG edits survive.
 """
 import argparse
 from collections import Counter, defaultdict
+import gzip
 import hashlib
 import json
 import math
@@ -740,6 +742,45 @@ def build_model(scene, textures, world_matrices=None):
     return result
 
 
+# R.EXE has no animation clock: the character move callback (0x229a4) adds one
+# frame per scene pass, so playback speed followed the machine. 18.2 fps (the
+# BIOS tick, about the original frame rate) is a nominal choice, not a measured one.
+CLIP_FPS = 18.2
+MAX_CLIP_FLOATS = 12_000_000
+
+
+def bake_clips(scene, slots, source, aliases, anis, vertex_count):
+    """Vertex frames at each integer key time, for GLB morph clips.
+
+    Characters use their ANI frame ranges (a range shared by two ANIs is listed
+    once); other rigs get one clip over their whole key range. Clips hold their
+    last frame: R.EXE's per-state wrapping is not established.
+    """
+    ranges = {}
+    for ani in anis:
+        if ani['status'] == 'ready' and ani['alias'] in aliases:
+            for clip, (start, end) in ani['data']['clips'].get(Path(source).name, {}).items():
+                ranges.setdefault((round(start), round(end)), clip)
+    if not aliases:
+        times = [key[0] for a in scene['animations'] for kind in ('rotate_keys', 'position_keys', 'scale_keys') for key in a.get(kind, [])]
+        if times and max(times) > min(times):
+            ranges[(math.floor(min(times)), math.ceil(max(times)))] = 'Keys'
+    if sum(end - start + 1 for start, end in ranges) * vertex_count > MAX_CLIP_FLOATS:
+        raise ValueError('Animation exceeds 12 million baked vertex floats')
+    clips, names = [], Counter()
+    for (start, end), name in sorted(ranges.items()):
+        names[name] += 1
+        frames = []
+        for frame in range(start, end + 1):
+            vertices = build_model(scene, slots, evaluate_world_matrices(scene, frame))['vertices']
+            if len(vertices) != vertex_count:
+                raise ValueError('Animated frame changes the vertex count')
+            frames.append(dict(vertices=[round(v, 4) for v in vertices]))
+        clips.append(dict(name=name if names[name] == 1 else f'{name} {start}-{end}', fps=CLIP_FPS, frames=frames,
+                          start=start, end=end, loop=False, interpolation='LINEAR'))
+    return clips
+
+
 def inventory(install):
     """Metadata-only catalog planning; no texture decoding or model output."""
     game, cd = read_install(install)
@@ -795,7 +836,7 @@ def inventory(install):
 def import_catalog(install, output, model_filter=None):
     cd, rows, anis, rooms = inventory(install)
     output = Path(output)
-    for folder in ('textures', 'model_json'):
+    for folder in ('textures', 'model_json', 'animations'):
         (output / folder).mkdir(parents=True, exist_ok=True)
     catalog, seen, texture_rows = [], {}, []
     for row in sorted(rows, key=lambda r: (r.get('category') != 'Characters', r['source'])):
@@ -851,7 +892,14 @@ def import_catalog(install, output, model_filter=None):
                         Image.new('RGBA', (1, 1), rgba).save(target)
                     slots[mat_name] = png
             data = build_model(scene, slots, worlds)
-            model = 'azrael_' + safe(Path(name).stem) + '_' + hashlib.sha256(name.encode()).hexdigest()[:8]
+            try:
+                clips = bake_clips(scene, slots, name, row['aliases'], anis, len(data['vertices']))
+                animation_status = f'{len(clips)} clip{"s" * (len(clips) != 1)} baked at integer frames, nominal {CLIP_FPS} fps' if clips else 'static'
+            except (ValueError, OverflowError) as exc:
+                clips, animation_status = [], f'static: {exc}'
+            data['metadata']['animation'] = dict(status=animation_status, fps=CLIP_FPS,
+                                                 clips=[dict(name=c['name'], start=c['start'], end=c['end']) for c in clips])
+            model ='azrael_' + safe(Path(name).stem) + '_' + hashlib.sha256(name.encode()).hexdigest()[:8]
             alias_list = row['aliases']
             title = canonical_alias(name, alias_list)
             item = dict(model_name=model, display_name=title + (' (' + ', '.join(a for a in alias_list if a != title) + ')' if len(alias_list) > 1 else ''),
@@ -860,6 +908,12 @@ def import_catalog(install, output, model_filter=None):
             data['metadata'].update(source=name, aliases=alias_list, pose=pose,
                 ani=[a for a in anis if a['status'] == 'ready' and Path(name).name in a['data']['files']])
             (output / 'model_json' / (model + '.json')).write_text(json.dumps(data, separators=(',', ':'), allow_nan=False), encoding='utf-8')
+            animation = output / 'animations' / (model + '.json.gz')
+            if clips:
+                with gzip.open(animation, 'wt', encoding='utf-8') as stream:
+                    json.dump(dict(animation_clips=clips, animation_status=animation_status), stream, separators=(',', ':'), allow_nan=False)
+            else:
+                animation.unlink(missing_ok=True)
             seen[identity] = item
             catalog.append(item)
             row.update(status='ready', model=model, triangles=len(data['indices']) // 3, omitted_faces=data['metadata']['omitted_faces'])

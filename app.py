@@ -959,7 +959,8 @@ def export_glb(model_name):
     overrides = material_overrides()
     try:
         preview = load_model_data(path, request.args.get('texture'), overrides)
-        cache = app_local_data_dir / 'animations' / game / (model_name+'.json.gz')
+        # Azrael bakes its clips at import, beside the models.
+        cache = (pack_dirs[game] / 'animations' if game == 'azrael' else app_local_data_dir / 'animations' / game) / (model_name+'.json.gz')
         if cache.is_file() and game != 't2':
             with gzip.open(cache, 'rt', encoding='utf-8') as stream:
                 data = json.load(stream)
