@@ -418,7 +418,11 @@ def decode_res(record, name=''):
         raise ValueError('RES pixel outside palette')
     image = Image.frombytes('P', (record['stride'], record['height']), bytes(pixels))
     image.putpalette(bytes(c for i, c in enumerate(palette) if i % 4 != 3))
-    alpha = bytes(0 if '#' in name and palette[i:i + 3] == b'\xff\0\xff' else 255 for i in range(0, len(palette), 4))
+    # '#' textures key magenta. Some paint it as ff08ff (Baptistery glass, 224k texels corpus-wide) next to an unused
+    # ff00ff entry; the game's 8-bit device folds those onto its key colour, so keying allows 8 per channel.
+    # ponytail: tolerance fitted to the corpus survey, not read from R.EXE; purple fringes (e.g. e718e7) stay opaque.
+    alpha = bytes(0 if '#' in name and max(255 - palette[i], palette[i + 1], 255 - palette[i + 2]) <= 8 else 255
+                  for i in range(0, len(palette), 4))
     image.info['transparency'] = alpha
     return image.convert('RGBA').crop((0, 0, record['width'], record['height']))
 

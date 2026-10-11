@@ -271,6 +271,10 @@ class AzraelTest(unittest.TestCase):
         image = decode_res(records[0], 'test#.gif')
         self.assertEqual([image.getpixel((x,y)) for y in range(2) for x in range(2)], [(255,0,0,255),(255,0,255,0),(255,0,255,0),(255,0,0,255)])
         self.assertEqual(decode_res(records[0], 'opaque.gif').getpixel((1,0)), (255,0,255,255))
+        # Near-magenta ff08ff keys too (Baptistery glass); a purple fringe like ff18ff stays opaque.
+        for green, alpha in ((8, 0), (24, 255)):
+            near = bytearray(res()); near[69] = green
+            self.assertEqual(decode_res(next(res_records(near)), 'test#.gif').getpixel((1,0))[3], alpha)
         padded = bytearray(res())
         struct.pack_into('<I', padded, 4, 1)
         self.assertEqual(decode_res(next(res_records(padded))).size, (1,2))
