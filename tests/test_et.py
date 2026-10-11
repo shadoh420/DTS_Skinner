@@ -66,6 +66,25 @@ def install(root):
 
 
 class ETTests(unittest.TestCase):
+    def test_leading_slash_images_share_catalog_texture_without_aliasing_shaders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            pk3(root/'pak0.pk3',[
+                ('models/test/grenade.tga',image_bytes()),
+                ('scripts/test.shader',b'alias { implicitMap /models/test/grenade.tga }')])
+            game=et.Game(root);library=et.rtcw.TextureLibrary(root/'out',[game])
+            textures=et.CatalogTextures(game,library)
+            names=set()
+            for ref in ('models/test/grenade','/models/test/grenade','/models/test/grenade.tga',r'\models\test\grenade.tga','alias'):
+                filename,warnings,_=textures.resolve(ref);names.add(filename)
+                self.assertEqual(textures.results[ref]['status'],'resolved',warnings)
+            self.assertEqual(len(names),1)
+            self.assertEqual(len(list(library.output.glob('*.png'))),1)
+            textures.resolve('/alias')  # FS normalization does not rename shaders.
+            self.assertEqual(textures.results['/alias']['status'],'unresolved')
+            with self.assertRaisesRegex(ValueError,'Invalid RTCW asset path'):
+                game.read('/models/test/grenade.tga')  # Strict archive API stays strict.
+
     def test_mdx_mdm_weights_tags_and_malformed_bounds(self):
         skeleton=et.read_mdx(mdx(),1);mesh=et.read_mdm(mdm(),skeleton)
         self.assertEqual(skeleton['frame_count'],2)

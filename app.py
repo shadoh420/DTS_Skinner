@@ -266,6 +266,7 @@ def et_maps_viewer():
     text = text.replace('<button id="reset">', '<label><input id="built" type="checkbox"> Show finished constructibles</label>\n    <button id="reset">')
     text = text.replace('Imports Single player and Multiplayer maps from your RTCW Main folder, with each section’s pk3 overrides.', 'Imports ET maps from your etmain folder, including map-start and finished construction states.')
     text = text.replace('Fog and AI characters are not drawn.', 'Fog is not drawn. Constructibles start as spawned; the checkbox shows final construction stages (Axis for unowned, mutually exclusive team builds). Later script movement and damage effects are not simulated.')
+    text = text.replace('Lighting follows the classic renderer and your local settings, subject to retail game comparison.', 'Lighting targets this PC’s measured retail ET 2.60b result: no hardware gamma, texture gamma from local settings (default 1.3), and no final display ramp. A machine with working hardware gamma uses the display ramp instead.')
     response = app.response_class(text, mimetype='text/html')
     response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
     return response

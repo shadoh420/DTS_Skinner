@@ -48,8 +48,11 @@ class Game(et.Game):
         self.shader_label={n:self.assets[p]['source'] for n,(_,_,p) in self.definitions.items()}
         self.outside,self.images,self.described,self.models=set(),{},{},{}
         self.lighting=base.lighting_profile(install,'et',self,directory='etmain',
-            configs=('default.cfg','etconfig.cfg','autoexec.cfg'),defaults=dict(r_gamma=1.3,r_texturemode='GL_LINEAR_MIPMAP_NEAREST',r_drawfoliage=1))
-        self.lighting['source']='ET classic renderer rules; installed etconfig.cfg, not Legacy profile/video settings; retail gamma ramp requires comparison'
+            configs=('default.cfg','etconfig.cfg','autoexec.cfg'),defaults=dict(r_gamma=1.3,r_texturemode='GL_LINEAR_MIPMAP_NEAREST',r_drawfoliage=1),
+            device_supports_gamma=False)
+        # Retail 2.60b captures on the target PC confirm the texture-gamma path
+        # even with r_ignorehwgamma=0: its display cannot supply a gamma ramp.
+        self.lighting['source']='ET classic renderer, no hardware gamma on the measured retail 2.60b PC; gamma baked into texture uploads, no display ramp'
         self.built=False;self.remaps={}
 
 

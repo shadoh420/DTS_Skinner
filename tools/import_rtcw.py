@@ -32,6 +32,9 @@ IMAGE_EXTS = ('.tga','.jpg','.jpeg','.png','.pcx','.bmp')
 
 def image_candidates(target):
     target = q3.key_name(target)
+    # RTCW/ET FS_FOpenFileRead accepts one leading separator in image qpaths.
+    # Keep shader names and archive member validation separate from this rule.
+    target = target.removeprefix('/')
     stem = q3.shader_key(target)  # Same-stem fallback also handles stale .psd references.
     return ([target] if PurePosixPath(target).suffix in IMAGE_EXTS else []) + [stem+ext for ext in IMAGE_EXTS]
 

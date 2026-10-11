@@ -41,6 +41,56 @@ manager { spawn { wait 50
 
 
 class ETMapTests(unittest.TestCase):
+    def test_measured_no_hardware_gamma_upload_path_and_rtcw_default_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);raw=io.BytesIO()
+            Image.new('RGBA',(4,4),(64,128,192,255)).save(raw,'TGA')
+            pk3(root/'pak0.pk3',[('textures/test/wall.tga',raw.getvalue())])
+            game=et.Game(root);profile=game.lighting
+            self.assertEqual(profile['cvars']['r_ignorehwgamma'],0)
+            self.assertEqual(profile['gamma'],1.3)
+            self.assertFalse(profile['hardwareGamma'])
+            self.assertEqual([profile[k] for k in ('overbrightBits','identityLight','lightScale','displayScale','displayGamma')],[0,1,4,1,1])
+            textures=et.base.Textures(root/'textures',game)
+            baked=textures.resolve(game,'textures/test/wall.tga')
+            with Image.open(textures.output/baked) as im:
+                self.assertEqual(im.size,(2,2))
+                self.assertEqual(im.getpixel((0,0)),(88,150,205,255))
+            # Unchanged non-mipmapped uploads bypass gamma; picmipped ones don't.
+            textures.mipmap=False;textures.picmip=False
+            unscaled=textures.resolve(game,'textures/test/wall.tga')
+            with Image.open(textures.output/unscaled) as im:self.assertEqual(im.getpixel((0,0)),(64,128,192,255))
+            textures.picmip=True
+            with Image.open(textures.output/textures.resolve(game,'textures/test/wall.tga')) as im:
+                self.assertEqual(im.getpixel((0,0)),(88,150,205,255))
+            Image.new('RGBA',(4,4),(64,128,192,77)).save(textures.output/'alpha.png')
+            with Image.open(textures.output/textures.process('alpha.png',mipmap=True,picmip=False)) as im:
+                self.assertEqual(im.getpixel((0,0)),(88,150,205,77))
+            # RTCW callers retain their requested working-ramp assumption.
+            ramp=et.base.lighting_profile(root,'sp',game,defaults=dict(r_gamma=1.3,r_overbrightbits=2))
+            self.assertTrue(ramp['hardwareGamma']);self.assertEqual(ramp['displayGamma'],1.3)
+            self.assertEqual(ramp['overbrightBits'],2)
+            disabled=et.base.lighting_profile(root,'et',game,defaults=dict(r_gamma=1.3,r_overbrightbits=2),device_supports_gamma=False)
+            self.assertEqual(disabled['overbrightBits'],0)
+            game.lighting=ramp;textures.mipmap=True
+            hardware=textures.resolve(game,'textures/test/wall.tga')
+            self.assertNotEqual(hardware,baked)  # Re-import cannot reuse old processed pixels.
+            with Image.open(textures.output/hardware) as im:self.assertEqual(im.getpixel((0,0)),(64,128,192,255))
+
+    def test_leading_slash_world_and_placed_model_images(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            pk3(root/'pak0.pk3',[
+                ('models/test/grenade.tga',image_bytes()),
+                ('scripts/test.shader',b'alias { { map /models/test/grenade.tga } }')])
+            game=et.Game(root);world=et.base.Textures(root/'textures',game);models=et.ModelTextures(game,world.output)
+            for ref in ('/models/test/grenade','/models/test/grenade.tga',r'\models\test\grenade.tga'):
+                filename=world.resolve(game,ref);self.assertTrue((world.output/filename).is_file())
+                filename,warnings,_=models.resolve(ref)
+                self.assertEqual(models.results[ref]['status'],'resolved',warnings)
+            material,missing,_=et.describe(game,'alias',world)
+            self.assertFalse(missing);self.assertTrue((world.output/material['stages'][0]['map']).is_file())
+
     def test_spawn_constructible_final_stage_linked_entities_and_exclusions(self):
         things=[dict(classname='worldspawn'),dict(classname='func_constructible',model='*1',scriptname='bridge',targetname='bridge',spawnflags='4',constages='stage1;'),
             dict(classname='misc_gamemodel',targetname='pile'),dict(classname='misc_mg42',targetname='gun',scriptname='gun'),
@@ -183,6 +233,8 @@ class ETMapTests(unittest.TestCase):
                 client=app.test_client();r=client.post('/import_et_maps',json={'game':str(root)})
                 self.assertEqual(r.status_code,200,r.json);self.assertEqual(r.json['imported'],['test']);self.assertIn('bad',r.json['failed'])
                 page=client.get('/maps/et/').get_data(as_text=True);self.assertIn('id="built"',page);self.assertIn('/static/et-maps/viewer.js',page)
+                self.assertIn('no hardware gamma',page);self.assertIn('working hardware gamma',page)
+                self.assertNotIn('no hardware gamma',client.get('/maps/rtcw/').get_data(as_text=True))
                 self.assertNotIn('id="built"',client.get('/maps/rtcw/').get_data(as_text=True))
                 self.assertEqual(client.post('/import_et_maps',json={'game':str(root)},headers={'Origin':'https://outside'}).status_code,403)
                 self.assertEqual(client.get('/et-map-data/../../app.py').status_code,404)

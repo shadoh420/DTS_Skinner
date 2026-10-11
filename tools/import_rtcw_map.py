@@ -85,7 +85,7 @@ def scale(entity):
     return values
 
 
-def lighting_profile(install, section, game=None, *, directory='Main', configs=('default.cfg','wolfconfig.cfg','autoexec.cfg'), defaults=None):
+def lighting_profile(install, section, game=None, *, directory='Main', configs=('default.cfg','wolfconfig.cfg','autoexec.cfg'), defaults=None, device_supports_gamma=True):
     """Classic renderer defaults, then bounded config values; never execute cfg commands."""
     values = dict(r_gamma=1, r_intensity=1, r_mapoverbrightbits=2, r_overbrightbits=0,
                   r_ignorehwgamma=0, r_picmip=1, r_fullscreen=1, r_colorbits=32,
@@ -114,7 +114,7 @@ def lighting_profile(install, section, game=None, *, directory='Main', configs=(
                     if math.isfinite(value): values[key] = value
                 except ValueError: pass
     gamma = min(3,max(.5,values['r_gamma']))
-    hardware = not values['r_ignorehwgamma']  # Assumes a working desktop ramp if requested.
+    hardware = device_supports_gamma and not values['r_ignorehwgamma']
     bits = min(2 if values['r_colorbits'] > 16 else 1,max(0,int(values['r_overbrightbits']))) if hardware and values['r_fullscreen'] else 0
     return dict(cvars=values,sources=sources,gamma=gamma,intensity=max(1,values['r_intensity']),
                 hardwareGamma=hardware,overbrightBits=bits,identityLight=1/(2**bits),
