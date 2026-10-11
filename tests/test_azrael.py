@@ -1,6 +1,7 @@
 """Synthetic fixtures; bounded retail smoke checks opt in with AZRAEL_INSTALL_TESTS=1."""
 import io
 import copy
+import gzip
 import json
 import math
 import os
@@ -349,7 +350,15 @@ class AzraelTest(unittest.TestCase):
                 client=server.app.test_client()
                 response=client.get('/export_glb/'+catalog[0]['model_name']+'?game=azrael')
                 self.assertEqual(response.status_code,200)
-                self.assertEqual(response.headers['X-Skinner-Animation-Status'],'static')
+                self.assertIn('2 clips baked',response.headers['X-Skinner-Animation-Status'])
+                size=struct.unpack_from('<I',response.data,12)[0]
+                self.assertEqual([a['name'] for a in json.loads(response.data[20:20+size])['animations']],['REST','WALK'])
+                with gzip.open(output/'animations'/(catalog[0]['model_name']+'.json.gz'),'rt') as stream:
+                    rest=json.load(stream)['animation_clips'][0]
+                self.assertEqual(len(rest['frames']),3)  # REST 2-4, one frame per key unit
+                self.assertNotEqual(rest['frames'][0]['vertices'],rest['frames'][2]['vertices'])
+                response=client.get('/export_glb/'+catalog[1]['model_name']+'?game=azrael')
+                self.assertEqual(response.headers['X-Skinner-Animation-Clips'],'1')  # other rig: its key range
                 response=client.get('/export_obj/'+catalog[0]['model_name']+'?game=azrael')
                 self.assertEqual(response.status_code,200)
                 with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
