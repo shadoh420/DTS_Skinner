@@ -45,6 +45,7 @@ from tools.import_quake2_map import import_maps as import_quake2_maps
 from tools.import_daikatana_map import import_maps as import_daikatana_maps
 from tools.import_anachronox_map import import_maps as import_anachronox_maps
 from tools.import_sin_map import import_maps as import_sin_maps
+from tools.import_redbaron_map import import_maps as import_redbaron_maps
 from tools.import_unreal_map import import_maps as import_unreal_maps
 
 # --- System Tray Imports ---
@@ -324,6 +325,36 @@ def import_daikatana_maps_route():
     try:
         return jsonify(import_daikatana_maps(payload['path'].strip(), local_data_dir / 'daikatana-maps',
                                          payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/rb3d/')
+def redbaron_maps_viewer():
+    response = send_from_directory(static_dir / 'rb3d-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/rb3d-map-data/<path:filename>')
+def redbaron_map_data(filename):
+    return send_from_directory(local_data_dir / 'rb3d-maps', filename)
+
+
+@app.route('/import_rb3d_maps', methods=['POST'])
+def import_redbaron_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
+        return jsonify(error='Enter your Red Baron 3D folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_redbaron_maps(payload['game'].strip(), local_data_dir / 'rb3d-maps',
+                                           payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:

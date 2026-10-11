@@ -3,7 +3,9 @@
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
-  const storageKey = 'skinner.t1maps';
+  // RB3D supplies only its pack/streaming adapter; the T1 path keeps its defaults.
+  const adapter = window.rb3dMaps;
+  const storageKey = adapter ? 'skinner.rb3dmaps' : 'skinner.t1maps';
   const settings = {fov: 90, fog: true, weather: true, lights: true, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
@@ -14,7 +16,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 1, .2, 9000);
   camera.rotation.order = 'YXZ';
-  const data = '/t1-map-data/';
+  let data = adapter ? '/rb3d-map-data/' : '/t1-map-data/';
+  let streamFrame = null;
   let speed = 40, missing = 0, ready = false, map = null, mapId = '';
   const showStatus = text => { $('status').textContent = text; };
   const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing assets` : 'Map ready'} · speed ${Math.round(speed)}`);
@@ -478,7 +481,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       // Some missions set haze beyond the visible distance: no haze band, just the far limit.
       const visible = map.terrain.visibleDistance;
       scene.fog = settings.fog ? new THREE.Fog(haze, Math.min(map.terrain.hazeDistance, visible - 1), visible) : null;
-      camera.far = settings.fog ? map.terrain.visibleDistance : 9000;
+      camera.far = settings.fog ? map.terrain.visibleDistance : (adapter ? 25000 : 9000);
     }
     camera.updateProjectionMatrix();
   }
@@ -534,6 +537,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
     sky.position.copy(camera.position);
     if (weather) weather(delta);
+    if (streamFrame) streamFrame(delta);
     renderer.render(scene, camera);
     if (flare) flare(canvas.clientWidth, canvas.clientHeight);
     if (flare && overlay.visible) {
@@ -546,11 +550,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   $('import').addEventListener('click', async () => {
     const game = $('gamePath').value.trim();
-    if (!game) { $('importStatus').textContent = 'Enter your Tribes folder.'; return; }
+    if (!game) { $('importStatus').textContent = adapter ? 'Enter your Red Baron 3D folder.' : 'Enter your Tribes folder.'; return; }
     $('import').disabled = true;
     $('importStatus').textContent = 'Importing maps… a full install can take a few minutes.';
     try {
-      const response = await fetch('/import_t1_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      const response = await fetch(adapter ? '/import_rb3d_maps' : '/import_t1_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({game, missions: $('missionPath').value.trim(), replace: $('replace').checked})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Import failed');
@@ -558,6 +562,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       const failed = Object.entries(result.failed).map(([name, reason]) => `${name}: ${reason}`);
       $('importStatus').textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length} already imported` +
         (failed.length ? `, failed ${failed.length} (${failed.join('; ')})` : '') + '.';
+      if (adapter && result.imported.length && failed.length) {
+        const link = document.createElement('a');
+        link.href = '?map=' + encodeURIComponent(result.imported[0]);
+        link.textContent = ' Open imported maps';
+        $('importStatus').append(link);
+      }
       if (result.imported.length && !failed.length) location.search = '?map=' + encodeURIComponent(result.imported[0].toLowerCase().replace(/[^a-z0-9_-]/g, '_'));
     } catch (error) { $('importStatus').textContent = error.message; }
     finally { $('import').disabled = false; }
@@ -572,9 +582,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === 'raindance') || maps[0]).id;
     $('map').replaceChildren(...maps.map(item => new Option(item.type ? `${item.name} · ${item.type}` : item.name, item.id)));
     $('map').value = mapId;
+    const entry = maps.find(item => item.id === mapId);
+    if (adapter && entry.error) throw new Error(entry.error + '. See the import report.');
+    if (adapter && entry.pack) data += entry.pack + '/';
     map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
-    document.title = `${map.mission} — T1 Maps`;
+    document.title = `${map.mission} — ${adapter ? 'Red Baron 3D Maps' : 'T1 Maps'}`;
     scene.background = haze.set(`rgb(${map.haze.join(',')})`);
+    if (adapter) {
+      applySettings();
+      showViewpoint(0);
+      streamFrame = await adapter.start({scene, camera, map, data, get, loadTexture, showStatus});
+      $('notes').textContent = [map.briefing || '', ...map.warnings].filter(Boolean).join('\n\n');
+      ready = true;
+      showReady();
+      return;
+    }
     // Packs imported before the sky and its objects were added lack these keys.
     const radius = map.terrain.visibleDistance * 1.05;
     if (map.sky) await buildSky(map.sky, map.terrain.visibleDistance);

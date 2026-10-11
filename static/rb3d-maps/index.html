@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — Red Baron 3D Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <link rel="stylesheet" href="/static/rb3d-maps/style.css">
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/rb3d-maps/stream.js"></script>
+  <script defer src="/static/t1-maps/viewer.js"></script>
+</head>
+<body>
+  <header><a href="/">← Models</a><strong>Red Baron 3D Maps</strong>
+    <select id="map" aria-label="Map or mission"></select>
+    <select id="region" aria-label="Terrain region"></select>
+    <select id="jump" aria-label="Jump to a landmark"></select>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="110" value="90"></label>
+    <label><input id="fog" type="checkbox" checked> Preview haze</label>
+    <input id="weather" type="checkbox" hidden><input id="lights" type="checkbox" hidden>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+    <details id="importPanel"><summary>Import maps</summary>
+      <div class="import">
+        <label>Red Baron 3D folder <input id="gamePath" placeholder="C:\Games\Red Baron 3D"></label>
+        <input id="missionPath" hidden>
+        <label><input id="replace" type="checkbox"> Re-import terrain and missions</label>
+        <button id="import">Import</button>
+        <span id="importStatus" role="status">Imports the five terrains and Single missions. The game folder is only read.</span>
+      </div>
+    </details>
+    <a href="/rb3d-map-data/report.json" target="_blank" rel="noopener">Import report</a>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading map…</span><span id="streamStatus" role="status"></span>
+    <span>Summer · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release</span>
+    <details open><summary>Preview notes</summary><span id="notes">Experimental terrain preview. Mission starts, formation spacing, ground state and game lighting still need comparison with the game.</span></details>
+  </footer>
+</body>
+</html>
