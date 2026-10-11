@@ -188,11 +188,12 @@ def read_install(install):
 TOKEN = re.compile(r'\s+|[,;]|//[^\n]*|/\*.*?\*/|"[^"\x00]*"|[{}]|[^\s,;{}"]+', re.S)
 
 
-def parse_xaf(data):
+def parse_xaf(data, *, allow_identical_materials=False):
     """Keep hierarchy and keys; face pairs are vertex/normal, UVs per vertex.
 
     Confirmed by R.EXE's sequential UV setter loop at 0x298a0..0x298d6 and
-    0x478bc, plus Lurka's normal indices exceeding its UV count.
+    0x478bc, plus Lurka's normal indices exceeding its UV count. Maps may opt
+    into repeated identical declarations (ENTRY_D declares 1ROPE twice).
     """
     if len(data) > MAX_BYTES:
         raise ValueError('XAF exceeds bounded read limit')
@@ -317,7 +318,7 @@ def parse_xaf(data):
         if key == 'material':
             if name is None:
                 raise ValueError('Unnamed XAF material')
-            if name in materials:
+            if name in materials and not allow_identical_materials:
                 raise ValueError('Duplicate XAF material: ' + str(name))
             mat = dict(colour=[1., 1., 1., 1.], texture=None, specular=[])
             for k, _, v in fields(body):
@@ -330,6 +331,8 @@ def parse_xaf(data):
                     mat[k] = [x[0] for x in mat[k]]
             if len(mat['colour']) != 4 or any(not 0 <= x <= 1 for x in mat['colour']):
                 raise ValueError('Invalid XAF colour')
+            if name in materials and materials[name] != mat:
+                raise ValueError('Conflicting XAF material: ' + str(name))
             materials[name] = mat
         elif key == 'object':
             objects.append(obj(name, body))

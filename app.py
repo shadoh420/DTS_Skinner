@@ -46,6 +46,7 @@ from tools.import_quake2_map import import_maps as import_quake2_maps
 from tools.import_daikatana_map import import_maps as import_daikatana_maps
 from tools.import_anachronox_map import import_maps as import_anachronox_maps
 from tools.import_sin_map import import_maps as import_sin_maps
+from tools.import_azrael_map import import_maps as import_azrael_maps
 from tools.import_unreal_map import import_maps as import_unreal_maps
 
 # --- System Tray Imports ---
@@ -327,6 +328,39 @@ def import_daikatana_maps_route():
                                          payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/azrael/')
+def azrael_maps_viewer():
+    response = send_from_directory(static_dir / 'azrael-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/azrael-map-data/<path:filename>')
+def azrael_map_data(filename):
+    return send_from_directory(local_data_dir / 'azrael-maps', filename)
+
+
+@app.route('/import_azrael_maps', methods=['POST'])
+def import_azrael_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json:
+        return jsonify(error='Expected JSON.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error="Enter your Azrael's Tear folder."), 400
+    if payload.get('game', 'azrael') != 'azrael':
+        return jsonify(error="Unknown Azrael's Tear section."), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_azrael_maps(payload['path'].strip(), local_data_dir / 'azrael-maps', payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 400
     finally:
         import_lock.release()
 

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — Azrael's Tear Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/azrael-maps/materials.js"></script>
+  <script defer src="/static/unreal-maps/viewer.js"></script>
+</head>
+<body data-game="azrael">
+  <header><a href="/">← Models</a><strong>Azrael's Tear Maps</strong>
+    <select id="map" aria-label="Room or extra scene"></select><small id="mapSource"></small>
+    <label>FOV (long axis) <input id="fov" aria-label="Field of view along the longer axis" type="number" min="30" max="130" step="0.1" value="77.32"></label>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+    <details id="importPanel"><summary>Import maps</summary>
+      <div class="import">
+        <select id="importGame" aria-label="Game"><option value="azrael">Azrael's Tear</option></select>
+        <label>Game folder <input id="gamePath" placeholder="C:\Program Files (x86)\GOG Galaxy\Games\Azrael's Tear"></label>
+        <label><input id="replace" type="checkbox"> Re-import existing maps</label>
+        <button id="import">Import</button>
+        <span id="importStatus" role="status">Reads the CD image or copied textures from your install.</span>
+        <a href="/azrael-map-data/import-report.json">Import report</a>
+      </div>
+    </details>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading room…</span>
+    <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 arrival views</span>
+    <details><summary>Preview notes</summary><span id="notes">Rooms and unused scenes in free flight, with their own textures and painted lighting. Doors and machinery are held at their initial animation frame. Starts use entry or arrival markers where available; additional characters and live scripts are omitted. Doorway pictures remain pictures. The import report lists unavailable scenes, hidden geometry and how each start was chosen.</span></details>
+  </footer>
+</body>
+</html>
