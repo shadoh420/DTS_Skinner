@@ -624,11 +624,49 @@ def placed_objects(landmark, assets, ancestry=()):
         if child['layout'] in assets.files:
             out.extend(placed_objects(child, assets, ancestry + (name,)))
         else:
-            model = assets.model(child['shape'])
+            # 004FCDA1..004FCDA3: class 08/type 0a never creates a drawable,
+            # even if a matching resource exists. These are simulation objects.
+            no_drawable = child['shape'].startswith('080a80')
+            if no_drawable:
+                model = None
+                assets.report['warnings'].add(child['shape'] + ': native class 08/type 0a has no static drawable')
+            else:
+                model = assets.model(child['shape'])
             out.append(dict(name=landmark.get('name', child['shape']), model=model,
                             matrix=matrix(child['position'], math.radians(child['heading'])),
-                            sourceShape=child['shape'], flags=child['flags']))
+                            sourceShape=child['shape'], flags=child['flags'], nativeNoDrawable=no_drawable))
     return out
+
+
+LANDMARK_TYPES = {0: 'Airfield', 1: 'Town', 2: 'Military depot', 3: 'Rail yard',
+                  4: 'Bridge', 5: 'Factory', 7: 'Village', 8: 'Village'}
+
+
+def landmark_jump(place, objects):
+    """Frame the placed layout from above and behind, looking at its centre.
+
+    Placement extents plus a 100 m margin accommodate buildings around the
+    origin (airfield origins can be in the middle of an empty runway).
+    """
+    points = [o['matrix'][12:15] for o in objects if o['model']]
+    if not points:
+        points = [matrix(place['position'])[12:15]]
+    low = [min(p[i] for p in points) for i in range(3)]
+    high = [max(p[i] for p in points) for i in range(3)]
+    target = [(a + b) / 2 for a, b in zip(low, high)]
+    radius = max(250, math.dist(low, high) / 2 + 100)
+    heading = math.radians(place['heading'])
+    offset = [2 * math.sin(heading), 1.2, -2 * math.cos(heading)]
+    eye = [p + radius * d for p, d in zip(target, offset)]
+    length = math.sqrt(sum(d * d for d in offset))
+    back = [d / length for d in offset]
+    horizontal = math.hypot(back[0], back[2])
+    right = [back[2] / horizontal, 0, -back[0] / horizontal]
+    up = [back[1] * right[2], back[2] * right[0] - back[0] * right[2], -back[1] * right[0]]
+    return dict(name=place['name'], id=place['id'], kind=place['kind'],
+                type=LANDMARK_TYPES.get(place['kind'], f"Landmark type {place['kind']}"),
+                target=target, radius=radius,
+                matrix=[*right, 0, *up, 0, *back, 0, *eye, 1])
 
 
 def terrain_chunk(leaves, assets, path):
@@ -701,7 +739,11 @@ def export_region(path, region, assets):
     places = landmarks(assets.files[lnd_name](), region)
     brigade_name = f'brigade{region}.dat'
     brigades = landmarks(assets.files[brigade_name](), region, 1) if brigade_name in assets.files else []
-    objects = [obj for place in places for obj in placed_objects(place, assets)]
+    objects, jumps = [], []
+    for place in places:
+        placed = placed_objects(place, assets)
+        objects.extend(placed)
+        jumps.append(landmark_jump(place, placed))
     chunks, total, assigned = [], 0, set()
     for number, cell in enumerate(ted.root_cells()):
         x, y, step = cell[:3]
@@ -717,18 +759,13 @@ def export_region(path, region, assets):
     outside = [obj for obj in objects if id(obj) not in assigned]
     if outside:
         assets.report['warnings'].add(f'BARON{region}.TED: {len(outside)} objects outside root cells; retained in region manifest')
-    jumps = []
-    for place in places:
-        pos = list(place['position'])
-        pos[2] += 300 / SCALE
-        jumps.append(dict(name=place['name'], id=place['id'], kind=place['kind'],
-                          matrix=matrix(pos, math.radians(place['heading']), camera=True)))
     centre = [(ted.bounds[0] + ted.bounds[2]) / 2, (ted.bounds[1] + ted.bounds[3]) / 2, 1500 / SCALE]
     result = dict(id=region, name=REGIONS[region], chunks=chunks, jumps=jumps,
                   origin=ORIGINS[region], bounds=ted.bounds,
                   brigades=brigades, outsideObjects=outside,
                   viewpoint=jumps[0]['matrix'] if jumps else matrix(centre, camera=True),
                   counts=dict(squares=total, chunks=len(chunks), landmarks=len(places), objects=len(objects),
+                              nonDrawableObjects=sum(o['nativeNoDrawable'] for o in objects),
                               outsideObjects=len(outside), volumeEntries=len(ted.entries), decodedBlocks=len(ted.blocks)))
     write_json(assets.output / f'regions/{region}/index.json', result)
     return result
@@ -879,6 +916,7 @@ def import_maps(install, output=None, replace=False):
             report['missions'][name] = dict(status='imported', fidelity='incomplete', region=scene['region'],
                                            flights=len(scene['flights']), aircraft=sum('flight' in o for o in scene['objects']),
                                            groundObjects=sum('flight' not in o for o in scene['objects']),
+                                           nonDrawableObjects=sum(o.get('nativeNoDrawable', False) for o in scene['objects']),
                                            scheduledFlights=scene['scheduledFlights'],
                                            missionSource=scene['missionSource'],
                                            unresolvedStateBytes=scene['world']['stateBytes'])

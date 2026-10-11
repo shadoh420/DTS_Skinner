@@ -3,6 +3,7 @@
 Optional bounded install checks: RB3D_INSTALL_TESTS=1, optionally RB3D_INSTALL=...
 """
 import json
+import math
 import os
 from pathlib import Path
 import struct
@@ -84,6 +85,47 @@ def world():
 
 
 class RedBaronMapsTest(unittest.TestCase):
+    def test_native_non_drawable_layout_objects_stay_in_report(self):
+        from unittest.mock import Mock
+        rows = [struct.pack('<BBB4fB', 8, index, variant, 10, 20, 30, 0, 0)
+                for index, variant in ((10, 0), (10, 1), (4, 0))]
+        assets = Mock(files={'lo010000.dat': lambda: table(rows, 20)}, report={'warnings': set()})
+        assets.model.return_value = '08048000.json'
+        objects = rb.placed_objects(dict(name='Front', layout='lo010000.dat', position=[0, 0, 0], heading=0), assets)
+        assets.model.assert_called_once_with('08048000.dts')
+        self.assertEqual([o['model'] for o in objects], [None, None, '08048000.json'])
+        self.assertEqual([o['nativeNoDrawable'] for o in objects], [True, True, False])
+        self.assertEqual(objects[0]['sourceShape'], '080a8000.dts')
+        self.assertTrue(any('080a8000.dts' in warning for warning in assets.report['warnings']))
+        self.assertAlmostEqual(objects[0]['matrix'][14], 160 * rb.SCALE)
+
+    def test_landmark_jump_frames_offset_layout_and_looks_at_it(self):
+        place = dict(name='Test field', id=4, kind=0, position=[0, 0, 0], heading=0)
+        objects = [dict(model='hangar.json', matrix=rb.matrix([x, y, 800]))
+                   for x, y in ((10000, 20000), (30000, 40000))]
+        # Non-drawable simulation objects must not pull the framing off target.
+        objects.append(dict(model=None, matrix=rb.matrix([1e8, 1e8, 800])))
+        for heading in (0, 45, 90, 180, 270):
+            jump = rb.landmark_jump(dict(place, heading=heading), objects)
+            self.assertEqual(jump['type'], 'Airfield')
+            self.assertEqual(jump['target'], [-20000 * rb.SCALE, 800 * rb.SCALE, 30000 * rb.SCALE])
+            m = jump['matrix']
+            delta = [jump['target'][i] - m[12 + i] for i in range(3)]
+            distance = math.sqrt(sum(d * d for d in delta))
+            for i in range(3):
+                self.assertAlmostEqual(-m[8 + i], delta[i] / distance)
+            self.assertGreater(m[13], jump['target'][1] + 300)
+            # Every placement centre fits even within a 60-degree square view.
+            for obj in objects[:2]:
+                offset = [obj['matrix'][12 + i] - m[12 + i] for i in range(3)]
+                depth = -sum(offset[i] * m[8 + i] for i in range(3))
+                for axis in (0, 4):
+                    extent = abs(sum(offset[i] * m[axis + i] for i in range(3)))
+                    self.assertLess(extent, depth * math.tan(math.pi / 6))
+        empty = rb.landmark_jump(dict(place, kind=99), [])
+        self.assertEqual(empty['type'], 'Landmark type 99')
+        self.assertTrue(all(math.isfinite(x) for x in empty['matrix']))
+
     def test_sparse_finer_level_and_hole(self):
         with tempfile.TemporaryDirectory() as temp:
             p = Path(temp, 'sparse.ted')

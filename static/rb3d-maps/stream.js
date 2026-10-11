@@ -12,7 +12,13 @@ window.rb3dMaps = {
       if (!textures.has(name)) textures.set(name, {refs: 0, promise: new Promise((resolve, reject) => {
         new THREE.TextureLoader().load(data + 'textures/' + name, t => {
           t.flipY = false;
-          t.anisotropy = 4;
+          // Point sampling matches the reviewed game capture. Native Glide
+          // uses wrapping and one LOD; see docs/redbaron-maps.md for the
+          // discrepancy between its filter default and the observed result.
+          t.magFilter = t.minFilter = THREE.NearestFilter;
+          t.wrapS = t.wrapT = THREE.RepeatWrapping;
+          t.generateMipmaps = false;
+          t.anisotropy = 1;
           resolve(t);
         }, undefined, reject);
       })});
@@ -45,32 +51,28 @@ window.rb3dMaps = {
       return mat;
     }
     async function object(obj, parent) {
-      let geometry, mesh;
-      if (obj.model) {
-        // Cache only the small JSON fetch while it is in progress. Instances own
-        // their GPU resources, so a jump cannot leave a region resident forever.
-        if (!models.has(obj.model)) {
-          const request = get(data + 'models/' + obj.model).then(r => r.json());
-          models.set(obj.model, request);
-          request.finally(() => models.delete(obj.model)).catch(() => {});
-        }
-        const model = await models.get(obj.model);
-        geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(model.vertices, 3));
-        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(model.uvs, 2));
-        geometry.setIndex(model.indices);
-        const mats = [];
-        // Register resources on the group before awaiting so a failed material
-        // cannot strand previously-created resources.
-        mesh = new THREE.Mesh(geometry, mats);
-        parent.add(mesh);
-        for (const slot of model.groups) geometry.addGroup(slot.start, slot.count, slot.materialIndex);
-        for (const name of model.material_textures) mats.push(await material(name));
-      } else {
-        geometry = new THREE.BoxGeometry(12, 12, 12);
-        mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: 0xff00ff, wireframe: true}));
-        parent.add(mesh);
+      // Native class 08/type 0a has no drawable. Missing resources likewise
+      // remain in the import report, without invented geometry in the scene.
+      if (!obj.model) return;
+      // Cache only the small JSON fetch while it is in progress. Instances own
+      // their GPU resources, so a jump cannot leave a region resident forever.
+      if (!models.has(obj.model)) {
+        const request = get(data + 'models/' + obj.model).then(r => r.json());
+        models.set(obj.model, request);
+        request.finally(() => models.delete(obj.model)).catch(() => {});
       }
+      const model = await models.get(obj.model);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(model.vertices, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(model.uvs, 2));
+      geometry.setIndex(model.indices);
+      const mats = [];
+      // Register resources on the group before awaiting so a failed material
+      // cannot strand previously-created resources.
+      const mesh = new THREE.Mesh(geometry, mats);
+      parent.add(mesh);
+      for (const slot of model.groups) geometry.addGroup(slot.start, slot.count, slot.materialIndex);
+      for (const name of model.material_textures) mats.push(await material(name));
       mesh.matrix.fromArray(obj.matrix);
       mesh.matrixAutoUpdate = false;
       if (obj.player) playerMesh = mesh;
@@ -126,7 +128,10 @@ window.rb3dMaps = {
         const next = await (await get(data + `regions/${id}/index.json`)).json();
         if (token !== generation) return;
         region = next;
-        $('jump').replaceChildren(new Option('Jump to a landmark…', ''), ...region.jumps.map((j, i) => new Option(j.name, String(i))));
+        const types = {0: 'Airfield', 1: 'Town', 2: 'Military depot', 3: 'Rail yard',
+          4: 'Bridge', 5: 'Factory', 7: 'Village', 8: 'Village'};
+        $('jump').replaceChildren(new Option('Jump to a landmark…', ''), ...region.jumps.map((j, i) =>
+          new Option(`${j.name} (${j.type || types[j.kind] || 'Landmark'})`, String(i))));
         if (reset) {
           map.viewpoints[0] = region.viewpoint;
           view(region.viewpoint);
