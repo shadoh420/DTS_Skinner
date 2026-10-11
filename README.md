@@ -12,7 +12,7 @@ Browse, reskin and export models from Tribes, Quake, Unreal, Wolfenstein and a d
 - **Maps:** free-flight previews of each game's levels with their lightmaps, skies, placed props and pickups. Each page's **Preview notes** say what is not drawn.
 - **Reflex editing:** walk Reflex Arena maps with Quake-style movement and edit their brushes with the game's editor keys, then save the `.map`.
 - **Texture workshop:** a large gallery with your own tags, size and hue search, and rotate/flip copies.
-- **Your own families and notes:** sort models into families per game, and keep a note on any model or map (`local-data/notes.json`, readable by scripts and agents).
+- **Your own families and notes:** sort models into families per game, and keep a note on any model or map (`local-data/notes.json`, readable by scripts and agents). Tribes 1's catalog comes sorted the way the game's files group it (Armors, Weapons, InteriorShapes and so on).
 
 Nothing is shipped from the games except the stock Tribes 1 and 2 content in the data ZIP: every other game is imported from your install with its page's **Import** box.
 

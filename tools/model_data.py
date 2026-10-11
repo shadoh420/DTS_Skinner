@@ -43,6 +43,12 @@ def t1_building_names(model_dir):
             for name in json.loads(path.read_text(encoding='utf-8'))['models']}
 
 
+def t1_default_families(model_dir):
+    """The shipped T1 families (tools/sort_t1_families.py --bundle): model name -> family, beside the catalog."""
+    path = pathlib.Path(model_dir).parent / 't1-families.json'
+    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
+
+
 MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'azrael', 'ge')
 _families_lock = threading.Lock()
 

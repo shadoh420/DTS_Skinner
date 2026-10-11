@@ -1,6 +1,9 @@
 """Sort the T1 catalog into families the way the game's own files group them, as the user's families.
 
-python tools/sort_t1_families.py [--game-base C:/realstocktribe/base] [--dry-run]
+python tools/sort_t1_families.py [--game-base C:/realstocktribe/base] [--dry-run] [--bundle]
+
+--bundle writes static/t1-families.json, the families the app ships for T1 (laid over the catalog as its imported
+families); without it the result goes into the user's own families.
 
 Rules, first match wins:
   1. a name with "drop" in it is a Dropship (they are interiors, so this beats rule 3);
@@ -13,6 +16,7 @@ Custom map buildings keep their own family; models the user already moved are le
 in the import's family, listed in the report. Sources are read-only; only local-data/model-families.json is written.
 """
 import argparse
+import json
 from collections import defaultdict
 from pathlib import Path
 import re
@@ -69,6 +73,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('--game-base', default=r'C:\realstocktribe\base', help='Tribes base folder with loose scripts/server/items')
     parser.add_argument('--dry-run', action='store_true', help='print the report without saving families')
+    parser.add_argument('--bundle', action='store_true', help='write the shipped defaults (static/t1-families.json) instead of your families')
     args = parser.parse_args()
     install = Install(args.game_base)
     items = install.base / 'scripts/server/items'
@@ -78,6 +83,12 @@ def main():
     model_dir = ROOT / 'static/model_json'
     names, customs = t1_catalog_names(model_dir), t1_building_names(model_dir)
     families, shared = sort_families(names, items, interiors, customs)
+    if args.bundle:
+        # The app lays these over T1's catalog as its imported families; users' own families still win.
+        bundle = model_dir.parent / 't1-families.json'
+        bundle.write_text(json.dumps(dict(sorted(families.items(), key=lambda item: item[0].lower())), indent=1) + '\n', encoding='utf-8')
+        print(f'{len(families)} models in {len(set(families.values()))} families written to {bundle}')
+        return
     family_file = LOCAL_DATA / 'model-families.json'
     mine = read_families(family_file).get('t1', {})
     kept = sorted(set(families) & set(mine), key=str.lower)
