@@ -1,6 +1,8 @@
 """Synthetic fixtures; bounded retail smoke checks opt in with AZRAEL_INSTALL_TESTS=1."""
 import io
+import copy
 import json
+import math
 import os
 from pathlib import Path
 import struct
@@ -12,6 +14,7 @@ import zipfile
 from PIL import Image
 
 from tools.import_azrael import (CDReader, IDENTITY, build_model, decode_res,
+                                 choose_preview_pose, evaluate_world_matrices, measure_parts, prepare_preview,
                                  import_catalog, inventory, parse_ani, parse_xaf,
                                  read_install, read_rooms, res_records)
 from tools.model_data import load_model_data
@@ -110,6 +113,94 @@ def write_install(root):
 
 
 class AzraelTest(unittest.TestCase):
+    def test_pose_replaces_rotation_and_scales_before_it(self):
+        scene = parse_xaf(xaf())
+        child = scene['objects'][0]['children'][0]
+        child['matrix'][:12] = [0, 7, 0, 0, -8, 0, 0, 0, 0, 0, 9, 0]
+        track = scene['animations'][0]
+        track.update(rotate_keys=[[0, math.sqrt(.5), 0, 0, math.sqrt(.5)]],
+                     scale_keys=[[0, 2, 3, 4], [10, 4, 5, 6]], position_keys=[])
+        before = copy.deepcopy(scene)
+        world = evaluate_world_matrices(scene, 5)[(0, 0)]
+        expected = [0,-3,0,0, 4,0,0,0, 0,0,5,0, 11,22,33,1]
+        for actual, wanted in zip(world, expected):
+            self.assertAlmostEqual(actual, wanted)
+        self.assertEqual(scene, before)
+        self.assertEqual(evaluate_world_matrices(scene, 5)[(0,)], scene['objects'][0]['matrix'])
+
+    def test_pose_parent_relative_position_lerp_and_endpoint_hold(self):
+        scene = parse_xaf(xaf())
+        scene['objects'][0]['matrix'] = [0,1,0,0,-1,0,0,0,0,0,1,0,10,20,30,1]
+        scene['animations'][0].update(rotate_keys=[], scale_keys=[], position_keys=[[2,1,2,3],[8,7,8,9]])
+        for frame, position in ((-100,[8,21,33]), (5,[5,24,36]), (100,[2,27,39])):
+            self.assertEqual(evaluate_world_matrices(scene, frame)[(0,0)][12:15], position)
+        # With no rotation track, the stored linear transform is retained.
+        scene['objects'][0]['children'][0]['matrix'][0] = 2
+        self.assertEqual(evaluate_world_matrices(scene, 5)[(0,0)][:4], [0,2,0,0])
+
+    def test_pose_quaternion_slerp_shortest_path_and_holds(self):
+        scene = parse_xaf(xaf())
+        track = scene['animations'][0]
+        track.update(rotate_keys=[[0,1,0,0,0],[8,0,0,0,1]], scale_keys=[], position_keys=[])
+        # A quarter of a 180-degree turn is 45 degrees (nlerp would differ).
+        matrix = evaluate_world_matrices(scene, 2)[(0,0)]
+        self.assertAlmostEqual(matrix[0], math.sqrt(.5))
+        self.assertAlmostEqual(matrix[1], -math.sqrt(.5))
+        self.assertEqual(evaluate_world_matrices(scene, -10)[(0,0)][:12], IDENTITY[:12])
+        self.assertAlmostEqual(evaluate_world_matrices(scene, 99)[(0,0)][0], -1)
+        track['rotate_keys'] = [[0,1,0,0,0],[8,-math.sqrt(.5),0,0,-math.sqrt(.5)]]
+        self.assertAlmostEqual(evaluate_world_matrices(scene, 4)[(0,0)][1], -math.sqrt(.5))
+        track['rotate_keys'] = [[0,1,0,0,0],[8,-1,0,0,0]]
+        self.assertEqual(evaluate_world_matrices(scene, 4)[(0,0)][:12], IDENTITY[:12])
+
+    def test_preview_canonical_rest_first_clip_and_earliest_key(self):
+        scene = parse_xaf(xaf())
+        anis = [dict(alias='Alias', source='ALIAS.ANI', status='ready', data=parse_ani(ani())),
+                dict(alias='Hero', source='HERO.ANI', status='ready', data=parse_ani(ani().replace(b'REST 2-4', b'REST 7-9')))]
+        pose = choose_preview_pose(scene, 'textures/hero.xaf', ['Alias','Hero'], anis)
+        self.assertEqual((pose['canonical_alias'],pose['frame'],pose['reason']), ('Hero',7,'ANI REST start'))
+        self.assertEqual([a['frame'] for a in pose['ani_choices']], [2,7])
+        anis[1]['data'] = parse_ani(ani().replace(b'REST 2-4\n', b''))
+        self.assertEqual(choose_preview_pose(scene,'textures/hero.xaf',['Alias','Hero'],anis)['frame'], 5)
+        self.assertEqual(choose_preview_pose(scene,'textures/hero.xaf',['Alias','Hero'],anis)['reason'], 'ANI first clip start')
+        scene['animations'][0]['scale_keys'][0][0] = -3
+        self.assertEqual(choose_preview_pose(scene,'textures/other.xaf',[],anis)['frame'], -3)
+
+    def test_duplicate_names_keep_distinct_paths_and_use_last_track(self):
+        scene = parse_xaf(xaf())
+        scene['objects'][0]['children'].append(copy.deepcopy(scene['objects'][0]['children'][0]))
+        track = copy.deepcopy(scene['animations'][0])
+        track['position_keys'] = [[0,7,8,9]]
+        scene['animations'].append(track)
+        worlds, pose = prepare_preview(scene, 'textures/other.xaf', [], [])
+        self.assertEqual(worlds[(0,0)][12:15], [17,28,39])
+        self.assertEqual(worlds[(0,1)][12:15], [17,28,39])
+        self.assertEqual(pose['duplicate_bindings'][0]['objects'], 2)
+        self.assertEqual(pose['duplicate_bindings'][0]['tracks'], 2)
+
+    def test_pose_fallback_and_part_distances_do_not_hide_geometry(self):
+        scene = parse_xaf(xaf())
+        scene['animations'][0]['rotate_keys'] = [[0,0,0,0,0]]
+        worlds, pose = prepare_preview(scene, 'textures/other.xaf', [], [])
+        self.assertEqual(pose['status'], 'stored-fallback')
+        self.assertIsNone(pose['frame'])
+        self.assertIn('quaternion', pose['fallback_reason'])
+        self.assertEqual(worlds, evaluate_world_matrices(scene, None))
+        with self.assertRaises(ValueError):
+            evaluate_world_matrices(scene, float('nan'))
+        scene = parse_xaf(xaf(False))
+        body = scene['objects'][0]['children'][0]
+        body['matrix'] = list(IDENTITY)
+        scene['objects'] = [copy.deepcopy(body) for _ in range(4)]
+        for index, obj in enumerate(scene['objects']):
+            obj['name'] = str(index)
+        scene['objects'][-1]['matrix'][12] = 100
+        worlds = evaluate_world_matrices(scene, None)
+        metrics = measure_parts(scene, worlds)
+        self.assertEqual([p['name'] for p in metrics['far_parts']], ['3'])
+        self.assertEqual(len(build_model(scene, {'skin':'skin.png'}, worlds)['indices']), 12)
+        self.assertEqual(len(metrics['parts']), 4)
+
     def test_lazy_bin_cue_and_bounds(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -228,6 +319,8 @@ class AzraelTest(unittest.TestCase):
             self.assertEqual(report['categories'],{'Characters':1,'Other rigs':1})
             self.assertEqual(report['duplicates'],1)
             self.assertEqual(report['textures'],2)
+            self.assertEqual(report['pose_counts']['evaluated'],2)
+            self.assertEqual(report['pose_counts']['fallback'],0)
             self.assertEqual(len(report['results']),9)
             catalog=json.loads((output/'catalog.json').read_text())
             self.assertEqual(catalog[0]['aliases'],['Alias','Lurka'])
@@ -238,6 +331,9 @@ class AzraelTest(unittest.TestCase):
             self.assertEqual(report['ani_results'][1]['status'],'skipped')
             model=output/'model_json'/(catalog[0]['model_name']+'.json')
             data=load_model_data(model)
+            self.assertEqual(data['metadata']['pose']['frame'],2)
+            self.assertEqual(data['metadata']['pose']['canonical_alias'],'Alias')
+            self.assertEqual(data['metadata']['pose']['status'],'evaluated')
             self.assertEqual(data['material_texture_games'],['azrael'])
             glb=model_to_glb(data,output/'textures')
             self.assertEqual(glb[:4],b'glTF')
@@ -262,6 +358,14 @@ class AzraelTest(unittest.TestCase):
             self.assertEqual(png.read_bytes(),before)
             report=import_catalog(root,output,'lurka')
             self.assertEqual(report['ready'],1)
+            (textures/'hero.XAF').write_bytes(xaf().replace(b'rotate_keys{0,1,0,0,0', b'rotate_keys{0,0,0,0,0'))
+            report=import_catalog(root,output,'lurka')
+            self.assertEqual(report['pose_counts']['fallback'],1)
+            fallback=next(r['pose'] for r in report['results'] if r['status']=='ready')
+            self.assertEqual(fallback['requested_frame'],2)
+            self.assertIsNone(fallback['frame'])
+            self.assertIn('quaternion',fallback['fallback_reason'])
+            self.assertEqual(fallback['distances']['stored'],fallback['distances']['preview'])
 
     def test_app_import_dispatch_and_game_lists(self):
         import app as server

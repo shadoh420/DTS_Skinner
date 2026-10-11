@@ -3,8 +3,8 @@
 python tools/import_azrael.py --install "C:/Program Files (x86)/GOG Galaxy/Games/Azrael's Tear"
 
 CD entries are read on demand, never extracted. The CD, scene, image and ANI
-readers are also usable by map importers. Stored matrices supply the preview;
-animation keys are preserved as data, not interpreted. Existing PNG edits survive.
+readers are also usable by map importers. Characters use their ANI resting pose;
+other rigs use their earliest key time. Existing PNG edits survive.
 """
 import argparse
 from collections import Counter, defaultdict
@@ -13,6 +13,7 @@ import json
 import math
 from pathlib import Path
 import re
+from statistics import median
 import struct
 
 from PIL import Image
@@ -503,13 +504,197 @@ def multiply(a, b):
     return [sum(a[r * 4 + k] * b[k * 4 + c] for k in range(4)) for r in range(4) for c in range(4)]
 
 
-def build_model(scene, textures):
+def iter_objects(scene):
+    """Yield (index path, object, parent path) in parent-first order.
+
+    Tuple paths, e.g. (0, 2), identify objects even when names repeat.
+    """
+    def visit(objects, parent):
+        for index, obj in enumerate(objects):
+            path = parent + (index,)
+            yield path, obj, parent
+            yield from visit(obj['children'], path)
+    yield from visit(scene['objects'], ())
+
+
+def _sample_keys(keys, frame, quaternion=False):
+    a = b = keys[0][1:]
+    fraction = 0.
+    if frame >= keys[-1][0]:
+        a = b = keys[-1][1:]
+    elif frame > keys[0][0]:
+        for left, right in zip(keys, keys[1:]):
+            if left[0] <= frame <= right[0]:
+                a, b = left[1:], right[1:]
+                fraction = (frame - left[0]) / (right[0] - left[0]) if right[0] > left[0] else 0.
+                break
+    if not quaternion:
+        return [x + fraction * (y - x) for x, y in zip(a, b)]
+
+    def normalize(q):
+        length = math.hypot(*q)
+        if not math.isfinite(length) or length < 1e-12:
+            raise ValueError('Invalid animation quaternion')
+        return [v / length for v in q]
+
+    a, b = normalize(a), normalize(b)
+    dot = sum(x * y for x, y in zip(a, b))
+    if dot < 0:
+        b, dot = [-v for v in b], -dot
+    if dot > .9995:
+        return normalize([x + fraction * (y - x) for x, y in zip(a, b)])
+    angle = math.acos(max(-1., min(1., dot)))
+    return normalize([(math.sin((1 - fraction) * angle) * x + math.sin(fraction * angle) * y) / math.sin(angle)
+                      for x, y in zip(a, b)])
+
+
+def evaluate_world_matrices(scene, frame):
+    """Return {object index-path: row-major world matrix} in XAF coordinates.
+
+    frame is a key time (not seconds); None explicitly selects stored matrices.
+    No scene data is mutated. Paths are those from iter_objects(), so repeated
+    object names cannot overwrite output matrices. As in the verified pose probe,
+    the last track for a name applies to all objects with that name (CL rigs
+    contain duplicates). This binding policy is not yet verified in R.EXE.
+
+    R.EXE preferred LE addresses: SetTime 0x44d7c -> evaluator 0x45cfc;
+    rotation 0x45a38 uses w,x,y,z slerp (0x449f4), quaternion matrix
+    (0x44ae8), and replace mode 0 (0x499c0). Scale 0x45c18 combines
+    before rotation (mode 1, 0x5e850); position 0x45b30 sets parent-relative
+    translation via 0x3b220 -> 0x3ec20. Missing position preserves stored
+    translation. Endpoints hold; world = local * parent. Verified against
+    Claude's character pose probe; this does not establish an animation clock.
+    """
+    if frame is not None and not math.isfinite(frame):
+        raise ValueError('Non-finite animation frame')
+    objects = list(iter_objects(scene))
+    tracks = {}
+    if frame is not None:
+        names = Counter(obj['name'] for _, obj, _ in objects)
+        for animation in scene['animations']:
+            target = animation.get('object_name') or animation['name']
+            if not names[target]:
+                raise ValueError('Missing animation target: ' + target)
+            tracks[target] = animation
+    worlds = {}
+    for path, obj, parent in objects:
+        local = list(obj['matrix'])
+        track = tracks.get(obj['name'], {})
+        if track.get('rotate_keys'):
+            w, x, y, z = _sample_keys(track['rotate_keys'], frame, quaternion=True)
+            local = [1-2*(y*y+z*z), 2*(x*y-z*w), 2*(x*z+y*w), 0.,
+                     2*(x*y+z*w), 1-2*(x*x+z*z), 2*(y*z-x*w), 0.,
+                     2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y), 0.,
+                     *local[12:15], 1.]
+        if track.get('scale_keys'):
+            scale = _sample_keys(track['scale_keys'], frame)
+            for row in range(3):
+                for col in range(3):
+                    local[row * 4 + col] *= scale[row]
+        if track.get('position_keys'):
+            local[12:15] = _sample_keys(track['position_keys'], frame)
+        world = multiply(local, worlds[parent] if parent else IDENTITY)
+        if not all(math.isfinite(v) for v in world):
+            raise ValueError('Non-finite world matrix: ' + obj['name'])
+        worlds[path] = world
+    return worlds
+
+
+def canonical_alias(source, aliases):
+    preferred = next((a for a in aliases if a.lower() == Path(source).stem), None)
+    preferred = preferred or next((a for a in aliases if a.lower() in ('eugene', 'scorp', 'kurt')), None)
+    return preferred or (aliases[0] if aliases else Path(source).stem.upper())
+
+
+def choose_preview_pose(scene, source, aliases, anis):
+    """Choose the same canonical alias as the display title; retain alternatives."""
+    title = canonical_alias(source, aliases)
+    choices = []
+    for ani in anis:
+        if ani['status'] != 'ready' or ani['alias'] not in aliases:
+            continue
+        clips = ani['data']['clips'].get(Path(source).name, {})
+        clip = 'REST' if 'REST' in clips else next(iter(clips), None)
+        choices.append(dict(alias=ani['alias'], source=ani['source'], clip=clip,
+                            frame=clips[clip][0] if clip else None))
+    chosen = next((c for c in choices if c['alias'] == title), None)
+    if aliases:
+        frame = chosen['frame'] if chosen else None
+        reason = ('ANI REST start' if chosen['clip'] == 'REST' else 'ANI first clip start') if frame is not None else 'Canonical ANI has no clips'
+    else:
+        times = [key[0] for a in scene['animations'] for kind in ('rotate_keys', 'position_keys', 'scale_keys') for key in a.get(kind, [])]
+        frame = min(times) if times else 0.
+        reason = 'Earliest animation key' if times else 'No animation keys; frame 0'
+    return dict(frame=frame, reason=reason, canonical_alias=title if aliases else None, ani_choices=choices)
+
+
+def measure_parts(scene, worlds):
+    """Advisory distances in XAF units; never remove parts.
+
+    Body center is the componentwise median of visible mesh vertices (each used
+    vertex once per mesh); radius is their median distance from that center.
+    Flag object centers farther than 3 radii. Multi-figure scenes can inflate
+    the radius, and weapons/effects can legitimately be flagged. Hidden geometry
+    is excluded just as in build_model. Bounds expose spread even without flags.
+    """
+    parts, all_points = [], []
+    for path, obj, _ in iter_objects(scene):
+        points, world = [], worlds[path]
+        for mesh in obj['meshes']:
+            used = set()
+            for face, name in zip(mesh['faces'], mesh['materials']):
+                mat = scene['materials'].get(name)
+                if mat is not None and mat['colour'][3] != 0:
+                    used.update(v for v, _ in face)
+            for index in sorted(used):
+                vertex = mesh['vertices'][index] + [1.]
+                points.append([sum(vertex[k] * world[k * 4 + c] for k in range(4)) for c in range(3)])
+        if points:
+            parts.append(dict(path=list(path), name=obj['name'], vertices=len(points),
+                              center=[sum(p[c] for p in points) / len(points) for c in range(3)]))
+            all_points.extend(points)
+    if not all_points:
+        return dict(center=None, median_radius=0., bounds=None, parts=[], far_parts=[])
+    center = [median(p[c] for p in all_points) for c in range(3)]
+    radius = median(math.dist(p, center) for p in all_points)
+    for part in parts:
+        part['distance'] = math.dist(part['center'], center)
+        part['far'] = part['distance'] > 3 * max(radius, 1e-9)
+    return dict(center=center, median_radius=radius, threshold=3 * max(radius, 1e-9),
+                bounds=[[min(p[c] for p in all_points) for c in range(3)],
+                        [max(p[c] for p in all_points) for c in range(3)]],
+                parts=parts, far_parts=[p for p in parts if p['far']])
+
+
+def prepare_preview(scene, source, aliases, anis):
+    pose = choose_preview_pose(scene, source, aliases, anis)
+    names = Counter(obj['name'] for _, obj, _ in iter_objects(scene))
+    targets = Counter(a.get('object_name') or a['name'] for a in scene['animations'])
+    pose['duplicate_bindings'] = [dict(name=name, objects=names[name], tracks=count,
+                                       policy='Last matching track applies to every object with this name')
+                                  for name, count in targets.items() if count > 1 or names[name] > 1]
+    stored = evaluate_world_matrices(scene, None)
+    try:
+        if pose['frame'] is None:
+            raise ValueError(pose['reason'])
+        worlds = evaluate_world_matrices(scene, pose['frame'])
+        pose['status'] = 'evaluated'
+    except (ValueError, OverflowError) as exc:
+        worlds = stored
+        pose.update(status='stored-fallback', requested_frame=pose['frame'], frame=None, fallback_reason=str(exc))
+    pose['distances'] = dict(stored=measure_parts(scene, stored), preview=measure_parts(scene, worlds))
+    return worlds, pose
+
+
+def build_model(scene, textures, world_matrices=None):
+    """Build static geometry; omitted matrices retain the original stored pose."""
     result = dict(game='azrael', winding='ccw', vertices=[], uvs=[], indices=[], groups=[],
                   material_names=[], material_textures=[], material_settings=[], metadata={})
     batches, omitted = defaultdict(list), Counter()
 
-    def visit(obj, parent):
-        world = multiply(obj['matrix'], parent)
+    worlds = world_matrices if world_matrices is not None else evaluate_world_matrices(scene, None)
+    for path, obj, _ in iter_objects(scene):
+        world = worlds[path]
         for mesh in obj['meshes']:
             for face, name in zip(mesh['faces'], mesh['materials']):
                 mat = scene['materials'].get(name)
@@ -524,10 +709,6 @@ def build_model(scene, textures):
                     q[2] = -q[2]
                     corners.append((q, mesh['uvs'][vi] if mesh['uvs'] else [0., 0.]))
                 batches[name].append(corners)
-        for sub in obj['children']:
-            visit(sub, world)
-    for obj in scene['objects']:
-        visit(obj, IDENTITY)
     for name, triangles in batches.items():
         mat = scene['materials'][name]
         slot = len(result['material_names'])
@@ -547,7 +728,7 @@ def build_model(scene, textures):
                 result['uvs'].extend(uv)
     if not result['indices']:
         raise ValueError('No visible triangles')
-    result['metadata'].update(pose='Stored XAF matrices (animation key space unverified)', omitted_faces=dict(omitted),
+    result['metadata'].update(pose='Supplied world matrices' if world_matrices is not None else 'Stored XAF matrices', omitted_faces=dict(omitted),
                               format='Reality Lab XAF/RES', warnings=[])
     return result
 
@@ -619,6 +800,8 @@ def import_catalog(install, output, model_filter=None):
             continue
         try:
             scene = parse_xaf(cd.read(name))
+            worlds, pose = prepare_preview(scene, name, row['aliases'], anis)
+            row['pose'] = pose
             res_name = name[:-4] + '.res'
             if res_name not in cd.files:
                 raise ValueError('Missing RES bundle: ' + res_name)
@@ -626,12 +809,12 @@ def import_catalog(install, output, model_filter=None):
             records = list(res_records(raw))
             if len(records) != len(scene['textures']):
                 raise ValueError('XAF texture/RES record count mismatch')
-            identity = row['xaf_sha256'] + hashlib.sha256(raw).hexdigest()
+            identity = (row['xaf_sha256'], hashlib.sha256(raw).hexdigest(), pose['frame'])
             if identity in seen:
                 item = seen[identity]
                 item['aliases'].extend(a for a in row['aliases'] if a not in item['aliases'])
                 item['source_aliases'].append(name)
-                row.update(status='duplicate', model=item['model_name'], reason='Byte-identical XAF and RES; listed once')
+                row.update(status='duplicate', model=item['model_name'], reason='Byte-identical XAF and RES, same preview frame; listed once')
                 continue
             textures = {}
             for texture_name, record in zip(scene['textures'], records):
@@ -660,17 +843,14 @@ def import_catalog(install, output, model_filter=None):
                     if not target.is_file():
                         Image.new('RGBA', (1, 1), rgba).save(target)
                     slots[mat_name] = png
-            data = build_model(scene, slots)
+            data = build_model(scene, slots, worlds)
             model = 'azrael_' + safe(Path(name).stem) + '_' + hashlib.sha256(name.encode()).hexdigest()[:8]
             alias_list = row['aliases']
-            # Prefer the unsuffixed authored character name where aliases share a rig.
-            preferred = next((a for a in alias_list if a.lower() == Path(name).stem), None)
-            preferred = preferred or next((a for a in alias_list if a.lower() in ('eugene', 'scorp', 'kurt')), None)
-            title = preferred or (alias_list[0] if alias_list else Path(name).stem.upper())
+            title = canonical_alias(name, alias_list)
             item = dict(model_name=model, display_name=title + (' (' + ', '.join(a for a in alias_list if a != title) + ')' if len(alias_list) > 1 else ''),
                         game='azrael', category=row['category'], texture_name=data['material_textures'][0],
                         source=name, aliases=list(alias_list), source_aliases=[], status='ready')
-            data['metadata'].update(source=name, aliases=alias_list,
+            data['metadata'].update(source=name, aliases=alias_list, pose=pose,
                 ani=[a for a in anis if a['status'] == 'ready' and Path(name).name in a['data']['files']])
             (output / 'model_json' / (model + '.json')).write_text(json.dumps(data, separators=(',', ':'), allow_nan=False), encoding='utf-8')
             seen[identity] = item
@@ -681,7 +861,11 @@ def import_catalog(install, output, model_filter=None):
     report = dict(entries=len(catalog), ready=len(catalog), duplicates=sum(r['status'] == 'duplicate' for r in rows),
                   skipped=sum(r['status'] == 'skipped' for r in rows), textures=sum(r['status'] == 'ready' for r in texture_rows),
                   categories=dict(Counter(r['category'] for r in catalog)), results=rows, texture_results=texture_rows,
-                  ani_results=anis, rooms=rooms, pose='Stored matrices; animation not evaluated',
+                  ani_results=anis, rooms=rooms, pose='Canonical ANI REST/first clip; other rigs earliest key',
+                  pose_counts=dict(evaluated=sum(r['status'] == 'ready' and r['pose']['status'] == 'evaluated' for r in rows),
+                                   fallback=sum(r['status'] == 'ready' and r['pose']['status'] == 'stored-fallback' for r in rows),
+                                   stored_far=sum(r['status'] == 'ready' and bool(r['pose']['distances']['stored']['far_parts']) for r in rows),
+                                   still_far=sum(r['status'] == 'ready' and bool(r['pose']['distances']['preview']['far_parts']) for r in rows)),
                   res_results=[dict(source=r['res_source'], scene=r['source'], status=r['status'],
                                     reason=r.get('reason', 'Decoded for model')) for r in rows if 'res_source' in r])
     (output / 'catalog.json').write_text(json.dumps(catalog, indent=1), encoding='utf-8')
