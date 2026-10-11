@@ -63,7 +63,86 @@ def fixture(root):
     return game,textures
 
 
+def box(low, high, solid=False):
+    """Native triangles with the importer's reflected winding, enclosing free air."""
+    low,high=np.array(low,dtype=float),np.array(high,dtype=float)
+    faces=[]
+    for axis in range(3):
+        other=[i for i in range(3) if i!=axis]
+        for side in (0,1):
+            quad=[]
+            for u,v in ((0,0),(1,0),(1,1),(0,1)):
+                p=low.copy();p[axis]=(low,high)[side][axis]
+                p[other[0]]=(low,high)[u][other[0]];p[other[1]]=(low,high)[v][other[1]];quad.append(p)
+            normal=np.cross(quad[1]-quad[0],quad[2]-quad[0])
+            if (normal @ (quad[0]-(low+high)/2)>0)==solid:quad.reverse()
+            faces.extend([[quad[0],quad[1],quad[2]],[quad[0],quad[2],quad[3]]])
+    return np.array(faces)
+
+
 class AzraelMapsTest(unittest.TestCase):
+    def test_arrival_faces_down_corridor_and_entry_rule_is_unchanged(self):
+        triangles=box([-50,0,-10],[50,100,300])
+        marker=dict(name='zyDoor',path=[0],position=[0,0,0],forward=[0,0,-1])
+        view=maps.viewpoints(dict(zones=[]),[],[marker],triangles)[0]
+        self.assertEqual(view['facing_source'],'sightline')
+        self.assertAlmostEqual(abs(view['yaw']),180)
+        self.assertEqual(view['native_origin'],[0,45,0])
+        self.assertEqual(view['start_check']['issues'],[])
+        self.assertAlmostEqual(view['start_check']['ahead'],300)
+        # Even a short sightline does not rewrite the requested entry facing.
+        marker['name']='zxentry'
+        view=maps.viewpoints(dict(zones=['Entry']),[dict(name='Entry',object='zxentry')],[marker],triangles)[0]
+        self.assertEqual(view['facing_source'],'entry rule')
+        self.assertEqual(view['yaw'],0)
+        self.assertIn('wall-ahead-under-40',view['start_check']['issues'])
+
+    def test_smoothed_window_rejects_narrow_gap_and_checks_solids(self):
+        triangles=box([-100,0,-80],[300,100,80])
+        # Remove the north wall and replace it with two panels around a 2-unit slit.
+        triangles=triangles[~np.all(triangles[:,:,2]==80,axis=1)]
+        panels=[]
+        for left,right in ((-100,-1),(1,300)):
+            q=[[left,0,80],[right,0,80],[right,100,80],[left,100,80]]
+            panels.extend([[q[0],q[1],q[2]],[q[0],q[2],q[3]]])
+        triangles=np.concatenate((triangles,np.array(panels)))
+        direction,sight=maps.sightline_facing(triangles,np.array([0,45,0]))
+        self.assertGreater(direction[0],.9)  # broad east room beats the unbounded north slit
+        slit,_=maps.ray_hits(triangles,np.array([0,45,0]),[[0,0,1]])
+        self.assertEqual(slit[0],2000)
+        solid=box([-10,0,-10],[10,100,10],solid=True)
+        direction,sight=maps.sightline_facing(solid,np.array([0,45,0]))
+        check=maps.check_start(solid,np.array([0,45,0]),direction,0,sight)
+        self.assertTrue(check['inside_solid_suspected'])
+        self.assertIn('wall-ahead-under-40',check['issues'])
+
+    def test_bad_arrival_uses_next_marker_and_audits_all_views(self):
+        triangles=box([-100,0,-100],[100,100,300])
+        points=[dict(name='zyOutside',path=[0],position=[300,0,0],forward=[1,0,0]),
+                dict(name='zyInside',path=[1],position=[0,0,0],forward=[0,0,-1])]
+        views=maps.viewpoints(dict(zones=[]),[],points,triangles)
+        self.assertEqual(views[0]['name'],'zyInside')
+        self.assertEqual(views[0]['start_audit']['action'],'next arrival marker')
+        self.assertIn('no-floor',views[0]['start_audit']['initial']['check']['issues'])
+        self.assertTrue(all('start_check' in v and 'facing_source' in v for v in views))
+        fallback=maps.viewpoints(dict(zones=[]),[],points[:1],triangles)[0]
+        self.assertEqual(fallback['start_audit']['action'],'geometry fallback')
+        self.assertEqual(fallback['source'],'fallback')
+        self.assertEqual(fallback['start_check']['issues'],[])
+
+    def test_missing_floor_can_nudge_into_room_without_crossing_wall(self):
+        triangles=box([-50,0,-10],[50,100,300])
+        triangles=triangles[~np.all(triangles[:,:,1]==0,axis=1)]
+        # Floor begins 20 units inside the room, past the arrival's gap.
+        floor=np.array([[[-50,0,20],[50,0,20],[50,0,300]],
+                        [[-50,0,20],[50,0,300],[-50,0,300]]],dtype=float)
+        triangles=np.concatenate((triangles,floor))
+        marker=dict(name='zyDoor',path=[0],position=[0,0,0],forward=[0,0,-1])
+        view=maps.viewpoints(dict(zones=[]),[],[marker],triangles)[0]
+        self.assertEqual(view['start_adjustment'],dict(action='nudge',distance=32.))
+        self.assertEqual(view['native_origin'],[0,45,32])
+        self.assertEqual(view['start_check']['issues'],[])
+
     def test_identical_material_opt_in_keeps_existing_strict_default(self):
         material = b'material "rope" {texture "rope.gif" colour {0,0,0,1}}'
         with self.assertRaisesRegex(ValueError, 'Duplicate'):
@@ -138,7 +217,7 @@ class AzraelMapsTest(unittest.TestCase):
         self.assertEqual(views[0]['floor_y'],0)
         self.assertEqual(views[0]['origin'][1],45)
         self.assertEqual(views[0]['pitch'],0)
-        self.assertIn('No horizontal marker facing', views[0]['facing'])
+        self.assertEqual(views[0]['facing_source'],'fallback')  # no horizontal walls
 
     def test_catalog_every_xaf_aliases_distinct_entries_and_bundle_palettes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -151,6 +230,7 @@ class AzraelMapsTest(unittest.TestCase):
             output=root/'out'; report=maps.import_maps(root,output)
             self.assertEqual(len(report['imported']),3)
             self.assertEqual(len(report['failed']),5)
+            self.assertIn('entry rule',report['counts']['facing_sources']['Rooms'])
             self.assertTrue(all(e['status']!='pending' for e in report['results']))
             self.assertEqual({r['source'] for r in report['xaf_results']},{'textures/'+n+'.xaf' for n in ('room','extra','hero','camera','sailor_a','empty')})
             index=json.loads((output/'index.json').read_text())

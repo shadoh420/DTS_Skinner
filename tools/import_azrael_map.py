@@ -183,27 +183,99 @@ def entry_candidates(room, zones, points):
     return list(unique.values())
 
 
+def ray_hits(triangles, origin, directions, limit=2000.):
+    """Nearest two-sided triangle hit per unit ray; +side is visible from free space.
+
+    Triangles use the builder's winding reflected back to native coordinates,
+    so their cross-product normals point away from the visible side.
+    No-hit distances are capped for sightline scoring; side=0 marks no hit.
+    """
+    edge1 = triangles[:,1] - triangles[:,0]
+    edge2 = triangles[:,2] - triangles[:,0]
+    offset = origin - triangles[:,0]
+    cross = np.cross(offset, edge1)
+    distances, sides = [], []
+    for direction in directions:
+        p = np.cross(direction, edge2)
+        det = np.einsum('ij,ij->i', edge1, p)
+        inverse = np.divide(1., det, out=np.zeros_like(det), where=np.abs(det)>1e-9)
+        u = np.einsum('ij,ij->i', offset, p) * inverse
+        v = (cross @ direction) * inverse
+        t = np.einsum('ij,ij->i', edge2, cross) * inverse
+        hit = (np.abs(det)>1e-9) & (u>=-1e-7) & (v>=-1e-7) & (u+v<=1+1e-7) & (t>=-1e-7) & (t<limit)
+        indices = np.flatnonzero(hit)
+        if len(indices):
+            index = indices[np.argmin(t[indices])]
+            distances.append(max(0., float(t[index])))
+            sides.append(-float(np.sign(det[index])))
+        else:
+            distances.append(limit); sides.append(0.)
+    return np.array(distances), np.array(sides)
+
+
+def sightline_facing(triangles, eye):
+    """72 horizontal rays, best seven-ray (30 degree) harmonic-mean window.
+
+    Capping at 2000 units and using a harmonic mean prevents a single long ray
+    through a crack from beating a broad room view. Ties favor room interior.
+    """
+    angles = np.arange(72) * (2 * math.pi / 72)
+    directions = np.column_stack((np.sin(angles), np.zeros(72), np.cos(angles)))
+    distances, sides = ray_hits(triangles, eye, directions)
+    center = np.median(triangles.reshape(-1,3), axis=0) - eye
+    center[1] = 0
+    length = np.linalg.norm(center)
+    center = center / length if length > 1e-8 else np.array([0.,0.,1.])
+    scores = 7 / sum(np.roll(1 / np.maximum(distances, .01), i) for i in range(-3,4))
+    best = max(range(72), key=lambda i: (round(float(scores[i]), 5), float(directions[i] @ center)))
+    direction = directions[best] if sides.any() else center
+    return direction, dict(source='sightline' if sides.any() else 'fallback',
+                           window_degrees=30, score=float(scores[best]),
+                           horizontal_hits=int(np.count_nonzero(sides)),
+                           backface_hits=int(np.count_nonzero(sides<0)),
+                           nearest_surface=float(distances.min()))
+
+
+def check_start(triangles, eye, direction, floor, sight):
+    """Visible-mesh audit, not gameplay collision: open meshes limit solid tests.
+
+    A near surface or >=80% backface hits among at least 12 horizontal hits
+    flags suspected solid/outside geometry. No closed-volume claim is made.
+    """
+    distance, _ = ray_hits(triangles, eye, [direction])
+    inside = sight['nearest_surface'] < 1 or (sight['horizontal_hits'] >= 12 and
+              sight['backface_hits'] >= .8 * sight['horizontal_hits'])
+    issues = []
+    if inside: issues.append('inside-solid-suspected')
+    if floor is None: issues.append('no-floor')
+    if distance[0] < 40: issues.append('wall-ahead-under-40')
+    return dict(issues=issues, ahead=float(distance[0]), inside_solid_suspected=inside)
+
+
 def viewpoints(room, zones, points, triangles):
     # Native Y up -> existing floor helper's Z up, using visible geometry only.
     normal = np.cross(triangles[:,1]-triangles[:,0], triangles[:,2]-triangles[:,0])
     horizontal = np.abs(normal[:,1]) > np.linalg.norm(normal, axis=1) * .5
     floors = triangles[horizontal][:,:,[0,2,1]]
     candidates = entry_candidates(room, zones, points)
-    if not candidates:
+    def geometry_candidates():
         if len(floors):
             # Prefer the lower half of horizontal geometry to avoid choosing a
             # large ceiling. A triangle centroid stays inside concave rooms.
             heights = floors[:,:,2].mean(axis=1)
             lower = floors[heights <= (heights.min() + heights.max()) / 2]
             areas = np.abs(np.cross(lower[:,1]-lower[:,0], lower[:,2]-lower[:,0])[:,2])
-            point = lower[int(np.argmax(areas))].mean(axis=0)[[0,2,1]]
-            reason = 'Centroid of largest visible horizontal triangle in lower height half'
+            return [dict(position=lower[i].mean(axis=0)[[0,2,1]].tolist(), forward=[0,0,1], source='fallback',
+                         reason='Visible horizontal triangle in lower height half', floor_triangle_rank=rank+1)
+                    for rank,i in enumerate(np.argsort(-areas, kind='stable')[:12])]
         else:
             point = np.median(triangles.reshape(-1,3), axis=0)
             reason = 'Median visible vertex position; no horizontal triangles'
-        candidates = [dict(position=point.tolist(), forward=[0,0,1], source='fallback', reason=reason)]
-    views = []
-    for candidate in candidates:
+            return [dict(position=point.tolist(), forward=[0,0,1], source='fallback', reason=reason)]
+    if not candidates:
+        candidates = geometry_candidates()[:1]
+
+    def make_view(candidate):
         point = np.array(candidate['position'])
         # Entry trigger volumes can straddle the floor (CORICORI's centroid is
         # five units below it). The engine admits surfaces below eye - 22 at
@@ -221,10 +293,51 @@ def viewpoints(room, zones, points, triangles):
             facing = 'No horizontal marker facing; level view toward median visible geometry'
         yaw = math.degrees(math.atan2(-direction[0], -direction[2])) if length > 1e-8 else 180.
         pitch = math.degrees(math.atan2(direction[1], length)) if length > 1e-8 else 0.
-        views.append(dict(candidate, origin=(eye * [1,1,-1]).tolist(), native_origin=eye.tolist(),
+        sight_direction, sight = sightline_facing(triangles, eye)
+        if candidate['source'] not in ('entry-zone', 'entry-marker'):
+            direction = sight_direction
+            yaw = math.degrees(math.atan2(-direction[0], -direction[2]))
+            pitch = 0.
+            facing = 'Smoothed longest free sightline' if sight['source']=='sightline' else 'No ray hits; level view toward median visible geometry'
+            facing_source = sight['source']
+        else:
+            facing_source = 'entry rule'  # Preserve the game-compared entry facing.
+            direction = direction / max(np.linalg.norm(direction), 1e-8)
+        return dict(candidate, origin=(eye * [1,1,-1]).tolist(), native_origin=eye.tolist(),
                           yaw=yaw, pitch=pitch, floor_y=floor,
                           floor_rule='Highest visible surface below marker + 23' if floor is not None else 'No floor hit; marker height + eye height',
-                          facing=facing))
+                          facing=facing, facing_source=facing_source, sightline=sight,
+                          start_check=check_start(triangles, eye, direction, floor, sight))
+
+    views = [make_view(candidate) for candidate in candidates]
+    first = views[0]
+    attempts = [dict(source=first['source'], name=first.get('name'), check=first['start_check'])]
+    if first['start_check']['issues'] and first['facing_source'] != 'entry rule':
+        # A short nudge must not cross a visible wall. Recheck floor and solid
+        # evidence at the new eye; otherwise try another arrival, then geometry.
+        direction, _ = sightline_facing(triangles, np.array(first['native_origin']))
+        for step in (16., 32., 64.):
+            if step + 8 >= first['start_check']['ahead']: break
+            point = np.array(first['native_origin']) - [0,EYE_HEIGHT,0] + direction * step
+            view = make_view(dict(candidates[0], position=point.tolist()))
+            attempts.append(dict(action='nudge', distance=step, check=view['start_check']))
+            if not view['start_check']['issues']:
+                views[0] = view; view['start_adjustment'] = dict(action='nudge', distance=step); break
+        if views[0] is first:
+            for i, view in enumerate(views[1:], 1):
+                attempts.append(dict(action='next arrival marker', name=view.get('name'), check=view['start_check']))
+                if not view['start_check']['issues']:
+                    views.insert(0, views.pop(i)); views[0]['start_adjustment'] = dict(action='next arrival marker'); break
+        if views[0] is first:
+            for candidate in geometry_candidates():
+                view = make_view(candidate)
+                attempts.append(dict(action='geometry fallback', rank=candidate.get('floor_triangle_rank'), check=view['start_check']))
+                if not view['start_check']['issues']:
+                    views.insert(0, view); view['start_adjustment'] = dict(action='geometry fallback'); break
+    views[0]['start_audit'] = dict(initial=attempts[0], attempts=attempts,
+                                  action=views[0].get('start_adjustment',{}).get('action',
+                                      'unchanged' if first['facing_source']=='entry rule' else 'facing only'),
+                                  unresolved=views[0]['start_check']['issues'])
     return views
 
 
@@ -317,7 +430,9 @@ def import_maps(install, output, replace=False, map_filter=None):
         if row['role']!='model':
             row['results'] = [dict(id=i,status=statuses[i]['status'],reason=statuses[i].get('reason','')) for i in row['entries']]
     report['counts'] = dict(xafs=len(xafs),room_records=sum(e['section']=='Rooms' for e in entries),
-                            extras=sum(e['section']=='Extras' for e in entries),statuses=dict(Counter(e['status'] for e in entries)))
+                            extras=sum(e['section']=='Extras' for e in entries),statuses=dict(Counter(e['status'] for e in entries)),
+                            facing_sources={section:dict(Counter(e['start_view'].get('facing_source','unrecorded; re-import')
+                                for e in entries if e['section']==section and 'start_view' in e)) for section in ('Rooms','Extras')})
     (output/'index.json').write_text(json.dumps(index,indent=1),encoding='utf-8')
     (output/'import-report.json').write_text(json.dumps(report,indent=1,allow_nan=False),encoding='utf-8')
     return report
