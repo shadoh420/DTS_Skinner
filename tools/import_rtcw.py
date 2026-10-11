@@ -23,6 +23,13 @@ except ImportError:
 SECTIONS = {'sp': 'Single player', 'mp': 'Multiplayer'}
 MAX_BYTES = 256 * 1024 * 1024
 MODEL_EXTS = ('.md3', '.mdc', '.mds')
+IMAGE_EXTS = ('.tga','.jpg','.jpeg','.png','.pcx','.bmp')
+
+
+def image_candidates(target):
+    target = q3.key_name(target)
+    stem = q3.shader_key(target)  # Same-stem fallback also handles stale .psd references.
+    return ([target] if PurePosixPath(target).suffix in IMAGE_EXTS else []) + [stem+ext for ext in IMAGE_EXTS]
 
 
 def checked_name(name):
@@ -299,12 +306,15 @@ def read_model(raw, frame=0):
 def read_skin(raw):
     values = q3.skin_map(raw)
     if not values:
-        raise ValueError('Skin contains no surface or model declarations')
+        text = re.sub(r'/\*.*?\*/|//[^\r\n]*', '', q3.read_text(raw), flags=re.S)
+        if any(line.strip() and not re.match(r'\s*tag_[^,]*,', line, re.I) for line in text.splitlines()):
+            raise ValueError('Skin contains no surface or model declarations')
     scale = float(values.pop('playerscale', '1'))
     if not math.isfinite(scale) or scale <= 0 or scale > 100:
         raise ValueError('Invalid skin playerscale')
     return dict(surfaces={k:v for k,v in values.items() if not k.startswith('md3_')},
-                models={k:v for k,v in values.items() if k.startswith('md3_')}, scale=scale)
+                models={k:v for k,v in values.items() if k.startswith('md3_')}, scale=scale,
+                empty=not values)
 
 
 def shader_maps(game):
@@ -328,6 +338,33 @@ def shader_maps(game):
             implicit = next((r for r in body if r[0] in ('implicitmap','implicitmask','implicitblend')), None)
             if shader in parsed:
                 result[shader] = parsed[shader]
+                # A later diffuse-lit base often covers an earlier environment or
+                # glow stage. Showing only that effect loses the model's identity.
+                # Prefer the base image, retaining alpha only if there is no
+                # opaque backdrop. This is a static approximation, not a bake.
+                for index, stage in enumerate(stages):
+                    rows = [[t.lower() for t in r] for r in stage]
+                    if ['rgbgen','lightingdiffuse'] not in rows:
+                        continue
+                    if any(r[0]=='tcgen' and r[1:] != ['base'] for r in rows):
+                        continue
+                    single = shader+'\n{\n'+'\n'.join(' '.join(r) for r in body)+'\n{\n'
+                    single += '\n'.join(' '.join(r) for r in stage)+'\n}\n}'
+                    chosen = q3.shader_maps({'one.shader':{'read':lambda t=single:t.encode()}}).get(shader)
+                    if not chosen: continue
+                    if chosen['target'] != parsed[shader]['target'] and index > 0:
+                        if chosen['target'] != '$whiteimage' and not any(n in game.assets for n in image_candidates(chosen['target'])):
+                            result[shader]['limitations'].append('diffuse stage image absent in this section; first-stage fallback')
+                            break
+                        backdrop = parsed[shader]['settings']
+                        if not backdrop['blend'] and not backdrop['alphaFunc']:
+                            chosen['settings'].update(blend=[],alphaFunc='',depthWrite=True)
+                        chosen['limitations'] = sorted(set(parsed[shader]['limitations']+chosen['limitations']+
+                            ['static diffuse-stage approximation; other stages omitted']))
+                        chosen['static_stage'] = dict(index=index,previous_target=parsed[shader]['target'],
+                                                     script=name,opaque_backdrop=not backdrop['blend'] and not backdrop['alphaFunc'])
+                        result[shader] = chosen
+                    break
             else:
                 result[shader] = dict(target=shader, settings=dict(shader=shader,alphaFunc='',blend=[],cull='back',depthWrite=True,clamp=False,tcGen='base'),limitations=[])
                 if not implicit:
@@ -344,8 +381,11 @@ def shader_maps(game):
 class Textures(q3.Textures):
     def __init__(self, game, output):
         super().__init__(game.assets, Path(output), shaders=shader_maps(game), prefix=game.section+'_',
-                         image_extensions=('.tga','.jpg','.jpeg','.png','.pcx','.bmp'))
+                         image_extensions=IMAGE_EXTS)
         self.results = {}
+
+    def image_candidates(self, target):
+        return image_candidates(target)
 
     def resolve(self, shader):
         result = super().resolve(shader)
@@ -397,7 +437,13 @@ def character_parts(game, folder, body_skin, head_skin):
     def skin(name):
         if not name: return dict(surfaces={},models={},scale=1.)
         used.append(name)
-        return read_skin(game.read(name))
+        if name == head_skin and name not in game.assets:
+            warnings.append(f'{name}: absent head skin; embedded-shader fallback')
+            return dict(surfaces={},models={},scale=1.)
+        result = read_skin(game.read(name))
+        if result.get('empty'):
+            warnings.append(f'{name}: empty skin after ignoring tag entries; embedded-shader fallback')
+        return result
     bs, hs = skin(body_skin), skin(head_skin)
     frame, pose = idle_pose(game,folder)
     def part(path, sk, tags=(), at=0):
@@ -557,13 +603,15 @@ def import_catalog(install, output, model_filter=None):
                     else:
                         resolver.resolve(shader)
                         refs.append(dict(surface=surface,**resolver.results[shader]))
-                row.update(status='read',surfaces=refs,models=sk['models'])
+                row.update(status='empty' if sk.get('empty') else 'read',surfaces=refs,models=sk['models'])
             except (ValueError,OSError,zipfile.BadZipFile) as exc:
                 row.update(status='unreadable',reason=str(exc))
             skin_results.append(row)
         texture_results.extend(dict(section=section,**r) for r in resolver.results.values())
         sections[section] = dict(search_order=game.search_order,issues=game.issues,
-            models=dict(Counter(category(n) for n in game.assets if n.endswith(MODEL_EXTS))))
+            models=dict(Counter(category(n) for n in game.assets if n.endswith(MODEL_EXTS))),
+            static_shader_stages={name:dict(target=entry['target'],**entry['static_stage'])
+                                  for name,entry in resolver.shaders.items() if 'static_stage' in entry})
     report = dict(entries=len(catalog),ready=sum(r['status']=='ready' for r in results),
         skipped=sum(r['status']=='skipped' for r in results),duplicates=sum(r['status']=='duplicate' for r in results),
         textures=sum(r['status']=='resolved' for r in texture_results),results=results,sections=sections,

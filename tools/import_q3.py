@@ -216,6 +216,10 @@ class Textures:
                 source.convert('RGBA').save(self.output/filename)
         return filename
 
+    def image_candidates(self, target):
+        stem = Path(target).with_suffix('').as_posix() if Path(target).suffix.lower() in self.image_extensions else target
+        return [target] + [stem+ext for ext in self.image_extensions]
+
     def resolve(self, shader):
         if shader in self.cache:
             return self.cache[shader]
@@ -223,9 +227,7 @@ class Textures:
         target = definition.get('target', key_name(shader))
         settings = definition.get('settings', dict(shader=shader_key(shader), alphaFunc='', blend=[], cull='back', depthWrite=True, clamp=False, tcGen='base'))
         warnings = [f'Shader {shader}: not reproduced: {", ".join(definition["limitations"])}.'] if definition.get('limitations') else []
-        stem = Path(target).with_suffix('').as_posix() if Path(target).suffix.lower() in self.image_extensions else target
-        candidates = [target] + [stem+ext for ext in self.image_extensions]
-        key = next((key for key in candidates if key in self.assets), None)
+        key = next((key for key in self.image_candidates(target) if key in self.assets), None)
         filename = self.prefix+asset_name(key or target or 'missing')+'.png'
         if target == '$whiteimage':
             if not (self.output/filename).exists(): Image.new('RGBA',(1,1),'white').save(self.output/filename)

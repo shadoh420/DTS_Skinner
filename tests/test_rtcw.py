@@ -231,6 +231,81 @@ class RTCWTests(unittest.TestCase):
             self.assertEqual(report['skin_file_status']['unreadable'],1)
             self.assertTrue(any('Cannot decode models/test/broken.tga' in r for r in report['unresolved_skin_reasons']))
 
+    def test_empty_and_absent_head_skin_preserve_character(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=install(Path(tmp));folder='models/players/test'
+            pk3(root/'sp_pak1.pk3',[(folder+'/head_default.skin',b'tag_head,models/ignored.tga')])
+            game=Game(root)
+            self.assertTrue(read_skin(game.read(folder+'/head_default.skin'))['empty'])
+            for head in (folder+'/head_default.skin',folder+'/absent.skin'):
+                parts,meta=character_parts(game,folder,folder+'/body_default.skin',head)
+                self.assertEqual(len(parts),2)
+                self.assertEqual(parts[1]['skin'],{})
+                self.assertEqual(parts[1]['model']['surfaces'][0]['shaders'],['models/test/diffuse'])
+                self.assertTrue(any('embedded-shader fallback' in w for w in meta['warnings']))
+            # Retail Protosoldier's head is tag-only: this must also keep the body.
+            raw=bytearray(mdc());struct.pack_into('<i',raw,84,0)
+            pk3(root/'sp_pak2.pk3',[(folder+'/head.mdc',raw)])
+            report=import_catalog(root,root/'out')
+            hero=next(r for r in report['results'] if r['section']=='sp' and r['variant']=='default')
+            self.assertEqual(hero['status'],'ready')
+            self.assertEqual(report['skin_file_status']['empty'],1)
+
+    def test_later_diffuse_stage_over_opaque_effect(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            script=b'''models/hero
+{
+ { map textures/effect.tga
+   tcMod scroll 1 0
+ }
+ { map models/base.tga
+   blendFunc blend
+   rgbGen lightingDiffuse
+ }
+}
+models/missingbase
+{
+ { map textures/effect.tga }
+ { map models/absent.tga
+   rgbGen lightingDiffuse
+ }
+}
+'''
+            pk3(root/'pak0.pk3',[('scripts/test.shader',script),('textures/effect.tga',image_bytes()),('models/base.tga',image_bytes())])
+            game=Game(root);textures=Textures(game,root/'out')
+            entry=textures.shaders['models/hero']
+            self.assertEqual(entry['target'],'models/base.tga')
+            self.assertEqual(entry['static_stage']['index'],1)
+            filename,warnings,settings=textures.resolve('models/hero')
+            self.assertEqual(settings['blend'],[])  # No see-through holes where the opaque effect used to be.
+            self.assertTrue(settings['depthWrite'])
+            self.assertTrue(any('diffuse-stage approximation' in w for w in warnings))
+            self.assertTrue((root/'out'/filename).is_file())
+            self.assertEqual(textures.shaders['models/missingbase']['target'],'textures/effect.tga')
+            self.assertIn('diffuse stage image absent',textures.shaders['models/missingbase']['limitations'][-1])
+            self.assertEqual(q3.shader_maps(game.assets)['models/hero']['target'],'textures/effect.tga')
+
+    def test_any_extension_backslashes_and_section_shader_lookup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            script=b'alias\n{\n { map MODELS\\TEST\\BASE.TGA }\n}\nghost\n{\n { map models/test/base.tga }\n}'
+            pk3(root/'pak0.pk3',[('scripts/unique.shader',script),('models/test/base.jpg',image_bytes())])
+            pk3(root/'sp_pak1.pk3',[('models/test/sp_only.jpg',image_bytes())])
+            pk3(root/'mp_pak0.pk3',[('scripts/unique.shader',b'other\n{\n { map $whiteimage }\n}')])
+            sp=Textures(Game(root),root/'sp');mp=Textures(Game(root,'mp'),root/'mp')
+            for shader in ('models/test/base.psd',r'MODELS\TEST\BASE.TGA','alias','ghost'):
+                png,warning,_=sp.resolve(shader)
+                self.assertTrue((root/'sp'/png).is_file(),warning)
+            for shader in ('ghost','models/test/sp_only.tga','models/no/such_file.tga'):
+                mp.resolve(shader)
+                self.assertEqual(mp.results[shader]['status'],'unresolved')
+            # Existing Q3's unknown-extension lookup policy remains unchanged.
+            original=q3.Textures(Game(root).assets,root/'q3')
+            png,warning,_=original.resolve('models/test/base.psd')
+            self.assertFalse((root/'q3'/png).exists())
+            self.assertTrue(any('Missing texture' in w for w in warning))
+
 
 @unittest.skipUnless(os.environ.get('RTCW_INSTALL_TESTS')=='1' and (INSTALL/'Main/pak0.pk3').is_file(),
                      'Optional RTCW single-file probes; set RTCW_INSTALL_TESTS=1')
