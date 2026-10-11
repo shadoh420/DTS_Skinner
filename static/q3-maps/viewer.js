@@ -98,6 +98,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         vec3 onSphere = normalize(P * p + vec3(0., 0., 4096.));
         vec2 st = vec2(acos(clamp(onSphere.x, -1., 1.)), acos(clamp(onSphere.y, -1., 1.)));`
       : stage.tcGen === 'lightmap' ? 'vec2 st = lm;'
+      : stage.tcGenVectors ? `vec2 st = vec2(dot(P, vec3(${stage.tcGenVectors.slice(0, 3).map(number).join(', ')})), dot(P, vec3(${stage.tcGenVectors.slice(3, 6).map(number).join(', ')})));`
       : stage.tcGen === 'environment' ? 'vec3 viewer = normalize(uView - P); vec3 turned = N * 2. * dot(N, viewer) - viewer; vec2 st = vec2(.5 + turned.y * .5, .5 - turned.z * .5);'
       : 'vec2 st = uv;';
     for (const [kind, ...values] of stage.tcMods || []) {
@@ -141,11 +142,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   const animated = [];
   function stageMaterial(shader, stage, texture, frames) {
     const sky = shader.sky, st = coordinates(stage, sky);
+    const foliage = config.foliage && shader.distanceCull;
+    const fade = foliage ? `if (foliageOrigin.w > 0.) {
+      float z = -(viewMatrix * vec4(foliageOrigin.x, foliageOrigin.z, -foliageOrigin.y, 1.)).z * uFovScale;
+      float alpha = (${number(foliage[1])} - z * foliageOrigin.w) / ${number(foliage[1] - foliage[0])};
+      vFoliage = (z < -64. || alpha < ${number(foliage[2])}) ? 0. : 1.;
+      vertexTint.a = clamp(alpha, 0., 1.);
+    }` : '';
     const test = {gt0: 'if (c.a <= 0.) discard;', lt128: 'if (c.a >= .5) discard;', ge128: 'if (c.a < .5) discard;'}[stage.alphaFunc] || '';
     const material = new THREE.ShaderMaterial({
-      uniforms: {...uniforms, map: {value: texture}},
+      uniforms: {...uniforms, map: {value: texture}, ...(foliage ? {uFovScale: {value: settings.fov / 90}} : {})},
       vertexShader: `invariant gl_Position;
         ${WAVE}
+        ${foliage ? 'uniform float uFovScale; attribute vec4 foliageOrigin; varying float vFoliage;' : ''}
         uniform vec3 uView; attribute vec2 lm; attribute vec4 tint; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
         float specular(vec3 P, vec3 N) {  // RB_CalcSpecularAlpha, with the game's one fixed light.
           vec3 light = normalize(vec3(-960., 1980., 96.) - P), turned = N * 2. * dot(N, light) - light;
@@ -158,14 +167,17 @@ window.addEventListener('DOMContentLoaded', async () => {
           vec3 facing = mat3(modelMatrix) * normal, P = vec3(placed.x, -placed.z, placed.y), N = normalize(vec3(facing.x, -facing.z, facing.y));
           ${deform(shader)}
           ${sky ? '' : st + ' vSt = st;'}
-          vColor = ${colour(stage)};
+          ${foliage ? 'vec4 vertexTint = tint; vFoliage = 1.;' + fade : ''}
+          vColor = ${foliage ? colour(stage).replace(/\btint\b/g, 'vertexTint') : colour(stage)};
           vDir = P - uView;
           gl_Position = projectionMatrix * viewMatrix * vec4(P.x, P.z, -P.y, 1.);
         }`,
       fragmentShader: `${WAVE}
+        ${foliage ? 'varying float vFoliage;' : ''}
         uniform sampler2D map; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
         void main() {
           ${sky ? 'vec3 P = vDir, N = vec3(0., 0., 1.); ' + st : 'vec2 st = vSt;'}
+          ${foliage ? 'if (vFoliage < .5) discard;' : ''}
           vec4 c = texture2D(map, st) * vColor;
           ${test}
           gl_FragColor = c;
@@ -176,6 +188,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       blendSrc: stage.blend ? FACTORS[stage.blend[0]] || THREE.OneFactor : THREE.OneFactor,
       blendDst: stage.blend ? FACTORS[stage.blend[1]] || THREE.OneFactor : THREE.ZeroFactor,
       polygonOffset: !!shader.polygonOffset, polygonOffsetFactor: -1, polygonOffsetUnits: -2});
+    if (foliage) material.onBeforeRender = () => { material.uniforms.uFovScale.value = settings.fov / 90; };
     if (frames && frames.length > 1) animated.push({material, frames, fps: stage.fps});
     return material;
   }
@@ -198,7 +211,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Draw lumps of the map file (IBSP 46): models 7, vertices 10, indices 11, faces 13, lightmaps 14.
-  function buildWorld(buffer) {
+  function buildWorld(buffer, externalAtlas = null) {
     const view = new DataView(buffer);
     if (view.getUint32(0, true) !== 0x50534249 || view.getInt32(4, true) !== (config.bspVersion || 46)) throw new Error(config.bspVersion === 47 ? 'not an RTCW map file' : 'not a Quake 3 map file');
     const lump = (index, size) => ({at: view.getInt32(8 + index * 8, true), count: Math.floor(view.getInt32(12 + index * 8, true) / size)});
@@ -206,13 +219,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     const float = at => view.getFloat32(at, true), int = at => view.getInt32(at, true);
 
     // All lightmaps in one texture, so a shader is one draw whatever lightmaps its surfaces use.
-    const columns = Math.max(1, Math.ceil(Math.sqrt(lightmaps.count))), rows = Math.max(1, Math.ceil(lightmaps.count / columns));
-    const texels = new Uint8Array(columns * rows * 16384 * 4).fill(255), bytes = new Uint8Array(buffer);
-    for (let index = 0; index < lightmaps.count; index++) for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+    const external = externalAtlas && map.lightmapAtlas;
+    const columns = external ? external.columns : Math.max(1, Math.ceil(Math.sqrt(lightmaps.count))), rows = external ? external.rows : Math.max(1, Math.ceil(lightmaps.count / columns));
+    const texels = new Uint8Array(external ? 0 : columns * rows * 16384 * 4).fill(255), bytes = new Uint8Array(buffer);
+    for (let index = 0; !external && index < lightmaps.count; index++) for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
       const from = lightmaps.at + index * 49152 + (y * 128 + x) * 3;
       shiftLight(bytes[from], bytes[from + 1], bytes[from + 2], texels, (((Math.floor(index / columns) * 128 + y) * columns + index % columns) * 128 + x) * 4);
     }
-    const atlas = new THREE.DataTexture(texels, columns * 128, rows * 128);
+    const atlas = externalAtlas || new THREE.DataTexture(texels, columns * 128, rows * 128);
     atlas.magFilter = atlas.minFilter = THREE.LinearFilter;
     atlas.needsUpdate = true;
 
@@ -224,14 +238,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     const positions = [], normals = [], uvs = [], lms = [], tints = [], groups = new Map(), colour = [0, 0, 0];
+    const foliageOrigins = [], foliageFaces = new Map((config.foliage ? map.bspNotes || [] : []).filter(n => n.action === 'foliage instances expanded').map(n => [n.surface, n]));
     // One vertex: position, texture st, lightmap st, normal, colour. Lightmap st is kept half a texel inside its
     // cell, which is what clamping did when each lightmap was a texture of its own.
-    function emit(values, origin, lightmap) {
+    function emit(values, origin, lightmap, foliage = [0, 0, 0, 0]) {
+      if (config.foliage) foliageOrigins.push(...foliage);
       positions.push(values[0] + origin[0], values[1] + origin[1], values[2] + origin[2]);
       uvs.push(values[3], values[4]);
       if (lightmap < 0) lms.push(values[5], values[6]);
-      else lms.push((lightmap % columns + Math.min(Math.max(values[5], 1 / 256), 255 / 256)) / columns,
-        (Math.floor(lightmap / columns) + Math.min(Math.max(values[6], 1 / 256), 255 / 256)) / rows);
+      else {
+        const inset = 1 / (2 * (external ? external.size : 128));
+        lms.push((lightmap % columns + Math.min(Math.max(values[5], inset), 1 - inset)) / columns,
+          (Math.floor(lightmap / columns) + Math.min(Math.max(values[6], inset), 1 - inset)) / rows);
+      }
       const length = Math.hypot(values[7], values[8], values[9]) || 1;
       normals.push(values[7] / length, values[8] / length, values[9] / length);
       shiftLight(values[10], values[11], values[12], colour, 0);
@@ -247,7 +266,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (let face = 0; face < faces.count; face++) {
       const at = faces.at + face * 104, shader = int(at), type = int(at + 8), first = int(at + 12), count = int(at + 16);
       if (!map.shaders[shader] || type < 1 || type > 3 || first < 0 || first + count > vertices.count) continue;
-      const lightmap = int(at + 28) >= 0 && int(at + 28) < lightmaps.count ? int(at + 28) : -1, origin = moved.get(face) || none;
+      const lightmap = (external ? external.valid.includes(int(at + 28)) : int(at + 28) >= 0 && int(at + 28) < lightmaps.count) ? int(at + 28) : -1, origin = moved.get(face) || none;
       const key = shader + (lightmap < 0 ? '|vertex' : '|lit');
       if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, indices: []});
       const indices = groups.get(key).indices, base = positions.length / 3;
@@ -274,7 +293,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       } else {
         const firstIndex = int(at + 20), indexCount = int(at + 24);
         if (firstIndex < 0 || firstIndex + indexCount > indexes.count) continue;
-        for (let n = 0; n < count; n++) emit(read(first + n), origin, lightmap);
+        for (let n = 0; n < count; n++) {
+          const foliage = foliageFaces.get(face), instance = foliage ? Math.floor(n / foliage.vertices) : 0;
+          emit(read(first + n), origin, lightmap, foliage ? [...read(foliage.sourceVertex + instance).slice(0, 3), instance & 1 ? (instance & 2 ? 1.5625 : 1.25) : 1] : undefined);
+        }
         for (let n = 0; n < indexCount; n++) {
           const offset = int(indexes.at + (firstIndex + n) * 4);
           indices.push(base + (offset >= 0 && offset < count ? offset : 0));
@@ -283,16 +305,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     const attributes = {position: new THREE.Float32BufferAttribute(positions, 3), normal: new THREE.Float32BufferAttribute(normals, 3),
       uv: new THREE.Float32BufferAttribute(uvs, 2), lm: new THREE.Float32BufferAttribute(lms, 2), tint: new THREE.Float32BufferAttribute(tints, 4)};
+    if (config.foliage) attributes.foliageOrigin = new THREE.Float32BufferAttribute(foliageOrigins, 4);
     return {atlas, attributes, groups: [...groups.values()]};
   }
 
   // Stages of a surface without a script, as R_FindShader builds them: the image under the lightmap, or lit by
   // the vertex colours where the surface has no lightmap.
-  const stagesOf = (shader, lit, model) => shader.default ? [{map: '$default', rgbGen: ['identitylighting'], depthWrite: true}]
+  const defaultStagesOf = (shader, lit, model) => shader.default ? [{map: '$default', rgbGen: ['identitylighting'], depthWrite: true}]
     : !shader.implicit ? shader.stages
     : model ? [{map: shader.map, rgbGen: ['lightingdiffuse'], depthWrite: true}]
     : lit ? [{map: '$lightmap', tcGen: 'lightmap', rgbGen: ['identity'], depthWrite: true}, {map: shader.map, rgbGen: ['identity'], blend: ['gl_dst_color', 'gl_zero'], depthWrite: false}]
     : [{map: shader.map, rgbGen: ['exactvertex'], depthWrite: true}];
+  const stagesOf = (shader, lit, model) => (config.stagesOf && config.stagesOf(shader, lit, model)) || defaultStagesOf(shader, lit, model);
   const loading = new THREE.MeshBasicMaterial({color: 'rgb(0, 109, 56)', wireframe: true});
   // The materials of a shader's stages, once their textures are in; nothing for a shader that names none.
   async function stageMaterials(shader, stages, atlas) {
@@ -523,7 +547,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       return element;
     }));
     $('map').value = mapId;
-    map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
+    map = await (await get(`${data}maps/${mapId}/${config.sceneFile ? config.sceneFile() : 'scene.json'}`)).json();
     document.title = `${map.name} — ${config.title || 'Q3 Maps'}`;
     if (map.lighting) {
       settings.fov = map.lighting.fov;
@@ -535,7 +559,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     applySettings();
     showViewpoint(0);
     showStatus('Loading map…');
-    const world = buildWorld(await (await get(data + map.bsp)).arrayBuffer());
+    const externalAtlas = config.externalLightmaps && map.lightmapAtlas ? await loadTexture(map.lightmapAtlas.file, true, true) : null;
+    const world = buildWorld(await (await get(data + map.bsp)).arrayBuffer(), externalAtlas);
     if (!world.groups.length) failures.push('the map file holds no surfaces to draw');
     let loaded = 0;
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));

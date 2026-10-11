@@ -85,17 +85,18 @@ def scale(entity):
     return values
 
 
-def lighting_profile(install, section, game=None):
+def lighting_profile(install, section, game=None, *, directory='Main', configs=('default.cfg','wolfconfig.cfg','autoexec.cfg'), defaults=None):
     """Classic renderer defaults, then bounded config values; never execute cfg commands."""
     values = dict(r_gamma=1, r_intensity=1, r_mapoverbrightbits=2, r_overbrightbits=0,
                   r_ignorehwgamma=0, r_picmip=1, r_fullscreen=1, r_colorbits=32,
                   r_roundimagesdown=1, r_simplemipmaps=1, r_texturemode='GL_LINEAR_MIPMAP_LINEAR', cg_fov=90)
+    values.update(defaults or {})
     game = game or rtcw.Game(install,section)
-    root = Path(install); root = root/'Main' if (root/'Main').is_dir() else root
+    root = Path(install); root = root/directory if (root/directory).is_dir() else root
     sources = []
     # common.c Com_ExecuteCfg: default.cfg, user config, autoexec.cfg. Only settings
     # affecting this preview are read. No exec/vstr or console commands are run.
-    for name in ('default.cfg','wolfconfig.cfg','autoexec.cfg'):
+    for name in configs:
         raw, source = None, None
         for label, files in game.sources:
             if label=='loose' and (root/name).is_file():
@@ -539,28 +540,33 @@ def placed_model(game,path,skin,frame,output,textures,model_textures,tag=None):
     return dict(file=file,shaders=shaders,middle=[0,0,0],limitations=sorted(set(notes))),missing
 
 
-def import_map(game,name,ident,raw,source,output,textures,model_textures):
+def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rules=None):
+    # RTCW remains the default; ET supplies only rules that differ.
+    if rules is None:
+        import sys
+        rules=sys.modules[__name__]
     bsp_notes=[]
-    lumps=read_bsp(raw,bsp_notes);things=qmap.entities(lumps[0].decode('latin1'));models=list(struct.iter_unpack('<6f4i',lumps[7]))
+    lumps=rules.read_bsp(raw,bsp_notes);things=qmap.entities(lumps[0].decode('latin1'));models=list(struct.iter_unpack('<6f4i',lumps[7]))
+    if hasattr(rules,'prepare_entities'):things=rules.prepare_entities(game,name,things)
     states={};audit=[];unresolved=[]
     for i,e in enumerate(things):
         if not re.fullmatch(r'\*\d+',e.get('model','')):continue
         idx=int(e['model'][1:])
         if not 0<idx<len(models):raise ValueError(f'Entity {i}: invalid inline model')
-        state=brush_state(e,models[idx],things);state['hidden']=filtered(e,game.section) or state['hidden'];states[idx]=state
+        state=rules.brush_state(e,models[idx],things);state['hidden']=rules.filtered(e,game.section) or state['hidden'];states[idx]=state
     collision=Collision(lumps,states);draw=brush_geometry(lumps,states)
     names=[(qmap.shader_name(s.split(b'\0')[0].decode('latin1')),flags) for s,flags,_ in struct.iter_unpack('<64sii',lumps[1])]
     used={struct.unpack_from('<i',draw[13],at)[0] for at in range(0,len(draw[13]),104) if struct.unpack_from('<i',draw[13],at+8)[0] in (1,2,3)}
     shaders=[None]*len(names);limits=set(NOT_DRAWN)
     for i in sorted(used):
         if names[i][1]&qmap.SURF_NODRAW:continue
-        shaders[i],missing,notes=describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
+        shaders[i],missing,notes=rules.describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
     placed=[];item_models={};teams=set()
     for serial,e in enumerate(things):
-        cls=e.get('classname','').lower();reason=filtered(e,game.section);status='omitted';paths=[]
+        cls=e.get('classname','').lower();reason=rules.filtered(e,game.section);status='omitted';paths=[]
         row=dict(entity=serial,classname=cls)
         try:
-            flags=int(number(e,'spawnflags'));model=e.get('model','');item=ITEMS[game.section].get(cls)
+            flags=int(number(e,'spawnflags'));model=e.get('model','');item=rules.ITEMS[game.section].get(cls)
             if reason:pass
             elif cls.startswith('ai_'):reason='AI character/control omitted by choice'
             elif model.startswith('*'):
@@ -582,9 +588,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures):
             elif cls in ('script_model_med','props_decoration') and flags&1:reason='START_INVIS'
             elif cls=='misc_spotlight':reason='spotlight camera/effect not reconstructed'
             elif cls=='misc_mg42':
-                paths=['models/mapobjects/weapons/mg42a.md3']+([] if flags&2 else ['models/mapobjects/weapons/mg42b.md3']);reason=''
+                paths=rules.mounted_paths(e) if hasattr(rules,'mounted_paths') else ['models/mapobjects/weapons/mg42a.md3']+([] if flags&2 else ['models/mapobjects/weapons/mg42b.md3']);reason=''
             else:
-                path=(e.get('model2') or model) if cls in ('props_decoration','props_statue') else model or e.get('model2') or PROP_MODELS.get(cls)
+                path=(e.get('model2') or model) if cls in ('props_decoration','props_statue') else model or e.get('model2') or rules.PROP_MODELS.get(cls)
                 if cls=='props_flamebarrel':path='models/furniture/barrel/barrel_'+('c' if flags&4 else 'd' if flags&1 else 'b')+'.md3'
                 paths=[path] if path else [];reason='' if paths else 'no renderable model or BSP surfaces'
             if paths and not reason:
@@ -635,7 +641,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures):
         except (ValueError,OSError,struct.error,zipfile.BadZipFile,KeyError) as exc:
             row.update(status='failed',reason=str(exc));unresolved.append(f'entity {serial} {cls}: {exc}')
         audit.append(row)
-    views=viewpoints(things,collision,game.section)
+    views=rules.viewpoints(things,collision,game.section)
     if not views:limits.add('map has no player start; camera at world origin')
     for v in views:
         if v['floor']!='brush hull floor':limits.add('start floor: '+v['floor'])
