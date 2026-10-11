@@ -445,15 +445,15 @@ models/missingbase
     def test_any_extension_backslashes_and_section_shader_lookup(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
-            script=b'alias\n{\n { map MODELS\\TEST\\BASE.TGA }\n}\nghost\n{\n { map models/test/base.tga }\n}'
+            script=b'alias\n{\n { map /MODELS\\TEST\\BASE.TGA }\n}\nghost\n{\n { map models/test/base.tga }\n}'
             pk3(root/'pak0.pk3',[('scripts/unique.shader',script),('models/test/base.jpg',image_bytes())])
             pk3(root/'sp_pak1.pk3',[('models/test/sp_only.jpg',image_bytes())])
             pk3(root/'mp_pak0.pk3',[('scripts/unique.shader',b'other\n{\n { map $whiteimage }\n}')])
             sp=Textures(Game(root),root/'sp');mp=Textures(Game(root,'mp'),root/'mp')
-            for shader in ('models/test/base.psd',r'MODELS\TEST\BASE.TGA','alias','ghost'):
+            for shader in ('models/test/base.psd',r'MODELS\TEST\BASE.TGA','/models/test/base',r'\models\test\base.tga','alias','ghost'):
                 png,warning,_=sp.resolve(shader)
                 self.assertTrue((root/'sp'/png).is_file(),warning)
-            for shader in ('ghost','models/test/sp_only.tga','models/no/such_file.tga'):
+            for shader in ('ghost','models/test/sp_only.tga','models/no/such_file.tga','/alias','//models/test/base','/../models/test/base'):
                 mp.resolve(shader)
                 self.assertEqual(mp.results[shader]['status'],'unresolved')
             # Existing Q3's unknown-extension lookup policy remains unchanged.
@@ -461,6 +461,8 @@ models/missingbase
             png,warning,_=original.resolve('models/test/base.psd')
             self.assertFalse((root/'q3'/png).exists())
             self.assertTrue(any('Missing texture' in w for w in warning))
+            png,warning,_=original.resolve('/models/test/base.jpg')
+            self.assertFalse((root/'q3'/png).exists())
 
 
 @unittest.skipUnless(os.environ.get('RTCW_INSTALL_TESTS')=='1' and (INSTALL/'Main/pak0.pk3').is_file(),

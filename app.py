@@ -25,6 +25,7 @@ from tools.import_t1_map import import_maps as import_t1_maps
 from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
 from tools.import_rtcw_map import import_maps as import_rtcw_maps
+from tools.import_et_map import import_maps as import_et_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
 from tools.import_n64_map import import_maps as import_n64_maps
@@ -43,6 +44,7 @@ from tools.import_daikatana import import_catalog as import_daikatana_catalog
 from tools.import_anachronox import import_catalog as import_anachronox_catalog
 from tools.import_sin import import_catalog as import_sin_catalog
 from tools.import_rtcw import import_catalog as import_rtcw_catalog
+from tools.import_et import import_catalog as import_et_catalog
 from tools.import_azrael import import_catalog as import_azrael_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
 from tools.import_quake2_map import import_maps as import_quake2_maps
@@ -90,7 +92,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'azrael', 'ge')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'azrael', 'ge')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -256,27 +258,46 @@ def rtcw_maps_viewer():
     return response
 
 
+@app.route('/maps/et/')
+def et_maps_viewer():
+    text = rtcw_maps_viewer().get_data(as_text=True)
+    text = text.replace('RTCW Maps', 'ET Maps').replace('RTCW folder', 'Enemy Territory folder').replace('C:\\Games\\RTCW', 'C:\\Games\\Wolfenstein Enemy Territory')
+    text = text.replace('<script defer src="/static/q3-maps/viewer.js">', '<script defer src="/static/et-maps/viewer.js"></script>\n  <script defer src="/static/q3-maps/viewer.js">')
+    text = text.replace('<button id="reset">', '<label><input id="built" type="checkbox"> Show finished constructibles</label>\n    <button id="reset">')
+    text = text.replace('Imports Single player and Multiplayer maps from your RTCW Main folder, with each section’s pk3 overrides.', 'Imports ET maps from your etmain folder, including map-start and finished construction states.')
+    text = text.replace('Fog and AI characters are not drawn.', 'Fog is not drawn. Constructibles start as spawned; the checkbox shows final construction stages (Axis for unowned, mutually exclusive team builds). Later script movement and damage effects are not simulated.')
+    text = text.replace('Lighting follows the classic renderer and your local settings, subject to retail game comparison.', 'Lighting targets this PC’s measured retail ET 2.60b result: no hardware gamma, texture gamma from local settings (default 1.3), and no final display ramp. A machine with working hardware gamma uses the display ramp instead.')
+    response = app.response_class(text, mimetype='text/html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
 @app.route('/rtcw-map-data/<path:filename>')
+@app.route('/et-map-data/<path:filename>')
 def rtcw_map_data(filename):
     shared = filename.startswith(('textures/', 'bsp/', 'models/'))
-    response = send_from_directory(local_data_dir / 'rtcw-maps', filename, max_age=31536000 if shared else None)
+    game = 'et' if request.path.startswith('/et-map-data/') else 'rtcw'
+    response = send_from_directory(local_data_dir / (game+'-maps'), filename, max_age=31536000 if shared else None)
     response.cache_control.immutable = shared
     return response
 
 
 @app.route('/import_rtcw_maps', methods=['POST'])
+@app.route('/import_et_maps', methods=['POST'])
 def import_rtcw_maps_route():
+    game = 'et' if request.path == '/import_et_maps' else 'rtcw'
     if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
     if not request.is_json or request.content_length is None or request.content_length > 8192:
         return jsonify(error='Expected a small JSON import request.'), 400
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
-        return jsonify(error='Enter your local RTCW folder.'), 400
+        return jsonify(error=f'Enter your local {game.upper()} folder.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        return jsonify(import_rtcw_maps(payload['game'].strip(), local_data_dir / 'rtcw-maps', payload.get('replace') is True))
+        importer = import_et_maps if game == 'et' else import_rtcw_maps
+        return jsonify(importer(payload['game'].strip(), local_data_dir / (game+'-maps'), payload.get('replace') is True))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
         return jsonify(error=str(exc)), 422
     finally:
@@ -948,6 +969,7 @@ def import_reflex():
 @app.route('/import_azrael', methods=['POST'])
 @app.route('/import_sin', methods=['POST'])
 @app.route('/import_rtcw', methods=['POST'])
+@app.route('/import_et', methods=['POST'])
 @app.route('/import_anachronox', methods=['POST'])
 def import_conversion_pack():
     game = request.path.removeprefix('/import_')
@@ -969,6 +991,8 @@ def import_conversion_pack():
             return jsonify(import_unreal_catalog(payload['path'].strip(), pack_dirs[game], game))
         if game == 'azrael':
             return jsonify(import_azrael_catalog(payload['path'].strip(), pack_dirs[game]))
+        if game == 'et':
+            return jsonify(import_et_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'rtcw':
             return jsonify(import_rtcw_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'sin':
@@ -1028,7 +1052,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'azrael', 'ge'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'azrael', 'ge'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:

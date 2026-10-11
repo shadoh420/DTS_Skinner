@@ -33,7 +33,7 @@ function fixture(version) {
   const result = Buffer.concat([header, ...lumps]);
   return result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
 }
-async function viewer(profile) {
+async function viewer(profile, options = {}) {
   const THREE = {...require('../static/three.min.js')};
   const rendered = [];
   THREE.WebGLRenderer = class {
@@ -57,7 +57,8 @@ async function viewer(profile) {
     scene.itemModels.prop = {file:'models/prop.json',shaders:[{name:'test',sort:3,cull:'none',stages:[{map:'prop.png',rgbGen:['lightingdiffuse'],alphaFunc:'ge128',depthWrite:true}]}]};
     scene.placed = [{models:['prop'],origin:[10,20,30],angles:[0,90,0],scale:[2,3,4],spin:false}];
   }
-  const window = {skinMap: null, addEventListener(name, fn) { if (name === 'DOMContentLoaded') start = fn; }};
+  if (options.scene) options.scene(scene);
+  const window = {location: {search: options.search || ""}, skinMap: null, addEventListener(name, fn) { if (name === 'DOMContentLoaded') start = fn; }};
   const context = {THREE, window, document:{getElementById:element,addEventListener(){},createElement:element},
     localStorage:{getItem(){return null;},setItem(){}}, devicePixelRatio:1, location:{search:''},
     ResizeObserver:class {observe(){}}, Option:class {}, URLSearchParams, performance, console,
@@ -65,13 +66,14 @@ async function viewer(profile) {
       arrayBuffer:async()=>fixture(profile ? 47 : 46)})};
   vm.createContext(context);
   if (profile) vm.runInContext(fs.readFileSync(require.resolve('../static/rtcw-maps/viewer.js'),'utf8'),context);
+  if (profile === 'et') vm.runInContext(fs.readFileSync(require.resolve('../static/et-maps/viewer.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(require.resolve('../static/q3-maps/viewer.js'),'utf8'),context);
   await start();
   assert.equal(element('status').textContent,'Map ready · speed 400');
   const root=window.skinnerQ3Maps.scene.children[0], mesh=root.children[0];
   assert.equal(mesh.geometry.attributes.position.count,25); // 4x4 patch quads.
   assert.equal(mesh.geometry.index.count,96);
-  assert.equal(mesh.material.uniforms.map.value.image.data[0],profile ? 128 : 64);
+  if (!scene.lightmapAtlas) assert.equal(mesh.material.uniforms.map.value.image.data[0],profile ? 128 : 64);
   assert.ok(mesh.material.vertexShader.includes(profile ? 'vec3(1.0)' : 'vec3(0.5)'));
   if (profile) {
     const holder=root.children[1], prop=holder.children[0];
@@ -80,7 +82,9 @@ async function viewer(profile) {
     assert.ok(prop.material.fragmentShader.includes('if (c.a < .5) discard;'));
     assert.equal(prop.material.uniforms.map.value.minFilter,THREE.LinearMipmapLinearFilter);
   }
+  if (options.check) options.check({root, mesh, scene, THREE});
   window.skinnerQ3Maps.draw(0);
   assert.equal(rendered[1].children[0].material.uniforms.displayScale.value,profile ? 1 : 2);
 }
-Promise.resolve().then(()=>viewer(false)).then(()=>viewer(true)).then(()=>console.log('Shared Q3/RTCW patch geometry and lighting profiles passed')).catch(error=>{console.error(error);process.exitCode=1;});
+module.exports = {viewer, fixture};
+if (require.main === module) Promise.resolve().then(()=>viewer(false)).then(()=>viewer(true)).then(()=>console.log('Shared Q3/RTCW patch geometry and lighting profiles passed')).catch(error=>{console.error(error);process.exitCode=1;});
