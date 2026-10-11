@@ -70,7 +70,7 @@ def animations(raw):
     return result
 
 
-def read_md3(raw, frame=0):
+def read_md3(raw, frame=0, *, normal_decoder=None):
     """Read one frame with bounded offsets; all surfaces share native topology."""
     if len(raw) < 108 or raw[:4] != b'IDP3':
         raise ValueError('Not an MD3 model')
@@ -120,7 +120,8 @@ def read_md3(raw, frame=0):
             x, y, z, encoded = struct.unpack_from('<3hH', raw, offset+overt+(frame*verts+index)*8)
             positions.extend((x/64, y/64, z/64))
             lat, lng = (encoded >> 8) * 2*math.pi/255, (encoded & 255)*2*math.pi/255
-            normals.extend((math.cos(lat)*math.sin(lng), math.sin(lat)*math.sin(lng), math.cos(lng)))
+            normals.extend(normal_decoder(encoded) if normal_decoder else
+                           (math.cos(lat)*math.sin(lng), math.sin(lat)*math.sin(lng), math.cos(lng)))
         shader_names = [raw[offset+oshader+i*68:offset+oshader+i*68+64].split(b'\0')[0].decode('ascii', errors='replace').lower() for i in range(shaders)]
         surfaces.append(dict(name=name, vertices=positions, normals=normals, uvs=uvs, indices=indices, shaders=shader_names))
         offset += send
@@ -200,13 +201,15 @@ def shader_maps(assets):
 
 
 class Textures:
-    def __init__(self, assets, output):
+    def __init__(self, assets, output, *, shaders=None, prefix='', image_extensions=('.tga','.jpg','.png','.jpeg')):
         self.assets, self.output, self.cache = assets, output, {}
-        self.shaders = shader_maps(assets)
+        self.shaders = shader_maps(assets) if shaders is None else shaders
+        self.prefix = prefix
+        self.image_extensions = image_extensions
         output.mkdir(parents=True, exist_ok=True)
 
     def convert(self, key):
-        filename = asset_name(key)+'.png'
+        filename = self.prefix+asset_name(key)+'.png'
         # Preserve edited PNGs, including when importing the full library again.
         if not (self.output/filename).exists():
             with Image.open(io.BytesIO(self.assets[key]['read']())) as source:
@@ -220,10 +223,10 @@ class Textures:
         target = definition.get('target', key_name(shader))
         settings = definition.get('settings', dict(shader=shader_key(shader), alphaFunc='', blend=[], cull='back', depthWrite=True, clamp=False, tcGen='base'))
         warnings = [f'Shader {shader}: not reproduced: {", ".join(definition["limitations"])}.'] if definition.get('limitations') else []
-        stem = Path(target).with_suffix('').as_posix() if Path(target).suffix.lower() in ('.png','.jpg','.jpeg','.tga') else target
-        candidates = [target] + [stem+ext for ext in ('.tga','.jpg','.png','.jpeg')]
+        stem = Path(target).with_suffix('').as_posix() if Path(target).suffix.lower() in self.image_extensions else target
+        candidates = [target] + [stem+ext for ext in self.image_extensions]
         key = next((key for key in candidates if key in self.assets), None)
-        filename = asset_name(key or target or 'missing')+'.png'
+        filename = self.prefix+asset_name(key or target or 'missing')+'.png'
         if target == '$whiteimage':
             if not (self.output/filename).exists(): Image.new('RGBA',(1,1),'white').save(self.output/filename)
         elif key:
