@@ -139,7 +139,8 @@ def map_names(game):
             and (game.section == 'sp' or a['source'].lower().startswith('mp_') or a['source']=='loose')]
 
 
-def read_bsp(raw):
+def read_bsp(raw, diagnostics=None):
+    diagnostics = diagnostics if diagnostics is not None else []
     lumps = qmap.read_bsp(raw, version=47)
     for i in range(17):
         offset,length=struct.unpack_from('<2i',raw,8+i*8)
@@ -174,15 +175,48 @@ def read_bsp(raw):
         bounds(b[0],b[1],counts[9],'brush sides'); index(b[2],counts[1],'brush shader')
     for p,s in struct.iter_unpack('<2i',lumps[9]):
         index(p,counts[2],'side plane'); index(s,counts[1],'side shader')
+    lit_vertices=set()
+    surfaces=bytearray(lumps[13])
+    shader_flags=[s[1] for s in struct.iter_unpack('<64sii',lumps[1])]
     for at in range(0,len(lumps[13]),104):
         s = struct.unpack_from('<12i12f2i',lumps[13],at)
-        index(s[0],counts[1],'surface shader'); bounds(s[3],s[4],counts[10],'surface vertices'); bounds(s[5],s[6],counts[11],'surface indices')
+        index(s[0],counts[1],'surface shader'); bounds(s[3],s[4],counts[10],'surface vertices')
         if s[2] not in (1,2,3,4): raise ValueError('Unsupported surface type '+str(s[2]))
-        for v, in struct.iter_unpack('<i',lumps[11][s[5]*4:(s[5]+s[6])*4]): index(v,s[4],'draw vertex')
+        # ParseMesh / CMod_LoadPatches construct triangles from the control grid;
+        # patch index fields in several retail BSPs contain unused compiler data.
+        if s[2] in (1,3):
+            bounds(s[5],s[6],counts[11],'surface indices')
+            for v, in struct.iter_unpack('<i',lumps[11][s[5]*4:(s[5]+s[6])*4]):
+                if not 0<=v<s[4]:raise ValueError(f'Surface {at//104}: invalid draw vertex index {v} (count {s[4]})')
+        elif s[6]:
+            valid_range=0<=s[5]<=s[5]+s[6]<=counts[11]
+            invalid=not valid_range or any(not 0<=v<s[4] for v, in struct.iter_unpack('<i',lumps[11][s[5]*4:(s[5]+s[6])*4]))
+            if invalid:diagnostics.append(dict(surface=at//104,action='unused index data ignored',reason='Patch/flare loader does not consume draw indices'))
+        if s[2] in (1,2) and s[7]>=0:lit_vertices.update(range(s[3],s[3]+s[4]))
+        if s[2]==2 and shader_flags[s[0]]&qmap.SURF_NODRAW:
+            diagnostics.append(dict(surface=at//104,action='not drawn',reason='ParseMesh SURF_NODRAW; collision retained'))
         if s[2]==2 and (s[-2]<3 or s[-1]<3 or not s[-2]%2 or not s[-1]%2 or s[-2]*s[-1]!=s[4]):
             raise ValueError('Invalid patch grid')
-        rtcw.finite(s[12:24])
-    for v in struct.iter_unpack('<10f4B',lumps[10]): rtcw.finite(v[:10])
+        # Each dsurface union-like float field has different meaning by type.
+        # ParseFace only reads its plane normal; ParseMesh reads LOD bounds.
+        consumed={1:set(range(21,24)),2:set(range(15,21)),3:set(),4:set(range(12,18))|set(range(21,24))}[s[2]]
+        for component in range(12,24):
+            if not math.isfinite(s[component]):
+                if component in consumed:raise ValueError(f'Surface {at//104}: non-finite consumed field {component}')
+                struct.pack_into('<f',surfaces,at+component*4,0)
+                diagnostics.append(dict(surface=at//104,component=component,action='unused surface field set to zero',reason='Surface loader does not consume this field'))
+    lumps[13]=bytes(surfaces)
+    vertices=bytearray(lumps[10])
+    for i,v in enumerate(struct.iter_unpack('<10f4B',lumps[10])):
+        rtcw.finite(v[:5]+v[7:10])
+        for component in (5,6):
+            if not math.isfinite(v[component]):
+                if i in lit_vertices:raise ValueError(f'Draw vertex {i}: non-finite lightmap coordinate on lightmapped surface')
+                # The renderer copies these bytes but an unlightmapped surface
+                # does not sample them. Keep the preview buffer finite, not skip geometry.
+                struct.pack_into('<f',vertices,i*44+component*4,0)
+                diagnostics.append(dict(vertex=i,component=component,action='unused lightmap coordinate set to zero',reason='No lightmapped surface consumes this vertex'))
+    lumps[10]=bytes(vertices)
     for p in struct.iter_unpack('<4f',lumps[2]): rtcw.finite(p)
     return lumps
 
@@ -231,11 +265,22 @@ class ModelTextures(rtcw.Textures):
         super().__init__(game,output)
         self.game=game
         self.raw=qmap.Textures(output)
+        self.converted={}
 
     def convert(self,key):
         file=self.raw.resolve(self.game,key)
         if file is None: raise ValueError('Cannot decode '+key)
+        self.converted[self.prefix+rtcw.q3.asset_name(key)+'.png']=file
         return file
+
+    def resolve(self,shader):
+        filename,warnings,settings=super().resolve(shader)
+        # Q3's editable-model resolver computes its filename independently of
+        # convert()'s return value. Map images instead use immutable content names.
+        filename=self.converted.get(filename,filename)
+        self.cache[shader]=(filename,warnings,settings)
+        self.results[shader].update(texture=filename,status='resolved' if (self.output/filename).is_file() else 'unresolved')
+        return self.cache[shader]
 
 
 def describe(game,name,textures):
@@ -495,7 +540,8 @@ def placed_model(game,path,skin,frame,output,textures,model_textures,tag=None):
 
 
 def import_map(game,name,ident,raw,source,output,textures,model_textures):
-    lumps=read_bsp(raw);things=qmap.entities(lumps[0].decode('latin1'));models=list(struct.iter_unpack('<6f4i',lumps[7]))
+    bsp_notes=[]
+    lumps=read_bsp(raw,bsp_notes);things=qmap.entities(lumps[0].decode('latin1'));models=list(struct.iter_unpack('<6f4i',lumps[7]))
     states={};audit=[];unresolved=[]
     for i,e in enumerate(things):
         if not re.fullmatch(r'\*\d+',e.get('model','')):continue
@@ -558,8 +604,11 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures):
                     if not flags&1:
                         pos,floor=collision.drop(pos,(-10,-10,0),(10,10,5),mask=1)
                         if floor=='startsolid':
-                            pos[2]-=10;pos,floor=collision.drop(pos,(-10,-10,0),(10,10,5),mask=1)
-                            if floor=='startsolid':raise ValueError('Item starts inside solid brush')
+                            retry=vector(e.get('origin'));retry[2]-=10
+                            pos,floor=collision.drop(retry,(-10,-10,0),(10,10,5),mask=1)
+                            if floor=='startsolid':
+                                row.update(status='omitted',reason='FinishSpawningItem frees entity: startsolid after retry')
+                                audit.append(row);continue
                     spin=bool(flags&2) and (item[0]!='weapon' or bool(flags&1))
                     if item[0]=='weapon':
                         size=[s*1.5 for s in size]
@@ -567,7 +616,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures):
                         if stand in game.assets:
                             stand_model=rtcw.read_model(game.read(stand));tag=stand_model['tags'].get('tag_stand'+(str(frame) if frame else ''))
                             if tag is None:raise ValueError('Weapon stand has no requested tag_stand')
-                            paths.append(stand)
+                            # A valid stand may contain only placement tags. The
+                            # engine still attaches the gun, but has no stand mesh to draw.
+                            if stand_model['surfaces']:paths.append(stand)
                         elif sideways:rot[2]+=90
                 for which,path in enumerate(paths):
                     # CG_Item's entity frame selects tag_standN, not a mesh animation frame.
@@ -594,7 +645,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures):
     if not (output/file).exists():qmap.write_bsp(output/file,draw,version=47)
     scene=dict(name=name,longname=things[0].get('message','') if things else '',source=source,section=game.section,bsp=file,bspVersion=47,
                shaders=shaders,viewpoints=views,models=[],items=[],placed=placed,itemModels=item_models,lighting=game.lighting,
-               entityResults=audit,unresolved=sorted(set(unresolved)),outside=[],guessed=[],limits=sorted(limits))
+               entityResults=audit,bspNotes=bsp_notes,unresolved=sorted(set(unresolved)),outside=[],guessed=[],limits=sorted(limits))
     folder=output/'maps'/ident;folder.mkdir(parents=True,exist_ok=True);rtcw.q3.json_write(folder/'scene.json',scene)
     return scene
 
@@ -617,7 +668,7 @@ def import_maps(install,output,replace=False):
                 index.append(dict(id=ident,name=name,longname=scene['longname'],group=label,source=source,unresolved=len(scene['unresolved'])))
                 if scene['unresolved']:result['unresolved'][ident]=scene['unresolved']
                 classes.update((r['classname'],r['status'],r['reason']) for r in scene['entityResults'])
-                result['maps'].append(dict(section=section,map=name,source=source,status=status))
+                result['maps'].append(dict(section=section,map=name,source=source,status=status,bspNotes=scene.get('bspNotes',[])))
             except (ValueError,OSError,struct.error,zipfile.BadZipFile,KeyError) as exc:
                 result['failed'][ident]=str(exc);result['maps'].append(dict(section=section,map=name,source=source,status='failed',reason=str(exc)))
         result['sections'][section]=dict(search_order=game.search_order,issues=game.issues,lighting=game.lighting,

@@ -41,6 +41,30 @@ def entity(**values):
 
 
 class RTCWMapTests(unittest.TestCase):
+    def test_unused_patch_indices_and_unlightmapped_nan_are_accepted(self):
+        raw=bytearray(bsp(patch_surface=True));indices=struct.unpack_from('<i',raw,8+11*8)[0]
+        faces=struct.unpack_from('<i',raw,8+13*8)[0];vertices=struct.unpack_from('<i',raw,8+10*8)[0]
+        struct.pack_into('<i',raw,indices,1098907648)
+        struct.pack_into('<i',raw,faces+7*4,-1)
+        struct.pack_into('<f',raw,vertices+6*4,float('nan'))
+        struct.pack_into('<f',raw,faces+104+15*4,float('nan')) # Unused planar lightmap vector.
+        notes=[];lumps=maps.read_bsp(raw,notes)
+        self.assertEqual(struct.unpack_from('<f',lumps[10],6*4)[0],0)
+        self.assertEqual(struct.unpack_from('<f',lumps[13],104+15*4)[0],0)
+        self.assertEqual(len(notes),3)
+        bad=bytearray(raw);struct.pack_into('<i',bad,faces+7*4,0)
+        with self.assertRaisesRegex(ValueError,'non-finite lightmap'):maps.read_bsp(bad)
+        bad=bytearray(raw);struct.pack_into('<f',bad,vertices,float('nan'))
+        with self.assertRaisesRegex(ValueError,'Non-finite'):maps.read_bsp(bad)
+        bad=bytearray(raw);struct.pack_into('<f',bad,faces+104+21*4,float('nan'))
+        with self.assertRaisesRegex(ValueError,'non-finite consumed'):maps.read_bsp(bad)
+        bad=bytearray(raw);struct.pack_into('<i',bad,indices+3*4,999)
+        with self.assertRaisesRegex(ValueError,'invalid draw vertex index'):maps.read_bsp(bad)
+        nodraw=bytearray(raw);shaders=struct.unpack_from('<i',raw,8+8)[0]
+        struct.pack_into('<i',nodraw,shaders+64,q3.SURF_NODRAW)
+        notes=[];maps.read_bsp(nodraw,notes)
+        self.assertTrue(any(n.get('action')=='not drawn' and n['surface']==0 for n in notes))
+
     def test_bsp46_default_unchanged_and_47_validated(self):
         raw=bsp(patch_surface=True)
         with self.assertRaisesRegex(ValueError,'not 46'):q3.read_bsp(raw)
@@ -154,6 +178,51 @@ textures/test/sky
             mesh=json.loads((out/scene['itemModels'][weapon['models'][0]]['file']).read_text())[0]
             self.assertEqual(mesh['vertices'][:3],[7,8,9])
 
+    def test_tag_only_stand_is_transform_not_missing_weapon(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'out'
+            stand=bytearray(md3('tag_stand'));end=struct.unpack_from('<i',stand,100)[0]
+            struct.pack_into('<i',stand,84,0);struct.pack_into('<i',stand,104,end);stand=stand[:end]
+            text=entity(classname='worldspawn')+entity(classname='weapon_luger',origin='0 0 80',spawnflags='1')
+            pk3(root/'pak0.pk3',[('maps/stand.bsp',bsp(text)),('models/weapons2/luger/luger.md3',md3()),
+                ('models/weapons2/luger/luger_stand.md3',bytes(stand)),('models/test/skin.tga',image_bytes()),('textures/test/wall.tga',image_bytes())])
+            maps.import_maps(root,out)
+            scene=json.loads((out/'maps/sp_stand/scene.json').read_text())
+            self.assertEqual(len(scene['placed']),1);self.assertEqual(scene['entityResults'][1]['status'],'drawn')
+            shader=next(iter(scene['itemModels'].values()))['shaders'][0]
+            self.assertFalse(shader.get('default'));self.assertTrue((out/'textures'/shader['stages'][0]['map']).is_file())
+
+    def test_map_model_texture_content_name_and_cutout_are_preserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            image=Image.new('RGBA',(2,1));image.putdata([(10,20,30,0),(40,50,60,255)])
+            encoded=io.BytesIO();image.save(encoded,format='TGA')
+            pk3(root/'pak0.pk3',[('models/test/diffuse.tga',encoded.getvalue()),('scripts/tree.shader',b'models/tree\n{\n { map models/test/diffuse.tga\n alphaFunc GE128\n }\n}')])
+            game=maps.Game(root);textures=maps.ModelTextures(game,root/'textures')
+            name,warnings,settings=textures.resolve('models/tree')
+            self.assertTrue((textures.output/name).is_file());self.assertEqual(settings['alphaFunc'].lower(),'ge128')
+            self.assertEqual(textures.resolve('models/tree')[0],name)
+            self.assertEqual(textures.results['models/tree']['status'],'resolved')
+            with Image.open(textures.output/name) as decoded:self.assertEqual(decoded.getchannel('A').getextrema(),(0,255))
+            self.assertEqual(textures.resolve(r'models\test\diffuse.tga')[0],name) # Embedded MG42-style path.
+            missing,warnings,_=textures.resolve('models/missing')
+            self.assertFalse((textures.output/missing).exists());self.assertTrue(warnings)
+            self.assertEqual(textures.results['models/missing']['status'],'unresolved')
+
+    def test_startsolid_item_is_omitted_in_sp_and_mp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'out'
+            text=entity(classname='worldspawn')+entity(classname='item_health',origin='0 0 100')
+            pk3(root/'pak0.pk3',[('maps/start.bsp',bsp(text)),('textures/test/wall.tga',image_bytes())])
+            pk3(root/'mp_pak0.pk3',[('maps/mp_test.bsp',bsp(text))])
+            with patch.object(maps.Collision,'drop',return_value=([0,0,999],'startsolid')) as drop:
+                maps.import_maps(root,out)
+            self.assertEqual(drop.call_args_list[1].args[0],[0,0,90]) # Retry from authored origin, not trace end.
+            for ident in ('sp_start','mp_mp_test'):
+                scene=json.loads((out/'maps'/ident/'scene.json').read_text())
+                self.assertEqual(scene['entityResults'][1]['status'],'omitted')
+                self.assertIn('frees entity',scene['entityResults'][1]['reason']);self.assertFalse(scene['placed'])
+
     def test_synthetic_import_every_map_entities_and_routes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);out=root/'out'
@@ -177,6 +246,12 @@ textures/test/sky
             prop,pickup=scene['placed'];self.assertEqual(prop['scale'],[2,3,4]);self.assertTrue(pickup['spin']);self.assertAlmostEqual(pickup['origin'][2],2.125)
             prop_mesh=json.loads((out/scene['itemModels'][prop['models'][0]]['file']).read_text())[0]
             self.assertAlmostEqual(prop_mesh['vertices'][0],.05);self.assertAlmostEqual(prop_mesh['vertices'][2],-.1)
+            for placed in scene['placed']:
+                for key in placed['models']:
+                    definition=scene['itemModels'][key]
+                    self.assertTrue((out/definition['file']).is_file())
+                    for shader in definition['shaders']:
+                        for stage in shader.get('stages',[]):self.assertTrue((out/'textures'/stage['map']).is_file())
             exported=q3.read_bsp((out/scene['bsp']).read_bytes(),version=47)
             self.assertEqual(struct.unpack_from('<i',exported[13],104+8)[0],0)  # Hidden inline surface.
             self.assertEqual(sum(r['status']=='failed' for r in scene['entityResults']),1)
