@@ -419,8 +419,7 @@ window.addEventListener('DOMContentLoaded', () => {
       entry.category = name || entry.import_category;
       if (!name) delete entry.import_category;
     }
-    $('categorySelect').value = name;
-    showFamilies(); filterCatalog();
+    showFamilies(); $('categorySelect').value = name; filterCatalog();
     $('familyStatus').textContent = `${family} ${name ? `renamed to ${name}` : 'deleted; its models are back in their imported families'} (${result.models.length.toLocaleString()} model${result.models.length === 1 ? '' : 's'}).`;
   }
   for (const [id, remove] of [['renameFamily', false], ['deleteFamily', true]]) {
@@ -443,6 +442,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const name = $('modelSelect').value;
     if (!name) return;
     selectedName = name; overrides = {};
+    Object.assign(document.body.dataset, {notesPage: `models/${game}`, notesSubject: name});  // static/notes.js
     const entry = catalog.find(x => x.model_name === name);
     $('textureName').value = entry.texture_name || '';
     $('exportStatus').textContent = '';

@@ -4,6 +4,7 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from tools.notes import read_notes, save_note
 from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, rename_family, t1_building_names, TEXTURE_GAMES, MODEL_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
@@ -791,6 +792,34 @@ def rename_model_family():
         return jsonify(models=rename_family(local_data_dir / 'model-families.json', selected_game(), payload['family'], payload['name']))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
+
+
+@app.route('/notes', methods=['GET', 'POST'])
+def notes():
+    """The user's notes (tools/notes.py). GET lists them, or ?page=&subject= gives one; POST {page, subject, text} saves."""
+    try:
+        if request.method == 'GET':
+            found = read_notes(local_data_dir / 'notes.json')
+            if 'page' in request.args:
+                found = [n for n in found if (n['page'], n['subject']) == (request.args['page'], request.args.get('subject', ''))]
+            return jsonify(found)
+        if foreign_request():
+            return jsonify(error='Notes must be written from this Skinner window.'), 403
+        payload = request.get_json(silent=True) if request.is_json and (request.content_length or 0) <= 1 << 20 else None
+        if not isinstance(payload, dict) or set(payload) != {'page', 'subject', 'text'}:
+            return jsonify(error='Expected page, subject and text.'), 400
+        return jsonify(note=save_note(local_data_dir / 'notes.json', payload['page'], payload['subject'], payload['text']))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+
+
+@app.after_request
+def add_notes_to_map_pages(response):
+    # Every map page gets the notes box (static/notes.js); the pages' CSP allows same-origin scripts.
+    if request.path.startswith('/maps/') and response.status_code == 200 and response.mimetype == 'text/html':
+        response.direct_passthrough = False
+        response.set_data(response.get_data().replace(b'</body>', b'<script src="/static/notes.js"></script></body>', 1))
+    return response
 
 
 @app.route('/q3_inventory')
