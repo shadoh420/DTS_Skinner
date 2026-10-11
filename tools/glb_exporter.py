@@ -145,7 +145,7 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
             material['alphaMode'] = 'BLEND'
         if flag & (8 | 16):
             gltf['extras']['warnings'].append(f'{name}: additive/subtractive blending is approximated by alpha blending in glTF.')
-        if data.get('game') in ('q3', 'diabotical', 'reflex'):
+        if data.get('game') in ('q3', 'diabotical', 'reflex', 'sin'):
             material['extras']['sourceShaderSettings'] = setting
             material['doubleSided'] = not data.get('material_settings') or setting.get('cull', 'back') != 'back'
             if setting.get('cull') == 'front':
@@ -162,6 +162,8 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
                 gltf['extras']['warnings'].append(f'{name}: generated environment coordinates use the authored UVs in glTF.')
             if not setting.get('depthWrite', True):
                 gltf['extras']['warnings'].append(f'{name}: explicit depth-write state is metadata only in glTF.')
+            if data.get('game') == 'sin' and setting.get('opacity', 1) != 1:
+                material['pbrMetallicRoughness']['baseColorFactor'] = [1, 1, 1, setting['opacity']]
         source = sources[slot]
         image_key = (games[slot], name, tuple(transforms[slot].values()), alpha_func == 'LT128')
         if not name.startswith('[') and source.is_file():
@@ -179,7 +181,7 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
                        'minFilter': (9729 if flag & 128 else 9987) if data.get('game') == 't2' else 9728,
                        'wrapS': 33071 if data.get('game') == 't2' and not flag & 1 else 10497,
                        'wrapT': 33071 if data.get('game') == 't2' and not flag & 2 else 10497}
-            if data.get('game') in ('q3', 'diabotical', 'reflex'):
+            if data.get('game') in ('q3', 'diabotical', 'reflex', 'sin'):
                 sampler = {'magFilter': 9729, 'minFilter': 9987,
                            'wrapS': 33071 if setting.get('clamp') else 10497,
                            'wrapT': 33071 if setting.get('clamp') else 10497}

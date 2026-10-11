@@ -56,11 +56,15 @@ def upload_texture(texture, palette):
     return Image.fromarray(np.minimum(rgb * INTENSITY, 255).astype(np.uint8))
 
 
-def read_bsp(data, files, *, texture_loader=None):
-    if len(data) < 160 or data[:4] != b'IBSP' or struct.unpack_from('<i', data, 4)[0] != 38:
-        raise ValueError('Expected IBSP version 38')
+def read_bsp(data, files, *, texture_loader=None, header=(b'IBSP', 38, 19),
+             face_format='Hhihh4Bi', texinfo_format='8fii32si', texinfo_fields=(10, 11)):
+    """Shared Q2 topology; alternate on-disk layouts keep the default BSP38 contract."""
+    magic, version, count = header
+    header_size = 8 + count * 8
+    if len(data) < header_size or data[:4] != magic or struct.unpack_from('<i', data, 4)[0] != version:
+        raise ValueError(f'Expected {magic.decode()} version {version}')
     lumps = []
-    for offset, size in struct.iter_unpack('<ii', data[8:160]):
+    for offset, size in struct.iter_unpack('<ii', data[8:header_size]):
         if offset < 0 or size < 0 or offset + size > len(data):
             raise ValueError('Invalid BSP38 lump range')
         lumps.append(data[offset:offset + size])
@@ -71,7 +75,7 @@ def read_bsp(data, files, *, texture_loader=None):
         return list(struct.iter_unpack('<' + fmt, lumps[index]))
 
     bsp = dict(entities=entities(lumps[0]), planes=rows(1, '4fi'), points=rows(2, '3f'),
-               faces=rows(6, 'Hhihh4Bi'), lighting=lumps[7], edges=rows(11, '2H'),
+               faces=rows(6, face_format), lighting=lumps[7], edges=rows(11, '2H'),
                surfedges=[r[0] for r in rows(12, 'i')], models=rows(13, '9f3i'))
     if not bsp['models']:
         raise ValueError('BSP38 has no world model')
@@ -80,10 +84,10 @@ def read_bsp(data, files, *, texture_loader=None):
             raise ValueError(f'Non-finite BSP38 {key}')
     textures, texinfo, chains = [], [], []
     cache = {}
-    for i, row in enumerate(rows(5, '8fii32si')):
+    for i, row in enumerate(rows(5, texinfo_format)):
         if not all(math.isfinite(v) for v in row[:8]):
             raise ValueError('Non-finite BSP38 texinfo')
-        name = asset_name(row[10].split(b'\0')[0].decode('latin1'))
+        name = asset_name(row[texinfo_fields[0]].split(b'\0')[0].decode('latin1'))
         path = 'textures/' + name + '.wal'
         if path not in cache:
             if texture_loader is not None:
@@ -95,7 +99,7 @@ def read_bsp(data, files, *, texture_loader=None):
                                    pixels=bytes(0 if (x < 8) != (y < 8) else 255 for y in range(16) for x in range(16)))
         textures.append(cache[path])
         texinfo.append((*row[:8], i, row[8]))  # Adapt to the shared Quake polygon/extents helper.
-        chains.append(row[11])
+        chains.append(row[texinfo_fields[1]])
     if any(n < -1 or n >= len(texinfo) for n in chains):
         raise ValueError('Invalid nexttexinfo index')
     bsp.update(textures=textures, texinfo=texinfo, nexttexinfo=chains)
@@ -347,12 +351,10 @@ def warp_polygons(points):
     return [np.array([center, a, b]) for a, b in zip(points, np.roll(points, -1, axis=0))]
 
 
-def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=None):
-    dark = frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
+def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=None, lightmap_reader=lightmap_rgb):
+    dark = frozenset(dark_styles) if dark_styles is not None else frozenset(int(e['style']) for e in bsp['entities'] if e.get('classname', '').startswith('light')
                      and int(e.get('style', '0')) >= 32 and int(e.get('spawnflags') or 0) & 1
                      and not excluded(e, game) and game != 'ctf')  # SP_light frees lights in deathmatch.
-    if dark_styles is not None:
-        dark = frozenset(dark_styles)
     faces, tiles, audit, floors = [], [], [], []
     for instance in placed:
         first, count = bsp['models'][instance['model']][10:12]
@@ -370,10 +372,10 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
                     faces.append(dict(face, points=polygon, placed_points=polygon @ matrix.T + instance['offset'],
                                       st=polygon @ vectors[:, :3].T,
                                       light_st=polygon @ vectors[:, :3].T + vectors[:, 3]))  # Warp texture ST omits offsets; lightmaps do not.
-                    tiles.append(lightmap_rgb(face, bsp['lighting'], dark))
+                    tiles.append(lightmap_reader(face, bsp['lighting'], dark))
             else:
                 faces.append(dict(face, placed_points=points))
-                tiles.append(lightmap_rgb(face, bsp['lighting'], dark))
+                tiles.append(lightmap_reader(face, bsp['lighting'], dark))
             audit.append(dict(face=number, entity=instance['entity'], texture=face['texture']['name'], kind=face['kind'],
                               flags=face['flags'], unlit=face['unlit'], alpha=face['alpha'], styles=face['styles'],
                               texturemins=face['mins'].tolist(), luxels=face['size'].tolist(), lightofs=face['lightofs'],
@@ -389,8 +391,10 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
         tex = face['texture']
         png = hashlib.sha256(struct.pack('<II', tex['width'], tex['height']) + tex['pixels']).hexdigest()[:24] + '.png'
         textures[png] = tex
-        group = groups.setdefault((png, face['flags']), dict(texture=png, kind=face['kind'], flags=face['flags'],
+        group = groups.setdefault((png, face['flags'], face.get('material_key')), dict(texture=png, kind=face['kind'], flags=face['flags'],
             size=[tex['width'], tex['height']], unlit=face['unlit'], alpha=face['alpha'], indices=[]))
+        if 'settings' in face:
+            group['settings'] = face['settings']
         base = len(positions)
         positions.extend(face['placed_points'])
         uvs.extend(face['st'] / [tex['width'], tex['height']])

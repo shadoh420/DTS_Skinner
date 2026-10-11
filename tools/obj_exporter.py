@@ -25,7 +25,7 @@ from typing import List, Tuple, Dict, Optional
 def q3_material_settings(data):
     """Keep the imported shader contract aligned with texture slot overrides."""
     count = len(data['material_textures'])
-    if data.get('game') not in ('q3', 'diabotical', 'reflex'):
+    if data.get('game') not in ('q3', 'diabotical', 'reflex', 'sin'):
         return [{} for _ in range(count)]
     settings = data.get('material_settings') or [{} for _ in range(count)]
     if not isinstance(settings, list) or len(settings) != count:
@@ -38,6 +38,10 @@ def q3_material_settings(data):
             raise ValueError('Invalid Q3 blend function')
         if setting.get('cull', 'back') not in ('back', 'front', 'none'):
             raise ValueError('Invalid Q3 culling mode')
+        if data.get('game') == 'sin':
+            opacity = setting.get('opacity', 1)
+            if not isinstance(opacity, (int, float)) or not math.isfinite(opacity) or not 0 <= opacity <= 1:
+                raise ValueError('Invalid SiN surface opacity')
     return settings
 
 
@@ -363,7 +367,7 @@ def json_to_obj_zip(
     settings = q3_material_settings(data)
     opacity_maps, opacity_images, export_warnings = {}, {}, []
     reserved_names = {name.casefold() for name in export_names}
-    if data.get('game') in ('q3', 'diabotical', 'reflex'):
+    if data.get('game') in ('q3', 'diabotical', 'reflex', 'sin'):
         for slot, (name, setting) in enumerate(zip(material_textures, settings)):
             alpha_func, blend = setting.get('alphaFunc', ''), setting.get('blend', [])
             if blend and blend != ['gl_src_alpha', 'gl_one_minus_src_alpha']:
@@ -382,6 +386,8 @@ def json_to_obj_zip(
                     passes = value >= 128 if alpha_func == 'GE128' else value > 0 if alpha_func == 'GT0' else value < 128
                     return (value if blend else 255) if passes else 0
                 alpha = alpha.point(opacity)
+            if data.get('game') == 'sin':
+                alpha = alpha.point(lambda value: round(value * setting.get('opacity', 1)))
             filename = f'_skinner_opacity_{slot}.png'
             while filename.casefold() in reserved_names:
                 filename = '_' + filename
