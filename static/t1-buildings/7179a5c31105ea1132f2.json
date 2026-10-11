@@ -1,0 +1,1610 @@
+{
+  "models": {
+    "col_desert5": {
+      "sha256": "c5ce6ddf84c67a898b5088f66665ad487ada34247031847d7486cb8f7984de4d",
+      "source": "col_desert5"
+    },
+    "dcolumn": {
+      "sha256": "b2dae8837fb7978860b5a119bb8cd5b9626e1d8c4eee101d4b1fdf7c6c08d847",
+      "source": "dcolumn"
+    },
+    "drock": {
+      "sha256": "ffe535a472a2f772176941cc9132878cce758b9456a73dd248079b0eb4c7fa23",
+      "source": "drock"
+    },
+    "dry_well": {
+      "sha256": "6e999e879ba33a8d2d7e0078e9ce4ba54257bef59f4551e612c06ef5601b703b",
+      "source": "dry_well"
+    },
+    "lookoutzc": {
+      "sha256": "b2f7396a7129b58a7521f30e11623c793c574d523a1fb9010f60af8f8d2e5747",
+      "source": "lookoutzc"
+    },
+    "pod": {
+      "sha256": "632c8058a24174037e59b22437e091ba4d501e2e0d533726aeafe24ac0f33328",
+      "source": "pod"
+    },
+    "rail": {
+      "sha256": "11c9bea902e9f9aa5a7117e731eb1614682bd3b573a271d7b18f0a8911bcbc4c",
+      "source": "rail"
+    },
+    "siam": {
+      "sha256": "66c2dac75f746070a9d51c347b4e19d25183a33cd54678ac28c665c908f3dc83",
+      "source": "siam"
+    },
+    "t5": {
+      "sha256": "7a5b24f16069627317f66e5a093eedff7d868acdfebc6d566d791829b609ea65",
+      "source": "t5"
+    },
+    "tower1": {
+      "sha256": "563c75ef71e3cd109a08f8ace756c1d1fd9b1bf0e854315c2e9f3afed52d4b47",
+      "source": "tower1"
+    }
+  },
+  "pairs": [],
+  "skipped": [
+    "dcolumn1",
+    "dcolumn2",
+    "dcolumn3",
+    "drock1",
+    "etruin1",
+    "etruin2",
+    "etruin4",
+    "etruintop",
+    "expbridge",
+    "floatpad",
+    "iobservation",
+    "logo1",
+    "tcol1",
+    "tcol2",
+    "tcol3",
+    "tcol4",
+    "tcol5",
+    "tcol6",
+    "tcol7",
+    "tcol8"
+  ],
+  "sources": {
+    "col_desert5": {
+      "earlier_candidates_failed": [],
+      "member": "col_desert5.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Desert_Rain.mis",
+      "mission_sha256": "68b4e44ad20fffca3fa070a92f0b2e3851bf11f207302234ba4dc361aac792a8",
+      "model": "col_desert5",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "col_desert5-00.dig": "b3bdd83b38c26cdc8fd29d3004aee8437dfdb18e389a430477f90bc1b807c058",
+        "col_desert5-01.dig": "322111c06a01f6d115bd60b2502e41db0654a11a37f09cca0c74347e5a0bf5b6",
+        "col_desert5-02.dig": "de2b4866b50c5b75676f4d9a40a951aeb90eeb30bea987e7d6d3463036d26aa3",
+        "col_desert5.dis": "79223980df8c852d9b71291a2892fbd0473aa69ec3b43406687bc026e7c661a6",
+        "col_desert5.dml": "3395455dba2059d8d5ffe9a7d7aef2e9da2549a5e883f086bd28fb5eae8d5eae",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "drcksan.png": "c0c9c486d2689941356836a64969f0c54da79dbd28e51d82574f33d67cd92b88",
+        "drock1.png": "d74e4807540a03541dfa9ca2cdd34d1db091eb44d0c4d8747a8e1a74988ce93b"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "d6cec1349dff5e5966ae60e4fd9a3d6cff481be3c2fe7a0c2577a1b1f7627eda",
+          "volume": "Desert_Rain.ted"
+        },
+        {
+          "sha256": "386cac6badca27bd1a0efdaf19b661a64a23cd11bb48dbe53a6458870f4cfb1f",
+          "volume": "Desert_Rain.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "dcolumn": {
+      "earlier_candidates_failed": [],
+      "member": "dcolumn.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Desert_Rain.mis",
+      "mission_sha256": "68b4e44ad20fffca3fa070a92f0b2e3851bf11f207302234ba4dc361aac792a8",
+      "model": "dcolumn",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "Dcolumn-00.dig": "c1fca57f0532bb95570cd34d05ff1cfe9743e3b535340b0dd8ae56b563136b60",
+        "Dcolumn-01.dig": "c1fca57f0532bb95570cd34d05ff1cfe9743e3b535340b0dd8ae56b563136b60",
+        "Dcolumn.dml": "d969fe9ba23197d70f257478d097be603327c78ed78eab10ee5e0390db75747d",
+        "dcolumn.dis": "4f7b4861f828cf7a51e6499ca25d91e04260f468d5f823a3f673418084b15fdc",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "drcksan.png": "c0c9c486d2689941356836a64969f0c54da79dbd28e51d82574f33d67cd92b88",
+        "drcksan3.png": "d9c66e0419098fc1ae6d759b58256efb82a20a0c99030c4baf33aba6260d803b",
+        "drock1.png": "d74e4807540a03541dfa9ca2cdd34d1db091eb44d0c4d8747a8e1a74988ce93b",
+        "drock2.png": "fde017ff5ddb9318cbbf986f936af080f1ca2a87833b6314cc029dbf3c26f0ba",
+        "drock3.png": "7a929d1ebc7f460ab0e3965baadfcd993215d41ceb7e04ceb9c58c688ead4ebf"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "d6cec1349dff5e5966ae60e4fd9a3d6cff481be3c2fe7a0c2577a1b1f7627eda",
+          "volume": "Desert_Rain.ted"
+        },
+        {
+          "sha256": "386cac6badca27bd1a0efdaf19b661a64a23cd11bb48dbe53a6458870f4cfb1f",
+          "volume": "Desert_Rain.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "drock": {
+      "earlier_candidates_failed": [],
+      "member": "drock.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Desert_Rain.mis",
+      "mission_sha256": "68b4e44ad20fffca3fa070a92f0b2e3851bf11f207302234ba4dc361aac792a8",
+      "model": "drock",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "Drock-00.dig": "ea39bff2be3a65b738de2281ff9164a99d1bea5283eec51e80d6d1df4c617876",
+        "Drock-01.dig": "93c987c921e5544139d235501fbba10acdc103b458551572707166faab5d8b90",
+        "Drock.dml": "0cf0783c49806b8249eb1145d5cf2dbd0d9634907f7caf2c2edbe505838df43f",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "drcksan.png": "c0c9c486d2689941356836a64969f0c54da79dbd28e51d82574f33d67cd92b88",
+        "drock.dis": "bdd91a85d0e3aaa45bd8b77c8a25cfc9b7e5dec3f998b28541f1f5e2da0e6d0f",
+        "drock.png": "e20569f6df492e2cf70c9713084ffe579c6e2244dd383e472d0d6e20a6036c18",
+        "drock1.png": "d74e4807540a03541dfa9ca2cdd34d1db091eb44d0c4d8747a8e1a74988ce93b"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "d6cec1349dff5e5966ae60e4fd9a3d6cff481be3c2fe7a0c2577a1b1f7627eda",
+          "volume": "Desert_Rain.ted"
+        },
+        {
+          "sha256": "386cac6badca27bd1a0efdaf19b661a64a23cd11bb48dbe53a6458870f4cfb1f",
+          "volume": "Desert_Rain.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "dry_well": {
+      "earlier_candidates_failed": [],
+      "member": "dry_well.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Forsaken_Deserts.mis",
+      "mission_sha256": "03ecb95bd0b316820257d4efc7b1354a2669b85a8c2bc93d5e25795e8dd7bef8",
+      "model": "dry_well",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "block.png": "f60fe3c6f6044007d67db8848c2d23b15a4c3125ecae299c57310f4e2915c1b3",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "dry_well-00.dig": "74fa7f4fcfb049af0c0642af459a0f702fc81ee5a134cbafef8fc82f4c9aba02",
+        "dry_well-01.dig": "30f4acf710c55c99e53033e9672d9026ff0f9af8cc39839b53a0f42484ff3f3f",
+        "dry_well-02.dig": "a5faee05bff8dd00171944b4e0c8cefe9a827341cc79b77f331dcb59fc336189",
+        "dry_well.dis": "2a8b5827bdc5f6ebe8ba73c3a0bf03f30ebd5f1bbeded01a3bb9058a9297b252",
+        "dry_well.dml": "2672176c387e21306c735626ad6caf9635584eb4c5d36c6914c58f3a72586bc8",
+        "excolm2.png": "009a5eafba7d9bebf7de04c975961ea8d680c011d572cb52ba263ab35c126f86",
+        "floor.png": "dc38c6b4ed8a32dda8f71cb28c6dc1965e8e609aa1388119eaf0d7e7f868718e",
+        "painting2.png": "6e6b6ce4538d7c359a4fa25d63152b57c58a7a77b3adb71e50e4450782680ad5"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "b3b3ddbff33542ce5c956456d3f107080fb549669b1fed85c95013a5d78dac9d",
+          "volume": "Forsaken_Deserts.ted"
+        },
+        {
+          "sha256": "867a6558afd2b190d3c5c4d610afa9f8cd6b0db7c9df73789eca9eadd4ee0d47",
+          "volume": "Forsaken_Deserts.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "lookoutzc": {
+      "earlier_candidates_failed": [],
+      "member": "lookoutzc.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Desert_Rain.mis",
+      "mission_sha256": "68b4e44ad20fffca3fa070a92f0b2e3851bf11f207302234ba4dc361aac792a8",
+      "model": "lookoutzc",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "cold_16b.png": "05425b6e6ce931c3d8e88fbc133fe6e20b7e87b74ff3de0dae7cdf6b44e9962d",
+        "dark_wt.png": "51b14fc29516644373f31b77913efa437b3bbbe6db084d96fe983ef8324f64a8",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "ext_grey3.png": "a3a8aaee054f000a87ef79c84d035a60c8bb23747f425502524c4bd3df405020",
+        "lookoutzc-00.dig": "59c58f3b1eadcfd23a6fc46b54848ad09c91700bab0aa90810dd0531ad61c0ba",
+        "lookoutzc.dis": "cea90388ccbdd8700a6f7b75f862384daae135ffd429eb6dc5c93b3471a87fb0",
+        "lookoutzc.dml": "e8465559a416eccba9606ba8992ea299376a921358fe4893da286bd00d9e9ccd",
+        "metal_64b.png": "3c668c43260955e7e3af73b799dac84e58897c3b3cf3ded6a2bac2330e5836e1",
+        "plainemb10.png": "2a072a93f72b092d8b0b7df67335c962e1180e2341ae69b98f35e83c0d710bce"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "d6cec1349dff5e5966ae60e4fd9a3d6cff481be3c2fe7a0c2577a1b1f7627eda",
+          "volume": "Desert_Rain.ted"
+        },
+        {
+          "sha256": "386cac6badca27bd1a0efdaf19b661a64a23cd11bb48dbe53a6458870f4cfb1f",
+          "volume": "Desert_Rain.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "pod": {
+      "earlier_candidates_failed": [],
+      "member": "pod.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Forsaken_Deserts.mis",
+      "mission_sha256": "03ecb95bd0b316820257d4efc7b1354a2669b85a8c2bc93d5e25795e8dd7bef8",
+      "model": "pod",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "droppheonix4.png": "fe766ee654283fcd258c99ad830b4074b6c911de32214ddba420f50383c77c53",
+        "metal_wt.png": "d2ca38a436d5c3d6beb41de1f69c0e72fafcfb74fcc65ec4845a0edfb4892ee6",
+        "pod-00.dig": "d7e3601fbdc8067510539a7410677ad9b3769b2399586c5d803e8e46425aabd6",
+        "pod.dis": "f2a887c489d7841f05e6836eee7eee29d219be50b263027d112b72c08ed00269",
+        "pod.dml": "ef4d0b4272cb908ccf7b0717cc37c21060338fd661ddd70e4831b0d1bef1cfdb"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "b3b3ddbff33542ce5c956456d3f107080fb549669b1fed85c95013a5d78dac9d",
+          "volume": "Forsaken_Deserts.ted"
+        },
+        {
+          "sha256": "867a6558afd2b190d3c5c4d610afa9f8cd6b0db7c9df73789eca9eadd4ee0d47",
+          "volume": "Forsaken_Deserts.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "rail": {
+      "earlier_candidates_failed": [],
+      "member": "rail.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Forsaken_Deserts.mis",
+      "mission_sha256": "03ecb95bd0b316820257d4efc7b1354a2669b85a8c2bc93d5e25795e8dd7bef8",
+      "model": "rail",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "dark_ft.png": "a74f718120121bf8fe62641578cfb7be64f467b1d623e9712fa3110e8960f1ed",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "rail-00.dig": "c9de7dc22dae1e4525ccce80529d64102c4d1d710b5619efcb36312e984da092",
+        "rail.dis": "acd97637b35a86c8e3ec533f7fc0e7feefa6a73964b85769779c0c17aeb1b2c3",
+        "rail.dml": "bd3fee0a8491ba68f2c74f8464bb295cd4f5c1c64339cebd9860e84a7c45540a"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "b3b3ddbff33542ce5c956456d3f107080fb549669b1fed85c95013a5d78dac9d",
+          "volume": "Forsaken_Deserts.ted"
+        },
+        {
+          "sha256": "867a6558afd2b190d3c5c4d610afa9f8cd6b0db7c9df73789eca9eadd4ee0d47",
+          "volume": "Forsaken_Deserts.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "siam": {
+      "earlier_candidates_failed": [],
+      "member": "siam.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\99_Percent.mis",
+      "mission_sha256": "1144d32130d7e788aee051df8f87550fd15fe682ee640febe39c47c74c3bf782",
+      "model": "siam",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "base.emblem2.png": "d0c58e097d8c03c3c18d1df94ccb3565d31c5f1098bbddc079bc665ce59d80d5",
+        "base.emblem3.png": "dd15c140ecfdc9d9b30121e1135910cd5e3d142962ca5571e7700d8818ee0ad7",
+        "base.emblem7.png": "a71880c9a7a24eb4ab4208e9cdbe4e67a90edadd90b025d1bdf21c7c5c879d8b",
+        "base_dark.png": "82ef9e3e11674d33690151f1314a1ec7d91eca29acdbca2938165617e878e685",
+        "base_rock.png": "997b5f3c6aa41ec60f6f9c4ee56924ecd53bbb23a16d947890e30def05cca1e1",
+        "base_steel.png": "c1adedf23c068ed71c94a1f119f5888f60a1bd7b2ca8d1ab75c472e3aec9977a",
+        "base_wood.png": "2d51cf15455bf8b0489e8921bb0c85c2ec061a82dde63348d53aa463ab6a1b3b",
+        "cold_16b.png": "05425b6e6ce931c3d8e88fbc133fe6e20b7e87b74ff3de0dae7cdf6b44e9962d",
+        "cold_ft.png": "418d5e4b24294fbd05da13aa391bc10f95083ae7c317471dc30a0498bf5f93b8",
+        "dark_16b.png": "3e3889480b2109043391c6739476c87b42971d2eaa71e8ae3e93ac6f47308048",
+        "dark_32b.png": "79c3f638def7d5f3ace4e79f4df7629c796ddf525e530d111c42c7a4ca1b603f",
+        "dark_ft.png": "a74f718120121bf8fe62641578cfb7be64f467b1d623e9712fa3110e8960f1ed",
+        "dark_wt.png": "51b14fc29516644373f31b77913efa437b3bbbe6db084d96fe983ef8324f64a8",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "dropeagle1.png": "6181388da5f78f57579e5e9f689cb5cb540d31fc7ab3f5388a74969b11804c1a",
+        "dropeagle2.png": "8b8f1690f4747900ed1cce823eed14dfa5145cc0019e8fa473115d1b48b788ea",
+        "dropeagle4.png": "50d74822b1c87ac868a2abfee53e2fb0da734f200a4e16c2564c482b023a5a7c",
+        "dropeagle5.png": "2320e745079f42e84d7d7c7e220db3dffb54f7b541a4a82146157194246e1ae3",
+        "dropeagle6.png": "f947b341f68fe768869717f3bb008de3642b687a1405ede6145bc62e2a5d0de5",
+        "dropeagle7.png": "5f64d0585ae514cd87b8b3920879af8eb18121c81ef7caf8c5f0d570a87e723f",
+        "droppheonix4.png": "fe766ee654283fcd258c99ad830b4074b6c911de32214ddba420f50383c77c53",
+        "ds_ablative.png": "49d807a620ebf30c1dce4d6f855817d8a13eb38b0f4222f42fdbf7a29691cfa8",
+        "dsply_vad.png": "77efba5cdad04f272eac45386c656a729a3d2a7e72760d91d9388cba3a047688",
+        "ext_grey2.png": "e9b7f481ac1c925f4ec949edc868958b8c9fe275d03b1205d84b7d5124fe2e2f",
+        "ext_iron.png": "dc503a602c547985e27eb93feacca3dab264fe80fe7ead870145c9df17a66f51",
+        "ext_iron2.png": "16c6628bff70b46b38e1ef1bf3bba55e48ed39130c710cc6550cc395644d797f",
+        "ext_iron3.png": "64e2a397609679a59ec5422df2d729c59f663c7328442f48895f2a546e433fe0",
+        "ext_iron6.png": "12f8ca6ad5e53cb224550acab7e4f4fb72783bd0c1eb7d6ffc75f2b49ea83b3d",
+        "idkmetal.png": "25129f61671c69bcc46c44d69fee8db59be49bc73dc5bf1fb1005acdce2f7eb8",
+        "idkmetalstrip.png": "28d79fe3f4f37d5cd71f37f1941bf3fbd40a4db622c8d53130e0a235846f1705",
+        "idkvent.png": "65a51502f63a6acbb733ef23a98801789d2681e545d47099701693300dbc63c4",
+        "idkwindow1.png": "aef9d9c503960fa6224c56c9bcfce4a5055a2f0d5e9b39bcee7bc173a7e91ac6",
+        "idkwindow2.png": "4846b34384f08670f723064d7e0c1b9471e89906471f6c5b198d0732760d132c",
+        "igrate.png": "1f7b4de9200719d8b011f15aef4b75a7175715d4f9acee2e35800061084f3ec1",
+        "iltconcrete.png": "03fce1cf9a55b6acbea8666236e1c0cc7bdd4c52d16f42619f7910c5ef3aee5c",
+        "iltmetal.png": "d13a385d42c3b7edb3fe716133ec00452957dc4f6b568ed0898e4c7efa66f824",
+        "iltmetalstrip.png": "1741bd99e631a98c6b23627e373423af8e22c0b052a0f7524423f1a340847181",
+        "iltwindow1.png": "c8732395f1bed68cb309a9801bc3049dfa99b9ead11367f1864e932bcdec1272",
+        "ivent.png": "2e95a846a9868d7ecfaa3ac58268cd005c908f6d3d508d15bd3672672d6cd735",
+        "light_copper.png": "fd4e2ee7103225a891a9bab7ff107c1b02ee942a71dda24bf6659ef0fdc54ad8",
+        "light_dark.png": "75a5b44186d79556d12cb9e2a3eb5f1905177a900c8a7e50e7853903e04e3a33",
+        "light_metal.png": "230d920ecea0bc0194e4acb497b9e8bf83bdb824c1a5f57fe229ea8f4992e360",
+        "metal_ft.png": "5475daab1a7b181d23a2e3f71974de85d4729c192b6e63d7f3e038a04287564c",
+        "plainemb6.png": "7b7885b25b71493d64df476b9c12ffecea8e58b7111adf7a52293eb38ed4ef12",
+        "plainemb9.png": "4de71e1632c89c4658ada8124ef1bb8bc9645899b7fa9da5992ccf81bf31aad8",
+        "redrib.png": "0dd1ebc27f51ea38644ca60bf09ef10a0c09dbca3e84191fba18c1e0296d6309",
+        "siam-00.dig": "3845eafa0a88b07e506a1a1f6ea30d74eb5f44ec7fcb11510931777ff73770ac",
+        "siam-01.dig": "1995beecd7a60eeaa44da39fc724692c48ba686d8c924e694a440bfcaf8a8cd3",
+        "siam.dis": "1b76e2eb16d806bdf54280f149daceaf5238c2f92d2791123b32bfd9881ab8c9",
+        "siam.dml": "9fdb250c289437de3184fb0e09f5ace9412863d154ac3ee8bc3a4f8fff268d96",
+        "special_shield.png": "cc98cecc171fe4a260058b40a8f16d005a3e34f21dc10a71b187c8611d3f6876",
+        "steel_16b.png": "5682218098d7b22dd4bca2fafdde90d43f2e8e1941b3537ff8caf77f5102c428",
+        "sworddrop3.png": "321192a1a9889cb8b2f2ad9af17bd0d6dc06ad165542f6222d1ec8c2907d24c4",
+        "warm_ft.png": "6ddb9355bbe2b69f9c6cef6792e1804508c913bb6e8ea2262eb59784d2647bd2"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "47f635f53c6be18182e322042a45c7b78036ba540430a8123dd945ddbc1f2727",
+          "volume": "Spartacus'sGauntlet.ted"
+        },
+        {
+          "sha256": "0cfb0a8cae2058cf396a2673a7e650542387a2002b7c68ef3e9026fbbfd3b524",
+          "volume": "custom.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "t5": {
+      "earlier_candidates_failed": [],
+      "member": "t5.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Desert_Rain.mis",
+      "mission_sha256": "68b4e44ad20fffca3fa070a92f0b2e3851bf11f207302234ba4dc361aac792a8",
+      "model": "t5",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "drock1.png": "d74e4807540a03541dfa9ca2cdd34d1db091eb44d0c4d8747a8e1a74988ce93b",
+        "t5-00.dig": "ded7321957e02ca01918e71f44538ab2af85bdf3f49a188b4823da7241ab976a",
+        "t5-01.dig": "2c90045b90e96daae9a60775fdab13acc3bd6b12220479b79b66a66e01ded5a0",
+        "t5-02.dig": "062a73d3cb097df09c497cfd82dafba5c425530464637b9256589d9aa32eae89",
+        "t5-03.dig": "28c81f8cd905f884b353154385b7b9bc6457aaf1fbef92f4f5d68a32e9b71cc1",
+        "t5.dis": "a2eb41c39bcce076b081ee074f1bdf9d73bbe9edcc99c8d91a50d05bdb018882",
+        "t5.dml": "3ad6a59b98f134d537e0b27e77af003eb3a1b2189d74f3bb0f3022765d6f46d5"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "d6cec1349dff5e5966ae60e4fd9a3d6cff481be3c2fe7a0c2577a1b1f7627eda",
+          "volume": "Desert_Rain.ted"
+        },
+        {
+          "sha256": "386cac6badca27bd1a0efdaf19b661a64a23cd11bb48dbe53a6458870f4cfb1f",
+          "volume": "Desert_Rain.zip"
+        }
+      ],
+      "warnings": []
+    },
+    "tower1": {
+      "earlier_candidates_failed": [],
+      "member": "tower1.dis",
+      "missing_textures": [],
+      "mission": "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Forsaken_Deserts.mis",
+      "mission_sha256": "03ecb95bd0b316820257d4efc7b1354a2669b85a8c2bc93d5e25795e8dd7bef8",
+      "model": "tower1",
+      "palette": "desert.night.ppl",
+      "palette_error": null,
+      "resources": {
+        "cold_16b.png": "05425b6e6ce931c3d8e88fbc133fe6e20b7e87b74ff3de0dae7cdf6b44e9962d",
+        "dark_ft.png": "a74f718120121bf8fe62641578cfb7be64f467b1d623e9712fa3110e8960f1ed",
+        "dark_wt.png": "51b14fc29516644373f31b77913efa437b3bbbe6db084d96fe983ef8324f64a8",
+        "desert.night.ppl": "fdf2f579086bdbbfd224af935857471dbe3ddc7e9b690c5b90e06f0287925f76",
+        "ext_grey3.png": "a3a8aaee054f000a87ef79c84d035a60c8bb23747f425502524c4bd3df405020",
+        "metal_64b.png": "3c668c43260955e7e3af73b799dac84e58897c3b3cf3ded6a2bac2330e5836e1",
+        "plainemb10.png": "2a072a93f72b092d8b0b7df67335c962e1180e2341ae69b98f35e83c0d710bce",
+        "tower1-00.dig": "d0210682422bd1d03ee5e8ba9340bfded463d2af1210f47dbfb47040d0d0764d",
+        "tower1.dis": "5cbdcfc3e26aac1481a036a38df8267db5d1cf2e96bed016f0e7de93ef47b7a7",
+        "tower1.dml": "91af701f2b255200d9a76396a86cd9da37122b10b312aefa97126d4f0a4d5300"
+      },
+      "volumes": [
+        {
+          "sha256": "466633cbc7eab8ee2f05d4fef68ab2bd539b7e471183278b97f66df7d786c821",
+          "volume": "Interface.zip"
+        },
+        {
+          "sha256": "d4e866a56cc679f66d9d88a27d3357044bf8d882c62aede8e3950309b567c2f1",
+          "volume": "Entities.zip"
+        },
+        {
+          "sha256": "7ec0e11bc626ec89906a6710023b9ff8e117528a5b36dc726aec1fb50dabb5f1",
+          "volume": "desertWorld.zip"
+        },
+        {
+          "sha256": "cfe25485858acffbc4972cd3ecdd0aa9839eaeb306644d87458cdece9e1aea87",
+          "volume": "desertTerrain.zip"
+        },
+        {
+          "sha256": "909ce94c44ba72871cf093f826eb57cb3b860879ad1bb4a726ff58cdb7802f01",
+          "volume": "desertDML.zip"
+        },
+        {
+          "sha256": "3d6e6adf918032146f5787d79a415115761e5eac0945148fcd122a9b4bb3d7f2",
+          "volume": "savanaDML.zip"
+        },
+        {
+          "sha256": "fe2c87009a38ee7705b099d8da9a96fe888d30127c17b6115bd50c8b6fc099c6",
+          "volume": "human1DML.zip"
+        },
+        {
+          "sha256": "441dfe66e8a7fa0a37e43438761842dee6354670291fc0b07294b364fe37c8e4",
+          "volume": "titanDML.zip"
+        },
+        {
+          "sha256": "b3b3ddbff33542ce5c956456d3f107080fb549669b1fed85c95013a5d78dac9d",
+          "volume": "Forsaken_Deserts.ted"
+        },
+        {
+          "sha256": "867a6558afd2b190d3c5c4d610afa9f8cd6b0db7c9df73789eca9eadd4ee0d47",
+          "volume": "Forsaken_Deserts.zip"
+        }
+      ],
+      "warnings": []
+    }
+  },
+  "textures": [
+    {
+      "building": "col_desert5",
+      "collision": true,
+      "pixel_sha256": "4431e19ced42f23911f03e91393c872982fdcc5a519a98da925b29122adf8f26",
+      "requested": "drock1.png",
+      "reused": false,
+      "stored": "col_desert5_drock1.png"
+    },
+    {
+      "building": "col_desert5",
+      "collision": true,
+      "pixel_sha256": "40aa6c2de4798156c33dff705e5cb3647302eac2779c0e5442f57082fe9fe6d0",
+      "requested": "drcksan.png",
+      "reused": false,
+      "stored": "col_desert5_drcksan.png"
+    },
+    {
+      "building": "dcolumn",
+      "collision": true,
+      "pixel_sha256": "4431e19ced42f23911f03e91393c872982fdcc5a519a98da925b29122adf8f26",
+      "requested": "drock1.png",
+      "reused": false,
+      "stored": "dcolumn_drock1.png"
+    },
+    {
+      "building": "dcolumn",
+      "collision": true,
+      "pixel_sha256": "1adc59e78e8e8f848162909423e42c00e3101f9b4ec792c8c9096c31c6d29ed0",
+      "requested": "drock2.png",
+      "reused": false,
+      "stored": "dcolumn_drock2.png"
+    },
+    {
+      "building": "dcolumn",
+      "collision": true,
+      "pixel_sha256": "40aa6c2de4798156c33dff705e5cb3647302eac2779c0e5442f57082fe9fe6d0",
+      "requested": "drcksan.png",
+      "reused": false,
+      "stored": "dcolumn_drcksan.png"
+    },
+    {
+      "building": "dcolumn",
+      "collision": true,
+      "pixel_sha256": "5e3baac15a376e0454111c43b713612daaa067ff4d4b7e6df6c83af91bfa7087",
+      "requested": "drcksan3.png",
+      "reused": false,
+      "stored": "dcolumn_drcksan3.png"
+    },
+    {
+      "building": "dcolumn",
+      "collision": true,
+      "pixel_sha256": "7f756d928555bcb8c10bff3ca83da22abbfcbc95212939224b784809d1d295aa",
+      "requested": "drock3.png",
+      "reused": false,
+      "stored": "dcolumn_drock3.png"
+    },
+    {
+      "building": "drock",
+      "collision": true,
+      "pixel_sha256": "4431e19ced42f23911f03e91393c872982fdcc5a519a98da925b29122adf8f26",
+      "requested": "drock1.png",
+      "reused": false,
+      "stored": "drock_drock1.png"
+    },
+    {
+      "building": "drock",
+      "collision": true,
+      "pixel_sha256": "64bd8555ab82b8597f2478b3976894583033ab858223067953aaf3e0e1fe670e",
+      "requested": "drock.png",
+      "reused": false,
+      "stored": "drock_drock.png"
+    },
+    {
+      "building": "drock",
+      "collision": true,
+      "pixel_sha256": "40aa6c2de4798156c33dff705e5cb3647302eac2779c0e5442f57082fe9fe6d0",
+      "requested": "drcksan.png",
+      "reused": false,
+      "stored": "drock_drcksan.png"
+    },
+    {
+      "building": "dry_well",
+      "collision": true,
+      "pixel_sha256": "d2b559b0636c10220e20021cfb3b965bdfed67604b9c18336d2fa9d603904ada",
+      "requested": "block.png",
+      "reused": false,
+      "stored": "dry_well_block.png"
+    },
+    {
+      "building": "dry_well",
+      "collision": true,
+      "pixel_sha256": "cfbdb8203e79fbe5d3f1223dd6e3cb8a4d74fc15041c55e0419d4f07023ef0ef",
+      "requested": "floor.png",
+      "reused": false,
+      "stored": "dry_well_floor.png"
+    },
+    {
+      "building": "dry_well",
+      "collision": true,
+      "pixel_sha256": "72b5a6aa664045283f5dcdd34a21808fdd1d49edca8f543de7baceb2eae2889e",
+      "requested": "excolm2.png",
+      "reused": false,
+      "stored": "dry_well_excolm2.png"
+    },
+    {
+      "building": "dry_well",
+      "collision": true,
+      "pixel_sha256": "a6d144a4f154fd47f6d8c996b0fb22d993478d944f177f06c940a755200ed4ff",
+      "requested": "painting2.png",
+      "reused": false,
+      "stored": "dry_well_painting2.png"
+    },
+    {
+      "building": "lookoutzc",
+      "collision": true,
+      "pixel_sha256": "35853825de22c55b17d0dbf6de1cff2f929c8cdd0ed7e4b95835f0a1f7948b8f",
+      "requested": "plainemb10.png",
+      "reused": false,
+      "stored": "lookoutzc_plainemb10.png"
+    },
+    {
+      "building": "lookoutzc",
+      "collision": true,
+      "pixel_sha256": "b6b69ad366658037988b5bd4c98fa5b9e19eccc0ef3283ff9d71d2103350b4e2",
+      "requested": "cold_16b.png",
+      "reused": false,
+      "stored": "lookoutzc_cold_16b.png"
+    },
+    {
+      "building": "lookoutzc",
+      "collision": true,
+      "pixel_sha256": "0ffb01887c987f54bbb553161246de02dfb478e4a5f29ef7ea0f173ad530f6c6",
+      "requested": "dark_wt.png",
+      "reused": false,
+      "stored": "lookoutzc_dark_wt.png"
+    },
+    {
+      "building": "lookoutzc",
+      "collision": true,
+      "pixel_sha256": "7d2b08a985c639a9f8ddebbaa53da6ea77ef7a4eae8e440d99597a4616a69800",
+      "requested": "ext_grey3.png",
+      "reused": false,
+      "stored": "lookoutzc_ext_grey3.png"
+    },
+    {
+      "building": "lookoutzc",
+      "collision": true,
+      "pixel_sha256": "5c035f5234f573b5aee5e6562ea1216a50120bdd868df5802e91cfe4d6479df3",
+      "requested": "metal_64b.png",
+      "reused": false,
+      "stored": "lookoutzc_metal_64b.png"
+    },
+    {
+      "building": "pod",
+      "collision": true,
+      "pixel_sha256": "7e32da727fcf478a15fa02b53816606db54375306c9fe55e6054cd341731c19d",
+      "requested": "metal_wt.png",
+      "reused": false,
+      "stored": "pod_metal_wt.png"
+    },
+    {
+      "building": "pod",
+      "collision": true,
+      "pixel_sha256": "0f688841f53f038837b03b3a0ccc3497190df88291c52ea577fba503daf59af9",
+      "requested": "droppheonix4.png",
+      "reused": false,
+      "stored": "pod_droppheonix4.png"
+    },
+    {
+      "building": "rail",
+      "collision": true,
+      "pixel_sha256": "174699d22fe2a0e07800d85768a0a7e2bda9e54734bd938c733847fca0ad9f0f",
+      "requested": "dark_ft.png",
+      "reused": false,
+      "stored": "rail_dark_ft.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "91e75625ef6be6d74e33acdc1bacbd1f507d36524a4ab579836437c87c86e8e7",
+      "requested": "dropeagle7.png",
+      "reused": false,
+      "stored": "siam_dropeagle7.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "b43b0143fbd6ae30426660443d2931341ce060b1f846d30da6d0da344c7d5ad9",
+      "requested": "dropeagle1.png",
+      "reused": false,
+      "stored": "siam_dropeagle1.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "db7964292526bd2f9800c45ca713702b726b696d699c31c6f43bf3e4931d66cd",
+      "requested": "dropeagle2.png",
+      "reused": false,
+      "stored": "siam_dropeagle2.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "174699d22fe2a0e07800d85768a0a7e2bda9e54734bd938c733847fca0ad9f0f",
+      "requested": "dark_ft.png",
+      "reused": false,
+      "stored": "siam_dark_ft.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "3844950a73c85e6ff10ba9e4d4b2b00a5eae15486f8a05a0236192323d83c790",
+      "requested": "ext_iron.png",
+      "reused": false,
+      "stored": "siam_ext_iron.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "954f7338855c3e1c3eac23b0bf7d5ed7b03a3ee1d01daf2b2216d5e5def785b9",
+      "requested": "ext_iron3.png",
+      "reused": false,
+      "stored": "siam_ext_iron3.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "b6a4a5cc48c28611c4347c6f9249ed8b8d66595da7bf8c5ba8fd2d7933e5b41d",
+      "requested": "base_rock.png",
+      "reused": false,
+      "stored": "siam_base_rock.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "1a009ae9a34d1c7aafa03185d7212211b573379ab0830b3445365a85019e12dd",
+      "requested": "special_shield.png",
+      "reused": false,
+      "stored": "siam_special_shield.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "0ffb01887c987f54bbb553161246de02dfb478e4a5f29ef7ea0f173ad530f6c6",
+      "requested": "dark_wt.png",
+      "reused": false,
+      "stored": "siam_dark_wt.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "4ccef503eec1cbb4e6090c8fb61262160ea8d8f772d49b3a80ff5f93088a02d0",
+      "requested": "ds_ablative.png",
+      "reused": false,
+      "stored": "siam_ds_ablative.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "d59a8aecfd8116fb781155fe97750dfe0362561559bd3e4d78470defb9e37fb6",
+      "requested": "steel_16b.png",
+      "reused": false,
+      "stored": "siam_steel_16b.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "b6c4b62cc9980f12571f28da090751db7c0f643f19cf077ce924c5eee36ccf78",
+      "requested": "idkmetalstrip.png",
+      "reused": false,
+      "stored": "siam_idkmetalstrip.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "ba05b060cdccc65ffbe0f40e537ca6b7e139a27ec544d1039bc9dcade7dc717c",
+      "requested": "idkmetal.png",
+      "reused": false,
+      "stored": "siam_idkmetal.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "0105bebeb101a1f043025391dfc2abd6a490aaf409618219595e5ae8405fddf6",
+      "requested": "igrate.png",
+      "reused": false,
+      "stored": "siam_igrate.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "4e4c9f7eaec81edbf3afc5ee2392f04a6a91af5abf8e51660a3cb734d7168698",
+      "requested": "metal_ft.png",
+      "reused": false,
+      "stored": "siam_metal_ft.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "02315df27e5568caf6c894df268f095da8811b3868dd1d4a11e2f751df64e978",
+      "requested": "idkwindow1.png",
+      "reused": false,
+      "stored": "siam_idkwindow1.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "3258d3b22275b5d4daddfc0c7bca5e731ecddabf870181a718a63b435b3e0920",
+      "requested": "idkwindow2.png",
+      "reused": false,
+      "stored": "siam_idkwindow2.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "a9eabc7dd26bd52abeb14dc60f7bb928fcd89866ed167cebd8f4d5622f61ce7f",
+      "requested": "base.emblem7.png",
+      "reused": false,
+      "stored": "siam_base.emblem7.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "1edd00c3af607da02e48847cb445b7c873d2c983330741ec4e5112db241efa71",
+      "requested": "light_copper.png",
+      "reused": false,
+      "stored": "siam_light_copper.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "0f76d6bedac7fa824636ca0e3e6bce8914ad73a0fec17891617cb783a49cbecb",
+      "requested": "ext_iron6.png",
+      "reused": false,
+      "stored": "siam_ext_iron6.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "4b31b2f8ea7855e3f5cebd26a84fa1c89f412cda46ac0e6e3e07ca5587fbd91a",
+      "requested": "light_dark.png",
+      "reused": false,
+      "stored": "siam_light_dark.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "8738d7782379e172fb6adc9757161ff817b1c50eb5ff288d37ae7883347ab17b",
+      "requested": "warm_ft.png",
+      "reused": false,
+      "stored": "siam_warm_ft.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "a7693d3b6501d5ec7699cbf269a436baca4e6e73a4c2be0d7d2880bfc9d14b96",
+      "requested": "ext_iron2.png",
+      "reused": false,
+      "stored": "siam_ext_iron2.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "1ee16d5552d0f7eff0a3b1a3b71aadf58ecebbad3a4810b32e3c0b8911e9f1d4",
+      "requested": "ext_grey2.png",
+      "reused": false,
+      "stored": "siam_ext_grey2.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "e05a0e70e9c9ce4278f281cf0c57b4c9be053e75b6243c6ea45f80db65c3be5c",
+      "requested": "dropeagle6.png",
+      "reused": false,
+      "stored": "siam_dropeagle6.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "68318ba9eb5efc892b57b740f4579dd2eb9932a9bf7feb142d3a3328ca0e33f0",
+      "requested": "dropeagle5.png",
+      "reused": false,
+      "stored": "siam_dropeagle5.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "b6b69ad366658037988b5bd4c98fa5b9e19eccc0ef3283ff9d71d2103350b4e2",
+      "requested": "cold_16b.png",
+      "reused": false,
+      "stored": "siam_cold_16b.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "86f6d6c8f41bc456d5d1c2f13a03c5fa1e2ef04e8e3a0bccb5d8ca873020032d",
+      "requested": "cold_ft.png",
+      "reused": false,
+      "stored": "siam_cold_ft.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "6ad8c701d2beb3707a55696317c481a00a819a8bb2fbd3886edc07f438dcbf08",
+      "requested": "base_steel.png",
+      "reused": false,
+      "stored": "siam_base_steel.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "84ee3b9ab227eaf2ff62f183147d8b78d0e01aebd22b07f6860f0935ed1ddf44",
+      "requested": "base_dark.png",
+      "reused": false,
+      "stored": "siam_base_dark.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "88b502f0d3cf71e481ba3d821ab9c265669b9152de3d10a6bcf9f528cd137e8d",
+      "requested": "redrib.png",
+      "reused": false,
+      "stored": "siam_redrib.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "16bb385d5e8bfd93bdae99a2b98dad025af4da56c670cd546aebacbce351712c",
+      "requested": "iltconcrete.png",
+      "reused": false,
+      "stored": "siam_iltconcrete.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "6162eed77b61da422c095b593280cc833a1a4322de4ee59b4e03965653b98e34",
+      "requested": "iltwindow1.png",
+      "reused": false,
+      "stored": "siam_iltwindow1.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "ec3f0f202ead9a88c329c251bc55dff8952e31960e371b1cc814e31d01ded579",
+      "requested": "base_wood.png",
+      "reused": false,
+      "stored": "siam_base_wood.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "86cadbfbe19ffec03afaa413c4cd15259e80eef9b827bcb808e9cd1c5a3799c9",
+      "requested": "iltmetal.png",
+      "reused": false,
+      "stored": "siam_iltmetal.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "5dce767994e98fd4def5394cf1f3545cc07723c7d8eb47f633653812057601bb",
+      "requested": "plainemb9.png",
+      "reused": false,
+      "stored": "siam_plainemb9.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "b3a20d255f65405e98cacae458e0967c2caf5cbc06e1fdb2c26f2f7f5b320211",
+      "requested": "dark_16b.png",
+      "reused": false,
+      "stored": "siam_dark_16b.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "7df314e15ce1f8ab396bcff739a05e2b3dea1ddb6ed219429662ac242e0a93eb",
+      "requested": "plainemb6.png",
+      "reused": false,
+      "stored": "siam_plainemb6.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "5ab48cd42c450ef0d84fd6f90da8f90ae66bee9f816305f9a45453dc26c0ec7e",
+      "requested": "base.emblem2.png",
+      "reused": false,
+      "stored": "siam_base.emblem2.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "7b9f872a191770a820856d161d85255a5bcd93e6257346acc4e2199f496f2fbf",
+      "requested": "base.emblem3.png",
+      "reused": false,
+      "stored": "siam_base.emblem3.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "ca83a2417d72f171667977fc55d3580462585b0b80e37256c920e6b3910e96bc",
+      "requested": "dark_32b.png",
+      "reused": false,
+      "stored": "siam_dark_32b.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "f090a6026897caa7207da62a0f84cdf3f8d1422c90d515fade960607aadb8969",
+      "requested": "dropeagle4.png",
+      "reused": false,
+      "stored": "siam_dropeagle4.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "80446eeb8aa5373880313f48fafd12bca9e16906268faf2169265a90532847d1",
+      "requested": "idkvent.png",
+      "reused": false,
+      "stored": "siam_idkvent.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "7565bad8d4b10797149790a50cc4171e6592bdb9543ee158d61aa4c76e226c42",
+      "requested": "sworddrop3.png",
+      "reused": false,
+      "stored": "siam_sworddrop3.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "a468ade21c8767050607c10c86a552eaceec70ab9285ffa7c4de136fe3014911",
+      "requested": "iltmetalstrip.png",
+      "reused": false,
+      "stored": "siam_iltmetalstrip.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "f8a905360be659642ada3ea9049dcabb3af1d5a2d42d20eb4575502ad6e578d0",
+      "requested": "ivent.png",
+      "reused": false,
+      "stored": "siam_ivent.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "0f688841f53f038837b03b3a0ccc3497190df88291c52ea577fba503daf59af9",
+      "requested": "droppheonix4.png",
+      "reused": false,
+      "stored": "siam_droppheonix4.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "27508721399646d8c8db8f1cfd255e54a801f97caa62d28f6f0ee4d1a8f2e964",
+      "requested": "dsply_vad.png",
+      "reused": false,
+      "stored": "siam_dsply_vad.png"
+    },
+    {
+      "building": "siam",
+      "collision": true,
+      "pixel_sha256": "b5c6d4a7fa5a00dc4640425cef4ecaa3b4f9a2c766e7f3c1b1cab9a50664bd3b",
+      "requested": "light_metal.png",
+      "reused": false,
+      "stored": "siam_light_metal.png"
+    },
+    {
+      "building": "t5",
+      "collision": true,
+      "pixel_sha256": "4431e19ced42f23911f03e91393c872982fdcc5a519a98da925b29122adf8f26",
+      "requested": "drock1.png",
+      "reused": false,
+      "stored": "t5_drock1.png"
+    },
+    {
+      "building": "tower1",
+      "collision": true,
+      "pixel_sha256": "35853825de22c55b17d0dbf6de1cff2f929c8cdd0ed7e4b95835f0a1f7948b8f",
+      "requested": "plainemb10.png",
+      "reused": false,
+      "stored": "tower1_plainemb10.png"
+    },
+    {
+      "building": "tower1",
+      "collision": true,
+      "pixel_sha256": "174699d22fe2a0e07800d85768a0a7e2bda9e54734bd938c733847fca0ad9f0f",
+      "requested": "dark_ft.png",
+      "reused": false,
+      "stored": "tower1_dark_ft.png"
+    },
+    {
+      "building": "tower1",
+      "collision": true,
+      "pixel_sha256": "b6b69ad366658037988b5bd4c98fa5b9e19eccc0ef3283ff9d71d2103350b4e2",
+      "requested": "cold_16b.png",
+      "reused": false,
+      "stored": "tower1_cold_16b.png"
+    },
+    {
+      "building": "tower1",
+      "collision": true,
+      "pixel_sha256": "0ffb01887c987f54bbb553161246de02dfb478e4a5f29ef7ea0f173ad530f6c6",
+      "requested": "dark_wt.png",
+      "reused": false,
+      "stored": "tower1_dark_wt.png"
+    },
+    {
+      "building": "tower1",
+      "collision": true,
+      "pixel_sha256": "7d2b08a985c639a9f8ddebbaa53da6ea77ef7a4eae8e440d99597a4616a69800",
+      "requested": "ext_grey3.png",
+      "reused": false,
+      "stored": "tower1_ext_grey3.png"
+    },
+    {
+      "building": "tower1",
+      "collision": true,
+      "pixel_sha256": "5c035f5234f573b5aee5e6562ea1216a50120bdd868df5802e91cfe4d6479df3",
+      "requested": "metal_64b.png",
+      "reused": false,
+      "stored": "tower1_metal_64b.png"
+    }
+  ],
+  "unplaced": {
+    "azberamp": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MirageLT.zip"
+    ],
+    "azdsramp": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MirageLT.zip"
+    ],
+    "azsh": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MirageLT.zip"
+    ],
+    "aztower": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MirageLT.zip"
+    ],
+    "basatinbe": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\BasatinLT.zip"
+    ],
+    "basatinds": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\BasatinLT.zip"
+    ],
+    "berc": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MirageLT.zip"
+    ],
+    "bigbasebe": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\PalatineLT.zip"
+    ],
+    "bigbaseds": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\PalatineLT.zip"
+    ],
+    "body1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Towers_of_Ruins.zip"
+    ],
+    "body2": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Towers_of_Ruins.zip"
+    ],
+    "bridgebe": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\PalatineLT.zip"
+    ],
+    "bridgeds": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\PalatineLT.zip"
+    ],
+    "bridgepnl2": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "bridgepnl3": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "cliff": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\cait_pounder.zip"
+    ],
+    "dsrc": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MirageLT.zip"
+    ],
+    "entrance": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "hlfpstd": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Superbowl.zip"
+    ],
+    "hlfpstd2": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Superbowl.zip"
+    ],
+    "hlfpstd4": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Superbowl.zip"
+    ],
+    "icehut": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icespier": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icest": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetd": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetdnl": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetdnt": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetdown": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetee": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetlb": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetst1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetst4": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icetstr": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icettd": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "icettdn": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ],
+    "killabe": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\TwinPeaksLT.zip"
+    ],
+    "killads": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\TwinPeaksLT.zip"
+    ],
+    "mudbealtlight": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MudvaniaLT.zip"
+    ],
+    "mudbepost": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MudvaniaLT.zip"
+    ],
+    "mudbridge": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MudvaniaLT.zip"
+    ],
+    "mudbridgeds": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MudvaniaLT.zip"
+    ],
+    "muddsalt": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MudvaniaLT.zip"
+    ],
+    "muddspost": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MudvaniaLT.zip"
+    ],
+    "mudmid": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\MudvaniaLT.zip"
+    ],
+    "ntank1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Towers_of_Ruins.zip"
+    ],
+    "pathway": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Towers_of_Ruins.zip"
+    ],
+    "pipe": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Pipe_War.zip"
+    ],
+    "pmsstd1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Superbowl.zip"
+    ],
+    "pmsstd1c": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Superbowl.zip"
+    ],
+    "pmsstd5": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Superbowl.zip"
+    ],
+    "pod4": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\cait_pounder.zip"
+    ],
+    "pod9": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\cait_pounder.zip"
+    ],
+    "rhino": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Towers_of_Ruins.zip"
+    ],
+    "rockarch2": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\cait_pounder.zip"
+    ],
+    "spinfish7": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\VortexLT.zip"
+    ],
+    "storkbe": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\DriForcLT.zip"
+    ],
+    "storkds": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\DriForcLT.zip"
+    ],
+    "swbc11me": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swbed1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swordbridge": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\VortexLT.zip"
+    ],
+    "swpanel1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swpanel2": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swpillar1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swramp1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swtable": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swthrone": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swtorch": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swwall1": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swwall2": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "swwall3": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\KrunShip6.zip",
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\krunship61.zip"
+    ],
+    "towerbe": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\PalatineLT.zip"
+    ],
+    "towerds": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\PalatineLT.zip"
+    ],
+    "tube": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\Towers_of_Ruins.zip"
+    ],
+    "tunnelice": [
+      "C:\\Users\\c\\Downloads\\Modern Tribes V30\\base\\missions\\icecaves.zip"
+    ]
+  }
+}

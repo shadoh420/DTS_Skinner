@@ -15,7 +15,7 @@ import hashlib
 from pathlib import Path
 import zipfile
 
-DATA = ('_internal/static/model_json/', '_internal/static/t2/', '_internal/static/textures/', 'local-data/animations/')
+DATA = ('_internal/static/model_json/', '_internal/static/t1-buildings/', '_internal/static/t2/', '_internal/static/textures/', 'local-data/animations/')
 
 
 def write_zip(target, folder, files):

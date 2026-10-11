@@ -362,7 +362,7 @@ window.addEventListener('DOMContentLoaded', () => {
       // Keep the server's catalog order, including its stable punctuation/case ties.
       catalog = results[0].value;
       versions = results[2].status === 'fulfilled' ? results[2].value : null;
-      $('categorySelect').replaceChildren(option('All families', ''), ...[...new Set(catalog.map(x => x.category || 'Other'))].sort(compare).map(x => option(x, x)));
+      showFamilies();
       const unavailable = catalog.filter(entry => !available(entry)).length;
       $('catalogSummary').textContent = `${game.toUpperCase()} · ${catalog.length.toLocaleString()} entries · ${catalog.length - unavailable} previews${unavailable ? ` · ${unavailable} unavailable` : ''}`;
       filterCatalog();
@@ -377,6 +377,32 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
     }
+  }
+  function showFamilies() {
+    const families = [...new Set(catalog.map(x => x.category || 'Other'))].sort(compare), shown = $('categorySelect').value;
+    $('categorySelect').replaceChildren(option('All families', ''), ...families.map(x => option(x, x)));
+    $('categorySelect').value = families.includes(shown) ? shown : '';
+    $('familyNames').replaceChildren(...families.map(x => option(x, x)));
+  }
+  // The user's own families (local-data/model-families.json): one family per model, laid over the import's.
+  async function moveToFamily(names) {
+    if (!names.length) { $('familyStatus').textContent = 'No models to move.'; return; }
+    const family = $('familyName').value.trim().replace(/\s+/g, ' ');
+    const response = await fetch(`/model_families?${query({}, game)}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({models: names, family})});
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not save families');
+    const moved = new Set(names);
+    for (const entry of catalog) {
+      if (!moved.has(entry.model_name)) continue;
+      if (!('import_category' in entry)) entry.import_category = entry.category;
+      entry.category = family || entry.import_category;
+      if (!family) delete entry.import_category;
+    }
+    showFamilies(); filterCatalog();
+    $('familyStatus').textContent = `${names.length.toLocaleString()} model${names.length === 1 ? '' : 's'} ${family ? `moved to ${family}` : `back in ${names.length === 1 ? 'its' : 'their'} imported family`}.`;
+  }
+  for (const [id, names] of [['moveSelected', () => selectedName ? [selectedName] : []], ['moveShown', () => filtered.map(x => x.model_name)]]) {
+    $(id).addEventListener('click', () => moveToFamily(names()).catch(error => { $('familyStatus').textContent = error.message; }));
   }
   function filterCatalog() {
     const search = $('modelSearch').value.toLocaleLowerCase();

@@ -11,7 +11,7 @@ from watchdog.events import FileCreatedEvent, FileMovedEvent
 
 from app import app, model_json_dir, textures_dir
 from app import TextureWatcher
-from tools.model_data import load_model_data
+from tools.model_data import load_model_data, t1_catalog_names
 from tools.obj_exporter import compute_smooth_normals, generate_obj_content
 
 
@@ -19,7 +19,8 @@ class ModelTests(unittest.TestCase):
     def test_catalog_is_complete_and_naturally_sorted(self):
         names = [m['model_name'] for m in app.test_client().get('/list_models').json]
         expected = (model_json_dir.parents[1] / 'model_catalog.txt').read_text().splitlines()
-        self.assertEqual(names, expected)
+        self.assertTrue(set(expected).issubset(names))
+        self.assertEqual(names, t1_catalog_names(model_json_dir))
         self.assertTrue({'larmor', 'lfemale', 'marmor', 'mfemale', 'harmor'}.issubset(names))
         with tempfile.TemporaryDirectory() as directory:
             for name in ['bunker10.json', 'bunker2.json', 'Base1.JSON', 'base10.json', 'base2.json', 'acommand.json']:
@@ -64,7 +65,7 @@ class ModelTests(unittest.TestCase):
     def test_every_bundled_model_previews_and_exports(self):
         client = app.test_client()
         models = client.get('/list_models').get_json()
-        self.assertEqual({m['model_name'] for m in models}, set((model_json_dir.parents[1] / 'model_catalog.txt').read_text().splitlines()))
+        self.assertEqual({m['model_name'] for m in models}, set(t1_catalog_names(model_json_dir)))
         for model in models:
             name = model['model_name']
             with self.subTest(model=name), contextlib.redirect_stdout(io.StringIO()):
