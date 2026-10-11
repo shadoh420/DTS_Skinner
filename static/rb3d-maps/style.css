@@ -1,0 +1,4 @@
+#jump { max-width: 16em; }
+#notes { white-space: pre-wrap; }
+footer details { max-height: 25vh; overflow: auto; }
+#streamStatus { margin: 0 1em; }
