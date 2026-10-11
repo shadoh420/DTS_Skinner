@@ -500,13 +500,13 @@ def item_model(game, path, textures, output):
     return result
 
 
-def read_bsp(raw):
+def read_bsp(raw, *, version=46):
     """Lumps of an IBSP 46 file, each checked to lie inside it."""
     if len(raw) < 8 + LUMPS * 8 or raw[:4] != b'IBSP':
         raise ValueError('not a Quake 3 map (IBSP)')
-    version, = struct.unpack_from('<i', raw, 4)
-    if version != 46:
-        raise ValueError(f'IBSP version {version}, not 46')
+    actual_version, = struct.unpack_from('<i', raw, 4)
+    if actual_version != version:
+        raise ValueError(f'IBSP version {actual_version}, not {version}')
     lumps = []
     for index in range(LUMPS):
         offset, length = struct.unpack_from('<ii', raw, 8 + index * 8)
@@ -516,9 +516,9 @@ def read_bsp(raw):
     return lumps
 
 
-def write_bsp(path, lumps):
+def write_bsp(path, lumps, *, version=46):
     """The lumps the viewer reads, as a valid map file of its own; the others are left empty."""
-    header, body, at = b'IBSP' + struct.pack('<i', 46), b'', 8 + LUMPS * 8
+    header, body, at = b'IBSP' + struct.pack('<i', version), b'', 8 + LUMPS * 8
     for index, lump in enumerate(lumps):
         kept = lump if index in KEPT_LUMPS else b''
         header += struct.pack('<ii', at + len(body), len(kept))

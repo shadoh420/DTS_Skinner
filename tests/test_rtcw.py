@@ -190,9 +190,10 @@ class RTCWTests(unittest.TestCase):
                 response=client.post('/import_rtcw',json={'path':str(root)})
                 self.assertEqual(response.status_code,200,response.json)
                 report=response.json
-                self.assertEqual(report['skipped'],2)
-                self.assertGreaterEqual(report['duplicates'],2)
-                self.assertEqual(report['skin_resolution']['unresolved'],2)
+                self.assertEqual(report['skipped'],1)
+                self.assertGreaterEqual(report['duplicates'],1)
+                self.assertEqual(report['skin_resolution']['unresolved'],1)
+                self.assertGreater(report['excluded'],0)
                 catalog=client.get('/list_models?game=rtcw').json
                 hero=next(r for r in catalog if r['category']=='Single player: Characters')
                 name=hero['model_name']
@@ -250,6 +251,27 @@ class RTCWTests(unittest.TestCase):
             hero=next(r for r in report['results'] if r['section']=='sp' and r['variant']=='default')
             self.assertEqual(hero['status'],'ready')
             self.assertEqual(report['skin_file_status']['empty'],1)
+
+    def test_multiplayer_shared_models_require_resolved_mp_difference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            # Changing an MP image supplies a real difference even with identical geometry.
+            pk3(root/'pak0.pk3',[('models/shared.mdc',mdc()),('models/test/diffuse.tga',image_bytes())])
+            out=root/'out';first=import_catalog(root,out)
+            self.assertEqual([r['status'] for r in first['results']],['ready','excluded'])
+            image=io.BytesIO();Image.new('RGBA',(2,2),'yellow').save(image,'TGA')
+            pk3(root/'mp_pak0.pk3',[('models/test/diffuse.tga',image.getvalue()),('models/mp_only.mdc',mdc())])
+            second=import_catalog(root,root/'changed')
+            shared=next(r for r in second['results'] if r['section']=='mp' and r['source']=='models/shared.mdc')
+            self.assertIn(shared['status'],('ready','duplicate'))
+            self.assertIn('MP-specific',shared['membership'])
+            # An MP shader which selects a missing image must not promote the shared model.
+            pk3(root/'mp_pak1.pk3',[('scripts/test.shader',b'models/test/diffuse { { map absent.tga } }')])
+            third=import_catalog(root,root/'missing')
+            shared=next(r for r in third['results'] if r['section']=='mp' and r['source']=='models/shared.mdc')
+            self.assertEqual(shared['status'],'excluded')
+            own=next(r for r in third['results'] if r['section']=='mp' and r['source']=='models/mp_only.mdc')
+            self.assertEqual(own['status'],'ready')  # MP-owned assets remain catalogued, with explicit missing texture.
 
     def test_later_diffuse_stage_over_opaque_effect(self):
         with tempfile.TemporaryDirectory() as tmp:

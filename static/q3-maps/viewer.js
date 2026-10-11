@@ -4,7 +4,8 @@
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
-  const storageKey = 'skinner.q3maps';
+  const config = window.skinnerMapConfig || {};
+  const storageKey = config.storageKey || 'skinner.q3maps';
   const settings = {fov: 90, animate: true, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
@@ -18,7 +19,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   scene.add(root);
   const camera = new THREE.PerspectiveCamera(60, 1, 2, 60000);
   camera.rotation.order = 'YXZ';
-  const data = '/q3-map-data/';
+  const data = config.data || '/q3-map-data/';
   let speed = 400, missing = 0, ready = false, map = null;
   const failures = [];
   const showStatus = text => { $('status').textContent = text; };
@@ -47,6 +48,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     fallbackTexels.set([32, level, 32, 255], i * 64);
     fallbackTexels.set([level, level, 32, 255], i * 68);
   }
+  if (config.defaultTexels) fallbackTexels.set(config.defaultTexels());
   const fallback = new THREE.DataTexture(fallbackTexels, 16, 16);
   fallback.wrapS = fallback.wrapT = THREE.RepeatWrapping;
   fallback.generateMipmaps = true;
@@ -54,10 +56,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   fallback.magFilter = THREE.LinearFilter;
   fallback.needsUpdate = true;
   function loadTexture(file, clamp, plain) {
+    if (file === '$default') return Promise.resolve(fallback);
     const key = file + (clamp ? '|clamp' : '') + (plain ? '|plain' : '');
     if (!textures.has(key)) textures.set(key, new Promise(resolve => loader.load(data + 'textures/' + file, texture => {
       texture.flipY = false;  // The game's t runs down the image, as the rows do without the flip.
       if (plain) { texture.generateMipmaps = false; texture.minFilter = THREE.LinearFilter; } else texture.anisotropy = 8;
+      if (config.configureTexture) config.configureTexture(texture, map && map.lighting, plain);
       if (!clamp) texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       resolve(texture);
     }, undefined, () => { missing++; resolve(null); })));
@@ -67,7 +71,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // The game brightens light by one bit and, where a channel overflows, scales the colour down to keep its hue
   // (R_ColorShiftLightingBytes with the default r_mapOverBrightBits 2 and r_overBrightBits 1).
   function shiftLight(r, g, b, out, at) {
-    r *= 2; g *= 2; b *= 2;
+    const factor = map && map.lighting ? map.lighting.lightScale : 2;
+    r *= factor; g *= factor; b *= factor;
     const most = Math.max(r, g, b);
     if (most > 255) { r = r * 255 / most; g = g * 255 / most; b = b * 255 / most; }
     out[at] = r; out[at + 1] = g; out[at + 2] = b;
@@ -110,9 +115,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // (ArenaPrototype's NativeIdentityLightScale), and the frame is doubled after it is drawn.
   function colour(stage) {
     const [kind, ...values] = stage.rgbGen, [alphaKind, ...alphaValues] = stage.alphaGen || ['identity'];
-    const rgb = kind === 'identitylighting' ? 'vec3(.5)' : kind === 'vertex' ? 'tint.rgb * .5' : kind === 'exactvertex' ? 'tint.rgb'
-      : kind === 'oneminusvertex' ? '(1. - tint.rgb) * .5' : kind === 'wave' ? `vec3(clamp(${waveCall(values)} * .5, 0., 1.))`
-      : kind === 'const' ? `vec3(${values.map(number).join(', ')})` : kind === 'lightingdiffuse' ? 'vec3(.5)' : 'vec3(1.)';  // Models are lit evenly.
+    const identity = number(map && map.lighting ? map.lighting.identityLight : .5);
+    const rgb = kind === 'identitylighting' ? `vec3(${identity})` : kind === 'vertex' ? `tint.rgb * ${identity}` : kind === 'exactvertex' ? 'tint.rgb'
+      : kind === 'oneminusvertex' ? `(1. - tint.rgb) * ${identity}` : kind === 'wave' ? `vec3(clamp(${waveCall(values)} * ${identity}, 0., 1.))`
+      : kind === 'const' ? `vec3(${values.map(number).join(', ')})` : kind === 'lightingdiffuse' ? `vec3(${identity})` : 'vec3(1.)';  // Models are lit evenly.
     const alpha = alphaKind === 'vertex' ? 'tint.a' : alphaKind === 'oneminusvertex' ? '1. - tint.a' : alphaKind === 'wave' ? `clamp(${waveCall(alphaValues)}, 0., 1.)`
       : alphaKind === 'const' ? number(alphaValues[0]) : alphaKind === 'lightingspecular' ? 'specular(P, N)'
       : alphaKind === 'portal' ? `clamp(length(P - uView) / ${number(alphaValues[0])}, 0., 1.)` : '1.';
@@ -186,7 +192,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           vec4 c = a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
             : a.y >= a.z ? (d.y > 0. ? side(bk, vec2(d.x, d.z) / a.y) : side(ft, vec2(-d.x, d.z) / a.y))
             : (d.z > 0. ? side(up, vec2(-d.y, -d.x) / a.z) : side(dn, vec2(-d.y, d.x) / a.z));
-          gl_FragColor = vec4(c.rgb * .5, 1.);
+          gl_FragColor = vec4(c.rgb * ${number(map && map.lighting ? map.lighting.identityLight : .5)}, 1.);
         }`,
       side: THREE.DoubleSide, transparent: true, blending: THREE.NoBlending, depthWrite: true});
   }
@@ -194,7 +200,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Draw lumps of the map file (IBSP 46): models 7, vertices 10, indices 11, faces 13, lightmaps 14.
   function buildWorld(buffer) {
     const view = new DataView(buffer);
-    if (view.getUint32(0, true) !== 0x50534249 || view.getInt32(4, true) !== 46) throw new Error('not a Quake 3 map file');
+    if (view.getUint32(0, true) !== 0x50534249 || view.getInt32(4, true) !== (config.bspVersion || 46)) throw new Error(config.bspVersion === 47 ? 'not an RTCW map file' : 'not a Quake 3 map file');
     const lump = (index, size) => ({at: view.getInt32(8 + index * 8, true), count: Math.floor(view.getInt32(12 + index * 8, true) / size)});
     const models = lump(7, 40), vertices = lump(10, 44), indexes = lump(11, 4), faces = lump(13, 104), lightmaps = lump(14, 49152);
     const float = at => view.getFloat32(at, true), int = at => view.getInt32(at, true);
@@ -294,7 +300,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (stage.map === '$lightmap') return [atlas || white];
       if (stage.map === '$whiteimage') return [white];
       if (stage.map === '$default') return [fallback];
-      return Promise.all((stage.frames || [stage.map]).map(file => loadTexture(file, stage.clamp)));
+      return Promise.all((stage.frames || [stage.map]).map(file => loadTexture(file, stage.clamp, stage.noMipmaps)));
     }));
     return stages.map((stage, index) => ready[index][0] && stageMaterial(shader, stage, ready[index][0], ready[index].filter(Boolean)));
   }
@@ -319,7 +325,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       root.add(mesh);
     };
     {
-      if (shader.sky && shader.sky.box) add(boxMaterial(await Promise.all(shader.sky.box.map(file => loadTexture(file, true, true)))), 0);
+      if (shader.sky && shader.sky.box) add(boxMaterial(await Promise.all(shader.sky.box.map(file => loadTexture(file, true, !config.skyMipmaps)))), 0);
       // ponytail: one draw per stage, as the game without multitexture; fold lightmap × texture into one pass if maps get heavy.
       (await stageMaterials(shader, stagesOf(shader, lit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
     }
@@ -330,7 +336,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
   // fast), bobbing 4 ± 4 units, weapons half as large again and turning about their middle, and the second model
   // of a health item or powerup turning the other way, a powerup's 12 units up.
-  const itemModels = new Map(), pickups = [];
+  const itemModels = new Map(), pickups = [], placedTicks = [];
   function loadItemModel(path) {
     if (!itemModels.has(path)) itemModels.set(path, (async () => {
       const model = map.itemModels[path], surfaces = await (await get(data + model.file)).json();
@@ -445,14 +451,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Stages are drawn into a frame that keeps alpha, which some blends read back (GL_ONE_MINUS_DST_ALPHA), and the
   // frame is shown doubled, as the game's gamma table doubles what the stages drew (r_overBrightBits 1).
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4}), shown = new THREE.Scene(), shownCamera = new THREE.Camera();
-  shown.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({uniforms: {frame: {value: frame.texture}}, depthTest: false, depthWrite: false,
+  shown.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({uniforms: {frame: {value: frame.texture}, displayScale: {value: 2}, displayGamma: {value: 1}}, depthTest: false, depthWrite: false,
     vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
-    fragmentShader: 'uniform sampler2D frame; varying vec2 at; void main() { gl_FragColor = vec4(texture2D(frame, at).rgb * 2., 1.); }'})));
+    fragmentShader: config.bspVersion === 47
+      ? 'uniform sampler2D frame; uniform float displayScale, displayGamma; varying vec2 at; void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(1. / displayGamma)) * displayScale, 1.); }'
+      : 'uniform sampler2D frame; varying vec2 at; void main() { gl_FragColor = vec4(texture2D(frame, at).rgb * 2., 1.); }'})));
   shown.children[0].frustumCulled = false;
   function draw(seconds) {
     uniforms.uTime.value = seconds;
     uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
     for (const {material, frames, fps} of animated) material.uniforms.map.value = frames[Math.floor(seconds * fps) % frames.length];
+    for (const tick of placedTicks) tick(seconds);
     for (const {holder, height, fast, rate} of pickups) {
       holder.position.z = height + 4 + Math.cos((seconds + 1) * rate) * 4;
       holder.rotation.z = seconds % 2.048 / 2.048 * 2 * Math.PI * (fast ? 2 : 1);
@@ -481,11 +490,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('map').addEventListener('change', event => select(event.target.value));
   $('import').addEventListener('click', async () => {
     const game = $('gamePath').value.trim();
-    if (!game) { $('importStatus').textContent = 'Enter your Quake 3 folder.'; return; }
+    if (!game) { $('importStatus').textContent = `Enter your ${config.gameName || 'Quake 3'} folder.`; return; }
     $('import').disabled = true;
     $('importStatus').textContent = 'Importing maps… a full install takes about a minute.';
     try {
-      const response = await fetch('/import_q3_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      const response = await fetch(config.importRoute || '/import_q3_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({game, replace: $('replace').checked})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Import failed');
@@ -505,7 +514,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { maps = await (await get(data + 'index.json')).json(); } catch (_) { /* No pack yet. */ }
     if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
     let mapId = new URLSearchParams(location.search).get('map') || '';
-    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === 'q3dm1') || maps[0]).id;
+    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === (config.defaultMap || 'q3dm1')) || maps[0]).id;
     const byGroup = new Map();
     for (const item of maps) byGroup.set(item.group, [...(byGroup.get(item.group) || []), item]);
     $('map').replaceChildren(...[...byGroup].map(([group, items]) => {
@@ -515,7 +524,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     }));
     $('map').value = mapId;
     map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
-    document.title = `${map.name} — Q3 Maps`;
+    document.title = `${map.name} — ${config.title || 'Q3 Maps'}`;
+    if (map.lighting) {
+      settings.fov = map.lighting.fov;
+      shown.children[0].material.uniforms.displayScale.value = map.lighting.displayScale;
+      shown.children[0].material.uniforms.displayGamma.value = map.lighting.displayGamma;
+      if (config.defaultTexels) { fallbackTexels.set(config.defaultTexels(map.lighting)); fallback.needsUpdate = true; }
+    }
     showNotes();
     applySettings();
     showViewpoint(0);
@@ -527,6 +542,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
+    if (config.addPlaced) await Promise.all((map.placed || []).map(item => config.addPlaced(item, {root, loadItemModel, ticks: placedTicks})));
     showNotes();
     ready = true;
     showReady();

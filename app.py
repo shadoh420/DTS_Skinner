@@ -24,6 +24,7 @@ from tools.import_q3 import import_catalog as import_q3_catalog, current_import
 from tools.import_t1_map import import_maps as import_t1_maps
 from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
+from tools.import_rtcw_map import import_maps as import_rtcw_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
 from tools.import_n64_map import import_maps as import_n64_maps
@@ -232,6 +233,50 @@ def import_q3_maps_route():
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
         return jsonify(import_q3_maps(payload['game'].strip(), local_data_dir / 'q3-maps', payload.get('replace') is True))
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/rtcw/')
+def rtcw_maps_viewer():
+    # Share the exact page controls; only RTCW labels, notes and parameters differ.
+    text = (static_dir / 'q3-maps/index.html').read_text(encoding='utf-8')
+    text = text.replace('Q3 Maps', 'RTCW Maps').replace('Quake 3 folder', 'RTCW folder').replace('C:\\Games\\Quake 3 Arena', 'C:\\Games\\RTCW')
+    text = text.replace('<script defer src="/static/q3-maps/viewer.js">', '<script defer src="/static/rtcw-maps/viewer.js"></script>\n  <script defer src="/static/q3-maps/viewer.js">')
+    start = text.index('Imports every map in baseq3')
+    end = text.index('</span>',start)
+    text = text[:start] + 'Imports Single player and Multiplayer maps from your RTCW Main folder, with each section’s pk3 overrides. The install is only read.' + text[end:]
+    start = text.index('<span id="notes">') + len('<span id="notes">')
+    end = text.index('</span>',start)
+    text = text[:start] + 'Free-flight preview of lightmapped surfaces, patches, skies, spawn-state brush entities, props and pickups. Fog and AI characters are not drawn. No gameplay, audio, particles, sun sprites, portal cameras or scripted movement; placed models are lit evenly. Lighting follows the classic renderer and your local settings, subject to retail game comparison.' + text[end:]
+    response = app.response_class(text, mimetype='text/html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/rtcw-map-data/<path:filename>')
+def rtcw_map_data(filename):
+    shared = filename.startswith(('textures/', 'bsp/', 'models/'))
+    response = send_from_directory(local_data_dir / 'rtcw-maps', filename, max_age=31536000 if shared else None)
+    response.cache_control.immutable = shared
+    return response
+
+
+@app.route('/import_rtcw_maps', methods=['POST'])
+def import_rtcw_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
+        return jsonify(error='Enter your local RTCW folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_rtcw_maps(payload['game'].strip(), local_data_dir / 'rtcw-maps', payload.get('replace') is True))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
         return jsonify(error=str(exc)), 422
     finally:

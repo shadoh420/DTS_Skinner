@@ -85,7 +85,7 @@ class Game:
             for path in sorted((root / folder).rglob('*')):
                 if path.is_file() and path.resolve().is_relative_to(root.resolve()):
                     name = checked_name(path.relative_to(root).as_posix())
-                    loose[name] = dict(read=lambda max_bytes=MAX_BYTES, p=path: read_asset(p,max_bytes=max_bytes), source='loose')
+                    loose[name] = dict(read=lambda max_bytes=MAX_BYTES, p=path: read_asset(p,max_bytes=max_bytes), source='loose',content_id=None)
         for path in sorted(packs, key=order, reverse=True):
             files = {}
             try:
@@ -101,7 +101,7 @@ class Game:
                             self.issues.append(dict(source=path.name, asset=entry.filename, reason=str(exc)))
                             continue
                         # FS_LoadZipFile prepends hash entries: last duplicate wins.
-                        files[name] = dict(read=lambda max_bytes=MAX_BYTES, p=path, e=entry: read_asset(p,e,max_bytes), source=path.name)
+                        files[name] = dict(read=lambda max_bytes=MAX_BYTES, p=path, e=entry: read_asset(p,e,max_bytes), source=path.name,content_id=f'{entry.CRC:08x}:{entry.file_size}')
             except (OSError, ValueError, zipfile.BadZipFile) as exc:
                 self.issues.append(dict(source=path.name, reason=str(exc)))
             self.sources.append((path.name, files))
@@ -317,7 +317,7 @@ def read_skin(raw):
                 empty=not values)
 
 
-def shader_maps(game):
+def shader_definitions(game):
     # Original RTCW concatenates the FS script listing in reverse order and
     # accepts the first definition. Same-name files still use the winning mount.
     listed = list(dict.fromkeys(n for _, files in game.sources for n in files
@@ -330,51 +330,58 @@ def shader_maps(game):
             game.issues.append(dict(source=name, reason='Unreadable shader script: '+str(exc)))
             continue
         for shader, (body, stages) in definitions.items():
-            if shader in result: continue
-            # Reuse the Q3 first-stage material interpreter after RTCW precedence.
-            text = shader+'\n{\n'+'\n'.join(' '.join(r) for r in body)+'\n'
-            text += '\n'.join('{\n'+'\n'.join(' '.join(r) for r in s)+'\n}' for s in stages)+'\n}'
-            parsed = q3.shader_maps({'one.shader': {'read':lambda t=text:t.encode()}})
-            implicit = next((r for r in body if r[0] in ('implicitmap','implicitmask','implicitblend')), None)
-            if shader in parsed:
-                result[shader] = parsed[shader]
-                # A later diffuse-lit base often covers an earlier environment or
-                # glow stage. Showing only that effect loses the model's identity.
-                # Prefer the base image, retaining alpha only if there is no
-                # opaque backdrop. This is a static approximation, not a bake.
-                for index, stage in enumerate(stages):
-                    rows = [[t.lower() for t in r] for r in stage]
-                    if ['rgbgen','lightingdiffuse'] not in rows:
-                        continue
-                    if any(r[0]=='tcgen' and r[1:] != ['base'] for r in rows):
-                        continue
-                    single = shader+'\n{\n'+'\n'.join(' '.join(r) for r in body)+'\n{\n'
-                    single += '\n'.join(' '.join(r) for r in stage)+'\n}\n}'
-                    chosen = q3.shader_maps({'one.shader':{'read':lambda t=single:t.encode()}}).get(shader)
-                    if not chosen: continue
-                    if chosen['target'] != parsed[shader]['target'] and index > 0:
-                        if chosen['target'] != '$whiteimage' and not any(n in game.assets for n in image_candidates(chosen['target'])):
-                            result[shader]['limitations'].append('diffuse stage image absent in this section; first-stage fallback')
-                            break
-                        backdrop = parsed[shader]['settings']
-                        if not backdrop['blend'] and not backdrop['alphaFunc']:
-                            chosen['settings'].update(blend=[],alphaFunc='',depthWrite=True)
-                        chosen['limitations'] = sorted(set(parsed[shader]['limitations']+chosen['limitations']+
-                            ['static diffuse-stage approximation; other stages omitted']))
-                        chosen['static_stage'] = dict(index=index,previous_target=parsed[shader]['target'],
-                                                     script=name,opaque_backdrop=not backdrop['blend'] and not backdrop['alphaFunc'])
-                        result[shader] = chosen
-                    break
-            else:
-                result[shader] = dict(target=shader, settings=dict(shader=shader,alphaFunc='',blend=[],cull='back',depthWrite=True,clamp=False,tcGen='base'),limitations=[])
-                if not implicit:
-                    result[shader]['limitations'].append('shader has no usable image stage; shader-name fallback')
-            if implicit and shader not in parsed:
-                entry = result[shader]
-                entry['target'] = implicit[1].lower() if len(implicit)>1 and implicit[1] != '-' else shader
-                if implicit[0] == 'implicitmask': entry['settings'].update(alphaFunc='GE128',cull='none')
-                if implicit[0] == 'implicitblend': entry['settings'].update(blend=['gl_src_alpha','gl_one_minus_src_alpha'],depthWrite=False,cull='none')
-                entry['limitations'].append('implicit directive compatibility extension (absent from supplied iortcw renderer)')
+            result.setdefault(shader, (body, stages, name))
+    return result
+
+
+def shader_maps(game):
+    result = {}
+    for shader, (body, stages, name) in shader_definitions(game).items():
+        # Reuse the Q3 first-stage material interpreter after RTCW precedence.
+        text = shader+'\n{\n'+'\n'.join(' '.join(r) for r in body)+'\n'
+        text += '\n'.join('{\n'+'\n'.join(' '.join(r) for r in s)+'\n}' for s in stages)+'\n}'
+        parsed = q3.shader_maps({'one.shader': {'read':lambda t=text:t.encode()}})
+        implicit = next((r for r in body if r[0] in ('implicitmap','implicitmask','implicitblend')), None)
+        if shader in parsed:
+            result[shader] = parsed[shader]
+            # A later diffuse-lit base often covers an earlier environment or
+            # glow stage. Showing only that effect loses the model's identity.
+            # Prefer the base image, retaining alpha only if there is no
+            # opaque backdrop. This is a static approximation, not a bake.
+            for index, stage in enumerate(stages):
+                rows = [[t.lower() for t in r] for r in stage]
+                if ['rgbgen','lightingdiffuse'] not in rows:
+                    continue
+                if any(r[0]=='tcgen' and r[1:] != ['base'] for r in rows):
+                    continue
+                single = shader+'\n{\n'+'\n'.join(' '.join(r) for r in body)+'\n{\n'
+                single += '\n'.join(' '.join(r) for r in stage)+'\n}\n}'
+                chosen = q3.shader_maps({'one.shader':{'read':lambda t=single:t.encode()}}).get(shader)
+                if not chosen: continue
+                if chosen['target'] != parsed[shader]['target'] and index > 0:
+                    if chosen['target'] != '$whiteimage' and not any(n in game.assets for n in image_candidates(chosen['target'])):
+                        result[shader]['limitations'].append('diffuse stage image absent in this section; first-stage fallback')
+                        break
+                    backdrop = parsed[shader]['settings']
+                    if not backdrop['blend'] and not backdrop['alphaFunc']:
+                        chosen['settings'].update(blend=[],alphaFunc='',depthWrite=True)
+                    chosen['limitations'] = sorted(set(parsed[shader]['limitations']+chosen['limitations']+
+                        ['static diffuse-stage approximation; other stages omitted']))
+                    chosen['static_stage'] = dict(index=index,previous_target=parsed[shader]['target'],
+                                                 script=name,opaque_backdrop=not backdrop['blend'] and not backdrop['alphaFunc'])
+                    result[shader] = chosen
+                break
+        else:
+            result[shader] = dict(target=shader, settings=dict(shader=shader,alphaFunc='',blend=[],cull='back',depthWrite=True,clamp=False,tcGen='base'),limitations=[])
+            if not implicit:
+                result[shader]['limitations'].append('shader has no usable image stage; shader-name fallback')
+        if implicit and shader not in parsed:
+            entry = result[shader]
+            entry['target'] = implicit[1].lower() if len(implicit)>1 and implicit[1] != '-' else shader
+            if implicit[0] == 'implicitmask': entry['settings'].update(alphaFunc='GE128',cull='none')
+            if implicit[0] == 'implicitblend': entry['settings'].update(blend=['gl_src_alpha','gl_one_minus_src_alpha'],depthWrite=False,cull='none')
+            entry['limitations'].append('implicit directive compatibility extension (absent from supplied iortcw renderer)')
+        result[shader]['script'] = name
     return result
 
 
@@ -543,14 +550,57 @@ def model_specs(game):
     return specs
 
 
+def material_asset(game, resolver, shader):
+    definition = resolver.shaders.get(q3.shader_key(shader), {})
+    target = definition.get('target', q3.key_name(shader))
+    return next((n for n in image_candidates(target) if n in game.assets), None)
+
+
+def appearance(data, game, resolver):
+    """Section-independent displayed geometry/material signature, including image content."""
+    materials = []
+    for settings, texture in zip(data['material_settings'], data['material_textures']):
+        name = material_asset(game, resolver, settings['shader'])
+        asset = game.assets.get(name, {})
+        content = asset.get('content_id')
+        if name and content is None:
+            content = asset['content_id'] = hashlib.sha256(game.read(name)).hexdigest()
+        materials.append([content or texture.removeprefix(game.section+'_'),
+                          {k:v for k,v in settings.items() if k != 'shader'}])
+    return hashlib.sha256(json.dumps([data[k] for k in ('vertices','normals','uvs','indices','groups')]+
+                                    [materials], sort_keys=True).encode()).hexdigest()
+
+
+def mp_membership(game, spec, data, metadata, resolver, sp_appearance):
+    """Only a resolved, MP-supplied change earns shared pak0 content a second entry."""
+    if game.assets[spec['source']]['source'].lower() != 'pak0.pk3':
+        return True, 'Model supplied outside shared pak0'
+    used = list(metadata.get('used', []))
+    folder = spec.get('folder')
+    if folder: used += [folder+'/wolfanim.cfg', folder+'/wolfanim.script']
+    for settings in data.get('material_settings', []):
+        definition = resolver.shaders.get(q3.shader_key(settings['shader']), {})
+        used += [definition.get('script'), material_asset(game,resolver,settings['shader'])]
+    supplied = [n for n in used if game.assets.get(n, {}).get('source','').lower().startswith('mp_')]
+    if not supplied: return False, 'Shared pak0 model without an MP-supplied override; shown in Single player'
+    if any(not (resolver.output/t).is_file() for t in data['material_textures']):
+        return False, 'Shared pak0 MP variant has unresolved materials; shown in Single player'
+    if any(re.search(r'Missing asset|Missing attachment|Head:|Missing accessory skin|Cannot decode|Missing texture', w, re.I) for w in metadata.get('warnings', [])):
+        return False, 'Shared pak0 MP variant has unresolved parts or skins; shown in Single player'
+    if appearance(data,game,resolver) == sp_appearance:
+        return False, 'MP override produces the same displayed result; shown in Single player'
+    return True, 'Resolved MP-specific appearance: '+', '.join(sorted(set(supplied)))
+
+
 def import_catalog(install, output, model_filter=None):
     output = Path(output)
     (output/'model_json').mkdir(parents=True,exist_ok=True)
     catalog, results, sections, skin_results, texture_results = [], [], {}, [], []
+    sp_appearances = {}
     for section,label in SECTIONS.items():
         game = Game(install,section)
         resolver = Textures(game,output/'textures')
-        seen = {}
+        seen, selected_skins, selected_shaders = {}, set(), set()
         for spec in model_specs(game):
             name = spec['source']
             if model_filter and model_filter.lower() not in name: continue
@@ -567,7 +617,7 @@ def import_catalog(install, output, model_filter=None):
                     parts = [dict(name=name,model=read_model(raw),digest=hashlib.sha256(raw).hexdigest(),frame=0)]
                     adjacent = name[:-4]+'.skin'
                     if adjacent in game.assets: parts[0]['skin'] = read_skin(game.read(adjacent))['surfaces']
-                    metadata = dict(pose='Frame 0',frame=0,scale=1,warnings=[],used=[name])
+                    metadata = dict(pose='Frame 0',frame=0,scale=1,warnings=[],used=[name]+([adjacent] if adjacent in game.assets else []))
                 data = q3.combine(parts,resolver)
                 scale = metadata['scale']
                 data['vertices'] = [x*scale for x in data['vertices']]
@@ -575,6 +625,17 @@ def import_catalog(install, output, model_filter=None):
                 data['warnings'] = sorted(set(data['warnings']+metadata['warnings']+spec['warnings']))
                 metadata.update(section=section,source=item['source'],warnings=data['warnings'])
                 data['metadata'] = metadata
+                if section == 'sp':
+                    sp_appearances[(name,spec['variant'])] = appearance(data,game,resolver)
+                else:
+                    keep, reason = mp_membership(game,spec,data,metadata,resolver,sp_appearances.get((name,spec['variant'])))
+                    row['membership'] = reason
+                    if not keep:
+                        row.update(status='excluded',reason=reason)
+                        results.append(row)
+                        continue
+                selected_skins.update(n for n in metadata['used'] if n.endswith('.skin'))
+                selected_shaders.update(s['shader'] for s in data['material_settings'])
                 identity = json.dumps([[p['digest'],p['frame']] for p in parts])+json.dumps(
                     [data['vertices'],data['material_textures'],data['material_settings']],sort_keys=True)
                 digest = hashlib.sha256(identity.encode()).hexdigest()
@@ -587,12 +648,17 @@ def import_catalog(install, output, model_filter=None):
                 item.update(texture_name=data['material_textures'][0],warnings=data['warnings'])
                 row.update(status='ready',metadata=metadata,triangles=len(data['indices'])//3)
             except (OSError,ValueError,zipfile.BadZipFile,struct.error) as exc:
+                if section == 'mp' and game.assets[name]['source'].lower() == 'pak0.pk3':
+                    row.update(status='excluded',reason='Shared pak0 model does not resolve in MP: '+str(exc))
+                    results.append(row)
+                    continue
                 row.update(status='skipped',reason=str(exc))
                 item.update(status='skipped',reason=str(exc))
             results.append(row); catalog.append(item)
         # Audit every skin, even ones whose geometry failed or has no body pair.
         for name in sorted(n for n in game.assets if n.endswith('.skin')):
             if model_filter and model_filter.lower() not in name: continue
+            if section == 'mp' and name not in selected_skins and not game.assets[name]['source'].lower().startswith('mp_'): continue
             row = dict(section=section,source=name)
             try:
                 sk = read_skin(game.read(name))
@@ -602,17 +668,21 @@ def import_catalog(install, output, model_filter=None):
                         refs.append(dict(surface=surface,shader=shader,status='hidden'))
                     else:
                         resolver.resolve(shader)
+                        selected_shaders.add(q3.shader_key(shader))
                         refs.append(dict(surface=surface,**resolver.results[shader]))
                 row.update(status='empty' if sk.get('empty') else 'read',surfaces=refs,models=sk['models'])
             except (ValueError,OSError,zipfile.BadZipFile) as exc:
                 row.update(status='unreadable',reason=str(exc))
             skin_results.append(row)
-        texture_results.extend(dict(section=section,**r) for r in resolver.results.values())
+        texture_results.extend(dict(section=section,**r) for r in resolver.results.values()
+                               if section=='sp' or q3.shader_key(r['shader']) in selected_shaders)
         sections[section] = dict(search_order=game.search_order,issues=game.issues,
             models=dict(Counter(category(n) for n in game.assets if n.endswith(MODEL_EXTS))),
+            catalog_counts=dict(Counter(r['status'] for r in results if r['section']==section)),
             static_shader_stages={name:dict(target=entry['target'],**entry['static_stage'])
                                   for name,entry in resolver.shaders.items() if 'static_stage' in entry})
     report = dict(entries=len(catalog),ready=sum(r['status']=='ready' for r in results),
+        excluded=sum(r['status']=='excluded' for r in results),
         skipped=sum(r['status']=='skipped' for r in results),duplicates=sum(r['status']=='duplicate' for r in results),
         textures=sum(r['status']=='resolved' for r in texture_results),results=results,sections=sections,
         skin_results=skin_results,texture_results=texture_results,
