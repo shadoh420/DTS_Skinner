@@ -4,7 +4,7 @@ from flask import Flask, send_from_directory, render_template, abort, jsonify, r
 from flask_socketio import SocketIO
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, t1_building_names, TEXTURE_GAMES, MODEL_GAMES
+from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, rename_family, t1_building_names, TEXTURE_GAMES, MODEL_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
@@ -775,6 +775,20 @@ def set_model_families():
     try:
         family = save_families(local_data_dir / 'model-families.json', selected_game(), payload['models'], payload['family'])
         return jsonify(family=family, models=payload['models'])
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+
+
+@app.route('/model_families/rename', methods=['POST'])
+def rename_model_family():
+    """{family, name}: rename one of the user's families; an empty name deletes it."""
+    if foreign_request():
+        return jsonify(error='Families must be edited from this Skinner window.'), 403
+    payload = request.get_json(silent=True) if request.is_json and (request.content_length or 0) <= 8192 else None
+    if not isinstance(payload, dict) or set(payload) != {'family', 'name'}:
+        return jsonify(error='Expected family and name.'), 400
+    try:
+        return jsonify(models=rename_family(local_data_dir / 'model-families.json', selected_game(), payload['family'], payload['name']))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
 

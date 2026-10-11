@@ -404,6 +404,28 @@ window.addEventListener('DOMContentLoaded', () => {
   for (const [id, names] of [['moveSelected', () => selectedName ? [selectedName] : []], ['moveShown', () => filtered.map(x => x.model_name)]]) {
     $(id).addEventListener('click', () => moveToFamily(names()).catch(error => { $('familyStatus').textContent = error.message; }));
   }
+  // Renames (or, with an empty name, deletes) the family chosen in the Family filter; only the user's own families qualify.
+  async function renameFamily(remove) {
+    const family = $('categorySelect').value, name = remove ? '' : $('familyName').value.trim().replace(/\s+/g, ' ');
+    if (!family) { $('familyStatus').textContent = 'Choose one of your families in the Family list first.'; return; }
+    if (!remove && !name) { $('familyStatus').textContent = 'Type the new name in Family name.'; return; }
+    if (remove && !confirm(`Delete the family ${family}? Its models go back to their imported families.`)) return;
+    const response = await fetch(`/model_families/rename?${query({}, game)}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({family, name})});
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not change the family');
+    const changed = new Set(result.models);
+    for (const entry of catalog) {
+      if (!changed.has(entry.model_name)) continue;
+      entry.category = name || entry.import_category;
+      if (!name) delete entry.import_category;
+    }
+    $('categorySelect').value = name;
+    showFamilies(); filterCatalog();
+    $('familyStatus').textContent = `${family} ${name ? `renamed to ${name}` : 'deleted; its models are back in their imported families'} (${result.models.length.toLocaleString()} model${result.models.length === 1 ? '' : 's'}).`;
+  }
+  for (const [id, remove] of [['renameFamily', false], ['deleteFamily', true]]) {
+    $(id).addEventListener('click', () => renameFamily(remove).catch(error => { $('familyStatus').textContent = error.message; }));
+  }
   function filterCatalog() {
     const search = $('modelSearch').value.toLocaleLowerCase();
     const family = $('categorySelect').value;
@@ -792,6 +814,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (serial === catalogSerial) await loadModel(true);
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
+  $('mapsSelect').addEventListener('change', event => { const page = event.target.value; event.target.value = ''; if (page) location.assign(page); });
   for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus'], ['ut', 'importUt', 'utPath', 'utImportStatus'], ['quake', 'importQuake', 'quakePath', 'quakeImportStatus'], ['quake2', 'importQuake2', 'quake2Path', 'quake2ImportStatus'], ['daikatana', 'importDaikatana', 'daikatanaPath', 'daikatanaImportStatus'], ['anachronox', 'importAnachronox', 'anachronoxPath', 'anachronoxImportStatus'], ['sin', 'importSin', 'sinPath', 'sinImportStatus'], ['azrael', 'importAzrael', 'azraelPath', 'azraelImportStatus']]) {
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();

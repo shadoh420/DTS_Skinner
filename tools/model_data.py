@@ -83,6 +83,30 @@ def save_families(path, game, models, family):
     return family
 
 
+def rename_family(path, game, old, new):
+    """Rename one of the user's families; an empty new name deletes it, putting its models back in their imported ones."""
+    if game not in MODEL_GAMES:
+        raise ValueError('Unknown model game')
+    if not isinstance(old, str) or not isinstance(new, str):
+        raise ValueError('Expected family names')
+    new = ' '.join(new.split())
+    if len(new) > 80:
+        raise ValueError('Family names are at most 80 characters')
+    with _families_lock:
+        data = read_families(path)
+        entries = data.get(game, {})
+        models = [name for name, family in entries.items() if family == old]
+        if not models:
+            raise ValueError(f'{old!r} is not one of your families; families from an import cannot be renamed or deleted')
+        for name in models:
+            if new:
+                entries[name] = new
+            else:
+                del entries[name]
+        write_json_atomic(path, data)
+    return models
+
+
 def material_texture_refs(data, material_overrides=None):
     """Validate slot references while keeping filenames compatible with old clients."""
     game = data.get('game', 't1')
