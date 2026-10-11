@@ -44,6 +44,7 @@ from tools.import_quake_map import import_maps as import_quake_maps
 from tools.import_quake2_map import import_maps as import_quake2_maps
 from tools.import_daikatana_map import import_maps as import_daikatana_maps
 from tools.import_anachronox_map import import_maps as import_anachronox_maps
+from tools.import_sin_map import import_maps as import_sin_maps
 from tools.import_unreal_map import import_maps as import_unreal_maps
 
 # --- System Tray Imports ---
@@ -325,6 +326,41 @@ def import_daikatana_maps_route():
                                          payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/sin/')
+def sin_maps_viewer():
+    response = send_from_directory(static_dir / 'sin-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/sin-map-data/<path:filename>')
+def sin_map_data(filename):
+    return send_from_directory(local_data_dir / 'sin-maps', filename)
+
+
+@app.route('/import_sin_maps', methods=['POST'])
+def import_sin_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json:
+        return jsonify(error='Expected JSON.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your SiN folder.'), 400
+    game = payload.get('game', 'sin')
+    if game not in ('sin', '2015', 'ctf'):
+        return jsonify(error='Unknown SiN section.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_sin_maps(payload['path'].strip(), local_data_dir / 'sin-maps',
+                                       payload.get('replace') is True, game))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 400
     finally:
         import_lock.release()
 
