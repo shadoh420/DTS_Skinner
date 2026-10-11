@@ -8,26 +8,15 @@
   <script defer src="/static/three.min.js"></script>
   <script defer src="/static/OrbitControls.js"></script>
   <script defer src="/static/skinner.js"></script>
+  <script defer src="/static/notes.js"></script>
 </head>
 <body>
   <header class="app-header"><div><strong>DTS SKINNER</strong><span class="subtle">Tribes, Quake 3, Diabotical &amp; Reflex model workshop</span></div><div class="history-controls"><button id="undoAction" disabled title="Ctrl+Z">Undo</button><button id="redoAction" disabled title="Ctrl+Shift+Z / Ctrl+Y">Redo</button><span id="historyStatus" class="subtle" role="status">Session history</span></div><span id="catalogSummary" class="subtle"></span></header>
   <main class="workspace">
     <aside class="catalog panel" aria-label="Model browser">
       <h1>Models</h1>
-      <a class="button" href="/maps/t1/">T1 Maps</a>
-      <a class="button" href="/maps/">T2 Maps</a>
-      <a class="button" href="/maps/q3/">Q3 Maps</a>
-      <a class="button" href="/maps/unreal/">Unreal Maps</a>
-      <a class="button" href="/maps/quake/">Quake Maps</a>
-      <a class="button" href="/maps/quake2/">Quake II Maps</a>
-      <a class="button" href="/maps/daikatana/">Daikatana Maps</a>
-      <a class="button" href="/maps/anachronox/">Anachronox Maps</a>
-      <a class="button" href="/maps/sin/">SiN Maps</a>
-      <a class="button" href="/maps/azrael/">Azrael's Tear Maps</a>
-      <a class="button" href="/maps/rb3d/">Red Baron 3D Maps</a>
-      <a class="button" href="/maps/reflex/">Reflex Maps</a>
-      <a class="button" href="/maps/diabotical/">Diabotical Maps</a>
-      <a class="button" href="/maps/n64/">N64 Maps</a>
+      <label for="mapsSelect">Maps</label>
+      <select id="mapsSelect"><option value="">Open a map viewer…</option><option value="/maps/anachronox/">Anachronox</option><option value="/maps/azrael/">Azrael's Tear</option><option value="/maps/daikatana/">Daikatana</option><option value="/maps/diabotical/">Diabotical</option><option value="/maps/n64/">N64 conversions</option><option value="/maps/quake/">Quake</option><option value="/maps/q3/">Quake 3 Arena</option><option value="/maps/quake2/">Quake II</option><option value="/maps/rb3d/">Red Baron 3D</option><option value="/maps/reflex/">Reflex Arena</option><option value="/maps/sin/">SiN</option><option value="/maps/t1/">Starsiege: Tribes</option><option value="/maps/">Tribes 2</option><option value="/maps/unreal/">Unreal &amp; Unreal Tournament</option></select>
       <label for="gameSelect">Game</label>
       <select id="gameSelect"><option value="t1">Starsiege: Tribes</option><option value="t2">Tribes 2</option><option value="q3">Quake 3 Arena</option><option value="diabotical">Diabotical</option><option value="reflex">Reflex Arena</option><option value="ta">TA conversions</option><option value="tv">TV conversions</option><option value="trpg">TRPG (T1 RPG mod)</option><option value="sw">SW (Star Wars mods)</option><option value="rm">RM (RedMoon RPG)</option><option value="t2rpg">T2RPG (IronSphere)</option><option value="ss">Starsiege</option><option value="es1">Earthsiege</option><option value="es2">Earthsiege 2</option><option value="rb3d">Red Baron 3D</option><option value="unreal">Unreal</option><option value="ut">Unreal Tournament</option><option value="quake">Quake (1996)</option><option value="quake2">Quake II</option><option value="daikatana">Daikatana</option><option value="anachronox">Anachronox</option><option value="sin">SiN</option><option value="azrael">Azrael's Tear</option><option value="ge">GoldenEye 007 (Tribes mod)</option></select>
       <details id="diaboticalImport" hidden><summary>Import Diabotical models</summary><label for="diaboticalPath">Diabotical folder</label><input id="diaboticalPath" value="C:\Program Files\Epic Games\Diabotical"><button id="importDiabotical">Import local models</button><p id="diaboticalImportStatus" class="hint" role="status">Reads the Editpad's props, dynamic props, pickups and entities, and every material, decal and spray as textures, from your installed game. Takes about ten minutes the first time. Existing PNG edits are kept.</p></details>
@@ -57,7 +46,8 @@
       <details id="familyEditor"><summary>Sort into families</summary>
         <label for="familyName">Family name</label><input id="familyName" list="familyNames" placeholder="New or existing family…" autocomplete="off"><datalist id="familyNames"></datalist>
         <div class="button-row"><button id="moveSelected">Move selected</button><button id="moveShown">Move all shown</button></div>
-        <p id="familyStatus" class="hint" role="status">Moves the selected model, or every model the search and family filter show, into the named family; a new name makes a new family. Leave the name empty to put models back in the family their import gave them.</p>
+        <div class="button-row"><button id="renameFamily">Rename family</button><button id="deleteFamily">Delete family</button></div>
+        <p id="familyStatus" class="hint" role="status">Moves the selected model, or every model the search and family filter show, into the named family; a new name makes a new family. Leave the name empty to put models back in the family their import gave them. Rename gives the family chosen above the typed name; Delete puts its models back in their imported families.</p>
       </details>
       <div id="modelCount" class="subtle"></div>
       <a id="coverageReport" class="hint" href="/static/t2/inventory.json" target="_blank" hidden>View T2 inventory &amp; coverage report</a>

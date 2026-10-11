@@ -46,6 +46,20 @@ class ModelFamiliesTests(unittest.TestCase):
                                          headers={'Origin': 'https://elsewhere.invalid'}).status_code, 403)
             self.assertEqual(family_file.read_bytes(), original)
 
+            # Rename and delete act on the user's own families only, per game.
+            rename = lambda family, name, game='t1': client.post(f'/model_families/rename?game={game}', json=dict(family=family, name=name))
+            self.assertEqual(rename('Armors', '  Suits ').json['models'], ['larmor'])
+            self.assertEqual(families()['larmor'], 'Suits')
+            self.assertEqual(rename('Complete T1 catalog', 'x').status_code, 422)
+            self.assertEqual(rename('Armors', 'x').status_code, 422)
+            self.assertEqual(rename('Suits', 'x', 't2').status_code, 422)
+            self.assertEqual(client.post('/model_families/rename', json=dict(family='Suits')).status_code, 400)
+            self.assertEqual(client.post('/model_families/rename', json=dict(family='Suits', name=''),
+                                         headers={'Origin': 'https://elsewhere.invalid'}).status_code, 403)
+            self.assertEqual(rename('Suits', '').json['models'], ['larmor'])
+            self.assertEqual(read_families(family_file), {'t1': {}, 't2': {'larmor': 'Other game'}})
+            self.assertEqual(families()['larmor'], 'Complete T1 catalog')
+
             # A broken file is reported and never overwritten; the catalog still loads with the imported families.
             family_file.write_text('broken')
             self.assertEqual(client.post('/model_families', json=dict(models=['a'], family='x')).status_code, 422)
