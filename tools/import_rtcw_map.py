@@ -654,7 +654,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     digest=hashlib.sha256(b''.join(draw)).hexdigest()[:24];file='bsp/'+digest+'.bsp'
     if not (output/file).exists():qmap.write_bsp(output/file,draw,version=47)
     scene=dict(name=name,longname=things[0].get('message','') if things else '',source=source,section=game.section,bsp=file,bspVersion=47,
-               shaders=shaders,viewpoints=views,models=[],items=[],placed=placed,itemModels=item_models,lighting=game.lighting,
+               shaders=shaders,viewpoints=views,models=[],items=[],placed=placed,itemModels=item_models,lighting=game.lighting,bspCull=qmap.read_visibility(lumps),
                entityResults=audit,bspNotes=bsp_notes,unresolved=sorted(set(unresolved)),outside=[],guessed=[],limits=sorted(limits))
     folder=output/'maps'/ident;folder.mkdir(parents=True,exist_ok=True);rtcw.q3.json_write(folder/'scene.json',scene)
     return scene

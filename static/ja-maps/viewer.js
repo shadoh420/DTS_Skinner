@@ -16,51 +16,17 @@
     camera.far = far;
     camera.updateProjectionMatrix();
   };
-  // Native game axes. Reject only when the entire box lies past the fifth plane.
-  config.boundsVisible = (bounds, eye, direction, distance) => {
-    let nearest = 0;
-    for (let j = 0; j < 3; j++) nearest += direction[j] * (bounds[j + (direction[j] < 0 ? 3 : 0)] - eye[j]);
-    return nearest <= distance;
-  };
-  config.visibleSurfaces = (tree, eye, direction, distance, visible = new Uint8Array(tree.surfaceCount)) => {
-    visible.fill(1);
-    if (tree.leaves.length) {
-      visible.fill(0, tree.world[0], tree.world[0] + tree.world[1]);
-      const stack = tree.nodes.length ? [0] : tree.leaves.map((_, i) => -1-i);
-      while (stack.length) {
-        const index = stack.pop(), row = index < 0 ? tree.leaves[-1-index] : tree.nodes[index];
-        if (!config.boundsVisible(row, eye, direction, distance)) continue;
-        if (index >= 0) stack.push(row[6], row[7]);
-        else for (let i = row[6], end = i + row[7]; i < end; i++) visible[tree.surfaces[i]] = 1;
-      }
-    }
-    // Inline models are submitted separately by the renderer, not through leaves.
-    for (const model of tree.inline) visible.fill(Number(model.corners.some(p =>
-      direction.reduce((depth, d, j) => depth + d * (p[j] - eye[j]), 0) <= distance)), model.first, model.first + model.count);
-    return visible;
-  };
+  const visibility = typeof module === 'object' && module.exports
+    ? require('../q3-maps/visibility.js') : host.skinnerVisibility;
+  config.boundsVisible = visibility.boundsVisible;
+  config.visibleSurfaces = visibility.visibleSurfaces;
+  config.worldCullDistance = map => map.section === 'sp' ? map.distanceCull * 1.02 : null;
   const batches = [], props = [];
   config.bindWorldCull = (map, geometry, ranges, shader) => {
     if (map.section !== 'sp' || !map.bspCull || shader.sky) return;
     batches.push({geometry, ranges, original: geometry.index.array.slice(), previous: new Uint8Array(ranges.length).fill(255)});
   };
-  config.compactBatch = (batch, visible) => {
-    const {geometry, ranges, original, previous} = batch;
-    let changed = false;
-    for (let i = 0; i < ranges.length; i++) {
-      const value = visible[ranges[i][0]];
-      if (previous[i] !== value) changed = true;
-      previous[i] = value;
-    }
-    if (!changed) return;
-    let count = 0;
-    for (const [face, start, length] of ranges) if (visible[face]) {
-      geometry.index.array.set(original.subarray(start, start + length), count);
-      count += length;
-    }
-    geometry.index.needsUpdate = true;
-    geometry.setDrawRange(0, count);
-  };
+  config.compactBatch = visibility.compactBatch;
   const addPlaced = config.addPlaced;
   config.addPlaced = async (item, context) => {
     const holder = await addPlaced(item, context);
@@ -80,8 +46,10 @@
     forward ||= new THREE.Vector3();camera.getWorldDirection(forward);
     const eye = [camera.position.x, -camera.position.z, camera.position.y];
     const direction = [forward.x, -forward.z, forward.y], distance = map.distanceCull * 1.02;
-    visible = config.visibleSurfaces(map.bspCull, eye, direction, distance, visible);
-    for (const batch of batches) config.compactBatch(batch, visible);
+    if (!map.bspCull.pvs) {
+      visible = config.visibleSurfaces(map.bspCull, eye, direction, distance, visible);
+      for (const batch of batches) config.compactBatch(batch, visible);
+    }
     // Props use their current pose/transform, never a world leaf's visibility.
     for (const {holder, corners} of props) {
       const m = holder.matrix.elements;

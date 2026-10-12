@@ -104,42 +104,16 @@ def scene_metadata(game,raw):
 
 def bsp_cull(lumps,things):
     """Compact original tree/leaf membership; draw-surface ordinals are preserved."""
-    nodes=list(struct.iter_unpack('<9i',lumps[3]));leaves=list(struct.iter_unpack('<12i',lumps[4]))
-    refs=[v[0] for v in struct.iter_unpack('<i',lumps[5])]
-    models=list(struct.iter_unpack('<6f4i',lumps[7]));count=len(lumps[13])//148
-    if not models:raise ValueError('Missing BSP cull world model')
-    if len(nodes)+len(leaves)>1000000:raise ValueError('BSP cull tree exceeds limit')
-    def bounds(values):
-        if not np.isfinite(values).all() or any(values[i]>values[i+3] for i in range(3)):
-            raise ValueError('Invalid BSP cull bounds')
-        return list(values)
-    def span(first,size,total):
-        if min(first,size)<0 or first+size>total:raise ValueError('Invalid BSP cull range')
-    for node in nodes:
-        bounds(node[3:9])
-        for child in node[1:3]:
-            if child>=len(nodes) or child<0 and -1-child>=len(leaves):raise ValueError('Invalid BSP cull child')
-    # Reject cycles and multiply-parented internal nodes without recursive Python calls.
-    seen=set();stack=[0] if nodes else []
-    while stack:
-        index=stack.pop()
-        if index<0:continue
-        if index in seen:raise ValueError('Invalid BSP cull tree cycle/shared node')
-        seen.add(index);stack.extend(nodes[index][1:3])
-    for leaf in leaves:
-        if leaf[9]:bounds(leaf[2:8])
-        span(leaf[8],leaf[9],len(refs))
-    if any(n<0 or n>=count for n in refs):raise ValueError('Invalid BSP cull surface')
-    for model in models:bounds(model[:6]);span(model[6],model[7],count)
+    tree=jk.qmap.read_visibility(lumps,surface_stride=148)
+    models=list(struct.iter_unpack('<6f4i',lumps[7]))
     inline=[]
     for index,model in enumerate(models[1:],1):
         ent=next((e for e in things if e.get('model')=='*'+str(index)),{})
         state=brush_state(ent,model,things)
         corners=np.array([base.transformed([model[j+3*((i>>j)&1)] for j in range(3)],state) for i in range(8)])
         inline.append(dict(first=model[6],count=model[7],corners=corners.tolist()))
-    return dict(nodes=[list(n[3:9])+list(n[1:3]) for n in nodes],
-                leaves=[list(l[2:8])+list(l[8:10]) for l in leaves],surfaces=refs,
-                world=[models[0][6],models[0][7]],surfaceCount=count,inline=inline)
+    tree['inline']=inline
+    return tree
 
 
 def entity_filter(game,e):

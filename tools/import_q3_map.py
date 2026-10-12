@@ -31,9 +31,11 @@ from PIL import Image
 try:
     from tools.import_q3 import key_name, read_md3, read_text
     from tools.local_data import LOCAL_DATA
+    from tools.bsp_visibility import read_visibility
 except ImportError:  # Run as a script.
     from import_q3 import key_name, read_md3, read_text
     from local_data import LOCAL_DATA
+    from bsp_visibility import read_visibility
 
 LUMPS = 17
 KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14)  # Entities, shaders, models, vertices, indices, faces, lightmaps: all the viewer reads.
@@ -584,7 +586,7 @@ def import_map(game, name, ident, raw, source, output, textures):
     folder = output / 'maps' / ident
     folder.mkdir(parents=True, exist_ok=True)
     scene = dict(name=name, longname=game.arenas.get(name.lower(), ''), source=source, bsp=file, shaders=shaders, viewpoints=viewpoints,
-                 items=items, itemModels=item_models,
+                 items=items, itemModels=item_models, bspCull=read_visibility(lumps),
                  **{kind: list(dict.fromkeys(item for shader in [*shaders, *(shader for model in item_models.values() for shader in model['shaders'])]
                                              if shader for item in shader.get(kind, []))) for kind in ('outside', 'guessed')},
                  models=[dict(model=int(thing['model'][1:]), origin=vector(thing['origin'])) for thing in things

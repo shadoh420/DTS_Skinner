@@ -72,7 +72,7 @@ def bsp(shaders, faces, entities='', version=46):
     lumps[1] = b''.join(struct.pack('<64sii', name.encode(), flags, 0) for name, flags in shaders.items())
     lumps[13] = b''.join(struct.pack('<8i', shader, -1, kind, 0, 0, 0, 0, lightmap) + bytes(72) for shader, kind, lightmap in faces)
     lumps[14] = bytes(128 * 128 * 3)
-    lumps[2] = b'planes the viewer does not read'
+    lumps[2] = struct.pack('<4f',1,0,0,0)  # Valid plane; visibility metadata now reads this lump.
     header, body = b'IBSP' + struct.pack('<i', version), b''
     for lump in lumps:
         header += struct.pack('<ii', 8 + 17 * 8 + len(body), len(lump))

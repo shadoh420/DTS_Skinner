@@ -20,7 +20,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const camera = new THREE.PerspectiveCamera(60, 1, 2, 60000);
   camera.rotation.order = 'YXZ';
   const data = config.data || '/q3-map-data/';
-  let speed = 400, missing = 0, ready = false, map = null;
+  let speed = 400, missing = 0, ready = false, map = null, visibility = null;
   const failures = [];
   const showStatus = text => { $('status').textContent = text; };
   const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing textures` : 'Map ready'} · speed ${Math.round(speed)}`);
@@ -371,7 +371,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       floors.push(new THREE.Mesh(floorGeometry, floorMaterial));
     }
-    if (config.bindWorldCull) config.bindWorldCull(map, geometry, ranges, shader);
+    if (visibility) visibility.bind(geometry, ranges, shader);
+    else if (config.bindWorldCull) config.bindWorldCull(map, geometry, ranges, shader);
   }
 
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
@@ -423,6 +424,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function showNotes() {
     if (!map) return;
     const parts = [];
+    if (map.bspCull?.pvs) parts.push('World cluster visibility is enabled. Door area portals and server entity visibility are not simulated; sky and separately submitted models remain independent of the world PVS');
     if (map.unresolved.length) parts.push("Not in the game files, so drawn with the game's dark default image as the game draws them: " + map.unresolved.join('; '));
     if ((map.outside || []).length) parts.push('Filled in from your extras folder, not the game files: ' + map.outside.join('; '));
     if ((map.guessed || []).length) parts.push('Guessed from a file of the same name in another folder, which may not be the same thing: ' + map.guessed.join('; '));
@@ -498,6 +500,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       ? 'uniform sampler2D frame; uniform float displayScale, displayGamma; varying vec2 at; void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(1. / displayGamma)) * displayScale, 1.); }'
       : 'uniform sampler2D frame; varying vec2 at; void main() { gl_FragColor = vec4(texture2D(frame, at).rgb * 2., 1.); }'})));
   shown.children[0].frustumCulled = false;
+  const cullDirection = new THREE.Vector3();
   function draw(seconds) {
     uniforms.uTime.value = seconds;
     uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
@@ -509,6 +512,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (holder.children[1]) holder.children[1].rotation.z = -holder.rotation.z - seconds % 1.024 / 1.024 * 2 * Math.PI;  // Its own turn, undoing the holder's.
     }
     if (config.updateCull) config.updateCull(map, camera);
+    if (visibility) {
+      const direction = camera.getWorldDirection(cullDirection);
+      visibility.update([camera.position.x, -camera.position.z, camera.position.y],
+        [direction.x, -direction.z, direction.y], config.worldCullDistance ? config.worldCullDistance(map) : null);
+    }
     renderer.setRenderTarget(frame);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
@@ -566,6 +574,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }));
     $('map').value = mapId;
     map = await (await get(`${data}maps/${mapId}/${config.sceneFile ? config.sceneFile() : 'scene.json'}`)).json();
+    visibility = window.skinnerVisibility.create(map.bspCull);
     if (config.configureCamera) config.configureCamera(camera, map);
     document.title = `${map.name} — ${config.title || 'Q3 Maps'}`;
     if (map.lighting) {
