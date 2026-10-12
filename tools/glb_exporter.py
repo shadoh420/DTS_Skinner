@@ -145,7 +145,7 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
             material['alphaMode'] = 'BLEND'
         if flag & (8 | 16):
             gltf['extras']['warnings'].append(f'{name}: additive/subtractive blending is approximated by alpha blending in glTF.')
-        if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael'):
+        if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb'):
             material['extras']['sourceShaderSettings'] = setting
             material['doubleSided'] = not data.get('material_settings') or setting.get('cull', 'back') != 'back'
             if setting.get('cull') == 'front':
