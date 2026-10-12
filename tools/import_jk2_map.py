@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 import re
 import struct
+import sys
 from types import SimpleNamespace
 import zipfile
 
@@ -58,6 +59,9 @@ def lighting_profile(install,section,game=None,*,device_supports_gamma=False):
 
 
 class Game(jk2.Game):
+    profile=staticmethod(lighting_profile)
+    mp_items=MP_ITEMS
+    model_rules=jk2
     def __init__(self,install,section='sp'):
         super().__init__(install);self.section=section
         self.files={n:(a['source'],a['read']) for n,a in self.assets.items()}
@@ -65,10 +69,10 @@ class Game(jk2.Game):
         self.shaders={n:(b,s) for n,(b,s,_) in self.definitions.items()}
         self.shader_label={n:self.assets[p]['source'] for n,(_,_,p) in self.definitions.items()}
         self.outside,self.images,self.described,self.models=set(),{},{},{}
-        self.lighting=lighting_profile(install,section,self)
+        self.lighting=self.profile(install,section,self)
         self.skill=min(2,max(0,int(self.lighting['cvars']['g_spskill'])))
         self.items=sp_items(self.read('ext_data/items.dat')) if section=='sp' and 'ext_data/items.dat' in self.assets else {
-            c:dict(kind=k,models=[p],mins=[-15]*3,maxs=[15]*3) for c,(k,p) in MP_ITEMS.items()}
+            c:dict(kind=k,models=[p],mins=[-15]*3,maxs=[15]*3) for c,(k,p) in self.mp_items.items()}
 
 
 def sp_items(raw):
@@ -273,7 +277,7 @@ class LightGrid:
 
 class ModelTextures(base.ModelTextures):
     def __init__(self,game,output):
-        super().__init__(game,output);self.shaders=jk2.shader_maps(game)
+        super().__init__(game,output);self.shaders=game.model_rules.shader_maps(game)
 
 
 class Collision(base.Collision):
@@ -410,31 +414,44 @@ def rack_items(e):
     return result
 
 
-def place_entities(game,things,states,collision,output,textures,model_textures):
+def entity_filter(game,e):
+    return filtered(e,game.section,game.skill)
+
+
+def load_placed(game,path,skin,frame):
+    sk=jk2.read_skin(game.read(skin))['surfaces'] if skin and not skin.isdigit() else {}
+    return jk2.load_model(game,path,sk,frame=frame)
+
+
+BAKED_MODELS=('misc_model','misc_model_static')
+
+
+def place_entities(game,things,states,collision,output,textures,model_textures,*,rules=None):
+    rules=rules or sys.modules[__name__]
     placed=[];models={};audit=[];missing=[];limits=[]
     entities=list(enumerate(things))
     if game.section=='sp':
         for serial,e in enumerate(things):
-            if not filtered(e,'sp',game.skill):
+            if not rules.entity_filter(game,e):
                 entities += [(serial,dict(child,_rack='1')) for child in rack_items(e)]
     for serial,e in entities:
-        cls=e.get('classname','').lower();row=dict(entity=serial,classname=cls,status='omitted');reason=filtered(e,game.section,game.skill)
+        cls=e.get('classname','').lower();row=dict(entity=serial,classname=cls,status='omitted');reason=rules.entity_filter(game,e)
         try:
             flags=int(number(e,'spawnflags'));path=e.get('model','');item=game.items.get(cls);paths=[]
             if reason:pass
             elif path.startswith('*'):
                 state=states[int(path[1:])];reason=state['hidden'] or 'inline brush at spawn transform';row['status']='omitted' if state['hidden'] else 'drawn'
                 if not state['hidden'] and e.get('model2'):paths=[e['model2']]
-            elif cls in ('misc_model','misc_model_static'):reason='compile-time model baked into BSP; no second runtime copy'
+            elif cls in rules.BAKED_MODELS:reason='compile-time model baked into BSP; no second runtime copy'
             elif item:
                 if game.section=='sp' and flags&32:reason='ITMSF_INVISIBLE'
                 elif game.section=='mp' and (e.get('targetname') or e.get('team')):reason='targeted/team item hidden at spawn'
-                elif game.section=='mp' and item['kind'] in ('team','powerup'):reason='team item excluded / powerup initial respawn delay'
+                elif game.section=='mp' and (item['kind']=='powerup' or item['kind']=='team' and not getattr(game,'team_items',False)):reason='team item excluded / powerup initial respawn delay'
                 else:paths=item['models'];reason='' if paths else 'item has no world model'
             elif cls.startswith(('info_','target_','trigger_','light','fx_','waypoint','point_','ref_','path_')) or cls in ('worldspawn','misc_portal_surface','misc_portal_camera'):
                 reason='world/control/effect entity; no standalone visual'
             else:
-                path=PROP_MODELS.get(cls,path or e.get('model2',''));paths=[path] if path else []
+                path=rules.PROP_MODELS.get(cls,path or e.get('model2',''));paths=[path] if path else []
                 reason='' if paths else 'no model key; class-specific effect/model not reconstructed'
             if paths:
                 pos=vector(e.get('origin'));rot=base.angles(e);size=base.scale(e);frame=int(number(e,'frame',number(e,'startframe')));spin=False;bob=None;floor='authored position'
@@ -455,9 +472,8 @@ def place_entities(game,things,states,collision,output,textures,model_textures):
                     path=rtcw.q3.key_name(path).lstrip('/');skin=e.get('skin',e.get('modelskin',''))
                     key=hashlib.sha256(json.dumps([path,skin,frame]).encode()).hexdigest()[:24]
                     if key not in models:
-                        sk=jk2.read_skin(game.read(skin))['surfaces'] if skin and not skin.isdigit() else {}
-                        model,meta,_=jk2.load_model(game,path,sk,frame=frame)
-                        desc,unresolved=base.placed_model(game,path,skin,frame,output,textures,model_textures,model=model)
+                        model,meta,_=rules.load_placed(game,path,skin,frame)
+                        desc,unresolved=base.placed_model(game,path,'' if getattr(rules,'BOUND_SKINS',False) else skin,frame,output,textures,model_textures,model=model)
                         desc['limitations']+=meta['warnings'];models[key]=desc;missing+=unresolved;limits+=desc['limitations']
                     placement=dict(entity=serial,models=[key],origin=pos,angles=rot,scale=size,spin=spin,bob=bob)
                     if getattr(game,'light_grid',None):placement['light']=game.light_grid.sample(pos)
@@ -492,29 +508,44 @@ def sweep(output):
     return dict(scenes=scenes,missing=missing,defaults=defaults)
 
 
-def import_maps(install,output,replace=False):
+def map_paths(game):
+    return sorted(n for n in game.assets if re.fullmatch(r'maps/[^/]+\.bsp',n))
+
+
+def configure_map(game,name):
+    game.default_gametype='single player' if game.section=='sp' else 'FFA'
+
+
+def map_viewpoints(game,things,collision):
+    return viewpoints(things,collision,game.section)
+
+
+def import_maps(install,output,replace=False,*,rules=None):
+    config=rules or sys.modules[__name__]
     output=Path(output)
     for folder in ('maps','models','bsp','textures'):(output/folder).mkdir(parents=True,exist_ok=True)
     report=dict(imported=[],skipped=[],failed={},maps=[],sections={});index=[]
     for section,label in SECTIONS.items():
-        game=Game(install,section);textures=base.Textures(output/'textures',game);mt=ModelTextures(game,output/'textures')
+        game=config.Game(install,section);textures=base.Textures(output/'textures',game);mt=ModelTextures(game,output/'textures')
         rules=SimpleNamespace(read_bsp=lambda raw,notes:read_bsp(raw,notes,section=section,light_scale=game.lighting['sourceLightScale']),
-            brush_state=brush_state,filtered=lambda e,s:filtered(e,s,game.skill),describe=describe,viewpoints=viewpoints,place_entities=place_entities,Collision=Collision)
+            brush_state=config.brush_state,filtered=lambda e,s:config.entity_filter(game,e),describe=describe,
+            viewpoints=lambda things,collision,s:config.map_viewpoints(game,things,collision),place_entities=config.place_entities,Collision=Collision)
         classes=Counter()
-        for path in sorted(n for n in game.assets if re.fullmatch(r'maps/[^/]+\.bsp',n)):
-            name=Path(path).stem;chosen,why=section_for(name)
+        for path in config.map_paths(game):
+            name=path[5:-4];chosen,why=config.section_for(name)
             if chosen!=section:continue
-            ident=section+'_'+qmap.map_id(name);source=game.assets[path]['source'];dest=output/'maps'/ident/'scene.json'
+            config.configure_map(game,name)
+            ident=section+'_'+qmap.map_id(Path(name).name);source=game.assets[path]['source'];dest=output/'maps'/ident/'scene.json'
             row=dict(map=name,section=section,sectionReason=why,source=source)
             try:
                 if dest.is_file() and not replace:scene=json.loads(dest.read_text());status='skipped'
                 else:
                     raw=game.read(path)
-                    game.light_grid=LightGrid(read_lumps(raw),game.lighting,section)
+                    game.light_grid=config.LightGrid(read_lumps(raw),game.lighting,section)
                     scene=base.import_map(game,name,ident,raw,source,output,textures,mt,rules=rules)
                     if game.light_grid.reason:scene['limits'].append(game.light_grid.reason)
-                    scene.update(game='jk2',sourceFormat='RBSP 1',defaultGametype='single player' if section=='sp' else 'FFA')
-                    scene['limits']=[x for x in scene['limits'] if x not in base.NOT_DRAWN and not x.startswith('first eligible Axis')]+NOT_DRAWN
+                    scene.update(game=game.game_id,sourceFormat='RBSP 1',defaultGametype=game.default_gametype)
+                    scene['limits']=[x for x in scene['limits'] if x not in base.NOT_DRAWN and not x.startswith('first eligible Axis')]+config.NOT_DRAWN
                     scene['limits']+=['first eligible player start; runtime selection and level-transition targets may differ','no hardware gamma assumed on this PC; working hardware gamma uses the display ramp instead']
                     rtcw.q3.json_write(dest,scene);status='imported'
                 report[status].append(ident);row.update(status=status,entityResults=scene['entityResults'],unresolved=scene['unresolved'],bspNotes=scene['bspNotes'])

@@ -27,6 +27,7 @@ from tools.import_q3_map import import_maps as import_q3_maps
 from tools.import_rtcw_map import import_maps as import_rtcw_maps
 from tools.import_et_map import import_maps as import_et_maps
 from tools.import_jk2_map import import_maps as import_jk2_maps
+from tools.import_ja_map import import_maps as import_ja_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
 from tools.import_n64_map import import_maps as import_n64_maps
@@ -276,7 +277,7 @@ def et_maps_viewer():
 
 
 @app.route('/maps/jk2/')
-def jk2_maps_viewer():
+def jk2_maps_viewer(game='jk2'):
     text = rtcw_maps_viewer().get_data(as_text=True)
     text = text.replace('RTCW Maps', 'Jedi Outcast Maps').replace('RTCW folder', 'Jedi Outcast folder').replace('C:\\Games\\RTCW', 'C:\\Games\\Jedi Outcast\\GameData')
     text = text.replace('<script defer src="/static/q3-maps/viewer.js">', '<script defer src="/static/jk2-maps/viewer.js"></script>\n  <script defer src="/static/q3-maps/viewer.js">')
@@ -286,14 +287,26 @@ def jk2_maps_viewer():
     start = text.index('<span id="notes">') + len('<span id="notes">')
     end = text.index('</span>', start)
     text = text[:start] + 'Lightmapped surfaces, patches, far-box skies, spawn-state brushes, props and pickups. Fog, NPCs, surface-sprite foliage, portal cameras, particles and ICARUS scripts are not drawn. Water and slime stages still draw without fog. Lightstyles show their first sample; props use the light grid at spawn, without dynamic lights. MP uses FFA and the first eligible start. Lighting targets this PC’s measured software gamma and GL_LINEAR_MIPMAP_NEAREST filtering; a machine with working hardware gamma uses a display ramp instead. Retail SP 1.03 has no r_mapOverBrightBits setting: BSP light stays at 1×. Placed-model lighting awaits retail comparison.' + text[end:]
+    if game == 'ja':
+        text = text.replace('Jedi Outcast', 'Jedi Academy')
+        text = text.replace('<script defer src="/static/q3-maps/viewer.js">', '<script defer src="/static/ja-maps/viewer.js"></script>\n  <script defer src="/static/q3-maps/viewer.js">')
+        start = text.index('<span id="notes">') + len('<span id="notes">')
+        end = text.index('</span>', start)
+        text = text[:start] + 'Lightmapped surfaces, patches, far-box skies, spawn-state brushes, static models, props and pickups. Fog, NPCs (including NPC_Vehicle spawners), surface-sprite foliage, portal skies/cameras, particles and ICARUS scripts are not drawn. Lightstyles show their first sample; props use the light grid without dynamic lights. MP uses each map’s native CTF, duel, FFA or Siege mode and the first eligible Red/team 1 start; the game chooses starts at runtime. Lighting assumes this PC has no hardware gamma: overbright 0 and gamma 1 give no brightness boost. Nearest mip filtering follows the retail JK2 comparison; JA game comparison is pending.' + text[end:]
     response = app.response_class(text, mimetype='text/html')
     response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
     return response
 
 
+@app.route('/maps/ja/')
+def ja_maps_viewer():
+    return jk2_maps_viewer('ja')
+
+
 @app.route('/rtcw-map-data/<path:filename>')
 @app.route('/et-map-data/<path:filename>')
 @app.route('/jk2-map-data/<path:filename>')
+@app.route('/ja-map-data/<path:filename>')
 def rtcw_map_data(filename):
     shared = filename.startswith(('textures/', 'bsp/', 'models/'))
     game = request.path.split('-map-data/')[0].lstrip('/')
@@ -305,6 +318,7 @@ def rtcw_map_data(filename):
 @app.route('/import_rtcw_maps', methods=['POST'])
 @app.route('/import_et_maps', methods=['POST'])
 @app.route('/import_jk2_maps', methods=['POST'])
+@app.route('/import_ja_maps', methods=['POST'])
 def import_rtcw_maps_route():
     game = request.path.removeprefix('/import_').removesuffix('_maps')
     if foreign_request():
@@ -317,7 +331,7 @@ def import_rtcw_maps_route():
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        importer = {'et': import_et_maps, 'rtcw': import_rtcw_maps, 'jk2': import_jk2_maps}[game]
+        importer = {'et': import_et_maps, 'rtcw': import_rtcw_maps, 'jk2': import_jk2_maps, 'ja': import_ja_maps}[game]
         return jsonify(importer(payload['game'].strip(), local_data_dir / (game+'-maps'), payload.get('replace') is True))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
         return jsonify(error=str(exc)), 422

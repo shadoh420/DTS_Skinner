@@ -31,7 +31,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Return to Castle Wolfenstein | ✓ | ✓ | Single player and Multiplayer |
 | Wolfenstein: Enemy Territory | ✓ | ✓ | Constructibles at map start, or finished |
 | Jedi Outcast | ✓ | ✓ | Single player and Multiplayer maps, static Ghoul2 models |
-| Jedi Academy | ✓ | — | Stock Ghoul2 characters and parked vehicles, shared SP/MP catalog |
+| Jedi Academy | ✓ | ✓ | Stock Ghoul2 characters and parked vehicles; Single player and Multiplayer maps, including Siege |
 | Unreal, Unreal Tournament | ✓ | ✓ | Unreal Gold / 227 and UT 469, see [Unreal maps](docs/unreal-map-viewer.md) |
 | Daikatana, Anachronox, SiN | ✓ | ✓ | |
 | Azrael's Tear | ✓ | ✓ | Models export with their animation clips |

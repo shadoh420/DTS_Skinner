@@ -1,0 +1,18 @@
+'use strict';
+const assert = require('node:assert/strict');
+const ja = require('../static/ja-maps/viewer.js');
+const jk2 = require('../static/jk2-maps/viewer.js');
+assert.equal(ja.data, '/ja-map-data/');
+assert.equal(jk2.data, '/jk2-map-data/');
+assert.equal(ja.defaultMap, 'sp_yavin1');
+assert.equal(ja.diffuse, jk2.diffuse);
+assert.equal(ja.stagesOf, jk2.stagesOf);
+const item = {origin: [0,0,0], angles: [0,0,0], scale: [1,1,1], bob: {base: 28, rate: 0, amplitude: 4}};
+assert.equal(ja.pose(item, 0)[14], 32);
+delete item.bob.amplitude;
+assert.equal(jk2.pose(item, 0)[14], 31);
+item.bob = null;
+item.pivot = [2,3,4];
+item.scale = [1.5,1.5,1.5];
+assert.deepEqual(ja.pose(item, 0).slice(12,15), [-2,-3,-4]);
+console.log('JA map configuration and bob amplitude: OK');
