@@ -31,6 +31,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Return to Castle Wolfenstein | ✓ | ✓ | Single player and Multiplayer |
 | Wolfenstein: Enemy Territory | ✓ | ✓ | Constructibles at map start, or finished |
 | Unreal, Unreal Tournament | ✓ | ✓ | Unreal Gold / 227 and UT 469, see [Unreal maps](docs/unreal-map-viewer.md) |
+| Deus Ex | ✓ | | Stock GOTY characters with class skins, props and weapons; GLB and OBJ in a standing pose |
 | Daikatana, Anachronox, SiN | ✓ | ✓ | |
 | Azrael's Tear | ✓ | ✓ | Models export with their animation clips |
 | Diabotical | ✓ | ✓ | Editpad props and your own maps, see [Diabotical maps](docs/diabotical-map-viewer.md) |

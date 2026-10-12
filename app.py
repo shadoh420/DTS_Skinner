@@ -92,7 +92,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'azrael', 'ge')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'azrael', 'ge')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -963,6 +963,7 @@ def import_reflex():
 @app.route('/import_rb3d', methods=['POST'])
 @app.route('/import_unreal', methods=['POST'])
 @app.route('/import_ut', methods=['POST'])
+@app.route('/import_dx', methods=['POST'])
 @app.route('/import_quake', methods=['POST'])
 @app.route('/import_quake2', methods=['POST'])
 @app.route('/import_daikatana', methods=['POST'])
@@ -987,7 +988,7 @@ def import_conversion_pack():
             return jsonify(import_t1_mod(payload['path'].strip(), pack_dirs[game], textures_dir, game, T1_MODS[game]))
         if game in ('es1', 'es2'):
             return jsonify(import_earthsiege_catalog(payload['path'].strip(), pack_dirs[game], game))
-        if game in ('unreal', 'ut'):
+        if game in ('unreal', 'ut', 'dx'):
             return jsonify(import_unreal_catalog(payload['path'].strip(), pack_dirs[game], game))
         if game == 'azrael':
             return jsonify(import_azrael_catalog(payload['path'].strip(), pack_dirs[game]))
@@ -1034,7 +1035,7 @@ def export_glb(model_name):
         preview = load_model_data(path, request.args.get('texture'), overrides)
         # Azrael bakes its clips at import, beside the models.
         cache = (pack_dirs[game] / 'animations' if game == 'azrael' else app_local_data_dir / 'animations' / game) / (model_name+'.json.gz')
-        if cache.is_file() and game != 't2':
+        if cache.is_file() and game not in ('t2', 'dx'):
             with gzip.open(cache, 'rt', encoding='utf-8') as stream:
                 data = json.load(stream)
             data = dict(preview, **data)
@@ -1052,7 +1053,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'azrael', 'ge'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'azrael', 'ge'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:
