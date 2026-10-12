@@ -270,8 +270,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       const lightmap = (external ? external.valid.includes(int(at + 28)) : int(at + 28) >= 0 && int(at + 28) < lightmaps.count) ? int(at + 28) : -1, origin = moved.get(face) || none;
       const vertexLit = config.vertexLightmaps && int(at + 28) === -3;
       const key = shader + (lightmap < 0 ? config.vertexLightmaps && !vertexLit ? '|unlit' : '|vertex' : '|lit');
-      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, indices: []});
+      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, indices: [], ...(map.bspCull ? {ranges: []} : {})});
       const indices = groups.get(key).indices, base = positions.length / 3;
+      const rangeStart = indices.length;
       if (type === 2) {
         // A patch is a grid of quadratic Bézier spans, each drawn as 4 × 4 quads (ArenaPrototype's default).
         const width = int(at + 96), height = int(at + 100), steps = 4;
@@ -304,6 +305,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           indices.push(base + (offset >= 0 && offset < count ? offset : 0));
         }
       }
+      if (map.bspCull) groups.get(key).ranges.push([face, rangeStart, indices.length - rangeStart]);
     }
     const attributes = {position: new THREE.Float32BufferAttribute(positions, 3), normal: new THREE.Float32BufferAttribute(normals, 3),
       uv: new THREE.Float32BufferAttribute(uvs, 2), lm: new THREE.Float32BufferAttribute(lms, 2), tint: new THREE.Float32BufferAttribute(tints, 4)};
@@ -333,7 +335,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // One mesh of each opaque surface, for dropping pickups to the floor. They are in no scene, so a ray meets them
   // in the game's own axes.
   const floors = [], floorMaterial = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
-  async function addGroup({shader, lit, vertexLit, indices}, {atlas, attributes}, serial) {
+  async function addGroup({shader, lit, vertexLit, indices, ranges}, {atlas, attributes}, serial) {
     const geometry = new THREE.BufferGeometry();
     Object.entries(attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
     geometry.setIndex(indices);
@@ -357,7 +359,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       (await stageMaterials(shader, stagesOf(shader, lit, false, vertexLit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
     }
     root.remove(placeholder);
-    if (shader.sort === 3 && !shader.sky) floors.push(new THREE.Mesh(geometry, floorMaterial));
+    if (shader.sort === 3 && !shader.sky) {
+      let floorGeometry = geometry;
+      if (map.bspCull) {
+        // Culling edits draw indices. Collision retains all triangles, while
+        // sharing the large, immutable vertex attributes with the draw batch.
+        floorGeometry = new THREE.BufferGeometry();
+        Object.entries(attributes).forEach(([name, attribute]) => floorGeometry.setAttribute(name, attribute));
+        floorGeometry.setIndex(geometry.index.clone());
+        floorGeometry.boundingSphere = geometry.boundingSphere;
+      }
+      floors.push(new THREE.Mesh(floorGeometry, floorMaterial));
+    }
+    if (config.bindWorldCull) config.bindWorldCull(map, geometry, ranges, shader);
   }
 
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
@@ -494,6 +508,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       holder.rotation.z = seconds % 2.048 / 2.048 * 2 * Math.PI * (fast ? 2 : 1);
       if (holder.children[1]) holder.children[1].rotation.z = -holder.rotation.z - seconds % 1.024 / 1.024 * 2 * Math.PI;  // Its own turn, undoing the holder's.
     }
+    if (config.updateCull) config.updateCull(map, camera);
     renderer.setRenderTarget(frame);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
@@ -571,7 +586,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
-    if (config.addPlaced) await Promise.all((map.placed || []).map(item => config.addPlaced(item, {root, loadItemModel, ticks: placedTicks})));
+    if (config.addPlaced) await Promise.all((map.placed || []).map(item => config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map})));
     showNotes();
     ready = true;
     showReady();

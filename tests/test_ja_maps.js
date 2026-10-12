@@ -36,3 +36,57 @@ assert.equal(jk2.configureCamera, undefined);
 assert.equal(jk2.skyAtFarDepth, undefined);
 assert.equal(ja.skyAtFarDepth, true);
 console.log('JA projection distance and JK2 isolation: OK');
+// The far plane rejects whole branches/leaves, not triangles or centroids.
+const tree = {
+  surfaceCount: 4, world: [0, 3],
+  nodes: [[-10,-10,-10,250,10,10,-1,-2]],
+  leaves: [[-10,-10,-10,10,10,10,0,2], [200,-10,-10,250,10,10,2,2]],
+  surfaces: [0,1,1,2],
+  inline: [{first:3,count:1,corners:[[205,-1,-1],[215,1,1]]}],
+};
+const mask = (eye,dir,distance=100) => [...ja.visibleSurfaces(tree,eye,dir,distance)];
+assert.deepEqual(mask([0,0,0],[1,0,0]), [1,1,0,0]); // Shared surface survives near leaf.
+assert.deepEqual(mask([150,0,0],[1,0,0]), [1,1,1,1]); // Moving camera admits far leaf and brush.
+assert.deepEqual(mask([0,0,0],[-1,0,0]), [1,1,1,1]); // Turning re-evaluates the plane.
+assert.equal(ja.boundsVisible([99,0,0,101,1,1],[0,0,0],[1,0,0],100),true);
+assert.equal(ja.boundsVisible([100,0,0,101,1,1],[0,0,0],[1,0,0],100),true);
+assert.equal(ja.boundsVisible([101,0,0,102,1,1],[0,0,0],[1,0,0],100),false);
+const branch = {...tree,nodes:[[200,-10,-10,250,10,10,-1,-2]]};
+assert.deepEqual([...ja.visibleSurfaces(branch,[0,0,0],[1,0,0],100)], [0,0,0,0]);
+// Branch rejection wins even when a (deliberately inconsistent) child is near.
+const geometry = new THREE.BufferGeometry();
+geometry.setIndex([0,1,2,3,4,5,6,7,8]);
+const batch={geometry,ranges:[[0,0,3],[1,3,3],[2,6,3]],original:geometry.index.array.slice(),previous:new Uint8Array(3).fill(255)};
+ja.compactBatch(batch,[1,0,1]);
+assert.equal(geometry.drawRange.count,6);
+assert.deepEqual([...geometry.index.array.slice(0,6)],[0,1,2,6,7,8]);
+const version=geometry.index.version;
+ja.compactBatch(batch,[1,0,1]);assert.equal(geometry.index.version,version); // No redundant GPU upload.
+ja.compactBatch(batch,[0,0,0]);assert.equal(geometry.drawRange.count,0);
+ja.compactBatch(batch,[1,1,1]);assert.deepEqual([...geometry.index.array],[0,1,2,3,4,5,6,7,8]);
+const map={section:'sp',distanceCull:100/1.02,bspCull:tree};
+const dynamic=new THREE.BufferGeometry();dynamic.setIndex([0,1,2]);
+const sky=new THREE.BufferGeometry();sky.setIndex([0,1,2]);
+const mp=new THREE.BufferGeometry();mp.setIndex([0,1,2]);
+ja.bindWorldCull(map,dynamic,[[2,0,3]],{});
+ja.bindWorldCull(map,sky,[[2,0,3]],{sky:true});
+ja.bindWorldCull({...map,section:'mp'},mp,[[2,0,3]],{});
+camera.position.set(0,0,0);camera.lookAt(1,0,0);camera.updateMatrixWorld(true);
+ja.updateCull(map,camera);assert.equal(dynamic.drawRange.count,0);
+assert.equal(sky.drawRange.count,Infinity);assert.equal(mp.drawRange.count,Infinity);
+camera.position.x=150;camera.updateMatrixWorld(true);
+ja.updateCull({...map,section:'mp'},camera);assert.equal(dynamic.drawRange.count,0);
+ja.updateCull(map,camera);assert.equal(dynamic.drawRange.count,3);
+assert.equal(jk2.bindWorldCull,undefined);assert.equal(jk2.updateCull,undefined);
+console.log('JA SP tree, shared surfaces, camera movement, batches, sky and MP isolation: OK');
+(async () => {
+  const ticks=[],root=new THREE.Group(),shape=new THREE.BoxGeometry(10,10,10);
+  const placed={models:['synthetic'],origin:[210,0,0],angles:[0,0,0],scale:[1,1,1]};
+  const holder=await ja.addPlaced(placed,{map,root,ticks,loadItemModel:async()=>[{geometry:shape,materials:[new THREE.MeshBasicMaterial()],sort:3}]});
+  camera.position.set(0,0,0);camera.lookAt(1,0,0);camera.updateMatrixWorld(true);
+  ja.updateCull(map,camera);assert.equal(holder.visible,false);
+  holder.matrix.setPosition(50,0,0);ja.updateCull(map,camera);assert.equal(holder.visible,true);
+  // A placed model survives even if every world branch was rejected.
+  ja.updateCull({...map,bspCull:branch},camera);assert.equal(holder.visible,true);
+  console.log('JA separate whole-prop culling and current transforms: OK');
+})().catch(error=>{console.error(error);process.exitCode=1;});
