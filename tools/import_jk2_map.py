@@ -541,14 +541,18 @@ def import_maps(install,output,replace=False,*,rules=None):
                 if dest.is_file() and not replace:scene=json.loads(dest.read_text());status='skipped'
                 else:
                     raw=game.read(path)
+                    metadata=config.scene_metadata(game,raw) if hasattr(config,'scene_metadata') else {}
                     game.light_grid=config.LightGrid(read_lumps(raw),game.lighting,section)
                     scene=base.import_map(game,name,ident,raw,source,output,textures,mt,rules=rules)
                     if game.light_grid.reason:scene['limits'].append(game.light_grid.reason)
                     scene.update(game=game.game_id,sourceFormat='RBSP 1',defaultGametype=game.default_gametype)
+                    scene.update(metadata)
                     scene['limits']=[x for x in scene['limits'] if x not in base.NOT_DRAWN and not x.startswith('first eligible Axis')]+config.NOT_DRAWN
                     scene['limits']+=['first eligible player start; runtime selection and level-transition targets may differ','no hardware gamma assumed on this PC; working hardware gamma uses the display ramp instead']
                     rtcw.q3.json_write(dest,scene);status='imported'
                 report[status].append(ident);row.update(status=status,entityResults=scene['entityResults'],unresolved=scene['unresolved'],bspNotes=scene['bspNotes'])
+                for key in ('distanceCull','farClip','distanceCullSource'):
+                    if key in scene:row[key]=scene[key]
                 classes.update((r['classname'],r['status'],r['reason']) for r in scene['entityResults'])
                 index.append(dict(id=ident,name=name,longname=scene['longname'],group=label,source=source,unresolved=len(scene['unresolved'])))
             except (ValueError,OSError,KeyError,struct.error,zipfile.BadZipFile) as exc:

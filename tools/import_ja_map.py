@@ -4,6 +4,7 @@ OpenJK SP and MP are rules-only references; no engine source is included.
 """
 import argparse
 import json
+import math
 from pathlib import Path
 import re
 import struct
@@ -44,7 +45,8 @@ def lighting_profile(install,section,game=None,*,device_supports_gamma=False):
     result['sourceLightScale']=2**max(0,min(4,int(result['cvars']['r_mapoverbrightbits']))-bits)
     result['lightScale']=1
     result['configuredTextureMode']=result['textureMode'];result['textureMode']='GL_LINEAR_MIPMAP_NEAREST'
-    result['source']='JA classic renderer: overbright 0, gamma 1 by default; no hardware gamma assumed on this PC. Nearest mip filtering follows the retail JK2 comparison; JA retail comparison pending.'
+    result['textureModeSource']='Retail JA SP v1.0.1.0 gfxinfo, run3-t1_rail-logs/qconsole.log: GL_LINEAR_MIPMAP_NEAREST; saved cfg mode retained separately.'
+    result['source']='JA classic renderer: overbright 0, gamma 1 by default; retail JA SP v1.0.1.0 confirmed software gamma, picmip 1 and nearest mip filtering on this PC. MP uses the same filtering profile pending its own measurement.'
     return result
 
 
@@ -77,6 +79,25 @@ def configure_map(game,name):
     game.default_gametype='single player' if game.section=='sp' else next(
         (mode for prefix,mode in (('siege_','siege'),('ctf','ctf'),('duel','duel')) if leaf.startswith(prefix)),'ffa')
     game.team_items=game.default_gametype=='ctf'
+
+
+def view_distance(world,section):
+    """R_LoadEntities defaults and SetFarClip's projection-distance ceiling."""
+    value=world.get('distancecull',world.get('distanceCull'))
+    distance=12000 if section=='sp' else 6000
+    if value is not None:
+        try:distance=float(value)
+        except (ValueError,TypeError):raise ValueError('Invalid worldspawn distanceCull') from None
+    if not math.isfinite(distance) or distance<=0:raise ValueError('Invalid worldspawn distanceCull')
+    far=max(2048,distance*1.732)
+    if not math.isfinite(far):raise ValueError('Invalid worldspawn distanceCull')
+    return dict(distanceCull=distance,farClip=far,
+                distanceCullSource='worldspawn' if value is not None else section+' renderer default')
+
+
+def scene_metadata(game,raw):
+    things=jk.qmap.entities(jk.read_lumps(raw)[0].decode('latin1'))
+    return view_distance(things[0] if things else {},game.section)
 
 
 def entity_filter(game,e):

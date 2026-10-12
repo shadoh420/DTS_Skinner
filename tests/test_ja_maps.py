@@ -12,6 +12,16 @@ from tests.test_jk2_maps import fixture,raven,entity,pk3,image_bytes,glm
 
 
 class JAMapTests(unittest.TestCase):
+    def test_view_distance_defaults_overrides_and_validation(self):
+        self.assertEqual(maps.view_distance({},'sp')['distanceCull'],12000)
+        self.assertEqual(maps.view_distance({},'mp')['distanceCull'],6000)
+        profile=maps.view_distance(dict(distancecull='1800'),'sp')
+        self.assertEqual(profile['farClip'],3117.6)
+        self.assertEqual(profile['distanceCullSource'],'worldspawn')
+        self.assertEqual(maps.view_distance(dict(distancecull='100'),'mp')['farClip'],2048)
+        for value in ('nan','inf','-1','0','bad'):
+            with self.assertRaisesRegex(ValueError,'distanceCull'):maps.view_distance(dict(distancecull=value),'sp')
+
     def game(self,section='mp',name='mp/ffa1'):
         game=SimpleNamespace(section=section,skill=0,items={k:dict(kind=v[0]) for k,v in maps.MP_ITEMS.items()})
         maps.configure_map(game,name);return game
@@ -50,7 +60,7 @@ class JAMapTests(unittest.TestCase):
     def test_profiles_grid_skin_and_synthetic_import(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);out=root/'out'
-            entities=entity(classname='worldspawn')+entity(classname='info_player_start',origin='0 0 100')
+            entities=entity(classname='worldspawn',distanceCull='1800')+entity(classname='info_player_start',origin='0 0 100')
             entities+=entity(classname='team_CTF_redplayer',origin='0 0 100')
             entities+=entity(classname='misc_model_static',model='models/props/a.glm',origin='20 0 30',skin='models/props/look.skin')
             entities+=entity(classname='NPC_Vehicle',model='models/props/a.glm')
@@ -61,12 +71,15 @@ class JAMapTests(unittest.TestCase):
                 ('models/test/skin.tga',image_bytes()),('textures/test/wall.tga',image_bytes())])
             pk3(root/'assets3.pk3',[('maps/mp/ctf1.bsp',raven(fixture(entities)))])
             (root/'jaconfig.cfg').write_text('seta r_overBrightBits "0"\nseta r_gamma "1"')
+            (root/'autoexec.cfg').write_text('seta r_textureMode "GL_LINEAR_MIPMAP_LINEAR"')
             game=maps.Game(root);self.assertEqual(game.game_id,'ja')
             self.assertEqual(game.assets['maps/mp/ctf1.bsp']['source'],'assets3.pk3')
             for hardware in (False,True):
                 p=maps.lighting_profile(root,'sp',game,device_supports_gamma=hardware)
                 self.assertEqual((p['overbrightBits'],p['sourceLightScale'],p['displayScale'],p['displayGamma']),(0,1,1,1))
                 self.assertEqual(p['fov'],80);self.assertEqual(p['textureMode'],'GL_LINEAR_MIPMAP_NEAREST')
+                self.assertEqual(p['configuredTextureMode'],'GL_LINEAR_MIPMAP_LINEAR')
+                self.assertIn('Retail JA SP v1.0.1.0',p['textureModeSource'])
             model,_,_=maps.load_placed(game,'models/props/a.glm','models/props/look.skin',0)
             self.assertEqual(model['surfaces'][0]['shaders'],['models/test/skin'])
             result=maps.import_maps(root,out)
@@ -74,6 +87,9 @@ class JAMapTests(unittest.TestCase):
             self.assertFalse(result['sweep']['missing']);self.assertFalse(result['sweep']['defaults'])
             scene=json.loads((out/'maps/sp_yavin1/scene.json').read_text())
             self.assertEqual(scene['game'],'ja');self.assertEqual(len(scene['placed']),1)
+            self.assertEqual(scene['distanceCull'],1800);self.assertEqual(scene['farClip'],3117.6)
+            imported=next(r for r in result['maps'] if r['map']=='yavin1')
+            self.assertEqual(imported['farClip'],3117.6)
             self.assertIn('light',scene['placed'][0]);self.assertEqual(scene['placed'][0]['entity'],3)
             reasons=[r['reason'] for r in scene['entityResults']]
             self.assertIn('START_OFF (4096)',reasons)

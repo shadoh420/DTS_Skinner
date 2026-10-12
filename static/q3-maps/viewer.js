@@ -171,6 +171,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           vColor = ${foliage ? colour(stage).replace(/\btint\b/g, 'vertexTint') : colour(stage)};
           vDir = P - uView;
           gl_Position = projectionMatrix * viewMatrix * vec4(P.x, P.z, -P.y, 1.);
+          ${sky && config.skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''}
         }`,
       fragmentShader: `${WAVE}
         ${foliage ? 'varying float vFoliage;' : ''}
@@ -197,7 +198,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const names = ['rt', 'bk', 'lf', 'ft', 'up', 'dn'];
     return new THREE.ShaderMaterial({
       uniforms: {...uniforms, ...Object.fromEntries(names.map((name, index) => [name, {value: sides[index]}]))},
-      vertexShader: 'invariant gl_Position; uniform vec3 uView; varying vec3 vDir; void main() { vDir = position - uView; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+      vertexShader: `invariant gl_Position; uniform vec3 uView; varying vec3 vDir; void main() { vDir = position - uView; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); ${config.skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''} }`,
       fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; varying vec3 vDir;
         vec4 side(sampler2D image, vec2 p) { return texture2D(image, vec2(p.x + 1., 1. - p.y) * .5); }
         void main() {
@@ -345,6 +346,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     root.add(placeholder);
     const add = (material, stage) => {
       const mesh = new THREE.Mesh(geometry, material);
+      if (shader.sky && config.skyAtFarDepth) mesh.frustumCulled = false;
       mesh.renderOrder = shader.sort * 100000 + serial * 16 + stage;  // By sort, then shader by shader, stage after stage.
       mesh.name = shader.name;
       root.add(mesh);
@@ -549,6 +551,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }));
     $('map').value = mapId;
     map = await (await get(`${data}maps/${mapId}/${config.sceneFile ? config.sceneFile() : 'scene.json'}`)).json();
+    if (config.configureCamera) config.configureCamera(camera, map);
     document.title = `${map.name} — ${config.title || 'Q3 Maps'}`;
     if (map.lighting) {
       settings.fov = map.lighting.fov;
