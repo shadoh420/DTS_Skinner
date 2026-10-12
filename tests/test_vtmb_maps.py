@@ -13,7 +13,7 @@ import numpy as np
 
 from tools import import_vtmb_map as maps
 from tools import vtmb
-from tests.test_vtmb import vpk, vtf, mdl_fixture
+from tests.test_vtmb import vpk, vtf, mdl_fixture, quantized_fixture, compact_vtx
 
 
 def bsp(entity_text='', displacement=False, static=True, embedded=None):
@@ -76,6 +76,27 @@ def fixture(root):
 
 
 class BloodlinesMapsTests(unittest.TestCase):
+    def test_quantized_prop_authored_companion(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); fixture(root)
+            files, _ = vtmb.read_install(root)
+            raw, vtx = quantized_fixture(2); data = bytearray(raw)
+            name = b'items/original.mdl\0'; data[12:12+len(name)] = name
+            files['models/items/tiny.mdl'] = maps.EmbeddedAsset(bytes(data), 'synthetic')
+            del files['models/items/tiny.dx80.vtx']
+            files['models/items/original.dx80.vtx'] = maps.EmbeddedAsset(compact_vtx(vtx), 'synthetic')
+            scene, blob, _, _ = maps.build_map(bsp(), 'test', files)
+            self.assertFalse(scene['model_failures'])
+            prop = scene['models'][0]
+            self.assertEqual(prop['pose']['vtx'], 'models/items/original.dx80.vtx')
+            self.assertEqual(prop['pose']['skin_family'], 1)
+            self.assertEqual(prop['pose']['vertex_encodings'], [2])
+            group = next(g for g in scene['groups'] if g['kind'] == 'model')
+            indices = np.frombuffer(blob, '<u4', offset=scene['vertices']*28)[group['start']:group['start']+group['count']]
+            points = np.frombuffer(blob, '<f4', count=scene['vertices']*3).reshape(-1, 3)[indices]
+            # Reader pose X+2, prop yaw90/origin(32,0,0), then page axes and scale.
+            self.assertTrue(any(np.allclose(p, np.array([12, 30, 12])/32) for p in points))
+
     def test_header_faces_and_light(self):
         parsed = maps.read_bsp(bsp(static=False))
         p, uv, lm, tri, flags, name = maps.face_geometry(parsed, 0)

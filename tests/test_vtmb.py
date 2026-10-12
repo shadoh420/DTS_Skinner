@@ -106,7 +106,116 @@ def install_fixture(root):
     return stock
 
 
+def quantized_fixture(encoding):
+    """Three static vertices with independent quantization bias/scale and normals."""
+    raw, vtx = mdl_fixture(); data = bytearray(raw)
+    bp = vtmb.unpack(data, 'i', 324)[0]; model = bp + vtmb.unpack(data, 'i', bp+12)[0]
+    maximum = 65535 if encoding == 1 else 255
+    positions = ((0, 0, 0), (maximum, 0, 0), (0, maximum, 0))
+    vertex_at = len(data)
+    for pos, uv in zip(positions, ((0, 0), (65535, 0), (0, 65535))):
+        data.extend(struct.pack('<3H2s2H', *pos, b'\xff\xff', *uv) if encoding == 1 else
+                    struct.pack('<3BB2H', *pos, 0xff, *uv))
+    normal_at = len(data)
+    data.extend(struct.pack('<4f', 0, 0, 1, -1)*3)
+    struct.pack_into('<3i', data, model+148, vertex_at-model, normal_at-model, encoding)
+    struct.pack_into('<6f', data, model+160, 10, 20, 30,
+                     *([2/65535, 3/65535, 4/65535] if encoding == 1 else [2, 3, 4]))
+    struct.pack_into('<i', data, 140, len(data))
+    return bytes(data), vtx
+
+
+def compact_vtx(vtx):
+    """Rigid strip-group indices: 2-byte originals, with nonzero padding byte."""
+    data = bytearray(vtx[:92])
+    struct.pack_into('<3H2B3i', data, 72, 3, 3, 1, 0x12, 0xed, 20, 26, 32)
+    data.extend(struct.pack('<3H3H', 0, 1, 2, 0, 2, 1))
+    data.extend(vtx[134:150])
+    return bytes(data)
+
+
 class BloodlinesTests(unittest.TestCase):
+    def test_quantized_vertices_and_rigid_vtx(self):
+        for encoding in (1, 2):
+            with self.subTest(encoding=encoding):
+                raw, vtx = quantized_fixture(encoding)
+                result = vtmb.read_mdl(raw, compact_vtx(vtx), 1)
+                expected = [20, 30, 12, 20, 30, 14, 23, 30, 12]
+                for got, want in zip(result['vertices'], expected): self.assertAlmostEqual(got, want, places=5)
+                self.assertEqual(result['uvs'], [0, 0, 1, 0, 0, 1])
+                self.assertEqual(result['normals'], [0, 1, 0]*3)
+                self.assertEqual(result['indices'], [0, 1, 2])
+                self.assertEqual(result['groups'][0]['materialIndex'], 1)
+                self.assertEqual(result['metadata']['vertex_encodings'], [encoding])
+                self.assertEqual(result['metadata']['vtx_vertex_strides'], [2])
+                bad = bytearray(raw); bp = vtmb.unpack(raw, 'i', 324)[0]; model = bp+vtmb.unpack(raw, 'i', bp+12)[0]
+                struct.pack_into('<i', bad, model+148, len(raw)-model-1)
+                with self.assertRaisesRegex(ValueError, 'binary range'): vtmb.read_mdl(bad, compact_vtx(vtx))
+                bad = bytearray(raw); struct.pack_into('<i', bad, model+156, 99)
+                with self.assertRaisesRegex(ValueError, 'encoding'): vtmb.read_mdl(bad, vtx)
+        raw, vtx = mdl_fixture()
+        self.assertEqual(vtmb.read_mdl(raw, compact_vtx(vtx))['vertices'], vtmb.read_mdl(raw, vtx)['vertices'])
+        bad = bytearray(compact_vtx(vtx)); struct.pack_into('<H', bad, 92, 3)
+        with self.assertRaisesRegex(ValueError, 'original mesh'): vtmb.read_mdl(raw, bad)
+        bad = bytearray(compact_vtx(vtx)); bad[78] = 0x1a
+        with self.assertRaisesRegex(ValueError, 'layout flags'): vtmb.read_mdl(raw, bad)
+
+    def test_implicit_fourth_weight(self):
+        raw, vtx = mdl_fixture(); data = bytearray(raw)
+        # Four root bones, each a single independently translated idle track.
+        old_bone = vtmb.unpack(data, 'i', 244)[0]; old_anim = vtmb.unpack(data, 'i', 268)[0]
+        bone_at = len(data)
+        for i in range(4):
+            bone = bytearray(data[old_bone:old_bone+160])
+            struct.pack_into('<7f', bone, 32, 0, 0, 0, 0, 0, 0, 1)
+            struct.pack_into('<12f', bone, 88, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)
+            data.extend(bone)
+        struct.pack_into('<2i', data, 240, 4, bone_at)
+        anim_at = len(data); data.extend(bytes(4*32))
+        struct.pack_into('<i', data, old_anim+48, anim_at-old_anim)
+        for i in range(4):
+            sample = anim_at+i*32; struct.pack_into('<fi', data, sample, 1, len(data)-sample)
+            data.extend(struct.pack('<BBh', 1, 1, i*10))
+        bp = vtmb.unpack(data, 'i', 324)[0]; model = bp+vtmb.unpack(data, 'i', bp+12)[0]
+        vertex = model+vtmb.unpack(data, 'i', model+148)[0]
+        data[vertex:vertex+4] = bytes([64, 64, 64, 237])  # padding must not become weight4
+        struct.pack_into('<4H', data, vertex+4, 0, 1, 2, 3)
+        struct.pack_into('<i', data, 140, len(data))
+        result = vtmb.read_mdl(data, vtx)
+        self.assertAlmostEqual(result['vertices'][2], (64*10+64*20+63*30)/255)
+        bad = bytearray(data); bad[vertex:vertex+3] = bytes([255, 1, 0])
+        with self.assertRaisesRegex(ValueError, 'weights'): vtmb.read_mdl(bad, vtx)
+        bad = bytearray(data); struct.pack_into('<H', bad, vertex+10, 4)
+        with self.assertRaisesRegex(ValueError, 'vertex bone'): vtmb.read_mdl(bad, vtx)
+
+    def test_declared_image_and_authored_companion(self):
+        raw, vtx = mdl_fixture()
+        self.assertEqual(vtmb.read_mdl(raw+b'\n', vtx)['vertices'], vtmb.read_mdl(raw, vtx)['vertices'])
+        self.assertTrue(vtmb.read_mdl(raw+b'\n', vtx)['metadata']['trailing_lf'])
+        for trailer in (b'X', b'\0', b'\n\n'):
+            with self.assertRaisesRegex(ValueError, 'length mismatch'): vtmb.read_mdl(raw+trailer, vtx)
+        empty = bytearray(raw); bp = vtmb.unpack(raw, 'i', 324)[0]; model = bp+vtmb.unpack(raw, 'i', bp+12)[0]
+        bad_range = bytearray(raw+b'\n')
+        struct.pack_into('<i', bad_range, model+148, len(raw)-model-3*44+1)
+        with self.assertRaisesRegex(ValueError, 'binary range'): vtmb.read_mdl(bad_range, vtx)
+        struct.pack_into('<i', empty, model+136, 0); struct.pack_into('<i', empty, model+144, 0)
+        empty_vtx = bytearray(vtx); struct.pack_into('<i', empty_vtx, 52, 0)
+        with self.assertRaisesRegex(ValueError, 'No triangles'): vtmb.read_mdl(empty, empty_vtx)
+        data = bytearray(raw); authored = b'items/original.mdl\0'; data[12:12+len(authored)] = authored
+        files = {'models/items/copy.dx80.vtx': None, 'models/items/original.dx80.vtx': None}
+        self.assertEqual(vtmb.mdl_companions(data, 'models/items/copy.mdl', files), list(files))
+        bad = bytearray(vtx); struct.pack_into('<I', bad, 16, 99)
+        with self.assertRaisesRegex(ValueError, 'mismatched'): vtmb.read_mdl(data, bad)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); stock = root/'install'/'Vampire'; stock.mkdir(parents=True)
+            # Named companion is bad; the authored candidate must still match all structures.
+            (stock/'pack000.vpk').write_bytes(vpk([('models/items/copy.mdl', bytes(data)),
+                ('models/items/copy.dx90.vtx', bytes(bad)), ('models/items/original.dx80.vtx', vtx)]))
+            report = import_catalog(root/'install', root/'out')
+            self.assertEqual(report['ready'], 2)
+            self.assertEqual(report['results'][0]['vtx'], 'models/items/original.dx80.vtx')
+            self.assertEqual(len(report['results'][0]['companion_failures']), 1)
+
     def test_archive_and_precedence(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); stock = install_fixture(root)
@@ -222,7 +331,7 @@ class BloodlinesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Nonfinite'): vtmb.read_mdl(bad, vtx)
         bad = bytearray(raw); model = bp+vtmb.unpack(raw, 'i', bp+12)[0]
         struct.pack_into('<i', bad, model+128, 2)
-        with self.assertRaisesRegex(ValueError, 'vertex type 2'): vtmb.read_mdl(bad, vtx)
+        with self.assertRaisesRegex(ValueError, 'model type 2'): vtmb.read_mdl(bad, vtx)
 
     def test_catalog_and_exports(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -395,13 +395,14 @@ def build_map(raw, name, files, lighting=None):
                 if model not in files:
                     raise ValueError('Missing MDL ' + model)
                 errors = []; mesh = None
-                for suffix in ('.dx90.vtx', '.dx80.vtx', '.dx7_2bone.vtx', '.vtx'):
-                    companion = model[:-4]+suffix
-                    if companion in files:
-                        try:
-                            mesh = vtmb.read_mdl(files[model].read(), files[companion].read(), record['skin']); break
-                        except ValueError as exc:
-                            errors.append(str(exc))
+                raw_model = files[model].read()
+                for companion in vtmb.mdl_companions(raw_model, model, files):
+                    try:
+                        mesh = vtmb.read_mdl(raw_model, files[companion].read(), record['skin'])
+                        mesh['metadata']['vtx'] = companion
+                        break
+                    except (ValueError, OSError) as exc:
+                        errors.append(str(exc))
                 if mesh is None:
                     raise ValueError('; '.join(errors) or 'Missing VTX companion')
                 model_cache[cache] = mesh

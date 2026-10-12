@@ -15,11 +15,11 @@ import re
 from PIL import Image
 
 try:
-    from tools.vtmb import asset_name, read_install, read_mdl, read_texture, read_vmt, material_settings
+    from tools.vtmb import asset_name, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
     from tools.local_data import LOCAL_DATA
     from tools.texture_workshop import write_json_atomic
 except ImportError:
-    from vtmb import asset_name, read_install, read_mdl, read_texture, read_vmt, material_settings
+    from vtmb import asset_name, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
     from local_data import LOCAL_DATA
     from texture_workshop import write_json_atomic
 
@@ -121,8 +121,7 @@ def import_catalog(install, output):
             if digest in seen:
                 record.update(status='duplicate', model=seen[digest], reason='Byte-identical MDL; retained once')
                 continue
-            stem = name[:-4]
-            companions = [stem + suffix for suffix in ('.dx90.vtx', '.dx80.vtx', '.dx7_2bone.vtx', '.vtx') if stem + suffix in files]
+            companions = mdl_companions(raw, name, files)
             if not companions: raise ValueError('Missing VTX companion (vertices are embedded; no VVD needed for MDL 2531)')
             mesh, failures = None, []
             for companion in companions:

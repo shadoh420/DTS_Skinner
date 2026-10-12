@@ -372,8 +372,25 @@ def mdl_pose(data):
                            sequences=[n for _, n in choices])
 
 
+def mdl_companions(data, name, files):
+    """Named VTX first, then the MDL's authored path for renamed copies.
+
+    A candidate is not trusted here: read_mdl must still verify checksum, body,
+    mesh, vertex and strip ranges. Never search by basename or bypass layering.
+    """
+    stems = [asset_name(name).removesuffix('.mdl')]
+    if len(data) >= 140 and data[:4] == b'IDST':
+        authored = data[12:140].split(b'\0')[0].decode('cp1252').replace('\\', '/').lower()
+        if authored.endswith('.mdl'):
+            authored = asset_name(authored if authored.startswith('models/') else 'models/' + authored)
+            if authored[:-4] not in stems:
+                stems.append(authored[:-4])
+    return [stem + suffix for stem in stems for suffix in ('.dx90.vtx', '.dx80.vtx', '.dx7_2bone.vtx', '.vtx')
+            if stem + suffix in files]
+
+
 def read_mdl(data, vtx, skin=0):
-    """2531 MDL embedded 44-byte vertices + 107 VTX, LOD 0, bodygroup 0.
+    """2531 MDL embedded full/quantized vertices + 107 VTX, LOD 0, bodygroup 0.
     Returns Skinner geometry and all skin tables/material search directories.
     No VVD is used by this layout. Unknown versions are explicit errors.
     """
@@ -382,8 +399,12 @@ def read_mdl(data, vtx, skin=0):
     if data[:4] != b'IDST' or version != 2531:
         raise ValueError(f'Unsupported Bloodlines MDL signature/version {data[:4]!r}/{version}')
     length, = unpack(data, 'i', 140)
-    if length != len(data):
+    # A patched taine.mdl has one text-editor LF after its declared binary image.
+    # Never let a trailer satisfy offsets: validate all following reads against length.
+    trailer = data[length:] if 424 <= length <= len(data) else b''
+    if length != len(data) and trailer != b'\n':
         raise ValueError('MDL declared length mismatch')
+    data = data[:length]
     vv, = unpack(vtx, 'i')
     vc, lods, _, vb, vbo = unpack(vtx, 'I4i', 16)
     if vv != 107 or vc != checksum or lods < 1:
@@ -403,7 +424,7 @@ def read_mdl(data, vtx, skin=0):
         raise ValueError('Invalid MDL skin material index')
     transforms, pose = mdl_pose(data)
     vertices, normals, uvs, indices, groups, skin_refs = [], [], [], [], [], []
-    defaults = []
+    defaults, formats, vertex_layouts = [], [], set()
     for body in range(nb):
         bp = bodies + body * 16
         _, models, _, mo = unpack(data, '4i', bp)
@@ -414,11 +435,24 @@ def read_mdl(data, vtx, skin=0):
         span(data, bp + mo, models, 224); span(vtx, vp + vmo, vm, 8)
         m = bp + mo  # body value zero chooses the first model of every bodypart
         defaults.append(string(data, m))
-        vertex_type, = unpack(data, 'i', m + 128)
-        if vertex_type != 0:
-            raise ValueError(f'Unsupported MDL model vertex type {vertex_type}; expected embedded 44-byte type 0')
+        model_type, = unpack(data, 'i', m + 128)
+        if model_type != 0:
+            raise ValueError(f'Unsupported MDL model type {model_type}; expected type 0')
         nm, meshes, nv, vo = unpack(data, '4i', m + 136)
-        span(data, m + meshes, nm, 60); span(data, m + vo, nv, 44)
+        normal_offset, encoding = unpack(data, '2i', m + 152)
+        if encoding not in (0, 1, 2):
+            raise ValueError(f'Unsupported MDL vertex encoding {encoding}')
+        stride = (44, 12, 8)[encoding]
+        formats.append(encoding)
+        span(data, m + meshes, nm, 60); span(data, m + vo, nv, stride)
+        if encoding:
+            span(data, m + normal_offset, nv, 16)
+            bias = np.array(unpack(data, '3f', m + 160))
+            scale = np.array(unpack(data, '3f', m + 172))
+            if not np.isfinite(bias).all() or not np.isfinite(scale).all() or (scale < 0).any():
+                raise ValueError('Invalid MDL quantization parameters')
+            if len(transforms) > 1:
+                raise ValueError('Compressed MDL vertices with multiple bones unresolved')
         vmodel = vp + vmo
         nl, lo = unpack(vtx, 'ii', vmodel)
         if nl < 1: raise ValueError('VTX model has no LODs')
@@ -428,25 +462,38 @@ def read_mdl(data, vtx, skin=0):
         span(vtx, lod + vmesh, nm, 8)
         start_vertex = len(vertices) // 3
         for i in range(nv):
-            at = m + vo + i * 44
-            weights = data[at:at+3]
-            bones = unpack(data, '3H', at + 4)
-            vals = unpack(data, '8f', at + 12)
-            if not all(math.isfinite(v) for v in vals): raise ValueError('Nonfinite MDL vertex')
-            if sum(weights) != 255: raise ValueError('Invalid MDL vertex weights')
-            transform = np.zeros((4, 4))
-            for weight, bone in zip(weights, bones):
-                if not weight: continue
-                if bone >= len(transforms): raise ValueError('Invalid MDL vertex bone')
-                transform += transforms[bone] * (weight / 255)
-            point = transform @ [*vals[:3], 1]
-            normal = transform[:3, :3] @ vals[3:6]
+            at = m + vo + i * stride
+            if encoding == 0:
+                weights = list(data[at:at+3])
+                weights.append(255 - sum(weights))
+                if weights[-1] < 0: raise ValueError('Invalid MDL vertex weights')
+                # Byte 3 is padding. Four uint16 bones at 4; weight 4 is implicit.
+                bones = unpack(data, '4H', at + 4)
+                vals = unpack(data, '8f', at + 12)
+                position, normal, uv = vals[:3], vals[3:6], vals[6:8]
+                transform = np.zeros((4, 4))
+                for weight, bone in zip(weights, bones):
+                    if not weight: continue
+                    if bone >= len(transforms): raise ValueError('Invalid MDL vertex bone')
+                    transform += transforms[bone] * (weight / 255)
+            else:
+                # Type 1: uint16 xyz, two padding bytes, UNORM16 uv.
+                # Type 2: UNORM8 xyz, one padding byte, UNORM16 uv.
+                quantized = np.array(unpack(data, '3H' if encoding == 1 else '3B', at))
+                position = bias + scale * quantized / (255 if encoding == 2 else 1)
+                normal = unpack(data, '3f', m + normal_offset + i*16)
+                uv = np.array(unpack(data, '2H', at + stride - 4)) / 65535
+                transform = transforms[0] if transforms else np.eye(4)
+            if not all(math.isfinite(v) for v in (*position, *normal, *uv)):
+                raise ValueError('Nonfinite MDL vertex')
+            point = transform @ [*position, 1]
+            normal = transform[:3, :3] @ normal
             norm = np.linalg.norm(normal)
             if norm: normal /= norm
             # Proper Z-up -> Y-up rotation, preserves handedness.
             vertices.extend((float(point[1]), float(point[2]), float(point[0])))
             normals.extend((float(normal[1]), float(normal[2]), float(normal[0])))
-            uvs.extend(vals[6:8])
+            uvs.extend(float(v) for v in uv)
         for mesh in range(nm):
             mat, _, count, first = unpack(data, '4i', m + meshes + mesh * 60)
             if mat < 0 or mat >= len(table[skin]) or count < 0 or first < 0 or first+count > nv:
@@ -457,9 +504,14 @@ def read_mdl(data, vtx, skin=0):
             begin = len(indices)
             for g in range(ng):
                 sg = vm + go + g * 20
-                nverts, nindices, nstrips, _, verts_at, idx_at, strips_at = unpack(vtx, '4H3i', sg)
-                span(vtx, sg+verts_at, nverts, 12); span(vtx, sg+idx_at, nindices, 2); span(vtx, sg+strips_at, nstrips, 16)
-                remap = [unpack(vtx, 'H', sg+verts_at+i*12+10)[0] for i in range(nverts)]
+                nverts, nindices, nstrips, flags, _, verts_at, idx_at, strips_at = unpack(vtx, '3H2B3i', sg)
+                layout = flags & 0x18
+                if layout not in (0x08, 0x10):
+                    raise ValueError(f'Unsupported VTX vertex layout flags {flags:#x}')
+                vertex_stride, original_at = (2, 0) if layout == 0x10 else (12, 10)
+                vertex_layouts.add(vertex_stride)
+                span(vtx, sg+verts_at, nverts, vertex_stride); span(vtx, sg+idx_at, nindices, 2); span(vtx, sg+strips_at, nstrips, 16)
+                remap = [unpack(vtx, 'H', sg+verts_at+i*vertex_stride+original_at)[0] for i in range(nverts)]
                 if any(v >= count for v in remap): raise ValueError('Invalid VTX original mesh vertex')
                 ix = unpack(vtx, f'{nindices}H', sg+idx_at)
                 if any(v >= nverts for v in ix): raise ValueError('Invalid VTX vertex index')
@@ -483,6 +535,7 @@ def read_mdl(data, vtx, skin=0):
                 skin_refs.append(mat)
     if not indices: raise ValueError('No triangles in default bodygroups / LOD 0')
     pose.update(version=version, vtx_version=vv, skin_family=skin, skin_families=len(table), bodygroups=defaults,
-                lod=0, material_directories=dirs)
+                lod=0, material_directories=dirs, vertex_encodings=formats, vtx_vertex_strides=sorted(vertex_layouts),
+                trailing_lf=bool(trailer))
     return dict(game='vtmb', winding='ccw', vertices=vertices, normals=normals, uvs=uvs, indices=indices,
                 groups=groups, material_names=names, metadata=pose, skin_table=table, skin_refs=skin_refs)
