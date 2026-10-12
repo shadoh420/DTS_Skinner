@@ -11,6 +11,7 @@ import math
 from pathlib import Path
 import re
 import struct
+import sys
 import zipfile
 
 import numpy as np
@@ -23,6 +24,7 @@ q3 = base.q3
 
 
 class Game(base.Game):
+    game_id, title = 'jk2', 'Jedi Outcast'
     sections, directory, mode_paks = ('jk2',), 'base', False
     shader_directory = 'shaders'
     loose_folders = base.Game.loose_folders+('shaders', 'ext_data')
@@ -30,8 +32,8 @@ class Game(base.Game):
     def __init__(self, install):
         root = Path(install)
         if (root/'GameData/base').is_dir(): root = root/'GameData'
-        if not root.is_dir(): raise ValueError('Jedi Outcast GameData/base folder not found')
-        super().__init__(root, 'jk2')
+        if not root.is_dir(): raise ValueError(self.title+' GameData/base folder not found')
+        super().__init__(root, self.game_id)
         # Both retail modes prepend ascending PK3s after adding the directory.
         self.sources.sort(key=lambda source: source[0] == 'loose')
         self.search_order = [label for label, _ in self.sources]
@@ -173,13 +175,19 @@ def glm_header(raw):
                 surfaces=ns,hierarchy=oh,end=end)
 
 
-def read_glm(raw, skeleton, skin=None, surface_flags=None):
+def read_glm(raw, skeleton, skin=None, surface_flags=None, *, bone_remap=None,
+             surface_name=None, surface_bolt=None):
     h=glm_header(raw); ns=h['surfaces']; end=h['end']; skin=skin or {}; surface_flags=surface_flags or {}
-    if h['bones'] != len(skeleton['matrices']): raise ValueError('GLM/GLA bone count mismatch')
+    if bone_remap is None:
+        if h['bones'] != len(skeleton['matrices']): raise ValueError('GLM/GLA bone count mismatch')
+        bone_remap=range(h['bones'])
+    if len(bone_remap)!=h['bones'] or any(i<0 or i>=len(skeleton['matrices']) for i in bone_remap):
+        raise ValueError('Invalid GLM bone remap')
     hierarchy=[];parents=[];children=[]
     for offset, in struct.iter_unpack('<i',raw[164:164+ns*4]):
         at=164+offset;_range(at,1,144,h['lod_offset'],h['hierarchy'])
         name=base.string(raw[at:at+64]).lower();flags=struct.unpack_from('<I',raw,at+64)[0]
+        if surface_name:name=surface_name(name)
         shader=base.string(raw[at+68:at+132]);parent,nc=struct.unpack_from('<2i',raw,at+136)
         if not 0<=nc<ns:raise ValueError('Invalid GLM child count')
         _range(at+144,nc,4,h['lod_offset'])
@@ -197,7 +205,7 @@ def read_glm(raw, skeleton, skin=None, surface_flags=None):
         if size<4+ns*4:raise ValueError('Invalid GLM LOD size')
         if first_end is None:first_end=lod+size
         lod+=size
-    surfaces=[];hidden=[];warnings=[];seen=set();lod=h['lod_offset']
+    surfaces=[];hidden=[];warnings=[];seen=set();bolts={};lod=h['lod_offset']
     for off, in struct.iter_unpack('<i',raw[lod+4:lod+4+ns*4]):
         at=lod+4+off;_range(at,1,40,first_end,lod+4+ns*4)
         _,idx,back,nv,ov,nt,ot,nr,ob,size=struct.unpack_from('<10i',raw,at)
@@ -219,18 +227,22 @@ def read_glm(raw, skeleton, skin=None, surface_flags=None):
                 if bone>=nr:raise ValueError('Invalid GLM vertex bone index')
                 weight=1-total if j==count-1 else (values[7+j]|((packed>>(12+j*2))&768))/1023
                 if weight < -1e-6:raise ValueError('Invalid GLM vertex weights')
-                total+=weight;matrix+=skeleton['matrices'][refs[bone]]*weight
+                total+=weight;matrix+=skeleton['matrices'][bone_remap[refs[bone]]]*weight
             point=matrix@np.array([*values[3:6],1]);normal=matrix[:3,:3]@values[:3]
             length=np.linalg.norm(normal)
             if length:normal/=length
             vertices.extend(base.finite(point[:3].tolist()));normals.extend(base.finite(normal.tolist()))
         uvs=list(struct.unpack_from('<'+'f'*(nv*2),raw,at+ov+nv*32)) if nv else [];base.finite(uvs)
+        if surface_bolt and info['flags']&1 and nv>=3:
+            try:bolts[info['name']]=surface_bolt(vertices[:9])
+            except ValueError as exc:warnings.append('Unavailable surface bolt '+info['name']+': '+str(exc))
         reason='ancestor suppresses descendants' if idx in blocked else 'surface flags '+str(info['flags']) if info['flags'] else 'skin hides surface' if info['shader'].lower() in ('off','*off','nodraw') else 'empty surface' if not nv or not nt else None
         if reason:hidden.append(dict(surface=info['name'],reason=reason));continue
         if skin and info['name'] not in skin:
             warnings.append('Skin omits surface '+info['name']+'; renderer default material')
         surfaces.append(dict(name=info['name'],shaders=[info['shader']],vertices=vertices,normals=normals,uvs=uvs,indices=indices))
     tags={n:tuple(m[:3,3])+tuple(m[:3,:3].T.flat) for n,m in zip(skeleton['names'],skeleton['bone_poses'])}
+    tags.update(bolts)
     return dict(surfaces=surfaces,tags=tags,frame_count=skeleton['frame_count'],hidden=hidden,warnings=warnings)
 
 
@@ -291,23 +303,32 @@ def model_specs(game):
         for skin in skins or ['']:yield name,skin
 
 
-def import_catalog(install, output, model_filter=None):
+def catalog_parts(game, source, skin):
+    surfaces=read_skin(game.read(skin))['surfaces'] if skin else {}
+    model,metadata,raw=load_model(game,source,surfaces)
+    if not model['surfaces']:raise ValueError('Model has no visible surfaces (empty/off/bolt only)')
+    return [dict(name=source,model=model,skin=surfaces)],metadata,raw
+
+
+def browser_excluded(name):
+    return Path(name).name.startswith('model_fpls')
+
+
+def import_catalog(install, output, model_filter=None, *, rules=None):
+    rules=rules or sys.modules[__name__]
     output=Path(output);(output/'model_json').mkdir(parents=True,exist_ok=True)
-    game=Game(install)
-    if not any(n.endswith(('.glm','.md3')) for n in game.assets):raise ValueError('No GLM or MD3 models found in the selected Jedi Outcast folder')
-    library=base.TextureLibrary(output,[game]);resolver=CatalogTextures(game,library)
+    game=rules.Game(install)
+    if not any(n.endswith(('.glm','.md3')) for n in game.assets):raise ValueError('No GLM or MD3 models found in the selected '+game.title+' folder')
+    library=base.TextureLibrary(output,[game]);resolver=rules.CatalogTextures(game,library)
     catalog=[];results=[];seen={};used=set()
-    for source,skin in model_specs(game):
+    for source,skin in rules.model_specs(game):
         if model_filter and model_filter.lower() not in source:continue
         ident=q3.asset_name(source+('#'+skin if skin else ''));row=dict(source=source,skin=skin,model=ident)
         label=source.removeprefix('models/').rsplit('.',1)[0]+(' / '+Path(skin).stem if skin else '')
-        item=dict(game='jk2',model_name=ident,display_name=label,category=category(source),source=game.assets[source]['source']+':'+source,texture_name='',status='ready')
+        item=dict(game=game.game_id,model_name=ident,display_name=label,category=rules.category(source),source=game.assets[source]['source']+':'+source,texture_name='',status='ready')
         try:
-            surfaces=read_skin(game.read(skin))['surfaces'] if skin else {}
-            model,metadata,raw=load_model(game,source,surfaces)
-            if not model['surfaces']:raise ValueError('Model has no visible surfaces (empty/off/bolt only)')
-            parts=[dict(name=source,model=model,skin=surfaces)]
-            data=q3.combine(parts,resolver);data.update(game='jk2',metadata=metadata)
+            parts,metadata,raw=rules.catalog_parts(game,source,skin)
+            data=q3.combine(parts,resolver);data.update(game=game.game_id,metadata=metadata)
             data['warnings']=sorted(set(data['warnings']+metadata['warnings']))
             digest=hashlib.sha256(json.dumps([hashlib.sha256(raw).hexdigest(),metadata['frame']]+[data[k] for k in ('vertices','normals','uvs','indices','groups','material_textures','material_settings')],sort_keys=True).encode()).hexdigest()
             if digest in seen:
@@ -320,9 +341,9 @@ def import_catalog(install, output, model_filter=None):
         catalog.append(item);results.append(row)
     skins=[]
     for name in sorted(n for n in game.assets if n.endswith('.skin')):
-        row=dict(source=name,browser_excluded=Path(name).name.startswith('model_fpls'))
+        row=dict(source=name,browser_excluded=rules.browser_excluded(name))
         try:
-            sk=read_skin(game.read(name));refs=[]
+            sk=rules.read_skin(game.read(name));refs=[]
             for surface,shader in sk['surfaces'].items():
                 if shader in ('off','*off','nodraw'):refs.append(dict(surface=surface,status='hidden'));continue
                 resolver.resolve(shader);refs.append(dict(surface=surface,**resolver.results[shader]))

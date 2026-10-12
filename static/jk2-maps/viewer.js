@@ -44,8 +44,11 @@
   config.pose = (item, seconds) => {
     const origin = [...item.origin], angles = [...item.angles];
     if (item.spin) angles.splice(0, 3, 0, (seconds * 1000 % 2048) * 360 / 2048, 0);
-    if (item.bob) origin[2] += item.bob.base + Math.cos((seconds * 1000 + 1000) * item.bob.rate) * 3;
-    return config.matrix(angles, item.scale, origin);
+    if (item.bob) origin[2] += item.bob.base + Math.cos((seconds * 1000 + 1000) * item.bob.rate) * (item.bob.amplitude ?? 3);
+    const matrix = config.matrix(angles, item.scale, origin);
+    if (item.pivot) for (let j = 0; j < 3; j++)
+      matrix[12 + j] -= item.pivot.reduce((sum, p, k) => sum + p * matrix[k * 4 + j] / item.scale[k], 0);
+    return matrix;
   };
   config.addPlaced = async (item, context) => {
     const holder = await addPlaced({...item, spin: false}, context);
