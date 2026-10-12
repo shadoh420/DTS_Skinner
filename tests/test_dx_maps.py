@@ -145,15 +145,15 @@ class DxMapTests(unittest.TestCase):
 
     def test_carcass_alternates_get_class_looks_and_aliases(self):
         with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder); fixture(root)
+            root = Path(folder) / 'install'; fixture(root)
             f = Fixture()
             imports = [('Core', 'Package', 0, 'DeusExCharacters'), ('Engine', 'LodMesh', -1, 'Body'),
                        ('Engine', 'Texture', -1, 'Red')]
             exports = [(0, 'DeusExCarcass', f.cls('DeusExCarcass', 0, {})),
                        (0, 'Dead', f.cls('Dead', 1, {'Mesh': -2, 'Mesh2': -2, 'Mesh3': -2, 'MultiSkins': -3}))]
             (root / 'System' / 'DeusEx.u').write_bytes(f.package(imports, exports))
-            import_catalog(root, root / 'out', 'dx')
-            report = json.loads((root / 'out' / 'import-report.json').read_text())
+            import_catalog(root, Path(folder) / 'out', 'dx')
+            report = json.loads((Path(folder) / 'out' / 'import-report.json').read_text())
             self.assertEqual(next(c['views'] for c in report['classes'] if c['source'] == 'DeusEx.Dead'), ['Mesh', 'Mesh2', 'Mesh3'])
             self.assertTrue({'Mesh2', 'Mesh3'} <= {a['view'] for a in report['aliases'] if a['source'] == 'DeusEx.Dead'})
             self.assertEqual(report['counts']['raw_default_texture_meshes'], 0)
@@ -189,13 +189,13 @@ class DxMapTests(unittest.TestCase):
 
     def test_sections_discovery_import_and_separate_routes(self):
         with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder); path = make_map(root)
+            root = Path(folder) / 'install'; path = make_map(root)
             (root / 'Maps' / 'DXRando_Test.dx').write_bytes(b'ignored')
             (root / 'DXRando' / 'Maps').mkdir(parents=True)
             (root / 'DXRando' / 'Maps' / 'Other.dx').write_bytes(b'ignored')
             (root / 'System' / 'DeusEx.ini').write_text('[Engine.Engine]\nGameRenderDevice=GlideDrv.GlideRenderDevice\n[WinDrv.WindowsClient]\nBrightness=0.6\n')
             self.assertEqual(Library(root, game='dx').maps, [path])
-            with patch('app.local_data_dir', root / 'out'):
+            with patch('app.local_data_dir', Path(folder) / 'out'):
                 client = app.test_client()
                 page = client.get('/maps/dx/')
                 self.assertIn(b'data-game="dx"', page.data)

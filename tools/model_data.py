@@ -188,9 +188,9 @@ def geometry(path, data):
 
 
 def write_model_data(path, data):
-    """Indexed, lossless array storage; skin families share content-addressed bytes.
+    """Indexed array storage; skin families share content-addressed bytes.
 
-    Float32 is used only when it round-trips exactly, otherwise float64. JSON
+    Floats are float32, the precision the browser and GLB export use anyway. JSON
     carries byte offsets, scalar counts and little-endian types, not corners.
     """
     import hashlib
@@ -208,7 +208,7 @@ def write_model_data(path, data):
                 raise ValueError('Invalid model indices')
             dtype = '<u4'
         else:
-            dtype = '<f4' if np.array_equal(values, values.astype('<f4').astype('<f8')) else '<f8'
+            dtype = '<f4'
         raw = values.astype(dtype).tobytes()
         arrays[name] = dict(offset=offset, count=len(values), dtype=dtype)
         chunks.append(raw); offset += len(raw); del result[name]

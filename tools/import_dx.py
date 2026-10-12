@@ -14,11 +14,15 @@ import struct
 from PIL import Image
 
 try:
-    from tools.import_unreal import (Library, INVISIBLE, MASKED, STYLE_FLAGS, build_model, decode_texture,
+    from tools.import_unreal import (Library, INVISIBLE, STYLE_FLAGS, build_model, texture_asset,
                                      mesh_faces, safe)
+    from tools.model_data import write_model_data
+    from tools.texture_storage import write_texture
 except ImportError:
-    from import_unreal import (Library, INVISIBLE, MASKED, STYLE_FLAGS, build_model, decode_texture,
+    from import_unreal import (Library, INVISIBLE, STYLE_FLAGS, build_model, texture_asset,
                                mesh_faces, safe)
+    from model_data import write_model_data
+    from texture_storage import write_texture
 
 MESH_CLASSES = {'Mesh', 'LodMesh'}
 ERRORS = (OSError, ValueError, IndexError, KeyError, struct.error, TypeError)
@@ -126,6 +130,8 @@ def display_settings(install):
 
 def import_catalog(install, output):
     install, output = Path(install).expanduser(), Path(output)
+    if output.resolve() == install.resolve() or install.resolve() in output.resolve().parents:
+        raise ValueError('Import output must be outside the read-only game install')
     library = Library(install, game='dx')
     if not library.package('DeusEx'):
         raise ValueError(f'No readable stock Deus Ex install (System/DeusEx.u) in {install}')
@@ -158,9 +164,9 @@ def import_catalog(install, output):
                 issue('mesh', '.'.join(package.ref_path(ref)), mesh_cache[key])
         return mesh_cache[key]
 
-    def texture(pick, flags, model, slot):
+    def texture(pick, model, slot):
         path = '.'.join(pick[0].ref_path(pick[1])) if pick else '(empty)'
-        key = path.lower(), bool(flags & MASKED)
+        key = path.lower()
         if key not in decoded:
             try:
                 found = library.resolve(*pick) if pick else None
@@ -169,8 +175,7 @@ def import_catalog(install, output):
                 tex_props = found[0].properties(found[1])
                 if tex_props.get('Format', 0) not in (0, 3, 5, 6, 7):
                     raise ValueError(f"unsupported texture format {tex_props['Format']}")
-                image = decode_texture(library, *found, masked=key[1])
-                png = safe(path) + ('_masked' if key[1] else '') + '.png'
+                png, image, _, _ = texture_asset(library, *found, masked=True, compressed=True)
                 textures[png] = image
                 decoded[key] = png, None
             except ERRORS as exc:
@@ -204,7 +209,7 @@ def import_catalog(install, output):
                 issue('fallback', model, 'empty actor and mesh slot; Engine.DefaultTexture', slot=slot)
                 if class_path is None:
                     raw_fallbacks.add(source)
-            return texture(pick or default, flags, model, slot)
+            return texture(pick or default, model, slot)
 
         try:
             data = build_model(mesh, slot_of, frame, 'dx', STYLE_FLAGS.get(props.get('Style'), 0))
@@ -226,7 +231,7 @@ def import_catalog(install, output):
         seen[digest] = model
         data['metadata'] = dict(source=source, actor_class=class_path, view=view, frames=mesh['frames'],
                                 pose=pose, frame=frame, pose_reason=why, sequences=[s['name'] for s in mesh['seqs']])
-        (output / 'model_json' / f'{model}.json').write_text(json.dumps(data, separators=(',', ':')), encoding='utf-8')
+        write_model_data(output / 'model_json' / f'{model}.json', data)
         catalog.append(dict(item, texture_name=data['material_textures'][0]))
 
     # Open only stock System packages. Textures are opened on demand, no maps participate in class skins.
@@ -281,9 +286,7 @@ def import_catalog(install, output):
             package = library.package(name)
             add(package, ref, package.exports[ref - 1]['name'], {}, {}, [], 'Mesh')
     for png, image in textures.items():
-        target = output / 'textures' / png
-        if not target.exists():
-            image.save(target)
+        write_texture(output / 'textures', png, image)
     report['packages'] = [dict(name=p.path.name, version=p.version, licensee=p.licensee)
                           for _, p in sorted(library.packages.items()) if p]
     report['raw_default_texture_meshes'] = sorted(raw_fallbacks)
