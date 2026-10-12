@@ -319,7 +319,7 @@ def import_catalog(install, output, model_filter=None, *, rules=None):
     output=Path(output);(output/'model_json').mkdir(parents=True,exist_ok=True)
     game=rules.Game(install)
     if not any(n.endswith(('.glm','.md3')) for n in game.assets):raise ValueError('No GLM or MD3 models found in the selected '+game.title+' folder')
-    library=base.TextureLibrary(output,[game]);resolver=rules.CatalogTextures(game,library)
+    library=getattr(rules,'TextureLibrary',base.TextureLibrary)(output,[game]);resolver=rules.CatalogTextures(game,library)
     catalog=[];results=[];seen={};used=set()
     for source,skin in rules.model_specs(game):
         if model_filter and model_filter.lower() not in source:continue
@@ -334,7 +334,7 @@ def import_catalog(install, output, model_filter=None, *, rules=None):
             if digest in seen:
                 row.update(status='duplicate',model=seen[digest],reason='Byte-identical model, same pose and materials');results.append(row);continue
             seen[digest]=ident;used.update(data['material_textures'])
-            q3.json_write(output/'model_json'/(ident+'.json'),data)
+            getattr(rules,'write_model_data',q3.json_write)(output/'model_json'/(ident+'.json'),data)
             item.update(texture_name=data['material_textures'][0],warnings=data['warnings']);row.update(status='ready',metadata=metadata)
         except (ValueError,OSError,KeyError,struct.error,zipfile.BadZipFile) as exc:
             row.update(status='skipped',reason=str(exc));item.update(status='skipped',reason=str(exc))
