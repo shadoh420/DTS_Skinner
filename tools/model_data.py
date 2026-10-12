@@ -1,4 +1,4 @@
-"""Read both generations of Skinner JSON for preview and OBJ export."""
+"""Read Skinner model metadata and expand stored geometry for preview and export."""
 
 import json
 import math
@@ -187,6 +187,64 @@ def geometry(path, data):
                 indices=indices.ravel().tolist(), groups=groups)
 
 
+def write_model_data(path, data):
+    """Indexed, lossless array storage; skin families share content-addressed bytes.
+
+    Float32 is used only when it round-trips exactly, otherwise float64. JSON
+    carries byte offsets, scalar counts and little-endian types, not corners.
+    """
+    import hashlib
+    import numpy as np
+    path = pathlib.Path(path)
+    result, arrays, chunks, offset = dict(data), {}, [], 0
+    for name in ('vertices', 'normals', 'uvs', 'indices', 'colors'):
+        if name not in data:
+            continue
+        values = np.asarray(data[name])
+        if values.ndim != 1 or not np.isfinite(values).all():
+            raise ValueError('Invalid model array: ' + name)
+        if name == 'indices':
+            if values.dtype.kind not in 'iu' or (values < 0).any() or (values > 0xffffffff).any():
+                raise ValueError('Invalid model indices')
+            dtype = '<u4'
+        else:
+            dtype = '<f4' if np.array_equal(values, values.astype('<f4').astype('<f8')) else '<f8'
+        raw = values.astype(dtype).tobytes()
+        arrays[name] = dict(offset=offset, count=len(values), dtype=dtype)
+        chunks.append(raw); offset += len(raw); del result[name]
+    raw = b''.join(chunks)
+    filename = hashlib.sha256(raw).hexdigest() + '.bin'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    target = path.parent / filename
+    if not target.exists() or target.stat().st_size != len(raw):
+        target.write_bytes(raw)
+    result['geometry_buffers'] = dict(file=filename, arrays=arrays)
+    write_json_atomic(path, result)
+
+
+def read_geometry_buffers(path, description):
+    import numpy as np
+    filename = description['file']
+    if not isinstance(filename, str) or not re.fullmatch(r'[0-9a-f]{64}\.bin', filename):
+        raise ValueError('Invalid indexed geometry file')
+    raw = (pathlib.Path(path).parent / filename).read_bytes()
+    result, end = {}, 0
+    for name, entry in description['arrays'].items():
+        if name not in ('vertices', 'normals', 'uvs', 'indices', 'colors'):
+            raise ValueError('Unknown indexed geometry array')
+        dtype, offset, count = entry['dtype'], entry['offset'], entry['count']
+        if dtype not in (('<u4',) if name == 'indices' else ('<f4', '<f8')) or type(offset) is not int or type(count) is not int:
+            raise ValueError('Invalid indexed geometry layout')
+        size = np.dtype(dtype).itemsize * count
+        if offset != end or count < 0 or offset+size > len(raw):
+            raise ValueError('Invalid indexed geometry range')
+        result[name] = np.frombuffer(raw, dtype, count=count, offset=offset).tolist()
+        end += size
+    if end != len(raw):
+        raise ValueError('Unexpected indexed geometry bytes')
+    return result
+
+
 def load_model_data(json_path, fallback_texture=None, material_overrides=None):
     path = pathlib.Path(json_path)
     with path.open(encoding="utf-8") as stream:
@@ -197,6 +255,8 @@ def load_model_data(json_path, fallback_texture=None, material_overrides=None):
             del data[key]
     if "geometry" in data:
         data = dict(data, **geometry(path, data))
+    if 'geometry_buffers' in data:
+        data.update(read_geometry_buffers(path, data.pop('geometry_buffers')))
     vertices, uvs, indices = (data.get(key, []) for key in ("vertices", "uvs", "indices"))
     if not vertices or len(vertices) % 3 or not indices or len(indices) % 3:
         raise ValueError("Model must contain complete vertices and triangles")

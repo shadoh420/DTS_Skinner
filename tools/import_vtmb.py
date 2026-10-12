@@ -18,10 +18,14 @@ try:
     from tools.vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, material_texture, read_vmt, material_settings
     from tools.local_data import LOCAL_DATA
     from tools.texture_workshop import write_json_atomic
+    from tools.model_data import write_model_data
+    from tools.texture_storage import write_texture
 except ImportError:
     from vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, material_texture, read_vmt, material_settings
     from local_data import LOCAL_DATA
     from texture_workshop import write_json_atomic
+    from model_data import write_model_data
+    from texture_storage import write_texture
 
 
 def key(name):
@@ -32,6 +36,18 @@ def key(name):
 def category(name):
     parts = name.split('/')
     return parts[1].title() if len(parts) > 2 else 'Other'
+
+
+def texture_key(vmt, path):
+    base = vmt['params'].get('$basetexture')
+    if isinstance(base, str) and base:
+        return re.sub(r'\.(vtf|tth|ttz)$', '', asset_reference(base).removeprefix('materials/'))
+    return path
+
+
+def prepare_texture(files, vmt, path):
+    payload, info = material_texture(files, vmt, compressed=True)
+    return key(texture_key(vmt, path)) + ('.dds' if isinstance(payload, bytes) else '.png'), payload, info
 
 
 def resolve_material(files, name, directories, stack=()):
@@ -95,15 +111,13 @@ def import_catalog(install, output):
             base = asset_reference(base) if isinstance(base, str) and base else None
             result['basetexture'] = base
             # Generated shader previews are keyed by VMT, real images by texture.
-            base = base or path
+            base = texture_key(vmt, path)
             if base not in textures:
                 record = dict(source=base, status='unresolved')
                 textures[base] = record
                 try:
-                    image, info = material_texture(files, vmt)
-                    png = key(base) + '.png'
-                    target = output / 'textures' / png
-                    if not target.exists(): image.save(target)
+                    png, image, info = prepare_texture(files, vmt, path)
+                    write_texture(output / 'textures', png, image)
                     record.update(status='ready', texture=png, **info)
                 except (ValueError, OSError) as exc:
                     record['reason'] = str(exc)
@@ -158,7 +172,7 @@ def import_catalog(install, output):
                 look = model_key + (f'_skin{skin}' if len(families) > 1 else '')
                 groups = [dict(g, materialIndex=family[ref]) for g, ref in zip(mesh['groups'], skin_refs)]
                 data = dict(mesh, groups=groups, metadata=dict(mesh['metadata'], skin_family=skin))
-                write_json_atomic(output / 'model_json' / (look + '.json'), data)
+                write_model_data(output / 'model_json' / (look + '.json'), data)
                 record['looks'].append(look)
                 catalog.append(dict(item, model_name=look, display_name=name + (f' [skin {skin}]' if len(families) > 1 else ''),
                                     texture_name=slots[groups[0]['materialIndex']]['texture'], status='ready'))

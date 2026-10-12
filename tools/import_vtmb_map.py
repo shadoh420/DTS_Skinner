@@ -19,14 +19,16 @@ from PIL import Image
 
 try:
     from tools import vtmb
-    from tools.import_vtmb import key, resolve_material
+    from tools.import_vtmb import key, resolve_material, prepare_texture
+    from tools.texture_storage import game_texture_dir, write_texture
     from tools.import_quake_map import rotation, vector, SCALE
     from tools.import_unreal_map import pack
     from tools.local_data import LOCAL_DATA
     from tools.texture_workshop import write_json_atomic
 except ImportError:
     import vtmb
-    from import_vtmb import key, resolve_material
+    from import_vtmb import key, resolve_material, prepare_texture
+    from texture_storage import game_texture_dir, write_texture
     from import_quake_map import rotation, vector, SCALE
     from import_unreal_map import pack
     from local_data import LOCAL_DATA
@@ -379,8 +381,8 @@ def build_map(raw, name, files, lighting=None):
         try:
             vmt, path = resolve_material(files, name, directories)
             settings, notes = vtmb.material_settings(vmt)
-            image, info = vtmb.material_texture(files, vmt)
-            png = key(path) + '.png'; images[png] = image
+            png, image, info = prepare_texture(files, vmt, path)
+            images[png] = image
             notes = [n for n in notes if not n.startswith('$selfillum recorded;')]
             record.update(texture=png, settings=settings, notes=notes, source=path, origin=files[path].origin)
         except (ValueError, OSError, KeyError) as exc:
@@ -548,6 +550,9 @@ def import_maps(install, output, replace=False, map_filter=None):
         root = root.parent
     if output == root or root in output.parents:
         raise ValueError('Import output must be outside the read-only game install')
+    textures = game_texture_dir(output.parent, 'vtmb').resolve()
+    if textures == root or root in textures.parents:
+        raise ValueError('Shared textures must be outside the read-only game install')
     files, inventory = vtmb.read_install(root)
     # Reuse the stock archive index, layering only the item definitions needed here.
     for folder in ('Vampire', 'Unofficial_Patch'):
@@ -555,7 +560,7 @@ def import_maps(install, output, replace=False, map_filter=None):
             files[vtmb.asset_name('vdata/items/'+path.name)] = vtmb.Asset(path, 0, path.stat().st_size, folder+'/loose')
     maps = sorted(n for n in files if n.startswith('maps/') and n.endswith('.bsp'))
     lighting = lighting_profile(root)
-    (output/'textures').mkdir(parents=True, exist_ok=True)
+    textures.mkdir(parents=True, exist_ok=True)
     index, results = [], []
     report = dict(game='vtmb', imported=[], skipped=[], failed={}, inventory=inventory, results=results,
                   effective_maps=len(maps), sections=dict(Counter(section(Path(n).stem) for n in maps)), lighting=lighting)
@@ -574,8 +579,7 @@ def import_maps(install, output, replace=False, map_filter=None):
             else:
                 scene, blob, images, atlas = build_map(files[path].read(), name, files, lighting)
                 for png, image in images.items():
-                    if replace or not (output/'textures'/png).exists():
-                        image.save(output/'textures'/png)
+                    write_texture(textures, png, image)
                 folder.mkdir(parents=True, exist_ok=True)
                 (folder/'geometry.bin').write_bytes(blob); atlas.save(folder/'lightmap.png')
                 write_json_atomic(folder/'scene.json', scene)

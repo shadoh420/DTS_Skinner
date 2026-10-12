@@ -207,14 +207,14 @@ def material_settings(vmt):
                 selfillum=enabled('$selfillum'), parameters=p), notes
 
 
-def material_texture(files, vmt):
+def material_texture(files, vmt, compressed=False):
     """Diffuse texture or an explicit preview for framebuffer-only refraction."""
     params = vmt['params']
     base = params.get('$basetexture')
     if base is not None and not isinstance(base, str):
         raise ValueError('VMT $basetexture must be a string')
     if isinstance(base, str) and base:
-        return read_texture(files, base)
+        return read_texture(files, base, compressed=compressed)
     if vmt['shader'].lower() not in ('refract', 'water'):
         raise ValueError('VMT has no $basetexture')
     tint = str(params.get('$refracttint', '[1 1 1]')).strip('[] ').split()
@@ -238,7 +238,7 @@ def image_size(fmt, width, height):
     return width * height * sizes[fmt]
 
 
-def read_vtf(data):
+def read_vtf(data, compressed=False):
     if data[:4] != b'VTF\0':
         raise ValueError('Expected VTF signature')
     major, minor, header = unpack(data, 'III', 4)
@@ -266,11 +266,24 @@ def read_vtf(data):
                 offset, = unpack(data, 'I', at + 4); found = True
         if not found:
             raise ValueError('VTF has no high-resolution image resource')
-    for mip in range(mips - 1, 0, -1):
-        offset += image_size(fmt, max(1, w >> mip), max(1, h >> mip)) * frames * faces * max(1, depth >> mip)
+    mipmaps = []
+    for mip in range(mips - 1, -1, -1):
+        size = image_size(fmt, max(1, w >> mip), max(1, h >> mip))
+        full_size = size * frames * faces * max(1, depth >> mip)
+        span(data, offset, full_size)
+        mipmaps.append(data[offset:offset+size])
+        offset += full_size
+    info = dict(version=f'{major}.{minor}', format=fmt, width=w, height=h, frames=frames, faces=faces, depth=depth, mipmaps=mips,
+                selection='largest mip, frame 0, face 0, depth slice 0')
+    if compressed and fmt in (13, 14, 15, 20):
+        if __package__:
+            from .texture_storage import dds_bytes
+        else:
+            from texture_storage import dds_bytes
+        info['selection'] = 'all mips, frame 0, face 0, depth slice 0'
+        return dds_bytes(w, h, 'DXT1' if fmt in (13, 20) else 'DXT3' if fmt == 14 else 'DXT5', mipmaps[::-1]), info
     size = image_size(fmt, w, h)
-    span(data, offset, size * frames * faces * depth)
-    pixels = data[offset:offset + size]
+    pixels = mipmaps[-1]
     if fmt in (13, 14, 15, 20):
         # Pillow's native BC decoder also underlies the existing DDS importer.
         image = Image.frombytes('RGBA', (w, h), pixels, 'bcn', (1 if fmt in (13, 20) else fmt - 12, 'DXT1' if fmt in (13, 20) else 'DXT3' if fmt == 14 else 'DXT5'))
@@ -295,16 +308,15 @@ def read_vtf(data):
         image = Image.new('RGBA', (w, h)); image.putdata(colors)
     else:
         raise ValueError(f'Unsupported VTF pixel decoder {fmt}')
-    return image, dict(version=f'{major}.{minor}', format=fmt, width=w, height=h, frames=frames, faces=faces, depth=depth, mipmaps=mips,
-                       selection='largest mip, frame 0, face 0, depth slice 0')
+    return image, info
 
 
-def read_texture(files, name):
+def read_texture(files, name, compressed=False):
     base = asset_reference(name).removeprefix('materials/')
     base = re.sub(r'\.(vtf|tth|ttz)$', '', base)
     base = 'materials/' + base
     if base + '.vtf' in files:
-        image, info = read_vtf(files[base + '.vtf'].read())
+        image, info = read_vtf(files[base + '.vtf'].read(), compressed=compressed)
         info['sources'] = [dict(path=base+'.vtf', origin=files[base+'.vtf'].origin)]
         return image, info
     if base + '.tth' not in files:
@@ -326,18 +338,18 @@ def read_texture(files, name):
     if resident < levels:
         if base + '.ttz' not in files:
             raise ValueError(f'Missing TTZ companion: {base}.ttz')
-        compressed = files[base + '.ttz'].read()
+        packed = files[base + '.ttz'].read()
         expected, compressed_size = unpack(head, 'II', 12 + levels * 8)
-        if compressed_size != len(compressed) or not end <= expected <= 256 * 1024 * 1024:
+        if compressed_size != len(packed) or not end <= expected <= 256 * 1024 * 1024:
             raise ValueError('Invalid TTH/TTZ size table')
         decoder = zlib.decompressobj()
         try:
-            tail = decoder.decompress(compressed, expected - end + 1)
+            tail = decoder.decompress(packed, expected - end + 1)
         except zlib.error as exc:
             raise ValueError(f'Invalid TTZ zlib data: {exc}') from exc
         if len(tail) != expected - end or not decoder.eof or decoder.unused_data:
             raise ValueError('TTZ decompressed size/stream mismatch')
-    image, info = read_vtf(head[at:] + tail)
+    image, info = read_vtf(head[at:] + tail, compressed=compressed)
     info['container'] = 'TTH/TTZ'
     info['sources'] = [dict(path=base+suffix, origin=files[base+suffix].origin)
                        for suffix in (('.tth', '.ttz') if resident < levels else ('.tth',))]

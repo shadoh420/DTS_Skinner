@@ -283,9 +283,10 @@ window.addEventListener('DOMContentLoaded', () => {
   function modelQuery() {
     return query({texture: $('textureName').value.trim(), materials: JSON.stringify(overrides)});
   }
-  function textureUrl(name, gameId = game, transform = identityTransform()) {
+  function textureUrl(name, gameId = game, transform = identityTransform(), raw = false) {
     const extra = transform.rotation || transform.flip_x || transform.flip_y ?
       {rotation: transform.rotation, flip_x: Number(transform.flip_x), flip_y: Number(transform.flip_y)} : {};
+    if (!raw && name.toLowerCase().endsWith('.dds')) extra.preview = 1; // HTML images/canvas need decoded PNG.
     return `/texture/${encodeURIComponent(name)}?${query(extra, gameId)}`;
   }
   function option(label, value) { return new Option(label, value); }
@@ -460,13 +461,14 @@ window.addEventListener('DOMContentLoaded', () => {
     return false;
   }
   async function makeTexture(name, gameId, signal, flags, settings, textureGame, transform) {
-    const response = await fetch(textureUrl(name, textureGame, transform), {cache: 'no-store', signal});
+    const response = await fetch(textureUrl(name, textureGame, transform, true), {cache: 'no-store', signal});
     if (!response.ok) throw new Error(`Missing texture: ${name}`);
     // T2 opaque skin alpha stores reflectivity; never bake it into the RGB color.
-    const bitmap = await createImageBitmap(await response.blob(), {premultiplyAlpha: 'none'});
-    const texture = new THREE.Texture(bitmap);
+    const compressed = response.headers.get('Content-Type')?.includes('dds');
+    const bitmap = compressed ? null : await createImageBitmap(await response.blob(), {premultiplyAlpha: 'none'});
+    const texture = compressed ? window.skinnerDDS.parse(await response.arrayBuffer()) : new THREE.Texture(bitmap);
     texture.needsUpdate = true;
-    if (textureGame === 't1' || textureGame === 'rb3d') texture.userData.alpha = hasAlpha(bitmap);
+    if (bitmap && (textureGame === 't1' || textureGame === 'rb3d')) texture.userData.alpha = hasAlpha(bitmap);
     texture.flipY = false;
     texture.magFilter = THREE.NearestFilter;
     texture.minFilter = THREE.NearestFilter;
@@ -482,6 +484,11 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.wrapS = texture.wrapT = settings.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       texture.magFilter = THREE.LinearFilter;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
+    }
+    if (compressed) {
+      texture.generateMipmaps = false;
+      texture.minFilter = texture.userData.completeMipChain ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
     }
     return texture;
   }
@@ -658,7 +665,7 @@ window.addEventListener('DOMContentLoaded', () => {
       $('texturePreview').src = `${textureUrl(filename, textureGame, slotTransform(data, slot))}${opaque ? '&opaque=1' : ''}&v=${Date.now()}`;
       if (opaque) $('textureDetails').textContent += ' · RGB preview; alpha retained in PNG';
       $('downloadTexture').href = textureUrl(filename, textureGame, slotTransform(data, slot)) + '&download=1';
-      $('downloadTexture').download = filename;
+      $('downloadTexture').download = filename.replace(/\.dds$/i, '.png');
     } else {
       $('texturePreview').removeAttribute('src');
       $('downloadTexture').removeAttribute('href');
