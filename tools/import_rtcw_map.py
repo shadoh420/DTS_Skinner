@@ -222,6 +222,23 @@ def read_bsp(raw, diagnostics=None):
     return lumps
 
 
+def upload_image(image, profile, mipmap=True, picmip=True):
+    if max(image.size)>8192: raise ValueError('Image dimensions exceed limit')
+    original = image.size
+    size = [2**int(math.ceil(math.log2(max(1,x)))) for x in original]
+    if profile['cvars']['r_roundimagesdown']:
+        size = [x//2 if x>y else x for x,y in zip(size,original)]
+    if picmip: size = [max(1,x>>profile['picmip']) for x in size]
+    if tuple(size)!=original: image=image.resize(tuple(size),Image.Resampling.BOX)
+    # Upload32 bypasses LightScale for unchanged non-mipmapped images.
+    if mipmap or tuple(size)!=original:
+        gamma = 1 if profile['hardwareGamma'] else profile['gamma']
+        intensity = profile['intensity'] if mipmap else 1
+        table=[min(255,int(255*(min(255,int(i*intensity))/255)**(1/gamma)+.5)) for i in range(256)]
+        channels=image.split();image=Image.merge('RGBA',tuple(c.point(table) for c in channels[:3])+(channels[3],))
+    return image
+
+
 class Textures(qmap.Textures):
     """Q3 decoding/content storage, RTCW path lookup and classic texture lighting."""
     def __init__(self, output, game):
@@ -235,19 +252,7 @@ class Textures(qmap.Textures):
         if (self.output/result).exists(): return result
         with Image.open(self.output/filename) as source:
             image = source.convert('RGBA')
-            if max(image.size)>8192: raise ValueError('Image dimensions exceed limit')
-            original = image.size
-            size = [2**int(math.ceil(math.log2(max(1,x)))) for x in original]
-            if profile['cvars']['r_roundimagesdown']:
-                size = [x//2 if x>y else x for x,y in zip(size,original)]
-            if picmip: size = [max(1,x>>profile['picmip']) for x in size]
-            if tuple(size)!=original: image=image.resize(tuple(size),Image.Resampling.BOX)
-            # Upload32 bypasses LightScale for unchanged non-mipmapped images.
-            if mipmap or tuple(size)!=original:
-                gamma = 1 if profile['hardwareGamma'] else profile['gamma']
-                intensity = profile['intensity'] if mipmap else 1
-                table=[min(255,int(255*(min(255,int(i*intensity))/255)**(1/gamma)+.5)) for i in range(256)]
-                channels=image.split();image=Image.merge('RGBA',tuple(c.point(table) for c in channels[:3])+(channels[3],))
+            image = upload_image(image, profile, mipmap, picmip)
             image.save(self.output/result)
         return result
 
@@ -536,8 +541,12 @@ def placed_model(game,path,skin,frame,output,textures,model_textures,tag=None, *
         surfaces.append(dict(vertices=v,normals=n,uvs=surface['uvs'],indices=surface['indices']))
         shaders.append(shader)
     if not surfaces:raise ValueError('Model has no visible surfaces')
-    encoded=json.dumps(surfaces,separators=(',',':')).encode();file='models/'+hashlib.sha256(encoded).hexdigest()[:24]+'.json'
-    if not (output/file).exists():(output/file).write_bytes(encoded)
+    encoded=json.dumps(surfaces,separators=(',',':')).encode()
+    binary=getattr(game,'write_surface_data',None)
+    file='models/'+hashlib.sha256((b'binary-v1' if binary else b'')+encoded).hexdigest()[:24]+'.json'
+    if not (output/file).exists():
+        if binary:binary(output/file,surfaces)
+        else:(output/file).write_bytes(encoded)
     return dict(file=file,shaders=shaders,middle=[0,0,0],limitations=sorted(set(notes))),missing
 
 
