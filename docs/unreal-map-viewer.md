@@ -289,7 +289,7 @@ DX map textures are served from the model library's `dx/textures`, a sibling of 
 Both imports use resolved package/group/texture names, keep existing files (including on `--replace`), and write
 P8 as a shared `_masked.png` with palette index 0 clear; opaque materials ignore alpha. Native DXT1/3/5 blocks
 and all authored mips go straight into DDS; animated/procedural textures and other formats remain PNG. Lightmaps
-stay beside each map. Model arrays use the shared lossless binary writer; map arrays were already in geometry.bin.
+stay beside each map. Model arrays use the shared binary writer (float32); map arrays were already in geometry.bin.
 Existing packs need both a model reimport and a map reimport with `--replace` to adopt the shared names. Old
 texture folders and unused files are not automatically deleted. No lighting/display curve changes accompany storage.
 
