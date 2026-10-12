@@ -1,6 +1,22 @@
 """Lossless DXT containers and non-destructive shared texture output."""
 from pathlib import Path
+import io
 import struct
+
+from PIL import Image
+
+
+def open_texture(path):
+    """Pillow preview/export adapter for RXGB; the stored DDS is never modified."""
+    if Path(path).suffix.lower() == '.dds':
+        with open(path, 'rb') as stream:
+            header = stream.read(128)
+            if len(header) == 128 and header[:4] == b'DDS ' and header[84:88] == b'RXGB':
+                payload = header[:84] + b'DXT5' + header[88:] + stream.read()
+                with Image.open(io.BytesIO(payload)) as source:
+                    _, green, blue, x = source.convert('RGBA').split()
+                    return Image.merge('RGBA', (x, green, blue, Image.new('L', source.size, 255)))
+    return Image.open(path)
 
 
 def game_texture_dir(data_root, game):
