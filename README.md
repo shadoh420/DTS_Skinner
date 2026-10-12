@@ -30,6 +30,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Quake 3 Arena | ✓ | ✓ | Team Arena and custom pk3s, see [Q3 maps](docs/q3-map-viewer.md) |
 | Return to Castle Wolfenstein | ✓ | ✓ | Single player and Multiplayer |
 | Wolfenstein: Enemy Territory | ✓ | ✓ | Constructibles at map start, or finished |
+| Vampire: The Masquerade - Bloodlines | ✓ | ✓ | Unofficial Patch over stock; static model poses, lightmapped maps with props and pickups, no NPCs |
 | Jedi Outcast | ✓ | ✓ | Single player and Multiplayer maps, static Ghoul2 models |
 | Jedi Academy | ✓ | ✓ | Stock Ghoul2 characters and parked vehicles; Single player and Multiplayer maps, including Siege |
 | Unreal, Unreal Tournament | ✓ | ✓ | Unreal Gold / 227 and UT 469, see [Unreal maps](docs/unreal-map-viewer.md) |

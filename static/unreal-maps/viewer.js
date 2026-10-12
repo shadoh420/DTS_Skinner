@@ -10,7 +10,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const sin = document.body.dataset.game === 'sin';
   const anachronox = document.body.dataset.game === 'anachronox';
   const daikatana = document.body.dataset.game === 'daikatana';
-  const storageKey = dx ? 'skinner.dxmaps' : azrael ? 'skinner.azraelmaps' : sin ? 'skinner.sinmaps' : anachronox ? 'skinner.anachronoxmaps' : daikatana ? 'skinner.daikatanamaps' : quake2 ? 'skinner.quake2maps' : quake ? 'skinner.quakemaps' : 'skinner.unrealmaps';
+  const config = window.skinnerMapViewerConfig; // Optional adapter; existing pages keep their original paths/rendering.
+  const storageKey = config ? config.storageKey : dx ? 'skinner.dxmaps' : azrael ? 'skinner.azraelmaps' : sin ? 'skinner.sinmaps' : anachronox ? 'skinner.anachronoxmaps' : daikatana ? 'skinner.daikatanamaps' : quake2 ? 'skinner.quake2maps' : quake ? 'skinner.quakemaps' : 'skinner.unrealmaps';
   const settings = {fov: azrael ? 2 * Math.atan(.8) * 180 / Math.PI : 90, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
@@ -40,8 +41,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       'void main() { gl_FragColor = vec4(mix(pow(texture2D(frame, at).rgb, vec3(power)), viewBlend.rgb, viewBlend.a), 1.); }'})));
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
   const fitFrame = () => { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); frame.setSize(Math.max(size.x, 1), Math.max(size.y, 1)); };
-  const GAMES = dx ? [['dx', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Deus Ex']] : azrael ? [['azrael', "C:\\Program Files (x86)\\GOG Galaxy\\Games\\Azrael's Tear"]] : sin ? ['sin', '2015', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\SiN 1']) : anachronox ? [['anachronox', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Anachronox']] : daikatana ? [['daikatana', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Daikatana\\data']] : quake2 ? ['quake2', 'xatrix', 'rogue', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake 2\\baseq2']) : quake ? ['quake', 'hipnotic', 'rogue', 'qextras', 'dopa', 'mg1', 'mg3', 'qctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
-  const dataRoot = id => dx ? '/dx-map-data/' : azrael ? '/azrael-map-data/' : sin ? `/sin-map-data/${id}/` : anachronox ? '/anachronox-map-data/' : daikatana ? '/daikatana-map-data/' : quake2 ? `/quake2-map-data/${id === 'quake2' ? '' : id + '/'}` : quake ? `/quake-map-data/${id === 'quake' ? '' : id + '/'}` : `/unreal-map-data/${id}/`;
+  const GAMES = config ? config.games : dx ? [['dx', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Deus Ex']] : azrael ? [['azrael', "C:\\Program Files (x86)\\GOG Galaxy\\Games\\Azrael's Tear"]] : sin ? ['sin', '2015', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\SiN 1']) : anachronox ? [['anachronox', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Anachronox']] : daikatana ? [['daikatana', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Daikatana\\data']] : quake2 ? ['quake2', 'xatrix', 'rogue', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake 2\\baseq2']) : quake ? ['quake', 'hipnotic', 'rogue', 'qextras', 'dopa', 'mg1', 'mg3', 'qctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
+  const dataRoot = id => config ? config.dataRoot : dx ? '/dx-map-data/' : azrael ? '/azrael-map-data/' : sin ? `/sin-map-data/${id}/` : anachronox ? '/anachronox-map-data/' : daikatana ? '/daikatana-map-data/' : quake2 ? `/quake2-map-data/${id === 'quake2' ? '' : id + '/'}` : quake ? `/quake-map-data/${id === 'quake' ? '' : id + '/'}` : `/unreal-map-data/${id}/`;
   let data = dataRoot(GAMES[0][0]);  // The shown map's pack.
   let speed = azrael ? 160 : 8, missing = 0, ready = false, map = null;
   const showStatus = text => { $('status').textContent = text; };
@@ -60,6 +61,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       texture.anisotropy = quake || quake2 || daikatana || anachronox || sin ? 1 : 8;
       if (quake2 || daikatana || anachronox || sin) { texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearMipmapNearestFilter; }
       if (quake) { texture.magFilter = texture.minFilter = THREE.NearestFilter; texture.generateMipmaps = false; }
+      if (config && config.configureTexture) config.configureTexture(texture);
       resolve(texture);
     }, undefined, () => { missing++; resolve(null); })));
     return textures.get(file);
@@ -74,6 +76,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   let lightMap = null;  // The map's lightmaps in one atlas: the game draws texture x lightmap x 2.
   let quakeColormap = null;
   function surfaceMaterial(group, texture) {
+    if (config) return config.material(group, texture, lightMap);
     if (azrael) return window.azraelMaps.material(group, texture);
     if (sin) return window.sinMaps.material(group, texture, lightMap);
     if (anachronox) return window.anachronoxMaps.material(group, texture, lightMap);
@@ -112,6 +115,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.colors) geometry.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buffer, vertices * 28, vertices * 4), 4, true));
     const indexAt = vertices * (map.colors ? 32 : map.lightmap ? 28 : 20);
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, indexAt, map.indices), 1));
+    if (config) await config.load(map, loadTexture);
     if (quake) quakeColormap = await loadTexture('colormap.png');
     if (sin) await window.sinMaps.load(map, loadTexture);
     if (anachronox) await window.anachronoxMaps.load(map, loadTexture);
@@ -120,13 +124,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (quake && map.skybox) await window.quake2Maps.loadSky(map.skybox, loadTexture);
     const materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
-      return surfaceMaterial(group, !quake2 && !daikatana && !anachronox && !sin && group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
+      return surfaceMaterial(group, !config && !quake2 && !daikatana && !anachronox && !sin && group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
     }));
     scene.add(new THREE.Mesh(geometry, materials));
   }
 
   function showNotes() {
     const parts = [];
+    if (config) {
+      parts.push(...(map.gaps || []));
+      if ((map.model_failures || []).length) parts.push(`${map.model_failures.length} props/pickups could not be drawn; see import report`);
+    }
     if (quake) {
       const guesses = [...new Set((map.instances || []).filter(item => item.guess).map(item => item.classname))];
       if (guesses.length) parts.push('Brush positions not verified, shown at authored origin: ' + guesses.join(', '));
@@ -162,7 +170,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const view = map && map.viewpoints[index];
     if (!view) return;
     camera.position.fromArray(view.origin);
-    camera.rotation.set(THREE.MathUtils.degToRad(view.pitch), Math.PI - THREE.MathUtils.degToRad(view.yaw), (quake2 || daikatana || anachronox || sin) ? THREE.MathUtils.degToRad(view.roll || 0) : 0);
+    camera.rotation.set(THREE.MathUtils.degToRad(view.pitch), Math.PI - THREE.MathUtils.degToRad(view.yaw), (config || quake2 || daikatana || anachronox || sin) ? THREE.MathUtils.degToRad(view.roll || 0) : 0);
   }
 
   $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(130, Number(event.target.value) || 90)); save(); applySettings(); });
@@ -244,7 +252,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     seconds += delta;
     draw(seconds);
   });
-  window[dx ? 'skinnerDxMaps' : azrael ? 'skinnerAzraelMaps' : sin ? 'skinnerSinMaps' : anachronox ? 'skinnerAnachronoxMaps' : daikatana ? 'skinnerDaikatanaMaps' : quake2 ? 'skinnerQuake2Maps' : quake ? 'skinnerQuakeMaps' : 'skinnerUnrealMaps'] = {renderer, scene, camera, draw, showViewpoint, unrealTurn};  // For checks in a hidden page, where no frame is drawn.
+  window[config ? config.debugName : dx ? 'skinnerDxMaps' : azrael ? 'skinnerAzraelMaps' : sin ? 'skinnerSinMaps' : anachronox ? 'skinnerAnachronoxMaps' : daikatana ? 'skinnerDaikatanaMaps' : quake2 ? 'skinnerQuake2Maps' : quake ? 'skinnerQuakeMaps' : 'skinnerUnrealMaps'] = {renderer, scene, camera, draw, showViewpoint, unrealTurn};  // For checks in a hidden page, where no frame is drawn.
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   // Each game's folder is remembered on its own (Unreal's under the key it had before UT maps).
@@ -259,7 +267,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('import').disabled = true;
     $('importStatus').textContent = azrael ? 'Importing rooms and extras…' : quake ? 'Importing classic Quake maps…' : 'Importing maps… a full install takes two to three minutes.';
     try {
-      const response = await fetch(dx ? '/import_dx_maps' : azrael ? '/import_azrael_maps' : sin ? '/import_sin_maps' : anachronox ? '/import_anachronox_maps' : daikatana ? '/import_daikatana_maps' : quake2 ? '/import_quake2_maps' : quake ? '/import_quake_maps' : '/import_unreal_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      const response = await fetch(config ? config.importRoute : dx ? '/import_dx_maps' : azrael ? '/import_azrael_maps' : sin ? '/import_sin_maps' : anachronox ? '/import_anachronox_maps' : daikatana ? '/import_daikatana_maps' : quake2 ? '/import_quake2_maps' : quake ? '/import_quake_maps' : '/import_unreal_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({path, game: chosen, replace: $('replace').checked})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Import failed');
@@ -302,8 +310,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (absent) { $('importGame').value = absent[0]; showPath(); }
     const mapId = item.id;
     map = {...await (await get(`${data}maps/${mapId}/scene.json`)).json(), id: mapId};
-    ramp.children[0].material.uniforms.power.value = displayPower(item.game, map);
-    document.title = `${map.title || map.name} — ${dx ? "Deus Ex" : azrael ? "Azrael's Tear" : sin ? 'SiN' : anachronox ? 'Anachronox' : daikatana ? 'Daikatana' : quake2 ? 'Quake II' : quake ? 'Quake' : 'Unreal'} Maps`;
+    ramp.children[0].material.uniforms.power.value = config ? map.lighting.display_power : displayPower(item.game, map);
+    document.title = `${map.title || map.name} — ${config ? config.label : dx ? "Deus Ex" : azrael ? "Azrael's Tear" : sin ? 'SiN' : anachronox ? 'Anachronox' : daikatana ? 'Daikatana' : quake2 ? 'Quake II' : quake ? 'Quake' : 'Unreal'} Maps`;
     if (azrael) $('mapSource').textContent = map.source;
     if (map.sky) skyTurn.setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...map.sky.rotation)));
     applySettings();

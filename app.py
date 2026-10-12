@@ -49,12 +49,14 @@ from tools.import_rtcw import import_catalog as import_rtcw_catalog
 from tools.import_et import import_catalog as import_et_catalog
 from tools.import_jk2 import import_catalog as import_jk2_catalog
 from tools.import_ja import import_catalog as import_ja_catalog
+from tools.import_vtmb import import_catalog as import_vtmb_catalog
 from tools.import_azrael import import_catalog as import_azrael_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
 from tools.import_quake2_map import import_maps as import_quake2_maps
 from tools.import_daikatana_map import import_maps as import_daikatana_maps
 from tools.import_anachronox_map import import_maps as import_anachronox_maps
 from tools.import_sin_map import import_maps as import_sin_maps
+from tools.import_vtmb_map import import_maps as import_vtmb_maps
 from tools.import_azrael_map import import_maps as import_azrael_maps
 from tools.import_redbaron_map import import_maps as import_redbaron_maps
 from tools.import_unreal_map import import_maps as import_unreal_maps
@@ -96,7 +98,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'ge')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -566,6 +568,38 @@ def import_anachronox_maps_route():
         import_lock.release()
 
 
+@app.route('/maps/vtmb/')
+def vtmb_maps_viewer():
+    response = send_from_directory(static_dir / 'vtmb-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/vtmb-map-data/<path:filename>')
+def vtmb_map_data(filename):
+    return send_from_directory(local_data_dir / 'vtmb-maps', filename)
+
+
+@app.route('/import_vtmb_maps', methods=['POST'])
+def import_vtmb_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your Bloodlines folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_vtmb_maps(payload['path'].strip(), local_data_dir / 'vtmb-maps',
+                                         payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
 @app.route('/maps/unreal/')
 @app.route('/maps/dx/')
 def unreal_maps_viewer():
@@ -1012,6 +1046,7 @@ def import_reflex():
 @app.route('/import_rtcw', methods=['POST'])
 @app.route('/import_et', methods=['POST'])
 @app.route('/import_ja', methods=['POST'])
+@app.route('/import_vtmb', methods=['POST'])
 @app.route('/import_jk2', methods=['POST'])
 @app.route('/import_anachronox', methods=['POST'])
 def import_conversion_pack():
@@ -1036,6 +1071,8 @@ def import_conversion_pack():
             return jsonify(import_azrael_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'ja':
             return jsonify(import_ja_catalog(payload['path'].strip(), pack_dirs[game]))
+        if game == 'vtmb':
+            return jsonify(import_vtmb_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'jk2':
             return jsonify(import_jk2_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'et':
@@ -1081,7 +1118,7 @@ def export_glb(model_name):
         preview = load_model_data(path, request.args.get('texture'), overrides)
         # Azrael bakes its clips at import, beside the models.
         cache = (pack_dirs[game] / 'animations' if game == 'azrael' else app_local_data_dir / 'animations' / game) / (model_name+'.json.gz')
-        if cache.is_file() and game not in ('t2', 'dx'):
+        if cache.is_file() and game not in ('t2', 'dx', 'vtmb'):
             with gzip.open(cache, 'rt', encoding='utf-8') as stream:
                 data = json.load(stream)
             data = dict(preview, **data)
@@ -1099,7 +1136,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'ge'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:

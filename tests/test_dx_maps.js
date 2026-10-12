@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('static/unreal-maps/viewer.js', 'utf8');
 function config(dx) {
-  const context = vm.createContext({dx, azrael: false, sin: false, anachronox: false, daikatana: false, quake2: false, quake: false});
+  // config: the optional page adapter (Bloodlines), absent on the Deus Ex and Unreal pages.
+  const context = vm.createContext({dx, config: undefined, azrael: false, sin: false, anachronox: false, daikatana: false, quake2: false, quake: false});
   for (const key of ['storageKey', 'POWER', 'displayPower', 'GAMES', 'dataRoot']) {
     const declaration = source.match(new RegExp(`const ${key} = [\\s\\S]*?;`));
     assert.ok(declaration, key);
@@ -25,6 +26,6 @@ assert.equal(run('JSON.stringify(GAMES.map(x => x[0]))'), '["unreal","ut"]');
 assert.equal(run('dataRoot("ut")'), '/unreal-map-data/ut/');
 assert.equal(run('displayPower("unreal", {})'), 0.8);
 assert.equal(run('displayPower("ut", {display: {power: 0.1}})'), 0.67);
-assert.ok(source.indexOf('map = {...await') < source.indexOf('uniforms.power.value = displayPower'));
+assert.ok(source.indexOf('map = {...await') < source.indexOf('displayPower(item.game, map)'));
 assert.match(source, /dx \? '\/import_dx_maps'/);
 console.log('DX and Unreal/UT viewer configuration passed');
