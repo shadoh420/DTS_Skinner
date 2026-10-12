@@ -3,6 +3,11 @@ game unreal, or ut.
 
 python tools/import_unreal.py --install C:/Unreal
 python tools/import_unreal.py --game ut --install C:/UnrealTournament
+python tools/import_unreal.py --game dx --install "C:/Games/Deus Ex"
+
+Deus Ex uses the same readers with game='dx': signed 16-bit xyz plus padding per vertex, and stock package
+discovery. import_dx.py supplies its per-class looks, waiting poses and diagnostic report; Unreal/UT keep the
+mesh catalog and skin-voting policy below.
 
 Read from the install's packages (System/*.u for the meshes, Textures/*.utx and the .u files for their skins). A
 package starts with a u32 0x9E2A83C1, u16 version (61 for 1998's files, 69 for OldUnreal 227's), u16 licensee, u32
@@ -80,7 +85,7 @@ except ImportError:  # Run as a script from tools/.
 SCALE = 1 / 52.5  # Unreal units to metres: the community's usual 52.5 to a metre.
 CATEGORY = {'unrealshare': 'Unreal', 'unreali': 'Unreal', 'upak': 'Return to Na Pali', 'botpack': 'Unreal Tournament',
             'relics': 'Relics', 'epiccustommodels': 'Bonus Pack', 'skeletalchars': 'Skeletal Characters'}
-GAMES = {'unreal': 'UnrealShare', 'ut': 'Botpack'}  # Game id: the package its install must have.
+GAMES = {'unreal': 'UnrealShare', 'ut': 'Botpack'}  # Also used by the existing Unreal maps page.
 # UT ships Unreal's packages; their meshes are the unreal game's (the same models; OldUnreal 227's are re-imports of
 # some), so ut lists only its own. They are still read for their skins and same-named meshes.
 SKIP = {'ut': ('unrealshare', 'unreali')}
@@ -96,12 +101,18 @@ STYLE_FLAGS = {2: MASKED, 3: TRANSLUCENT, 4: MODULATED}
 # The sequence whose first frame is shown, first found; otherwise frame 0 (often mid-stride in a pawn's All).
 MESH_PROPERTIES = ('Mesh', 'PlayerViewMesh', 'PickupViewMesh', 'ThirdPersonMesh')
 POSES = ('still', 'breath', 'breath1', 'idle', 'breath2', 'stand', 'look')
+# Stock GOTY code/resources only. In particular FemJC, DeusExe and DXRando are not stock.
+DX_PACKAGES = frozenset(('core', 'engine', 'editor', 'fire', 'ipdrv', 'ipserver', 'ubrowser', 'uwindow',
+                         'consys', 'extension', 'deusex', 'deusexcharacters', 'deusexdeco', 'deusexitems',
+                         'deusexui', 'deusexsounds', 'deusextext', 'deusexcontext', 'deusexconversations',
+                         'mpcharacters'))
 
 
 class Package:
     """An Unreal package's name, import and export tables, and its objects' bytes on demand."""
 
-    def __init__(self, path):
+    def __init__(self, path, game='unreal'):
+        self.game = game
         self.path, self.paths = Path(path), None
         self.data = data = self.path.read_bytes()
         magic, self.version, self.licensee, _flags, *counts = struct.unpack_from('<IHHI6I', data)
@@ -133,7 +144,7 @@ class Package:
             cls, _base = self.index(), self.index()
             outer = self.i32()
             name, flags, size = self.index(), self.i32(), self.index()
-            if flags & 0x100:
+            if flags & 0x100 and game != 'dx':
                 # ponytail: seen once (227's UnrealShare BoxRigidBody); the table then ends at the file's end.
                 self.at += 4
             offset = self.index() if size > 0 else 0
@@ -205,7 +216,10 @@ class Package:
             self.index()
         _line, _text, script = self.unpack('III')
         if not script:
-            return parent, self.class_tail()
+            props = self.class_tail()
+            if self.game == 'dx':
+                self.ended(ref)
+            return parent, props
         if not scripted:
             return None
         # ponytail: the bytecode is stored token by token (not ScriptSize bytes) and not decoded; the earliest offset
@@ -234,7 +248,7 @@ class Package:
 
         self.at += 22 + 4 * (self.version <= 61) + 20  # state masks, label table, flags; class flags and GUID
         count = self.index()
-        if checked and not 0 < count < 1000:
+        if checked and not (0 if self.game == 'dx' else 1) <= count < 1000:
             return None
         for _ in range(count):  # dependencies: a class, deep, script text CRC
             ref = self.index()
@@ -326,7 +340,7 @@ class Package:
         self.properties(ref)
         sphere = 'ffff' if self.version > 61 else 'fff'
         self.unpack('6fB' + sphere)  # UPrimitive bounds
-        verts = self.lazy(lambda: self.unpack('i')[0])
+        verts = self.lazy(lambda: self.unpack('4h')[:3] if self.game == 'dx' else self.unpack('i')[0])
         tris = self.lazy(lambda: self.unpack('3H6BIi'))
         seqs = []
         for _ in range(self.index()):
@@ -355,6 +369,8 @@ class Package:
                 self.unpack('f')
         mesh = dict(cls=cls, verts=verts, tris=tris, seqs=seqs, textures=textures, frame_verts=frame_verts,
                     frames=frames, scale=scale, origin=origin, rot=rot, special_verts=0)
+        if self.game == 'dx':
+            mesh['vertex_format'] = 'signed16'
         if cls in ('LodMesh', 'SkeletalMesh'):
             for _ in range(2):  # collapse points, face levels
                 count = self.index()
@@ -367,6 +383,12 @@ class Package:
             count = self.index()  # special faces
             self.at += 8 * count
             _model, mesh['special_verts'] = self.unpack('II')
+        if self.game == 'dx' and cls == 'LodMesh':
+            self.unpack('fffIff')  # LOD settings, remap and old frame size; same layout as UT.
+            count = self.index()
+            self.at += 2 * count
+            self.unpack('I')
+            self.ended(ref)
         if cls == 'SkeletalMesh':  # UT's: the reference pose's points as floats (bones and weights not read)
             self.unpack('fffIff')  # LOD settings
             count = self.index()  # remapped animation vertices
@@ -376,6 +398,11 @@ class Package:
             self.at += 12 * count
             mesh['points'] = [self.unpack('3f') for _ in range(self.index())]
             mesh['frame_verts'], mesh['frames'] = len(mesh['points']), 1
+        if self.game == 'dx':
+            if cls == 'Mesh':
+                self.ended(ref)
+            if frames <= 0 or frame_verts <= 0 or len(verts) != frames * frame_verts:
+                raise ValueError('vertex count does not match FrameVerts * AnimFrames')
         return mesh
 
     def text(self):
@@ -497,10 +524,18 @@ class Package:
 class Library:
     """The install's packages by name, opened on first use, and their textures as images."""
 
-    def __init__(self, install):
-        self.maps = sorted((install / 'Maps').rglob('*.unr')) if (install / 'Maps').is_dir() else []
+    def __init__(self, install, game='unreal'):
+        self.game, self.issues = game, []
+        self.maps = (sorted(p for p in (install / 'Maps').glob('*.dx') if not p.stem.lower().startswith('dxrando')) if game == 'dx' else
+                     sorted((install / 'Maps').rglob('*.unr'))) if (install / 'Maps').is_dir() else []
         self.files = {path.stem.lower(): path for folder in ('System', 'Textures') if (install / folder).is_dir()
                       for path in (install / folder).iterdir() if path.suffix.lower() in ('.u', '.utx')}
+        self.excluded = []
+        if game == 'dx':
+            self.excluded = [str(p) for name, p in self.files.items() if name.startswith('dxrando') or
+                             (p.suffix.lower() == '.u' and name not in DX_PACKAGES
+                              and not name.startswith('deusexconaudio'))]
+            self.files = {name: p for name, p in self.files.items() if str(p) not in self.excluded}
         self.packages, self.textures, self.classes = {}, {}, {}
 
     def class_properties(self, path):
@@ -515,26 +550,39 @@ class Library:
         if key not in self.classes:
             self.classes[key] = {}, {}, [path[-1]]  # Also ends a loop.
             found = None
-            for name in [path[0]] + sorted(self.files):
+            for name in [path[0]] + ([] if self.game == 'dx' else sorted(self.files)):
                 package = self.package(name) if self.files.get(name.lower(), Path()).suffix.lower() == '.u' else None
                 found = package and package.export_by_path((package.path.stem, path[-1]), 'None')
                 if found:
                     break
             try:
                 defaults = found and package.class_defaults(found, scripted=True)
-            except (struct.error, IndexError):
+            except (struct.error, IndexError, ValueError) as exc:
+                if isinstance(exc, ValueError) and self.game != 'dx':
+                    raise
                 defaults = None
+                if self.game == 'dx':
+                    self.issues.append(dict(kind='class', source='.'.join(path), reason=f'{type(exc).__name__}: {exc}'))
             if defaults:
                 parent, props = defaults
                 above = self.class_info(package.ref_path(parent)) if parent else ({}, {}, [])
                 self.classes[key] = ({**above[0], **props}, {**above[1], **{k: package for k in props}},
                                      [path[-1]] + above[2])
+            elif self.game == 'dx':
+                self.issues.append(dict(kind='class', source='.'.join(path),
+                                        reason='class missing or serialized defaults unreadable'))
         return self.classes[key]
 
     def package(self, name):
         name = name.lower()
         if name not in self.packages:
-            self.packages[name] = Package(self.files[name]) if name in self.files else None
+            try:
+                self.packages[name] = Package(self.files[name], self.game) if name in self.files else None
+            except (OSError, ValueError, struct.error, IndexError) as exc:
+                if self.game != 'dx':
+                    raise
+                self.packages[name] = None
+                self.issues.append(dict(kind='package', source=name, reason=f'{type(exc).__name__}: {exc}'))
         return self.packages[name]
 
     def resolve(self, package, ref):
@@ -792,7 +840,8 @@ def mesh_points(mesh, frame=0):
     base = frame * mesh['frame_verts']
     points = []
     packed = mesh['verts'][base:base + mesh['frame_verts']]
-    for point in mesh['points'] if 'points' in mesh else map(unpack_vertex, packed):
+    for point in mesh['points'] if 'points' in mesh else (packed if mesh.get('vertex_format') == 'signed16'
+                                                        else map(unpack_vertex, packed)):
         v = [(c - o) * s for c, o, s in zip(point, mesh['origin'], mesh['scale'])]
         points.append(tuple(sum(row[k] * v[k] for k in range(3)) for row in rows))
     return points
@@ -865,6 +914,12 @@ def slot_texture(library, skins, meshes, package, ref, mesh, index):
 def import_catalog(install, output, game='unreal'):
     """Import every mesh in the System packages of the Unreal (game unreal) or Unreal Tournament (ut) install
     `install` into `output`."""
+    if game == 'dx':
+        try:
+            from tools.import_dx import import_catalog as import_dx
+        except ImportError:
+            from import_dx import import_catalog as import_dx
+        return import_dx(install, output)
     install, output = Path(install).expanduser(), Path(output)
     library = Library(install)
     if not library.package(GAMES[game]):
@@ -946,6 +1001,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--install', type=Path, required=True)
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--game', choices=GAMES, default='unreal')
+    parser.add_argument('--game', choices=(*GAMES, 'dx'), default='unreal')
     args = parser.parse_args()
     print(import_catalog(args.install, args.output or LOCAL_DATA / args.game, args.game))

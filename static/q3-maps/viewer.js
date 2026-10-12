@@ -171,6 +171,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           vColor = ${foliage ? colour(stage).replace(/\btint\b/g, 'vertexTint') : colour(stage)};
           vDir = P - uView;
           gl_Position = projectionMatrix * viewMatrix * vec4(P.x, P.z, -P.y, 1.);
+          ${sky && config.skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''}
         }`,
       fragmentShader: `${WAVE}
         ${foliage ? 'varying float vFoliage;' : ''}
@@ -197,7 +198,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const names = ['rt', 'bk', 'lf', 'ft', 'up', 'dn'];
     return new THREE.ShaderMaterial({
       uniforms: {...uniforms, ...Object.fromEntries(names.map((name, index) => [name, {value: sides[index]}]))},
-      vertexShader: 'invariant gl_Position; uniform vec3 uView; varying vec3 vDir; void main() { vDir = position - uView; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+      vertexShader: `invariant gl_Position; uniform vec3 uView; varying vec3 vDir; void main() { vDir = position - uView; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); ${config.skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''} }`,
       fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; varying vec3 vDir;
         vec4 side(sampler2D image, vec2 p) { return texture2D(image, vec2(p.x + 1., 1. - p.y) * .5); }
         void main() {
@@ -269,8 +270,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       const lightmap = (external ? external.valid.includes(int(at + 28)) : int(at + 28) >= 0 && int(at + 28) < lightmaps.count) ? int(at + 28) : -1, origin = moved.get(face) || none;
       const vertexLit = config.vertexLightmaps && int(at + 28) === -3;
       const key = shader + (lightmap < 0 ? config.vertexLightmaps && !vertexLit ? '|unlit' : '|vertex' : '|lit');
-      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, indices: []});
+      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, indices: [], ...(map.bspCull ? {ranges: []} : {})});
       const indices = groups.get(key).indices, base = positions.length / 3;
+      const rangeStart = indices.length;
       if (type === 2) {
         // A patch is a grid of quadratic Bézier spans, each drawn as 4 × 4 quads (ArenaPrototype's default).
         const width = int(at + 96), height = int(at + 100), steps = 4;
@@ -303,6 +305,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           indices.push(base + (offset >= 0 && offset < count ? offset : 0));
         }
       }
+      if (map.bspCull) groups.get(key).ranges.push([face, rangeStart, indices.length - rangeStart]);
     }
     const attributes = {position: new THREE.Float32BufferAttribute(positions, 3), normal: new THREE.Float32BufferAttribute(normals, 3),
       uv: new THREE.Float32BufferAttribute(uvs, 2), lm: new THREE.Float32BufferAttribute(lms, 2), tint: new THREE.Float32BufferAttribute(tints, 4)};
@@ -332,7 +335,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // One mesh of each opaque surface, for dropping pickups to the floor. They are in no scene, so a ray meets them
   // in the game's own axes.
   const floors = [], floorMaterial = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
-  async function addGroup({shader, lit, vertexLit, indices}, {atlas, attributes}, serial) {
+  async function addGroup({shader, lit, vertexLit, indices, ranges}, {atlas, attributes}, serial) {
     const geometry = new THREE.BufferGeometry();
     Object.entries(attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
     geometry.setIndex(indices);
@@ -345,6 +348,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     root.add(placeholder);
     const add = (material, stage) => {
       const mesh = new THREE.Mesh(geometry, material);
+      if (shader.sky && config.skyAtFarDepth) mesh.frustumCulled = false;
       mesh.renderOrder = shader.sort * 100000 + serial * 16 + stage;  // By sort, then shader by shader, stage after stage.
       mesh.name = shader.name;
       root.add(mesh);
@@ -355,7 +359,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       (await stageMaterials(shader, stagesOf(shader, lit, false, vertexLit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
     }
     root.remove(placeholder);
-    if (shader.sort === 3 && !shader.sky) floors.push(new THREE.Mesh(geometry, floorMaterial));
+    if (shader.sort === 3 && !shader.sky) {
+      let floorGeometry = geometry;
+      if (map.bspCull) {
+        // Culling edits draw indices. Collision retains all triangles, while
+        // sharing the large, immutable vertex attributes with the draw batch.
+        floorGeometry = new THREE.BufferGeometry();
+        Object.entries(attributes).forEach(([name, attribute]) => floorGeometry.setAttribute(name, attribute));
+        floorGeometry.setIndex(geometry.index.clone());
+        floorGeometry.boundingSphere = geometry.boundingSphere;
+      }
+      floors.push(new THREE.Mesh(floorGeometry, floorMaterial));
+    }
+    if (config.bindWorldCull) config.bindWorldCull(map, geometry, ranges, shader);
   }
 
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
@@ -492,6 +508,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       holder.rotation.z = seconds % 2.048 / 2.048 * 2 * Math.PI * (fast ? 2 : 1);
       if (holder.children[1]) holder.children[1].rotation.z = -holder.rotation.z - seconds % 1.024 / 1.024 * 2 * Math.PI;  // Its own turn, undoing the holder's.
     }
+    if (config.updateCull) config.updateCull(map, camera);
     renderer.setRenderTarget(frame);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
@@ -549,6 +566,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }));
     $('map').value = mapId;
     map = await (await get(`${data}maps/${mapId}/${config.sceneFile ? config.sceneFile() : 'scene.json'}`)).json();
+    if (config.configureCamera) config.configureCamera(camera, map);
     document.title = `${map.name} — ${config.title || 'Q3 Maps'}`;
     if (map.lighting) {
       settings.fov = map.lighting.fov;
@@ -568,7 +586,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
-    if (config.addPlaced) await Promise.all((map.placed || []).map(item => config.addPlaced(item, {root, loadItemModel, ticks: placedTicks})));
+    if (config.addPlaced) await Promise.all((map.placed || []).map(item => config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map})));
     showNotes();
     ready = true;
     showReady();

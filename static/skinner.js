@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
   const compare = (a, b) => a.localeCompare(b, 'en', {numeric: true, sensitivity: 'base'});
-  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'azrael', 'vtmb'];  // Games with an import box (<id>Import).
+  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb'];  // Games with an import box (<id>Import).
   const scene = new THREE.Scene();
   scene.add(new THREE.AmbientLight(0xffffff, .6));
   const light = new THREE.DirectionalLight(0xffffff, .8);
@@ -478,7 +478,7 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.minFilter = flags & 128 ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
       texture.generateMipmaps = !(flags & 128);
     }
-    if (gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut') {
+    if (gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut' || gameId === 'dx') {
       texture.wrapS = texture.wrapT = settings.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       texture.magFilter = THREE.LinearFilter;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -580,7 +580,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }));
         // Diabotical's and Reflex's imports write the same shader settings for their cutout (foliage) and blended materials.
         // Unreal's and UT's mesh poly flags (two-sided, masked, translucent, modulated, environment) come as the same settings.
-        if ((gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut' || gameId === 'quake' || gameId === 'quake2' || gameId === 'daikatana' || gameId === 'anachronox' || gameId === 'sin' || gameId === 'rtcw' || gameId === 'et' || gameId === 'jk2' || gameId === 'azrael' || gameId === 'vtmb') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
+        if ((gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut' || gameId === 'dx' || gameId === 'quake' || gameId === 'quake2' || gameId === 'daikatana' || gameId === 'anachronox' || gameId === 'sin' || gameId === 'rtcw' || gameId === 'et' || gameId === 'jk2' || gameId === 'ja' || gameId === 'azrael' || gameId === 'vtmb') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
       }
       if (serial !== loadSerial) { disposeMaterials(newMaterials); return; }
       const geometry = new THREE.BufferGeometry();
@@ -816,7 +816,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
   $('mapsSelect').addEventListener('change', event => { const page = event.target.value; event.target.value = ''; if (page) location.assign(page); });
-  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus'], ['ut', 'importUt', 'utPath', 'utImportStatus'], ['quake', 'importQuake', 'quakePath', 'quakeImportStatus'], ['quake2', 'importQuake2', 'quake2Path', 'quake2ImportStatus'], ['daikatana', 'importDaikatana', 'daikatanaPath', 'daikatanaImportStatus'], ['anachronox', 'importAnachronox', 'anachronoxPath', 'anachronoxImportStatus'], ['sin', 'importSin', 'sinPath', 'sinImportStatus'], ['rtcw', 'importRtcw', 'rtcwPath', 'rtcwImportStatus'], ['et', 'importEt', 'etPath', 'etImportStatus'], ['jk2', 'importJk2', 'jk2Path', 'jk2ImportStatus'], ['vtmb', 'importVtmb', 'vtmbPath', 'vtmbImportStatus'], ['azrael', 'importAzrael', 'azraelPath', 'azraelImportStatus']]) {
+  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus'], ['ut', 'dx', 'importUt', 'utPath', 'utImportStatus'], ['quake', 'importQuake', 'quakePath', 'quakeImportStatus'], ['quake2', 'importQuake2', 'quake2Path', 'quake2ImportStatus'], ['daikatana', 'importDaikatana', 'daikatanaPath', 'daikatanaImportStatus'], ['anachronox', 'importAnachronox', 'anachronoxPath', 'anachronoxImportStatus'], ['sin', 'importSin', 'sinPath', 'sinImportStatus'], ['rtcw', 'importRtcw', 'rtcwPath', 'rtcwImportStatus'], ['et', 'importEt', 'etPath', 'etImportStatus'], ['jk2', 'importJk2', 'jk2Path', 'jk2ImportStatus'], ['ja', 'importJa', 'jaPath', 'jaImportStatus'], ['azrael', 'importAzrael', 'azraelPath', 'azraelImportStatus'], ['vtmb', 'importVtmb', 'vtmbPath', 'vtmbImportStatus']]) {
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();
       if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }
@@ -825,7 +825,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const response = await fetch(`/import_${gameId}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Import failed');
-        $(status).textContent = `${result.entries} entries imported; ${result.ready} previews. Existing PNG edits kept.`;
+        $(status).textContent = `${result.entries} entries imported; ${result.ready} previews. Existing PNG edits kept.${result.issues ? ` ${result.issues} import notes in ${result.report}.` : ''}`;
         if (game === gameId) await loadCatalog();
         history.length = future.length = 0; lastState = snapshot(); updateHistoryButtons();
         $('historyStatus').textContent = 'History restarted after import';

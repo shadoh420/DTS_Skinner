@@ -27,6 +27,7 @@ from tools.import_q3_map import import_maps as import_q3_maps
 from tools.import_rtcw_map import import_maps as import_rtcw_maps
 from tools.import_et_map import import_maps as import_et_maps
 from tools.import_jk2_map import import_maps as import_jk2_maps
+from tools.import_ja_map import import_maps as import_ja_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
 from tools.import_n64_map import import_maps as import_n64_maps
@@ -47,6 +48,7 @@ from tools.import_sin import import_catalog as import_sin_catalog
 from tools.import_rtcw import import_catalog as import_rtcw_catalog
 from tools.import_et import import_catalog as import_et_catalog
 from tools.import_jk2 import import_catalog as import_jk2_catalog
+from tools.import_ja import import_catalog as import_ja_catalog
 from tools.import_vtmb import import_catalog as import_vtmb_catalog
 from tools.import_azrael import import_catalog as import_azrael_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
@@ -96,7 +98,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'azrael', 'vtmb', 'ge')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -277,7 +279,7 @@ def et_maps_viewer():
 
 
 @app.route('/maps/jk2/')
-def jk2_maps_viewer():
+def jk2_maps_viewer(game='jk2'):
     text = rtcw_maps_viewer().get_data(as_text=True)
     text = text.replace('RTCW Maps', 'Jedi Outcast Maps').replace('RTCW folder', 'Jedi Outcast folder').replace('C:\\Games\\RTCW', 'C:\\Games\\Jedi Outcast\\GameData')
     text = text.replace('<script defer src="/static/q3-maps/viewer.js">', '<script defer src="/static/jk2-maps/viewer.js"></script>\n  <script defer src="/static/q3-maps/viewer.js">')
@@ -287,14 +289,26 @@ def jk2_maps_viewer():
     start = text.index('<span id="notes">') + len('<span id="notes">')
     end = text.index('</span>', start)
     text = text[:start] + 'Lightmapped surfaces, patches, far-box skies, spawn-state brushes, props and pickups. Fog, NPCs, surface-sprite foliage, portal cameras, particles and ICARUS scripts are not drawn. Water and slime stages still draw without fog. Lightstyles show their first sample; props use the light grid at spawn, without dynamic lights. MP uses FFA and the first eligible start. Lighting targets this PC’s measured software gamma and GL_LINEAR_MIPMAP_NEAREST filtering; a machine with working hardware gamma uses a display ramp instead. Retail SP 1.03 has no r_mapOverBrightBits setting: BSP light stays at 1×. Placed-model lighting awaits retail comparison.' + text[end:]
+    if game == 'ja':
+        text = text.replace('Jedi Outcast', 'Jedi Academy')
+        text = text.replace('<script defer src="/static/q3-maps/viewer.js">', '<script defer src="/static/ja-maps/viewer.js"></script>\n  <script defer src="/static/q3-maps/viewer.js">')
+        start = text.index('<span id="notes">') + len('<span id="notes">')
+        end = text.index('</span>', start)
+        text = text[:start] + 'Lightmapped surfaces, patches, far-box skies, spawn-state brushes, static models, props and pickups. Fog, NPCs (including NPC_Vehicle spawners), surface-sprite foliage, portal skies/cameras, particles and ICARUS scripts are not drawn. Lightstyles show their first sample; props use the light grid without dynamic lights. MP uses each map’s native CTF, duel, FFA or Siege mode and the first eligible Red/team 1 start; the game chooses starts at runtime. Lighting assumes this PC has no hardware gamma: overbright 0 and gamma 1 give no brightness boost. Nearest mip filtering matches retail JA SP v1.0.1.0 on this PC. Worldspawn distanceCull limits the far view; sky remains at the far depth.' + text[end:]
     response = app.response_class(text, mimetype='text/html')
     response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
     return response
 
 
+@app.route('/maps/ja/')
+def ja_maps_viewer():
+    return jk2_maps_viewer('ja')
+
+
 @app.route('/rtcw-map-data/<path:filename>')
 @app.route('/et-map-data/<path:filename>')
 @app.route('/jk2-map-data/<path:filename>')
+@app.route('/ja-map-data/<path:filename>')
 def rtcw_map_data(filename):
     shared = filename.startswith(('textures/', 'bsp/', 'models/'))
     game = request.path.split('-map-data/')[0].lstrip('/')
@@ -306,6 +320,7 @@ def rtcw_map_data(filename):
 @app.route('/import_rtcw_maps', methods=['POST'])
 @app.route('/import_et_maps', methods=['POST'])
 @app.route('/import_jk2_maps', methods=['POST'])
+@app.route('/import_ja_maps', methods=['POST'])
 def import_rtcw_maps_route():
     game = request.path.removeprefix('/import_').removesuffix('_maps')
     if foreign_request():
@@ -318,7 +333,7 @@ def import_rtcw_maps_route():
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        importer = {'et': import_et_maps, 'rtcw': import_rtcw_maps, 'jk2': import_jk2_maps}[game]
+        importer = {'et': import_et_maps, 'rtcw': import_rtcw_maps, 'jk2': import_jk2_maps, 'ja': import_ja_maps}[game]
         return jsonify(importer(payload['game'].strip(), local_data_dir / (game+'-maps'), payload.get('replace') is True))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
         return jsonify(error=str(exc)), 422
@@ -586,18 +601,21 @@ def import_vtmb_maps_route():
 
 
 @app.route('/maps/unreal/')
+@app.route('/maps/dx/')
 def unreal_maps_viewer():
-    response = send_from_directory(static_dir / 'unreal-maps', 'index.html')
+    response = send_from_directory(static_dir / ('dx-maps' if request.path == '/maps/dx/' else 'unreal-maps'), 'index.html')
     response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
     return response
 
 
 @app.route('/unreal-map-data/<path:filename>')
+@app.route('/dx-map-data/<path:filename>')
 def unreal_map_data(filename):
-    return send_from_directory(local_data_dir / 'unreal-maps', filename)
+    return send_from_directory(local_data_dir / ('dx-maps' if request.path.startswith('/dx-map-data/') else 'unreal-maps'), filename)
 
 
 @app.route('/import_unreal_maps', methods=['POST'])
+@app.route('/import_dx_maps', methods=['POST'])
 def import_unreal_maps_route():
     if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
@@ -606,13 +624,15 @@ def import_unreal_maps_route():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
         return jsonify(error='Enter your game folder.'), 400
-    game = payload.get('game', 'unreal')
-    if game not in ('unreal', 'ut'):
+    dx = request.path == '/import_dx_maps'
+    game = payload.get('game', 'dx' if dx else 'unreal')
+    if game not in (('dx',) if dx else ('unreal', 'ut')):
         return jsonify(error='Unknown game.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        return jsonify(import_unreal_maps(payload['path'].strip(), local_data_dir / 'unreal-maps' / game,
+        destination = local_data_dir / 'dx-maps' if dx else local_data_dir / 'unreal-maps' / game
+        return jsonify(import_unreal_maps(payload['path'].strip(), destination,
                                           payload.get('replace') is True, game))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
@@ -1017,6 +1037,7 @@ def import_reflex():
 @app.route('/import_rb3d', methods=['POST'])
 @app.route('/import_unreal', methods=['POST'])
 @app.route('/import_ut', methods=['POST'])
+@app.route('/import_dx', methods=['POST'])
 @app.route('/import_quake', methods=['POST'])
 @app.route('/import_quake2', methods=['POST'])
 @app.route('/import_daikatana', methods=['POST'])
@@ -1024,6 +1045,7 @@ def import_reflex():
 @app.route('/import_sin', methods=['POST'])
 @app.route('/import_rtcw', methods=['POST'])
 @app.route('/import_et', methods=['POST'])
+@app.route('/import_ja', methods=['POST'])
 @app.route('/import_vtmb', methods=['POST'])
 @app.route('/import_jk2', methods=['POST'])
 @app.route('/import_anachronox', methods=['POST'])
@@ -1043,10 +1065,12 @@ def import_conversion_pack():
             return jsonify(import_t1_mod(payload['path'].strip(), pack_dirs[game], textures_dir, game, T1_MODS[game]))
         if game in ('es1', 'es2'):
             return jsonify(import_earthsiege_catalog(payload['path'].strip(), pack_dirs[game], game))
-        if game in ('unreal', 'ut'):
+        if game in ('unreal', 'ut', 'dx'):
             return jsonify(import_unreal_catalog(payload['path'].strip(), pack_dirs[game], game))
         if game == 'azrael':
             return jsonify(import_azrael_catalog(payload['path'].strip(), pack_dirs[game]))
+        if game == 'ja':
+            return jsonify(import_ja_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'vtmb':
             return jsonify(import_vtmb_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'jk2':
@@ -1094,7 +1118,7 @@ def export_glb(model_name):
         preview = load_model_data(path, request.args.get('texture'), overrides)
         # Azrael bakes its clips at import, beside the models.
         cache = (pack_dirs[game] / 'animations' if game == 'azrael' else app_local_data_dir / 'animations' / game) / (model_name+'.json.gz')
-        if cache.is_file() and game not in ('t2', 'vtmb'):
+        if cache.is_file() and game not in ('t2', 'dx', 'vtmb'):
             with gzip.open(cache, 'rt', encoding='utf-8') as stream:
                 data = json.load(stream)
             data = dict(preview, **data)
@@ -1112,7 +1136,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'azrael', 'vtmb', 'ge'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:
