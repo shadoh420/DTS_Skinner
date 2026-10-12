@@ -187,12 +187,37 @@ def material_settings(vmt):
             notes.append(f'{key} is recorded but not evaluated')
     if enabled('$selfillum'):
         notes.append('$selfillum recorded; shared preview/export lighting does not reproduce its alpha mask')
-    if vmt['shader'].lower() not in ('vertexlitgeneric', 'lightmappedgeneric', 'unlitgeneric'):
+    refract = vmt['shader'].lower() in ('refract', 'water') and not p.get('$basetexture')
+    if refract:
+        blend = ['gl_src_alpha', 'gl_one_minus_src_alpha']
+        notes.append(f'{vmt["shader"]} without a base texture: 25% opacity tint preview; framebuffer distortion, reflections and water fog are not evaluated')
+    elif vmt['shader'].lower() not in ('vertexlitgeneric', 'lightmappedgeneric', 'unlitgeneric'):
         notes.append(f'{vmt["shader"]}: base-texture approximation')
-    return dict(alphaFunc='GE128' if enabled('$alphatest') else '', blend=blend,
+    return dict(alphaFunc='GE128' if enabled('$alphatest') and not refract else '', blend=blend,
                 depthWrite=not bool(blend), cull='none' if enabled('$nocull') else 'back',
-                shader=vmt['shader'], unlit=vmt['shader'].lower() == 'unlitgeneric',
+                shader=vmt['shader'], unlit=refract or vmt['shader'].lower() == 'unlitgeneric',
                 selfillum=enabled('$selfillum'), parameters=p), notes
+
+
+def material_texture(files, vmt):
+    """Diffuse texture or an explicit preview for framebuffer-only refraction."""
+    params = vmt['params']
+    base = params.get('$basetexture')
+    if base is not None and not isinstance(base, str):
+        raise ValueError('VMT $basetexture must be a string')
+    if isinstance(base, str) and base:
+        return read_texture(files, base)
+    if vmt['shader'].lower() not in ('refract', 'water'):
+        raise ValueError('VMT has no $basetexture')
+    tint = str(params.get('$refracttint', '[1 1 1]')).strip('[] ').split()
+    try:
+        values = [float(v) for v in tint]
+    except ValueError as exc:
+        raise ValueError('Invalid Refract tint') from exc
+    if len(values) != 3 or not all(math.isfinite(v) and 0 <= v <= 1 for v in values):
+        raise ValueError('Invalid Refract tint')
+    color = tuple(round(v * 255) for v in values) + (64,)
+    return Image.new('RGBA', (1, 1), color), dict(generated=f'{vmt["shader"]} tint preview', opacity=64/255)
 
 
 def image_size(fmt, width, height):

@@ -215,7 +215,9 @@ def face_geometry(bsp, number):
         raise ValueError('Invalid face surfedges')
     corners = np.array([indexed(bsp['points'], indexed(bsp['edges'], abs(e), 'edge')[0 if e >= 0 else 1], 'vertex')
                         for e in bsp['surfedges'][first:first+count]], dtype=float)
-    normal = np.array(indexed(bsp['planes'], face['plane'], 'plane')[:3]) * (-1 if face['side'] else 1)
+    # BSP17 indexes the oriented member of an opposite-plane pair. The side
+    # byte repeats that orientation; applying it again reverses negative sides.
+    normal = np.array(indexed(bsp['planes'], face['plane'], 'plane')[:3])
     # BSP edge order is not assumed; orient triangles using the authored plane.
     points = corners
     triangles = [(0, i, i+1) for i in range(1, count-1)]
@@ -369,7 +371,7 @@ def build_map(raw, name, files, lighting=None):
         try:
             vmt, path = resolve_material(files, name, directories)
             settings, notes = vtmb.material_settings(vmt)
-            image, info = vtmb.read_texture(files, vmt['params'].get('$basetexture', ''))
+            image, info = vtmb.material_texture(files, vmt)
             png = key(path) + '.png'; images[png] = image
             notes = [n for n in notes if not n.startswith('$selfillum recorded;')]
             record.update(texture=png, settings=settings, notes=notes, source=path, origin=files[path].origin)

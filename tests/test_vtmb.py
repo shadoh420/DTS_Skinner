@@ -326,6 +326,64 @@ class BloodlinesTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'size table'):
                 vtmb.read_texture(files, 'x')
 
+    def test_tth_fully_resident_and_missing_tail(self):
+        full = vtf()
+        head = struct.pack('<4sHBBI4I', b'TTH\0', 1, 1, 1, len(full), 64, 0, len(full), 0)
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp)/'full.tth'; path.write_bytes(head+full)
+            files = {'materials/full.tth': vtmb.Asset(path, 0, path.stat().st_size, 'test')}
+            image, info = vtmb.read_texture(files, 'full')
+            self.assertEqual(image.getpixel((0, 0)), (255, 0, 0, 255))
+            self.assertEqual(len(info['sources']), 1)
+            bad = bytearray(head+full); bad[7] = 0; path.write_bytes(bad)
+            with self.assertRaisesRegex(ValueError, 'Missing TTZ'):
+                vtmb.read_texture(files, 'full')
+            bad[4] = 2; path.write_bytes(bad)
+            with self.assertRaisesRegex(ValueError, 'Unsupported TTH'):
+                vtmb.read_texture(files, 'full')
+
+    def test_refract_preview_and_missing_diffuse_are_distinct(self):
+        vmt = vtmb.read_vmt(b'Refract { "$basetexture" "" "$refracttint" "[1 0.5 0]" "$alphatest" "1" }')
+        image, info = vtmb.material_texture({}, vmt)
+        self.assertEqual(image.getpixel((0, 0)), (255, 128, 0, 64))
+        settings, notes = vtmb.material_settings(vmt)
+        self.assertTrue(settings['unlit']); self.assertTrue(settings['blend'])
+        self.assertFalse(settings['alphaFunc'])
+        water = vtmb.read_vmt(b'Water { "$refracttexture" "_rt_WaterRefraction" "%tooltexture" "editor_only" "$refracttint" "[0.3 0.4 0.2]" }')
+        water_image, _ = vtmb.material_texture({}, water)
+        self.assertEqual(water_image.getpixel((0, 0)), (76, 102, 51, 64))
+        self.assertTrue(vtmb.material_settings(water)[0]['blend'])
+        for data in (b'VertexLitGeneric {}', b'VertexLitGeneric { "$basetexture" "missing" }',
+                     b'Refract { "$refracttint" "[nan 1 1]" }'):
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                vtmb.material_texture({}, vtmb.read_vmt(data))
+
+    def test_catalog_reference_paths_refraction_and_unused_slots(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); install = root/'install'; install.mkdir(); install_fixture(install)
+            patch_dir = install/'Unofficial_Patch'
+            materials = patch_dir/'materials/models/test'; materials.mkdir(parents=True)
+            (materials/'red.vmt').write_text('Refract { "$refracttint" "[1 1 1]" }')
+            (materials/'blue.vmt').write_text('VertexLitGeneric { "$basetexture" "/TEST\\blue" }')
+            raw, vtx = mdl_fixture(); data = bytearray(raw)
+            textures = len(data); data.extend(bytes(60))
+            for i, name in enumerate((b'red\0', b'blue\0', b'unused\0')):
+                at = textures+i*20; struct.pack_into('<i', data, at, len(data)-at); data.extend(name)
+            struct.pack_into('<ii', data, 292, 3, textures)
+            struct.pack_into('<i', data, 140, len(data))
+            models = patch_dir/'models/items'; models.mkdir(parents=True)
+            (models/'tiny.mdl').write_bytes(data)
+            report = import_catalog(install, root/'out')
+            self.assertEqual(report['unresolved_used_materials'], 0)
+            self.assertEqual(report['unresolved_unused_materials'], 1)
+            self.assertEqual(report['unresolved_materials'], 1)
+            self.assertEqual(report['unresolved_textures'], 0)
+            slots = report['material_results']
+            self.assertTrue(next(x for x in slots if x['name'] == 'blue')['used_by_exported_geometry'])
+            unused = next(x for x in slots if x['name'] == 'unused')
+            self.assertFalse(unused['used_by_exported_geometry'])
+            self.assertIn('Missing VMT', unused['reason'])
+
     def test_mdl_pose_skins_and_rejections(self):
         raw, vtx = mdl_fixture()
         mesh = vtmb.read_mdl(raw, vtx)

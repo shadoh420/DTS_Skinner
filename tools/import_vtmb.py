@@ -15,11 +15,11 @@ import re
 from PIL import Image
 
 try:
-    from tools.vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
+    from tools.vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, material_texture, read_vmt, material_settings
     from tools.local_data import LOCAL_DATA
     from tools.texture_workshop import write_json_atomic
 except ImportError:
-    from vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
+    from vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, material_texture, read_vmt, material_settings
     from local_data import LOCAL_DATA
     from texture_workshop import write_json_atomic
 
@@ -75,26 +75,28 @@ def import_catalog(install, output):
         image = Image.new('RGBA', (2, 2)); image.putdata([(255, 0, 255, 255), (32, 32, 32, 255)] * 2); image.save(missing)
     records, catalog, seen, materials, textures = [], [], {}, {}, {}
 
-    def material(name, directories):
+    def material(name, directories, used):
         cache = (name, tuple(directories))
         if cache in materials:
+            materials[cache]['used_by_exported_geometry'] |= used
             return materials[cache]
-        result = dict(name=name, search_directories=directories, texture=missing.name, settings={}, status='unresolved')
+        result = dict(name=name, search_directories=directories, texture=missing.name, settings={}, status='unresolved',
+                      used_by_exported_geometry=used)
         materials[cache] = result
         try:
             vmt, path = resolve_material(files, name, directories)
             settings, notes = material_settings(vmt)
             result.update(source=path, origin=files[path].origin, settings=settings, notes=notes)
             base = vmt['params'].get('$basetexture')
-            if not isinstance(base, str) or not base:
-                raise ValueError('VMT has no $basetexture')
-            base = asset_name(base.replace('\\', '/'))
+            base = asset_reference(base) if isinstance(base, str) and base else None
             result['basetexture'] = base
+            # Generated shader previews are keyed by VMT, real images by texture.
+            base = base or path
             if base not in textures:
                 record = dict(source=base, status='unresolved')
                 textures[base] = record
                 try:
-                    image, info = read_texture(files, base)
+                    image, info = material_texture(files, vmt)
                     png = key(base) + '.png'
                     target = output / 'textures' / png
                     if not target.exists(): image.save(target)
@@ -134,11 +136,14 @@ def import_catalog(install, output):
             record['companion_failures'] = failures
             if mesh is None: raise ValueError('No readable VTX: ' + '; '.join(f['reason'] for f in failures))
             dirs = mesh['metadata']['material_directories']
-            slots = [material(n, dirs) for n in mesh['material_names']]
             families = mesh.pop('skin_table')
             skin_refs = mesh.pop('skin_refs')
+            used = {family[ref] for family in families for ref in skin_refs}
+            slots = [dict(material(n, dirs, i in used), used_by_exported_geometry=i in used)
+                     for i, n in enumerate(mesh['material_names'])]
             record.update(status='ready', model=model_key, skins=len(families), vtx=companion,
-                          pose=mesh['metadata']['pose'], looks=[], unresolved_materials=sum(r['status'] != 'ready' for r in slots))
+                          pose=mesh['metadata']['pose'], looks=[], unresolved_materials=sum(r['status'] != 'ready' for r in slots),
+                          unresolved_used_materials=sum(slots[i]['status'] != 'ready' for i in used))
             mesh['material_textures'] = [r['texture'] for r in slots]
             mesh['material_settings'] = [r['settings'] for r in slots]
             mesh['metadata'].update(source=item['source'], vtx=companion,
@@ -164,6 +169,8 @@ def import_catalog(install, output):
                   skins=sum(r.get('skins', 0) for r in records),
                   textures=sum(r['status'] == 'ready' for r in textures.values()),
                   unresolved_materials=sum(r['status'] != 'ready' for r in materials.values()),
+                  unresolved_used_materials=sum(r['status'] != 'ready' and r['used_by_exported_geometry'] for r in materials.values()),
+                  unresolved_unused_materials=sum(r['status'] != 'ready' and not r['used_by_exported_geometry'] for r in materials.values()),
                   unresolved_textures=sum(r['status'] != 'ready' for r in textures.values()),
                   inventory=inventory, results=records, material_results=list(materials.values()), texture_results=list(textures.values()),
                   scope='All effective models; all their material slots. Unreferenced world materials/textures indexed only.',

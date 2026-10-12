@@ -170,6 +170,29 @@ second" } // comment with braces {}
         parsed['faces'][0]['first'] = -1
         with self.assertRaises(ValueError): maps.face_geometry(parsed, 0)
 
+    def test_oriented_plane_is_not_flipped_twice(self):
+        parsed = maps.read_bsp(bsp(static=False))
+        parsed['planes'].append((0, 0, -1, 0, 2))
+        parsed['faces'][0].update(plane=1, side=1)
+        p, _, _, tri, _, _ = maps.face_geometry(parsed, 0)
+        normals = np.cross(p[tri[:, 1]]-p[tri[:, 0]], p[tri[:, 2]]-p[tri[:, 0]])
+        # Observer below the plane must see its authored negative-facing side.
+        self.assertTrue(np.all(normals[:, 2] < 0))
+
+    def test_refract_without_base_is_not_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); fixture(root)
+            files, _ = vtmb.read_install(root)
+            files['materials/test/floor.vmt'] = maps.EmbeddedAsset(
+                b'Refract { "$refracttint" "[0.5 0.75 1]" "$alphatest" "1" }', 'test')
+            scene, _, images, _ = maps.build_map(bsp(static=False), 'test', files)
+            self.assertFalse(scene['missing_reasons'])
+            g = next(g for g in scene['groups'] if g['kind'] == 'surface')
+            self.assertEqual(images[g['texture']].getpixel((0, 0)), (128, 191, 255, 64))
+            self.assertTrue(g['settings']['blend'])
+            self.assertFalse(g['settings']['alphaFunc'])
+            self.assertTrue(any('framebuffer' in n for n in g['notes']))
+
     def test_displacement_grid_and_tags(self):
         parsed = maps.read_bsp(bsp(displacement=True, static=False))
         p, uv, lm, tri, _, _ = maps.face_geometry(parsed, 0)
