@@ -336,8 +336,9 @@ def read_skin(raw):
 def shader_definitions(game):
     # Original RTCW concatenates the FS script listing in reverse order and
     # accepts the first definition. Same-name files still use the winning mount.
+    directory = re.escape(getattr(game, 'shader_directory', 'scripts'))
     listed = list(dict.fromkeys(n for _, files in game.sources for n in files
-                               if re.fullmatch(r'scripts/[^/]+\.shader', n)))
+                               if re.fullmatch(directory+r'/[^/]+\.shader', n)))
     result = {}
     for name in reversed(listed):
         try:
@@ -350,9 +351,9 @@ def shader_definitions(game):
     return result
 
 
-def shader_maps(game):
+def shader_maps(game, definitions=None):
     result = {}
-    for shader, (body, stages, name) in shader_definitions(game).items():
+    for shader, (body, stages, name) in (shader_definitions(game) if definitions is None else definitions).items():
         # Reuse the Q3 first-stage material interpreter after RTCW precedence.
         text = shader+'\n{\n'+'\n'.join(' '.join(r) for r in body)+'\n'
         text += '\n'.join('{\n'+'\n'.join(' '.join(r) for r in s)+'\n}' for s in stages)+'\n}'
@@ -402,8 +403,8 @@ def shader_maps(game):
 
 
 class Textures(q3.Textures):
-    def __init__(self, game, output):
-        super().__init__(game.assets, Path(output), shaders=shader_maps(game), prefix=game.section+'_',
+    def __init__(self, game, output, *, shaders=None):
+        super().__init__(game.assets, Path(output), shaders=shader_maps(game) if shaders is None else shaders, prefix=game.section+'_',
                          image_extensions=IMAGE_EXTS)
         self.results = {}
 
@@ -420,8 +421,8 @@ class Textures(q3.Textures):
 
 class CatalogTextures(Textures):
     """Catalog-only source sharing; the map importer keeps its own image pipeline."""
-    def __init__(self, game, library):
-        super().__init__(game, library.output)
+    def __init__(self, game, library, *, shaders=None):
+        super().__init__(game, library.output, shaders=shaders)
         self.game, self.library, self.converted = game, library, {}
 
     def convert(self, key):
