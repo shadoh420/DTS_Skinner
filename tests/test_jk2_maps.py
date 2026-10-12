@@ -115,6 +115,9 @@ surfaceSprites vertical 1 2 3 4
             mp=maps.lighting_profile(root,'mp',game);self.assertEqual(mp['sourceLightScale'],1)
             textures=maps.base.Textures(root/'textures',game);desc,missing,notes=maps.describe(game,'textures/test/wall',textures)
             self.assertFalse(missing);self.assertEqual(len(desc['stages']),2);self.assertTrue(any('surfaceSprites' in x for x in notes))
+            # A name with no script falls back to its image, not to an empty material.
+            desc,missing,_=maps.describe(game,'models/test/skin',textures)
+            self.assertFalse(missing);self.assertTrue(desc.get('implicit') or desc.get('stages'))
             result=maps.import_maps(root,out)
             self.assertEqual(len(result['imported']),2);self.assertIn('sp_broken',result['failed'])
             scene=json.loads((out/'maps/sp_kejim_test/scene.json').read_text())

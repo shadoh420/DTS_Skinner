@@ -240,7 +240,7 @@ def describe(game,name,textures):
         if any(r[0]=='surfacesprites' for r in stage):notes.append('surfaceSprites/ss foliage not drawn');continue
         kept.append([['rgbgen','lightingdiffuse'] if r[:2]==['rgbgen','lightingdiffuseentity'] else r for r in stage])
         if any(r[0]=='glow' for r in stage):notes.append('glow bloom not drawn')
-    game.shaders[name]=(body,kept)
+    if name in game.shaders:game.shaders[name]=(body,kept)  # Script-less names keep the implicit image + lightmap.
     result,missing,limits=base.describe(game,name,textures)
     sky=next((r for r in body if r[0]=='skyparms' and len(r)>1 and r[1]!='-'),None)
     if sky and 'sky' in result:
