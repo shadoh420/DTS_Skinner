@@ -620,6 +620,10 @@ def unreal_maps_viewer():
 @app.route('/unreal-map-data/<path:filename>')
 @app.route('/dx-map-data/<path:filename>')
 def unreal_map_data(filename):
+    if request.path.startswith('/dx-map-data/') and filename.startswith('textures/'):
+        name = filename.removeprefix('textures/')
+        return send_from_directory(game_textures('dx'), name,
+                                   mimetype='image/vnd-ms.dds' if name.lower().endswith('.dds') else None)
     return send_from_directory(local_data_dir / ('dx-maps' if request.path.startswith('/dx-map-data/') else 'unreal-maps'), filename)
 
 

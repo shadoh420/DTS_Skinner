@@ -43,6 +43,8 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 
 Bloodlines models and maps share one texture library and keep DXT textures with their original mipmaps; model geometry is stored in indexed binary files. Texture downloads and edited copies are PNGs.
 
+Deus Ex models and maps share their texture folder and store model geometry in binary files.
+
 Tribes map details: [T1 maps](docs/t1-map-viewer.md), [T2 maps](docs/t2-map-viewer.md). Export details: [ANIMATION_EXPORT.md](ANIMATION_EXPORT.md).
 
 **GoldenEye 007 (Tribes mod)** levels are not included; convert your copy with

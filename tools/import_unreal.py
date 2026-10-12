@@ -712,6 +712,35 @@ def texture_mips(package, ref):
     return props, mips
 
 
+def texture_asset(library, package, ref, masked=False, compressed=False):
+    """Resolved texture -> (shared filename, PNG image or DDS bytes, width, height).
+
+    Opt-in storage policy; existing Unreal/UT callers keep decode_texture. DX uses
+    masked=True on both sides: palette index 0 is clear, opaque materials ignore alpha.
+    The suffix distinguishes these derived pixels from existing opaque PNG/user edits.
+    """
+    props, mips = texture_mips(package, ref)
+    if not mips:
+        raise ValueError('no mips')
+    _, width, height = mips[0]
+    kind = props.get('Format', 0)
+    name = safe('.'.join(package.ref_path(ref)))
+    cls = package.ref_name(package.exports[ref - 1]['cls'])
+    if compressed and kind in (3, 6, 7) and cls == 'Texture' and not (props.get('AnimNext') or props.get('AnimCurrent')):
+        try:
+            from tools.texture_storage import dds_bytes
+        except ImportError:
+            from texture_storage import dds_bytes
+        for level, (_, w, h) in enumerate(mips):
+            if (w, h) != (max(1, width >> level), max(1, height >> level)):
+                raise ValueError('Invalid DXT mip dimensions')
+        payload = dds_bytes(width, height, {3: 'DXT1', 6: 'DXT3', 7: 'DXT5'}[kind], [m[0] for m in mips])
+        return name + '.dds', payload, width, height
+    image = decode_texture(library, package, ref, masked)
+    suffix = '_masked' if kind == 0 and (masked or props.get('bMasked')) else ''
+    return name + suffix + '.png', image, image.width, image.height
+
+
 def decode_texture(library, package, ref, masked=False):
     """The first mip of texture export `ref` as an RGBA image; a masked texture's palette index 0 is clear, and with
     `masked` any palette texture's (the game masks a texture wherever a surface is drawn masked: map surfaces).

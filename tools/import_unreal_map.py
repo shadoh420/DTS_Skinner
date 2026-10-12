@@ -46,12 +46,14 @@ from PIL import Image
 
 try:
     from tools.import_diabotical_models import safe
-    from tools.import_unreal import GAMES, POSES, SCALE, STYLE_FLAGS, Library, Package, mesh_faces, mesh_points, rotation
+    from tools.import_unreal import GAMES, POSES, SCALE, STYLE_FLAGS, Library, Package, mesh_faces, mesh_points, rotation, texture_asset
+    from tools.texture_storage import game_texture_dir, write_texture
     from tools.local_data import LOCAL_DATA
     from tools.import_dx import actor_texture, display_settings, map_actor_kind, map_group, mesh_views, standing_pose
 except ImportError:  # Run as a script from tools/.
     from import_diabotical_models import safe
-    from import_unreal import GAMES, POSES, SCALE, STYLE_FLAGS, Library, Package, mesh_faces, mesh_points, rotation
+    from import_unreal import GAMES, POSES, SCALE, STYLE_FLAGS, Library, Package, mesh_faces, mesh_points, rotation, texture_asset
+    from texture_storage import game_texture_dir, write_texture
     from local_data import LOCAL_DATA
     from import_dx import actor_texture, display_settings, map_actor_kind, map_group, mesh_views, standing_pose
 
@@ -283,7 +285,16 @@ def build_map(library, level, default, game='unreal'):
             pick = (package, ref) if ref else default
             # Index 0 clear on every palette texture: where a surface is masked the game cuts it out (even where
             # the texture is not bMasked: the sky panoramas), and opaque surfaces ignore alpha.
-            image = pick and library.texture(*pick, masked=True)
+            image = None
+            if game == 'dx':
+                found = pick and library.resolve(*pick)
+                if found:
+                    try:
+                        image = texture_asset(library, *found, masked=True, compressed=True)
+                    except (struct.error, ValueError, KeyError, IndexError, OSError) as exc:
+                        library.issues.append(dict(kind='texture', source='.'.join(found[0].ref_path(found[1])), reason=str(exc)))
+            else:
+                image = pick and library.texture(*pick, masked=True)
             if not image:
                 textures[key] = ('missing.png', 64, 64, 0)
                 images['missing.png'] = None
@@ -292,10 +303,11 @@ def build_map(library, level, default, game='unreal'):
                 package, at = library.resolve(*pick)
                 props = package.properties(at)
                 scale = props.get('DrawScale', 1.0) or 1.0
-                png = safe(image[0]) + '.png'
+                png = image[0] if game == 'dx' else safe(image[0]) + '.png'
                 images[png] = image[1]
                 own = props.get('PolyFlags', 0) | (MASKED if props.get('bMasked') else 0)
-                textures[key] = (png, image[1].width * scale, image[1].height * scale, own)
+                width, height = image[2:] if game == 'dx' else image[1].size
+                textures[key] = (png, width * scale, height * scale, own)
         return textures[key]
 
     groups, flipped, polygons, floors, floor_lights, invisible_floors = {}, 0, 0, [], [], []
@@ -699,6 +711,11 @@ def build_map(library, level, default, game='unreal'):
 def import_maps(install, output, replace=False, game='unreal'):
     """Import maps from `install` into `output`; game is unreal, ut, or stock dx."""
     install, output = Path(install).expanduser(), Path(output)
+    texture_dir = game_texture_dir(output.parent, 'dx') if game == 'dx' else output / 'textures'
+    if game == 'dx':
+        for target in (output, texture_dir):
+            if target.resolve() == install.resolve() or install.resolve() in target.resolve().parents:
+                raise ValueError('Import output and shared textures must be outside the read-only game install')
     library = Library(install, game=game)
     required = 'DeusEx' if game == 'dx' else GAMES[game]
     if not library.package(required) or not library.maps:
@@ -708,7 +725,8 @@ def import_maps(install, output, replace=False, game='unreal'):
     engine = library.package('engine')
     default = engine and engine.export_by_path(('Engine', 'DefaultTexture'), 'Texture')
     default = default and (engine, default)
-    (output / 'textures').mkdir(parents=True, exist_ok=True)
+    texture_dir.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True)
     index_path = output / 'index.json'
     index = {item['id']: item for item in json.loads(index_path.read_text(encoding='utf-8'))} if index_path.is_file() else {}
     result, written = dict(imported=[], skipped=[], failed={}), set()
@@ -730,8 +748,10 @@ def import_maps(install, output, replace=False, game='unreal'):
             result['failed'][path.stem] = str(exc)
             continue
         for png, image in images.items():
-            target = output / 'textures' / png
-            if png not in written and (replace or not target.is_file()):  # A re-import rewrites them once.
+            target = texture_dir / png
+            if game == 'dx':
+                write_texture(texture_dir, png, image or Image.new('RGB', (8, 8), '#808080'))
+            elif png not in written and (replace or not target.is_file()):  # A re-import rewrites them once.
                 (image or Image.new('RGB', (8, 8), '#808080')).save(target)
                 written.add(png)
         folder.mkdir(parents=True, exist_ok=True)
