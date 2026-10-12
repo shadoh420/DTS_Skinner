@@ -52,6 +52,7 @@
       };
       update(0); root.add(holder);
       if (item.spin) ticks.push(update);
+      return holder;
     },
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
