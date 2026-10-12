@@ -3,6 +3,8 @@
 OpenJK SP and MP are rules-only references; no engine source is included.
 """
 import argparse
+import hashlib
+import io
 import json
 import math
 from pathlib import Path
@@ -11,14 +13,19 @@ import struct
 import sys
 
 import numpy as np
+from PIL import Image
 
 try:
     from tools import import_jk2_map as jk, import_ja as ja
     from tools.ja_map_items import MP_ITEMS
+    from tools.texture_storage import SourceTextureStore, game_texture_dir
+    from tools.model_data import write_surface_data
 except ImportError:
     import import_jk2_map as jk
     import import_ja as ja
     from ja_map_items import MP_ITEMS
+    from texture_storage import SourceTextureStore, game_texture_dir
+    from model_data import write_surface_data
 
 base,number,vector=jk.base,jk.number,jk.vector
 BAKED_MODELS=('misc_model',)
@@ -55,6 +62,49 @@ class Game(jk.Game,ja.Game):
     profile=staticmethod(lighting_profile)
     model_rules=ja
     mp_items=MP_ITEMS
+    write_surface_data=staticmethod(write_surface_data)
+
+
+def texture_directory(output):
+    return game_texture_dir(Path(output).parent,'ja')
+
+
+class Textures(base.Textures):
+    def __init__(self,output,game,*,uploaded=True):
+        super().__init__(output,game)
+        self.store=SourceTextureStore(output,game.assets);self.uploaded=uploaded;self.resolved={}
+
+    def process(self,filename,mipmap=True,picmip=True):
+        with Image.open(self.output/filename) as source:image=source.convert('RGBA')
+        result=base.upload_image(image,self.game.lighting,mipmap,picmip)
+        if result.size==image.size and result.tobytes()==image.tobytes():return filename
+        encoded=io.BytesIO();result.save(encoded,format='PNG')
+        name=filename.rsplit('__',1)[0]+'__'+hashlib.sha256(encoded.getvalue()).hexdigest()[:12]+'.png'
+        return self.store.write(name,encoded.getvalue())
+
+    def resolve(self,game,path):
+        key=ja.q3.key_name(path).lstrip('/');sky=key in self.sky_paths
+        mipmap,picmip=self.mipmap or sky,self.picmip or sky
+        cache=(key,mipmap,picmip)
+        if cache in self.resolved:return self.resolved[cache]
+        for candidate in dict.fromkeys(ja.base.image_candidates(key)):
+            if candidate not in game.assets:continue
+            raw=game.read(candidate)
+            try:
+                with Image.open(io.BytesIO(raw)) as source:image=source.convert('RGBA')
+                processed=base.upload_image(image,game.lighting,mipmap,picmip) if self.uploaded else image
+                if processed.size==image.size and processed.tobytes()==image.tobytes():
+                    filename=self.store.convert(None,raw,candidate)
+                else:filename=self.store.derived(raw,candidate,processed)
+            except (ValueError,OSError):continue
+            self.resolved[cache]=filename;return filename
+        self.resolved[cache]=None;return None
+
+
+class ModelTextures(jk.ModelTextures):
+    def __init__(self,game,output):
+        super().__init__(game,output)
+        self.raw=Textures(output,game,uploaded=False)
 
 
 class LightGrid(jk.LightGrid):

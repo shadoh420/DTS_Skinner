@@ -111,6 +111,9 @@ class JAMapTests(unittest.TestCase):
             self.assertEqual(result['imported'],['sp_yavin1','mp_ctf1']);self.assertIn('sp_bad',result['failed'])
             self.assertFalse(result['sweep']['missing']);self.assertFalse(result['sweep']['defaults'])
             scene=json.loads((out/'maps/sp_yavin1/scene.json').read_text())
+            prop=out/next(iter(scene['itemModels'].values()))['file']
+            self.assertIn('geometry_buffers',json.loads(prop.read_text()))
+            self.assertFalse(list((out/'textures').glob('*')))
             self.assertEqual(scene['game'],'ja');self.assertEqual(len(scene['placed']),1)
             self.assertEqual(scene['distanceCull'],1800);self.assertEqual(scene['farClip'],3117.6)
             self.assertEqual(scene['bspCull']['surfaceCount'],2)

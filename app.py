@@ -314,6 +314,11 @@ def ja_maps_viewer():
 def rtcw_map_data(filename):
     shared = filename.startswith(('textures/', 'bsp/', 'models/'))
     game = request.path.split('-map-data/')[0].lstrip('/')
+    if game == 'ja' and filename.startswith('textures/'):
+        from tools.texture_storage import map_data_path
+        path = map_data_path(local_data_dir, game, filename, game_textures(game))
+        if path is None or not path.is_file(): abort(404)
+        return send_file(path, max_age=0)
     response = send_from_directory(local_data_dir / (game+'-maps'), filename, max_age=31536000 if shared else None)
     response.cache_control.immutable = shared
     return response
@@ -884,7 +889,7 @@ def set_texture_tags():
         filename = payload['filename']
         material_texture_refs(dict(game='t1', material_textures=[filename], material_texture_games=[game]))
         if not filename.lower().endswith(TEXTURE_SUFFIXES):
-            raise ValueError('Tags require a PNG or DDS texture filename')
+            raise ValueError('Tags require a PNG, JPG or DDS texture filename')
         if not (game_textures(game) / filename).is_file():
             return jsonify(error='Texture no longer exists.'), 404
         tags = save_tags(local_data_dir / 'texture-tags.json', game, filename, payload['tags'])

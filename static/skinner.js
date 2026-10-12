@@ -666,7 +666,7 @@ window.addEventListener('DOMContentLoaded', () => {
       $('texturePreview').src = `${textureUrl(filename, textureGame, slotTransform(data, slot))}${opaque ? '&opaque=1' : ''}&v=${Date.now()}`;
       if (opaque) $('textureDetails').textContent += ' · RGB preview; alpha retained in PNG';
       $('downloadTexture').href = textureUrl(filename, textureGame, slotTransform(data, slot)) + '&download=1';
-      $('downloadTexture').download = filename.replace(/\.dds$/i, '.png');
+      $('downloadTexture').download = filename.replace(/\.(dds|jpe?g)$/i, '.png');
     } else {
       $('texturePreview').removeAttribute('src');
       $('downloadTexture').removeAttribute('href');

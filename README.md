@@ -79,6 +79,8 @@ The app is not code-signed, so SmartScreen may warn on first start ("More info",
 
 ## Development
 
+Jedi Academy models and maps share textures, keep unchanged JPG originals, and store mesh geometry in binary files.
+
 Run the tests with `python -B -m unittest discover -s tests -v`; `tools/check_texture_workshop.cjs` and `tools/check_viewport_workshop.cjs` check the browser UI (Playwright). [RELEASING.md](RELEASING.md) is the release recipe.
 
 ## Credits and license
