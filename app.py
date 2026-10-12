@@ -532,18 +532,21 @@ def import_anachronox_maps_route():
 
 
 @app.route('/maps/unreal/')
+@app.route('/maps/dx/')
 def unreal_maps_viewer():
-    response = send_from_directory(static_dir / 'unreal-maps', 'index.html')
+    response = send_from_directory(static_dir / ('dx-maps' if request.path == '/maps/dx/' else 'unreal-maps'), 'index.html')
     response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
     return response
 
 
 @app.route('/unreal-map-data/<path:filename>')
+@app.route('/dx-map-data/<path:filename>')
 def unreal_map_data(filename):
-    return send_from_directory(local_data_dir / 'unreal-maps', filename)
+    return send_from_directory(local_data_dir / ('dx-maps' if request.path.startswith('/dx-map-data/') else 'unreal-maps'), filename)
 
 
 @app.route('/import_unreal_maps', methods=['POST'])
+@app.route('/import_dx_maps', methods=['POST'])
 def import_unreal_maps_route():
     if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
@@ -552,13 +555,15 @@ def import_unreal_maps_route():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
         return jsonify(error='Enter your game folder.'), 400
-    game = payload.get('game', 'unreal')
-    if game not in ('unreal', 'ut'):
+    dx = request.path == '/import_dx_maps'
+    game = payload.get('game', 'dx' if dx else 'unreal')
+    if game not in (('dx',) if dx else ('unreal', 'ut')):
         return jsonify(error='Unknown game.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        return jsonify(import_unreal_maps(payload['path'].strip(), local_data_dir / 'unreal-maps' / game,
+        destination = local_data_dir / 'dx-maps' if dx else local_data_dir / 'unreal-maps' / game
+        return jsonify(import_unreal_maps(payload['path'].strip(), destination,
                                           payload.get('replace') is True, game))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422

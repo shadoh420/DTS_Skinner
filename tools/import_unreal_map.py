@@ -1,4 +1,4 @@
-"""Unreal maps (Maps/**.unr) for the Unreal Maps page.
+"""UE1 maps for the Unreal/UT page and the separate Deus Ex page.
 
 python tools/import_unreal_map.py --install C:/Unreal [--replace]
 
@@ -28,7 +28,7 @@ reference only, walks the same node list). Invisible surfaces and zone portals a
 - Placed actors: movers (their brush's polygons at their start key, with the brush's own lightmaps) and actors drawn as
   meshes (lit at their vertices: vertex colours, their lightmap texel white).
 
-Written under local-data/unreal-maps/GAME: index.json (one entry per map), maps/ID/scene.json (texture groups,
+Written under local-data/unreal-maps/GAME (dx: local-data/dx-maps): index.json (one entry per map), maps/ID/scene.json (texture groups,
 viewpoints, counts, the lightmap atlas's size) with maps/ID/geometry.bin (float32 positions xyz, float32 texture uv,
 float32 lightmap uv, uint8 RGBA vertex colours, uint32 triangle indices, one after the other) and maps/ID/lightmap.png,
 and textures/*.png shared by every map (kept when already there, rewritten by --replace).
@@ -48,10 +48,12 @@ try:
     from tools.import_diabotical_models import safe
     from tools.import_unreal import GAMES, POSES, SCALE, STYLE_FLAGS, Library, Package, mesh_faces, mesh_points, rotation
     from tools.local_data import LOCAL_DATA
+    from tools.import_dx import actor_texture, display_settings, map_actor_kind, map_group, mesh_views, standing_pose
 except ImportError:  # Run as a script from tools/.
     from import_diabotical_models import safe
     from import_unreal import GAMES, POSES, SCALE, STYLE_FLAGS, Library, Package, mesh_faces, mesh_points, rotation
     from local_data import LOCAL_DATA
+    from import_dx import actor_texture, display_settings, map_actor_kind, map_group, mesh_views, standing_pose
 
 INVISIBLE, MASKED, TRANSLUCENT, NOT_SOLID, MODULATED, FAKE_BACKDROP, TWO_SIDED = 0x1, 0x2, 0x4, 0x8, 0x40, 0x80, 0x100
 AUTO_U_PAN, AUTO_V_PAN, UNLIT, PORTAL, MIRRORED = 0x200, 0x400, 0x400000, 0x4000000, 0x8000000
@@ -232,7 +234,7 @@ def floor_below(floors, x, y, z, which=False):
     return (float(heights[under].max()), int(best)) if which else float(heights[under].max())
 
 
-def build_map(library, level, default):
+def build_map(library, level, default, game='unreal'):
     """(scene, geometry bytes, {png: image}, lightmap atlas image) of map package `level`."""
     found = level.find({'Level'})
     if not found:
@@ -266,7 +268,7 @@ def build_map(library, level, default):
     # bHighDetailMode. UT links in PreBeginPlay, before the client's detail is known, so the low-detail one (Facing
     # Worlds' Earth only matches with it, checked in UT 469); 227 shows the high-detail one (its SpireVillage shots fit
     # it a little better).
-    high = 'botpack' not in library.files
+    high = bool(zone(0).get('bHighDetailMode', True)) if game == 'dx' else 'botpack' not in library.files
     skies = list(actors_of(level, layout['actors'], {'SkyZoneInfo'}).values())
     skies = [props for props in skies if bool(props.get('bHighDetail')) == high] or skies
     sky = skies[-1] if skies else None
@@ -453,10 +455,10 @@ def build_map(library, level, default):
                 placed, uv, st = placed[::-1], uv[::-1], st[::-1]
             groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv, st, tile, None))
 
-    def add_mesh(props, obj):
+    def add_mesh(props, obj, owners=None, mesh_property='Mesh'):
         """An actor drawn as a mesh, at Location + PrePivot + Rotation x DrawScale x the mesh's points (its
         AnimSequence's frame), each slot's texture as the game picks it, lit at its vertices; False when it shows nothing."""
-        package, ref = obj('Mesh')
+        package, ref = obj(mesh_property)
         if package.ref_name(package.exports[ref - 1]['cls']) not in ('Mesh', 'LodMesh', 'SkeletalMesh'):
             counts['unread'] += 1  # 227's StaticMesh (DmRiot) is not decoded.
             return False
@@ -465,8 +467,10 @@ def build_map(library, level, default):
             meshes[key] = package.mesh(ref)
         mesh = meshes[key]
         seqs = {seq['name'].lower(): seq for seq in mesh['seqs']}
-        seq = seqs.get(str(props.get('AnimSequence', '')).lower()) or next((seqs[n] for n in POSES if n in seqs), None)
+        seq = seqs.get(str(props.get('AnimSequence', '')).lower()) or (None if game == 'dx' else next((seqs[n] for n in POSES if n in seqs), None))
         frame = seq['start'] + min(int(props.get('AnimFrame', 0.0) * seq['frames']), max(seq['frames'] - 1, 0)) if seq else 0
+        if game == 'dx' and not seq:
+            frame = standing_pose(mesh)[0]
         local = np.array(mesh_points(mesh, frame if frame < mesh['frames'] else 0), np.float64)
         matrix = np.array(rotation(*vector(props, 'Rotation', '3i'))) * props.get('DrawScale', 1.0)
         world = local @ matrix.T + np.add(vector(props, 'Location'), vector(props, 'PrePivot'))
@@ -475,6 +479,8 @@ def build_map(library, level, default):
         def slot(index):
             """The game's pick for texture slot `index`: MultiSkins, then Skin (slot 0, or a slot the mesh leaves
             empty), the mesh's own, Texture (not Engine's editor icons), the last MultiSkins set, Engine's default."""
+            if game == 'dx':
+                return actor_texture(package, mesh, props, owners, index) or default
             own = mesh['textures'][index] if index < len(mesh['textures']) else 0
             texture = obj('Texture')
             picks = [obj('MultiSkins' if index == 0 else f'MultiSkins[{index}]'),
@@ -556,8 +562,10 @@ def build_map(library, level, default):
                     events.add(str(props['Event']).lower())
         return events
 
-    spawn_events = events_at_spawn()
+    spawn_events = set() if game == 'dx' else events_at_spawn()
     meshes, counts = {}, dict(meshes=0, movers=0, unread=0, failed=[])
+    if game == 'dx':
+        counts.update(excluded_npcs=0, excluded_other=0, carcasses=0, pickups=0, decorations=0)
     def placed_order():
         movers = [r for r in layout['actors'] if r > 0 and 'Mover' in library.class_info(level.ref_path(level.exports[r - 1]['cls']))[2]]
         return movers + [r for r in layout['actors'] if r > 0 and r not in set(movers)]
@@ -568,6 +576,10 @@ def build_map(library, level, default):
         defaults, sources, names = library.class_info(level.ref_path(level.exports[ref - 1]['cls']))
         placed = level.properties(ref)
         props = {**defaults, **placed}
+        kind = map_actor_kind(names) if game == 'dx' else None
+        if kind in ('npc', 'other'):
+            counts['excluded_npcs' if kind == 'npc' else 'excluded_other'] += 1
+            continue
         # Lights are not drawn in the game though some leave bHidden off (227, Glathriel2: TriggerLight's sprite 87 units
         # and TorchFlame's 192-unit flame mesh 275 units in front of the camera both showed nothing).
         if props.get('bHidden') or 'Light' in names:
@@ -583,8 +595,23 @@ def build_map(library, level, default):
             if 'Mover' in names and isinstance(props.get('Brush'), int) and props['Brush'] > 0:
                 add_mover(ref, props)
                 counts['movers'] += 1
-            elif props.get('DrawType') == 2 and obj('Mesh') and add_mesh(props, obj):
-                counts['meshes'] += 1
+            elif props.get('DrawType') == 2:
+                view = 'Mesh'
+                if game == 'dx':
+                    views = mesh_views(props, names)
+                    # A placed Mesh is authoritative; inventory otherwise starts in its pickup view.
+                    view = 'Mesh' if 'Mesh' in placed else next(iter(views), 'Mesh')
+                    if view == 'PickupViewMesh' and 'DrawScale' not in placed:
+                        props['DrawScale'] = props.get('PickupViewScale', props.get('DrawScale', 1.0))
+                    # DeusExCarcass.PostBeginPlay selects Mesh3 in water. No randomized death pose is invented.
+                    if kind == 'carcass' and zone(zone_at(vector(props, 'Location'))).get('bWaterZone') and props.get('Mesh3'):
+                        view = 'Mesh3'
+                if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view):
+                    counts['meshes'] += 1
+                    if game == 'dx':
+                        counts[{'carcass': 'carcasses', 'pickup': 'pickups', 'decoration': 'decorations'}[kind]] += 1
+                elif game == 'dx':
+                    counts['failed'].append(f'{name}: no readable visible {view}')
         except (struct.error, ValueError, IndexError, KeyError) as exc:
             counts['failed'].append(f'{name}: {exc}')
 
@@ -640,7 +667,8 @@ def build_map(library, level, default):
             x, y, z = vector(props, 'Location')
             if 'PlayerStart' in classes:
                 floor = floor_below(floors, x, y, z)
-                z = floor + HEIGHT + EYE if floor is not None and z - floor <= MAX_DROP else z + EYE
+                height, eye = (47.5, 40) if game == 'dx' else (HEIGHT, EYE)
+                z = floor + height + eye if floor is not None and z - floor <= MAX_DROP else z + eye
             views.append(dict(origin=[round(float(c), 3) for c in viewer([(x, y, z)])[0]],
                               yaw=yaw % 65536 * 360 / 65536, pitch=(pitch + 32768) % 65536 / 65536 * 360 - 180))
     if not views:
@@ -662,16 +690,21 @@ def build_map(library, level, default):
                  vertices=len(positions), indices=len(indices), lightmap=[atlas_width, atlas_height], colors=True,
                  actors=counts, groups=table, viewpoints=views, sky=sky,
                  polygons=polygons, flipped=flipped, missing=sorted(missing))
+    if game == 'dx':
+        scene['game'] = 'dx'
+        scene['issues'] = list(library.issues)
     return scene, geometry, images, atlas
 
 
 def import_maps(install, output, replace=False, game='unreal'):
-    """Import every map of the Unreal (game unreal) or Unreal Tournament (ut) install `install` into `output`."""
+    """Import maps from `install` into `output`; game is unreal, ut, or stock dx."""
     install, output = Path(install).expanduser(), Path(output)
-    library = Library(install)
-    if not library.package(GAMES[game]) or not library.maps:
-        title = 'Unreal Tournament' if game == 'ut' else 'Unreal'
-        raise ValueError(f'No {title} install with maps (System/{GAMES[game]}.u, Maps/) in {install}')
+    library = Library(install, game=game)
+    required = 'DeusEx' if game == 'dx' else GAMES[game]
+    if not library.package(required) or not library.maps:
+        title = 'Deus Ex' if game == 'dx' else 'Unreal Tournament' if game == 'ut' else 'Unreal'
+        raise ValueError(f'No {title} install with maps (System/{required}.u, Maps/) in {install}')
+    display = display_settings(install) if game == 'dx' else None
     engine = library.package('engine')
     default = engine and engine.export_by_path(('Engine', 'DefaultTexture'), 'Texture')
     default = default and (engine, default)
@@ -690,7 +723,9 @@ def import_maps(install, output, replace=False, game='unreal'):
             result['skipped'].append(ident)
             continue
         try:
-            scene, geometry, images, atlas = build_map(library, Package(path), default)
+            scene, geometry, images, atlas = build_map(library, Package(path, game=game), default, game=game)
+            if game == 'dx':
+                scene['display'] = display
         except (OSError, ValueError, struct.error, IndexError, KeyError) as exc:
             result['failed'][path.stem] = str(exc)
             continue
@@ -704,11 +739,16 @@ def import_maps(install, output, replace=False, game='unreal'):
         atlas.save(folder / 'lightmap.png')
         (folder / 'scene.json').write_text(json.dumps(scene, separators=(',', ':')), encoding='utf-8')
         group = GROUPS.get(path.parent.name.lower(), 'Unreal Tournament' if game == 'ut' else 'Unreal')
+        if game == 'dx':
+            group = map_group(path.stem)
         index[ident] = dict(id=ident, name=path.stem, title=scene['title'], group=group)
         result['imported'].append(ident)
     temporary = index_path.with_suffix('.tmp')
     # The game's own maps first, then the expansion's.
     order = lambda item: (item['group'] in GROUPS.values(), item['group'], item['name'].lower())
+    if game == 'dx':
+        order = lambda item: ({'Mission': 0, 'Endings': 1, 'Multiplayer': 2}.get(item['group'].split()[0], 3),
+                              item['group'], item['name'].lower())
     temporary.write_text(json.dumps(sorted(index.values(), key=order),
                                     separators=(',', ':')), encoding='utf-8')
     temporary.replace(index_path)
@@ -719,8 +759,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--install', type=Path, required=True)
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--game', choices=GAMES, default='unreal')
+    parser.add_argument('--game', choices=(*GAMES, 'dx'), default='unreal')
     parser.add_argument('--replace', action='store_true')
     args = parser.parse_args()
-    result = import_maps(args.install, args.output or LOCAL_DATA / 'unreal-maps' / args.game, args.replace, args.game)
+    destination = LOCAL_DATA / 'dx-maps' if args.game == 'dx' else LOCAL_DATA / 'unreal-maps' / args.game
+    result = import_maps(args.install, args.output or destination, args.replace, args.game)
     print(json.dumps(dict(imported=len(result['imported']), skipped=len(result['skipped']), failed=result['failed'])))

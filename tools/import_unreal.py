@@ -526,7 +526,7 @@ class Library:
 
     def __init__(self, install, game='unreal'):
         self.game, self.issues = game, []
-        self.maps = (sorted((install / 'Maps').glob('*.dx')) if game == 'dx' else
+        self.maps = (sorted(p for p in (install / 'Maps').glob('*.dx') if not p.stem.lower().startswith('dxrando')) if game == 'dx' else
                      sorted((install / 'Maps').rglob('*.unr'))) if (install / 'Maps').is_dir() else []
         self.files = {path.stem.lower(): path for folder in ('System', 'Textures') if (install / folder).is_dir()
                       for path in (install / folder).iterdir() if path.suffix.lower() in ('.u', '.utx')}

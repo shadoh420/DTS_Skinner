@@ -1,11 +1,13 @@
 """Stock Deus Ex model catalog policy; binary readers and geometry live in import_unreal.
 
 Use import_unreal.py --game dx --install <folder>. No maps or scripts are exported.
-Class defaults, texture selection and pose selection are reusable by the future dx map importer.
+Class defaults, texture selection and pose selection are shared with the dx map importer.
 """
 import collections
+import configparser
 import hashlib
 import json
+import math
 from pathlib import Path
 import struct
 
@@ -70,11 +72,56 @@ def category(chain, package):
 
 
 def mesh_views(props, chain):
-    """Inventory uses pickup and third-person views; other actors use Mesh. Raw meshes remain discoverable."""
+    """Carcasses expose all three meshes, inventory its two views, other actors Mesh."""
+    if any(n.lower() in ('carcass', 'deusexcarcass') for n in chain):
+        return [key for key in ('Mesh', 'Mesh2', 'Mesh3') if props.get(key)]
     if any(n.lower() == 'inventory' for n in chain):
         views = [key for key in ('PickupViewMesh', 'ThirdPersonMesh') if props.get(key)]
         return views or (['Mesh'] if props.get('Mesh') else [])
     return ['Mesh'] if props.get('Mesh') else []
+
+
+def map_actor_kind(chain):
+    """Stock map snapshot: no Pawn ancestry; carcasses are decorations, not living NPCs."""
+    names = {n.lower() for n in chain}
+    if names & {'pawn', 'scriptedpawn', 'deusexplayer'}:
+        return 'npc'
+    if 'mover' in names:
+        return 'mover'
+    if names & {'carcass', 'deusexcarcass'}:
+        return 'carcass'
+    if 'inventory' in names:
+        return 'pickup'
+    if names & {'decoration', 'deusexdecoration'}:
+        return 'decoration'
+    return 'other'
+
+
+def map_group(name):
+    """Filename conventions, including mission 99 endings and the three non-mission utility maps."""
+    if name.upper().startswith('DXMP_'):
+        return 'Multiplayer'
+    number, _, rest = name.partition('_')
+    if len(number) == 2 and number.isdecimal() and rest:
+        return 'Endings' if number == '99' else f'Mission {number}'
+    return 'Other maps'
+
+
+def display_settings(install):
+    """INI settings plus the Unreal page's display approximation; not a calibrated Glide gamma curve."""
+    ini = configparser.ConfigParser(strict=False, interpolation=None)
+    ini.read(Path(install) / 'System' / 'DeusEx.ini', encoding='latin-1')
+    try:
+        brightness = ini.getfloat('WinDrv.WindowsClient', 'Brightness', fallback=.6)
+    except ValueError:
+        brightness = .6
+    if not math.isfinite(brightness) or not 0 < brightness <= 1:
+        brightness = .6
+    return dict(brightness=brightness, power=1 / (2.5 * brightness),
+                renderer=ini.get('Engine.Engine', 'GameRenderDevice', fallback='unknown'),
+                windowed_renderer=ini.get('Engine.Engine', 'WindowedRenderDevice', fallback='unknown'),
+                source='System/DeusEx.ini; brightness 0.6 if absent/invalid',
+                approximation='Unreal page display curve; not calibrated against Deus Ex renderer output')
 
 
 def import_catalog(install, output):
@@ -89,6 +136,7 @@ def import_catalog(install, output):
                   meshes=[], classes=[], aliases=[],
                   issues=library.issues)
     catalog, textures, decoded, mesh_cache, seen, used = [], {}, {}, {}, {}, set()
+    raw_fallbacks = set()
 
     def issue(kind, source, reason, **extra):
         entry = dict(kind=kind, source=source, reason=reason, **extra)
@@ -154,6 +202,8 @@ def import_catalog(install, output):
             pick = actor_texture(package, mesh, props, owners, slot)
             if not pick:
                 issue('fallback', model, 'empty actor and mesh slot; Engine.DefaultTexture', slot=slot)
+                if class_path is None:
+                    raw_fallbacks.add(source)
             return texture(pick or default, flags, model, slot)
 
         try:
@@ -218,7 +268,8 @@ def import_catalog(install, output):
                     if cls not in MESH_CLASSES:
                         raise ValueError(f'unsupported native mesh class {cls}')
                     used.add((mesh_package.path.stem.lower(), mesh_ref))
-                    label = exp['name'] + ({'PickupViewMesh': ' (pickup)', 'ThirdPersonMesh': ' (third person)'}.get(view, ''))
+                    label = exp['name'] + ({'PickupViewMesh': ' (pickup)', 'ThirdPersonMesh': ' (third person)',
+                                            'Mesh2': ' (secondary carcass)', 'Mesh3': ' (floating carcass)'}.get(view, ''))
                     add(mesh_package, mesh_ref, label, props, owners, chain, view, ident)
                 except ERRORS as exc:
                     issue('class mesh', ident, f'{type(exc).__name__}: {exc}', view=view)
@@ -235,11 +286,13 @@ def import_catalog(install, output):
             image.save(target)
     report['packages'] = [dict(name=p.path.name, version=p.version, licensee=p.licensee)
                           for _, p in sorted(library.packages.items()) if p]
+    report['raw_default_texture_meshes'] = sorted(raw_fallbacks)
     report['counts'] = dict(packages_read=len(report['packages']), meshes=len(report['meshes']),
                             meshes_by_category=dict(collections.Counter(m['category'] for m in report['meshes'])),
                             classes=len(report['classes']), looks=len(catalog), aliases=len(report['aliases']),
                             looks_by_category=dict(collections.Counter(e['category'] for e in catalog)),
                             issues_by_kind=dict(collections.Counter(i['kind'] for i in library.issues)),
+                            raw_default_texture_meshes=len(raw_fallbacks),
                             unresolved_skins_by_reason=dict(collections.Counter(i['reason'] for i in library.issues if i['kind'] == 'skin')))
     (output / 'catalog.json').write_text(json.dumps(catalog, indent=1), encoding='utf-8')
     (output / 'import-report.json').write_text(json.dumps(report, indent=1), encoding='utf-8')
