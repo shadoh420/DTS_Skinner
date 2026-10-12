@@ -90,7 +90,7 @@ def rotate(q, point):
     return multiply(multiply(q, (*point, 0)), (-q[0], -q[1], -q[2], q[3]))[:3]
 
 
-def read_mesh(data):
+def read_mesh(data, quaternion_fn=quaternion):
     t = Tokens(data)
     joint_count, mesh_count = t.count('numJoints'), t.count('numMeshes')
     if not joint_count or not mesh_count:
@@ -99,7 +99,7 @@ def read_mesh(data):
     t.expect('{')
     joints = []
     for i in range(joint_count):
-        name, parent, position, orientation = t.string(), t.integer(), t.vector(), quaternion(t.vector())
+        name, parent, position, orientation = t.string(), t.integer(), t.vector(), quaternion_fn(t.vector())
         if not -1 <= parent < joint_count or parent == i:
             raise ValueError('Invalid MD5 joint parent')
         joints.append(dict(name=name, parent=parent, position=position, orientation=orientation))
@@ -143,7 +143,7 @@ def read_mesh(data):
     return dict(joints=joints, meshes=meshes)
 
 
-def read_anim(data, mesh_joints):
+def read_anim(data, mesh_joints, quaternion_fn=quaternion, rotate_fn=rotate):
     """Return frame zero as absolute joints, validating matching joint indices.
 
     mg3's ogre_rocket has 55 mesh joints but only 39 animated joints. Its weights
@@ -191,10 +191,10 @@ def read_anim(data, mesh_joints):
             if flags & (1 << bit):
                 values[bit] = first[start]
                 start += 1
-        position, orientation = values[:3], quaternion(values[3:])
+        position, orientation = values[:3], quaternion_fn(values[3:])
         if parent >= 0:
             p = joints[parent]
-            position = tuple(a + b for a, b in zip(p['position'], rotate(p['orientation'], position)))
+            position = tuple(a + b for a, b in zip(p['position'], rotate_fn(p['orientation'], position)))
             orientation = multiply(p['orientation'], orientation)
         joints.append(dict(mesh_joints[i], position=position, orientation=orientation))
     return dict(joints=joints, frames=frames, frame_rate=rate, bounds=bounds[0],
@@ -202,7 +202,7 @@ def read_anim(data, mesh_joints):
                     h[0] != mesh_joints[i]['parent'] for i, h in enumerate(hierarchy)))
 
 
-def skin_points(mesh, joints):
+def skin_points(mesh, joints, rotate_fn=rotate):
     points = []
     for uv, start, count in mesh['verts']:
         point = [0., 0., 0.]
@@ -210,7 +210,7 @@ def skin_points(mesh, joints):
             if joint >= len(joints):
                 raise ValueError('MD5 animation lacks a weighted mesh joint')
             transform = joints[joint]
-            rotated = rotate(transform['orientation'], offset)
+            rotated = rotate_fn(transform['orientation'], offset)
             for k in range(3):
                 point[k] += bias * (transform['position'][k] + rotated[k])
         points.append(tuple(point))

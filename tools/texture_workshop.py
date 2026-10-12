@@ -9,10 +9,14 @@ import tempfile
 import threading
 
 from PIL import Image
+if __package__:
+    from .texture_storage import open_texture
+else:
+    from texture_storage import open_texture
 
 # Texture libraries a slot can take a texture from: each game's, and Reflex's (decoded from its materials by
 # tools/import_reflex_map.py; textures only).
-TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge')
+TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3')
 
 TEXTURE_SUFFIXES = ('.png', '.dds')
 
@@ -61,7 +65,7 @@ def transformed_name(filename, transform=None):
 
 @lru_cache(maxsize=16384)
 def _image_metadata(path, fingerprint, ignore_alpha, include_hue=True):
-    with Image.open(path) as source:
+    with open_texture(path) as source:
         width, height = source.size
         if not include_hue:
             # PNG dimensions are available from the header without decoding pixels.

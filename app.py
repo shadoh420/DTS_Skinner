@@ -8,6 +8,7 @@ from tools.notes import read_notes, save_note
 from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, rename_family, t1_building_names, t1_default_families, TEXTURE_GAMES, MODEL_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
+from tools.texture_storage import open_texture
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags, texture_files, TEXTURE_SUFFIXES
 import io
 import json
@@ -50,6 +51,7 @@ from tools.import_et import import_catalog as import_et_catalog
 from tools.import_jk2 import import_catalog as import_jk2_catalog
 from tools.import_ja import import_catalog as import_ja_catalog
 from tools.import_vtmb import import_catalog as import_vtmb_catalog
+from tools.import_doom3 import import_catalog as import_doom3_catalog
 from tools.import_azrael import import_catalog as import_azrael_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
 from tools.import_quake2_map import import_maps as import_quake2_maps
@@ -98,7 +100,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -1050,6 +1052,7 @@ def import_reflex():
 @app.route('/import_rtcw', methods=['POST'])
 @app.route('/import_et', methods=['POST'])
 @app.route('/import_ja', methods=['POST'])
+@app.route('/import_doom3', methods=['POST'])
 @app.route('/import_vtmb', methods=['POST'])
 @app.route('/import_jk2', methods=['POST'])
 @app.route('/import_anachronox', methods=['POST'])
@@ -1075,6 +1078,8 @@ def import_conversion_pack():
             return jsonify(import_azrael_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'ja':
             return jsonify(import_ja_catalog(payload['path'].strip(), pack_dirs[game]))
+        if game == 'doom3':
+            return jsonify(import_doom3_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'vtmb':
             return jsonify(import_vtmb_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'jk2':
@@ -1140,7 +1145,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:
@@ -1198,7 +1203,7 @@ def get_texture(texture_filename):
         from PIL import Image
         try:
             output = io.BytesIO()
-            with Image.open(path) as source:
+            with open_texture(path) as source:
                 image = transform_image(source, transform)
                 # T2 opaque alpha contains reflectivity: discard only for inspection.
                 if request.args.get('opaque') == '1' and not download:
