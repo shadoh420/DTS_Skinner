@@ -66,6 +66,27 @@ class ModelFamiliesTests(unittest.TestCase):
             self.assertEqual(set(families().values()), {'Complete T1 catalog'})
             self.assertEqual(family_file.read_text(), 'broken')
 
+    def test_shipped_t1_families(self):
+        # static/t1-families.json beside the catalog gives T1 its families; the user's own still win.
+        with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
+            root = Path(directory)
+            (root / 'models').mkdir()
+            for name in ('larmor', 'disc'):
+                (root / 'models' / f'{name}.json').write_text('{}')
+            (root / 't1-families.json').write_text('{"larmor": "Armors"}')
+            stack.enter_context(patch('app.model_json_dir', root / 'models'))
+            stack.enter_context(patch('app.local_data_dir', root / 'local'))
+            client = app.test_client()
+            families = lambda: {e['model_name']: e['category'] for e in client.get('/list_models').json}
+            self.assertEqual(families(), {'larmor': 'Armors', 'disc': 'Complete T1 catalog'})
+            self.assertEqual(client.post('/model_families', json=dict(models=['larmor'], family='Mine')).status_code, 200)
+            entry = next(e for e in client.get('/list_models').json if e['model_name'] == 'larmor')
+            self.assertEqual((entry['category'], entry['import_category']), ('Mine', 'Armors'))
+            # Shipped families are the import's, so they cannot be renamed; moving back restores them.
+            self.assertEqual(client.post('/model_families/rename', json=dict(family='Armors', name='x')).status_code, 422)
+            self.assertEqual(client.post('/model_families', json=dict(models=['larmor'], family='')).status_code, 200)
+            self.assertEqual(families()['larmor'], 'Armors')
+
 
 if __name__ == '__main__':
     unittest.main()
