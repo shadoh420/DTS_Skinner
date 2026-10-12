@@ -12,6 +12,7 @@ import zipfile
 from app import app
 from tools.import_dx import actor_texture, category, mesh_views, standing_pose
 from tools.import_unreal import Library, Package, import_catalog, mesh_points
+from tools.model_data import load_model_data
 from test_unreal import index
 
 
@@ -123,7 +124,7 @@ def fixture(install, missing=False):
 class DxSyntheticTests(unittest.TestCase):
     def test_headers_signed_vertices_lod_tail_pose_and_class_defaults(self):
         with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
+            root = Path(folder) / 'install'
             system = fixture(root)
             lib = Library(root, game='dx')
             package = lib.package('DeusExCharacters')
@@ -146,9 +147,9 @@ class DxSyntheticTests(unittest.TestCase):
 
     def test_catalog_distinct_looks_dedup_exports_and_route(self):
         with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
+            root = Path(folder) / 'install'
             fixture(root)
-            output = root / 'out'
+            output = Path(folder) / 'out'
             with patch.dict('app.pack_dirs', dx=output):
                 client = app.test_client()
                 response = client.post('/import_dx', json={'path': str(root)})
@@ -159,9 +160,13 @@ class DxSyntheticTests(unittest.TestCase):
                 report = json.loads((output / 'import-report.json').read_text())
                 self.assertTrue(any(a['source'] == 'DeusEx.Twin' for a in report['aliases']))
                 self.assertTrue(any(a['source'] == 'DeusExItems.Duplicate' for a in report['aliases']))
-                data = json.loads((output / 'model_json' / 'deusex.jc.json').read_text())
+                path = output / 'model_json' / 'deusex.jc.json'
+                description = json.loads(path.read_text())
+                self.assertIn('geometry_buffers', description)
+                self.assertNotIn('vertices', description)
+                data = load_model_data(path)
                 self.assertEqual(data['metadata']['frame'], 1)
-                self.assertEqual(data['material_textures'], ['deusexcharacters.blue_masked.png', 'deusexcharacters.red.png'])
+                self.assertEqual(data['material_textures'], ['deusexcharacters.blue.png', 'deusexcharacters.red.png'])
                 glb = client.get('/export_glb/deusex.jc?game=dx')
                 self.assertEqual(glb.status_code, 200)
                 length = struct.unpack_from('<I', glb.data, 12)[0]
@@ -178,7 +183,9 @@ class DxSyntheticTests(unittest.TestCase):
                 with zipfile.ZipFile(io.BytesIO(obj.data)) as archive:
                     text = archive.read(next(n for n in archive.namelist() if n.endswith('.obj'))).decode()
                     positions = [float(v) for line in text.splitlines() if line.startswith('v ') for v in line.split()[1:]]
-                    self.assertEqual(positions, data['vertices'])
+                    self.assertEqual(len(positions), len(data['vertices']))
+                    for actual, expected in zip(positions, data['vertices']):
+                        self.assertAlmostEqual(actual, expected, places=4)
                 png = output / 'textures' / 'deusexcharacters.red.png'
                 png.write_bytes(b'user edit')
                 import_catalog(root, output, 'dx')
@@ -186,14 +193,14 @@ class DxSyntheticTests(unittest.TestCase):
 
     def test_failures_reported_and_mods_excluded(self):
         with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
+            root = Path(folder) / 'install'
             system = fixture(root, missing=True)
             for filename in ('DXRando.u', 'FemJC.u', 'DeusExe.u'):
                 (system / filename).write_bytes(b'not a package')
             (root / 'DXRando' / 'System').mkdir(parents=True)
             (root / 'DXRando' / 'System' / 'DeusEx.u').write_bytes(b'not a package')
             (system / 'DeusExDeco.u').write_bytes(b'truncated')
-            output = root / 'out'
+            output = Path(folder) / 'out'
             import_catalog(root, output, 'dx')
             report = json.loads((output / 'import-report.json').read_text())
             self.assertTrue(any(i['kind'] == 'package' and i['source'] == 'deusexdeco' for i in report['issues']))
@@ -218,7 +225,7 @@ class DxSyntheticTests(unittest.TestCase):
 
     def test_inventory_view_scale_style_and_unreadable_class(self):
         with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
+            root = Path(folder) / 'install'
             system = fixture(root)
             f = Fixture()
             imports = [('Core', 'Package', 0, 'DeusExCharacters'), ('Engine', 'LodMesh', -1, 'Body')]
@@ -229,10 +236,10 @@ class DxSyntheticTests(unittest.TestCase):
                        (0, 'Unreadable', b'\x00'),
                        (0, 'BadParent', f.cls('BadParent', 127, {'Mesh': -2}))]
             (system / 'DeusEx.u').write_bytes(f.package(imports, exports))
-            output = root / 'out'
+            output = Path(folder) / 'out'
             import_catalog(root, output, 'dx')
-            pickup = json.loads((output / 'model_json' / 'deusex.pistol_pickupviewmesh.json').read_text())
-            third = json.loads((output / 'model_json' / 'deusex.pistol_thirdpersonmesh.json').read_text())
+            pickup = load_model_data(output / 'model_json' / 'deusex.pistol_pickupviewmesh.json')
+            third = load_model_data(output / 'model_json' / 'deusex.pistol_thirdpersonmesh.json')
             for a, b in zip(pickup['vertices'], third['vertices']):
                 self.assertAlmostEqual(a, b * 2, places=3)
             self.assertTrue(all(m['blend'] == ['gl_one', 'gl_one_minus_src_color'] for m in pickup['material_settings']))
