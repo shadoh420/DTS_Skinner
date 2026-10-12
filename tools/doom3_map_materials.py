@@ -22,7 +22,7 @@ def expression(source):
             if at>=len(tokens) or tokens[at]!=')': raise ValueError('Unclosed expression')
             at+=1
         elif re.fullmatch(r'(?:\d|\.).*',token): left=float(token)
-        elif token=='time' or re.fullmatch(r'(?:parm|global)\d+',token): left=token
+        elif token in ('time','sound') or re.fullmatch(r'(?:parm|global)\d+',token): left=token
         elif at<len(tokens) and tokens[at]=='[':
             at+=1;arg=parse()
             if at>=len(tokens) or tokens[at]!=']':raise ValueError('Unclosed table expression')
@@ -99,6 +99,7 @@ def compile_stage(tokens,textures):
             elif key in ('scroll','translate','scale','centerscale','rotate'):
                 stage['uv'].append([key,*[expression(x) for x in split_args(args)]])
             elif key in ('vertexcolor','inversevertexcolor'):stage['vertexColor']=1 if key=='vertexcolor' else -1
+            elif key in ('maskcolor','maskalpha'):stage[key]=True
             elif key in ('clamp','zeroclamp','alphazeroclamp'):stage['clamp']=True
             elif key in ('name','forcehighquality','highquality','uncompressed','nearest','linear','nopicmip'):pass
             elif key in ('privatepolygonoffset','polygonoffset'):stage['polygonOffset']=True
@@ -150,12 +151,16 @@ def compile_material(name,defs,materials,textures):
     elif not any(s['alphaTest']!=0 for s in parsed) and not roles & {'bump','diffuse','specular'}:
         blend=parsed[0]['blend'] if parsed else []
         translucent=translucent or not parsed or bool(blend and (blend[1]!='gl_zero' or blend[0] in ('gl_dst_color','gl_one_minus_dst_color','gl_dst_alpha','gl_one_minus_dst_alpha')))
-    for feature in ('deform','guisurf','foglight','blendlight','spectrum','mirror','portalsky'):
+    spectrum=int(t[lower.index('spectrum')+1]) if 'spectrum' in lower else 0
+    for feature in ('deform','guisurf','foglight','blendlight','mirror','portalsky'):
         if feature in lower:notes.append(feature)
     for s in parsed:
         if s['image']['status']!='ready':notes.append('missing image: '+s['image']['expression'])
         if any(x in lower for x in ('clamp','zeroclamp','alphazeroclamp')):s['clamp']=True
         if 'polygonoffset' in lower:s['polygonOffset']=True
+    def sound_reactive(value):
+        return value=='sound' if isinstance(value,str) else any(sound_reactive(x) for x in value) if isinstance(value,list) else False
     return dict(name=record['name'],visible=record['visible'],twoSided=record['twoSided'],translucent=translucent,
+                soundReactive=any(sound_reactive([s['color'],s['condition'],s['uv'],s['alphaTest']]) for s in parsed),
                 unsmoothedTangents='unsmoothedtangents' in lower,ambientLight='ambientlight' in lower,fogLight='foglight' in lower,blendLight='blendlight' in lower,
-                stages=parsed,falloff=falloff,approximations=sorted(set(notes)))
+                stages=parsed,falloff=falloff,spectrum=spectrum,approximations=sorted(set(notes)))
