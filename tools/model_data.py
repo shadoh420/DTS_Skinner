@@ -288,3 +288,15 @@ def load_model_data(json_path, fallback_texture=None, material_overrides=None):
         if len(data["colors"]) != len(vertices) or any(not isinstance(x, (int, float)) or not 0 <= x <= 1 for x in data["colors"]):
             raise ValueError("Model must have one colour between 0 and 1 per vertex")
     return data
+
+
+def write_surface_data(path, surfaces):
+    """Map prop surfaces in the same binary container as browser models."""
+    data=dict(vertices=[],normals=[],uvs=[],indices=[],groups=[])
+    for index,surface in enumerate(surfaces):
+        first=len(data['vertices'])//3
+        data['groups'].append(dict(start=len(data['indices']),count=len(surface['indices']),materialIndex=index,
+                                   vertexStart=first,vertexCount=len(surface['vertices'])//3))
+        for key in ('vertices','normals','uvs'):data[key].extend(surface[key])
+        data['indices'].extend(first+i for i in surface['indices'])
+    write_model_data(path,data)

@@ -18,6 +18,7 @@ import numpy as np
 try:
     from tools.doom3_assets import Install,Declarations,Textures,Materials,path_name
     from tools.doom3_map_materials import compile_material,tables
+    from tools.doom3_map_sounds import Sounds
     from tools.import_doom3 import load_parts,idle_animation,FORMATS
     from tools.model_data import write_model_data,load_model_data
     from tools.texture_storage import game_texture_dir
@@ -26,6 +27,7 @@ try:
 except ImportError:
     from doom3_assets import Install,Declarations,Textures,Materials,path_name
     from doom3_map_materials import compile_material,tables
+    from doom3_map_sounds import Sounds
     from import_doom3 import load_parts,idle_animation,FORMATS
     from model_data import write_model_data,load_model_data
     from texture_storage import game_texture_dir
@@ -265,9 +267,55 @@ def strings(files):
             for k,v in re.findall(r'"(#str_\d+)"\s+"([^"]*)"',files[n].read().decode('latin-1'))}
 
 
+def startup_shader_parms(source,entry='main'):
+    """Literal render parameters before the first yield/control flow, not a script VM.
+
+    Follow synchronous zero-argument helpers in this file only. Event handlers,
+    threads, loops and delayed effects must not leak into the startup snapshot.
+    """
+    source=re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|/\*[\s\S]*?\*/|//[^\n]*',
+                  lambda m:'""' if m[0][0] in '\"\'' else '',source)
+    functions={}
+    for match in re.finditer(r'\bvoid\s+(\w+)\s*\(\s*\)\s*\{',source):
+        at=match.end();depth=1;end=at
+        while end<len(source) and depth:
+            depth+=(source[end]=='{')-(source[end]=='}');end+=1
+        if not depth:functions[match[1]]=source[at:end-1]
+    globals_=[0.0]*12;entities={};active=set()
+    number=r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?'
+    def run(name):
+        if name not in functions or name in active or len(active)>32:return False
+        active.add(name)
+        try:
+            for statement in functions[name].split(';'):
+                s=statement.strip()
+                if not s:continue
+                assignment=re.fullmatch(r'(sys|\$\w+)\.setShaderParm\s*\(\s*(\d+)\s*,\s*('+number+r')\s*\)',s)
+                color=re.fullmatch(r'\$(\w+)\.setColor\s*\(\s*('+number+r')\s*,\s*('+number+r')\s*,\s*('+number+r')\s*\)',s)
+                call=re.fullmatch(r'(\w+)\s*\(\s*\)',s)
+                if assignment:
+                    target,index,value=assignment.groups();index=int(index)
+                    if index<12:
+                        if target=='sys':globals_[index]=float(value)
+                        else:entities.setdefault(target[1:],{})['shaderparm'+str(index)]=value
+                elif color:entities.setdefault(color[1],{})['_color']=' '.join(color.groups()[1:])
+                elif call:
+                    if not run(call[1]):return False
+                # Non-render entity events do not change shader parameters.
+                elif re.fullmatch(r'\$\w+\.(?!setShaderParm\b|setColor\b)\w+\s*\([^;{}]*\)',s):continue
+                else:return False
+            return True
+        finally:active.remove(name)
+    run(entry.rsplit('::',1)[-1])
+    return globals_,entities
+
+
 def import_scene(name,campaign,files,defs,material_cache,model_cache,directory):
     started=time.monotonic();proc=read_proc(files['maps/'+name+'.proc'].read())
     entities=read_entities(files['maps/'+name+'.map'].read());source_entities=entities
+    entry=entities[0].get('call','main');script='maps/'+name+'.script'
+    if '::' in entry:script='script/'+entry.split('::')[0]+'.script'
+    global_parms,startup_entities=startup_shader_parms(files[script].read().decode('latin1'),entry) if script in files else ([0.0]*12,{})
     resolved=[];skipped=[];lights=[];skipped_lights=[];used_materials=set();parts_cache={}
     geometry=dict(vertices=[],normals=[],uvs=[],colors=[],indices=[]);surfaces=[];entity_records=[]
     def material(name):
@@ -280,7 +328,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory):
         if classname in defs.entities:
             try:base=defs.entity(classname)
             except ValueError as exc:skipped.append(dict(name=entity.get('name',classname),reason=str(exc)))
-        resolved.append(dict(base,**entity))
+        resolved.append(dict(dict(base,**entity),**startup_entities.get(entity.get('name'),{})))
     for index,entity in enumerate(resolved):
         if entity.get('classname')!='light' and entity.get('spawnclass')!='idLight':continue
         label=entity.get('name','light'+str(index))
@@ -291,7 +339,8 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory):
             if shader['fogLight'] or shader['blendLight']:
                 skipped_lights.append(dict(name=label,shader=shader['name'],reason='fogLight' if shader['fogLight'] else 'blendLight'));continue
             falloff=shader['falloff'] or material(default)['falloff']
-            light.update(name=label,shader=shader['name'],falloff=falloff,parms=parms(entity),ambient=shader['ambientLight'],
+            sound=material_cache['sounds'].resolve(entity) if shader['soundReactive'] else None
+            light.update(name=label,shader=shader['name'],falloff=falloff,parms=parms(entity),ambient=shader['ambientLight'],spectrum=shader['spectrum'],sound=sound,
                          areas=bounds_areas(light['bounds'],proc['nodes']),authoredOff=entity.get('start_off')=='1',noSpecular=entity.get('nospecular')=='1')
             # Start-off is an authored light state; unlike hidden monsters, don't switch it on.
             if light['authoredOff']:light['parms'][:3]=[0,0,0]
@@ -313,6 +362,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory):
             bounds=[positions.min(axis=0).tolist(),positions.max(axis=0).tolist()]
             areas=[area] if area is not None else bounds_areas(bounds,proc['nodes'])
             candidates=sorted(set().union(*(light_by_area.get(a,set()) for a in areas))) if areas else list(range(len(lights)))
+            candidates=[i for i in candidates if lights[i]['spectrum']==shader['spectrum']]
             matched=[]
             if candidates:
                 p=light_planes[candidates];center=(positions.min(axis=0)+positions.max(axis=0))/2;extent=(positions.max(axis=0)-positions.min(axis=0))/2
@@ -324,6 +374,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory):
             geometry['colors'].extend(np.asarray(part['colors'])[:,:3].ravel().tolist())
             geometry['indices'].extend((np.asarray(part['indices'])+offset).tolist())
             surfaces.append(dict(start=start,count=len(geometry['indices'])-start,material=shader['name'],bounds=bounds,areas=areas,
+                                 sound=material_cache['sounds'].resolve(entity) if shader['soundReactive'] else None,
                                  lights=matched,entity=entity.get('name','worldspawn'),parms=parms(entity)))
             count+=1
         return count
@@ -372,6 +423,9 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory):
     approximations=Counter()
     for s in surfaces:
         approximations.update(shader_records[s['material']]['approximations'])
+    for l in lights:approximations.update(shader_records[l['shader']]['approximations'])
+    for item in surfaces+lights:
+        if item.get('sound') and item['sound'].get('approximation'):approximations[item['sound']['approximation']]+=1
     stats=dict(sourceEntities=len(entities),renderedEntities=len(entity_records),inlineEntities=sum(e['kind']=='inline' for e in entity_records),
                externalEntities=sum(e['kind']=='external' for e in entity_records),hiddenEntitiesShown=sum(e['hidden'] for e in entity_records),
                sourceLights=len(lights)+len(skipped_lights),lights=len(lights),projectedLights=sum(l['projected'] for l in lights),ambientLights=sum(l['ambient'] for l in lights),
@@ -380,9 +434,12 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory):
                lightInteractions=sum(len(s['lights']) for s in surfaces),maxSurfaceLights=max((len(s['lights']) for s in surfaces),default=0),
                approximations=dict(approximations),seconds=round(time.monotonic()-started,2))
     scene=dict(game='doom3',name=name,campaign=campaign,coordinateSystem='Doom native XYZ, Z up',lightScale=2,
+               globalShaderParms=global_parms,startupShaderEntities=startup_entities,
                surfaces=surfaces,materials=shader_records,lights=lights,nodes=proc['nodes'],portals=proc['portals'],areaCount=proc['areas'],
                viewpoints=viewpoints,entities=entity_records,skippedEntities=skipped,skippedLights=skipped_lights,stats=stats,
                notes=['No shadows or fog/blend lights. Doors/movers stay at authored start transforms; scripts and binds are not simulated.',
+                      'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
+                      'Sound-reactive stages use the sample envelope without audio playback. Sample phase starts at map load; triggered sounds, random choices, leadins and multiple channels are not simulated.',
                       'All renderable monsters/items are shown, including hidden/triggered entities. Start-off lights stay off.',
                       'Cubemaps, heat haze, GUIs, video, deforms and particles are skipped/approximated; see per-material and per-entity details.',
                       'r_lightScale 2 is applied once to interactions. No display gamma or second overbright multiplier.',
@@ -407,7 +464,7 @@ def import_maps(install,data_root=LOCAL_DATA,*,maps=None,models_root=None,replac
             selected=[(key,n) for key,(c,n) in sorted(available.items()) if c==campaign and (not maps or key in maps)]
             if not selected:continue
             files=archive.files[campaign];defs=Declarations(files);textures=Textures(files,game_texture_dir(root,'doom3'))
-            materials=Materials(defs,textures);context=dict(materials=materials,textures=textures,records={})
+            materials=Materials(defs,textures);context=dict(materials=materials,textures=textures,records={},sounds=Sounds(files,output/'sounds'))
             table_data=tables(files)
             for key,n in selected:
                 ident=re.sub('[^a-z0-9_-]','_',key);name=n[5:-5];directory=output/'maps'/ident

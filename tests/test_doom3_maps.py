@@ -93,6 +93,65 @@ class DoomMapTest(unittest.TestCase):
         self.assertEqual(s['color'][0],['*','parm0',['table','pulse',['*','time',2.0]]])
         self.assertEqual(s['uv'],[['scroll','time',.5],['rotate',['/','time',4.0]]])
         with self.assertRaises(ValueError):expression('__import__("os")')
+        sound,n=compile_stage(lex('map _white red sound * Parm0 green sound * Parm1 blue sound * Parm2'),Images())
+        self.assertEqual(n,[])
+        self.assertEqual(sound['color'],[['*','sound','parm0'],['*','sound','parm1'],['*','sound','parm2'],1])
+
+    def test_sound_reactive_light_exports_original_sample_and_keeps_color(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);fixture(root/'install')
+            with zipfile.ZipFile(root/'install/base/pak001.pk4','w') as z:
+                z.writestr('materials/sound.mtr','lights/reactive { { map _white red sound*parm0 green sound*parm1 blue sound*parm2 } }')
+                z.writestr('sound/test.sndshd','hum { looping volume -30 sound/lights/test.wav }')
+                sample=b'fixture ogg bytes: copied verbatim, browser decodes real audio'
+                z.writestr('sound/lights/test.ogg',sample)
+                with zipfile.ZipFile(root/'install/base/pak000.pk4') as original:
+                    z.writestr('maps/game/test.map',original.read('maps/game/test.map')+b'''
+                    { "classname" "light" "name" "soundlight" "texture" "lights/reactive" "s_shader" "hum" "_color" ".84 .75 .67" }
+                    { "classname" "light" "name" "silent" "texture" "lights/reactive" }
+                    { "classname" "light" "name" "triggered" "texture" "lights/reactive" "s_shader" "hum" "s_waitfortrigger" "1" }''')
+            maps.import_maps(root/'install',root/'data',maps=['base:game/test'])
+            s=json.loads((root/'data/doom3-maps/maps/base_game_test/scene.json').read_text())
+            lights={l['name']:l for l in s['lights']};source=lights['soundlight']['sound']
+            self.assertEqual(lights['soundlight']['parms'][:3],[.84,.75,.67])
+            self.assertTrue(s['materials']['lights/reactive']['soundReactive'])
+            self.assertEqual(s['materials']['lights/reactive']['approximations'],[])
+            self.assertTrue(source['looping']);self.assertEqual(source['source'],'sound/lights/test.ogg')
+            self.assertEqual((root/'data/doom3-maps'/source['file']).read_bytes(),sample)
+            self.assertIsNone(lights['silent']['sound']);self.assertTrue(lights['triggered']['sound']['waitForTrigger'])
+            self.assertEqual(len(list((root/'data/doom3-maps/sounds').iterdir())),1)
+
+    def test_mask_stages_and_spectrum_filter_both_directions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);fixture(root/'install')
+            with zipfile.ZipFile(root/'install/base/pak001.pk4','w') as z:
+                z.writestr('materials/spectrum.mtr','''textures/spectral { spectrum 2 diffusemap _white
+                    { map _white maskColor } { blend gl_dst_alpha, gl_one map _white maskAlpha } }
+                    lights/spectral { spectrum 2 { map _white colored } }''')
+                z.writestr('maps/game/test.proc',proc().replace(b'"textures/test"',b'"textures/spectral"',1))
+                with zipfile.ZipFile(root/'install/base/pak000.pk4') as original:
+                    z.writestr('maps/game/test.map',original.read('maps/game/test.map')+b'''
+                    { "classname" "light" "name" "spectrum" "texture" "lights/spectral" "origin" "4 0 4" }''')
+            maps.import_maps(root/'install',root/'data',maps=['base:game/test'])
+            s=json.loads((root/'data/doom3-maps/maps/base_game_test/scene.json').read_text())
+            m=s['materials']['textures/spectral']
+            self.assertEqual(m['spectrum'],2);self.assertEqual(m['approximations'],[])
+            self.assertTrue(m['stages'][0]['maskcolor']);self.assertTrue(m['stages'][1]['maskalpha'])
+            for surface in s['surfaces']:
+                self.assertTrue(surface['lights'])
+                expected=2 if surface['material']=='textures/spectral' else 0
+                self.assertEqual({s['lights'][i]['spectrum'] for i in surface['lights']},{expected})
+
+    def test_literal_startup_shader_parameters_before_yield(self):
+        source='''void event() { sys.setShaderParm(0, 9); }
+        void setup() { $mover.rotate ('0 120 0'); $flare.setColor (0, 0, 0);
+            sys.setShaderParm(0, 1); sys.setShaderParm(1, .5); $flare.setShaderParm(7, 1); }
+        void main() { setup(); sys.wait(5); sys.setShaderParm(0, 99); }'''
+        globals_,entities=maps.startup_shader_parms(source)
+        self.assertEqual(globals_,[1,.5]+[0]*10)
+        self.assertEqual(entities,{'flare':{'_color':'0 0 0','shaderparm7':'1'}})
+        for stop in ('if (1) { event(); }','thread event()','while(1) { event(); }','unknown()','main()'):
+            self.assertEqual(maps.startup_shader_parms('void main() { '+stop+'; sys.setShaderParm(0,9); }')[0],[0]*12)
 
     def test_import_transforms_idle_hidden_campaigns_and_shared_storage(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -108,11 +167,25 @@ class DoomMapTest(unittest.TestCase):
                 monster=next(x for x in s['surfaces'] if x['entity']=='hidden');self.assertEqual(monster['bounds'][0][2],4)
                 self.assertEqual(s['lights'][0]['parms'][:3],[.2,.4,.6]);self.assertEqual(monster['lights'],[0])
                 self.assertFalse((directory/'textures').exists())
+                self.assertEqual(s['globalShaderParms'],[0]*12)
                 raw=json.loads((directory/'scene.json').read_text());self.assertEqual(raw['geometry_buffers']['arrays']['vertices']['dtype'],'<f4')
                 self.assertEqual([x['role'] for x in s['materials']['textures/test']['stages']],['bump','diffuse','specular'])
             self.assertTrue((dest/'doom3/textures/_white.png').is_file())
             with Install(root/'install') as archive:
                 self.assertEqual(tables(archive.files['base'])['pulse']['values'],[0,1,0])
+
+    def test_startup_parms_reach_imported_lights_and_surfaces(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);fixture(root/'install')
+            with zipfile.ZipFile(root/'install/base/pak001.pk4','w') as z:
+                z.writestr('maps/game/test.script','''void setup() { sys.setShaderParm(2,1);
+                    $lamp.setColor(0,0,0); $door.setShaderParm(7,1); }
+                    void main() { setup(); sys.wait(5); $lamp.setColor(1,1,1); }''')
+            maps.import_maps(root/'install',root/'data',maps=['base:game/test'])
+            s=json.loads((root/'data/doom3-maps/maps/base_game_test/scene.json').read_text())
+            self.assertEqual(s['globalShaderParms'][2],1)
+            self.assertEqual(s['lights'][0]['parms'][:3],[0,0,0])
+            self.assertEqual(next(x for x in s['surfaces'] if x['entity']=='door')['parms'][7],1)
 
     def test_builtin_falloff_and_path_normalization(self):
         with tempfile.TemporaryDirectory() as temp:

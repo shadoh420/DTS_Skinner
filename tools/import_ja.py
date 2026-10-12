@@ -14,12 +14,21 @@ import numpy as np
 
 try:
     from tools import import_jk2 as jk
+    from tools.texture_storage import SourceTextureStore
+    from tools.model_data import write_model_data
 except ImportError:
     import import_jk2 as jk
+    from texture_storage import SourceTextureStore
+    from model_data import write_model_data
 base, q3 = jk.base, jk.q3
 Textures, CatalogTextures, shader_maps = jk.Textures, jk.CatalogTextures, jk.shader_maps
 read_gla, glm_header = jk.read_gla, jk.glm_header
 CUSTOM_SPECIES = {'jedi_hf','jedi_hm','jedi_kdm','jedi_rm','jedi_tf','jedi_zf'}
+
+
+class TextureLibrary(SourceTextureStore):
+    def __init__(self, root, games):
+        super().__init__(Path(root)/'textures', games[0].assets)
 
 
 class Game(jk.Game):

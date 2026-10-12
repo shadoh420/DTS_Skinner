@@ -1,19 +1,19 @@
 /* Data-only id material expressions, UV matrices and conservative portal visibility. */
 (function(root) {
   'use strict';
-  function evaluate(node, time, parms, tables) {
+  function evaluate(node, time, parms, tables, globals=[], sound=0) {
     if (typeof node === 'number') return node;
-    if (typeof node === 'string') return node === 'time' ? time : node.startsWith('parm') ? (parms[+node.slice(4)] || 0) : 0;
+    if (typeof node === 'string') return node === 'sound' ? sound : node === 'time' ? time : node.startsWith('parm') ? (parms[+node.slice(4)] || 0) : node.startsWith('global') ? (globals[+node.slice(6)] || 0) : 0;
     if (!node) return 0;
-    const [op,a,b]=node, x=evaluate(a,time,parms,tables);
+    const [op,a,b]=node, x=evaluate(a,time,parms,tables,globals,sound);
     if (op==='table') {
       const table=tables[a]; if (!table || !table.values.length) return 0;
       const values=table.values, n=values.length;if(n<=1)return 1;
-      let f=evaluate(b,time,parms,tables);
+      let f=evaluate(b,time,parms,tables,globals,sound);
       f=table.clamp ? Math.max(0,Math.min(1,f))*(n-1) : ((f%1+1)%1)*n;
       const i=Math.floor(f); return table.snap ? values[i%n] : values[i%n]*(1-f+i)+values[Math.min(i+1,table.clamp?n-1:n)%n]*(f-i);
     }
-    const y=evaluate(b,time,parms,tables);
+    const y=evaluate(b,time,parms,tables,globals,sound);
     switch(op) {
       case '+':return x+y; case '-':return x-y; case '*':return x*y; case '/':return y?x/y:0; case '%':return y?x%y:0;
       case '-u':return -x; case '+u':return x; case '!u':return +!x; case '<':return +(x<y);case '>':return +(x>y);
@@ -21,19 +21,47 @@
       case '&&':return +(!!x&&!!y);case '||':return +(!!x||!!y);default:return 0;
     }
   }
-  function uvMatrix(stage,time,parms,tables) {
+  function uvMatrix(stage,time,parms,tables,globals=[],sound=0) {
     // Row-major affine UV transform. Doom post-multiplies each modifier (Material.cpp).
     let m=[1,0,0,0,1,0];
     for(const [op,...args] of stage.uv || []) {
-      const [x,y=x]=args.map(a=>evaluate(a,time,parms,tables));let n;
+      const [x,y=x]=args.map(a=>evaluate(a,time,parms,tables,globals,sound));let n;
       if(op==='scroll'||op==='translate') n=[1,0,x,0,1,y];
       else if(op==='scale') n=[x,0,0,0,y,0];
       else if(op==='centerscale') n=[x,0,.5-.5*x,0,y,.5-.5*y];
-      else {const c=tables.costable?evaluate(['table','costable',x],time,parms,tables):Math.cos(x*2*Math.PI),s=tables.sintable?evaluate(['table','sintable',x],time,parms,tables):Math.sin(x*2*Math.PI);n=[c,-s,.5-.5*c+.5*s,s,c,.5-.5*s-.5*c];}
+      else {const c=tables.costable?evaluate(['table','costable',x],time,parms,tables,globals,sound):Math.cos(x*2*Math.PI),s=tables.sintable?evaluate(['table','sintable',x],time,parms,tables,globals,sound):Math.sin(x*2*Math.PI);n=[c,-s,.5-.5*c+.5*s,s,c,.5-.5*s-.5*c];}
       m=[m[0]*n[0]+m[1]*n[3],m[0]*n[1]+m[1]*n[4],m[0]*n[2]+m[1]*n[5]+m[2],
          m[3]*n[0]+m[4]*n[3],m[3]*n[1]+m[4]*n[4],m[3]*n[2]+m[4]*n[5]+m[5]];
     }
     return m;
+  }
+  function soundEnvelope(samples) {
+    // snd_cache.cpp / FindAmplitude: min/max over 512 samples at 44.1 kHz,
+    // atan((high-low)/32767)/(pi/4). Sound volume and distance do not enter it.
+    const values=new Float32Array(Math.ceil(samples.length/512));
+    for(let i=0;i<values.length;i++) {
+      let low=32767,high=-32767;
+      for(let j=i*512;j<Math.min(samples.length,(i+1)*512);j++) {
+        const v=Math.max(-32768,Math.min(32767,Math.round(samples[j]*32768)));
+        low=Math.min(low,v);high=Math.max(high,v);
+      }
+      values[i]=Math.atan((high-low)/32767)/(Math.PI/4);
+    }
+    return {values,duration:samples.length/44100};
+  }
+  function soundAmplitude(source,seconds,override=null) {
+    if(!source||source.waitForTrigger||!source.envelope)return 0;
+    if(override!==null)return override; // diagnostic equivalent of s_constantAmplitude
+    const e=source.envelope;if(!e.duration||seconds<0||(!source.looping&&seconds>=e.duration))return 0;
+    if(source.noFlicker)return Math.atan(2)/(Math.PI/4);
+    return e.values[Math.min(e.values.length-1,Math.floor((seconds%e.duration)*44100/512))];
+  }
+  function ambientBlend(stage) {
+    // GLS_*MASK disables writes, not the source channel used by blending.
+    // Separate alpha factors preserve destination alpha for subsequent stages.
+    const rgb=stage.blend?.length===2?stage.blend:['gl_one','gl_zero'];
+    const alpha=rgb.map(f=>f.replace('_color','_alpha'));
+    return [...(stage.maskcolor?['gl_zero','gl_one']:rgb),...(stage.maskalpha?['gl_zero','gl_one']:alpha)];
   }
   function areaAt(p,nodes) {
     if(!nodes.length)return 0;
@@ -114,6 +142,6 @@
     }
     return result;
   }
-  const api={evaluate,uvMatrix,areaAt,portalRect,visibleAreas,tangents};
+  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents};
   if(typeof module!=='undefined')module.exports=api;else root.doom3Materials=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -155,6 +155,8 @@ glow
                 self.assertIn('id="jaImport"',client.get('/').get_data(as_text=True))
                 self.assertEqual(client.post('/import_ja',json={'path':str(root)},headers={'Origin':'https://outside'}).status_code,403)
             self.assertEqual(report['texture_library']['after'],2)
+            stored=json.loads((out/'model_json'/(name+'.json')).read_text())
+            self.assertIn('geometry_buffers',stored);self.assertNotIn('vertices',stored)
             texture=out/'textures'/data['material_textures'][0]
             self.assertFalse(texture.name.startswith(('ja_','image_')))
             Image.new('RGBA',(2,2),'orange').save(texture);edited=texture.read_bytes()

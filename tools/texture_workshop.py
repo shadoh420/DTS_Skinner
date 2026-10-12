@@ -18,7 +18,7 @@ else:
 # tools/import_reflex_map.py; textures only).
 TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3', 'quake4')
 
-TEXTURE_SUFFIXES = ('.png', '.dds')
+TEXTURE_SUFFIXES = ('.png', '.dds', '.jpg', '.jpeg')
 
 
 def texture_files(directory):

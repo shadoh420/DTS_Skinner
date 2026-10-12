@@ -6,7 +6,16 @@ const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:false,alpha:fals
 renderer.setPixelRatio(1);renderer.outputEncoding=THREE.LinearEncoding;renderer.toneMapping=THREE.NoToneMapping;
 renderer.setClearColor(0);renderer.sortObjects=true;
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(75,1,2,100000);camera.up.set(0,0,1);
-let data=null, tables={}, batches=[], textures=new Map(), geometry=null, yaw=0,pitch=0,speed=250,loading=false,paused=false,mapStart=performance.now();
+// Doom uses destination alpha as scratch storage (makealpha + maskColor).
+// Keep RGBA offscreen, then copy opaque RGB so browser compositing cannot alter it.
+const colorTarget=new THREE.WebGLRenderTarget(1,1,{format:THREE.RGBAFormat,depthBuffer:true});
+const copyScene=new THREE.Scene(),copyCamera=new THREE.Camera();
+copyScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({
+ uniforms:{source:{value:colorTarget.texture}},depthTest:false,depthWrite:false,blending:THREE.NoBlending,
+ vertexShader:'varying vec2 st;void main(){st=uv;gl_Position=vec4(position.xy,0,1);}',
+ fragmentShader:'uniform sampler2D source;varying vec2 st;void main(){gl_FragColor=vec4(texture2D(source,st).rgb,1);}'
+})));
+let data=null, tables={}, batches=[], textures=new Map(), geometry=null, yaw=0,pitch=0,speed=250,loading=false,paused=false,mapStart=performance.now(),soundAmplitudeOverride=null;
 const keys=new Set(), matrix=new THREE.Matrix4(),frustum=new THREE.Frustum(),look=new THREE.Vector3();
 const white=new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1);white.needsUpdate=true;
 const black=new THREE.DataTexture(new Uint8Array([0,0,0,255]),1,1);black.needsUpdate=true;
@@ -72,11 +81,11 @@ async function texture(image,clamp=false) {
    t.needsUpdate=true;return t;
  })());return textures.get(key);
 }
-function stageColor(stage,seconds,parms,target) {
- const active=M.evaluate(stage.condition,seconds,parms,tables)!==0;
- target.fromArray(stage.color.map(c=>M.evaluate(c,seconds,parms,tables)));if(!active)target.multiplyScalar(0);return active;
+function stageColor(stage,seconds,parms,target,sound=0) {
+ const active=M.evaluate(stage.condition,seconds,parms,tables,data.globalShaderParms,sound)!==0;
+ target.fromArray(stage.color.map(c=>M.evaluate(c,seconds,parms,tables,data.globalShaderParms,sound)));if(!active)target.multiplyScalar(0);return active;
 }
-function stageUV(stage,seconds,parms,target) {const m=M.uvMatrix(stage,seconds,parms,tables);target.set(m[0],m[1],m[2],m[3],m[4],m[5],0,0,1);}
+function stageUV(stage,seconds,parms,target,sound=0) {const m=M.uvMatrix(stage,seconds,parms,tables,data.globalShaderParms,sound);target.set(m[0],m[1],m[2],m[3],m[4],m[5],0,0,1);}
 function interactionGroups(stages) {
  const out=[];let bump=null,diffuse=null,specular=null;
  const flush=()=>{if(diffuse||specular)out.push({bump,diffuse,specular});diffuse=specular=null;};
@@ -102,7 +111,21 @@ async function buildMap(meta,binary) {
  const stages=Object.values(meta.materials).flatMap(m=>m.stages);
  await Promise.all(stages.map(async s=>s.texture=await texture(s.image,s.clamp)));
  await Promise.all(meta.lights.map(async l=>l.falloffTexture=await texture(l.falloff,true)));
- let passCount=0;
+ const sources=[...meta.lights,...meta.surfaces].map(x=>x.sound).filter(s=>s?.file&&!s.waitForTrigger);
+ if(sources.length) {
+  // Offline decoding needs neither autoplay permission nor an audio output device.
+  const decoder=new OfflineAudioContext(1,1,44100),envelopes=new Map();
+  await Promise.all(sources.map(async source=>{
+   if(!envelopes.has(source.file))envelopes.set(source.file,(async()=>{
+    const response=await fetch(base+source.file);if(!response.ok)throw Error('Missing sound envelope source: '+source.source);
+    const buffer=await decoder.decodeAudioData(await response.arrayBuffer());
+    return M.soundEnvelope(buffer.getChannelData(0));
+   })());
+   try{source.envelope=await envelopes.get(source.file);}
+   catch(error){const note=error.message+' (sound-reactive stages remain dark)';if(!meta.notes.includes(note))meta.notes.push(note);}
+  }));
+ }
+ let passCount=0,ambientOrder=100;
  for(const surface of meta.surfaces) {
   const material=meta.materials[surface.material],group=new THREE.Group(),meshes=[];
   const g=new THREE.BufferGeometry();g.attributes=geometry.attributes;g.index=geometry.index;g.setDrawRange(surface.start,surface.count);
@@ -122,7 +145,10 @@ async function buildMap(meta,binary) {
    const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:fragment,uniforms:u,vertexColors:true,
     side:material.twoSided?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
     blending:kind===0?THREE.NoBlending:THREE.CustomBlending,blendSrc:THREE.OneFactor,blendDst:kind===1?THREE.OneFactor:THREE.ZeroFactor});
-   if(kind===2&&diffuse.blend.length===2) {sm.blendSrc=blendFactors[diffuse.blend[0]]??THREE.OneFactor;sm.blendDst=blendFactors[diffuse.blend[1]]??THREE.ZeroFactor;}
+   if(kind===2) {
+    const factors=M.ambientBlend(diffuse).map(f=>blendFactors[f]);
+    [sm.blendSrc,sm.blendDst,sm.blendSrcAlpha,sm.blendDstAlpha]=factors;
+   }
    if(diffuse?.polygonOffset){sm.polygonOffset=true;sm.polygonOffsetFactor=-1;sm.polygonOffsetUnits=-1;}
    const mesh=new THREE.Mesh(g,sm);mesh.renderOrder=order;mesh.userData={kind,diffuse,specular,bump,light,projection};group.add(mesh);meshes.push(mesh);passCount++;
   }
@@ -133,20 +159,21 @@ async function buildMap(meta,binary) {
     for(const projection of meta.materials[light.shader].stages)if(projection.texture)
       pass(1,interaction.diffuse,interaction.specular,interaction.bump,light,projection,10);
   }
-  material.stages.filter(s=>s.role==='ambient').forEach((s,i)=>pass(2,s,null,null,null,null,100+i));
+  // Finish each surface's stage chain before another surface overwrites scratch alpha.
+  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(2,s,null,null,null,null,ambientOrder++));
  }
  return passCount;
 }
-function updatePass(mesh,seconds,parms) {
+function updatePass(mesh,seconds,parms,sound) {
  const {kind,diffuse,specular,bump,light,projection}=mesh.userData,u=mesh.material.uniforms;
  const d=diffuse||defaultStage;
- const da=stageColor(d,seconds,parms,u.diffuseColor.value);
- const sa=specular?stageColor(specular,seconds,parms,u.specularColor.value):false;
- mesh.visible=kind===1?(da||sa)&&(!bump||M.evaluate(bump.condition,seconds,parms,tables)!==0):da;
- stageUV(d,seconds,parms,u.diffuseUV.value);u.alphaCut.value=kind===1?0:M.evaluate(d.alphaTest,seconds,parms,tables);
- if(bump)stageUV(bump,seconds,parms,u.bumpUV.value);
- if(specular)stageUV(specular,seconds,parms,u.specularUV.value);
- if(light) {mesh.visible=stageColor(projection,seconds,light.parms,u.lightColor.value)&&mesh.visible;stageUV(projection,seconds,light.parms,u.projectionUV.value);}
+ const da=stageColor(d,seconds,parms,u.diffuseColor.value,sound);
+ const sa=specular?stageColor(specular,seconds,parms,u.specularColor.value,sound):false;
+ mesh.visible=kind===1?(da||sa)&&(!bump||M.evaluate(bump.condition,seconds,parms,tables,data.globalShaderParms,sound)!==0):da;
+ stageUV(d,seconds,parms,u.diffuseUV.value,sound);u.alphaCut.value=kind===1?0:M.evaluate(d.alphaTest,seconds,parms,tables,data.globalShaderParms,sound);
+ if(bump)stageUV(bump,seconds,parms,u.bumpUV.value,sound);
+ if(specular)stageUV(specular,seconds,parms,u.specularUV.value,sound);
+ if(light) {const amplitude=M.soundAmplitude(light.sound,seconds,soundAmplitudeOverride);mesh.visible=stageColor(projection,seconds,light.parms,u.lightColor.value,amplitude)&&mesh.visible;stageUV(projection,seconds,light.parms,u.projectionUV.value,amplitude);}
 }
 let lastMetrics={};
 function draw(seconds=0,target=null) {
@@ -155,10 +182,14 @@ function draw(seconds=0,target=null) {
  const areas=M.visibleAreas(camera.position.toArray(),data,matrix.elements);let visible=0;
  for(const batch of batches) {
    batch.group.visible=(!batch.surface.areas.length||batch.surface.areas.some(a=>areas.has(a)))&&frustum.intersectsBox(batch.geometry.boundingBox);
-   if(batch.group.visible){visible++;for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms);}
+   if(batch.group.visible){visible++;const sound=M.soundAmplitude(batch.surface.sound,seconds,soundAmplitudeOverride);for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms,sound);}
  }
- renderer.setRenderTarget(target);renderer.render(scene,camera);renderer.setRenderTarget(null);
+ const width=target?target.width:renderer.domElement.width,height=target?target.height:renderer.domElement.height;
+ if(colorTarget.width!==width||colorTarget.height!==height)colorTarget.setSize(width,height);
+ renderer.setRenderTarget(colorTarget);renderer.render(scene,camera);
  lastMetrics={areas:areas.size,surfaces:visible,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles};
+ renderer.setRenderTarget(target);renderer.render(copyScene,copyCamera);renderer.setRenderTarget(null);
+ lastMetrics.calls+=renderer.info.render.calls;lastMetrics.triangles+=renderer.info.render.triangles;
 }
 function pointCamera(){look.set(Math.cos(yaw)*Math.cos(pitch),Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch));camera.lookAt(look.add(camera.position));}
 function showViewpoint(which=0) {
@@ -216,6 +247,6 @@ async function benchmark(frames=120) {
  }finally{benchmarking=false;$('benchmark').disabled=false;}
 }
 $('benchmark').onclick=()=>benchmark();
-window.skinnerDoom3Maps={renderer,scene,camera,draw,showViewpoint,benchmark,get paused(){return paused;},set paused(value){paused=!!value;},get data(){return data;},get metrics(){return lastMetrics;}};
+window.skinnerDoom3Maps={renderer,scene,camera,draw,showViewpoint,benchmark,get soundAmplitudeOverride(){return soundAmplitudeOverride;},set soundAmplitudeOverride(value){soundAmplitudeOverride=value;},get paused(){return paused;},set paused(value){paused=!!value;},get data(){return data;},get metrics(){return lastMetrics;}};
 resize();requestAnimationFrame(animate);await loadCatalog();
 })().catch(e=>{document.getElementById('status').textContent=e.message;console.error(e);});
