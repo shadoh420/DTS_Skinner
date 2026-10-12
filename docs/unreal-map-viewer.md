@@ -1,5 +1,7 @@
 # Unreal map viewer
 
+Deus Ex uses the same reader and viewer on its own [Deus Ex Maps](#deus-ex) page; it is not added to the Unreal/UT list.
+
 A free-flight preview of the maps of your Unreal install (Unreal Gold, OldUnreal 227: 102 `.unr` files under
 `Maps`, 43 of them Return to Na Pali's in `Maps\UPak`) and of your Unreal Tournament install (UT 469: 96 maps), on
 one page. Open **Unreal Maps** from Skinner's home page; the map list holds both games, grouped Unreal, Return to Na
@@ -271,3 +273,64 @@ the range above; a falloff without SurrealEngine's flat top made the views 1.3 t
   to within 1–2 % of the frame, once the viewpoint stands on the floor (the first try, at the PlayerStart's own
   height plus the eye, was 30 units too high on NyLeve). Inter5's starmap screens and DmDeck16's view from
   PlayerStart0 read the same way round as on the page. Brightness differs: the game is lit, the page is not yet.
+
+
+## Deus Ex
+
+Open **Deus Ex** in the home page's Maps menu (`/maps/dx/`). Its import reads only top-level `Maps/*.dx`
+from a stock GOTY install, with the stock package policy used by the model browser; DXRando names and nested mod
+folders are ignored. The separate data folder is `local-data/dx-maps`. The CLI is:
+
+```
+python tools/import_unreal_map.py --game dx --install "C:/Games/Deus Ex" [--replace]
+```
+
+Map sections follow filenames: `00_` through `15_` become Mission NN, `99_` becomes Endings, `DXMP_` becomes
+Multiplayer, and unnumbered maps become Other maps. The inspected directory contains 88 names: 76 mission maps,
+4 endings, 5 multiplayer maps and 3 utility maps. This is a filename inventory, not a completed import result.
+
+**Drawn:** BSP world, decoration meshes (including vehicles), inventory pickup views, placed carcasses, and mover
+brushes at their saved start key. Properties set on the map actor override inherited class defaults, with object
+references resolved in the package that declares them. Skins use the model browser's `actor_texture` rule and
+poses use an authored AnimSequence/AnimFrame or its `standing_pose` fallback. Inventory uses PickupViewMesh and
+PickupViewScale unless the map explicitly sets Mesh or DrawScale; no third-person duplicate is added. Movers do
+not apply the Unreal viewer's player-arrival trigger prediction in DX mode.
+
+**Excluded:** every Pawn-derived actor, including ScriptedPawn, robots, animals and player classes. Carcasses
+are included because Engine.Carcass derives from Decoration, not Pawn. DeusExCarcass.PostBeginPlay selects its
+Mesh3 in water; dry carcasses keep their placed/default Mesh. A dead pawn is not spawned or simulated: only
+already placed carcass actors are drawn. Other actor families, sprites, effects, NPC weapons and runtime mission
+spawns are not drawn. Hidden actors remain hidden.
+
+**Model browser follow-up:** carcass classes also expose Mesh2 (secondary/death-front) and Mesh3 (floating) looks,
+with their own class skins and the usual aliases. These are catalog alternatives, not simultaneous map actors.
+All 34 previously reported bare CarcassB/CarcassC meshes are referenced by these class defaults; none of that set
+is unreferenced. A refreshed full-import count remains a separate check. The model import report now lists and
+counts any remaining unreferenced raw meshes that need DefaultTexture.
+
+**Format:** the bounded Liberty Island probe reads its v68/licensee-0 Model exactly with the existing UE1 BSP,
+zone, lightmap and shadow-bit reader. One DeusExMover brush and its Polys also end exactly. No separate DX BSP or
+lightmap byte layout was needed for those probes. DeusExLevelInfo is an Info actor with mission metadata; it does
+not replace Engine.LevelInfo's zone/lighting role. Sky selection follows Engine.ZoneInfo.LinkToSkybox and the
+merged LevelInfo.bHighDetailMode (true in the inspected DX defaults). Player-start eye placement uses the Human
+class defaults: CollisionHeight 47.5 and BaseEyeHeight 40 Unreal units.
+
+**Lighting:** shared UE1 lightmaps, zone ambient, surface flags, sky, panning, and vertex-lit meshes. The supplied
+DeusEx.ini has WinDrv.WindowsClient.Brightness=0.6, GameRenderDevice/RenderDevice=GlideDrv.GlideRenderDevice,
+and WindowedRenderDevice=SoftDrv.SoftwareRenderDevice; User.ini has no brightness/gamma override. The importer
+records the configured devices and brightness in scene.display. The viewer uses the Unreal page's display
+approximation, `pow(c, 1/(2.5*Brightness))`, giving exponent 2/3 here, after the same texture-times-lightmap-times-two
+render. This is not a measured Glide/software gamma match. No independent gamma value was found; the INI's
+UseGammaCorrection switch belongs to its D3D section, not the configured Glide device. Missing/invalid brightness
+uses 0.6. Existing Unreal/UT curves are unchanged.
+
+The existing approximations remain: no fog, mirrors, runtime texture scripts or mission changes; procedural
+textures are stills, changing lights use averages, mesh lighting uses the existing floor-light visibility proxy.
+Intro and ending scenes do not run their camera scripts. Source rules were read from package defaults/ScriptText
+and SurrealEngine's UE1 readers, without copying source text.
+
+Checks: `tests/test_dx_maps.py` builds tiny packages in plain tempfile directories, covering the carcass views,
+actor policy, BSP/lightmaps, transforms and skins, water carcasses, mover start key, import sections, route isolation
+and a pre-change Unreal/UT output digest. `node tests/test_dx_maps.js` checks the shared viewer's DX and legacy
+configuration without a browser. Full stock map import and visual/brightness acceptance have not been run for this
+change; failed actors and package/class issues are exposed in scene.json and Preview notes.
