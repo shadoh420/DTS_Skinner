@@ -2,12 +2,13 @@
 import re
 from collections import Counter
 try:
-    from tools.doom3_assets import compact, declarations, image_expression, lex, path_name
+    from tools.doom3_assets import compact, declarations, image_expression, lex, path_name, PROGRAMS
 except ImportError:
-    from doom3_assets import compact, declarations, image_expression, lex, path_name
+    from doom3_assets import compact, declarations, image_expression, lex, path_name, PROGRAMS
 
 
-def expression(source):
+def expression(source,policy=None):
+    if policy:source=re.sub(r"\b(?:glslPrograms|fragmentPrograms|vertexPrograms)\b","0",source,flags=re.I)
     tokens=re.findall(r'\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+|[a-zA-Z_]\w*|==|!=|<=|>=|&&|\|\||[-+*/%<>()\[\]!]',source)
     if ''.join(tokens)!=re.sub(r'\s+','',source): raise ValueError('Unsupported expression: '+source)
     at=0
@@ -52,6 +53,7 @@ COMMANDS=set(('name map clampmap diffusemap bumpmap specularmap blend if alphate
               'program vertexprogram fragmentprogram fragmentmap vertexparm videomap soundmap maskcolor maskalpha maskdepth '
               'forcehighquality highquality uncompressed zeroclamp alphazeroclamp clamp nearest linear nopicmip '
               'polygonoffset privatepolygonoffset ignorealphatest').split())
+RAVEN_COMMANDS=set('shaderparm shadertexture glslprogram fp20program nomips shear mirrorrendermap remoterendermap noclamp'.split())
 BLENDS={'add':['gl_one','gl_one'],'filter':['gl_dst_color','gl_zero'],'modulate':['gl_dst_color','gl_zero'],
         'blend':['gl_src_alpha','gl_one_minus_src_alpha'],'none':['gl_zero','gl_one']}
 
@@ -66,20 +68,25 @@ def split_args(tokens):
 
 
 def compile_stage(tokens,textures):
+    policy=getattr(textures,'policy',None)
+    commands=COMMANDS | RAVEN_COMMANDS if policy else COMMANDS
+    expr=lambda value:expression(value,policy)
     t=compact(tokens);stage=dict(role='ambient',color=[1,1,1,1],condition=1,uv=[],vertexColor=0,blend=[],alphaTest=0,clamp=False)
     notes=[];i=0
     while i<len(t):
         key=t[i].lower();i+=1
         if key=='blend' and i<len(t) and t[i].lower() in ('diffusemap','bumpmap','specularmap'):
             stage['role']=t[i].lower().removesuffix('map');i+=1;continue
+        if policy and key=='blend' and i<len(t) and t[i].lower() in BLENDS:
+            stage['blend']=BLENDS[t[i].lower()];i+=1;continue
         if key in ('map','clampmap','diffusemap','bumpmap','specularmap') and i<len(t):
-            value,i=image_expression(t,i);stage['image']=textures.resolve(value)
+            value,i=image_expression(t,i,PROGRAMS | policy.programs if policy else PROGRAMS);stage['image']=textures.resolve(value)
             if key not in ('map','clampmap'):stage['role']=key.removesuffix('map')
             if key=='clampmap':stage['clamp']=True
             continue
         start=i;depth=0
         while i<len(t):
-            if depth==0 and t[i].lower() in COMMANDS:break
+            if depth==0 and t[i].lower() in commands:break
             depth+=t[i].count('(')+t[i].count('[')-t[i].count(')')-t[i].count(']');i+=1
         args=t[start:i]
         try:
@@ -89,19 +96,19 @@ def compile_stage(tokens,textures):
                 elif mode in BLENDS:stage['blend']=BLENDS[mode]
                 elif mode.startswith('gl_'):stage['blend']=[x.lower() for x in args if x!=',']
             elif key in ('rgb','rgba','red','green','blue','alpha','color'):
-                values=[expression(x) for x in split_args(args)]
+                values=[expr(x) for x in split_args(args)]
                 if key=='color':stage['color']=(values+[1]*4)[:4]
                 else:
                     for k in {'rgb':(0,1,2),'rgba':(0,1,2,3),'red':(0,),'green':(1,),'blue':(2,),'alpha':(3,)}[key]:stage['color'][k]=values[0]
             elif key=='colored':stage['color']=['parm0','parm1','parm2','parm3']
-            elif key=='if':stage['condition']=expression(' '.join(args))
-            elif key=='alphatest':stage['alphaTest']=expression(' '.join(args))
+            elif key=='if':stage['condition']=expr(' '.join(args))
+            elif key=='alphatest':stage['alphaTest']=expr(' '.join(args))
             elif key in ('scroll','translate','scale','centerscale','rotate'):
-                stage['uv'].append([key,*[expression(x) for x in split_args(args)]])
+                stage['uv'].append([key,*[expr(x) for x in split_args(args)]])
             elif key in ('vertexcolor','inversevertexcolor'):stage['vertexColor']=1 if key=='vertexcolor' else -1
             elif key in ('maskcolor','maskalpha'):stage[key]=True
             elif key in ('clamp','zeroclamp','alphazeroclamp'):stage['clamp']=True
-            elif key in ('name','forcehighquality','highquality','uncompressed','nearest','linear','nopicmip'):pass
+            elif key in ('name','forcehighquality','highquality','uncompressed','nearest','linear','nopicmip','nomips','noclamp'):pass
             elif key in ('privatepolygonoffset','polygonoffset'):stage['polygonOffset']=True
             else:notes.append(key)
         except (ValueError,IndexError) as exc:notes.append(str(exc))
@@ -125,13 +132,13 @@ def compile_material(name,defs,materials,textures):
     while i<len(t):
         key=t[i].lower();i+=1
         if key in ('diffusemap','bumpmap','specularmap','lightfalloffimage') and i<len(t):
-            value,i=image_expression(t,i)
+            value,i=image_expression(t,i,PROGRAMS | defs.policy.programs if defs.policy else PROGRAMS)
             if key=='lightfalloffimage':falloff=textures.resolve(value)
             else:
                 s,_=compile_stage([key,value],textures);shortcuts.append(s)
     parsed=shortcuts+parsed
     if not body:
-        s,_=compile_stage(['diffusemap',record['name']],textures);parsed.append(s)
+        s,_=compile_stage(['diffusemap',record['diffuse']],textures);parsed.append(s)
     roles={s['role'] for s in parsed}
     if roles & {'bump','diffuse','specular'}:
         if 'bump' not in roles:
@@ -151,6 +158,8 @@ def compile_material(name,defs,materials,textures):
     elif not any(s['alphaTest']!=0 for s in parsed) and not roles & {'bump','diffuse','specular'}:
         blend=parsed[0]['blend'] if parsed else []
         translucent=translucent or not parsed or bool(blend and (blend[1]!='gl_zero' or blend[0] in ('gl_dst_color','gl_one_minus_dst_color','gl_dst_alpha','gl_one_minus_dst_alpha')))
+    if defs.policy and 'deform' in lower and lower[lower.index('deform')+1:lower.index('deform')+2] in (['particle'],['particle2']):
+        record=dict(record,visible=False);notes.append('particle deform skipped')
     spectrum=int(t[lower.index('spectrum')+1]) if 'spectrum' in lower else 0
     for feature in ('deform','guisurf','foglight','blendlight','mirror','portalsky'):
         if feature in lower:notes.append(feature)

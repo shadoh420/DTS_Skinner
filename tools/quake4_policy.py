@@ -14,6 +14,13 @@ campaigns = ('q4base',)
 programs = {'downsize'}
 
 
+def material_name(name):
+    # idDeclManager::MakeNameCanonical strips the final extension, including
+    # LightWave's numbered surface suffixes (.1, .2) and accidental .lwo.
+    name=path_name(name)
+    return name.rsplit('.',1)[0] if '.' in name else name
+
+
 def archives(folder):
     return sorted(p for p in folder.glob('*.pk4') if re.fullmatch(
         r'game\d+|pak\d{3}|q4cmp_pak001|zpak_english.*', p.stem.lower()))
@@ -170,9 +177,9 @@ def prepare(row, defs, dependencies):
 
 
 def surfaces(parts, entity):
-    hidden={path_name(v) for k,v in entity.items() if k.startswith('hidesurface')}
-    hidden.difference_update(path_name(v) for k,v in entity.items() if k.startswith('showsurface'))
-    return [p for p in parts if path_name(p['shader']) not in hidden]
+    hidden={material_name(v) for k,v in entity.items() if k.startswith('hidesurface')}
+    hidden.difference_update(material_name(v) for k,v in entity.items() if k.startswith('showsurface'))
+    return [p for p in parts if material_name(p['shader']) not in hidden]
 
 
 def transform(parts, matrix):

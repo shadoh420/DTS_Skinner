@@ -1,7 +1,9 @@
 /* Doom 3 ARB2 interactions, without stencil shadows. No Three lighting/color transforms. */
 (async function() {
 'use strict';
-const $=id=>document.getElementById(id), M=window.doom3Materials, base='/doom3-map-data/';
+const $=id=>document.getElementById(id), M=window.doom3Materials, config=window.idTech4MapConfig, base=config.data;
+document.title='DTS Skinner - '+config.label+' Maps';$('gameTitle').textContent=config.label+' Maps';
+$('gamePath').placeholder=config.install;$('importStatus').textContent=config.description;
 const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:false,alpha:false});
 renderer.setPixelRatio(1);renderer.outputEncoding=THREE.LinearEncoding;renderer.toneMapping=THREE.NoToneMapping;
 renderer.setClearColor(0);renderer.sortObjects=true;
@@ -20,25 +22,26 @@ const keys=new Set(), matrix=new THREE.Matrix4(),frustum=new THREE.Frustum(),loo
 const white=new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1);white.needsUpdate=true;
 const black=new THREE.DataTexture(new Uint8Array([0,0,0,255]),1,1);black.needsUpdate=true;
 const flat=new THREE.DataTexture(new Uint8Array([128,128,255,255]),1,1);flat.needsUpdate=true;
-const vertex=`attribute vec3 doomTangent;attribute vec3 doomBitangent;
+const vertex=`attribute vec3 doomTangent;attribute vec3 doomBitangent;attribute float doomAlpha;varying float vertexAlpha;
 varying vec2 st;varying vec3 positionWorld, tangentX, tangentY, tangentZ, vertexRGB;
 varying vec3 lightVector, halfVector;uniform vec3 lightOrigin;
-void main(){st=uv;positionWorld=position;vertexRGB=color;
+void main(){st=uv;positionWorld=position;vertexRGB=color;vertexAlpha=doomAlpha;
 tangentZ=normal;tangentX=doomTangent;tangentY=doomBitangent;
 vec3 L=lightOrigin-position,V=cameraPosition-position;
 lightVector=vec3(dot(L,tangentX),dot(L,tangentY),dot(L,tangentZ));
 vec3 H=normalize(L)+normalize(V);halfVector=vec3(dot(H,tangentX),dot(H,tangentY),dot(H,tangentZ));
 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
-const fragment=`precision highp float;
+const fragment=`precision highp float;varying float vertexAlpha;
 varying vec2 st;varying vec3 positionWorld,tangentX,tangentY,tangentZ,vertexRGB,lightVector,halfVector;
 uniform sampler2D diffuseMap,bumpMap,specularMap,projectionMap,falloffMap;
 uniform mat3 diffuseUV,bumpUV,specularUV,projectionUV;
 uniform vec4 diffuseColor,specularColor,lightColor;uniform vec4 projectS,projectT,projectQ,projectF;
-uniform float alphaCut,normalRXGB,vertexMode,specularVertexMode,lightScale,ambient;
+uniform float alphaCut,normalRXGB,vertexMode,specularVertexMode,lightScale,ambient,diffuseEnabled,vertexAlphaEnabled;
 uniform int passKind;
 vec3 vertexColor(float mode){return mode==0.0?vec3(1.0):mode>0.0?vertexRGB:vec3(1.0)-vertexRGB;}
 void main(){
 vec4 d=texture2D(diffuseMap,(diffuseUV*vec3(st,1.0)).xy)*diffuseColor;
+d.a*=vertexAlphaEnabled==0.0||vertexMode==0.0?1.0:vertexMode>0.0?vertexAlpha:1.0-vertexAlpha;
 if(d.a<alphaCut)discard;
 if(passKind==0){gl_FragColor=vec4(0,0,0,1);return;}
 if(passKind==2){gl_FragColor=vec4(d.rgb*vertexColor(vertexMode),d.a);return;}
@@ -56,7 +59,7 @@ float h=max((dot(n,normalize(halfVector*face))-.75)*4.0,0.0);
 // Image_init.cpp R_SpecularTableImage: quadratic quarter-lobe, NOT Phong pow().
 float spec=min(h*h,1.0);
 vec3 s=texture2D(specularMap,(specularUV*vec3(st,1)).xy).rgb*specularColor.rgb*2.0*spec;
-vec3 diffuse=d.rgb*vertexColor(vertexMode);
+vec3 diffuse=d.rgb*vertexColor(vertexMode)*diffuseEnabled;
 // ARB2 ambientNormalMap, image_useNormalCompression=2: constant cube RGB.
 if(ambient>0.5){float a=max(dot(n,vec3(1.0,29.0/255.0*2.0-1.0,227.0/255.0*2.0-1.0)),0.0);gl_FragColor=vec4(diffuse*light*a,1);return;}
 gl_FragColor=vec4((diffuse+s*vertexColor(specularVertexMode))*light*ndl,1);
@@ -67,7 +70,7 @@ function uniforms() {return {diffuseMap:{value:white},bumpMap:{value:flat},specu
  diffuseUV:{value:unit()},bumpUV:{value:unit()},specularUV:{value:unit()},projectionUV:{value:unit()},
  diffuseColor:{value:new THREE.Vector4(1,1,1,1)},specularColor:{value:new THREE.Vector4(0,0,0,0)},lightColor:{value:new THREE.Vector4(1,1,1,1)},
  projectS:{value:new THREE.Vector4()},projectT:{value:new THREE.Vector4()},projectQ:{value:new THREE.Vector4()},projectF:{value:new THREE.Vector4()},
- lightOrigin:{value:new THREE.Vector3()},alphaCut:{value:0},normalRXGB:{value:0},vertexMode:{value:0},specularVertexMode:{value:0},lightScale:{value:2},ambient:{value:0},passKind:{value:0}};}
+ lightOrigin:{value:new THREE.Vector3()},alphaCut:{value:0},normalRXGB:{value:0},vertexMode:{value:0},specularVertexMode:{value:0},lightScale:{value:2},ambient:{value:0},diffuseEnabled:{value:1},vertexAlphaEnabled:{value:0},passKind:{value:0}};}
 const blendFactors={gl_zero:THREE.ZeroFactor,gl_one:THREE.OneFactor,gl_src_alpha:THREE.SrcAlphaFactor,gl_one_minus_src_alpha:THREE.OneMinusSrcAlphaFactor,
  gl_dst_color:THREE.DstColorFactor,gl_one_minus_dst_color:THREE.OneMinusDstColorFactor,gl_dst_alpha:THREE.DstAlphaFactor,gl_one_minus_dst_alpha:THREE.OneMinusDstAlphaFactor,
  gl_src_color:THREE.SrcColorFactor,gl_one_minus_src_color:THREE.OneMinusSrcColorFactor};
@@ -103,9 +106,12 @@ function disposeMap() {
 }
 async function buildMap(meta,binary) {
  data=meta;geometry=new THREE.BufferGeometry();
- for(const [key,attr,size] of [['vertices','position',3],['normals','normal',3],['uvs','uv',2],['colors','color',3]]) {
+ for(const [key,attr,size] of [['vertices','position',3],['normals','normal',3],['uvs','uv',2],['colors','color',meta.colorSize||3]]) {
   const a=meta.geometry_buffers.arrays[key];geometry.setAttribute(attr,new THREE.BufferAttribute(new Float32Array(binary,a.offset,a.count),size));
  }
+ const colors=geometry.attributes.color,alpha=new Float32Array(colors.count).fill(1);
+ if(colors.itemSize===4){const rgb=new Float32Array(colors.count*3);for(let i=0;i<colors.count;i++){rgb.set(colors.array.subarray(i*4,i*4+3),i*3);alpha[i]=colors.array[i*4+3];}geometry.setAttribute('color',new THREE.BufferAttribute(rgb,3));}
+ geometry.setAttribute('doomAlpha',new THREE.BufferAttribute(alpha,1));
  const ix=meta.geometry_buffers.arrays.indices;geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(binary,ix.offset,ix.count),1));M.tangents(geometry.attributes.position.array,geometry.attributes.uv.array,geometry.attributes.normal.array,geometry.index.array,meta.surfaces.filter(s=>meta.materials[s.material].unsmoothedTangents)).forEach((a,i)=>geometry.setAttribute(i?'doomBitangent':'doomTangent',new THREE.BufferAttribute(a,3)));
  // Resolve each image once before constructing passes. No run-time fetch waterfall per surface.
  const stages=Object.values(meta.materials).flatMap(m=>m.stages);
@@ -132,13 +138,14 @@ async function buildMap(meta,binary) {
   g.boundingBox=new THREE.Box3(new THREE.Vector3(...surface.bounds[0]),new THREE.Vector3(...surface.bounds[1]));g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
   const batch={group,meshes,geometry:g,surface};batches.push(batch);scene.add(group);
   function pass(kind,diffuse,specular,bump,light,projection,order) {
-   const u=uniforms();u.passKind.value=kind;u.diffuseMap.value=diffuse?.texture||(kind===1?black:white);
+   const u=uniforms();u.vertexAlphaEnabled.value=meta.game==='quake4'?1:0;u.passKind.value=kind;u.diffuseMap.value=diffuse?.texture||(kind===1?black:white);
    u.specularMap.value=specular?.texture||black;u.bumpMap.value=bump?.texture||flat;
    u.normalRXGB.value=u.bumpMap.value.userData.normalEncoding==='rxgb'?1:0;
    u.vertexMode.value=diffuse?.vertexColor||0;u.specularVertexMode.value=specular?.vertexColor||0;
    if(light) {
     u.projectionMap.value=projection.texture||white;u.falloffMap.value=light.falloffTexture||white;
     if(light.noSpecular)u.specularMap.value=black;
+    if(light.noDiffuse)u.diffuseEnabled.value=0;
     u.lightOrigin.value.fromArray(light.origin);u.ambient.value=+light.ambient;u.lightScale.value=meta.lightScale;
     ['projectS','projectT','projectQ','projectF'].forEach((n,i)=>u[n].value.fromArray(light.projection[i]));
    }
@@ -214,13 +221,13 @@ async function loadMap(id) {
  }catch(e){$('status').textContent=e.message;console.error(e);}finally{loading=false;$('map').disabled=false;}
 }
 let catalog=[];
-async function loadCatalog(){const r=await fetch(base+'catalog.json');if(!r.ok){$('importPanel').open=true;$('status').textContent='Import Doom 3 maps to start.';return;}
+async function loadCatalog(){const r=await fetch(base+'catalog.json');if(!r.ok){$('importPanel').open=true;$('status').textContent='Import '+config.label+' maps to start.';return;}
  catalog=await r.json();$('map').replaceChildren(...catalog.map(m=>new Option(m.label,m.id)));
  const id=decodeURIComponent(location.hash.slice(1));$('map').value=catalog.some(m=>m.id===id)?id:catalog[0]?.id;if($('map').value)await loadMap($('map').value);}
 $('map').onchange=()=>loadMap($('map').value);$('viewpoint').onchange=()=>showViewpoint(+$('viewpoint').value);$('reset').onclick=()=>showViewpoint(0);
 $('fov').onchange=resize;window.addEventListener('resize',resize);
 $('import').onclick=async()=>{const button=$('import');button.disabled=true;$('importStatus').textContent='Importing maps…';try{
- const r=await fetch('/import_doom3_maps',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('gamePath').value,replace:$('replace').checked})});
+ const r=await fetch(config.import,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('gamePath').value,replace:$('replace').checked})});
  const result=await r.json();if(!r.ok)throw Error(result.error);$('importStatus').textContent=result.ready+' maps imported.';await loadCatalog();
  }catch(e){$('importStatus').textContent=e.message;}finally{button.disabled=false;}};
 let dragging=false;
@@ -247,6 +254,6 @@ async function benchmark(frames=120) {
  }finally{benchmarking=false;$('benchmark').disabled=false;}
 }
 $('benchmark').onclick=()=>benchmark();
-window.skinnerDoom3Maps={renderer,scene,camera,draw,showViewpoint,benchmark,get soundAmplitudeOverride(){return soundAmplitudeOverride;},set soundAmplitudeOverride(value){soundAmplitudeOverride=value;},get paused(){return paused;},set paused(value){paused=!!value;},get data(){return data;},get metrics(){return lastMetrics;}};
+window.skinnerDoom3Maps={game:config.game,renderer,scene,camera,draw,showViewpoint,benchmark,get soundAmplitudeOverride(){return soundAmplitudeOverride;},set soundAmplitudeOverride(value){soundAmplitudeOverride=value;},get paused(){return paused;},set paused(value){paused=!!value;},get data(){return data;},get metrics(){return lastMetrics;}};
 resize();requestAnimationFrame(animate);await loadCatalog();
 })().catch(e=>{document.getElementById('status').textContent=e.message;console.error(e);});

@@ -124,11 +124,11 @@ class Declarations:
                 elif ext=='.skin':
                     pairs=[]; i=0
                     while i+1<len(t):
-                        if t[i].lower()!='model': pairs.append((path_name(t[i]),path_name(t[i+1])))
+                        if t[i].lower()!='model': pairs.append((policy.material_name(t[i]) if policy else path_name(t[i]),policy.material_name(t[i+1]) if policy else path_name(t[i+1])))
                         i+=2
                     self.skins[name]=pairs
                 elif ext=='.mtr' and kind!='table':
-                    self.materials[name]=body
+                    self.materials[policy.material_name(name) if policy else name]=body
 
     def inherit(self, collection, name, stack=()):
         if self.policy: return self.policy.inherit(self,collection,name,stack)
@@ -154,6 +154,7 @@ class Declarations:
         return self.inherit(self.models,name) if name in self.models else {'mesh':name,'anims':{}}
 
     def remap(self, name, skin):
+        if self.policy:name=self.policy.material_name(name)
         for source,target in self.skins.get(path_name(skin or ''),[]):
             if source in ('*',path_name(name)): return target
         return name
@@ -254,7 +255,9 @@ def material_record(name, body, policy=None):
     if chosen:
         for key in ('alphaTest','alphaTestExpression','blend','vertexColor','clamp'):
             if key in chosen: result[key]=chosen[key]
-    if body is None: result['diffuse']=name
+    if body is None:
+        result['diffuse']='_default' if policy and path_name(name)=='default' else name
+        if result['diffuse']=='_default':result['notes'].append('Untextured LWO Default surface: native default material, not collision')
     elif not result['diffuse']:
         result['diffuse']='_black'
         result['notes'].append('No diffuse stage; black model preview (specular/GUI belongs to Maps)')
@@ -353,7 +356,7 @@ class Materials:
         self.declarations,self.textures,self.records=declarations,textures,{}
 
     def resolve(self,name):
-        name=re.sub(r'\.tga$','',path_name(name))
+        name=self.declarations.policy.material_name(name) if self.declarations.policy else re.sub(r'\.tga$','',path_name(name))
         if name in self.records: return self.records[name]
         result=material_record(name,self.declarations.materials.get(name),self.declarations.policy)
         result['images']={role:self.textures.resolve(result[role]) for role in ('diffuse','bump','specular')}
