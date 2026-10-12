@@ -1,0 +1,119 @@
+/* Data-only id material expressions, UV matrices and conservative portal visibility. */
+(function(root) {
+  'use strict';
+  function evaluate(node, time, parms, tables) {
+    if (typeof node === 'number') return node;
+    if (typeof node === 'string') return node === 'time' ? time : node.startsWith('parm') ? (parms[+node.slice(4)] || 0) : 0;
+    if (!node) return 0;
+    const [op,a,b]=node, x=evaluate(a,time,parms,tables);
+    if (op==='table') {
+      const table=tables[a]; if (!table || !table.values.length) return 0;
+      const values=table.values, n=values.length;if(n<=1)return 1;
+      let f=evaluate(b,time,parms,tables);
+      f=table.clamp ? Math.max(0,Math.min(1,f))*(n-1) : ((f%1+1)%1)*n;
+      const i=Math.floor(f); return table.snap ? values[i%n] : values[i%n]*(1-f+i)+values[Math.min(i+1,table.clamp?n-1:n)%n]*(f-i);
+    }
+    const y=evaluate(b,time,parms,tables);
+    switch(op) {
+      case '+':return x+y; case '-':return x-y; case '*':return x*y; case '/':return y?x/y:0; case '%':return y?x%y:0;
+      case '-u':return -x; case '+u':return x; case '!u':return +!x; case '<':return +(x<y);case '>':return +(x>y);
+      case '<=':return +(x<=y);case '>=':return +(x>=y);case '==':return +(x===y);case '!=':return +(x!==y);
+      case '&&':return +(!!x&&!!y);case '||':return +(!!x||!!y);default:return 0;
+    }
+  }
+  function uvMatrix(stage,time,parms,tables) {
+    // Row-major affine UV transform. Doom post-multiplies each modifier (Material.cpp).
+    let m=[1,0,0,0,1,0];
+    for(const [op,...args] of stage.uv || []) {
+      const [x,y=x]=args.map(a=>evaluate(a,time,parms,tables));let n;
+      if(op==='scroll'||op==='translate') n=[1,0,x,0,1,y];
+      else if(op==='scale') n=[x,0,0,0,y,0];
+      else if(op==='centerscale') n=[x,0,.5-.5*x,0,y,.5-.5*y];
+      else {const c=tables.costable?evaluate(['table','costable',x],time,parms,tables):Math.cos(x*2*Math.PI),s=tables.sintable?evaluate(['table','sintable',x],time,parms,tables):Math.sin(x*2*Math.PI);n=[c,-s,.5-.5*c+.5*s,s,c,.5-.5*s-.5*c];}
+      m=[m[0]*n[0]+m[1]*n[3],m[0]*n[1]+m[1]*n[4],m[0]*n[2]+m[1]*n[5]+m[2],
+         m[3]*n[0]+m[4]*n[3],m[3]*n[1]+m[4]*n[4],m[3]*n[2]+m[4]*n[5]+m[5]];
+    }
+    return m;
+  }
+  function areaAt(p,nodes) {
+    if(!nodes.length)return 0;
+    let i=0;
+    for(let n=0;n<=nodes.length;n++) {
+      const node=nodes[i],v=node.plane,c=node.children[v[0]*p[0]+v[1]*p[1]+v[2]*p[2]+v[3]>=0?0:1];
+      if(c<=0)return -1-c;i=c;
+    }
+    return -1;
+  }
+  function clipPolygon(points,plane) {
+    const result=[]; if(!points.length)return result;
+    let a=points.at(-1), da=plane(a);
+    for(const b of points) {const db=plane(b);if((da>=0)!==(db>=0)) {const f=da/(da-db);result.push(a.map((x,i)=>x+f*(b[i]-x)));}if(db>=0)result.push(b);a=b;da=db;}
+    return result;
+  }
+  function portalRect(points,matrix) {
+    let p=points.map(v=>[0,1,2,3].map(r=>matrix[r]*v[0]+matrix[r+4]*v[1]+matrix[r+8]*v[2]+matrix[r+12]));
+    // Clip in homogeneous coordinates: no false rejection when a portal crosses the near plane.
+    for(const plane of [v=>v[3]+v[2],v=>v[3]+v[0],v=>v[3]-v[0],v=>v[3]+v[1],v=>v[3]-v[1]])p=clipPolygon(p,plane);
+    if(!p.length)return null;
+    const x=p.map(v=>v[0]/Math.max(v[3],1e-8)),y=p.map(v=>v[1]/Math.max(v[3],1e-8));
+    return [Math.min(...x),Math.min(...y),Math.max(...x),Math.max(...y)];
+  }
+  function visibleAreas(origin,data,matrix) {
+    const start=areaAt(origin,data.nodes);
+    if(start<0)return new Set(Array.from({length:data.areaCount},(_,i)=>i));
+    const adjacency=data.portalAdjacency || (data.portalAdjacency=Array.from({length:data.areaCount},()=>[]));
+    if(!data.portalIndexed){data.portals.forEach((p,i)=>p.areas.forEach(a=>adjacency[a].push(i)));data.portalIndexed=true;}
+    const rects=new Map([[start,[-1,-1,1,1]]]), queue=[start],projected=new Map();
+    for(let next=0;next<queue.length;next++) {
+      const a=queue[next],from=rects.get(a);
+      for(const index of adjacency[a] || []) {
+        const portal=data.portals[index],b=portal.areas[0]===a?portal.areas[1]:portal.areas[0];
+        if(!projected.has(index))projected.set(index,portalRect(portal.points,matrix));
+        const p=projected.get(index);if(!p)continue;
+        const r=[Math.max(from[0],p[0]),Math.max(from[1],p[1]),Math.min(from[2],p[2]),Math.min(from[3],p[3])];
+        if(r[2]<r[0]||r[3]<r[1])continue;
+        const old=rects.get(b);
+        if(old&&r[0]>=old[0]-1e-6&&r[1]>=old[1]-1e-6&&r[2]<=old[2]+1e-6&&r[3]<=old[3]+1e-6)continue;
+        rects.set(b,old?[Math.min(old[0],r[0]),Math.min(old[1],r[1]),Math.max(old[2],r[2]),Math.max(old[3],r[3])]:r);queue.push(b);
+      }
+    }
+    return new Set(rects.keys());
+  }
+  function tangents(position,uv,normal,index,dominantRanges=[]) {
+    // Simd_Generic.cpp: normalize each triangle's S/T vectors, accumulate,
+    // then project both independently onto the vertex normal plane.
+    const result=[new Float32Array(position.length),new Float32Array(position.length)];
+    for(let i=0;i<index.length;i+=3) {
+      const ids=[index[i],index[i+1],index[i+2]],a=ids[0],b=ids[1],c=ids[2];
+      const d0=[0,1,2].map(k=>position[b*3+k]-position[a*3+k]),d1=[0,1,2].map(k=>position[c*3+k]-position[a*3+k]);
+      const s0=uv[b*2]-uv[a*2],t0=uv[b*2+1]-uv[a*2+1],s1=uv[c*2]-uv[a*2],t1=uv[c*2+1]-uv[a*2+1];
+      const sign=s0*t1-t0*s1<0?-1:1;
+      const ts=[d0.map((v,k)=>v*t1-t0*d1[k]),d1.map((v,k)=>s0*v-d0[k]*s1)];
+      ts.forEach((t,j)=>{const f=sign/Math.max(Math.hypot(...t),1e-20);for(const id of ids)for(let k=0;k<3;k++)result[j][id*3+k]+=t[k]*f;});
+    }
+    for(let i=0;i<position.length;i+=3)for(const t of result) {
+      const dot=t[i]*normal[i]+t[i+1]*normal[i+1]+t[i+2]*normal[i+2];
+      for(let k=0;k<3;k++)t[i+k]-=dot*normal[i+k];
+      const length=Math.max(Math.hypot(t[i],t[i+1],t[i+2]),1e-20);for(let k=0;k<3;k++)t[i+k]/=length;
+    }
+    // R_BuildDominantTris: unsmoothed materials use each vertex's largest face.
+    if(dominantRanges.length) {
+      const largest=new Float32Array(position.length/3);
+      const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+      for(const range of dominantRanges)for(let i=range.start;i<range.start+range.count;i+=3) {
+        const ids=[index[i],index[i+1],index[i+2]],a=ids[0],b=ids[1],c=ids[2];
+        const d0=[0,1,2].map(k=>position[b*3+k]-position[a*3+k]),d1=[0,1,2].map(k=>position[c*3+k]-position[a*3+k]);
+        const s0=uv[b*2]-uv[a*2],t0=uv[b*2+1]-uv[a*2+1],s1=uv[c*2]-uv[a*2],t1=uv[c*2+1]-uv[a*2+1];
+        const raw=cross(d0,d1),area=Math.hypot(...raw),n=raw.map(v=>v/Math.max(area,.001)),sign=s0*t1-t0*s1<0?-1:1;
+        let t=d0.map((v,k)=>v*t1-t0*d1[k]);const scale=sign/Math.max(Math.hypot(...t),.001);t=t.map(v=>v*scale);
+        const bitangent=cross(n,t).map(v=>v*sign);
+        for(const id of ids)if(area>=largest[id]) {
+          largest[id]=area;for(let k=0;k<3;k++){normal[id*3+k]=n[k];result[0][id*3+k]=t[k];result[1][id*3+k]=bitangent[k];}
+        }
+      }
+    }
+    return result;
+  }
+  const api={evaluate,uvMatrix,areaAt,portalRect,visibleAreas,tangents};
+  if(typeof module!=='undefined')module.exports=api;else root.doom3Materials=api;
+})(typeof window!=='undefined'?window:globalThis);

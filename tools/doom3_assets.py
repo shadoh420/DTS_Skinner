@@ -18,7 +18,7 @@ else:
 
 
 def path_name(value):
-    return value.replace('\\','/').lower().strip()
+    return re.sub('/+', '/', value.replace('\\','/')).lower().strip()
 
 
 @dataclass
@@ -286,8 +286,13 @@ class Textures:
                 else: raise ValueError('Image program needs precompressed DDS: '+op)
                 return Image.fromarray(np.clip(a,0,255).astype('uint8'),'RGBA')
             name=path_name(name)
-            builtins={'_white':(255,255,255,255),'_black':(0,0,0,255),'_flat':(128,128,255,255),'_default':(32,32,32,255)}
+            builtins={'_white':(255,255,255,255),'_nofalloff':(255,255,255,255),'_black':(0,0,0,255),'_flat':(128,128,255,255),'_default':(32,32,32,255)}
             if name in builtins: return Image.new('RGBA',(2,2),builtins[name])
+            if name=='_quadratic':
+                # GPL Image_init.cpp R_QuadraticImage (32 x 4).
+                line=np.clip((1-(np.abs(np.arange(32)-15.5)-.5)/16)**2*255,0,255).astype('uint8')
+                pixels=np.full((4,32,4),255,dtype='uint8');pixels[:,:,:3]=line[None,:,None]
+                return Image.fromarray(pixels,'RGBA')
             name=name if Path(name).suffix else name+'.tga'
             if name not in self.files: raise ValueError('Missing image: '+name)
             with Image.open(io.BytesIO(self.files[name].read())) as image: return image.convert('RGBA')
