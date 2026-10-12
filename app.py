@@ -26,6 +26,7 @@ from tools.import_t2_map import import_maps as import_t2_maps
 from tools.import_q3_map import import_maps as import_q3_maps
 from tools.import_rtcw_map import import_maps as import_rtcw_maps
 from tools.import_et_map import import_maps as import_et_maps
+from tools.import_jk2_map import import_maps as import_jk2_maps
 from tools.import_reflex_map import import_maps as import_reflex_maps
 from tools.import_diabotical_map import import_maps as import_diabotical_maps
 from tools.import_n64_map import import_maps as import_n64_maps
@@ -273,11 +274,28 @@ def et_maps_viewer():
     return response
 
 
+@app.route('/maps/jk2/')
+def jk2_maps_viewer():
+    text = rtcw_maps_viewer().get_data(as_text=True)
+    text = text.replace('RTCW Maps', 'Jedi Outcast Maps').replace('RTCW folder', 'Jedi Outcast folder').replace('C:\\Games\\RTCW', 'C:\\Games\\Jedi Outcast\\GameData')
+    text = text.replace('<script defer src="/static/q3-maps/viewer.js">', '<script defer src="/static/jk2-maps/viewer.js"></script>\n  <script defer src="/static/q3-maps/viewer.js">')
+    start = text.index('Imports Single player')
+    end = text.index('</span>', start)
+    text = text[:start] + 'Imports Jedi Outcast maps in Single player and Multiplayer sections from the shared base archives. The install is only read.' + text[end:]
+    start = text.index('<span id="notes">') + len('<span id="notes">')
+    end = text.index('</span>', start)
+    text = text[:start] + 'Lightmapped surfaces, patches, far-box skies, spawn-state brushes, props and pickups. Fog, NPCs, surface-sprite foliage, portal cameras, particles and ICARUS scripts are not drawn. Lightstyles show their first sample; props are lit evenly. MP uses FFA and the first eligible start. Lighting assumes this PC has no usable hardware gamma ramp; a machine with working hardware gamma uses a display ramp instead. Retail comparison pending.' + text[end:]
+    response = app.response_class(text, mimetype='text/html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
 @app.route('/rtcw-map-data/<path:filename>')
 @app.route('/et-map-data/<path:filename>')
+@app.route('/jk2-map-data/<path:filename>')
 def rtcw_map_data(filename):
     shared = filename.startswith(('textures/', 'bsp/', 'models/'))
-    game = 'et' if request.path.startswith('/et-map-data/') else 'rtcw'
+    game = request.path.split('-map-data/')[0].lstrip('/')
     response = send_from_directory(local_data_dir / (game+'-maps'), filename, max_age=31536000 if shared else None)
     response.cache_control.immutable = shared
     return response
@@ -285,8 +303,9 @@ def rtcw_map_data(filename):
 
 @app.route('/import_rtcw_maps', methods=['POST'])
 @app.route('/import_et_maps', methods=['POST'])
+@app.route('/import_jk2_maps', methods=['POST'])
 def import_rtcw_maps_route():
-    game = 'et' if request.path == '/import_et_maps' else 'rtcw'
+    game = request.path.removeprefix('/import_').removesuffix('_maps')
     if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
     if not request.is_json or request.content_length is None or request.content_length > 8192:
@@ -297,7 +316,7 @@ def import_rtcw_maps_route():
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        importer = import_et_maps if game == 'et' else import_rtcw_maps
+        importer = {'et': import_et_maps, 'rtcw': import_rtcw_maps, 'jk2': import_jk2_maps}[game]
         return jsonify(importer(payload['game'].strip(), local_data_dir / (game+'-maps'), payload.get('replace') is True))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
         return jsonify(error=str(exc)), 422

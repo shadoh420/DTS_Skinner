@@ -1,0 +1,462 @@
+"""Jedi Outcast RBSP1 maps, converted to the shared static map preview format.
+
+OpenJK JK2 mode and JK2MV are rules-only references; no engine code is included.
+"""
+import argparse
+from collections import Counter
+import hashlib
+import json
+import math
+from pathlib import Path
+import re
+import struct
+from types import SimpleNamespace
+import zipfile
+
+import numpy as np
+
+try:
+    from tools import import_jk2 as jk2, import_rtcw_map as base
+    from tools.jk2_map_items import MP_ITEMS
+except ImportError:
+    import import_jk2 as jk2
+    import import_rtcw_map as base
+    from jk2_map_items import MP_ITEMS
+
+qmap,rtcw=base.qmap,jk2.base
+number,vector=base.number,base.vector
+STRIDES=(1,72,16,36,48,4,4,40,12,12,80,4,72,148,49152,30,1,2)
+SECTIONS={'sp':'Single player','mp':'Multiplayer'}
+NOT_DRAWN=['fog (by choice)', 'NPC spawns (by choice)', 'ICARUS scripts and later mover actions',
+           'surfaceSprites/ss foliage, particles, weather, flares, glow bloom and audio',
+           'portal cameras, mirrors and portal skies', 'light-grid lighting on props (lit evenly)',
+           'runtime lightstyle animation (first sample shown)']
+
+
+def lighting_profile(install,section,game=None,*,device_supports_gamma=False):
+    game=game or jk2.Game(install)
+    root=Path(install)
+    if (root/'GameData/base').is_dir():root=root/'GameData'
+    result=base.lighting_profile(root,section,game,directory='base',
+        configs=('default.cfg','jk2config.cfg' if section=='sp' else 'jk2mpconfig.cfg','autoexec.cfg'),
+        defaults=dict(r_mapoverbrightbits=0,r_overbrightbits=1,cg_fov=80,g_spskill=0),
+        device_supports_gamma=device_supports_gamma)
+    bits=min(1,result['overbrightBits']);result['overbrightBits']=bits
+    result['identityLight']=2**-bits;result['displayScale']=2**bits if result['hardwareGamma'] else 1
+    # MP ColorShiftLightingBytes uses 1-overbright only when overbright is on.
+    result['sourceLightScale']=2**max(0,int(result['cvars']['r_mapoverbrightbits'])-bits) if section=='sp' else 1
+    result['sourceLightScale']=min(16,result['sourceLightScale'])
+    result['lightScale']=1  # Raven's four channels are shifted individually before combining.
+    result['source']='JK2 classic texture-gamma path by default; OpenJK SP / JK2MV MP rules, retail comparison pending'
+    return result
+
+
+class Game(jk2.Game):
+    def __init__(self,install,section='sp'):
+        super().__init__(install);self.section=section
+        self.files={n:(a['source'],a['read']) for n,a in self.assets.items()}
+        self.definitions=rtcw.shader_definitions(self)
+        self.shaders={n:(b,s) for n,(b,s,_) in self.definitions.items()}
+        self.shader_label={n:self.assets[p]['source'] for n,(_,_,p) in self.definitions.items()}
+        self.outside,self.images,self.described,self.models=set(),{},{},{}
+        self.lighting=lighting_profile(install,section,self)
+        self.skill=min(2,max(0,int(self.lighting['cvars']['g_spskill'])))
+        self.items=sp_items(self.read('ext_data/items.dat')) if section=='sp' and 'ext_data/items.dat' in self.assets else {
+            c:dict(kind=k,models=[p],mins=[-15]*3,maxs=[15]*3) for c,(k,p) in MP_ITEMS.items()}
+
+
+def sp_items(raw):
+    result={}
+    text=re.sub(r'//[^\n\r]*','',rtcw.q3.read_text(raw))
+    for block in re.findall(r'\{([^{}]*)\}',text):
+        values={}
+        for line in block.splitlines():
+            parts=line.split(None,1)
+            if len(parts)==2:values[parts[0].lower()]=parts[1].strip().strip('"')
+        if 'classname' not in values:continue
+        result[values['classname'].lower()]=dict(kind=values.get('type','').lower().removeprefix('it_'),
+            models=[values['worldmodel']] if values.get('worldmodel') else [],
+            mins=vector(values.get('min'),(-15,-15,-2)),maxs=vector(values.get('max'),(15,15,15)))
+    return result
+
+
+def section_for(name):
+    if name.startswith(('ffa_','ctf_','duel_')):return 'mp','multiplayer prefix and arena/deathmatch entities'
+    return 'sp','story or SP test map; info_player_start and SP NPC/script entities'
+
+
+def read_lumps(raw):
+    if len(raw)<152 or raw[:4]!=b'RBSP' or struct.unpack_from('<i',raw,4)[0]!=1:
+        raise ValueError('Expected Raven RBSP version 1')
+    lumps=[];ranges=[]
+    for i,((at,size),stride) in enumerate(zip(struct.iter_unpack('<2i',raw[8:152]),STRIDES)):
+        if at<0 or size<0 or at+size>len(raw) or (size and at<152):raise ValueError(f'Lump {i} outside RBSP')
+        if size%stride:raise ValueError(f'Lump {i}: partial {stride}-byte record')
+        if size:ranges.append((at,at+size,i))
+        lumps.append(raw[at:at+size])
+    ranges.sort()
+    if any(a[1]>b[0] for a,b in zip(ranges,ranges[1:])):raise ValueError('Overlapping RBSP lumps')
+    if len(lumps[0])>1024*1024 or len(lumps[10])//80>4000000:raise ValueError('RBSP exceeds preview bounds')
+    for index, in struct.iter_unpack('<H',lumps[17]):
+        if index>=len(lumps[15])//30:raise ValueError('Invalid light-grid array index')
+    return lumps
+
+
+def light_styles(things,section='sp'):
+    # First samples of stock styles, represented as channel amplitudes (a=0,z=1).
+    first=[25,12,0,12,12,9,13,12,12,0,12,0,12]
+    colors={i:[n/25]*3 for i,n in enumerate(first)};colors[13]=[0,1,0]
+    world=things[0] if things else {}
+    for i in range(1,32):
+        for channel,c in enumerate('rgb'):
+            pattern=world.get(f'ls_{i}{c}')
+            if pattern:colors.setdefault(i,[1,1,1])[channel]=min(1,max(0,(ord(pattern[0])-97)/25))
+    # Unconfigured style colors are white. Switchable lights initialize their
+    # assigned style from on/off style or full brightness/darkness.
+    if section=='sp':
+        for e in things:
+            if e.get('classname','').lower()!='light' or not e.get('targetname'):continue
+            i=int(number(e,'style'));off=bool(int(number(e,'spawnflags'))&4)
+            source=int(number(e,'style_off' if off else 'switch_style'))
+            colors[i]=list(colors.get(source,[1,1,1])) if source else [0 if off else 1]*3
+    return colors
+
+
+def ibsp_bytes(lumps):
+    data=bytearray(144);struct.pack_into('<4si',data,0,b'IBSP',47)
+    for i,lump in enumerate(lumps):
+        struct.pack_into('<2i',data,8+i*8,len(data),len(lump));data.extend(lump)
+    return bytes(data)
+
+
+def read_bsp(raw,diagnostics=None,*,section='sp',light_scale=1):
+    """Validate Raven records, bake starting light styles, emit Q3 draw records."""
+    notes=diagnostics if diagnostics is not None else []
+    raven=read_lumps(raw);lumps=list(raven[:17]);things=qmap.entities(lumps[0].decode('latin1'))
+    styles=light_styles(things,section)
+    surfaces=list(struct.iter_unpack('<7i8B14i12f2i',raven[13]))
+    used_styles=sorted({i for s in surfaces for i in s[7:15] if i<64})
+    notes.append(dict(action='Raven starting light styles',sampleTime=0,values={i:styles.get(i,[1,1,1]) for i in used_styles}))
+    source=np.frombuffer(raven[10],dtype=np.dtype([('f','<f4',16),('c','u1',16)]))
+    lightmaps=np.frombuffer(raven[14],dtype='u1').reshape((-1,128,128,3))
+    def shifted(rgb):
+        rgb=np.asarray(rgb,dtype=float)*light_scale
+        return rgb*(255/np.maximum(255,rgb.max(axis=-1,keepdims=True)))
+    def color(style):
+        if style in (254,255):return [0,0,0]
+        if style>=64:raise ValueError('Invalid light style '+str(style))
+        return styles.get(style,[1,1,1])
+    verts=bytearray();faces=bytearray();tiles=[];cache={}
+    for n,s in enumerate(surfaces):
+        shader,fog,kind,first,count,start,nindex=s[:7]
+        if min(first,count)<0 or first+count>len(source):raise ValueError(f'Surface {n}: invalid vertex range')
+        if len(verts)//44+count>4000000:raise ValueError('Expanded draw vertices exceed preview bound')
+        f=source['f'][first:first+count];c=source['c'][first:first+count].reshape((-1,4,4))
+        lmstyles,vcstyles=s[7:11],s[11:15];lmnums=s[15:19]
+        slots=next((j for j,style in enumerate(lmstyles) if style==255),4)
+        active=[j for j in range(slots) if lmnums[j]>=0] if kind in (1,2) else []
+        for j in active:
+            if lmnums[j]>=len(lightmaps):raise ValueError(f'Surface {n}: invalid lightmap {lmnums[j]}')
+        lm=-1;uv=f[:,5:7].copy()
+        if active and count:
+            firstslot=active[0];uv=f[:,5+2*firstslot:7+2*firstslot].copy();offsets=[]
+            if not np.isfinite(uv).all():raise ValueError(f'Surface {n}: nonfinite lightmap UV')
+            for j in active:
+                delta=f[:,5+2*j:7+2*j]-uv
+                if not np.isfinite(delta).all() or not np.allclose(delta,delta[0],atol=0.0001):
+                    raise ValueError(f'Surface {n}: lightstyle UVs do not share a translation')
+                offsets.append(tuple(int(round(x*128)) for x in delta[0]))
+            key=tuple((lmnums[j],lmstyles[j],offset) for j,offset in zip(active,offsets))
+            if key not in cache:
+                if len(tiles)>=4096:raise ValueError('Composite lightmaps exceed preview bound')
+                total=np.zeros((128,128,3));grid=np.arange(128)
+                for j,(dx,dy) in zip(active,offsets):
+                    pixels=lightmaps[lmnums[j]][np.clip(grid+dy,0,127)[:,None],np.clip(grid+dx,0,127)[None,:]]
+                    total+=shifted(pixels)*color(lmstyles[j])
+                cache[key]=len(tiles);tiles.append(np.clip(total,0,255).astype('u1').tobytes())
+            lm=cache[key]
+        else:uv=np.nan_to_num(uv,nan=0,posinf=0,neginf=0)
+        rgb=np.zeros((count,3))
+        for j in range(4):
+            if vcstyles[j]==255:break
+            rgb+=shifted(c[:,j,:3])*color(vcstyles[j])
+        rgba=np.column_stack((np.clip(rgb,0,255).astype('u1'),c[:,0,3]))
+        newfirst=len(verts)//44
+        for v,u,cc in zip(f,uv,rgba):
+            verts.extend(struct.pack('<10f4B',*v[:5],*u,*v[13:16],*cc))
+        faces.extend(struct.pack('<12i12f2i',shader,fog,kind,newfirst,count,start,nindex,lm,s[19],s[23],s[27],s[28],*s[29:41],*s[41:43]))
+        if len(active)>1:notes.append(dict(surface=n,action='starting light styles combined',styles=list(lmstyles),lightmaps=list(lmnums)))
+    sides=bytearray()
+    for plane,shader,draw in struct.iter_unpack('<3i',raven[9]):
+        if draw < -1 or draw>=len(surfaces):notes.append(dict(action='unused brushside drawSurfNum ignored',value=draw,reason='CMod_LoadBrushSides reads only plane and shader'))
+        sides.extend(struct.pack('<2i',plane,shader))
+    lumps[9],lumps[10],lumps[13],lumps[14],lumps[15]=bytes(sides),bytes(verts),bytes(faces),b''.join(tiles),b''
+    # Only translate bits consumed by the shared viewer/collision; all other
+    # Raven flags must not acquire unrelated Quake meanings.
+    shaders=bytearray(lumps[1])
+    for at in range(0,len(shaders),72):
+        flags,contents=struct.unpack_from('<2i',shaders,at+64)
+        struct.pack_into('<2i',shaders,at+64,qmap.SURF_NODRAW if flags&0x200000 else 0,
+                         (contents&1)|(0x10000 if contents&0x10 else 0)|(0x20000 if contents&0x80 else 0))
+    lumps[1]=bytes(shaders)
+    return base.read_bsp(ibsp_bytes(lumps),notes)
+
+
+class ModelTextures(base.ModelTextures):
+    def __init__(self,game,output):
+        super().__init__(game,output);self.shaders=jk2.shader_maps(game)
+
+
+class Collision(base.Collision):
+    def __init__(self,lumps,states):
+        super().__init__(lumps,states,contents_mask=1|0x10000|0x20000)
+
+    def mount_mine(self,origin,angles):
+        direction=rtcw.axis([math.radians(a) for a in angles])[0]
+        nearest=129;normal=None
+        for contents,planes in self.brushes:
+            if not contents&(1|0x20000):continue
+            low,high=0,128;entry=None;inside=True
+            for plane in planes:
+                distance=sum(a*b for a,b in zip(plane[:3],origin))-plane[3]
+                speed=sum(a*b for a,b in zip(plane[:3],direction));inside &= distance<=0
+                if abs(speed)<1e-10:
+                    if distance>0:high=-1;break
+                elif speed<0:
+                    at=-distance/speed
+                    if at>low:low=at;entry=plane[:3]
+                else:high=min(high,-distance/speed)
+            if inside:raise ValueError('Trip mine starts inside a solid/shotclip brush')
+            if entry is not None and 0<=low<=high and low<nearest:nearest=low;normal=entry
+        if normal is None:raise ValueError('Trip mine finds no brush within 128 units; patch/model mounting needs game comparison')
+        pos=[a+nearest*b for a,b in zip(origin,direction)]
+        return pos,[-math.degrees(math.atan2(normal[2],math.hypot(*normal[:2]))),math.degrees(math.atan2(normal[1],normal[0])),0]
+
+
+def describe(game,name,textures):
+    if name in game.described:return game.described[name]
+    body,stages=game.shaders.get(name,([],[]));notes=[];kept=[]
+    for stage in stages:
+        if any(r[0]=='surfacesprites' for r in stage):notes.append('surfaceSprites/ss foliage not drawn');continue
+        kept.append([['rgbgen','lightingdiffuse'] if r[:2]==['rgbgen','lightingdiffuseentity'] else r for r in stage])
+        if any(r[0]=='glow' for r in stage):notes.append('glow bloom not drawn')
+    game.shaders[name]=(body,kept)
+    result,missing,limits=base.describe(game,name,textures)
+    sky=next((r for r in body if r[0]=='skyparms' and len(r)>1 and r[1]!='-'),None)
+    if sky and 'sky' in result:
+        previous='$default';sides=[]
+        for side in qmap.SKY_SIDES:
+            image=textures.resolve(game,sky[1]+'_'+side+'.tga')
+            sides.append(image or previous);previous=sides[-1]
+        if sides[0]!='$default':result['sky']['box']=sides
+    game.described[name]=(result,missing,sorted(set(limits+notes)))
+    return game.described[name]
+
+
+def filtered(e,section,skill=0):
+    cls=e.get('classname','').lower()
+    if cls.startswith('npc_'):return 'NPC spawn omitted by choice'
+    if section=='sp':
+        if number(e,'notsingle') or int(number(e,'spawnflags'))&(1<<(8+skill)):return 'excluded by SP difficulty/notsingle'
+    else:
+        if number(e,'notfree'):return 'notfree: excluded in FFA'
+        if e.get('gametype') and 'ffa' not in e['gametype'].lower().split():return 'gametype excludes FFA'
+        if cls.startswith('team_ctf_') or cls=='misc_holocron':return 'CTF/holocron entity excluded in FFA'
+    return ''
+
+
+def brush_state(e,model,things):
+    cls=e.get('classname','').lower();flags=int(number(e,'spawnflags'))
+    # Shared door/plat/train spawn transforms; JK2 visibility has different bits.
+    state=base.brush_state(e,model,things);state['hidden']='';state['model2']=''
+    if cls.startswith(('trigger_','target_')) or cls in ('func_timer','func_areaportal'):state['hidden']='server-only brush'
+    if cls in ('func_usable','func_wall') and flags&1:state['hidden']='START_OFF'
+    if cls=='func_rotating':state['angles']=base.angles(e)
+    if cls=='func_bobbing' and flags&4:
+        state['origin']=vector(e.get('origin'));state['origin'][0 if flags&1 else 1 if flags&2 else 2]+=math.sin(2*math.pi*number(e,'phase'))*number(e,'height',32)
+    return state
+
+
+def viewpoints(things,collision,section):
+    cls='info_player_start' if section=='sp' else 'info_player_deathmatch'
+    starts=[e for e in things if e.get('classname','').lower()==cls and not e.get('targetname') and not filtered(e,section) and not number(e,'nohumans')]
+    if not starts:starts=[e for e in things if e.get('classname','').lower()==cls and not filtered(e,section)]
+    if section=='mp':starts.sort(key=lambda e:not int(number(e,'spawnflags'))&1)
+    result=[]
+    for e in starts:
+        pos=vector(e.get('origin'));pos[2]+=9
+        pos,floor=collision.drop(pos,(-16,-16,-24),(16,16,40));pos[2]+=36
+        a=base.angles(e);result.append(dict(origin=pos,pitch=a[0],yaw=a[1],floor=floor,classname=cls))
+    return result
+
+
+PROP_MODELS={
+    'misc_shield_floor_unit':'models/items/a_shield_converter.md3',
+    'misc_ammo_floor_unit':'models/items/a_pwr_converter.md3',
+    'misc_maglock':'models/map_objects/imp_detention/door_lock.md3',
+    'misc_camera':'models/map_objects/kejim/impcam.md3',
+    'misc_model_welder':'models/map_objects/cairn/welder.glm',
+    'misc_model_jabba_cam':'models/map_objects/nar_shaddar/jabacam/jabacam.glm',
+    'misc_exploding_crate':'models/map_objects/nar_shaddar/crate_xplode.md3',
+    'misc_gas_tank':'models/map_objects/imp_mine/tank.md3',
+    'misc_crystal_crate':'models/map_objects/imp_mine/crate_open.md3',
+    'emplaced_gun':'models/map_objects/imp_mine/turret_chair.glm',
+    'misc_atst_drivable':'models/players/atst/model.glm',
+    'misc_turret':'models/map_objects/imp_mine/turret_canon.glm',
+    'misc_ns_turret':'models/map_objects/nar_shaddar/turret/turret.glm',
+    'misc_panel_turret':'models/map_objects/imp_mine/ladyluck_gun.md3',
+    'misc_ion_cannon':'models/map_objects/imp_mine/ion_cannon.glm',
+    'misc_spotlight':'models/map_objects/imp_mine/spotlight.md3',
+    'misc_security_panel':'models/map_objects/kejim/sec_panel.md3',
+    'misc_model_gun_rack':'models/map_objects/kejim/weaponsrack.md3',
+    'misc_model_ammo_rack':'models/map_objects/kejim/weaponsrung.md3',
+    'misc_sentry_turret':'models/items/psgun.glm',
+    'misc_trip_mine':'models/weapons2/laser_trap/laser_trap_w.glm',
+}
+
+
+def rack_items(e):
+    """Spawn-time rack contents, with random jitter fixed at its midpoint."""
+    cls=e.get('classname','').lower();flags=int(number(e,'spawnflags'));slots=[]
+    if cls=='misc_model_gun_rack':
+        kinds=[(name,z) for bit,name,z in [(1,'weapon_blaster',23),(2,'weapon_repeater',24.5),(4,'weapon_rocket_launcher',25.5)] if flags&bit]
+        kinds=kinds or [('weapon_blaster',23)]
+        kinds += [kinds[0]]*(3-len(kinds))
+        slots=[(name,(i-1)*9,z) for i,(name,z) in enumerate(kinds)]
+    elif cls=='misc_model_ammo_rack':
+        bits=flags&39 or 1
+        kinds=[name for bit,name in [(1,'ammo_blaster'),(2,'ammo_metallic_bolts'),(32,'ammo_powercell'),(4,'ammo_rockets')] if bits&bit]
+        if not flags&64:kinds += [kinds[0]]*max(0,3-len(kinds))
+        slots=[(name,(i-1)*8,7) for i,name in enumerate(kinds)]
+        weapons=[(name,z) for bit,name,z in [(1,'weapon_blaster',25.5),(2,'weapon_repeater',27),(4,'weapon_rocket_launcher',28)] if bits&bit]
+        if flags&8 and weapons:slots.append((weapons[0][0],7,weapons[0][1]))
+        if flags&16:slots.append(('item_medpak_instant',-6 if flags&8 and weapons else 6,24))
+    state=dict(origin=vector(e.get('origin')),angles=base.angles(e),scale=[1]*3)
+    result=[]
+    for cls,right,z in slots:
+        pos=base.transformed([0,-right,z],state);a=base.angles(e)
+        # GunRackAddItem rotates weapon yaw 180 before the vertical-item pitch.
+        a[1]+=180 if cls.startswith('weapon_') else 90
+        result.append(dict(classname=cls,origin=' '.join(map(str,pos)),angles=' '.join(map(str,a)),spawnflags=str(17 if cls.startswith('weapon_') else 1)))
+    return result
+
+
+def place_entities(game,things,states,collision,output,textures,model_textures):
+    placed=[];models={};audit=[];missing=[];limits=[]
+    entities=list(enumerate(things))
+    if game.section=='sp':
+        for serial,e in enumerate(things):
+            if not filtered(e,'sp',game.skill):
+                entities += [(serial,dict(child,_rack='1')) for child in rack_items(e)]
+    for serial,e in entities:
+        cls=e.get('classname','').lower();row=dict(entity=serial,classname=cls,status='omitted');reason=filtered(e,game.section,game.skill)
+        try:
+            flags=int(number(e,'spawnflags'));path=e.get('model','');item=game.items.get(cls);paths=[]
+            if reason:pass
+            elif path.startswith('*'):
+                state=states[int(path[1:])];reason=state['hidden'] or 'inline brush at spawn transform';row['status']='omitted' if state['hidden'] else 'drawn'
+                if not state['hidden'] and e.get('model2'):paths=[e['model2']]
+            elif cls in ('misc_model','misc_model_static'):reason='compile-time model baked into BSP; no second runtime copy'
+            elif item:
+                if game.section=='sp' and flags&32:reason='ITMSF_INVISIBLE'
+                elif game.section=='mp' and (e.get('targetname') or e.get('team')):reason='targeted/team item hidden at spawn'
+                elif game.section=='mp' and item['kind'] in ('team','powerup'):reason='team item excluded / powerup initial respawn delay'
+                else:paths=item['models'];reason='' if paths else 'item has no world model'
+            elif cls.startswith(('info_','target_','trigger_','light','fx_','waypoint','point_','ref_','path_')) or cls in ('worldspawn','misc_portal_surface','misc_portal_camera'):
+                reason='world/control/effect entity; no standalone visual'
+            else:
+                path=PROP_MODELS.get(cls,path or e.get('model2',''));paths=[path] if path else []
+                reason='' if paths else 'no model key; class-specific effect/model not reconstructed'
+            if paths:
+                pos=vector(e.get('origin'));rot=base.angles(e);size=base.scale(e);frame=int(number(e,'frame',number(e,'startframe')));spin=False;bob=None;floor='authored position'
+                if cls in ('misc_turret','misc_ns_turret') and flags&2:rot[2]+=180;pos[2]-=22
+                if cls=='misc_trip_mine':
+                    pos,rot=collision.mount_mine(pos,rot)
+                    limits.append('trip mines mount to solid/shotclip brushes; patch and dynamic-model mounting and laser beams are not reconstructed')
+                if item:
+                    if game.section=='sp':pos[2]+=1
+                    if not flags&1:
+                        pos,floor=collision.drop(pos,item['mins'],item['maxs'],mask=1|0x10000)
+                        if floor=='startsolid':row.update(reason='FinishSpawningItem frees startsolid item');audit.append(row);continue
+                    if game.section=='sp' and flags&16:rot[0]-=75
+                    if item['kind']=='holocron':bob=dict(base=12,rate=.005+serial*.00001);spin=True
+                    if game.section=='mp':bob=dict(base=4,rate=.005+serial*.00001);spin=True
+                if e.get('model','').startswith('*'):pos,rot,size=state['origin'],state['angles'],state['scale']
+                for path in paths:
+                    path=rtcw.q3.key_name(path).lstrip('/');skin=e.get('skin',e.get('modelskin',''))
+                    key=hashlib.sha256(json.dumps([path,skin,frame]).encode()).hexdigest()[:24]
+                    if key not in models:
+                        sk=jk2.read_skin(game.read(skin))['surfaces'] if skin and not skin.isdigit() else {}
+                        model,meta,_=jk2.load_model(game,path,sk,frame=frame)
+                        desc,unresolved=base.placed_model(game,path,skin,frame,output,textures,model_textures,model=model)
+                        desc['limitations']+=meta['warnings'];models[key]=desc;missing+=unresolved;limits+=desc['limitations']
+                    placed.append(dict(entity=serial,models=[key],origin=pos,angles=rot,scale=size,spin=spin,bob=bob))
+                row['status']='drawn';reason=('rack pickup; deterministic midpoint of random placement' if e.get('_rack') else 'pickup at spawn; '+floor) if item else 'model at authored spawn pose'
+            row['reason']=reason
+        except (ValueError,OSError,KeyError,struct.error,zipfile.BadZipFile) as exc:
+            row.update(status='failed',reason=str(exc));missing.append(f'entity {serial} {cls}: {exc}')
+        audit.append(row)
+    return placed,models,audit,missing,limits
+
+
+def sweep(output):
+    """Audit references in emitted scenes, including model ids and sky stages."""
+    output=Path(output);missing=[];defaults=[];scenes=0
+    for path in sorted((output/'maps').glob('*/scene.json')):
+        scene=json.loads(path.read_text());scenes+=1
+        def check(name):
+            if not (output/name).is_file():missing.append(dict(scene=path.parent.name,file=name))
+        check(scene['bsp'])
+        for item in scene.get('placed',[]):
+            for key in item['models']:
+                if key not in scene['itemModels']:missing.append(dict(scene=path.parent.name,model=key))
+        shaders=[s for s in scene['shaders'] if s]
+        for model in scene['itemModels'].values():check(model['file']);shaders+=model['shaders']
+        for shader in shaders:
+            if shader.get('default'):defaults.append(dict(scene=path.parent.name,shader=shader['name']))
+            names=[shader.get('map','')]+shader.get('sky',{}).get('box',[])
+            for stage in shader.get('stages',[]):names += [stage.get('map','')]+stage.get('frames',[])
+            for name in names:
+                if name and not name.startswith('$'):check('textures/'+name)
+    return dict(scenes=scenes,missing=missing,defaults=defaults)
+
+
+def import_maps(install,output,replace=False):
+    output=Path(output)
+    for folder in ('maps','models','bsp','textures'):(output/folder).mkdir(parents=True,exist_ok=True)
+    report=dict(imported=[],skipped=[],failed={},maps=[],sections={});index=[]
+    for section,label in SECTIONS.items():
+        game=Game(install,section);textures=base.Textures(output/'textures',game);mt=ModelTextures(game,output/'textures')
+        rules=SimpleNamespace(read_bsp=lambda raw,notes:read_bsp(raw,notes,section=section,light_scale=game.lighting['sourceLightScale']),
+            brush_state=brush_state,filtered=lambda e,s:filtered(e,s,game.skill),describe=describe,viewpoints=viewpoints,place_entities=place_entities,Collision=Collision)
+        classes=Counter()
+        for path in sorted(n for n in game.assets if re.fullmatch(r'maps/[^/]+\.bsp',n)):
+            name=Path(path).stem;chosen,why=section_for(name)
+            if chosen!=section:continue
+            ident=section+'_'+qmap.map_id(name);source=game.assets[path]['source'];dest=output/'maps'/ident/'scene.json'
+            row=dict(map=name,section=section,sectionReason=why,source=source)
+            try:
+                if dest.is_file() and not replace:scene=json.loads(dest.read_text());status='skipped'
+                else:
+                    scene=base.import_map(game,name,ident,game.read(path),source,output,textures,mt,rules=rules)
+                    scene.update(game='jk2',sourceFormat='RBSP 1',defaultGametype='single player' if section=='sp' else 'FFA')
+                    scene['limits']=[x for x in scene['limits'] if x not in base.NOT_DRAWN and not x.startswith('first eligible Axis')]+NOT_DRAWN
+                    scene['limits']+=['first eligible player start; runtime selection and level-transition targets may differ','no hardware gamma assumed on this PC; working hardware gamma uses the display ramp instead']
+                    rtcw.q3.json_write(dest,scene);status='imported'
+                report[status].append(ident);row.update(status=status,entityResults=scene['entityResults'],unresolved=scene['unresolved'],bspNotes=scene['bspNotes'])
+                classes.update((r['classname'],r['status'],r['reason']) for r in scene['entityResults'])
+                index.append(dict(id=ident,name=name,longname=scene['longname'],group=label,source=source,unresolved=len(scene['unresolved'])))
+            except (ValueError,OSError,KeyError,struct.error,zipfile.BadZipFile) as exc:
+                report['failed'][ident]=str(exc);row.update(status='failed',reason=str(exc))
+            report['maps'].append(row)
+        report['sections'][section]=dict(search_order=game.search_order,lighting=game.lighting,issues=game.issues,
+            entityClasses=[dict(classname=c,status=s,reason=r,count=n) for (c,s,r),n in sorted(classes.items())])
+    report['sweep']=sweep(output)
+    rtcw.q3.json_write(output/'index.json',index);rtcw.q3.json_write(output/'import-report.json',report)
+    return report
+
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--install',required=True)
+    parser.add_argument('--output',type=Path,default=qmap.LOCAL_DATA/'jk2-maps');parser.add_argument('--replace',action='store_true')
+    args=parser.parse_args();print(json.dumps(import_maps(args.install,args.output,args.replace),indent=2))

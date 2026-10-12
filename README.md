@@ -30,7 +30,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Quake 3 Arena | ✓ | ✓ | Team Arena and custom pk3s, see [Q3 maps](docs/q3-map-viewer.md) |
 | Return to Castle Wolfenstein | ✓ | ✓ | Single player and Multiplayer |
 | Wolfenstein: Enemy Territory | ✓ | ✓ | Constructibles at map start, or finished |
-| Jedi Outcast | ✓ | — | Static Ghoul2 and MD3 models, character skins |
+| Jedi Outcast | ✓ | ✓ | Single player and Multiplayer maps, static Ghoul2 models |
 | Unreal, Unreal Tournament | ✓ | ✓ | Unreal Gold / 227 and UT 469, see [Unreal maps](docs/unreal-map-viewer.md) |
 | Daikatana, Anachronox, SiN | ✓ | ✓ | |
 | Azrael's Tear | ✓ | ✓ | Models export with their animation clips |

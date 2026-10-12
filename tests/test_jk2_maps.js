@@ -1,0 +1,15 @@
+'use strict';
+const assert = require('node:assert/strict');
+const rtcw = require('../static/rtcw-maps/viewer.js');
+const jk2 = require('../static/jk2-maps/viewer.js');
+assert.equal(jk2.data, '/jk2-map-data/');
+assert.equal(jk2.defaultMap, 'sp_kejim_post');
+assert.equal(jk2.bspVersion, 47);
+assert.equal(rtcw.data, '/rtcw-map-data/');
+assert.notEqual(jk2.addPlaced, rtcw.addPlaced);
+assert.deepEqual(jk2.matrix([0, 0, 0], [1, 1, 1], [1, 2, 3]).slice(12), [1, 2, 3, 1]);
+const item = {origin: [1, 2, 3], angles: [0, 0, 0], scale: [1, 1, 1], spin: true, bob: {base: 4, rate: .005}};
+assert.ok(Math.abs(jk2.pose(item, .512)[0]) < 1e-10);
+assert.equal(jk2.pose(item, 0)[14], 7 + Math.cos(5) * 3);
+assert.equal(rtcw.spinAngle(1), 1000 * 360 / 4095);
+console.log('JK2 map configuration OK');
