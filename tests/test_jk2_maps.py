@@ -57,6 +57,16 @@ class JK2MapTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'RBSP'):maps.read_bsp(bsp())
         with self.assertRaisesRegex(ValueError,'IBSP'):maps.qmap.read_bsp(raven(raw))
 
+    def test_triangle_soup_keeps_vertex_light_kind_and_first_color_set(self):
+        raw=fixture(entity(classname='worldspawn'))
+        surfaces=list(struct.iter_unpack('<7i8B14i12f2i',raw[13]))
+        s=list(surfaces[0]);s[2]=3;s[11:15]=[0,255,255,255]
+        # Even if a compiler left a lightmap number, ParseTriSurf uses vertex light.
+        surfaces[0]=s;raw[13]=b''.join(struct.pack('<7i8B14i12f2i',*s) for s in surfaces)
+        out=maps.read_bsp(raven(raw))
+        self.assertEqual(struct.unpack_from('<i',out[13],28)[0],-3)
+        self.assertEqual(struct.unpack_from('<4B',out[10],40),(32,64,96,255))
+
     def test_spawn_styles_sections_and_brush_rules(self):
         styles=maps.light_styles([dict(classname='worldspawn',ls_2r='z',ls_2g='a',ls_2b='m'),dict(classname='light',targetname='lamp',style='35',switch_style='2')])
         self.assertEqual(styles[35],[1,0,12/25])
@@ -110,8 +120,10 @@ surfaceSprites vertical 1 2 3 4
                 ('default.cfg',b'seta r_picmip 1\nseta r_overBrightBits 1')])
             (root/'jk2config.cfg').write_text('seta r_gamma "1.3"\nseta cg_fov "80"\nseta r_mapOverBrightBits "2"')
             game=maps.Game(root);no=game.lighting;yes=maps.lighting_profile(root,'sp',game,device_supports_gamma=True)
-            self.assertEqual((no['overbrightBits'],no['sourceLightScale'],no['displayGamma']),(0,4,1))
-            self.assertEqual((yes['overbrightBits'],yes['sourceLightScale'],yes['displayScale']),(1,2,2))
+            self.assertEqual((no['overbrightBits'],no['sourceLightScale'],no['displayGamma']),(0,1,1))
+            self.assertEqual((yes['overbrightBits'],yes['sourceLightScale'],yes['displayScale']),(1,1,2))
+            self.assertNotIn('r_mapoverbrightbits',no['cvars'])
+            self.assertEqual(no['textureMode'],'GL_LINEAR_MIPMAP_NEAREST')
             mp=maps.lighting_profile(root,'mp',game);self.assertEqual(mp['sourceLightScale'],1)
             textures=maps.base.Textures(root/'textures',game);desc,missing,notes=maps.describe(game,'textures/test/wall',textures)
             self.assertFalse(missing);self.assertEqual(len(desc['stages']),2);self.assertTrue(any('surfaceSprites' in x for x in notes))
@@ -122,11 +134,70 @@ surfaceSprites vertical 1 2 3 4
             self.assertEqual(len(result['imported']),2);self.assertIn('sp_broken',result['failed'])
             scene=json.loads((out/'maps/sp_kejim_test/scene.json').read_text())
             self.assertEqual(len(scene['placed']),2)
+            self.assertIn('light',scene['placed'][0])
             self.assertEqual(scene['viewpoints'][0]['origin'][2],60.125)
             self.assertFalse(result['sweep']['missing']);self.assertFalse(result['sweep']['defaults'])
             self.assertEqual(len(maps.import_maps(root,out)['skipped']),2)
             model=next(iter(scene['itemModels'].values()));(out/model['file']).unlink()
             self.assertTrue(maps.sweep(out)['missing'])
+
+    def test_grid_lighting_styles_interpolation_and_wall_samples(self):
+        raw=fixture(entity(classname='worldspawn',gridsize='64 64 128',ls_2r='a',ls_2g='a',ls_2b='a'))
+        # Two samples along X. The array deliberately reverses the record order.
+        raw[7]=struct.pack('<6f4i',0,0,0,64,0,0,0,0,0,0)
+        def sample(ambient,directed,styles=(0,255,255,255)):
+            return bytes(ambient+[200]*9+directed+[200]*9+list(styles)+[0,0])
+        raw[15]=sample([20,40,60],[10,20,30])+sample([40,60,80],[30,40,50])
+        raw[17]=struct.pack('<2H',1,0)
+        lighting=dict(identityLight=1,cvars=dict(r_ambientscale=.5,r_directedscale=1))
+        grid=maps.LightGrid(raw,lighting)
+        self.assertTrue(grid.valid)
+        result=grid.sample([16,0,0])
+        self.assertEqual(result['ambient'],[49.5,59.5,69.5])
+        self.assertEqual(result['directed'],[25,35,45])
+        self.assertAlmostEqual(result['direction'][2],1)
+        # The invalid corner is excluded and the surviving corner renormalized.
+        raw[15]=sample([20,40,60],[10,20,30])+sample([40,60,80],[30,40,50],(255,255,255,255))
+        self.assertEqual(maps.LightGrid(raw,lighting).sample([16,0,0])['ambient'],[42,52,62])
+        # Additional style channels are applied, not unconditionally summed.
+        raw[15]=sample([20,40,60],[10,20,30],(0,2,255,255))*2
+        self.assertEqual(maps.LightGrid(raw,lighting).sample([16,0,0])['directed'],[10,20,30])
+        raw[17]=b''
+        self.assertFalse(maps.LightGrid(raw,lighting).valid)
+        self.assertEqual(maps.LightGrid(raw,lighting).sample([0,0,0])['ambient'],[182]*3)
+        raw[17]=struct.pack('<H',3)
+        with self.assertRaisesRegex(ValueError,'light-grid array'):maps.LightGrid(raw,lighting)
+
+    def test_fog_stages_are_visible_only_for_jk2(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            shader=b'''textures/test/slime
+{
+surfaceparm fog
+fogparms ( 0.1 0.2 0.3 ) 128
+{
+map textures/test/slime.tga
+blendFunc add
+}
+{
+map $lightmap
+blendFunc filter
+}
+}
+textures/test/fog
+{
+surfaceparm fog
+fogparms ( 0 0 0 ) 100
+}
+'''
+            pk3(root/'assets0.pk3',[('shaders/test.shader',shader),('textures/test/slime.tga',image_bytes())])
+            game=maps.Game(root);textures=maps.base.Textures(root/'textures',game)
+            desc,missing,notes=maps.describe(game,'textures/test/slime',textures)
+            self.assertFalse(missing);self.assertEqual(len(desc['stages']),2)
+            self.assertTrue(any('fog' in n for n in notes))
+            self.assertEqual(maps.describe(game,'textures/test/fog',textures)[0]['stages'],[])
+            game.described.clear()
+            self.assertEqual(maps.base.describe(game,'textures/test/slime',textures)[0]['stages'],[])
 
     def test_routes_and_data_validation(self):
         from app import app

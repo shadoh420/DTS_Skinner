@@ -284,7 +284,7 @@ class ModelTextures(rtcw.Textures):
         return self.cache[shader]
 
 
-def describe(game,name,textures):
+def describe(game,name,textures,*,draw_fog_stages=False):
     if name in game.described: return game.described[name]
     body,stages = game.shaders.get(name,([],[]))
     words = {r[0] for r in body}
@@ -306,7 +306,7 @@ def describe(game,name,textures):
         # RB_StageIteratorSky suppresses the box when its first image is missing.
         if sides[0]:result['sky']['box']=[s or '$default' for s in sides]
         else:result['sky'].pop('box',None)
-    if any([w.lower() for w in r[:2]]==['surfaceparm','fog'] for r in body):
+    if not draw_fog_stages and any([w.lower() for w in r[:2]]==['surfaceparm','fog'] for r in body):
         result=dict(name=name,stages=[],cull='none',sort=3,outside=[])
     if implicit: limits += ['implicit directive compatibility extension (not in supplied renderer)']
     if words.intersection(('fogparms','skyfogvars','waterfogvars','mapfogvars','nofog')): limits += ['fog not drawn']

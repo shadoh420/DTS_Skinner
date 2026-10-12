@@ -267,8 +267,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       const at = faces.at + face * 104, shader = int(at), type = int(at + 8), first = int(at + 12), count = int(at + 16);
       if (!map.shaders[shader] || type < 1 || type > 3 || first < 0 || first + count > vertices.count) continue;
       const lightmap = (external ? external.valid.includes(int(at + 28)) : int(at + 28) >= 0 && int(at + 28) < lightmaps.count) ? int(at + 28) : -1, origin = moved.get(face) || none;
-      const key = shader + (lightmap < 0 ? '|vertex' : '|lit');
-      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, indices: []});
+      const vertexLit = config.vertexLightmaps && int(at + 28) === -3;
+      const key = shader + (lightmap < 0 ? config.vertexLightmaps && !vertexLit ? '|unlit' : '|vertex' : '|lit');
+      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, indices: []});
       const indices = groups.get(key).indices, base = positions.length / 3;
       if (type === 2) {
         // A patch is a grid of quadratic Bézier spans, each drawn as 4 × 4 quads (ArenaPrototype's default).
@@ -316,7 +317,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     : model ? [{map: shader.map, rgbGen: ['lightingdiffuse'], depthWrite: true}]
     : lit ? [{map: '$lightmap', tcGen: 'lightmap', rgbGen: ['identity'], depthWrite: true}, {map: shader.map, rgbGen: ['identity'], blend: ['gl_dst_color', 'gl_zero'], depthWrite: false}]
     : [{map: shader.map, rgbGen: ['exactvertex'], depthWrite: true}];
-  const stagesOf = (shader, lit, model) => (config.stagesOf && config.stagesOf(shader, lit, model)) || defaultStagesOf(shader, lit, model);
+  const stagesOf = (shader, lit, model, vertexLit) => (config.stagesOf && config.stagesOf(shader, lit, model, vertexLit)) || defaultStagesOf(shader, lit, model);
   const loading = new THREE.MeshBasicMaterial({color: 'rgb(0, 109, 56)', wireframe: true});
   // The materials of a shader's stages, once their textures are in; nothing for a shader that names none.
   async function stageMaterials(shader, stages, atlas) {
@@ -331,7 +332,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // One mesh of each opaque surface, for dropping pickups to the floor. They are in no scene, so a ray meets them
   // in the game's own axes.
   const floors = [], floorMaterial = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
-  async function addGroup({shader, lit, indices}, {atlas, attributes}, serial) {
+  async function addGroup({shader, lit, vertexLit, indices}, {atlas, attributes}, serial) {
     const geometry = new THREE.BufferGeometry();
     Object.entries(attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
     geometry.setIndex(indices);
@@ -351,7 +352,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     {
       if (shader.sky && shader.sky.box) add(boxMaterial(await Promise.all(shader.sky.box.map(file => loadTexture(file, true, !config.skyMipmaps)))), 0);
       // ponytail: one draw per stage, as the game without multitexture; fold lightmap × texture into one pass if maps get heavy.
-      (await stageMaterials(shader, stagesOf(shader, lit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
+      (await stageMaterials(shader, stagesOf(shader, lit, false, vertexLit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
     }
     root.remove(placeholder);
     if (shader.sort === 3 && !shader.sky) floors.push(new THREE.Mesh(geometry, floorMaterial));

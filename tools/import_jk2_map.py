@@ -29,7 +29,7 @@ STRIDES=(1,72,16,36,48,4,4,40,12,12,80,4,72,148,49152,30,1,2)
 SECTIONS={'sp':'Single player','mp':'Multiplayer'}
 NOT_DRAWN=['fog (by choice)', 'NPC spawns (by choice)', 'ICARUS scripts and later mover actions',
            'surfaceSprites/ss foliage, particles, weather, flares, glow bloom and audio',
-           'portal cameras, mirrors and portal skies', 'light-grid lighting on props (lit evenly)',
+           'portal cameras, mirrors and portal skies', 'dynamic lights on props; light grid sampled at spawn',
            'runtime lightstyle animation (first sample shown)']
 
 
@@ -39,15 +39,21 @@ def lighting_profile(install,section,game=None,*,device_supports_gamma=False):
     if (root/'GameData/base').is_dir():root=root/'GameData'
     result=base.lighting_profile(root,section,game,directory='base',
         configs=('default.cfg','jk2config.cfg' if section=='sp' else 'jk2mpconfig.cfg','autoexec.cfg'),
-        defaults=dict(r_mapoverbrightbits=0,r_overbrightbits=1,cg_fov=80,g_spskill=0),
+        defaults=dict(r_mapoverbrightbits=0,r_overbrightbits=1,cg_fov=80,g_spskill=0,
+                      r_texturemode='GL_LINEAR_MIPMAP_NEAREST',r_ambientscale=.5 if section=='sp' else .6,r_directedscale=1),
         device_supports_gamma=device_supports_gamma)
     bits=min(1,result['overbrightBits']);result['overbrightBits']=bits
     result['identityLight']=2**-bits;result['displayScale']=2**bits if result['hardwareGamma'] else 1
-    # MP ColorShiftLightingBytes uses 1-overbright only when overbright is on.
-    result['sourceLightScale']=2**max(0,int(result['cvars']['r_mapoverbrightbits'])-bits) if section=='sp' else 1
-    result['sourceLightScale']=min(16,result['sourceLightScale'])
+    # Retail SP 1.03 has no mapOverBrightBits cvar. The measured 1x world result
+    # agrees with JK2MV's shift (1-overbright, only when overbright is enabled).
+    result['cvars'].pop('r_mapoverbrightbits',None)
+    result['sourceLightScale']=1
+    # The saved SP config says trilinear, but retail gfxinfo at the comparison
+    # viewpoint reports this mode. Target that measured run, retaining cfg evidence.
+    result['configuredTextureMode']=result['textureMode']
+    result['textureMode']='GL_LINEAR_MIPMAP_NEAREST'
     result['lightScale']=1  # Raven's four channels are shifted individually before combining.
-    result['source']='JK2 classic texture-gamma path by default; OpenJK SP / JK2MV MP rules, retail comparison pending'
+    result['source']='JK2 retail SP 1.03 measured software gamma and nearest mip level; 1x BSP lighting, no mapOverBrightBits cvar. Hardware gamma remains an optional profile.'
     return result
 
 
@@ -157,7 +163,8 @@ def read_bsp(raw,diagnostics=None,*,section='sp',light_scale=1):
         active=[j for j in range(slots) if lmnums[j]>=0] if kind in (1,2) else []
         for j in active:
             if lmnums[j]>=len(lightmaps):raise ValueError(f'Surface {n}: invalid lightmap {lmnums[j]}')
-        lm=-1;uv=f[:,5:7].copy()
+        lm=-3 if kind==3 or lmnums[0]==-3 else -1
+        uv=f[:,5:7].copy()
         if active and count:
             firstslot=active[0];uv=f[:,5+2*firstslot:7+2*firstslot].copy();offsets=[]
             if not np.isfinite(uv).all():raise ValueError(f'Surface {n}: nonfinite lightmap UV')
@@ -202,6 +209,68 @@ def read_bsp(raw,diagnostics=None,*,section='sp',light_scale=1):
     return base.read_bsp(ibsp_bytes(lumps),notes)
 
 
+class LightGrid:
+    """Raven's indexed 30-byte light samples, evaluated once per placed entity.
+
+    Rules: R_LoadLightGrid[Array], R_SetupEntityLightingGrid/Lighting in the
+    classic SP/MP renderers. No dynamic lights or runtime style animation.
+    """
+    def __init__(self,lumps,lighting,section='sp'):
+        things=qmap.entities(lumps[0].decode('latin1'))
+        world=things[0] if things else {}
+        self.styles=light_styles(things,section)
+        self.lighting=lighting
+        self.size=np.array(vector(world.get('gridsize'),(64,64,128)))
+        if not np.all(np.isfinite(self.size)) or np.any(self.size<=0):raise ValueError('Invalid light-grid size')
+        bounds=np.array(struct.unpack_from('<6f',lumps[7]))
+        if not np.all(np.isfinite(bounds)):raise ValueError('Non-finite light-grid bounds')
+        self.origin=np.ceil(bounds[:3]/self.size)*self.size
+        self.bounds=np.floor((np.floor(bounds[3:]/self.size)*self.size-self.origin)/self.size).astype(np.int64)+1
+        self.data=np.frombuffer(lumps[15],dtype=np.uint8).reshape(-1,30)
+        self.index=np.frombuffer(lumps[17],dtype='<u2')
+        if len(self.index) and int(self.index.max())>=len(self.data):raise ValueError('Invalid light-grid array index')
+        self.valid=bool(len(self.data) and np.all(self.bounds>0) and math.prod(int(x) for x in self.bounds)==len(self.index))
+        self.reason='' if self.valid else 'missing or mismatched light grid; renderer fallback lighting'
+
+    def sample(self,origin):
+        identity=self.lighting['identityLight']
+        ambient=np.zeros(3);directed=np.zeros(3);direction=np.zeros(3);total=0
+        if self.valid:
+            cell=(np.array(origin)-self.origin)/self.size
+            floor=np.floor(cell);fraction=cell-floor
+            pos=np.clip(floor,0,self.bounds-1).astype(np.int64)
+            step=[1,int(self.bounds[0]),int(self.bounds[0])*int(self.bounds[1])]
+            start=sum(int(p)*s for p,s in zip(pos,step))
+            for corner in range(8):
+                high=[(corner>>j)&1 for j in range(3)]
+                weight=math.prod(fraction[j] if high[j] else 1-fraction[j] for j in range(3))
+                at=start+sum(h*s for h,s in zip(high,step))
+                if not weight or at>=len(self.index):continue
+                sample=self.data[self.index[at]]
+                if sample[24]==255:continue  # Inside a wall: renormalize other samples.
+                total+=weight
+                for j,style in enumerate(sample[24:28]):
+                    if style==255:break
+                    color=np.array(self.styles.get(int(style),[1,1,1])) if style!=254 else np.zeros(3)
+                    ambient+=weight*sample[j*3:j*3+3]*color
+                    directed+=weight*sample[12+j*3:15+j*3]*color
+                # The engine samples a 1024-entry sine table (denominator 1023).
+                lat,lng=int(sample[29])*4,int(sample[28])*4
+                sine=lambda i:math.sin((i&1023)*2*math.pi/1023)
+                direction+=weight*np.array([sine(lat+256)*sine(lng),sine(lat)*sine(lng),sine(lng+256)])
+            if 0<total<.99:ambient/=total;directed/=total
+            ambient*=max(0,self.lighting['cvars']['r_ambientscale'])
+            directed*=max(0,self.lighting['cvars']['r_directedscale'])
+        else:
+            ambient[:]=directed[:]=identity*150
+            direction=np.array([.45,.3,.9])  # Renderer default sun direction.
+        length=np.linalg.norm(direction)
+        if length:direction/=length
+        ambient=np.minimum(ambient+identity*32,int(identity*255))
+        return dict(ambient=ambient.tolist(),directed=directed.tolist(),direction=direction.tolist(),
+                    source=self.reason or 'indexed BSP light grid at spawn')
+
+
 class ModelTextures(base.ModelTextures):
     def __init__(self,game,output):
         super().__init__(game,output);self.shaders=jk2.shader_maps(game)
@@ -241,7 +310,7 @@ def describe(game,name,textures):
         kept.append([['rgbgen','lightingdiffuse'] if r[:2]==['rgbgen','lightingdiffuseentity'] else r for r in stage])
         if any(r[0]=='glow' for r in stage):notes.append('glow bloom not drawn')
     if name in game.shaders:game.shaders[name]=(body,kept)  # Script-less names keep the implicit image + lightmap.
-    result,missing,limits=base.describe(game,name,textures)
+    result,missing,limits=base.describe(game,name,textures,draw_fog_stages=True)
     sky=next((r for r in body if r[0]=='skyparms' and len(r)>1 and r[1]!='-'),None)
     if sky and 'sky' in result:
         previous='$default';sides=[]
@@ -390,7 +459,9 @@ def place_entities(game,things,states,collision,output,textures,model_textures):
                         model,meta,_=jk2.load_model(game,path,sk,frame=frame)
                         desc,unresolved=base.placed_model(game,path,skin,frame,output,textures,model_textures,model=model)
                         desc['limitations']+=meta['warnings'];models[key]=desc;missing+=unresolved;limits+=desc['limitations']
-                    placed.append(dict(entity=serial,models=[key],origin=pos,angles=rot,scale=size,spin=spin,bob=bob))
+                    placement=dict(entity=serial,models=[key],origin=pos,angles=rot,scale=size,spin=spin,bob=bob)
+                    if getattr(game,'light_grid',None):placement['light']=game.light_grid.sample(pos)
+                    placed.append(placement)
                 row['status']='drawn';reason=('rack pickup; deterministic midpoint of random placement' if e.get('_rack') else 'pickup at spawn; '+floor) if item else 'model at authored spawn pose'
             row['reason']=reason
         except (ValueError,OSError,KeyError,struct.error,zipfile.BadZipFile) as exc:
@@ -438,7 +509,10 @@ def import_maps(install,output,replace=False):
             try:
                 if dest.is_file() and not replace:scene=json.loads(dest.read_text());status='skipped'
                 else:
-                    scene=base.import_map(game,name,ident,game.read(path),source,output,textures,mt,rules=rules)
+                    raw=game.read(path)
+                    game.light_grid=LightGrid(read_lumps(raw),game.lighting,section)
+                    scene=base.import_map(game,name,ident,raw,source,output,textures,mt,rules=rules)
+                    if game.light_grid.reason:scene['limits'].append(game.light_grid.reason)
                     scene.update(game='jk2',sourceFormat='RBSP 1',defaultGametype='single player' if section=='sp' else 'FFA')
                     scene['limits']=[x for x in scene['limits'] if x not in base.NOT_DRAWN and not x.startswith('first eligible Axis')]+NOT_DRAWN
                     scene['limits']+=['first eligible player start; runtime selection and level-transition targets may differ','no hardware gamma assumed on this PC; working hardware gamma uses the display ramp instead']

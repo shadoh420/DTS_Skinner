@@ -284,7 +284,7 @@ def jk2_maps_viewer():
     text = text[:start] + 'Imports Jedi Outcast maps in Single player and Multiplayer sections from the shared base archives. The install is only read.' + text[end:]
     start = text.index('<span id="notes">') + len('<span id="notes">')
     end = text.index('</span>', start)
-    text = text[:start] + 'Lightmapped surfaces, patches, far-box skies, spawn-state brushes, props and pickups. Fog, NPCs, surface-sprite foliage, portal cameras, particles and ICARUS scripts are not drawn. Lightstyles show their first sample; props are lit evenly. MP uses FFA and the first eligible start. Lighting assumes this PC has no usable hardware gamma ramp; a machine with working hardware gamma uses a display ramp instead. Retail comparison pending.' + text[end:]
+    text = text[:start] + 'Lightmapped surfaces, patches, far-box skies, spawn-state brushes, props and pickups. Fog, NPCs, surface-sprite foliage, portal cameras, particles and ICARUS scripts are not drawn. Water and slime stages still draw without fog. Lightstyles show their first sample; props use the light grid at spawn, without dynamic lights. MP uses FFA and the first eligible start. Lighting targets this PC’s measured software gamma and GL_LINEAR_MIPMAP_NEAREST filtering; a machine with working hardware gamma uses a display ramp instead. Retail SP 1.03 has no r_mapOverBrightBits setting: BSP light stays at 1×. Placed-model lighting awaits retail comparison.' + text[end:]
     response = app.response_class(text, mimetype='text/html')
     response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
     return response
