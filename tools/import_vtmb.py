@@ -40,6 +40,10 @@ def resolve_material(files, name, directories, stack=()):
                   if d.strip('/\\') else asset_name('materials/' + name) for d in directories]
     candidates.append(asset_name(name if name.startswith('materials/') else 'materials/' + name))
     path = next((p + '.vmt' for p in candidates if p + '.vmt' in files), None)
+    # Bloodlines ships this explicit shared NULL material. Honor any local
+    # definition first; never infer invisibility from the slot's name alone.
+    if path is None and name == 'null' and 'materials/models/null.vmt' in files:
+        path = 'materials/models/null.vmt'
     if path is None:
         raise ValueError('Missing VMT: ' + ', '.join(p + '.vmt' for p in candidates))
     if path in stack or len(stack) >= 16:

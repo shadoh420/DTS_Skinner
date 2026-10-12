@@ -78,6 +78,16 @@ def fixture(root):
 
 
 class BloodlinesMapsTests(unittest.TestCase):
+    def test_known_giovanni_typo_is_audited_not_general_junk(self):
+        text = '{\n"OnUseBegin" ",,,0,-1,OnUseBegin(),"mop\n"OnUseEnd" ",,,0,-1,OnUseEnd(),"\n}'
+        parsed = maps.read_bsp(bsp(text, static=False))
+        self.assertEqual(parsed['entities'][1]['OnUseEnd'], ',,,0,-1,OnUseEnd(),')
+        self.assertEqual(len(parsed['entity_repairs']), 1)
+        for broken in (text.replace('mop', 'junk'), text.replace('OnUseEnd', 'different'),
+                       '{"key" "value"mop\n"OnUseEnd" "value"}'):
+            with self.subTest(broken=broken), self.assertRaises(ValueError):
+                maps.entities(broken.encode())
+
     def test_entity_escaped_outputs_and_token_kinds(self):
         text = r'''{ "classname" "logic_auto"
         "OnMapLoad" ",,,0,-1,setArea(\"downtown\"),"
@@ -135,7 +145,7 @@ second" } // comment with braces {}
             root = Path(temp); fixture(root)
             files, _ = vtmb.read_install(root)
             raw, vtx = quantized_fixture(2); data = bytearray(raw)
-            name = b'items/original.mdl\0'; data[12:12+len(name)] = name
+            name = b'items//original.mdl\0'; data[12:12+len(name)] = name
             files['models/items/tiny.mdl'] = maps.EmbeddedAsset(bytes(data), 'synthetic')
             del files['models/items/tiny.dx80.vtx']
             files['models/items/original.dx80.vtx'] = maps.EmbeddedAsset(compact_vtx(vtx), 'synthetic')

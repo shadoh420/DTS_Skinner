@@ -46,13 +46,20 @@ SKIPPED_LUMPS = {4: 'visibility', 5: 'nodes', 9: 'occlusion', 10: 'leaves', 11: 
                  46: 'leafmindisttowater', 47: 'face_macrotexture_info'}
 
 
-def entities(data):
+def entities(data, repairs=None):
     """BSP quoted key/value pairs; Bloodlines outputs contain escaped quotes.
 
     Keep token kinds distinct so quoted braces/empty strings remain values.
     Duplicate output keys retain the last value, as before; outputs aren't run.
     """
     text = data.rstrip(b'\0').decode('latin1')
+    # The patched Giovanni 2b lump has this literal editor typo. Repair only
+    # this exact output-line context; retain offsets and reject other bare junk.
+    def repair(match):
+        if repairs is not None:
+            repairs.append(dict(offset=match.end()-3, reason='Removed stray mop after OnUseBegin output'))
+        return match[1] + '   '
+    text = re.sub(r'(?m)(^"OnUseBegin" ",,,0,-1,OnUseBegin\(\),")mop(?=\r?\n"OnUseEnd" )', repair, text)
     token = re.compile(r'\s+|//[^\r\n\0]*|"(?P<value>(?:\\[^\0]|[^"\\\0])*)"|(?P<brace>[{}])')
     result, entity, key, at = [], None, None, 0
     while at < len(text):
@@ -102,8 +109,9 @@ def read_bsp(raw):
         audit.append(dict(id=i, name=LUMPS.get(i, SKIPPED_LUMPS.get(i, 'reserved/unknown')), offset=offset, size=size, version=version,
                           used=i in LUMPS, reason='Read for preview' if i in LUMPS else
                           'Empty' if not size else 'Not needed for static surfaces; collision, visibility, AI, normals or runtime data'))
+    repairs = []
     result = dict(raw=raw, lumps=lumps, audit=audit, revision=vtmb.unpack(raw, 'i', 1032)[0],
-                  entities=entities(lumps[0]), planes=rows(lumps[1], '4fi'),
+                  entities=entities(lumps[0], repairs), entity_repairs=repairs, planes=rows(lumps[1], '4fi'),
                   texdata=rows(lumps[2], '3f5i'), points=rows(lumps[3], '3f'),
                   texinfo=rows(lumps[6], '16f2i'), edges=rows(lumps[12], '2H'),
                   surfedges=[r[0] for r in rows(lumps[13], 'i')], models=rows(lumps[14], '9f3i'),
@@ -150,7 +158,7 @@ def static_props(bsp):
             continue
         data = bsp['raw'][offset:offset+length]
         n, = vtmb.unpack(data, 'i'); vtmb.span(data, 4, n, 128)
-        names = [vtmb.asset_reference(data[4+j*128:4+(j+1)*128].split(b'\0')[0].decode('cp1252')) for j in range(n)]
+        names = [vtmb.model_reference(data[4+j*128:4+(j+1)*128].split(b'\0')[0].decode('cp1252')) for j in range(n)]
         at = 4 + n*128
         n, = vtmb.unpack(data, 'i', at); at += 4
         leaves = vtmb.unpack(data, f'{n}H', at); at += n*2
@@ -303,7 +311,7 @@ def pickup_model(data):
                         data.decode('cp1252'), re.MULTILINE | re.IGNORECASE)
     if len(fields) != 1:
         raise ValueError('Expected one quoted pickup playermodel field')
-    return vtmb.asset_reference(fields[0])
+    return vtmb.model_reference(fields[0])
 
 
 def brush_transform(entity, model):
@@ -413,7 +421,7 @@ def build_map(raw, name, files, lighting=None):
                     model = pickup_model(files[source].read())
                 if not model:
                     raise ValueError('No model or pickup playermodel')
-                models.append(dict(**{**record, 'model': vtmb.asset_reference(model)}, origin=vector(e).tolist(),
+                models.append(dict(**{**record, 'model': vtmb.model_reference(model)}, origin=vector(e).tolist(),
                                    angles=vector(e, 'angles').tolist(), skin=int(number(e, 'skin')), source=source,
                                    sequence=e.get('defaultanim', e.get('demo_sequence', '')), scale=number(e, 'modelscale', 1),
                                    tint=(vector(e, 'rendercolor')/255).tolist() if 'rendercolor' in e else [1, 1, 1],
@@ -444,7 +452,7 @@ def build_map(raw, name, files, lighting=None):
     model_cache = {}
     for record in models:
         try:
-            model = vtmb.asset_reference(record['model'])
+            model = vtmb.model_reference(record['model'])
             if model.startswith('models/character/'):
                 omitted.append(dict(**record, reason='NPC / character actor excluded')); continue
             cache = model, record['skin']
@@ -527,7 +535,7 @@ def build_map(raw, name, files, lighting=None):
                  bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(), instances=placed, models=models,
                  omitted_models=omitted, model_failures=failures, faces_omitted=faces_audit, skybox=sky,
                  faces_drawn=drawn_faces, displacements_drawn=drawn_displacements,
-                 lump_audit=bsp['audit'], game_lumps=game_audit, embedded_assets=embedded, lighting=lighting,
+                 lump_audit=bsp['audit'], entity_repairs=bsp['entity_repairs'], game_lumps=game_audit, embedded_assets=embedded, lighting=lighting,
                  entity_classes=dict(Counter(e.get('classname', '') for e in ents)),
                  skipped_by_reason=dict(Counter(e['reason'] for e in omitted)),
                  materials=list(materials.values()), missing=sorted({r['source'] for r in missing}), missing_reasons=missing, gaps=gaps)
@@ -572,7 +580,8 @@ def import_maps(install, output, replace=False, map_filter=None):
                 (folder/'geometry.bin').write_bytes(blob); atlas.save(folder/'lightmap.png')
                 write_json_atomic(folder/'scene.json', scene)
                 receipt['status'] = 'imported'; report['imported'].append(name)
-            receipt.update(missing=scene['missing_reasons'], model_failures=scene['model_failures'], skipped=scene['skipped_by_reason'])
+            receipt.update(missing=scene['missing_reasons'], model_failures=scene['model_failures'], skipped=scene['skipped_by_reason'],
+                           entity_repairs=scene.get('entity_repairs', []))
             index.append(dict(id=ident, name=name, title=scene['title'], group=section(name)))
         except (ValueError, OSError, KeyError, IndexError, struct.error, zipfile.BadZipFile) as exc:
             receipt.update(status='failed', reason=str(exc)); report['failed'][path] = str(exc)

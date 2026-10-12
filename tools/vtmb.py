@@ -30,6 +30,14 @@ def asset_reference(name):
     return asset_name('/'.join(p for p in name.replace('\\', '/').split('/') if p))
 
 
+def model_reference(name):
+    """Model paths allow repeated separators, but no material-style root slash."""
+    name = name.replace('\\', '/')
+    if name.startswith('/'):
+        raise ValueError(f'Unsafe absolute model path: {name!r}')
+    return asset_reference(name)
+
+
 def span(data, offset, count, size=1):
     if offset < 0 or count < 0 or size < 1 or offset + count * size > len(data):
         raise ValueError(f'Invalid binary range: {offset}+{count}*{size} / {len(data)}')
@@ -414,14 +422,24 @@ def mdl_companions(data, name, files):
     A candidate is not trusted here: read_mdl must still verify checksum, body,
     mesh, vertex and strip ranges. Never search by basename or bypass layering.
     """
-    stems = [asset_name(name).removesuffix('.mdl')]
+    stems = [model_reference(name).removesuffix('.mdl')]
+    suffixes = ('.dx90.vtx', '.dx80.vtx', '.dx7_2bone.vtx', '.vtx')
     if len(data) >= 140 and data[:4] == b'IDST':
         authored = data[12:140].split(b'\0')[0].decode('cp1252').replace('\\', '/').lower()
         if authored.endswith('.mdl'):
-            authored = asset_name(authored if authored.startswith('models/') else 'models/' + authored)
-            if authored[:-4] not in stems:
-                stems.append(authored[:-4])
-    return [stem + suffix for stem in stems for suffix in ('.dx90.vtx', '.dx80.vtx', '.dx7_2bone.vtx', '.vtx')
+            try:
+                authored = model_reference(authored)
+            except ValueError:
+                # Header names are fallback hints, not asset identities. Some
+                # retail headers start /items/. Never use an unsafe hint; a
+                # named companion can still pass all read_mdl integrity checks.
+                if not any(stems[0]+s in files for s in suffixes):
+                    raise
+            else:
+                authored = authored if authored.startswith('models/') else 'models/' + authored
+                if authored[:-4] not in stems:
+                    stems.append(authored[:-4])
+    return [stem + suffix for stem in stems for suffix in suffixes
             if stem + suffix in files]
 
 

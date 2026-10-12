@@ -272,6 +272,34 @@ class BloodlinesTests(unittest.TestCase):
         for name in ('/models/items/tiny.mdl', 'models//items/tiny.mdl'):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 vtmb.asset_name(name)
+        self.assertEqual(vtmb.model_reference('Models\\Scenery//file.mdl'), 'models/scenery/file.mdl')
+        for name in ('/models/file.mdl', '\\models\\file.mdl', '//server/share/file.mdl',
+                     'C:/file.mdl', 'models/../file.mdl'):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                vtmb.model_reference(name)
+        raw, _ = mdl_fixture()
+        for name in (b'/absolute.mdl', b'C:/drive.mdl', b'../escape.mdl'):
+            data = bytearray(raw); data[12:140] = name.ljust(128, b'\0')
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                vtmb.mdl_companions(data, 'models/test.mdl', {})
+            self.assertEqual(vtmb.mdl_companions(data, 'models/test.mdl', {'models/test.dx80.vtx': None}),
+                             ['models/test.dx80.vtx'])
+
+    def test_null_uses_authored_shared_material_not_nodraw(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            shader = root/'null.vmt'; shader.write_bytes(b'VertexLitGeneric { "$basetexture" "models/null" }')
+            texture = root/'null.vtf'; texture.write_bytes(vtf(pixels=b'\0\0\0\xff'))
+            files = {'materials/models/null.vmt': vtmb.Asset(shader, 0, shader.stat().st_size, 'test'),
+                     'materials/models/null.vtf': vtmb.Asset(texture, 0, texture.stat().st_size, 'test')}
+            vmt, path = resolve_material(files, 'NULL', ['models/furniture/'])
+            self.assertEqual(path, 'materials/models/null.vmt')
+            self.assertEqual(vtmb.material_texture(files, vmt)[0].getpixel((0, 0)), (0, 0, 0, 255))
+            self.assertFalse(vtmb.material_settings(vmt)[0]['blend'])
+            files['materials/models/furniture/null.vmt'] = files['materials/models/null.vmt']
+            self.assertEqual(resolve_material(files, 'NULL', ['models/furniture/'])[1], 'materials/models/furniture/null.vmt')
+            with self.assertRaisesRegex(ValueError, 'Missing VMT'):
+                resolve_material({}, 'NULL', ['models/furniture/'])
 
     def test_vtf_pixels_and_mips(self):
         for fmt, raw, expected in [(0, b'\x11\x22\x33\x44', (17, 34, 51, 68)),
