@@ -1,6 +1,7 @@
-"""Import Doom 3 + Resurrection of Evil models from read-only PK4 archives.
+"""Import Doom 3 / Resurrection of Evil or Quake 4 from read-only PK4 archives.
 
 python tools/import_doom3.py --install "C:/Games/Doom 3" [--output local-data/doom3]
+python -m tools.import_doom3 --game quake4 --install "C:/Games/Quake 4"
 Use --inventory for a cheap dependency inventory (no geometry/image decoding),
 or --sample 40 for a bounded, representative import. --select CAMPAIGN:NAME
 may be repeated to import exact inventory IDs instead.
@@ -54,32 +55,39 @@ def idle_animation(entity, model):
     return next((v for k,v in anims.items() if re.fullmatch(r'idle\d+',k)),None)
 
 
-def inventory(install):
+def inventory(install, policy=None):
     rows, declarations = [],{}
     for campaign,files in install.files.items():
         if campaign=='d3xp' and not any(a.campaign=='d3xp' for a in files.values()): continue
-        defs=declarations[campaign]=Declarations(files)
+        defs=declarations[campaign]=Declarations(files,policy)
         prefix='Resurrection of Evil: ' if campaign=='d3xp' else ''
         for name in sorted(defs.entities):
             if campaign=='d3xp' and defs.sources[('entity',name)][1]!='d3xp': continue
             try: entity=defs.entity(name)
             except ValueError as exc:
-                rows.append(dict(id=campaign+':'+name,campaign=campaign,name=name,category=prefix+category(name),status='failed',reason=str(exc)))
+                rows.append(dict(id=campaign+':'+name,campaign=campaign,name=name,category=prefix+(policy.category(name) if policy else category(name)),status='failed',reason=str(exc)))
                 continue
             for variant in ('model','model_world','model_view'):
                 reference=entity.get(variant)
                 if not reference: continue
                 model=defs.model(reference)
                 mesh=path_name(model.get('mesh',''))
-                if Path(mesh).suffix not in FORMATS: continue  # sprites, particles, inline brushes, abstract defs
+                if Path(mesh).suffix not in FORMATS:
+                    if policy:
+                        reason='Not a model: ' if Path(mesh).suffix in ('.fx','.prt','.gui') or mesh.startswith('_') else 'Unresolved model reference: '
+                        rows.append(dict(id=campaign+':'+name+(':'+variant if variant!='model' else ''),campaign=campaign,name=name,category=policy.category(name,variant),status='failed',reason=reason+mesh))
+                    continue
                 ident=campaign+':'+name+(':'+variant if variant!='model' else '')
-                row=dict(id=ident,campaign=campaign,name=name,variant=variant,category=prefix+category(name,variant),
+                row=dict(id=ident,campaign=campaign,name=name,variant=variant,category=prefix+(policy.category(name,variant) if policy else category(name,variant)),
                          reference=reference,mesh=mesh,entity=entity,model=model,
-                         skin=entity.get('skin',model.get('skin','')),animation=idle_animation(entity,model),
+                         skin=entity.get('skin',model.get('skin','')),animation=(policy.idle_animation(entity,model) if policy else idle_animation(entity,model)),
                          definition=defs.sources[('entity',name)][0],status='ready')
                 dependencies=[mesh]
                 if row['animation']: dependencies.append(row['animation'])
-                if variant=='model' and entity.get('def_head'):
+                if policy:
+                    try: policy.prepare(row,defs,dependencies)
+                    except ValueError as exc: row.update(status='failed',reason=str(exc))
+                if not policy and variant=='model' and entity.get('def_head'):
                     head=defs.model(entity['def_head']); row['head']=head
                     dependencies.append(path_name(head.get('mesh','')))
                     headanim=idle_animation({},head)
@@ -127,17 +135,20 @@ def choose_sample(rows, count):
     return selected
 
 
-def load_parts(row, files, defs, pose_callback=None):
+def load_parts(row, files, defs, pose_callback=None, policy=None):
     mesh=row['mesh']; suffix=Path(mesh).suffix
     if suffix=='.md5mesh':
         animation=files[row['animation']].read() if row.get('animation') else None
         parts,joints=read_md5(files[mesh].read(),animation,pose_callback)
     else: parts,joints=READERS[suffix](files[mesh].read()),[]
+    if policy: parts=policy.surfaces(parts,row.get('entity',{}))
     offset=row.get('model',{}).get('offset',(0,0,0))
     for part in parts:
         part['shader']=defs.remap(part['shader'],row.get('skin'))
         part['vertices']=[np.add(p,offset) for p in part['vertices']]
-    if row.get('head'):
+    if policy:
+        policy.assemble(parts,joints,row,files,defs)
+    if not policy and row.get('head'):
         entity,head=row['entity'],row['head']
         joint=next((j for j in joints if j['name'].lower()==entity.get('head_joint','').lower()),None)
         if joint is None: raise ValueError('Missing head attachment joint: '+entity.get('head_joint',''))
@@ -151,14 +162,19 @@ def load_parts(row, files, defs, pose_callback=None):
     return parts,joints
 
 
-def build_model(row, files, defs, materials):
-    parts,_=load_parts(row,files,defs)
-    data=dict(game='doom3',winding='ccw',vertices=[],uvs=[],normals=[],colors=[],indices=[],groups=[],
+def build_model(row, files, defs, materials, policy=None):
+    game=policy.game if policy else 'doom3'
+    parts,_=load_parts(row,files,defs,policy=policy)
+    data=dict(game=game,winding='ccw',vertices=[],uvs=[],normals=[],colors=[],indices=[],groups=[],
               material_names=[],material_textures=[],material_settings=[],
               metadata=dict(format=Path(row['mesh']).suffix[1:],campaign=row['campaign'],entity=row['name'],
                             source=files[row['mesh']].origin+':'+row['mesh'],mesh=row['mesh'],skin=row.get('skin',''),
                             pose='idle frame 0' if row.get('animation') else 'bind pose',animation=row.get('animation'),
                             head=row.get('head'),spawnargs=row.get('entity',{}),materials=[],scale=1))
+    if policy:
+        data['metadata']['idle_snapshot']=row.get('idle_snapshot')
+        data['metadata']['attachments']=[dict(name=p['name'],mesh=p['mesh'],joint=p['entity'].get('joint','')) for p in row.get('attachments',[])]
+        data['metadata']['vehicle_parts']=[dict(name=p['name'],position=p['position'],mesh=p['mesh'],kind='attached mesh' if p['mesh'] else 'vehicle control (no mesh)',joint=p['entity'].get('joint','')) for p in row.get('vehicle_parts',[])]
     for part in parts:
         if not part['indices']: continue
         material=materials.resolve(part['shader'])
@@ -173,7 +189,7 @@ def build_model(row, files, defs, materials):
         data['groups'].append(dict(start=start,count=len(data['indices'])-start,materialIndex=len(data['material_names'])))
         data['material_names'].append(material['name'])
         diffuse=material['images']['diffuse']
-        data['material_textures'].append(diffuse['texture'] if diffuse and diffuse['status']=='ready' else 'missing_doom3.png')
+        data['material_textures'].append(diffuse['texture'] if diffuse and diffuse['status']=='ready' else 'missing_'+game+'.png')
         data['material_settings'].append(material['settings'])
         data['metadata']['materials'].append(material)
     if not data['indices']: raise ValueError('No visible renderable triangles')
@@ -182,12 +198,18 @@ def build_model(row, files, defs, materials):
     return data
 
 
-def import_catalog(install, output, *, sample=None, select=None, inventory_only=False):
+def import_catalog(install, output, *, sample=None, select=None, inventory_only=False, policy=None):
     output,root=Path(output).resolve(),Path(install).resolve()
     if output==root or root in output.parents: raise ValueError('Import output must be outside the read-only game install')
-    with Install(root) as archive:
-        rows,defs=inventory(archive)
-        report=dict(game='doom3',inventory=summary(rows),inventory_scope='Definition/dependency readiness only; geometry and images not decoded')
+    game=policy.game if policy else 'doom3'
+    missing_texture='missing_'+game+'.png'
+    with Install(root,policy) as archive:
+        rows,defs=inventory(archive,policy)
+        report=dict(game=game,inventory=summary(rows),inventory_scope='Definition/dependency readiness only; geometry and images not decoded')
+        if policy:
+            report['declaration_warnings']=[w for d in defs.values() for w in d.warnings]
+            report['excluded_assets']=policy.excluded_assets(archive.files)
+            report['inventory']['categories']={c:dict(ready=sum(r['status']=='ready' for r in rows if r['category']==c),skipped=sum(r['status']!='ready' for r in rows if r['category']==c)) for c in sorted({r['category'] for r in rows})}
         if inventory_only:
             report['results']=[{k:v for k,v in r.items() if k not in ('entity','model','head')} for r in rows]
             return report
@@ -199,29 +221,32 @@ def import_catalog(install, output, *, sample=None, select=None, inventory_only=
         elif sample is not None:
             if sample<1: raise ValueError('--sample must be positive')
             rows=choose_sample(rows,sample)
-        textures={c:Textures(files,output/'textures') for c,files in archive.files.items()}
+        textures={c:Textures(files,output/'textures',policy) for c,files in archive.files.items()}
         materials={c:Materials(defs[c],textures[c]) for c in defs}
-        write_texture(output/'textures','missing_doom3.png',Image.new('RGBA',(2,2),(255,0,255,255)))
+        write_texture(output/'textures',missing_texture,Image.new('RGBA',(2,2),(255,0,255,255)))
         catalog,results=[],[]
         for row in rows:
             ident=row['id']; key=re.sub(r'[^a-z0-9_-]+','_',ident.lower())[:120]+'_'+hashlib.sha256(ident.encode()).hexdigest()[:10]
             item=dict(model_name=key,display_name=row['name']+(' [view]' if row.get('variant')=='model_view' else ' [world]' if row.get('variant')=='model_world' else ''),
-                      game='doom3',campaign=row['campaign'],category=row['category'],source=ident,texture_name='missing_doom3.png')
+                      game=game,campaign=row['campaign'],category=row['category'],source=ident,texture_name=missing_texture)
             result=dict(id=ident,model=key,status='failed')
+            if policy: result['category']=row['category']
             try:
                 if row['status']=='failed': raise ValueError(row['reason'])
-                data=build_model(row,archive.files[row['campaign']],defs[row['campaign']],materials[row['campaign']])
+                data=build_model(row,archive.files[row['campaign']],defs[row['campaign']],materials[row['campaign']],policy)
                 write_model_data(output/'model_json'/(key+'.json'),data)
                 item.update(status='ready',texture_name=data['material_textures'][0])
                 result.update(status='ready',vertices=len(data['vertices'])//3,triangles=len(data['indices'])//3,
                               slots=len(data['groups']),pose=data['metadata']['pose'],head=bool(row.get('head')),
-                              missing_diffuse=sum(n=='missing_doom3.png' for n in data['material_textures']))
+                              missing_diffuse=sum(n==missing_texture for n in data['material_textures']))
             except (ValueError,OSError,KeyError,IndexError,struct.error) as exc:
                 item.update(status='skipped',reason=str(exc)); result['reason']=str(exc)
             catalog.append(item); results.append(result)
         report.update(entries=len(rows),ready=sum(r['status']=='ready' for r in results),failed=sum(r['status']=='failed' for r in results),results=results,
                       material_results={c:list(m.records.values()) for c,m in materials.items()},
                       texture_results={c:list(t.records.values()) for c,t in textures.items()})
+        if policy:
+            report['categories']={c:dict(ready=sum(r['status']=='ready' for r in results if r['category']==c),skipped=sum(r['status']!='ready' for r in results if r['category']==c)) for c in sorted({r['category'] for r in results})}
         report['textures']=len({r['texture'] for t in textures.values() for r in t.records.values() if r['status']=='ready'})
         write_json_atomic(output/'catalog.json',catalog)
         write_json_atomic(output/'import-report.json',report)
@@ -231,11 +256,18 @@ def import_catalog(install, output, *, sample=None, select=None, inventory_only=
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--install',required=True,type=Path)
-    parser.add_argument('--output',type=Path,default=LOCAL_DATA/'doom3')
+    parser.add_argument('--game',choices=('doom3','quake4'),default='doom3')
+    parser.add_argument('--output',type=Path)
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--sample',type=int)
     mode.add_argument('--select',action='append',help='Exact campaign:name inventory ID; repeat for several entries')
     mode.add_argument('--inventory',action='store_true',help='Read definitions and ZIP directories only; write nothing')
     args=parser.parse_args()
-    report=import_catalog(args.install,args.output,sample=args.sample,select=args.select,inventory_only=args.inventory)
+    policy=None
+    if args.game=='quake4':
+        if not __package__:
+            import sys
+            sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
+        from tools import quake4_policy as policy
+    report=import_catalog(args.install,args.output or LOCAL_DATA/args.game,sample=args.sample,select=args.select,inventory_only=args.inventory,policy=policy)
     print(json.dumps(report if args.inventory else {k:v for k,v in report.items() if k not in ('material_results','texture_results')},indent=2))
