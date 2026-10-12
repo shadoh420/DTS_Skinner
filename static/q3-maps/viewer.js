@@ -381,7 +381,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   const itemModels = new Map(), pickups = [], placedTicks = [];
   function loadItemModel(path) {
     if (!itemModels.has(path)) itemModels.set(path, (async () => {
-      const model = map.itemModels[path], surfaces = await (await get(data + model.file)).json();
+      const model = map.itemModels[path];
+      let surfaces = await (await get(data + model.file)).json();
+      if (surfaces.geometry_buffers) {
+        const filename = GeometryBuffers.filename(surfaces.geometry_buffers);
+        const binary = await (await get(data + model.file.replace(/[^/]+$/, filename))).arrayBuffer();
+        surfaces = GeometryBuffers.surfaces(surfaces, binary);
+      }
       return Promise.all(surfaces.map(async (surface, index) => {
         const geometry = new THREE.BufferGeometry(), shader = model.shaders[index];
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(surface.vertices, 3));

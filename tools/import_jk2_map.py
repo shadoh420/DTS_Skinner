@@ -19,10 +19,12 @@ import numpy as np
 try:
     from tools import import_jk2 as jk2, import_rtcw_map as base
     from tools.jk2_map_items import MP_ITEMS
+    from tools.model_data import read_geometry_buffers
 except ImportError:
     import import_jk2 as jk2
     import import_rtcw_map as base
     from jk2_map_items import MP_ITEMS
+    from model_data import read_geometry_buffers
 
 qmap,rtcw=base.qmap,jk2.base
 number,vector=base.number,base.vector
@@ -486,25 +488,37 @@ def place_entities(game,things,states,collision,output,textures,model_textures,*
     return placed,models,audit,missing,limits
 
 
-def sweep(output):
-    """Audit references in emitted scenes, including model ids and sky stages."""
-    output=Path(output);missing=[];defaults=[];scenes=0
+def sweep(output, texture_directory=None, *, texture_stores=()):
+    """Audit references; optional stores retire only their own unused new files."""
+    output=Path(output);missing=[];defaults=[];scenes=0;used=set()
     for path in sorted((output/'maps').glob('*/scene.json')):
         scene=json.loads(path.read_text());scenes+=1
         def check(name):
-            if not (output/name).is_file():missing.append(dict(scene=path.parent.name,file=name))
+            target=output/name
+            if texture_directory is not None and name.startswith('textures/'):
+                shared=Path(texture_directory)/name.removeprefix('textures/')
+                if shared.is_file():target=shared
+            if target is None or not target.is_file():missing.append(dict(scene=path.parent.name,file=name))
         check(scene['bsp'])
         for item in scene.get('placed',[]):
             for key in item['models']:
                 if key not in scene['itemModels']:missing.append(dict(scene=path.parent.name,model=key))
         shaders=[s for s in scene['shaders'] if s]
-        for model in scene['itemModels'].values():check(model['file']);shaders+=model['shaders']
+        for model in scene['itemModels'].values():
+            check(model['file']);shaders+=model['shaders']
+            target=output/model['file']
+            if target.is_file():
+                description=json.loads(target.read_text())
+                if isinstance(description,dict) and 'geometry_buffers' in description:
+                    try:read_geometry_buffers(target,description['geometry_buffers'])
+                    except (ValueError,OSError) as exc:missing.append(dict(scene=path.parent.name,file=model['file'],reason=str(exc)))
         for shader in shaders:
             if shader.get('default'):defaults.append(dict(scene=path.parent.name,shader=shader['name']))
             names=[shader.get('map','')]+shader.get('sky',{}).get('box',[])
             for stage in shader.get('stages',[]):names += [stage.get('map','')]+stage.get('frames',[])
             for name in names:
-                if name and not name.startswith('$'):check('textures/'+name)
+                if name and not name.startswith('$'):check('textures/'+name);used.add(name)
+    for store in texture_stores:store.finish(used)
     return dict(scenes=scenes,missing=missing,defaults=defaults)
 
 
@@ -524,9 +538,14 @@ def import_maps(install,output,replace=False,*,rules=None):
     config=rules or sys.modules[__name__]
     output=Path(output)
     for folder in ('maps','models','bsp','textures'):(output/folder).mkdir(parents=True,exist_ok=True)
-    report=dict(imported=[],skipped=[],failed={},maps=[],sections={});index=[]
+    report=dict(imported=[],skipped=[],failed={},maps=[],sections={});index=[];texture_stores=[]
     for section,label in SECTIONS.items():
-        game=config.Game(install,section);textures=base.Textures(output/'textures',game);mt=ModelTextures(game,output/'textures')
+        game=config.Game(install,section)
+        texture_dir=config.texture_directory(output) if hasattr(config,'texture_directory') else output/'textures'
+        textures=getattr(config,'Textures',base.Textures)(texture_dir,game)
+        mt=getattr(config,'ModelTextures',ModelTextures)(game,texture_dir)
+        for writer in (textures,mt.raw):
+            if hasattr(writer,'store'):texture_stores.append(writer.store)
         rules=SimpleNamespace(read_bsp=lambda raw,notes:read_bsp(raw,notes,section=section,light_scale=game.lighting['sourceLightScale']),
             brush_state=config.brush_state,filtered=lambda e,s:config.entity_filter(game,e),describe=describe,
             viewpoints=lambda things,collision,s:config.map_viewpoints(game,things,collision),place_entities=config.place_entities,Collision=Collision)
@@ -560,7 +579,8 @@ def import_maps(install,output,replace=False,*,rules=None):
             report['maps'].append(row)
         report['sections'][section]=dict(search_order=game.search_order,lighting=game.lighting,issues=game.issues,
             entityClasses=[dict(classname=c,status=s,reason=r,count=n) for (c,s,r),n in sorted(classes.items())])
-    report['sweep']=sweep(output)
+    report['sweep']=sweep(output,config.texture_directory(output) if hasattr(config,'texture_directory') else None,
+                          texture_stores=texture_stores)
     rtcw.q3.json_write(output/'index.json',index);rtcw.q3.json_write(output/'import-report.json',report)
     return report
 
