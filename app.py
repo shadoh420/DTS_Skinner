@@ -8,7 +8,7 @@ from tools.notes import read_notes, save_note
 from tools.model_data import load_model_data, default_texture, model_sort_key, material_texture_refs, read_families, save_families, rename_family, t1_building_names, t1_default_families, TEXTURE_GAMES, MODEL_GAMES
 from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
-from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags
+from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags, texture_files, TEXTURE_SUFFIXES
 import io
 import json
 import shutil
@@ -577,6 +577,10 @@ def vtmb_maps_viewer():
 
 @app.route('/vtmb-map-data/<path:filename>')
 def vtmb_map_data(filename):
+    if filename.startswith('textures/'):
+        name = filename.removeprefix('textures/')
+        return send_from_directory(game_textures('vtmb'), name,
+                                   mimetype='image/vnd-ms.dds' if name.lower().endswith('.dds') else None)
     return send_from_directory(local_data_dir / 'vtmb-maps', filename)
 
 
@@ -801,7 +805,7 @@ def material_overrides():
 
 @app.route("/list_textures")
 def list_textures():
-    return jsonify(sorted((p.name for p in game_textures(texture_game()).glob("*.png")), key=model_sort_key))
+    return jsonify(sorted((p.name for p in texture_files(game_textures(texture_game()))), key=model_sort_key))
 
 
 @app.route('/texture_metadata')
@@ -813,7 +817,7 @@ def get_texture_metadata():
     except (OSError, ValueError) as exc:
         return jsonify(error=f'Cannot read texture tags: {exc}'), 422
     result = []
-    for path in sorted(game_textures(game).glob('*.png'), key=lambda p: model_sort_key(p.name)):
+    for path in sorted(texture_files(game_textures(game)), key=lambda p: model_sort_key(p.name)):
         try:
             metadata = texture_metadata(path, game, include_hue=include_hue)
         except FileNotFoundError:
@@ -837,8 +841,8 @@ def set_texture_tags():
     try:
         filename = payload['filename']
         material_texture_refs(dict(game='t1', material_textures=[filename], material_texture_games=[game]))
-        if not filename.lower().endswith('.png'):
-            raise ValueError('Tags require a PNG texture filename')
+        if not filename.lower().endswith(TEXTURE_SUFFIXES):
+            raise ValueError('Tags require a PNG or DDS texture filename')
         if not (game_textures(game) / filename).is_file():
             return jsonify(error='Texture no longer exists.'), 404
         tags = save_tags(local_data_dir / 'texture-tags.json', game, filename, payload['tags'])
@@ -851,7 +855,7 @@ def set_texture_tags():
 def texture_versions():
     # Local polling keeps reloads available when offline, including atomic saves/deletes.
     versions = {}
-    for path in game_textures(texture_game()).glob("*.png"):
+    for path in texture_files(game_textures(texture_game())):
         try:
             stat = path.stat()
             versions[path.name] = [stat.st_mtime_ns, stat.st_size, str(stat.st_ino)]
@@ -1186,7 +1190,7 @@ def get_texture(texture_filename):
     except ValueError as exc:
         return jsonify(error=str(exc)), 422
     download = request.args.get('download') == '1'
-    if any(transform.values()) or download or request.args.get('opaque') == '1':
+    if any(transform.values()) or download or request.args.get('opaque') == '1' or request.args.get('preview') == '1':
         # Derived copies exist only in memory until the user downloads/exports one.
         path = directory / texture_filename
         if not path.is_file():
@@ -1205,7 +1209,8 @@ def get_texture(texture_filename):
                              download_name=transformed_name(texture_filename, transform))
         except (OSError, ValueError):
             abort(422, "Cannot decode texture")
-    return send_from_directory(str(directory), texture_filename, max_age=0)
+    return send_from_directory(str(directory), texture_filename, max_age=0,
+                               mimetype='image/vnd-ms.dds' if texture_filename.lower().endswith('.dds') else None)
 
 @app.route("/export_obj/<model_name>")
 def export_obj(model_name):

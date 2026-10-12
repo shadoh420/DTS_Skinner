@@ -14,6 +14,12 @@ from PIL import Image
 # tools/import_reflex_map.py; textures only).
 TEXTURE_GAMES = ('t1', 't2', 'q3', 'reflex', 'diabotical', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge')
 
+TEXTURE_SUFFIXES = ('.png', '.dds')
+
+
+def texture_files(directory):
+    return (p for p in Path(directory).glob('*') if p.is_file() and p.suffix.lower() in TEXTURE_SUFFIXES)
+
 
 def normalize_transform(value=None):
     if value is None:

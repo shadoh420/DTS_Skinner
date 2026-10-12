@@ -55,15 +55,22 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const loader = new THREE.TextureLoader(), textures = new Map();
   function loadTexture(file) {
-    if (!textures.has(file)) textures.set(file, new Promise(resolve => loader.load(data + 'textures/' + file, texture => {
+    if (!textures.has(file)) textures.set(file, new Promise(resolve => {
+      const loaded = texture => {
       texture.flipY = false;  // The game's v runs down the image, as the rows do without the flip.
       texture.wrapS = texture.wrapT = quake ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       texture.anisotropy = quake || quake2 || daikatana || anachronox || sin ? 1 : 8;
       if (quake2 || daikatana || anachronox || sin) { texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearMipmapNearestFilter; }
       if (quake) { texture.magFilter = texture.minFilter = THREE.NearestFilter; texture.generateMipmaps = false; }
       if (config && config.configureTexture) config.configureTexture(texture);
+      if (texture.isCompressedTexture && !texture.userData.completeMipChain) texture.minFilter = THREE.LinearFilter;
       resolve(texture);
-    }, undefined, () => { missing++; resolve(null); })));
+      };
+      const failed = () => { missing++; resolve(null); };
+      const url = data + 'textures/' + file;
+      if (file.toLowerCase().endsWith('.dds') && window.skinnerDDS) window.skinnerDDS.load(url).then(loaded, failed);
+      else loader.load(url, loaded, undefined, failed);
+    }));
     return textures.get(file);
   }
 

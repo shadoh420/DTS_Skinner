@@ -354,7 +354,7 @@ def json_to_obj_zip(
     reserved_names = {name.casefold() for name in export_names}
     transformed_exports = {}
     for slot, (source, transform) in enumerate(zip(sources, transforms)):
-        if any(transform.values()) and not material_textures[slot].startswith('['):
+        if (any(transform.values()) or source.suffix.lower() == '.dds') and not material_textures[slot].startswith('['):
             key = (source, tuple(transform.values()))
             if key not in transformed_exports:
                 original = pathlib.PurePosixPath(export_names[slot])
@@ -471,7 +471,7 @@ def json_to_obj_zip(
                 if tex_src.is_file():
                     tex_dst = temp_path / tex_name
                     tex_dst.parent.mkdir(parents=True, exist_ok=True)
-                    if any(transform.values()):
+                    if any(transform.values()) or tex_src.suffix.lower() == '.dds':
                         with Image.open(tex_src) as texture:
                             transform_image(texture, transform).save(tex_dst, format='PNG')
                     else:

@@ -41,6 +41,8 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Reflex Arena | ✓ | ✓ | Brush editor, see [Reflex maps](docs/reflex-map-viewer.md) |
 | N64 conversions | | ✓ | [L. Spiro](https://github.com/L-Spiro)'s GoldenEye, Perfect Dark, Diddy Kong Racing and more; bring your own copy |
 
+Bloodlines models and maps share one texture library and keep DXT textures with their original mipmaps; model geometry is stored in indexed binary files. Texture downloads and edited copies are PNGs.
+
 Tribes map details: [T1 maps](docs/t1-map-viewer.md), [T2 maps](docs/t2-map-viewer.md). Export details: [ANIMATION_EXPORT.md](ANIMATION_EXPORT.md).
 
 **GoldenEye 007 (Tribes mod)** levels are not included; convert your copy with
