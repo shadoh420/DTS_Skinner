@@ -20,8 +20,8 @@ class JAMapTests(unittest.TestCase):
         raw[7]=struct.pack('<6f4i',-10,-10,-10,100,10,10,0,1,0,0)+struct.pack('<6f4i',0,0,0,4,2,2,1,1,0,0)
         things=[dict(classname='func_static',model='*1',origin='20 0 0',angles='0 90 0')]
         tree=maps.bsp_cull(raw,things)
-        self.assertEqual(tree['nodes'][0],[-10,-10,-10,100,10,10,-1,-2])
-        self.assertEqual(tree['leaves'][1][6:],[1,1]);self.assertEqual(tree['surfaces'],[0,0])
+        self.assertEqual(tree['nodes'][0][:8],[-10,-10,-10,100,10,10,-1,-2])
+        self.assertEqual(tree['leaves'][1][6:8],[1,1]);self.assertEqual(tree['surfaces'],[0,0])
         self.assertEqual(tree['world'],[0,1]);self.assertEqual(tree['surfaceCount'],2)
         # Oriented corners, rather than an inflated world AABB, match brush culling.
         state=maps.brush_state(things[0],struct.unpack('<6f4i',raw[7][40:]),things)
@@ -114,7 +114,7 @@ class JAMapTests(unittest.TestCase):
             self.assertEqual(scene['game'],'ja');self.assertEqual(len(scene['placed']),1)
             self.assertEqual(scene['distanceCull'],1800);self.assertEqual(scene['farClip'],3117.6)
             self.assertEqual(scene['bspCull']['surfaceCount'],2)
-            self.assertNotIn('bspCull',json.loads((out/'maps/mp_ctf1/scene.json').read_text()))
+            self.assertEqual(json.loads((out/'maps/mp_ctf1/scene.json').read_text())['bspCull']['inline'],[])
             imported=next(r for r in result['maps'] if r['map']=='yavin1')
             self.assertEqual(imported['farClip'],3117.6)
             self.assertIn('light',scene['placed'][0]);self.assertEqual(scene['placed'][0]['entity'],3)
