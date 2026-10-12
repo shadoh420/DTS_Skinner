@@ -260,6 +260,18 @@ class BloodlinesTests(unittest.TestCase):
             parsed, _ = resolve_material(files, 'b', [])
             self.assertEqual(parsed['params']['$basetexture'], 'new')
             self.assertEqual(parsed['params']['$alphatest'], '1')
+            parsed, path = resolve_material(files, '/b', [])
+            self.assertEqual(path, 'materials/b.vmt')
+            self.assertEqual(parsed['params']['$basetexture'], 'new')
+
+    def test_virtual_references_keep_archive_validation_strict(self):
+        self.assertEqual(vtmb.asset_reference('/Models//Items\\Tiny.mdl'), 'models/items/tiny.mdl')
+        for name in ('../escape', '/a/../escape', 'c:/escape', '', '//', 'a/./b', 'a\0b'):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                vtmb.asset_reference(name)
+        for name in ('/models/items/tiny.mdl', 'models//items/tiny.mdl'):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                vtmb.asset_name(name)
 
     def test_vtf_pixels_and_mips(self):
         for fmt, raw, expected in [(0, b'\x11\x22\x33\x44', (17, 34, 51, 68)),
@@ -297,6 +309,22 @@ class BloodlinesTests(unittest.TestCase):
             self.assertEqual(info['container'], 'TTH/TTZ')
             del files['materials/x.ttz']
             with self.assertRaisesRegex(ValueError, 'Missing TTZ'): vtmb.read_texture(files, 'x')
+
+    def test_tth_zero_resident_mips(self):
+        full = vtf(0, b'\x10\x20\x30\xff')
+        compressed = zlib.compress(full[64:])
+        header = struct.pack('<4sHBBI4I', b'TTH\0', 1, 1, 0, 64, 64, 0, len(full), len(compressed))
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); head = root/'x.tth'; tail = root/'x.ttz'
+            head.write_bytes(header + full[:64]); tail.write_bytes(compressed)
+            files = {'materials/x'+p.suffix: vtmb.Asset(p, 0, p.stat().st_size, 'test') for p in (head, tail)}
+            image, info = vtmb.read_texture(files, '/x')
+            self.assertEqual(image.getpixel((0, 0)), (16, 32, 48, 255))
+            self.assertEqual(len(info['sources']), 2)
+            tail.write_bytes(compressed[:-1])
+            files['materials/x.ttz'] = vtmb.Asset(tail, 0, tail.stat().st_size, 'test')
+            with self.assertRaisesRegex(ValueError, 'size table'):
+                vtmb.read_texture(files, 'x')
 
     def test_mdl_pose_skins_and_rejections(self):
         raw, vtx = mdl_fixture()

@@ -17,12 +17,20 @@ import zipfile
 import numpy as np
 from PIL import Image
 
-from tools import vtmb
-from tools.import_vtmb import key, resolve_material
-from tools.import_quake_map import entities, rotation, vector, SCALE
-from tools.import_unreal_map import pack
-from tools.local_data import LOCAL_DATA
-from tools.texture_workshop import write_json_atomic
+try:
+    from tools import vtmb
+    from tools.import_vtmb import key, resolve_material
+    from tools.import_quake_map import rotation, vector, SCALE
+    from tools.import_unreal_map import pack
+    from tools.local_data import LOCAL_DATA
+    from tools.texture_workshop import write_json_atomic
+except ImportError:
+    import vtmb
+    from import_vtmb import key, resolve_material
+    from import_quake_map import rotation, vector, SCALE
+    from import_unreal_map import pack
+    from local_data import LOCAL_DATA
+    from texture_workshop import write_json_atomic
 
 
 LUMPS = {0: 'entities', 1: 'planes', 2: 'texdata', 3: 'vertices', 6: 'texinfo',
@@ -36,6 +44,42 @@ SKIPPED_LUMPS = {4: 'visibility', 5: 'nodes', 9: 'occlusion', 10: 'leaves', 11: 
                  34: 'displightmapsamplepositions', 36: 'leafwaterdata', 37: 'primitives', 38: 'primverts',
                  39: 'primindices', 41: 'clipportalverts', 42: 'cubemaps', 45: 'overlays',
                  46: 'leafmindisttowater', 47: 'face_macrotexture_info'}
+
+
+def entities(data):
+    """BSP quoted key/value pairs; Bloodlines outputs contain escaped quotes.
+
+    Keep token kinds distinct so quoted braces/empty strings remain values.
+    Duplicate output keys retain the last value, as before; outputs aren't run.
+    """
+    text = data.rstrip(b'\0').decode('latin1')
+    token = re.compile(r'\s+|//[^\r\n\0]*|"(?P<value>(?:\\[^\0]|[^"\\\0])*)"|(?P<brace>[{}])')
+    result, entity, key, at = [], None, None, 0
+    while at < len(text):
+        match = token.match(text, at)
+        if match is None:
+            raise ValueError(f'Invalid entity token at byte {at}')
+        at = match.end()
+        value, brace = match.group('value', 'brace')
+        if brace == '{':
+            if entity is not None:
+                raise ValueError('Nested entity block')
+            entity = {}
+        elif brace == '}':
+            if entity is None or key is not None:
+                raise ValueError('Incomplete entity')
+            result.append(entity); entity = None
+        elif value is not None:
+            if entity is None:
+                raise ValueError('Entity key/value outside block')
+            value = re.sub(r'\\(["\\n])', lambda m: '\n' if m[1] == 'n' else m[1], value)
+            if key is None:
+                key = value
+            else:
+                entity[key] = value; key = None
+    if entity is not None:
+        raise ValueError('Unclosed entity block')
+    return result
 
 
 def rows(data, fmt):
@@ -106,7 +150,7 @@ def static_props(bsp):
             continue
         data = bsp['raw'][offset:offset+length]
         n, = vtmb.unpack(data, 'i'); vtmb.span(data, 4, n, 128)
-        names = [vtmb.asset_name(data[4+j*128:4+(j+1)*128].split(b'\0')[0].decode('cp1252')) for j in range(n)]
+        names = [vtmb.asset_reference(data[4+j*128:4+(j+1)*128].split(b'\0')[0].decode('cp1252')) for j in range(n)]
         at = 4 + n*128
         n, = vtmb.unpack(data, 'i', at); at += 4
         leaves = vtmb.unpack(data, f'{n}H', at); at += n*2
@@ -249,6 +293,17 @@ def hidden(entity):
     return number(entity, 'starthidden') != 0 or number(entity, 'renderamt', 255) == 0
 
 
+def pickup_model(data):
+    # Only the line-oriented playermodel field is needed. Item descriptions
+    # have Troika-specific quoting (even doubled backslashes before quotes),
+    # so the material KeyValues parser is inappropriate for the whole file.
+    fields = re.findall(r'^\s*"playermodel"\s+"([^"\r\n]*)"[^\S\r\n]*(?://[^\r\n]*)?\r?$',
+                        data.decode('cp1252'), re.MULTILINE | re.IGNORECASE)
+    if len(fields) != 1:
+        raise ValueError('Expected one quoted pickup playermodel field')
+    return vtmb.asset_reference(fields[0])
+
+
 def brush_transform(entity, model):
     cls = entity['classname']; origin = vector(entity); angles = vector(entity, 'angles')
     flags = int(number(entity, 'spawnflags'))
@@ -353,10 +408,10 @@ def build_map(raw, name, files, lighting=None):
                     source = 'vdata/items/' + vtmb.asset_name(cls) + '.txt'
                     if source not in files:
                         raise ValueError('Missing pickup definition ' + source)
-                    model = vtmb.read_vmt(files[source].read())['params'].get('playermodel', '')
+                    model = pickup_model(files[source].read())
                 if not model:
                     raise ValueError('No model or pickup playermodel')
-                models.append(dict(**{**record, 'model': vtmb.asset_name(model)}, origin=vector(e).tolist(),
+                models.append(dict(**{**record, 'model': vtmb.asset_reference(model)}, origin=vector(e).tolist(),
                                    angles=vector(e, 'angles').tolist(), skin=int(number(e, 'skin')), source=source,
                                    sequence=e.get('defaultanim', e.get('demo_sequence', '')), scale=number(e, 'modelscale', 1),
                                    tint=(vector(e, 'rendercolor')/255).tolist() if 'rendercolor' in e else [1, 1, 1],
@@ -387,7 +442,7 @@ def build_map(raw, name, files, lighting=None):
     model_cache = {}
     for record in models:
         try:
-            model = vtmb.asset_name(record['model'])
+            model = vtmb.asset_reference(record['model'])
             if model.startswith('models/character/'):
                 omitted.append(dict(**record, reason='NPC / character actor excluded')); continue
             cache = model, record['skin']

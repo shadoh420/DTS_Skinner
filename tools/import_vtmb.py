@@ -15,11 +15,11 @@ import re
 from PIL import Image
 
 try:
-    from tools.vtmb import asset_name, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
+    from tools.vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
     from tools.local_data import LOCAL_DATA
     from tools.texture_workshop import write_json_atomic
 except ImportError:
-    from vtmb import asset_name, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
+    from vtmb import asset_name, asset_reference, read_install, read_mdl, mdl_companions, read_texture, read_vmt, material_settings
     from local_data import LOCAL_DATA
     from texture_workshop import write_json_atomic
 
@@ -35,8 +35,8 @@ def category(name):
 
 
 def resolve_material(files, name, directories, stack=()):
-    name = name.replace('\\', '/').lower().removesuffix('.vmt')
-    candidates = [asset_name('materials/' + d.replace('\\', '/').strip('/') + '/' + name)
+    name = asset_reference(name).removesuffix('.vmt')
+    candidates = [asset_reference('materials/' + d.replace('\\', '/').strip('/') + '/' + name)
                   if d.strip('/\\') else asset_name('materials/' + name) for d in directories]
     candidates.append(asset_name(name if name.startswith('materials/') else 'materials/' + name))
     path = next((p + '.vmt' for p in candidates if p + '.vmt' in files), None)

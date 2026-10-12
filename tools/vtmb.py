@@ -21,6 +21,15 @@ def asset_name(name):
     return '/'.join(parts)
 
 
+def asset_reference(name):
+    """In-file virtual references may have leading/repeated separators.
+
+    These only address the asset dictionary. Archive/file names still go
+    through asset_name unchanged; traversal and drive names remain errors.
+    """
+    return asset_name('/'.join(p for p in name.replace('\\', '/').split('/') if p))
+
+
 def span(data, offset, count, size=1):
     if offset < 0 or count < 0 or size < 1 or offset + count * size > len(data):
         raise ValueError(f'Invalid binary range: {offset}+{count}*{size} / {len(data)}')
@@ -258,7 +267,7 @@ def read_vtf(data):
 
 
 def read_texture(files, name):
-    base = asset_name(name).removeprefix('materials/')
+    base = asset_reference(name).removeprefix('materials/')
     base = re.sub(r'\.(vtf|tth|ttz)$', '', base)
     base = 'materials/' + base
     if base + '.vtf' in files:
@@ -274,7 +283,9 @@ def read_texture(files, name):
     # followed by mip offset/compressed-length pairs and the embedded VTF.
     version, levels, resident, end = unpack(head, 'HBBI', 4)
     at = 12 + (levels + 1) * 8
-    if version != 1 or not 1 <= levels <= 15 or not 1 <= resident <= levels or head[at:at + 4] != b'VTF\0':
+    # effects/black has zero resident high-res mips: only the VTF header and
+    # thumbnail are in TTH; the complete high-res mip chain lives in TTZ.
+    if version != 1 or not 1 <= levels <= 15 or not 0 <= resident <= levels or head[at:at + 4] != b'VTF\0':
         raise ValueError('Unsupported TTH layout')
     if end != len(head) - at:
         raise ValueError('Invalid TTH resident length')

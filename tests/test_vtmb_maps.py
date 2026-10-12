@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -71,11 +73,63 @@ def fixture(root):
     assets.append(('maps/sm_tiny.bsp', bsp()))
     (stock/'pack000.vpk').write_bytes(vpk(assets))
     patch_dir = root/'Unofficial_Patch'/'vdata'/'items'; patch_dir.mkdir(parents=True)
-    (patch_dir/'item_g_test.txt').write_text('WeaponData { "playermodel" "models/items/tiny.mdl" }')
+    (patch_dir/'item_g_test.txt').write_text('WeaponData {\n"playermodel" "models/items/tiny.mdl"\n}')
     return stock
 
 
 class BloodlinesMapsTests(unittest.TestCase):
+    def test_entity_escaped_outputs_and_token_kinds(self):
+        text = r'''{ "classname" "logic_auto"
+        "OnMapLoad" ",,,0,-1,setArea(\"downtown\"),"
+        "empty" "" "brace" "}" "path" "models\items\tiny.mdl"
+        "line" "first\nsecond" "literal" "backslash\\quote\""
+        "multiline" "first
+second" } // comment with braces {}
+        { "classname" "logic_relay"
+        "OnTrigger" "world,PlayEndCredits,\"vdata/System/credits.txt\",4,-1,," }
+        '''
+        rows = maps.read_bsp(bsp(text, static=False))['entities']
+        auto, relay = rows[1:]
+        self.assertEqual(auto['OnMapLoad'], ',,,0,-1,setArea("downtown"),')
+        self.assertEqual(auto['empty'], '')
+        self.assertEqual(auto['brace'], '}')
+        self.assertEqual(auto['path'], r'models\items\tiny.mdl')
+        self.assertEqual(auto['line'], 'first\nsecond')
+        self.assertEqual(auto['multiline'], 'first\nsecond')
+        self.assertEqual(auto['literal'], 'backslash\\quote"')
+        self.assertEqual(relay['OnTrigger'], 'world,PlayEndCredits,"vdata/System/credits.txt",4,-1,,')
+        self.assertEqual(maps.entities(b'{"" ""}\0\0'), [{'': ''}])
+        for broken in (b'{"key"}', b'{"key" "value"', b'{{}}', b'}', b'"key" "value"',
+                       b'{"key" "unterminated}', b'{"key" "dangling\\', b'{} junk',
+                       b'{key "value"}', b'{}\0{}', b'{"key" "a\0b"}'):
+            with self.subTest(broken=broken), self.assertRaises(ValueError):
+                maps.entities(broken)
+
+    def test_script_help(self):
+        script = Path(maps.__file__).resolve()
+        result = subprocess.run([sys.executable, str(script), '--help'], cwd=script.parent,
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('--install', result.stdout)
+
+    def test_pickup_description_and_virtual_references(self):
+        data = b'WeaponData {\n"description" "Reads \\\\"Store\\\\"."\n"playermodel" "models//items/tiny.mdl"\n}'
+        self.assertEqual(maps.pickup_model(data), 'models/items/tiny.mdl')
+        for broken in (b'WeaponData {}', b'"playermodel" "../escape"',
+                       b'"playermodel" "x"\n"playermodel" "y"', b'"playermodel" "unterminated'):
+            with self.subTest(broken=broken), self.assertRaises(ValueError):
+                maps.pickup_model(broken)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); fixture(root)
+            files, _ = vtmb.read_install(root)
+            scene, _, _, _ = maps.build_map(bsp('''
+                { "classname" "prop_dynamic" "model" "models//items/tiny.mdl" }
+                { "classname" "prop_dynamic" "model" "models/../escape.mdl" }
+            '''), 'test', files)
+            self.assertEqual(sum(m.get('status') == 'drawn' for m in scene['models']), 2)
+            self.assertEqual(len(scene['model_failures']), 1)
+            self.assertIn('Unsafe asset name', scene['model_failures'][0]['reason'])
+
     def test_quantized_prop_authored_companion(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); fixture(root)
