@@ -284,7 +284,7 @@ class ModelTextures(rtcw.Textures):
         return self.cache[shader]
 
 
-def describe(game,name,textures):
+def describe(game,name,textures,*,draw_fog_stages=False):
     if name in game.described: return game.described[name]
     body,stages = game.shaders.get(name,([],[]))
     words = {r[0] for r in body}
@@ -306,7 +306,7 @@ def describe(game,name,textures):
         # RB_StageIteratorSky suppresses the box when its first image is missing.
         if sides[0]:result['sky']['box']=[s or '$default' for s in sides]
         else:result['sky'].pop('box',None)
-    if any([w.lower() for w in r[:2]]==['surfaceparm','fog'] for r in body):
+    if not draw_fog_stages and any([w.lower() for w in r[:2]]==['surfaceparm','fog'] for r in body):
         result=dict(name=name,stages=[],cull='none',sort=3,outside=[])
     if implicit: limits += ['implicit directive compatibility extension (not in supplied renderer)']
     if words.intersection(('fogparms','skyfogvars','waterfogvars','mapfogvars','nofog')): limits += ['fog not drawn']
@@ -391,7 +391,7 @@ class Collision:
     use the preview's four-step quadratic mesh and a swept triangle/AABB test,
     not the engine's adaptive collision facets and bevel tolerances.
     """
-    def __init__(self,lumps,states):
+    def __init__(self,lumps,states, *, contents_mask=1|0x10000):
         planes=list(struct.iter_unpack('<4f',lumps[2]));sides=list(struct.iter_unpack('<2i',lumps[9]))
         brushes=list(struct.iter_unpack('<3i',lumps[8]));shaders=list(struct.iter_unpack('<64sii',lumps[1]))
         self.brushes=[];self.patches=[]
@@ -400,7 +400,7 @@ class Collision:
             if i and (not state or state['hidden']): continue
             for first,count,shader in brushes[m[8]:m[8]+m[9]]:
                 content=shaders[shader][2]
-                if not content & (1|0x10000): continue
+                if not content & contents_mask: continue
                 faces=[]
                 for plane,_ in sides[first:first+count]:
                     n=planes[plane][:3];d=planes[plane][3]
@@ -412,7 +412,7 @@ class Collision:
             for face in range(m[6],m[6]+m[7]):
                 shader,_,kind,first=struct.unpack_from('<4i',lumps[13],face*104)
                 content=shaders[shader][2]
-                if kind!=2 or not content&(1|0x10000): continue
+                if kind!=2 or not content&contents_mask: continue
                 width,height=struct.unpack_from('<2i',lumps[13],face*104+96)
                 for y in range(0,height-2,2):
                     for x in range(0,width-2,2):
@@ -500,8 +500,9 @@ def viewpoints(things,collision,section):
     return views
 
 
-def placed_model(game,path,skin,frame,output,textures,model_textures,tag=None):
-    path=game.model_path(path);raw=game.read(path);model=rtcw.read_model(raw,frame)
+def placed_model(game,path,skin,frame,output,textures,model_textures,tag=None, *, model=None):
+    if model is None:
+        path=game.model_path(path);raw=game.read(path);model=rtcw.read_model(raw,frame)
     skin_index=int(skin) if str(skin).isdigit() else 0
     sk=rtcw.read_skin(game.read(skin))['surfaces'] if skin and not str(skin).isdigit() else {}
     surfaces=[];shaders=[];missing=[];notes=[]
@@ -554,7 +555,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
         idx=int(e['model'][1:])
         if not 0<idx<len(models):raise ValueError(f'Entity {i}: invalid inline model')
         state=rules.brush_state(e,models[idx],things);state['hidden']=rules.filtered(e,game.section) or state['hidden'];states[idx]=state
-    collision=Collision(lumps,states);draw=brush_geometry(lumps,states)
+    collision=getattr(rules,'Collision',Collision)(lumps,states);draw=brush_geometry(lumps,states)
     names=[(qmap.shader_name(s.split(b'\0')[0].decode('latin1')),flags) for s,flags,_ in struct.iter_unpack('<64sii',lumps[1])]
     used={struct.unpack_from('<i',draw[13],at)[0] for at in range(0,len(draw[13]),104) if struct.unpack_from('<i',draw[13],at+8)[0] in (1,2,3)}
     shaders=[None]*len(names);limits=set(NOT_DRAWN)
@@ -562,7 +563,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
         if names[i][1]&qmap.SURF_NODRAW:continue
         shaders[i],missing,notes=rules.describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
     placed=[];item_models={};teams=set()
-    for serial,e in enumerate(things):
+    for serial,e in (enumerate(things) if not hasattr(rules,'place_entities') else []):
         cls=e.get('classname','').lower();reason=rules.filtered(e,game.section);status='omitted';paths=[]
         row=dict(entity=serial,classname=cls)
         try:
@@ -641,6 +642,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
         except (ValueError,OSError,struct.error,zipfile.BadZipFile,KeyError) as exc:
             row.update(status='failed',reason=str(exc));unresolved.append(f'entity {serial} {cls}: {exc}')
         audit.append(row)
+    if hasattr(rules,'place_entities'):
+        placed,item_models,audit,extra_missing,extra_limits=rules.place_entities(game,things,states,collision,output,textures,model_textures)
+        unresolved+=extra_missing;limits.update(extra_limits)
     views=rules.viewpoints(things,collision,game.section)
     if not views:limits.add('map has no player start; camera at world origin')
     for v in views:
