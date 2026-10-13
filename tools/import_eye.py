@@ -108,8 +108,6 @@ def import_catalog(install, output, model_paths=None):
         item = dict(model_name=ident, display_name=name, game='eye', category=category(name),
                     source=name, texture_name=missing)
         try:
-            if name.rsplit('/', 1)[-1] == '.mdl':
-                raise ValueError('Unnamed models/vents/.mdl asset: excluded with its unnamed companions')
             raw = files[name].read(); digest = hashlib.sha256(raw).hexdigest()
             if digest in seen:
                 row.update(status='duplicate', model=seen[digest], reason='Byte-identical MDL; canonical model retained')

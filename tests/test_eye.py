@@ -217,7 +217,7 @@ class EyeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder); game = install_fixture(root/'install'); output = root/'data'/'eye'
             report = import_catalog(game, output)
-            self.assertEqual((report['ready'],report['skipped'],report['duplicates']), (2,1,1))
+            self.assertEqual((report['ready'],report['skipped'],report['duplicates']), (2,0,2))  # models/vents/.mdl is placed on maps: imported (here a duplicate)
             self.assertEqual(report['unresolved_used_materials'], 0)
             index = json.loads((output/'model-index.json').read_text())
             self.assertEqual(index['materials/models/props/tiny.mdl']['alias_of'], 'models/props/tiny.mdl')
@@ -244,7 +244,7 @@ class EyeTests(unittest.TestCase):
             with patch.dict(app.pack_dirs,eye=output):
                 self.assertEqual(app.game_textures('eye'), textures)
                 client = app.app.test_client()
-                self.assertEqual(len(client.get('/list_models?game=eye').json),3)
+                self.assertEqual(len(client.get('/list_models?game=eye').json),2)
                 self.assertEqual(client.get('/model_json/'+paths[0].stem+'?game=eye').json['vertices'],data['vertices'])
                 self.assertIn(dds.name,client.get('/list_textures?game=eye').json)
                 response = client.get('/texture/'+dds.name+'?game=eye')

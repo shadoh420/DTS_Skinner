@@ -11,6 +11,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   const anachronox = document.body.dataset.game === 'anachronox';
   const daikatana = document.body.dataset.game === 'daikatana';
   const config = window.skinnerMapViewerConfig; // Optional adapter; existing pages keep their original paths/rendering.
+  const npcDraws = [], npcIDs = new Set();
+  const npcToggle = window.skinnerNPCToggle;
+  if (npcToggle) {
+    npcToggle.setCount(0);
+    npcToggle.onChange = enabled => { for (const draw of npcDraws) draw.visible = enabled; };
+  }
+  function trackNPC(draw, metadata) {
+    if (metadata.npc !== true) return;
+    npcDraws.push(draw); npcIDs.add(metadata.entity);
+    draw.visible = npcToggle ? npcToggle.enabled : true;
+  }
   const storageKey = config ? config.storageKey : dx ? 'skinner.dxmaps' : azrael ? 'skinner.azraelmaps' : sin ? 'skinner.sinmaps' : anachronox ? 'skinner.anachronoxmaps' : daikatana ? 'skinner.daikatanamaps' : quake2 ? 'skinner.quake2maps' : quake ? 'skinner.quakemaps' : 'skinner.unrealmaps';
   const settings = {fov: azrael ? 2 * Math.atan(.8) * 180 / Math.PI : 90, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
@@ -131,16 +142,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (quake && map.skybox) await window.quake2Maps.loadSky(map.skybox, loadTexture);
     const materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
-      return surfaceMaterial(group, !config && !quake2 && !daikatana && !anachronox && !sin && group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
+      const material = surfaceMaterial(group, !config && !quake2 && !daikatana && !anachronox && !sin && group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
+      trackNPC(material, group);
+      return material;
     }));
     scene.add(new THREE.Mesh(geometry, materials));
+    if (config && config.buildInstances) {
+      for (const object of await config.buildInstances(map, data, get, loadTexture)) {
+        scene.add(object); trackNPC(object, object.userData);
+      }
+    }
+    if (npcToggle) npcToggle.setCount(npcIDs.size);
   }
 
   function showNotes() {
     const parts = [];
     if (config) {
       parts.push(...(map.gaps || []));
-      if ((map.model_failures || []).length) parts.push(`${map.model_failures.length} props/pickups could not be drawn; see import report`);
+      if ((map.model_failures || []).length) parts.push(`${map.model_failures.length} model placements could not be drawn; see import report`);
     }
     if (quake) {
       const guesses = [...new Set((map.instances || []).filter(item => item.guess).map(item => item.classname))];
@@ -327,5 +346,5 @@ window.addEventListener('DOMContentLoaded', async () => {
     showNotes();
     ready = true;
     showReady();
-  } catch (error) { showStatus('Map could not load: ' + error.message); }
+  } catch (error) { if (npcToggle) npcToggle.setCount(0); showStatus('Map could not load: ' + error.message); }
 });
