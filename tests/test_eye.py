@@ -262,7 +262,7 @@ class EyeTests(unittest.TestCase):
             fallback=root/'platform'/'materials'/'test'; fallback.mkdir(parents=True)
             (fallback/'red.vtf').write_bytes(b'bad fallback')
             files, info=source_assets.read_install(game)
-            self.assertEqual(files['materials/test/red.vtf'].path,game/'materials/test/red.vtf')
+            self.assertEqual(files['materials/test/red.vtf'].path,(game/'materials/test/red.vtf').resolve())  # CI's temp folder is an 8.3 short name
             self.assertEqual(len(info['search_paths']),2)
             (game/'models/props/tiny.sw.vtx').write_bytes((game/'models/props/tiny.dx90.vtx').read_bytes())
             (game/'models/props/tiny.dx90.vtx').write_bytes(b'bad')
