@@ -38,10 +38,10 @@
     return {positions,uv,indices:new Uint32Array(indices)};
   }
   // One checkbox per terrain decoration mesh (grass, rocks, ...) plus All; hidden types are remembered across maps.
-  function decorationToggles(batches) {
+  function decorationToggles(batches,key='skinner.tvgmaps.hiddenDecorations') {
     const panel=root.document?.getElementById('decorPanel'),list=root.document?.getElementById('decorList');
     if(!panel||!batches.length)return;
-    const key='skinner.tvgmaps.hiddenDecorations';let hidden=new Set();
+    list.replaceChildren();let hidden=new Set();
     try{hidden=new Set(JSON.parse(localStorage.getItem(key)||'[]'));}catch(_){/* Defaults stay usable. */}
     const types=new Map();
     for(const mesh of batches)types.set(mesh.userData.decorationType,[...(types.get(mesh.userData.decorationType)||[]),mesh]);
@@ -62,7 +62,7 @@
     all.addEventListener('change',()=>{for(const [i,name] of [...types.keys()].sort((a,b)=>a.localeCompare(b)).entries()){boxes[i].checked=all.checked;show(name,all.checked);}sync();save();});
     sync();panel.hidden=false;
   }
-  const api={arrays,terrainArrays};
+  const api={arrays,terrainArrays,decorationToggles};
   if(typeof module!=='undefined')module.exports=api;
   if(!root.THREE)return;
   const config=root.skinnerMapViewerConfig={
@@ -71,7 +71,7 @@
     dataRoot:'/tvg-map-data/',importRoute:'/import_tvg_maps',computeNormals:true,filterUnavailable:true,
     configureTexture(texture) { texture.anisotropy=4; },
     async load(map) {
-      const {scene,renderer}=root.skinnerTvgMaps;
+      const {scene,renderer}=root[config.debugName];
       scene.background=null;renderer.setClearColor(0x28313c);
       const zone=map.zones.find(z=>z.bDistanceFog&&z.DistanceFogEnd>z.DistanceFogStart);
       if(zone) {
@@ -82,7 +82,9 @@
     },
     material(group,texture,baked=false) {
       const s=group.settings||{},blend=s.blend||[];
+      if(group.kind==='sky'&&config.skyMaterial)return config.skyMaterial(group,texture);
       if(group.kind==='sky')return new THREE.MeshBasicMaterial({colorWrite:false,side:THREE.DoubleSide});
+      const custom=config.groupMaterial?.(group,texture);if(custom)return custom;
       // UV modifiers belong to the material, so cloned sampler state shares the image.
       if(texture&&(s.clamp||s.uvScale||s.uvOffset||s.uvRotation)) {
         texture=texture.clone();texture.needsUpdate=true;
@@ -97,17 +99,17 @@
         gl_one_minus_src_color:THREE.OneMinusSrcColorFactor,gl_dst_color:THREE.DstColorFactor};
       return new Material({map:texture,color:texture?0xffffff:0x999999,vertexColors:baked&&!s.unlit,
         side:s.cull==='none'?THREE.DoubleSide:THREE.FrontSide,alphaTest:s.alphaTest||0,
-        transparent:!!blend.length,depthWrite:s.depthWrite??!blend.length,
+        transparent:!!blend.length,depthWrite:s.depthWrite??!blend.length,opacity:s.opacity??1,
         ...(blend.length?{blending:THREE.CustomBlending,blendSrc:factors[blend[0]]??THREE.SrcAlphaFactor,
           blendDst:factors[blend[1]]??THREE.OneMinusSrcAlphaFactor}:{})});
     },
     async terrainMaterial(t,loadTexture) {
-      const uniforms={},layers=t.layers.slice(0,4);
+      const uniforms={},layers=t.layers.slice(0,5);
       const tex=async file=>file?loadTexture(file):null;
       const macro=await tex(t.textures.RenderMacroTexture||t.textures.FinalisedMacroTexture||t.textures.MacroTexture);
       const light=await tex(t.textures.LightmapTexture||t.vertex_light);
       uniforms.macro={value:macro};uniforms.hasMacro={value:!!macro};uniforms.light={value:light};uniforms.hasLight={value:!!light};
-      const fog=root.skinnerTvgMaps.scene.fog;
+      const fog=root[config.debugName].scene.fog;
       uniforms.fogColor={value:fog?.color||new THREE.Color(0)};uniforms.fogRange={value:new THREE.Vector2(fog?.near||1e8,fog?.far||1e9)};
       let declarations='',blend='vec3 rgb=hasMacro?texture2D(macro,gridUV).rgb:vec3(.45);';
       for(let i=0;i<layers.length;i++) {
@@ -135,7 +137,8 @@
       await Promise.all(Object.entries(map.model_library).map(async([look,m])=>{
         const file=m.geometry.file;
         if(!buffers.has(file))buffers.set(file,(async()=>{
-          const a=arrays(m.geometry,await(await get(data+'models/'+file)).arrayBuffer());
+          const store=m.store==='map-models'?'map-models':'models';
+          const a=arrays(m.geometry,await(await get(data+store+'/'+file)).arrayBuffer());
           return {position:new THREE.BufferAttribute(a.vertices,3),normal:new THREE.BufferAttribute(a.normals,3),
             uv:new THREE.BufferAttribute(a.uvs,2),index:new THREE.BufferAttribute(a.indices,1)};
         })());
@@ -159,6 +162,9 @@
           g.setAttribute('color',new THREE.BufferAttribute(rgb,3,true));
         }
         const mesh=new THREE.Mesh(g,i.colors?m.baked:m.lit);mesh.matrix.fromArray(i.matrix);mesh.matrixAutoUpdate=false;
+        if(map.model_library[i.look].sky&&config.skyMaterial) {
+          mesh.renderOrder=map.model_library[i.look].sky_order??-10001;mesh.frustumCulled=false;
+        }
         mesh.userData={npc:i.npc===true,entity:i.entity,classname:i.classname};objects.push(mesh);
       }
       if(map.terrain.length) {
@@ -198,13 +204,16 @@
             };
           }
           mesh.userData={npc:false,entity:d.entity,terrainDecoration:true,instances:d.count,
-            decorationType:map.model_library?.[d.look]?.source||d.look};objects.push(mesh);
+            decorationType:d.decorationType||map.model_library?.[d.look]?.source||d.look};objects.push(mesh);
         }
-        decorationToggles(objects.filter(o=>o.userData.terrainDecoration));
+        decorationToggles(objects.filter(o=>o.userData.terrainDecoration),config.storageKey+'.hiddenDecorations');
       }
-      const sun=new THREE.DirectionalLight(0xffffff,.65);sun.position.set(-.4,1,.6);
-      objects.push(new THREE.AmbientLight(0xffffff,.65),sun);
+      const levels=config.lightLevels?config.lightLevels(map):{ambient:.65,sun:map.sun?.brightness??.65};
+      const sun=new THREE.DirectionalLight(map.sun?new THREE.Color(...map.sun.color):0xffffff,levels.sun);
+      sun.position.fromArray(map.sun?.direction||[-.4,1,.6]);
+      objects.push(new THREE.AmbientLight(0xffffff,levels.ambient),sun);
       return objects;
     }
   };
+  Object.assign(config,root.skinnerInstancedMapOptions||{});
 })(typeof window==='undefined'?globalThis:window);
