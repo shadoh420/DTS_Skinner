@@ -22,7 +22,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | --- | :---: | :---: | --- |
 | Starsiege: Tribes | ✓ | ✓ | Stock models bundled; custom missions and their buildings too |
 | Tribes 2 | ✓ | ✓ | Stock models bundled; IronSphere (T2RPG) see [T2_IMPORT.md](T2_IMPORT.md#ironsphere-t2rpg) |
-| Nosgoth | ✓ | | Retail and community models; reference poses and skins; key read from your own Nosgoth.exe (Windows) |
+| Nosgoth | ? | ? | Retail/community models and streamed maps; tutorial spawn previews; approximate lighting; key read from your own Nosgoth.exe (Windows) |
 | Tribes: Ascend | ✓ | ✓ | Retail and community maps/models; streamed terrain, shared props and NPC toggle; approximate lighting and tree stand-ins |
 | Tribes: Vengeance | ✓ | ✓ | Stock and community models and maps; compact terrain, shared props and NPC toggle; approximate lighting |
 | Tribes conversions and mods | ✓ | | TA and TV conversion packs, TRPG, Star Wars, RedMoon; GoldenEye 007 mod (below) |

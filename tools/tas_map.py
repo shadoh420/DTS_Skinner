@@ -12,6 +12,10 @@ from tools.tvg_map import BASIS, viewer, viewpoint
 from tools.tvg_package import rotation_matrix
 
 
+def component_class(name):
+    return name.endswith(('Component', 'Component_K', 'Component_X'))
+
+
 def object_properties(p, ref):
     e=p.entry(ref); r=p.object_reader(ref); r.resolve=p.qualified
     if e['class'] in ('DominantDirectionalLightComponent','DominantSpotLightComponent') and not e['flags'] & 0x200:
@@ -19,7 +23,7 @@ def object_properties(p, ref):
     if e['flags'] & 0x0200000000000000:
         node,state=r.unpack('2i');r.take(10)  # probe mask and latent action
         if node:r.take(4)  # script offset; no state-stack array in 805
-    elif e['class'].endswith('Component') and not e['flags'] & 0x200:
+    elif component_class(e['class']) and not e['flags'] & 0x200:
         r.take(4)  # component template owner class
         outer=e['outer'];seen=set()
         while outer>0:
@@ -34,7 +38,7 @@ def object_properties(p, ref):
     for name,value in list(props.items()):
         if not isinstance(value,bytes):continue
         a=Reader(value,p.names,resolve=p.qualified)
-        if name in ('Components','AllComponents','TerrainComponents','StreamingLevels') or name=='Materials' and e['class'].endswith('Component'):
+        if name in ('Components','AllComponents','StaticMeshComponents','TerrainComponents','StreamingLevels') or name=='Materials' and component_class(e['class']):
             props[name]=[p.qualified(x[0]) for x in a.array('i')]
         elif name in ('Layers','DecoLayers') or name=='Materials' and e['class']=='TerrainLayerSetup':
             props[name]=a.struct_array()

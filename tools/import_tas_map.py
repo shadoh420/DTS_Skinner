@@ -22,7 +22,7 @@ from tools.local_data import LOCAL_DATA
 from tools.model_data import write_model_data
 from tools.tas_materials import Materials
 from tools.tas_mesh import mesh
-from tools.tas_map import MapLibrary,object_properties,level,transform,terrain_native,bsp,is_npc,viewer,viewpoint,speedtree_bounds
+from tools.tas_map import MapLibrary,object_properties,level,transform,terrain_native,bsp,is_npc,viewer,viewpoint,speedtree_bounds,component_class
 from tools.tvg_package import geometry,rotation_matrix
 from tools.texture_storage import game_texture_dir,write_texture
 from tools.texture_workshop import write_json_atomic
@@ -42,7 +42,7 @@ def entry_maps(library):
 
 
 def streamed_packages(path,library):
-    files={Path(r['file']).stem.lower():library.install/r['file'] for r in library.inventory if Path(r['file']).suffix.lower() in ('.fmap','.udk')}
+    files={Path(r['file']).stem.lower():library.install/r['file'] for r in library.inventory if Path(r['file']).suffix.lower() in getattr(library,'map_suffixes',('.fmap','.udk'))}
     result=[];pending=[path];seen=set();missing=[]
     while pending:
         current=pending.pop(0)
@@ -128,7 +128,7 @@ class Models:
                     if reason:raise ValueError(reason)
                     p,ref=self.library.object(source,{cls});data=mesh(p,ref)
                     refs=data.pop('material_refs');materials=[self.materials.material(s) for s in refs]
-                data.update(game='tas',material_textures=[m['texture'] for m in materials],material_settings=[m['settings'] for m in materials])
+                data.update(game=getattr(self.library,'game','tas'),material_textures=[m['texture'] for m in materials],material_settings=[m['settings'] for m in materials])
                 data['metadata'].update(source=source,source_class=cls,materials=materials)
                 file=self.output/'model_json'/(ident+'.json');write_model_data(file,data)
                 data=json.loads(file.read_text(encoding='utf-8'));data['_store']='map-models'
@@ -148,7 +148,7 @@ class Models:
         for material in materials:self.used_materials[(material.get('source') or '').lower()]=material
         ident=key(cls+':'+source+':'+json.dumps([m['source'] for m in materials]))
         groups=[dict(g,texture=materials[g['materialIndex']]['texture'],settings=materials[g['materialIndex']]['settings'],kind='model') for g in data['groups']]
-        sky=sky_mesh(source,materials)
+        sky=getattr(self.library,'sky_mesh',sky_mesh)(source,materials)
         if sky:
             for group in groups:group['kind']='sky'
         sky_order=-10002 if any(re.search(r'skydomebg',m.get('source') or '',re.I) for m in materials) else -10001
@@ -234,7 +234,7 @@ def build_map(path,library,models,materials):
     for file in paths:
         p=library.package(file)
         for e in p.exports:
-            if e['outer']>0 and e['class'].endswith('Component'):
+            if e['outer']>0 and component_class(e['class']):
                 owned_components[p.qualified(e['outer'])].append(e['source'])
         levels=[i for i,e in enumerate(p.exports,1) if e['class']=='Level']
         for level_ref in levels:
@@ -272,7 +272,7 @@ def build_map(path,library,models,materials):
         if reason:omitted.append(dict(record,reason=reason));continue
         owned=owned_components[source]
         # Replace inherited component templates by the placed component's archetype/name.
-        components={c.rsplit('.',1)[-1].lower():c for c in props.get('Components',[]) if c}
+        components={c.rsplit('.',1)[-1].lower():c for c in props.get('Components',[])+props.get('StaticMeshComponents',[]) if c}
         for c in owned:
             cp,cr=library.locate(c);arch=cp.qualified(cp.entry(cr)['archetype'])
             if arch:
@@ -290,7 +290,10 @@ def build_map(path,library,models,materials):
                 cp,ccls=library.state(component);kind=ccls.rsplit('.',1)[-1]
                 if kind in ('DominantDirectionalLightComponent','DirectionalLightComponent') and cp.get('bEnabled',True):
                     direction=viewer(rotation_matrix(*props.get('Rotation',(0,0,0)))@np.array((-1.,0,0)))
-                    color=cp.get('LightColor',(255,255,255,255));sun=dict(direction=direction.tolist(),color=[color[2]/255,color[1]/255,color[0]/255],brightness=cp.get('Brightness',1))
+                    color=cp.get('LightColor',(255,255,255,255))
+                    candidate=dict(direction=direction.tolist(),color=[color[2]/255,color[1]/255,color[0]/255],brightness=cp.get('Brightness',1),dominant=kind=='DominantDirectionalLightComponent')
+                    rank=lambda light:(light['brightness']>0,light.get('dominant',False),light['brightness'])
+                    if sun is None or rank(candidate)>rank(sun):sun=candidate
                 if kind in ('HeightFogComponent','ExponentialHeightFogComponent'):
                     color=cp.get('LightInscatteringColor',cp.get('FogInscatteringColor',cp.get('LightColor',(128,128,128,255))))
                     zones.append(dict(kind=kind,color=color,density=cp.get('FogDensity',cp.get('Density',.001)),start=cp.get('StartDistance',0),
@@ -305,10 +308,12 @@ def build_map(path,library,models,materials):
                 instance(asset,asset_cls,transform(props,cp),dict(record,component=component),cp.get('Materials',[]));rendered=True
             except (ValueError,KeyError,OSError) as exc:failures.append(dict(record,component=component,reason=str(exc)))
         if not rendered:omitted.append(dict(record,reason='No drawable mesh component (control, light or runtime spawn)'))
+    if hasattr(library,'extra_instances'):
+        library.extra_instances(paths,actors,instance,failures,omitted)
     # Rendered attachments share the owner identity; generators/vehicles/scenery stay independent.
     npc_entities={r['entity'] for r in instances if r['npc']}
     for row in instances:
-        props=actors[row['entity']]['props'];owner=props.get('Owner') or props.get('Base')
+        props=actors.get(row['entity'],{}).get('props',{});owner=props.get('Owner') or props.get('Base')
         if owner in npc_entities and (props.get('bHardAttach') or props.get('BaseBoneName') or 'weapon' in row['classname'].lower()):
             row.update(actor=row['entity'],entity=owner,npc=True)
     points=[];uv=[];indices=[];groups=[]
@@ -372,23 +377,25 @@ def build_map(path,library,models,materials):
     return scene,blobs
 
 
-def import_maps(install,output=LOCAL_DATA,replace=False,map_names=None,model_root=None):
+def import_maps(install,output=LOCAL_DATA,replace=False,map_names=None,model_root=None,*,game='tas',
+                library_factory=MapLibrary,materials_factory=Materials,entries=entry_maps,section=map_section,
+                name_for=lambda p:p.stem,scene_builder=build_map):
     install,output=Path(install).resolve(),Path(output).resolve()
     if output==install or install in output.parents:raise ValueError('Output must be outside the read-only install')
-    started=time.perf_counter();library=MapLibrary(install)
+    started=time.perf_counter();library=library_factory(install)
     try:
-        maps=entry_maps(library);selected={Path(n).stem.lower() for n in map_names} if map_names else None
-        if selected and selected-{p.stem.lower() for p in maps}:raise ValueError('Unknown map selection: '+str(selected-{p.stem.lower() for p in maps}))
-        materials=Materials(library,game_texture_dir(output,'tas'));models=Models(model_root or output/'tas',output/'tas',library,materials)
-        root=output/'tas-maps';report=dict(game='tas',entry_maps=len(maps),imported=[],skipped=[],failed={},results=[]);index=[]
+        maps=entries(library);selected={Path(n).stem.lower() for n in map_names} if map_names else None
+        if selected and selected-{name_for(p).lower() for p in maps}:raise ValueError('Unknown map selection: '+str(selected-{name_for(p).lower() for p in maps}))
+        materials=materials_factory(library,game_texture_dir(output,game));models=Models(model_root or output/game,output/game,library,materials)
+        root=output/(game+'-maps');report=dict(game=game,entry_maps=len(maps),imported=[],skipped=[],failed={},results=[]);index=[]
         for path in maps:
-            if selected and path.stem.lower() not in selected:continue
-            ident=path.stem.lower();folder=root/'maps'/ident;entry=dict(id=ident,name=path.stem,group=map_section(path))
+            if selected and name_for(path).lower() not in selected:continue
+            ident=name_for(path).lower();folder=root/'maps'/ident;entry=dict(id=ident,name=name_for(path),group=section(path))
             try:
                 if not replace and (folder/'scene.json').is_file():
                     scene=json.loads((folder/'scene.json').read_text());report['skipped'].append(path.stem)
                 else:
-                    scene,blobs=build_map(path,library,models,materials);folder.mkdir(parents=True,exist_ok=True)
+                    scene,blobs=scene_builder(path,library,models,materials);folder.mkdir(parents=True,exist_ok=True)
                     for name,blob in blobs.items():
                         (folder/(name+('.bin.gz' if name=='decorations' else '.bin'))).write_bytes(gzip.compress(blob,compresslevel=3,mtime=0) if name=='decorations' else blob)
                     write_json_atomic(folder/'scene.json',scene);report['imported'].append(path.stem)

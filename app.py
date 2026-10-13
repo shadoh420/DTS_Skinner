@@ -59,6 +59,7 @@ from tools.import_tvg import import_catalog as import_tvg_catalog
 from tools.import_eye_map import import_maps as import_eye_maps
 from tools.import_tvg_map import import_maps as import_tvg_maps
 from tools.import_tas_map import import_maps as import_tas_maps
+from tools.import_nos_map import import_maps as import_nos_maps
 from tools.import_doom3 import import_catalog as import_doom3_catalog
 from tools import quake4_policy
 from tools.import_azrael import import_catalog as import_azrael_catalog
@@ -630,6 +631,7 @@ def import_doom3_maps_route():
 
 @app.route('/maps/tvg/')
 @app.route('/maps/tas/')
+@app.route('/maps/nos/')
 def tvg_maps_viewer():
     game = request.path.split('/')[2]
     response = send_from_directory(static_dir / (game + '-maps'), 'index.html')
@@ -639,8 +641,9 @@ def tvg_maps_viewer():
 
 @app.route('/tvg-map-data/<path:filename>')
 @app.route('/tas-map-data/<path:filename>')
+@app.route('/nos-map-data/<path:filename>')
 def tvg_map_data(filename):
-    game = 'tas' if request.path.startswith('/tas-map-data/') else 'tvg'
+    game = request.path.split('/')[1].removesuffix('-map-data')
     manifest = local_data_dir / (game + '-maps') / 'model-library.json'
     library = json.loads(manifest.read_text(encoding='utf-8')) if manifest.is_file() else {}
     root = pathlib.Path(library.get('root', pack_dirs[game]))
@@ -666,6 +669,7 @@ def tvg_map_data(filename):
 
 @app.route('/import_tvg_maps', methods=['POST'])
 @app.route('/import_tas_maps', methods=['POST'])
+@app.route('/import_nos_maps', methods=['POST'])
 def import_tvg_maps_route():
     if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
@@ -673,11 +677,11 @@ def import_tvg_maps_route():
         return jsonify(error='Expected a small JSON import request.'), 400
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
-        return jsonify(error='Enter your Tribes game folder.'), 400
+        return jsonify(error='Enter your game install folder.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        importer = import_tas_maps if request.path == '/import_tas_maps' else import_tvg_maps
+        importer = {'/import_tas_maps':import_tas_maps,'/import_nos_maps':import_nos_maps,'/import_tvg_maps':import_tvg_maps}[request.path]
         return jsonify(importer(payload['path'].strip(), local_data_dir, payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
