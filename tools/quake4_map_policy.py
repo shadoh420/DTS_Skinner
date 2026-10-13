@@ -58,6 +58,12 @@ def matrix(entity,parts=None):
     return m
 
 
+def compiled_static(entity,world):
+    """idStaticEntity::Spawn hides dmap-inlined geometry, not a second model."""
+    return (entity.get('classname')=='func_static' or entity.get('spawnclass')=='idStaticEntity') and (
+        entity.get('inline','0')!='0' or world.get('inlineallstatics','0')!='0')
+
+
 def attachment_transforms(entities,defs,files,inline):
     """World-space deltas, applied once *after* the authored entity transform.
 

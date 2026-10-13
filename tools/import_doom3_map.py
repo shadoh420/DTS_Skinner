@@ -241,7 +241,10 @@ def light_projection(entity):
     corners=[]
     for ids in itertools.combinations(range(6),3):
         p=planes[list(ids)]
-        if abs(np.linalg.det(p[:,:3]))<1e-12:continue
+        # Projection planes shrink with light radius. Test angular degeneracy,
+        # not their absolute determinant (which rejected large outdoor lights).
+        scale=np.prod(np.linalg.norm(p[:,:3],axis=1))
+        if not scale or abs(np.linalg.det(p[:,:3]))<1e-12*scale:continue
         point=np.linalg.solve(p[:,:3],-p[:,3])
         if np.all(planes[:,:3]@point+planes[:,3]>=-1e-4):corners.append(point)
     if not corners:raise ValueError('Empty light volume')
@@ -428,12 +431,17 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
             surfaces.append(dict(start=start,count=len(geometry['indices'])-start,material=shader['name'],bounds=bounds,areas=areas,
                                  sound=material_cache['sounds'].resolve(entity) if shader['soundReactive'] else None,
                                  lights=matched,entity=entity.get('name','worldspawn'),parms=parms(entity)))
+            if any(s.get('cube') for s in shader['stages']):surfaces[-1]['cubeAxis']=np.linalg.inv(axis).ravel().tolist()
             count+=1
         return count
     for model,parts in proc['models'].items():
         if re.fullmatch(r'_area\d+',model):add_parts(parts,{},int(model[5:]))
     for entity in resolved[1:]:
         label=entity.get('name',entity.get('classname',''));reference=path_name(entity.get('model',''));record=dict(name=label,classname=entity.get('classname'),model=reference)
+        if policy:
+            from tools.quake4_map_policy import compiled_static
+            if compiled_static(entity,resolved[0]):
+                skipped.append(dict(record,reason='Static already compiled into world PROC'));continue
         if policy and entity.get('classname')=='func_group':
             skipped.append(dict(record,reason='Editor group compiled into world PROC'));continue
         if policy and (entity.get('classname')=='func_fx' or reference.endswith(('.fx','.prt'))):
@@ -520,7 +528,15 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                       'r_lightScale 2 is applied once to interactions. No display gamma or second overbright multiplier.',
                       'Analytic light normalization/specular lookup approximates the original quantized lookup textures. Portal culling is conservative; door portal blocking is not simulated.'])
     if policy:
+        # rvCameraPortalSky::GetViewParms replaces only the eye position; the
+        # player's orientation/FOV are retained. PROC sky flags enable this view.
+        sky=next((e for e in resolved if e.get('classname')=='func_camera_portalsky' or e.get('spawnclass')=='rvCameraPortalSky'),None)
+        if sky:
+            origin=vector(sky.get('origin'))
+            if sky.get('name') in transforms:origin=(transforms[sky['name']] @ np.r_[origin,1])[:3]
+            scene['portalSky']=dict(name=sky.get('name'),origin=origin.tolist())
         scene['notes'][0]='No shadows or fog/blend lights. Authored movers and static attachments are evaluated once; no physics or script VM.'
+        scene['notes'][4]='Sky cubemaps and the authored portal-sky camera are rendered. Reflection cubemaps, heat haze, GUIs, video, deforms and particles remain skipped/approximated.'
         scene['notes'] += ['Quake 4: r_lightDetailLevel 0; only detailLevel > 0 lights. falloff spawnarg is ignored (not read by SDK ParseSpawnArgsToRenderLight).',
                            'Deathmatch filters; one deterministic spawner appearance. See stats.mapRules for provenance and other layouts.',
                            'GLSL capability conditions use the non-GLSL fallback. Portal fade tuples are retained but fading is disabled.']
@@ -554,6 +570,10 @@ def import_maps(install,data_root=LOCAL_DATA,*,maps=None,models_root=None,replac
                     results.append(dict(id=ident,status='existing'));continue
                 stats,views=import_scene(name,campaign,files,defs,context,cache,directory,policy)
                 write_json_atomic(directory/'tables.json',table_data)
+                # Geometry files are content-named: a re-import with changed geometry leaves the old one unreferenced.
+                scene_text=(directory/'scene.json').read_text(encoding='utf8')
+                for old in directory.glob('*.bin'):
+                    if old.name not in scene_text:old.unlink()
                 item=dict(id=ident,name=name,campaign=campaign,label=('RoE: ' if campaign=='d3xp' else '')+name,
                           scene='maps/'+ident+'/scene.json',stats=stats)
                 by_id[ident]=item;results.append(dict(item,status='ready'))

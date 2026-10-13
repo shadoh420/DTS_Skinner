@@ -142,6 +142,22 @@
     }
     return result;
   }
-  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents};
+  function portalSkyOrigin(data,areas) {
+    return data.portalSky&&[...areas].some(a=>data.areaSky?.['_area'+a])?data.portalSky.origin:null;
+  }
+  function skyMatrix(wobble,seconds,axis=[1,0,0,0,1,0,0,0,1]) {
+    if(!wobble)return axis;
+    // R_WobbleskyTexGen: degrees, wobble rpm, rotation rpm. Row-major.
+    const [degrees,speed,rotate]=wobble,angle=degrees*Math.PI/180,a=seconds*speed*Math.PI/30;
+    const sine=Math.sin(angle),s=Math.sin(a)*sine,c=Math.cos(a)*sine,z=Math.cos(angle);
+    const up=[c,s,z],y=[-Math.sin(a*2)*sine,0,-s*sine];y[1]=Math.sqrt(Math.max(0,1-y[0]*y[0]-y[2]*y[2]));
+    const dot=y.reduce((n,v,i)=>n+v*up[i],0);for(let i=0;i<3;i++)y[i]-=dot*up[i];
+    const length=Math.hypot(...y);for(let i=0;i<3;i++)y[i]/=length;
+    const x=[y[1]*up[2]-y[2]*up[1],y[2]*up[0]-y[0]*up[2],y[0]*up[1]-y[1]*up[0]];
+    const rs=Math.sin(seconds*rotate*Math.PI/30),rc=Math.cos(seconds*rotate*Math.PI/30);
+    const rows=[x.map((v,i)=>v*rc+y[i]*rs),y.map((v,i)=>v*rc-x[i]*rs),up];
+    return rows.flatMap(row=>[0,1,2].map(j=>row.reduce((n,v,k)=>n+v*axis[k*3+j],0)));
+  }
+  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,portalSkyOrigin,skyMatrix};
   if(typeof module!=='undefined')module.exports=api;else root.doom3Materials=api;
 })(typeof window!=='undefined'?window:globalThis);

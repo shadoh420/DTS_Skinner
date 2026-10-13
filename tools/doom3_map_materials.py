@@ -84,6 +84,10 @@ def compile_stage(tokens,textures):
             if key not in ('map','clampmap'):stage['role']=key.removesuffix('map')
             if key=='clampmap':stage['clamp']=True
             continue
+        if policy and key in ('cubemap','cameracubemap') and i<len(t):
+            name=t[i];i+=1
+            stage['cube']=dict(camera=key=='cameracubemap',expression=name)
+            continue
         start=i;depth=0
         while i<len(t):
             if depth==0 and t[i].lower() in commands:break
@@ -110,8 +114,18 @@ def compile_stage(tokens,textures):
             elif key in ('clamp','zeroclamp','alphazeroclamp'):stage['clamp']=True
             elif key in ('name','forcehighquality','highquality','uncompressed','nearest','linear','nopicmip','nomips','noclamp'):pass
             elif key in ('privatepolygonoffset','polygonoffset'):stage['polygonOffset']=True
+            elif policy and key=='texgen' and args:
+                stage['texgen']=args[0].lower()
+                if stage['texgen']=='wobblesky':
+                    values=split_args(args[1:]) if ',' in args else args[1:]
+                    if len(values)!=3:raise ValueError('Expected three wobbleSky expressions')
+                    stage['wobble']=[expr(v) for v in values]
             else:notes.append(key)
         except (ValueError,IndexError) as exc:notes.append(str(exc))
+    if stage.get('cube') and stage.get('texgen') in ('skybox','wobblesky'):
+        cube=stage['cube']
+        suffixes=('forward','back','left','right','up','down') if cube['camera'] else ('px','nx','py','ny','pz','nz')
+        cube['faces']=[textures.resolve(cube['expression']+'_'+face) for face in suffixes]
     return stage,notes
 
 
@@ -127,7 +141,9 @@ def compile_material(name,defs,materials,textures):
     notes=[];parsed=[];shortcuts=[]
     for stage in stages:
         s,n=compile_stage(stage,textures);notes.extend(n)
-        if s.get('image'):parsed.append(s)
+        if s.get('cube') and s.get('texgen') not in ('skybox','wobblesky'):
+            notes.append('unsupported cube texgen: '+s.get('texgen','normal'))
+        elif s.get('image') or s.get('cube'):parsed.append(s)
     t=compact(global_tokens);lower=[x.lower() for x in t];i=0;falloff=None
     while i<len(t):
         key=t[i].lower();i+=1
@@ -164,7 +180,8 @@ def compile_material(name,defs,materials,textures):
     for feature in ('deform','guisurf','foglight','blendlight','mirror','portalsky'):
         if feature in lower:notes.append(feature)
     for s in parsed:
-        if s['image']['status']!='ready':notes.append('missing image: '+s['image']['expression'])
+        for image in s['cube']['faces'] if s.get('cube') else [s['image']]:
+            if image['status']!='ready':notes.append('missing image: '+image['expression'])
         if any(x in lower for x in ('clamp','zeroclamp','alphazeroclamp')):s['clamp']=True
         if 'polygonoffset' in lower:s['polygonOffset']=True
     def sound_reactive(value):

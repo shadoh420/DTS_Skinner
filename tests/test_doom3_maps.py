@@ -171,6 +171,9 @@ class DoomMapTest(unittest.TestCase):
                 raw=json.loads((directory/'scene.json').read_text());self.assertEqual(raw['geometry_buffers']['arrays']['vertices']['dtype'],'<f4')
                 self.assertEqual([x['role'] for x in s['materials']['textures/test']['stages']],['bump','diffuse','specular'])
             self.assertTrue((dest/'doom3/textures/_white.png').is_file())
+            stale=dest/'doom3-maps/maps/base_game_test'/('0'*64+'.bin');stale.write_bytes(b'old')
+            maps.import_maps(root/'install',dest,maps=['base:game/test'],replace=True)
+            self.assertFalse(stale.exists());load_model_data(stale.parent/'scene.json')
             with Install(root/'install') as archive:
                 self.assertEqual(tables(archive.files['base'])['pulse']['values'],[0,1,0])
 

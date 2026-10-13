@@ -1,5 +1,7 @@
 """Bounded Raven map fixtures; no retail assets, game or GPU required."""
 import json
+import shutil
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,9 +12,9 @@ import numpy as np
 
 from tools import import_doom3_map as maps, quake4_policy as q4
 from tools.doom3_assets import Install, Declarations, Textures, Materials, lex
-from tools.doom3_map_materials import compile_stage, expression
+from tools.doom3_map_materials import compile_stage, compile_material, expression
 from tools.doom3_map_sounds import Sounds
-from tools.quake4_map_policy import prepare_entities, attachment_transforms, transformed_light
+from tools.quake4_map_policy import prepare_entities, attachment_transforms, transformed_light, compiled_static
 from tests.test_doom3 import MESH, ANIM
 
 
@@ -29,6 +31,45 @@ shadowModel { "ignored" 0 }
 
 
 class Quake4MapsTest(unittest.TestCase):
+    def test_large_outdoor_light_volume_is_not_degenerate(self):
+        # Retail airdefense1 light_146; previously discarded by an absolute
+        # determinant cutoff. It covers the comparison camera's foreground.
+        light=maps.light_projection({'origin':'9424 -12256 1352','light_radius':'7392 6944 3184','light_center':'-8096 -9096 7384'})
+        np.testing.assert_allclose(light['bounds'],[[2032,-19200,-1832],[16816,-5312,4536]])
+        self.assertTrue(maps.light_intersects([[10278,-7132,-22],[10279,-7131,-21]],light))
+        for radius in (1,100,10000,1000000):
+            p=maps.light_projection({'light_radius':f'{radius} {radius} {radius}'})
+            np.testing.assert_allclose(p['bounds'],[[-radius]*3,[radius]*3])
+
+    def test_compiled_statics_are_not_hidden_entity_duplicates(self):
+        self.assertTrue(compiled_static({'classname':'func_static','inline':'1'},{}))
+        self.assertTrue(compiled_static({'spawnclass':'idStaticEntity'},{'inlineallstatics':'1'}))
+        self.assertFalse(compiled_static({'classname':'func_static','hide':'2'},{}))
+        self.assertFalse(compiled_static({'classname':'func_door','inline':'1'},{}))
+
+    def test_sky_cube_faces_texgen_and_stage_brightness(self):
+        class Images:
+            policy=q4
+            def resolve(self,value):return {'expression':value,'status':'ready'}
+        stage,notes=compile_stage(lex('blend add cameraCubeMap gfx/env/test texgen skybox texgen wobbleSky .0 .0 .0 rgb .5'),Images())
+        self.assertEqual(notes,[]);self.assertEqual(stage['color'],[.5,.5,.5,1])
+        self.assertEqual(stage['wobble'],[0,0,0]);self.assertEqual(stage['texgen'],'wobblesky')
+        self.assertEqual([f['expression'] for f in stage['cube']['faces']],['gfx/env/test_'+n for n in ('forward','back','left','right','up','down')])
+        native,_=compile_stage(lex('cubeMap env/native texgen skybox'),Images())
+        self.assertFalse(native['cube']['camera']);self.assertEqual(native['cube']['faces'][4]['expression'],'env/native_pz')
+        with tempfile.TemporaryDirectory() as tmp:
+            defs=Declarations({},q4);defs.materials={'sky':lex('forceOpaque { blend add cameraCubeMap env/test texgen skybox }')}
+            textures=Textures({},Path(tmp),q4)
+            material=compile_material('sky',defs,Materials(defs,textures),textures)
+            self.assertFalse(material['translucent']);self.assertTrue(material['visible'])
+            self.assertEqual(len(material['stages']),1)
+            self.assertEqual(len(material['stages'][0]['cube']['faces']),6)
+
+    @unittest.skipUnless(shutil.which('node'),'Node is needed for browser math tests')
+    def test_sky_browser_math(self):
+        result=subprocess.run(['node',str(Path(__file__).with_suffix('.js'))],capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
     def test_proc4_mixed_vertices_sky_header_portal_fade(self):
         p=maps.read_proc(PROC,q4)
         self.assertEqual(p['header'],4294967295)
@@ -137,6 +178,8 @@ class Quake4MapsTest(unittest.TestCase):
                 { "classname" "light" "name" "low" "detailLevel" "0" }
                 { "classname" "light" "name" "fog" "texture" "fog" }
                 { "classname" "func_static" "name" "hidden" "model" "fixture" "hide" "2" }
+                { "classname" "func_static" "name" "compiled" "model" "fixture" "inline" "1" }
+                { "classname" "func_camera_portalsky" "name" "skycam" "origin" "200 300 400" "angle" "123" }
                 { "classname" "func_fx" "name" "effect" }
                 { "classname" "info_player_start" "origin" "0 0 0" "name" "#str_1" }
                 ''')
@@ -161,6 +204,8 @@ class Quake4MapsTest(unittest.TestCase):
             self.assertEqual(scene['stats']['hiddenEntitiesShown'],1)
             self.assertEqual(scene['stats']['renderedEntities'],2)
             self.assertEqual(scene['stats']['excluded']['BSE effect'],1)
+            self.assertEqual(scene['stats']['excluded']['Static already compiled into world PROC'],1)
+            self.assertEqual(scene['portalSky'],{'name':'skycam','origin':[200,300,400]})
             self.assertEqual(scene['viewpoints'][0]['name'],'Landing')
             self.assertTrue((root/'models/quake4/textures').is_dir())
             self.assertFalse((root/'maps/quake4').exists())

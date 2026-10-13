@@ -8,6 +8,7 @@ const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:false,alpha:fals
 renderer.setPixelRatio(1);renderer.outputEncoding=THREE.LinearEncoding;renderer.toneMapping=THREE.NoToneMapping;
 renderer.setClearColor(0);renderer.sortObjects=true;
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(75,1,2,100000);camera.up.set(0,0,1);
+const skyCamera=camera.clone();
 // Doom uses destination alpha as scratch storage (makealpha + maskColor).
 // Keep RGBA offscreen, then copy opaque RGB so browser compositing cannot alter it.
 const colorTarget=new THREE.WebGLRenderTarget(1,1,{format:THREE.RGBAFormat,depthBuffer:true});
@@ -64,6 +65,29 @@ vec3 diffuse=d.rgb*vertexColor(vertexMode)*diffuseEnabled;
 if(ambient>0.5){float a=max(dot(n,vec3(1.0,29.0/255.0*2.0-1.0,227.0/255.0*2.0-1.0)),0.0);gl_FragColor=vec4(diffuse*light*a,1);return;}
 gl_FragColor=vec4((diffuse+s*vertexColor(specularVertexMode))*light*ndl,1);
 }`;
+// R_LoadCubeImages camera-face transpose/flips, performed on coordinates so
+// source DDS bytes and their mip chains stay intact. No lighting/overbright.
+const cubeFragment=`precision highp float;
+varying vec3 positionWorld,vertexRGB;varying float vertexAlpha;
+uniform sampler2D cube0,cube1,cube2,cube3,cube4,cube5;
+uniform mat3 skyMatrix;uniform float cameraCube,vertexMode,vertexAlphaEnabled,alphaCut;
+uniform vec4 diffuseColor;
+void main(){
+ vec3 d=skyMatrix*(positionWorld-cameraPosition),a=abs(d);vec2 st;vec4 pixel;
+ if(a.x>=a.y&&a.x>=a.z){
+  if(d.x>0.0){st=vec2(-d.z,-d.y)/a.x*.5+.5;if(cameraCube>0.5)st=st.yx;pixel=texture2D(cube0,st);}
+  else{st=vec2(d.z,-d.y)/a.x*.5+.5;if(cameraCube>0.5)st=1.0-st.yx;pixel=texture2D(cube1,st);}
+ }else if(a.y>=a.z){
+  if(d.y>0.0){st=vec2(d.x,d.z)/a.y*.5+.5;if(cameraCube>0.5)st.y=1.0-st.y;pixel=texture2D(cube2,st);}
+  else{st=vec2(d.x,-d.z)/a.y*.5+.5;if(cameraCube>0.5)st.x=1.0-st.x;pixel=texture2D(cube3,st);}
+ }else{
+  if(d.z>0.0){st=vec2(d.x,-d.y)/a.z*.5+.5;if(cameraCube>0.5)st=st.yx;pixel=texture2D(cube4,st);}
+  else{st=vec2(-d.x,-d.y)/a.z*.5+.5;if(cameraCube>0.5)st=st.yx;pixel=texture2D(cube5,st);}
+ }
+ pixel*=diffuseColor;
+ if(vertexMode!=0.0){pixel.rgb*=vertexMode>0.0?vertexRGB:1.0-vertexRGB;if(vertexAlphaEnabled>0.5)pixel.a*=vertexMode>0.0?vertexAlpha:1.0-vertexAlpha;}
+ if(pixel.a<alphaCut)discard;gl_FragColor=pixel;
+}`;
 const defaultStage={color:[1,1,1,1],condition:1,uv:[],vertexColor:0,alphaTest:0};
 const unit=()=>new THREE.Matrix3();
 function uniforms() {return {diffuseMap:{value:white},bumpMap:{value:flat},specularMap:{value:black},projectionMap:{value:white},falloffMap:{value:white},
@@ -116,6 +140,7 @@ async function buildMap(meta,binary) {
  // Resolve each image once before constructing passes. No run-time fetch waterfall per surface.
  const stages=Object.values(meta.materials).flatMap(m=>m.stages);
  await Promise.all(stages.map(async s=>s.texture=await texture(s.image,s.clamp)));
+ await Promise.all(stages.filter(s=>s.cube).map(async s=>s.cubeTextures=await Promise.all(s.cube.faces.map(f=>texture(f,true)))));
  await Promise.all(meta.lights.map(async l=>l.falloffTexture=await texture(l.falloff,true)));
  const sources=[...meta.lights,...meta.surfaces].map(x=>x.sound).filter(s=>s?.file&&!s.waitForTrigger);
  if(sources.length) {
@@ -149,15 +174,19 @@ async function buildMap(meta,binary) {
     u.lightOrigin.value.fromArray(light.origin);u.ambient.value=+light.ambient;u.lightScale.value=meta.lightScale;
     ['projectS','projectT','projectQ','projectF'].forEach((n,i)=>u[n].value.fromArray(light.projection[i]));
    }
-   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:fragment,uniforms:u,vertexColors:true,
+   if(kind===3){
+    diffuse.cubeTextures.forEach((t,i)=>u['cube'+i]={value:t||black});
+    u.cameraCube={value:+diffuse.cube.camera};u.skyMatrix={value:unit()};
+   }
+   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:kind===3?cubeFragment:fragment,uniforms:u,vertexColors:true,
     side:material.twoSided?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
     blending:kind===0?THREE.NoBlending:THREE.CustomBlending,blendSrc:THREE.OneFactor,blendDst:kind===1?THREE.OneFactor:THREE.ZeroFactor});
-   if(kind===2) {
+   if(kind===2||kind===3) {
     const factors=M.ambientBlend(diffuse).map(f=>blendFactors[f]);
     [sm.blendSrc,sm.blendDst,sm.blendSrcAlpha,sm.blendDstAlpha]=factors;
    }
    if(diffuse?.polygonOffset){sm.polygonOffset=true;sm.polygonOffsetFactor=-1;sm.polygonOffsetUnits=-1;}
-   const mesh=new THREE.Mesh(g,sm);mesh.renderOrder=order;mesh.userData={kind,diffuse,specular,bump,light,projection};group.add(mesh);meshes.push(mesh);passCount++;
+   const mesh=new THREE.Mesh(g,sm);mesh.renderOrder=order;mesh.userData={kind,diffuse,specular,bump,light,projection,cubeAxis:surface.cubeAxis};group.add(mesh);meshes.push(mesh);passCount++;
   }
   const cut=material.stages.filter(s=>s.alphaTest!==0),opaque=material.stages.find(s=>s.role==='diffuse')||material.stages[0];
   if(!material.translucent)for(const stage of cut.length?cut:[opaque])pass(0,stage,null,null,null,null,0);
@@ -167,7 +196,7 @@ async function buildMap(meta,binary) {
       pass(1,interaction.diffuse,interaction.specular,interaction.bump,light,projection,10);
   }
   // Finish each surface's stage chain before another surface overwrites scratch alpha.
-  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(2,s,null,null,null,null,ambientOrder++));
+  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,null,null,null,ambientOrder++));
  }
  return passCount;
 }
@@ -178,6 +207,10 @@ function updatePass(mesh,seconds,parms,sound) {
  const sa=specular?stageColor(specular,seconds,parms,u.specularColor.value,sound):false;
  mesh.visible=kind===1?(da||sa)&&(!bump||M.evaluate(bump.condition,seconds,parms,tables,data.globalShaderParms,sound)!==0):da;
  stageUV(d,seconds,parms,u.diffuseUV.value,sound);u.alphaCut.value=kind===1?0:M.evaluate(d.alphaTest,seconds,parms,tables,data.globalShaderParms,sound);
+ if(kind===3){
+  const wobble=d.wobble?.map(v=>M.evaluate(v,seconds,parms,tables,data.globalShaderParms,sound));
+  u.skyMatrix.value.set(...M.skyMatrix(wobble,seconds,mesh.userData.cubeAxis));
+ }
  if(bump)stageUV(bump,seconds,parms,u.bumpUV.value,sound);
  if(specular)stageUV(specular,seconds,parms,u.specularUV.value,sound);
  if(light) {const amplitude=M.soundAmplitude(light.sound,seconds,soundAmplitudeOverride);mesh.visible=stageColor(projection,seconds,light.parms,u.lightColor.value,amplitude)&&mesh.visible;stageUV(projection,seconds,light.parms,u.projectionUV.value,amplitude);}
@@ -185,16 +218,29 @@ function updatePass(mesh,seconds,parms,sound) {
 let lastMetrics={};
 function draw(seconds=0,target=null) {
  if(!data)return;
- camera.updateMatrixWorld();matrix.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(matrix);
- const areas=M.visibleAreas(camera.position.toArray(),data,matrix.elements);let visible=0;
- for(const batch of batches) {
+ function select(view){
+  view.updateMatrixWorld();matrix.multiplyMatrices(view.projectionMatrix,view.matrixWorldInverse);frustum.setFromProjectionMatrix(matrix);
+  const areas=M.visibleAreas(view.position.toArray(),data,matrix.elements);let surfaces=0;
+  for(const batch of batches){
    batch.group.visible=(!batch.surface.areas.length||batch.surface.areas.some(a=>areas.has(a)))&&frustum.intersectsBox(batch.geometry.boundingBox);
-   if(batch.group.visible){visible++;const sound=M.soundAmplitude(batch.surface.sound,seconds,soundAmplitudeOverride);for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms,sound);}
+   if(batch.group.visible){surfaces++;const sound=M.soundAmplitude(batch.surface.sound,seconds,soundAmplitudeOverride);for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms,sound);}
+  }
+  return {areas,surfaces};
  }
  const width=target?target.width:renderer.domElement.width,height=target?target.height:renderer.domElement.height;
  if(colorTarget.width!==width||colorTarget.height!==height)colorTarget.setSize(width,height);
- renderer.setRenderTarget(colorTarget);renderer.render(scene,camera);
- lastMetrics={areas:areas.size,surfaces:visible,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles};
+ let selected=select(camera),skyMetrics={calls:0,triangles:0};
+ renderer.setRenderTarget(colorTarget);
+ const portalSky=M.portalSkyOrigin(data,selected.areas);
+ if(portalSky){
+  // Q4 SingleView renders the fixed-origin sky scene first, keeps its color,
+  // clears depth, then draws the primary view with its original eye and axes.
+  skyCamera.copy(camera);skyCamera.position.fromArray(portalSky);const skySelected=select(skyCamera);
+  renderer.render(scene,skyCamera);skyMetrics={calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,areas:skySelected.areas.size,surfaces:skySelected.surfaces};
+  renderer.clearDepth();selected=select(camera);renderer.autoClear=false;
+ }
+ renderer.render(scene,camera);renderer.autoClear=true;
+ lastMetrics={areas:selected.areas.size,surfaces:selected.surfaces,calls:renderer.info.render.calls+skyMetrics.calls,triangles:renderer.info.render.triangles+skyMetrics.triangles,sky:skyMetrics};
  renderer.setRenderTarget(target);renderer.render(copyScene,copyCamera);renderer.setRenderTarget(null);
  lastMetrics.calls+=renderer.info.render.calls;lastMetrics.triangles+=renderer.info.render.triangles;
 }
