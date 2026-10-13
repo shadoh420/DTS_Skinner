@@ -37,17 +37,18 @@ class Asset:
 
 class Install:
     """Separate effective namespaces: RoE overlays base, base never sees RoE."""
-    def __init__(self, root):
+    def __init__(self, root, policy=None):
         self.root, self.archives, self.files = Path(root), [], {}
         try:
-            for campaign in ('base','d3xp'):
+            for campaign in (policy.campaigns if policy else ('base','d3xp')):
                 files = dict(self.files.get('base',{})) if campaign=='d3xp' else {}
-                for path in sorted((self.root/campaign).glob('pak*.pk4')):
+                for path in (policy.archives(self.root/campaign) if policy else sorted((self.root/campaign).glob('pak*.pk4'))):
                     archive = zipfile.ZipFile(path); self.archives.append(archive)
                     for info in archive.infolist():
                         if not info.is_dir(): files[path_name(info.filename)] = Asset(archive,info,campaign)
                 self.files[campaign] = files
-            if not self.files['base']: raise ValueError('No base/pak*.pk4 in Doom 3 install')
+            if (not any(self.files.values()) if policy else not self.files['base']):
+                raise ValueError('No game PK4 archives in install' if policy else 'No base/pak*.pk4 in Doom 3 install')
         except Exception:
             self.close(); raise
 
@@ -84,13 +85,18 @@ def compact(tokens): return [t for t in tokens if t!='\n']
 
 
 class Declarations:
-    def __init__(self, files):
+    def __init__(self, files, policy=None):
+        self.policy=policy
+        self.warnings=[]
+        guides=policy.guides(files) if policy else {}
         self.entities,self.models,self.skins,self.materials = {},{},{},{}
         self.sources = {}
         for filename,asset in sorted(files.items(),key=lambda item:(item[1].campaign=='d3xp',item[0])):
             ext=Path(filename).suffix
             if ext not in ('.def','.skin','.mtr'): continue
-            for header,body in declarations(lex(asset.read().decode('latin1'))):
+            tokens=lex(asset.read().decode('latin1'))
+            if policy: tokens=policy.tokens(tokens,ext,filename,guides,self.warnings)
+            for header,body in declarations(tokens):
                 if not header: continue
                 kind=header[0].lower(); name=path_name(header[-1]); t=compact(body)
                 if ext=='.def' and kind=='entitydef':
@@ -106,7 +112,10 @@ class Declarations:
                                 if t[i]=='(': value[key]=tuple(map(float,t[i+1:i+4])); i+=5
                             else: value[key]=t[i]; i+=1
                         elif key=='anim' and i+1<len(t):
-                            value['anims'][t[i].lower()]=path_name(t[i+1]); i+=2
+                            anim_name=t[i].lower(); clips=[path_name(t[i+1])]; i+=2
+                            if policy:
+                                while i+1<len(t) and t[i]==',': clips.append(path_name(t[i+1])); i+=2
+                            value['anims'][anim_name]=clips if policy else clips[0]
                         elif key=='{':
                             depth=1
                             while i<len(t) and depth:
@@ -115,13 +124,14 @@ class Declarations:
                 elif ext=='.skin':
                     pairs=[]; i=0
                     while i+1<len(t):
-                        if t[i].lower()!='model': pairs.append((path_name(t[i]),path_name(t[i+1])))
+                        if t[i].lower()!='model': pairs.append((policy.material_name(t[i]) if policy else path_name(t[i]),policy.material_name(t[i+1]) if policy else path_name(t[i+1])))
                         i+=2
                     self.skins[name]=pairs
                 elif ext=='.mtr' and kind!='table':
-                    self.materials[name]=body
+                    self.materials[policy.material_name(name) if policy else name]=body
 
     def inherit(self, collection, name, stack=()):
+        if self.policy: return self.policy.inherit(self,collection,name,stack)
         name=path_name(name)
         if name in stack: raise ValueError('Cyclic definition: '+' -> '.join((*stack,name)))
         if name not in collection: raise ValueError('Missing definition: '+name)
@@ -133,13 +143,18 @@ class Declarations:
         if 'anims' in raw: result['anims']=anims
         return result
 
-    def entity(self,name): return self.inherit(self.entities,name)
+    def entity(self,name):
+        value=self.inherit(self.entities,name)
+        if self.policy and value.get('def_persona'):
+            value.update(self.inherit(self.entities,value['def_persona']))
+        return value
 
     def model(self,name):
         name=path_name(name)
         return self.inherit(self.models,name) if name in self.models else {'mesh':name,'anims':{}}
 
     def remap(self, name, skin):
+        if self.policy:name=self.policy.material_name(name)
         for source,target in self.skins.get(path_name(skin or ''),[]):
             if source in ('*',path_name(name)): return target
         return name
@@ -148,10 +163,10 @@ class Declarations:
 PROGRAMS = {'addnormals','heightmap','add','scale','invertalpha','invertcolor','makeintensity','makealpha','smoothnormals'}
 
 
-def image_expression(tokens, at):
+def image_expression(tokens, at, programs=PROGRAMS):
     """idImage image-program canonical spacing, also used by ImageProgramStringToCompressedFileName."""
     token=tokens[at].replace('.tga',''); at+=1
-    if token.lower() in PROGRAMS and at<len(tokens) and tokens[at]=='(':
+    if token.lower() in programs and at<len(tokens) and tokens[at]=='(':
         expr=token+'('; at+=1; depth=1
         while at<len(tokens) and depth:
             t=tokens[at].replace('.tga',''); at+=1
@@ -190,7 +205,7 @@ BLENDS={'blend':['gl_src_alpha','gl_one_minus_src_alpha'],'add':['gl_one','gl_on
         'filter':['gl_dst_color','gl_zero'],'modulate':['gl_dst_color','gl_zero'],'none':['gl_zero','gl_one']}
 
 
-def material_record(name, body):
+def material_record(name, body, policy=None):
     t=compact(body or []); stages=[]; global_tokens=[]; i=0
     while i<len(t):
         if t[i]=='{':
@@ -210,7 +225,7 @@ def material_record(name, body):
         while i<len(tokens):
             key=tokens[i].lower(); i+=1
             if key in ('diffusemap','bumpmap','specularmap','map','clampmap') and i<len(tokens):
-                expr,i=image_expression(tokens,i)
+                expr,i=image_expression(tokens,i,PROGRAMS | policy.programs if policy else PROGRAMS)
                 role={'diffusemap':'diffuse','bumpmap':'bump','specularmap':'specular'}.get(key)
                 if role: result[role]=result[role] or expr; stage['role']=role
                 stage['image']=expr
@@ -240,7 +255,9 @@ def material_record(name, body):
     if chosen:
         for key in ('alphaTest','alphaTestExpression','blend','vertexColor','clamp'):
             if key in chosen: result[key]=chosen[key]
-    if body is None: result['diffuse']=name
+    if body is None:
+        result['diffuse']='_default' if policy and path_name(name)=='default' else name
+        if result['diffuse']=='_default':result['notes'].append('Untextured LWO Default surface: native default material, not collision')
     elif not result['diffuse']:
         result['diffuse']='_black'
         result['notes'].append('No diffuse stage; black model preview (specular/GUI belongs to Maps)')
@@ -252,7 +269,8 @@ def material_record(name, body):
 
 
 class Textures:
-    def __init__(self, files, output):
+    def __init__(self, files, output, policy=None):
+        self.policy=policy
         self.files,self.output,self.records=files,Path(output),{}
 
     def source_image(self, expression):
@@ -260,11 +278,11 @@ class Textures:
         def read():
             nonlocal at
             name=t[at]; at+=1
-            if name.lower() in PROGRAMS and at<len(t) and t[at]=='(':
+            if name.lower() in (PROGRAMS | self.policy.programs if self.policy else PROGRAMS) and at<len(t) and t[at]=='(':
                 op=name.lower(); at+=1; images=[read()]; numbers=[]
                 while at<len(t) and t[at]!=')':
                     if t[at]==',': at+=1; continue
-                    if op in ('heightmap','scale'): numbers.append(float(t[at])); at+=1
+                    if op in ('heightmap','scale','downsize'): numbers.append(float(t[at])); at+=1
                     else: images.append(read())
                 at+=1; a=np.array(images[0].convert('RGBA'),dtype=float)
                 if op in ('add','addnormals'):
@@ -278,6 +296,9 @@ class Textures:
                     h=a[:,:,:3].mean(axis=2)*numbers[0]/256
                     n=np.stack((h-np.roll(h,-1,axis=1),h-np.roll(h,-1,axis=0),np.ones(h.shape)),axis=2)
                     n/=np.linalg.norm(n,axis=2,keepdims=True); a[:,:,:3]=128+127*n
+                elif op=='downsize':
+                    factor=2**int(numbers[0])
+                    return images[0].resize((max(1,images[0].width//factor),max(1,images[0].height//factor)),Image.Resampling.BOX)
                 elif op=='scale': a*=np.array((numbers+[1]*4)[:4])
                 elif op=='invertalpha': a[:,:,3]=255-a[:,:,3]
                 elif op=='invertcolor': a[:,:,:3]=255-a[:,:,:3]
@@ -306,10 +327,10 @@ class Textures:
         if expression in self.records: return self.records[expression]
         record=dict(expression=expression,status='failed'); self.records[expression]=record
         try:
-            source=dds_path(expression)
+            source=self.policy.dds_path(expression) if self.policy else dds_path(expression)
             # CheckPrecompressedImage bypasses lights/ on the normal 128 MB+
             # machine-spec path. PK4 idFile_InZip timestamps are all zero.
-            if source in self.files and not expression.startswith('lights/'):
+            if source in self.files and (self.policy or not expression.startswith('lights/')):
                 asset=self.files[source]; payload=asset.read()
                 if payload[:4]!=b'DDS ': raise ValueError('Invalid DDS '+source)
                 filename=texture_filename(source,asset.campaign)
@@ -335,9 +356,9 @@ class Materials:
         self.declarations,self.textures,self.records=declarations,textures,{}
 
     def resolve(self,name):
-        name=re.sub(r'\.tga$','',path_name(name))
+        name=self.declarations.policy.material_name(name) if self.declarations.policy else re.sub(r'\.tga$','',path_name(name))
         if name in self.records: return self.records[name]
-        result=material_record(name,self.declarations.materials.get(name))
+        result=material_record(name,self.declarations.materials.get(name),self.declarations.policy)
         result['images']={role:self.textures.resolve(result[role]) for role in ('diffuse','bump','specular')}
         result['settings']=dict(alphaTest=result['alphaTest'],blend=result['blend'],cull='none' if result['twoSided'] else 'back',
                                 depthWrite=not(result['translucent'] or result['blend']),vertexColor=result['vertexColor'],

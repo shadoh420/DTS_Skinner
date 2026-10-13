@@ -8,7 +8,8 @@ except ImportError:
 
 
 class Sounds:
-    def __init__(self,files,directory):
+    def __init__(self,files,directory,policy=None):
+        self.policy=policy
         self.files,self.directory,self.cache=files,Path(directory),{}
         self.shaders={}
         for name,asset in sorted(files.items(),key=lambda item:(item[1].campaign=='d3xp',item[0])):
@@ -22,10 +23,11 @@ class Sounds:
         if name not in self.cache:
             tokens=self.shaders.get(name,[]);lower=[t.lower() for t in tokens]
             # ponytail: one deterministic sample; random selections/leadin changes need a sound event timeline.
-            samples=[t for t in tokens if t.lower().endswith(('.wav','.ogg'))]
+            samples=[t for t in tokens if t.lower().endswith(('.wav','.ogg')) or self.policy and (path_name(t)+'.ogg' in self.files or path_name(t)+'.wav' in self.files)]
             sample=path_name(samples[0]) if samples else name
+            if self.policy and sample not in self.files and sample+'.wav' in self.files:sample+='.wav'
             if sample not in self.files:sample=str(Path(sample).with_suffix('.ogg')).replace('\\','/')
-            result=dict(shader=name,looping='looping' in lower,noFlicker='no_flicker' in lower)
+            result=dict(shader=name,looping='looping' in lower,noFlicker='no_flicker' in lower or self.policy is not None and 'noflicker' in lower)
             if sample in self.files:
                 payload=self.files[sample].read();filename=hashlib.sha256(payload).hexdigest()+Path(sample).suffix
                 self.directory.mkdir(parents=True,exist_ok=True);target=self.directory/filename

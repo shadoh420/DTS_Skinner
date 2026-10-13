@@ -52,6 +52,7 @@ from tools.import_jk2 import import_catalog as import_jk2_catalog
 from tools.import_ja import import_catalog as import_ja_catalog
 from tools.import_vtmb import import_catalog as import_vtmb_catalog
 from tools.import_doom3 import import_catalog as import_doom3_catalog
+from tools import quake4_policy
 from tools.import_azrael import import_catalog as import_azrael_catalog
 from tools.import_quake_map import import_maps as import_quake_maps
 from tools.import_quake2_map import import_maps as import_quake2_maps
@@ -100,7 +101,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3', 'quake4')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -575,6 +576,7 @@ def import_anachronox_maps_route():
         import_lock.release()
 
 
+@app.route('/maps/quake4/')
 @app.route('/maps/doom3/')
 def doom3_maps_viewer():
     response = send_from_directory(static_dir / 'doom3-maps', 'index.html')
@@ -582,28 +584,35 @@ def doom3_maps_viewer():
     return response
 
 
+@app.route('/quake4-map-data/<path:filename>')
 @app.route('/doom3-map-data/<path:filename>')
 def doom3_map_data(filename):
+    game='quake4' if request.path.startswith('/quake4-') else 'doom3'
     if filename.startswith('textures/'):
         name = filename.removeprefix('textures/')
-        return send_from_directory(game_textures('doom3'), name,
+        return send_from_directory(game_textures(game), name,
                                    mimetype='image/vnd-ms.dds' if name.lower().endswith('.dds') else None)
-    return send_from_directory(local_data_dir / 'doom3-maps', filename)
+    return send_from_directory(local_data_dir / (game+'-maps'), filename)
 
 
+@app.route('/import_quake4_maps', methods=['POST'])
 @app.route('/import_doom3_maps', methods=['POST'])
 def import_doom3_maps_route():
+    quake4=request.path=='/import_quake4_maps'
     if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
     if not request.is_json or request.content_length is None or request.content_length > 8192:
         return jsonify(error='Expected a small JSON import request.'), 400
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
-        return jsonify(error='Enter your Doom 3 folder.'), 400
+        return jsonify(error='Enter your '+('Quake 4' if quake4 else 'Doom 3')+' folder.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
         from tools.import_doom3_map import import_maps
+        if quake4:
+            from tools import quake4_policy
+            return jsonify(import_maps(payload['path'].strip(), local_data_dir, replace=payload.get('replace') is True,policy=quake4_policy))
         return jsonify(import_maps(payload['path'].strip(), local_data_dir, replace=payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
@@ -1098,6 +1107,7 @@ def import_reflex():
 @app.route('/import_et', methods=['POST'])
 @app.route('/import_ja', methods=['POST'])
 @app.route('/import_doom3', methods=['POST'])
+@app.route('/import_quake4', methods=['POST'])
 @app.route('/import_vtmb', methods=['POST'])
 @app.route('/import_jk2', methods=['POST'])
 @app.route('/import_anachronox', methods=['POST'])
@@ -1123,6 +1133,8 @@ def import_conversion_pack():
             return jsonify(import_azrael_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'ja':
             return jsonify(import_ja_catalog(payload['path'].strip(), pack_dirs[game]))
+        if game == 'quake4':
+            return jsonify(import_doom3_catalog(payload['path'].strip(), pack_dirs[game], policy=quake4_policy))
         if game == 'doom3':
             return jsonify(import_doom3_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'vtmb':
@@ -1190,7 +1202,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'ge', 'doom3', 'quake4'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:
