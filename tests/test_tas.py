@@ -217,7 +217,7 @@ class ImportTests(unittest.TestCase):
             self.assertEqual(docs[0]['geometry_buffers'],docs[1]['geometry_buffers'])
             self.assertNotEqual(docs[0]['material_textures'],docs[1]['material_textures'])
             self.assertEqual(docs[0]['geometry_buffers']['arrays']['vertices']['dtype'],'<f4')
-            tex=out/'textures'/material['texture'];self.assertTrue(tex.is_file());self.assertEqual(tex.suffix,'.dds')
+            tex=out/'textures'/material['texture'];self.assertTrue(tex.is_file());self.assertEqual(tex.suffix,'.dds');self.assertRegex(tex.name,r'^red_[0-9a-f]{12}\.dds$')
             tex.write_bytes(b'edited');write_texture(tex.parent,tex.name,b'original');self.assertEqual(tex.read_bytes(),b'edited')
             self.assertIn('tas',MODEL_GAMES);self.assertIn('tas',TEXTURE_GAMES)
             with self.assertRaises(ValueError):import_catalog(install,install/'tas')

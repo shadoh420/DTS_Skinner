@@ -2,6 +2,7 @@
 from collections import defaultdict
 import hashlib
 import io
+import re
 
 import numpy as np
 from PIL import Image
@@ -36,11 +37,17 @@ def texture_payload(props, mips):
     return '.png', stream.getvalue(), info
 
 
+def texture_filename(source, digest, ext):
+    """Readable object name plus a content hash, like the Vengeance library."""
+    name = re.sub('[^a-z0-9_-]+', '_', source.rsplit('.', 1)[-1].lower()).strip('_')[:80] or 'texture'
+    return f'{name}_{digest[:12]}{ext}'
+
+
 class Materials:
     def __init__(self, library, directory):
         self.library, self.directory = library, directory
         self.textures, self.materials, self.definitions = {}, {}, {}
-        self.failures = []
+        self.failures, self.by_digest = [], {}
         self.missing = 'missing_tas.png'
         image = Image.new('RGBA', (2,2)); image.putdata([(255,0,255,255),(32,32,32,255)]*2)
         write_texture(directory, self.missing, image)
@@ -56,7 +63,7 @@ class Materials:
             props, mips = p.texture(ref, self.library.cache_files)
             ext, payload, info = texture_payload(props, mips)
             digest = hashlib.sha256(payload).hexdigest()
-            filename = digest+ext
+            filename = self.by_digest.setdefault(digest, texture_filename(source, digest, ext))  # Identical bytes share one file.
             write_texture(self.directory, filename, payload)
             row.update(info, texture=filename, sha256=digest, status='ready')
         except (ValueError, OSError) as exc:
@@ -222,7 +229,7 @@ class Materials:
                         preview.putalpha(alpha)
                         stream = io.BytesIO(); preview.save(stream,format='PNG'); payload = stream.getvalue()
                         row['original_diffuse_texture'] = row['texture']
-                        row['texture'] = hashlib.sha256(payload).hexdigest()+'.png'
+                        row['texture'] = texture_filename((diffuse['textures'] or ['constant'])[0]+'_masked', hashlib.sha256(payload).hexdigest(), '.png')
                         write_texture(self.directory,row['texture'],payload)
                         row['notes'].append('Opacity-channel preview PNG; original compressed textures retained')
                     else:
