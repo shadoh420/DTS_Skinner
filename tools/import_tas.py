@@ -107,13 +107,14 @@ def provenance(lib, candidates):
     return [dict(sha256=digest, copies=copies) for digest,copies in groups.items()]
 
 
-def import_catalog(install, output, model_paths=None):
+def import_catalog(install, output, model_paths=None, *, game='tas', library_factory=Library,
+                   category_fn=category, skins_fn=skin_families, materials_factory=Materials):
     install, output = Path(install).resolve(), Path(output).resolve()
     if output == install or install in output.parents:
         raise ValueError('Output must be outside the read-only install')
-    if output.name != 'tas':
-        raise ValueError('Output must be a game folder named tas, e.g. build/tas-data/tas')
-    started = time.perf_counter(); lib = Library(install)
+    if output.name != game:
+        raise ValueError(f'Output must be a game folder named {game}, e.g. build/{game}-data/{game}')
+    started = time.perf_counter(); lib = library_factory(install)
     try:
         objects = sorted((rows for (_,cls),rows in lib.rows.items() if cls in ('StaticMesh','SkeletalMesh','SpeedTree')),
                          key=lambda rows:(rows[0]['source'].lower(), rows[0]['cls']))
@@ -123,13 +124,13 @@ def import_catalog(install, output, model_paths=None):
                 if not any(fnmatch.fnmatchcase(rows[0]['source'].lower(), pattern.lower()) for rows in objects):
                     raise ValueError('Unknown model selector: '+pattern)
             objects = [rows for rows in objects if any(fnmatch.fnmatchcase(rows[0]['source'].lower(), p.lower()) for p in model_paths)]
-        mats = Materials(lib, game_texture_dir(output.parent, 'tas'))
+        mats = materials_factory(lib, game_texture_dir(output.parent, game))
         roots = {rows[0]['source'].split('.')[0].lower() for rows in objects}
         by_root, by_preview = mats.variants(roots)
         records, catalog, index = [], [], {}
         for candidates in objects:
             obj = candidates[0]; source, cls = obj['source'], obj['cls']
-            row = dict(obj, category=category(obj)); records.append(row)
+            row = dict(obj, category=category_fn(obj)); records.append(row)
             entry = index.setdefault(source.lower(), dict(source=source, by_class={}))['by_class']
             try:
                 reason = exclusion(row)
@@ -137,21 +138,23 @@ def import_catalog(install, output, model_paths=None):
                     raise ValueError(reason)
                 row['provenance'] = provenance(lib, candidates)
                 p = lib.package(obj['file']); data = mesh(p, obj['ref'])
+                if not data['groups']:
+                    raise ValueError('Mesh has no drawable sections')
                 refs = data.pop('material_refs')  # already package-qualified by mesh reader
                 data['metadata'].update(source=source, source_class=cls, package_version=p.version, licensee=p.licensee)
-                variants = skin_families(source, refs, mats, by_root, by_preview)
+                variants = skins_fn(source, refs, mats, by_root, by_preview)
                 exported = []
                 for number, variant in enumerate(variants):
                     materials = [mats.material(ref) for ref in variant['refs']]
                     ident = key(cls+':'+source) + (('_skin_'+key(variant['label'])) if number else '')
-                    payload = dict(data, game='tas', material_textures=[m['texture'] for m in materials],
+                    payload = dict(data, game=game, material_textures=[m['texture'] for m in materials],
                                    material_settings=[m['settings'] for m in materials],
                                    metadata=dict(data['metadata'], skin=variant['label'], assignment=variant['assignment'], materials=materials))
                     path = output/'model_json'/(ident+'.json'); write_model_data(path, payload)
                     buffers = json.loads(path.read_text(encoding='utf-8'))['geometry_buffers']
                     exported.append(dict(id=ident,label=variant['label'],assignment=variant['assignment']))
                     unresolved = sum(m['status'] != 'ready' for m in materials)
-                    catalog.append(dict(game='tas',model_name=ident,display_name=source+' / '+variant['label'],
+                    catalog.append(dict(game=game,model_name=ident,display_name=source+' / '+variant['label'],
                                         source=source,category=row['category'],status='ready',
                                         texture_name=materials[data['groups'][0]['materialIndex']]['texture'],
                                         warnings=[f'{unresolved} unresolved material slots'] if unresolved else []))
@@ -164,7 +167,7 @@ def import_catalog(install, output, model_paths=None):
         for entry in index.values():
             if len(entry['by_class']) == 1:
                 entry.update(next(iter(entry['by_class'].values())))
-        report = dict(game='tas',sample=model_paths is not None,total_candidates=total,objects=len(records),
+        report = dict(game=game,sample=model_paths is not None,total_candidates=total,objects=len(records),
                       ready=sum(r['status']=='ready' for r in records),entries=len(catalog),
                       skipped=sum(r['status']=='skipped' for r in records),
                       skipped_reasons=dict(Counter(r['reason'] for r in records if r['status']=='skipped')),
@@ -176,7 +179,8 @@ def import_catalog(install, output, model_paths=None):
                       rules=dict(pose='LOD0 static/reference; no animation',storage='shared textures, original DXT DDS, float32 binary geometry',
                                  duplicates='original physical package, then non-map, then filename/export; byte-identical copies grouped by SHA256',
                                  index='case-insensitive package-qualified object; by_class resolves class collisions',
-                                 sections='805/0 uncooked additions Community; Hi-Rez cooked 805/2 Retail'))
+                                 sections=('BCMPMod* and 860/0 Community; other installed packages Retail' if game == 'nos' else
+                                           '805/0 uncooked additions Community; Hi-Rez cooked 805/2 Retail')))
         report['issues'] = report['skipped']+report['unresolved_materials']+len(lib.failures)+len(mats.failures)
         report['report'] = str(output/'import-report.json')
         write_json_atomic(output/'catalog.json',catalog); write_json_atomic(output/'model-index.json',index)

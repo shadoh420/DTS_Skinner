@@ -255,7 +255,9 @@ class Package(ue3.Package):
             node, state = r.unpack('2i'); r.take(10)
             if node:
                 r.take(4)  # newer UE3 has no serialized state-stack array
-        r.take(4)  # NetIndex; native component preambles need the later map adapter
+        r.take(4)  # NetIndex
+        if self.entry(ref)['class'] in MESH_COMPONENTS:
+            r.take(4)  # component template owner class, before tagged properties
         return r.properties(), r
 
     def level_actors(self, ref):
@@ -272,4 +274,54 @@ class Package(ue3.Package):
     def validate_chunks(self):
         for uo, us, co, cs in self.chunks:
             ue3.compressed_blocks(self.physical, co, cs, us)
+
+
+MESH_COMPONENTS = {'SkeletalMeshComponent', 'SkeletalMeshComponent_K', 'SkeletalMeshComponent_X',
+                   'PawnSkeletalMeshComponent_K', 'PawnSkeletalMeshComponent_X',
+                   'StaticMeshComponent', 'StaticMeshComponent_K', 'StaticMeshComponent_X'}
+
+
+class Library(ue3.Library):
+    """Nosgoth assets with one executable key lookup per import and a bounded LRU."""
+    game_root = 'BCMPGame'
+    game = 'nos'
+    cooked = 'CookedPCConsole'
+    roots = ('BCMPGame/CookedPCConsole',)
+    asset_classes = ue3.ASSET_CLASSES | {'MaterialInstanceTimeVarying'} | MESH_COMPONENTS
+
+    def __init__(self, install):
+        root = Path(install)
+        validation = root/self.game_root/self.cooked/'Core.upk'
+        self._library_key = find_key(root/'Binaries/Win32/Nosgoth.exe', validation) if validation.is_file() else None
+        self._mesh_looks = {}; self._look_files = set()
+        super().__init__(install)
+
+    def open_package(self, path):
+        return Package(path, key=self._library_key)
+
+    def section(self, p):
+        return 'Community' if p.version == 860 or p.path.stem.lower().startswith('bcmpmod') else 'Retail'
+
+    def mesh_looks(self, source):
+        """Explicit component material overrides in packages containing this mesh."""
+        for _, rows in self.by_name.get(source.lower(), []):
+            for row in rows:
+                file = row['file']
+                if file in self._look_files:
+                    continue
+                self._look_files.add(file); p = self.package(file)
+                for ref, e in enumerate(p.exports, 1):
+                    if e['class'] not in MESH_COMPONENTS or 'Default__' in e['source']:
+                        continue
+                    try:
+                        props, _ = p.properties(ref)
+                        mesh = props.get('SkeletalMesh', props.get('StaticMesh', 0))
+                        if mesh and props.get('Materials'):
+                            materials = [p.qualified(x[0]) for x in ue3.Reader(props['Materials']).array('i')]
+                            self._mesh_looks.setdefault(p.qualified(mesh).lower(), []).append(
+                                dict(source=e['source'], materials=materials, file=file,
+                                     evidence='Mesh component material overrides'))
+                    except (ValueError, OSError) as exc:
+                        self.failures.append(dict(file=file, source=e['source'], reason=str(exc)))
+        return self._mesh_looks.get(source.lower(), [])
 

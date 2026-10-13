@@ -48,7 +48,7 @@ class Materials:
         self.library, self.directory = library, directory
         self.textures, self.materials, self.definitions = {}, {}, {}
         self.failures, self.by_digest = [], {}
-        self.missing = 'missing_tas.png'
+        self.missing = 'missing_'+getattr(library, 'game', 'tas')+'.png'
         image = Image.new('RGBA', (2,2)); image.putdata([(255,0,255,255),(32,32,32,255)]*2)
         write_texture(directory, self.missing, image)
 
@@ -76,7 +76,7 @@ class Materials:
             raise ValueError('Material parent/redirect cycle: '+source)
         if k in self.definitions:
             return self.definitions[k]
-        p, ref = self.library.object(source, {'Material','MaterialInstanceConstant','ObjectRedirector'})
+        p, ref = self.library.object(source, {'Material','MaterialInstanceConstant','MaterialInstanceTimeVarying','ObjectRedirector'})
         props, r = p.properties(ref); cls = p.entry(ref)['class']
         if cls == 'ObjectRedirector':
             dest = p.qualified(r.i32())
@@ -100,6 +100,7 @@ class Materials:
                    selected=dict(file=p.path.relative_to(self.library.install).as_posix(),export=ref),
                    parameters=parameters, preview=preview, chain=[source],
                    settings={k:props[k] for k in ('BlendMode','TwoSided','OpacityMaskClipValue','LightingModel') if k in props})
+        own['time_varying'] = cls == 'MaterialInstanceTimeVarying'
         if parent:
             base = self.definition(parent, trail+(k,))
             own['root'] = base['root']; own['chain'] += base['chain']
@@ -107,6 +108,7 @@ class Materials:
             own['input_values'] = {**base['input_values'], **input_values}
             own['settings'] = {**base['settings'], **own['settings']}
             own['parameters'] = {k:{**base['parameters'][k], **parameters[k]} for k in parameters}
+            own['time_varying'] |= base['time_varying']
         self.definitions[k] = own
         return own
 
@@ -126,6 +128,7 @@ class Materials:
             # alone must not demote its colour output (Katabatic's rock master).
             negative=('detail','overlay','noise') if parameter else ('detail','overlay','noise','mask','normal')
             if any(s in name for s in negative):return -1
+            if not parameter and re.search(r'_(?:d|diff|dif|albedo)(?:_\d+)?$',name):return 1
             return int(any(s in name for s in ('diff','dif','base','albedo','color','colour','sky')))
         remaining=list(candidates)
         for reason,score in [
@@ -223,6 +226,9 @@ class Materials:
             definition = self.definition(source)
             row.update(parent_chain=definition['chain'], parameters=definition['parameters'],selected=definition['selected'])
             inputs = {k:self.expression(v, definition['parameters']) for k,v in definition['inputs'].items()}
+            inputs, preview_note = self.preview_inputs(definition, inputs)
+            if preview_note:
+                row['notes'].append(preview_note)
             for name, value in definition['input_values'].items():
                 if value.get('UseConstant'):
                     inputs[name]['constant'] = value.get('Constant')
@@ -231,6 +237,8 @@ class Materials:
                     inputs[name]['masks'].insert(0, mask)
             row['inputs'] = inputs
             row['native_settings'] = definition['settings']
+            if definition['time_varying']:
+                row['notes'].append('Time-varying instance: authored ParameterValue preview; curves are not animated')
             settings = row['settings']; native = definition['settings']
             mode = native.get('BlendMode', 'BLEND_Opaque')
             if native.get('TwoSided'):
@@ -245,7 +253,7 @@ class Materials:
                 settings.update(blend=['gl_dst_color','gl_zero'], depthWrite=False)
             diffuse = inputs['DiffuseColor']
             emissive=inputs['EmissiveColor']
-            if (native.get('LightingModel')=='MLM_Unlit' or definition['inputs']['DiffuseColor'] is None) and (emissive['textures'] or emissive['constant'] is not None):
+            if (native.get('LightingModel')=='MLM_Unlit' or not diffuse['textures'] and diffuse['constant'] is None) and (emissive['textures'] or emissive['constant'] is not None):
                 diffuse = inputs['EmissiveColor']; settings['unlit'] = True
                 row['notes'].append('Unlit material or absent diffuse: emissive input used for preview')
             referenced = {s for value in inputs.values() for s in value['textures']}
@@ -302,6 +310,9 @@ class Materials:
             row.update(status='unresolved',reason=str(exc))
         return row
 
+    def preview_inputs(self, definition, inputs):
+        return inputs, None
+
     def variants(self, selected):
         """MIC PreviewMesh links, plus siblings within a character/weapon asset package.
 
@@ -309,7 +320,7 @@ class Materials:
         """
         by_root, by_preview = defaultdict(list), defaultdict(list)
         for (name, cls), rows in self.library.rows.items():
-            if cls != 'MaterialInstanceConstant' or 'default__' in name:
+            if cls not in ('MaterialInstanceConstant', 'MaterialInstanceTimeVarying') or 'default__' in name:
                 continue
             source = rows[0]['source']
             # Only relevant asset namespaces; all others can still resolve on demand.

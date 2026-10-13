@@ -4,7 +4,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
   const compare = (a, b) => a.localeCompare(b, 'en', {numeric: true, sensitivity: 'base'});
-  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'doom3', 'quake4'];  // Games with an import box (<id>Import).
+  const IMPORTS = ['q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'doom3', 'quake4'];  // Games with an import box (<id>Import).
   const scene = new THREE.Scene();
   scene.add(new THREE.AmbientLight(0xffffff, .6));
   const light = new THREE.DirectionalLight(0xffffff, .8);
@@ -40,8 +40,8 @@ window.addEventListener('DOMContentLoaded', () => {
   function updateHistoryButtons() {
     $('undoAction').disabled = historyBusy || loading || !history.length;
     $('redoAction').disabled = historyBusy || loading || !future.length;
-    $('undoAction').title = history.length ? `Ctrl+Z · ${history.at(-1).label}` : 'Ctrl+Z';
-    $('redoAction').title = future.length ? `Ctrl+Shift+Z / Ctrl+Y · ${future.at(-1).label}` : 'Ctrl+Shift+Z / Ctrl+Y';
+    $('undoAction').title = history.length ? `Ctrl+Z Â· ${history.at(-1).label}` : 'Ctrl+Z';
+    $('redoAction').title = future.length ? `Ctrl+Shift+Z / Ctrl+Y Â· ${future.at(-1).label}` : 'Ctrl+Shift+Z / Ctrl+Y';
     for (const [gallery, header] of [['galleryUndo', 'undoAction'], ['galleryRedo', 'redoAction']]) {
       $(gallery).disabled = $(header).disabled; $(gallery).title = $(header).title;
     }
@@ -51,7 +51,7 @@ window.addEventListener('DOMContentLoaded', () => {
     history.push({label, before, after, tagChange});
     if (history.length > 100) history.shift();
     future.length = 0; lastState = after;
-    $('historyStatus').textContent = `${label} · ${history.length}/100`;
+    $('historyStatus').textContent = `${label} Â· ${history.length}/100`;
     updateHistoryButtons();
   }
   function setHistoryBusy(value) {
@@ -171,9 +171,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const keys = new Set(), look = new THREE.Euler(0, 0, 0, 'YXZ');
   const forward = new THREE.Vector3(), right = new THREE.Vector3(), movement = new THREE.Vector3();
   let walking = false, navigationRequested = false, orbitDistance = 1;
-  const orbitHint = 'Drag: orbit · Wheel: zoom · Right-drag: pan · Shift + `: walk/fly';
+  const orbitHint = 'Drag: orbit Â· Wheel: zoom Â· Right-drag: pan Â· Shift + `: walk/fly';
   function updateNavigationHint() {
-    $('navigationHint').textContent = walking ? `${$('navigationStyle').value === 'walk' ? 'Walk' : 'Fly'} · WASD: move · E/Q: up/down · Shift/Alt: speed · Wheel: speed (${Number($('walkSpeed').value).toFixed(2)}) · Esc: exit` : orbitHint;
+    $('navigationHint').textContent = walking ? `${$('navigationStyle').value === 'walk' ? 'Walk' : 'Fly'} Â· WASD: move Â· E/Q: up/down Â· Shift/Alt: speed Â· Wheel: speed (${Number($('walkSpeed').value).toFixed(2)}) Â· Esc: exit` : orbitHint;
   }
   function stopWalking() {
     navigationRequested = false;
@@ -345,7 +345,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('exportObjBtn').disabled = true;
     $('exportGlbBtn').disabled = true;
     $('modelSearch').value = ''; $('skinSearch').value = '';
-    $('status').textContent = 'Loading catalog…';
+    $('status').textContent = 'Loading catalogâ€¦';
     $('textureGame').value = game;
     for (const id of IMPORTS) $(`${id}Import`).hidden = game !== id;
     $('modelThumbnail').hidden = true;
@@ -366,7 +366,7 @@ window.addEventListener('DOMContentLoaded', () => {
       versions = results[2].status === 'fulfilled' ? results[2].value : null;
       showFamilies();
       const unavailable = catalog.filter(entry => !available(entry)).length;
-      $('catalogSummary').textContent = `${game.toUpperCase()} · ${catalog.length.toLocaleString()} entries · ${catalog.length - unavailable} previews${unavailable ? ` · ${unavailable} unavailable` : ''}`;
+      $('catalogSummary').textContent = `${game.toUpperCase()} Â· ${catalog.length.toLocaleString()} entries Â· ${catalog.length - unavailable} previews${unavailable ? ` Â· ${unavailable} unavailable` : ''}`;
       filterCatalog();
       if (filtered.length) {
         const preferred = filtered.find(x => x.model_name === 'disc') || filtered[0];
@@ -480,7 +480,7 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.minFilter = flags & 128 ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
       texture.generateMipmaps = !(flags & 128);
     }
-    if (gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut' || gameId === 'dx' || gameId === 'doom3' || gameId === 'quake4' || gameId === 'eye' || (gameId === 'tvg' || gameId === 'tas')) {
+    if (gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut' || gameId === 'dx' || gameId === 'doom3' || gameId === 'quake4' || gameId === 'eye' || (gameId === 'tvg' || gameId === 'tas' || gameId === 'nos')) {
       texture.wrapS = texture.wrapT = settings.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       texture.magFilter = THREE.LinearFilter;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', () => {
       texture.minFilter = texture.userData.completeMipChain ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
     }
-    if (gameId === 'tvg' || gameId === 'tas') {
+    if (gameId === 'tvg' || gameId === 'tas' || gameId === 'nos') {
       if (settings.uvScale) texture.repeat.fromArray(settings.uvScale);
       if (settings.uvOffset) texture.offset.fromArray(settings.uvOffset);
       if (settings.uvRotation) texture.rotation = settings.uvRotation;
@@ -502,7 +502,7 @@ window.addEventListener('DOMContentLoaded', () => {
     material.alphaTest = settings.alphaTest ?? (settings.alphaFunc === 'GE128' ? .5 : settings.alphaFunc === 'GT0' ? .5 / 255 : 0);
     material.transparent = Boolean(settings.blend && settings.blend.length);
     material.depthWrite = settings.depthWrite !== false;
-    if (game === 'sin' || game === 'tas') material.opacity = settings.opacity ?? 1;
+    if (game === 'sin' || game === 'tas' || game === 'nos') material.opacity = settings.opacity ?? 1;
     if (material.transparent) {
       const factors = {gl_zero: THREE.ZeroFactor, gl_one: THREE.OneFactor,
         gl_src_color: THREE.SrcColorFactor, gl_one_minus_src_color: THREE.OneMinusSrcColorFactor,
@@ -544,7 +544,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loading = true;
     $('exportObjBtn').disabled = true;
     $('exportGlbBtn').disabled = true;
-    $('status').textContent = `Loading ${name}…`;
+    $('status').textContent = `Loading ${name}â€¦`;
     $('modelTitle').textContent = `${gameId.toUpperCase()} / ${(catalog.find(x=>x.model_name===name)||{}).display_name || name}`;
     const oldRotation = group ? group.quaternion.clone() : null;
     const oldPosition = group ? group.position.clone() : null;
@@ -593,7 +593,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }));
         // Diabotical's and Reflex's imports write the same shader settings for their cutout (foliage) and blended materials.
         // Unreal's and UT's mesh poly flags (two-sided, masked, translucent, modulated, environment) come as the same settings.
-        if ((gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut' || gameId === 'dx' || gameId === 'quake' || gameId === 'quake2' || gameId === 'daikatana' || gameId === 'anachronox' || gameId === 'sin' || gameId === 'rtcw' || gameId === 'et' || gameId === 'jk2' || gameId === 'ja' || gameId === 'azrael' || gameId === 'eye' || (gameId === 'tvg' || gameId === 'tas') || gameId === 'vtmb' || gameId === 'doom3' || gameId === 'quake4') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
+        if ((gameId === 'q3' || gameId === 'diabotical' || gameId === 'reflex' || gameId === 'unreal' || gameId === 'ut' || gameId === 'dx' || gameId === 'quake' || gameId === 'quake2' || gameId === 'daikatana' || gameId === 'anachronox' || gameId === 'sin' || gameId === 'rtcw' || gameId === 'et' || gameId === 'jk2' || gameId === 'ja' || gameId === 'azrael' || gameId === 'eye' || (gameId === 'tvg' || gameId === 'tas' || gameId === 'nos') || gameId === 'vtmb' || gameId === 'doom3' || gameId === 'quake4') && model.material_settings) applyQ3Material(newMaterials[newMaterials.length - 1], settingsFor(index));
       }
       if (serial !== loadSerial) { disposeMaterials(newMaterials); return; }
       const geometry = new THREE.BufferGeometry();
@@ -622,7 +622,7 @@ window.addEventListener('DOMContentLoaded', () => {
       scene.add(group); materials = newMaterials; newMaterials = [];
       data = model; textureFailures = failures; loadedParams = params;
       if (!preserveView || !oldRotation) frameModel();
-      $('geometryInfo').textContent = `${(model.vertices.length / 3).toLocaleString()} vertices · ${(model.indices.length / 3).toLocaleString()} triangles · ${names.length} material slots${failures.size ? ` · ${failures.size} missing texture${failures.size === 1 ? '' : 's'}` : ''}`;
+      $('geometryInfo').textContent = `${(model.vertices.length / 3).toLocaleString()} vertices Â· ${(model.indices.length / 3).toLocaleString()} triangles Â· ${names.length} material slots${failures.size ? ` Â· ${failures.size} missing texture${failures.size === 1 ? '' : 's'}` : ''}`;
       $('status').textContent = failures.size ? `Preview loaded with ${failures.size} missing texture${failures.size === 1 ? '' : 's'}.` : 'Preview ready.';
       const metadata = model.metadata || {};
       const warnings = [...(entry.warnings || []), ...(model.warnings || []), ...(metadata.warnings || []), ...[...failures].map(x => `Missing texture: ${x}. Geometry remains visible in magenta.`)];
@@ -631,11 +631,11 @@ window.addEventListener('DOMContentLoaded', () => {
       const sequences = metadata.sequences || metadata.embedded_sequences || [];
       const external = metadata.external_sequences || [];
       $('animationInfo').textContent = `Static preview; GLB exports available geometry animation clips. ${gameId === 't2' ? `${sequences.length} embedded sequences; ${external.length} external animation files recorded. ` : ''}${metadata.pose || ''}`;
-      $('materialSelect').replaceChildren(...names.map((filename, index) => ({filename, index, label: (model.material_names || [])[index] || filename})).sort((a, b) => compare(a.label, b.label) || a.index - b.index).map(x => option(`${x.label} · slot ${x.index}`, x.index)));
+      $('materialSelect').replaceChildren(...names.map((filename, index) => ({filename, index, label: (model.material_names || [])[index] || filename})).sort((a, b) => compare(a.label, b.label) || a.index - b.index).map(x => option(`${x.label} Â· slot ${x.index}`, x.index)));
       $('materialSelect').disabled = false;
       if (slot && [...$('materialSelect').options].some(x => x.value === slot)) $('materialSelect').value = slot;
       $('loadedTexturesList').replaceChildren(...[...new Set(names.map((filename, index) => textureId(filename, sourceGame(model, index))))].sort(compare).map(filename => {
-        const li = document.createElement('li'); li.textContent = filename + (failures.has(filename) ? ' — MISSING' : '');
+        const li = document.createElement('li'); li.textContent = filename + (failures.has(filename) ? ' â€” MISSING' : '');
         if (failures.has(filename)) li.style.color = '#efb987'; return li;
       }));
       updateMaterialInspector();
@@ -663,13 +663,13 @@ window.addEventListener('DOMContentLoaded', () => {
     const valid = filename && !filename.startsWith('[') && !textureFailures.has(textureId(filename, textureGame));
     $('texturePreview').hidden = true;
     $('texturePreviewEmpty').hidden = false;
-    $('texturePreviewEmpty').textContent = filename ? valid ? 'Loading texture…' : 'Texture unavailable' : 'No material selected';
+    $('texturePreviewEmpty').textContent = filename ? valid ? 'Loading textureâ€¦' : 'Texture unavailable' : 'No material selected';
     $('textureDetails').textContent = filename ? `${textureGame.toUpperCase()} / ${filename}` : '';
     $('downloadTexture').classList.toggle('disabled', !valid);
     if (valid) {
       const opaque = game === 't2' && !(Number((data.material_flags || [])[slot] || 0) & (4 | 8 | 16));
       $('texturePreview').src = `${textureUrl(filename, textureGame, slotTransform(data, slot))}${opaque ? '&opaque=1' : ''}&v=${Date.now()}`;
-      if (opaque) $('textureDetails').textContent += ' · RGB preview; alpha retained in PNG';
+      if (opaque) $('textureDetails').textContent += ' Â· RGB preview; alpha retained in PNG';
       $('downloadTexture').href = textureUrl(filename, textureGame, slotTransform(data, slot)) + '&download=1';
       $('downloadTexture').download = filename.replace(/\.(dds|jpe?g)$/i, '.png');
     } else {
@@ -713,15 +713,15 @@ window.addEventListener('DOMContentLoaded', () => {
     if (list.includes(previous)) $('skinSelect').value = previous;
     $('skinSelect').disabled = !list.length;
     $('applySkin').disabled = loading || !data || !list.length || $('materialSelect').disabled;
-    $('textureCount').textContent = `${list.length.toLocaleString()} of ${textures.length.toLocaleString()} textures · ${library.toUpperCase()}${library === 't2' ? ' · RGB thumbnails' : ''}`;
-    $('similarityStatus').textContent = !validBounds ? 'Enter positive whole-pixel ranges with minimum ≤ maximum.' :
-      [sizeReference && `Size near ${sizeReference.filename} (${sizeReference.width} × ${sizeReference.height}) ± ${sizeTolerance} px`,
-       hueReference && `Hue near ${hueReference.filename} (${hueReference.hue === null ? 'neutral' : Math.round(hueReference.hue) + '°'}) ± ${hueTolerance}°`].filter(Boolean).join(' · ');
+    $('textureCount').textContent = `${list.length.toLocaleString()} of ${textures.length.toLocaleString()} textures Â· ${library.toUpperCase()}${library === 't2' ? ' Â· RGB thumbnails' : ''}`;
+    $('similarityStatus').textContent = !validBounds ? 'Enter positive whole-pixel ranges with minimum â‰¤ maximum.' :
+      [sizeReference && `Size near ${sizeReference.filename} (${sizeReference.width} Ã— ${sizeReference.height}) Â± ${sizeTolerance} px`,
+       hueReference && `Hue near ${hueReference.filename} (${hueReference.hue === null ? 'neutral' : Math.round(hueReference.hue) + 'Â°'}) Â± ${hueTolerance}Â°`].filter(Boolean).join(' Â· ');
     if (rebuild) $('textureGallery').replaceChildren(...list.map(name => {
       const button = document.createElement('button');
       button.className = 'texture-thumb'; button.type = 'button';
       const meta = textureMetadata.get(name) || {};
-      button.dataset.texture = name; button.title = `${name}${meta.width ? ` · ${meta.width} × ${meta.height}` : ''}${meta.tags?.length ? ` · ${meta.tags.join(', ')}` : ''}`;
+      button.dataset.texture = name; button.title = `${name}${meta.width ? ` Â· ${meta.width} Ã— ${meta.height}` : ''}${meta.tags?.length ? ` Â· ${meta.tags.join(', ')}` : ''}`;
       button.setAttribute('aria-pressed', String(name === $('skinSelect').value));
       const thumbnail = document.createElement('img');
       thumbnail.alt = ''; thumbnail.loading = 'lazy'; thumbnail.decoding = 'async';
@@ -729,9 +729,9 @@ window.addEventListener('DOMContentLoaded', () => {
       // T2 stores reflectivity in alpha; RGB keeps opaque skins recognizable.
       const version = versions && versions[textureId(name, library)];
       thumbnail.src = `${textureUrl(name, library)}${library === 't2' ? '&opaque=1' : ''}&v=${encodeURIComponent(JSON.stringify(version || []))}`;
-      thumbnail.addEventListener('error', () => { button.classList.add('missing'); button.title = `${name} — preview unavailable`; });
+      thumbnail.addEventListener('error', () => { button.classList.add('missing'); button.title = `${name} â€” preview unavailable`; });
       const label = document.createElement('span'); label.textContent = name;
-      const dimensions = document.createElement('small'); dimensions.textContent = meta.width ? `${meta.width} × ${meta.height}${meta.tags?.length ? ' · ' + meta.tags.join(', ') : ''}` : meta.error || 'Metadata unavailable';
+      const dimensions = document.createElement('small'); dimensions.textContent = meta.width ? `${meta.width} Ã— ${meta.height}${meta.tags?.length ? ' Â· ' + meta.tags.join(', ') : ''}` : meta.error || 'Metadata unavailable';
       button.append(thumbnail, label, dimensions);
       button.addEventListener('click', () => perform('Select texture', () => { $('skinSelect').value = name; selectThumbnail(); }));
       return button;
@@ -765,7 +765,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('candidatePreview').src = `${url}${library === 't2' ? '&opaque=1' : ''}&v=${encodeURIComponent(JSON.stringify(version || []))}`;
     $('saveTextureCopy').href = url + '&download=1';
     const swapped = transform.rotation % 180 !== 0;
-    $('candidateDetails').textContent = `${library.toUpperCase()} / ${name} · ${swapped ? meta.height : meta.width} × ${swapped ? meta.width : meta.height} · ${transform.rotation}°${transform.flip_x ? ' · horizontal flip' : ''}${transform.flip_y ? ' · vertical flip' : ''}`;
+    $('candidateDetails').textContent = `${library.toUpperCase()} / ${name} Â· ${swapped ? meta.height : meta.width} Ã— ${swapped ? meta.width : meta.height} Â· ${transform.rotation}Â°${transform.flip_x ? ' Â· horizontal flip' : ''}${transform.flip_y ? ' Â· vertical flip' : ''}`;
   }
   function transformCandidate(operation) {
     if (!$('skinSelect').value) return;
@@ -803,7 +803,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const previous = $('skinSelect').value;
     $('texturePath').textContent = gameId === 'reflex' ? 'local-data/reflex-maps/textures' : gameId === 't2' ? 'static/textures/t2' : gameId === 't1' ? 'static/textures' : `local-data/${gameId}/textures`;
     textures = []; textureMetadata = new Map(); filterSkins();
-    $('textureCount').textContent = 'Reading texture dimensions…';
+    $('textureCount').textContent = 'Reading texture dimensionsâ€¦';
     try {
       const entries = await json(`/texture_metadata?${query(hueReference ? {} : {details: 'dimensions'}, gameId)}`);
       if (serial !== textureSerial) return;
@@ -829,11 +829,11 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   action('gameSelect', 'change', 'Change game', loadCatalog);
   $('mapsSelect').addEventListener('change', event => { const page = event.target.value; event.target.value = ''; if (page) location.assign(page); });
-  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus'], ['ut', 'importUt', 'utPath', 'utImportStatus'], ['dx', 'importDx', 'dxPath', 'dxImportStatus'], ['quake', 'importQuake', 'quakePath', 'quakeImportStatus'], ['quake2', 'importQuake2', 'quake2Path', 'quake2ImportStatus'], ['daikatana', 'importDaikatana', 'daikatanaPath', 'daikatanaImportStatus'], ['anachronox', 'importAnachronox', 'anachronoxPath', 'anachronoxImportStatus'], ['sin', 'importSin', 'sinPath', 'sinImportStatus'], ['rtcw', 'importRtcw', 'rtcwPath', 'rtcwImportStatus'], ['et', 'importEt', 'etPath', 'etImportStatus'], ['jk2', 'importJk2', 'jk2Path', 'jk2ImportStatus'], ['ja', 'importJa', 'jaPath', 'jaImportStatus'], ['azrael', 'importAzrael', 'azraelPath', 'azraelImportStatus'], ['tas', 'importTas', 'tasPath', 'tasImportStatus'], ['tvg', 'importTvg', 'tvgPath', 'tvgImportStatus'], ['eye', 'importEye', 'eyePath', 'eyeImportStatus'], ['vtmb', 'importVtmb', 'vtmbPath', 'vtmbImportStatus'], ['doom3', 'importDoom3', 'doom3Path', 'doom3ImportStatus'], ['quake4', 'importQuake4', 'quake4Path', 'quake4ImportStatus']]) {
+  for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus'], ['ut', 'importUt', 'utPath', 'utImportStatus'], ['dx', 'importDx', 'dxPath', 'dxImportStatus'], ['quake', 'importQuake', 'quakePath', 'quakeImportStatus'], ['quake2', 'importQuake2', 'quake2Path', 'quake2ImportStatus'], ['daikatana', 'importDaikatana', 'daikatanaPath', 'daikatanaImportStatus'], ['anachronox', 'importAnachronox', 'anachronoxPath', 'anachronoxImportStatus'], ['sin', 'importSin', 'sinPath', 'sinImportStatus'], ['rtcw', 'importRtcw', 'rtcwPath', 'rtcwImportStatus'], ['et', 'importEt', 'etPath', 'etImportStatus'], ['jk2', 'importJk2', 'jk2Path', 'jk2ImportStatus'], ['ja', 'importJa', 'jaPath', 'jaImportStatus'], ['azrael', 'importAzrael', 'azraelPath', 'azraelImportStatus'], ['nos', 'importNos', 'nosPath', 'nosImportStatus'], ['tas', 'importTas', 'tasPath', 'tasImportStatus'], ['tvg', 'importTvg', 'tvgPath', 'tvgImportStatus'], ['eye', 'importEye', 'eyePath', 'eyeImportStatus'], ['vtmb', 'importVtmb', 'vtmbPath', 'vtmbImportStatus'], ['doom3', 'importDoom3', 'doom3Path', 'doom3ImportStatus'], ['quake4', 'importQuake4', 'quake4Path', 'quake4ImportStatus']]) {
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();
       if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }
-      $(button).disabled = true; $(status).textContent = 'Importing models and textures…';
+      $(button).disabled = true; $(status).textContent = 'Importing models and texturesâ€¦';
       try {
         const response = await fetch(`/import_${gameId}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
         const result = await response.json();
@@ -900,7 +900,7 @@ window.addEventListener('DOMContentLoaded', () => {
   action('wireframe', 'change', 'Wireframe', () => materials.forEach(material => { material.wireframe = $('wireframe').checked; }));
   action('lighting', 'change', 'Lighting', () => loadModel(true));
   for (const id of ['turntable', 'navigationStyle', 'walkSpeed', 'moveStep']) action(id, 'change', 'Preview settings', updateNavigationHint);
-  $('texturePreview').addEventListener('load', () => { $('texturePreview').hidden = false; $('texturePreviewEmpty').hidden = true; $('textureDetails').textContent += ` · ${$('texturePreview').naturalWidth} × ${$('texturePreview').naturalHeight}`; });
+  $('texturePreview').addEventListener('load', () => { $('texturePreview').hidden = false; $('texturePreviewEmpty').hidden = true; $('textureDetails').textContent += ` Â· ${$('texturePreview').naturalWidth} Ã— ${$('texturePreview').naturalHeight}`; });
   $('texturePreview').addEventListener('error', () => { $('texturePreviewEmpty').textContent = 'Texture unavailable'; });
   for (const [axis, vector] of [['X', [1, 0, 0]], ['Y', [0, 1, 0]], ['Z', [0, 0, 1]]]) {
     for (const [suffix, direction] of [['90', 1], ['N90', -1]]) action(`rot${axis}${suffix}`, 'click', 'Rotate model', () => {
@@ -916,7 +916,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   action('resetAll', 'click', 'Reset all', async () => {
     if (!selectedName) return;
-    $('status').textContent = 'Restoring defaults…';
+    $('status').textContent = 'Restoring defaultsâ€¦';
     $('exportObjBtn').disabled = $('exportGlbBtn').disabled = true;
     stopWalking();
     try { localStorage.removeItem(orientationKey()); localStorage.removeItem(positionKey()); } catch (_) { /* Reset the live model even without storage. */ }
@@ -957,7 +957,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!meta?.width) return;
     if (kind === 'hue' && !Object.hasOwn(meta, 'hue')) {
       const serial = textureSerial, gameId = $('textureGame').value;
-      $('similarityStatus').textContent = 'Reading texture colors for this search…';
+      $('similarityStatus').textContent = 'Reading texture colors for this searchâ€¦';
       try {
         const entries = await json(`/texture_metadata?${query({}, gameId)}`);
         if (serial !== textureSerial) return;
@@ -989,7 +989,7 @@ window.addEventListener('DOMContentLoaded', () => {
   $('exportObjBtn').addEventListener('click', async () => {
     if (!group || loading || loadedParams === null) return;
     const name = selectedName, gameId = game, params = loadedParams;
-    $('exportObjBtn').disabled = true; $('exportStatus').textContent = 'Preparing ZIP…';
+    $('exportObjBtn').disabled = true; $('exportStatus').textContent = 'Preparing ZIPâ€¦';
     try {
       const response = await fetch(`/export_obj/${encodeURIComponent(name)}?${params}`);
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
@@ -1004,7 +1004,7 @@ window.addEventListener('DOMContentLoaded', () => {
   $('exportGlbBtn').addEventListener('click', async () => {
     if (!group || loading || loadedParams === null) return;
     const name = selectedName, gameId = game, params = loadedParams;
-    $('exportGlbBtn').disabled = true; $('exportStatus').textContent = 'Preparing GLB animation clips…';
+    $('exportGlbBtn').disabled = true; $('exportStatus').textContent = 'Preparing GLB animation clipsâ€¦';
     try {
       const response = await fetch(`/export_glb/${encodeURIComponent(name)}?${params}`);
       if (!response.ok) {
@@ -1015,7 +1015,7 @@ window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       const clips = Number(response.headers.get('X-Skinner-Animation-Clips') || 0);
       const unavailable = response.headers.get('X-Skinner-Animation-Status') === 'static-fallback';
-      $('exportStatus').textContent = `Downloaded ${gameId.toUpperCase()} ${name} GLB · ${unavailable ? 'static only: source animation could not be retained; details are embedded in the GLB' : clips ? `${clips} animation clips` : 'static model (no geometry animation)'}.`;
+      $('exportStatus').textContent = `Downloaded ${gameId.toUpperCase()} ${name} GLB Â· ${unavailable ? 'static only: source animation could not be retained; details are embedded in the GLB' : clips ? `${clips} animation clips` : 'static model (no geometry animation)'}.`;
     } catch (error) { $('exportStatus').textContent = `GLB export failed: ${error.message}`; }
     finally { $('exportGlbBtn').disabled = loading || !group; }
   });

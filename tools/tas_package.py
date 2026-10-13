@@ -369,6 +369,8 @@ class Package:
     def bulk(self, r, cache_path=None, element_size=1, load=True):
         flags, count, size, offset = r.unpack('4i')
         expected = count*element_size
+        if flags & 0x20 and count == 0 and size == -1 and offset == -1:
+            return None  # cooked-away mip: no payload, sentinel size/offset
         if min(count, size) < 0 or expected > MAX_DATA or size > MAX_DATA:
             raise ValueError('Invalid BulkData size')
         if flags & 0x20:
@@ -430,16 +432,27 @@ ASSET_CLASSES = {'StaticMesh', 'SkeletalMesh', 'SpeedTree', 'Texture2D', 'Materi
 
 class Library:
     """Deterministic object resolution. All candidate locations remain auditable."""
+    game_root = 'TribesGame'
+    cooked = 'CookedPC'
+    roots = ('Engine', 'TribesGame')
+    asset_classes = ASSET_CLASSES
+
+    def open_package(self, path):
+        return Package(path)
+
+    def section(self, p):
+        return 'Community' if p.licensee == 0 and p.version == 805 else 'Retail'
+
     def __init__(self, install):
         self.install = Path(install).resolve()
-        if not (self.install/'TribesGame'/'CookedPC').is_dir():
-            raise ValueError('Expected Tribes Ascend install containing TribesGame/CookedPC')
+        if not (self.install/self.game_root/self.cooked).is_dir():
+            raise ValueError(f'Expected install containing {self.game_root}/{self.cooked}')
         self.rows = defaultdict(list); self.inventory = []; self.failures = []
         self.packages = OrderedDict(); self.lzo_bytes = 0; self.lzo_seconds = 0
-        files = sorted((f for root in ('Engine', 'TribesGame') for f in (self.install/root).rglob('*')
+        files = sorted((f for root in self.roots for f in (self.install/root).rglob('*')
                         if f.suffix.lower() in ('.upk', '.udk', '.fmap', '.u')), key=lambda p: str(p).lower())
         self.cache_files = {}
-        for f in sorted((self.install/'TribesGame').rglob('*.tfc')):
+        for f in sorted((self.install/self.game_root).rglob('*.tfc')):
             if f.stem.lower() in self.cache_files:
                 raise ValueError('Ambiguous texture cache: '+f.name)
             self.cache_files[f.stem.lower()] = f
@@ -447,11 +460,11 @@ class Library:
             rel = f.relative_to(self.install).as_posix()
             try:
                 p = self.package(f)
-                section = 'Community' if p.licensee == 0 and p.version == 805 else 'Retail'
+                section = self.section(p)
                 self.inventory.append(dict(file=rel, version=p.version, licensee=p.licensee,
                                            compression=p.compression, chunks=len(p.chunks), section=section))
                 for ref, e in enumerate(p.exports, 1):
-                    if e['class'] not in ASSET_CLASSES and not e['class'].startswith('MaterialExpression'):
+                    if e['class'] not in self.asset_classes and not e['class'].startswith('MaterialExpression'):
                         continue
                     row = dict(source=e['source'], cls=e['class'], file=rel, ref=ref, size=e['size'],
                                section=section, flags=e['flags'])
@@ -471,7 +484,7 @@ class Library:
         if not path.is_absolute():
             path = self.install/path
         if path not in self.packages:
-            self.packages[path] = Package(path)
+            self.packages[path] = self.open_package(path)
             if len(self.packages) > 3:
                 _, old = self.packages.popitem(last=False)
                 self.lzo_bytes += old.lzo_bytes; self.lzo_seconds += old.lzo_seconds; old.close()
