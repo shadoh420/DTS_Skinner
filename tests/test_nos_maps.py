@@ -12,7 +12,7 @@ from tests.test_nos_models import Fixture as ModelFixture
 from tests.test_tas import pack
 from tools.import_nos import import_catalog
 from tools.import_nos_map import import_maps
-from tools.nos_map import MapLibrary, foliage
+from tools.nos_map import MapLibrary, foliage, helper_reason
 from tools.tas_package import Reader
 
 
@@ -29,6 +29,10 @@ def installed(root):
     f.write(cooked/'Engine.upk')
     f=Fixture();mat=f.materials();f.add('Prop','StaticMesh',f.static(mat));f.add('Body','SkeletalMesh',f.skeletal(mat))
     f.write(cooked/'Assets.upk')
+    f=Fixture();group=f.add('Materials','Package')
+    f.add('DOFBlock_MAT','Material',f.payload(f.prop('LightingModel','ByteProperty',f.name('MLM_Unlit'),'EMaterialLightingModel'),
+          pack('3i',1,0,0)+bytes(28)),outer=group)
+    f.write(cooked/'SP_Water.upk')
     f=Fixture();pawn=f.add('Pawn','Package');bots=f.add('Bot','Package',outer=pawn)
     bot=f.add('FastVampire_Bot','Pawn_Vampire_Bot_K',f.payload(f.obj('Mesh',len(f.exports)+2)),outer=bots)
     f.component('Mesh0','SkeletalMeshComponent',bot,f.obj('SkeletalMesh',f.external('Assets.Body','SkeletalMesh')))
@@ -47,6 +51,9 @@ def installed(root):
     f.add('BotSpawn','SeqAct_SpawnBot_K',f.payload(f.prop('BotType','NameProperty',f.name('FastVampire_Bot'))+links))
     f.add('UnknownSpawn','SeqAct_SpawnBot_K',f.payload(links))
     f.add('Stream','LevelStreamingAlwaysLoaded',f.payload(f.prop('PackageName','NameProperty',f.name('TutorialArt'))))
+    helper=f.actor('Helper','StaticMeshActor')
+    f.component('HelperMesh','StaticMeshComponent',helper,f.obj('StaticMesh',prop)+
+                f.refs('Materials',[f.external('SP_Water.Materials.DOFBlock_MAT','Material')]))
     f.finish(cooked/'TUT_Test01.upk')
     f=Fixture();prop=f.external('Assets.Prop','StaticMesh');a=f.actor('Scenery','StaticMeshActor')
     f.component('Mesh','StaticMeshComponent',a,f.obj('StaticMesh',prop));f.finish(cooked/'TutorialArt.upk')
@@ -72,6 +79,9 @@ class NosMapTests(unittest.TestCase):
             self.assertEqual(npc['matrix'][12:15],[0,0,2]);self.assertTrue(npc['spawn_preview'])
             self.assertEqual(npc['archetype'],'Archetypes.Pawn.Bot.FastVampire_Bot')
             self.assertTrue(any('without statically resolved BotType' in r['reason'] for r in scene['omitted']))
+            helpers=report['results'][0]['omitted_helpers']
+            self.assertEqual(len(helpers),1);self.assertIn('Depth-of-field',helpers[0]['reason'])
+            self.assertEqual(helpers[0]['materials'],['SP_Water.Materials.DOFBlock_MAT'])
             self.assertTrue(all(m['store']=='models' for m in scene['model_library'].values()))
             self.assertTrue(all(not d['npc'] for d in scene['decorations']))
             raw=gzip.decompress((root/'data/nos-maps/maps/tut_test01/decorations.bin.gz').read_bytes())
@@ -80,6 +90,20 @@ class NosMapTests(unittest.TestCase):
             index=json.loads((root/'data/nos-maps/index.json').read_text())
             self.assertEqual(next(e for e in index if e['id']=='mpfrontend')['status'],'skipped')
             self.assertEqual(next(e for e in index if e['id']=='tut_test01')['group'],'Tutorial')
+
+    def test_helper_usage_does_not_remove_ground_or_black_scenery(self):
+        from unittest.mock import Mock
+        mats=Mock();mats.definition.return_value=dict(root='FX_General.Mat.Black_MAT',settings={'LightingModel':'MLM_Unlit'})
+        model=dict(source='Mesh.Card',bounds=[[0,0,0],[10,0,10]],groups=[{'material_source':'FX_General.Mat.Black_MAT'}])
+        self.assertIn('occlusion card',helper_reason(model,mats))
+        model['bounds']=[[0,0,0],[10,10,10]]
+        self.assertIsNone(helper_reason(model,mats))
+        model['bounds']=[[0,0,0],[10,0,10]];model['groups'][0]['material_source']=None
+        self.assertIsNone(helper_reason(model,mats))
+        model['groups'][0]['material_source']='Art.Floor';mats.definition.return_value=dict(root='Art.Floor',settings={})
+        self.assertIsNone(helper_reason(model,mats))
+        model['source']='FX_BTEnvironmentEffects.SM.FogVolumeRNormals_SM';model['groups'][0]['material_source']=None
+        self.assertIn('Fog-volume shell',helper_reason(model,mats))
 
     def test_foliage_bounds_and_routes(self):
         import app

@@ -48,6 +48,13 @@ class Materials(UE3Materials):
         # Cooked native references have no input wiring. This last-resort role
         # inference is reported; never attach a guessed mask as alpha-test data.
         name = sample['texture'].rsplit('.',1)[-1].lower()
+        # Legacy art uses Dif_M/Dif_S, Nrm_M and Spec_S: the final letter
+        # describes the asset variant, not its channel. Explicit roles win.
+        tokens = set(name.split('_'))
+        if tokens & {'nrm','norm','normal','nor','nm'}: return 'Normal'
+        if tokens & {'spec','specular'}: return 'SpecularColor'
+        if tokens & {'em','emissive','glow'}: return 'EmissiveColor'
+        if tokens & {'dif','diff','diffuse','albedo','color','colour','clr'}: return 'DiffuseColor'
         if re.search(r'(_n|_nrm|_normal|_norm)(?:_\d+)?$',name): return 'Normal'
         if re.search(r'(_s|_spec|_specular)(?:_\d+)?$',name): return 'SpecularColor'
         if re.search(r'(_e|_em|_emissive)(?:_\d+)?$',name): return 'EmissiveColor'
@@ -83,5 +90,26 @@ class Materials(UE3Materials):
             result[channel]['samples'].append(sample)
             if sample['texture'] not in result[channel]['textures']:
                 result[channel]['textures'].append(sample['texture'])
-        return result, ('Cooked graph links stripped: preview from surviving texture parameters and compiled-resource '
-                        'references; input roles without parameters inferred from names; opacity wiring unavailable')
+        note = ('Cooked graph links stripped: preview from surviving texture parameters and compiled-resource '
+                'references; input roles without parameters inferred from names; opacity wiring unavailable')
+        if not any(result[k]['textures'] for k in ('DiffuseColor','EmissiveColor')):
+            # Last resort: an unambiguous colour texture in the original asset
+            # namespace, never an arbitrary neighbour in a cooked map package.
+            def stem(source):
+                return re.sub(r'[^a-z0-9]', '', re.sub(r'_(?:mat|mic|inst|d|dif|diff|diffuse|albedo|tex|t)$', '', source.rsplit('.',1)[-1].lower()))
+            wanted=stem(definition['source']);namespace=definition['source'].split('.')[0].lower()+'.'
+            candidates=[]
+            for (name,cls),rows in self.library.rows.items():
+                if cls!='Texture2D' or not name.startswith(namespace):continue
+                sample=dict(texture=rows[0]['source'],parameter='',uv_scale=None,dimension=2,expression=None)
+                if stem(sample['texture'])==wanted and self.channel(sample)=='DiffuseColor':candidates.append(sample)
+            if len(candidates)==1:
+                sample=candidates[0];result['DiffuseColor']['samples'].append(sample)
+                result['DiffuseColor']['textures'].append(sample['texture'])
+                note+='; unique same-namespace material/texture stem match'
+            else:
+                colors=[v for k,v in definition['parameters']['vectors'].items() if k in ('color','colour','basecolor','diffusecolor','add_color','tint')]
+                if len(colors)==1:
+                    result['DiffuseColor']['constant']=colors[0]
+                    note+='; surviving colour parameter used as constant preview'
+        return result, note

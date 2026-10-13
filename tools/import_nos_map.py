@@ -15,9 +15,12 @@ from tools.nos_materials import Materials
 def build_map(path,library,models,materials):
     scene,blobs=ue3.build_map(path,library,models,materials)
     scene.update(game='nos',name=map_name(path),format='nosgoth-862',foliage=sum(r['count'] for r in scene['decorations']))
+    scene['unresolved_materials']=sorted({g.get('material_source') or '<empty slot>' for m in scene['model_library'].values()
+                                        for g in m['groups'] if g.get('material_status')!='ready'})
     scene['gaps']=['Lighting and stripped cooked shaders are approximate; baked lightmap references retained',
                    'Tutorial NPCs preview linked spawn points, not simultaneous placements; unresolved bot types are listed and skipped',
-                   'Ambient crows, emitters and gameplay logic are omitted; translucent effects may use a faint tint']
+                   'Ambient crows, emitters and gameplay logic are omitted; translucent effects may use a faint tint',
+                   'Depth-of-field blockers and unsupported fog/occlusion helpers are omitted and listed; unresolved opaque materials draw neutral grey']
     # Release per-map JSON/variant caches; geometry stays content-addressed on disk.
     # This keeps the ten-map import bounded while another model job is running.
     models.cache.clear();models.variants.clear()

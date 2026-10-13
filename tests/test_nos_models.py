@@ -50,6 +50,32 @@ class Fixture(AscendFixture):
 
 
 class NosModelsTests(unittest.TestCase):
+    def test_stripped_legacy_roles_and_same_namespace_fallback(self):
+        from tools.nos_package import Library
+        from tools.nos_materials import Materials
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);f=Fixture()
+            normal=f.add('Lamp_Nrm_M','Texture2D',f.texture())
+            diffuse=f.add('Lamp_Dif_S','Texture2D',f.texture())
+            spec=f.add('Lamp_Spec_S','Texture2D',f.texture())
+            resource=pack('3i',1,0,0)+bytes(24)+pack('4i',3,normal,diffuse,spec)
+            f.add('Cooked','Material',f.payload(native=resource))
+            f.add('Table_D','Texture2D',f.texture())
+            f.add('Table_N','Texture2D',f.texture())
+            f.add('Table_MAT','Material',f.payload(native=pack('3i',1,0,0)+bytes(28)))
+            f.add('Unknown_MAT','Material',f.payload(native=pack('3i',1,0,0)+bytes(28)))
+            f.write(root/'install/BCMPGame/CookedPCConsole/Example.upk')
+            lib=Library(root/'install')
+            try:
+                mats=Materials(lib,root/'textures');row=mats.material('Example.Cooked')
+                self.assertEqual(row['diffuse_source'],'Example.Lamp_Dif_S')
+                self.assertEqual(row['recorded_maps']['Normal'][0]['source'],'Example.Lamp_Nrm_M')
+                self.assertEqual(row['recorded_maps']['SpecularColor'][0]['source'],'Example.Lamp_Spec_S')
+                self.assertEqual(mats.channel(dict(texture='Example.Lamp_Dif_M',parameter='')),'DiffuseColor')
+                self.assertEqual(mats.material('Example.Table_MAT')['diffuse_source'],'Example.Table_D')
+                self.assertEqual(mats.material('Example.Unknown_MAT')['status'],'unresolved')
+            finally:lib.close()
+
     def test_stripped_graph_parameter_override_and_native_references(self):
         from tools.nos_package import Library
         from tools.nos_materials import Materials

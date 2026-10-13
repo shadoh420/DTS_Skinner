@@ -25,6 +25,36 @@ def map_section(path):
     return 'Tutorial' if path.stem.startswith('TUT_') else 'Multiplayer'
 
 
+def helper_reason(model, materials):
+    """Recognized postprocess helpers, constrained by material and mesh usage.
+
+    Black scenery (caves/windows) and ordinary floors are deliberately retained.
+    Fog shells need scene depth/capture inputs that this preview cannot evaluate.
+    """
+    span=np.ptp(model['bounds'],axis=0)
+    flat=span.min()<=max(span.max(),1e-6)*.02
+    if model['source'].lower()=='fx_btenvironmenteffects.sm.fogvolumernormals_sm' and all(not g.get('material_source') for g in model['groups']):
+        return 'Fog-volume shell with no render material (native fog helper)'
+    reasons=[]
+    for group in model['groups']:
+        source=group.get('material_source')
+        if not source:return None
+        try:definition=materials.definition(source)
+        except (ValueError,OSError):return None
+        root=definition['root'].lower()
+        if definition['settings'].get('LightingModel')!='MLM_Unlit':return None
+        if root=='sp_water.materials.dofblock_mat' and flat:
+            reasons.append('Depth-of-field blocker on a flat helper mesh')
+        elif root=='fx_general.mat.black_mat' and flat:
+            reasons.append('Unlit Black_MAT occlusion card on a flat helper mesh')
+        elif root=='fx_btenvironmenteffects.materials.testfog_mat' and 'fogvolume' in model['source'].lower():
+            reasons.append('Additive TestFog volume requires the native depth shader')
+        elif root in ('ttm_skybox.materials.ttm_outercorrectionfog_mat','ttm_skybox.materials.ttm_outerfog_') and (flat or 'sphere' in model['source'].lower()):
+            reasons.append('Outer fog/correction shell requires the native depth shader')
+        else:return None
+    return '; '.join(dict.fromkeys(reasons)) or None
+
+
 def foliage(p, ref):
     """862 foliage map: mesh -> clusters, 64-byte placement records, settings."""
     _,r=object_properties(p,ref)
@@ -48,6 +78,7 @@ def foliage(p, ref):
 
 class MapLibrary(UE3MapLibrary,Library):
     map_suffixes=('.upk',)
+    omit_model=staticmethod(helper_reason)
 
     @staticmethod
     def sky_mesh(source,materials):

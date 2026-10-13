@@ -147,7 +147,8 @@ class Models:
             if slot<len(materials) and material:materials[slot]=self.materials.material(material)
         for material in materials:self.used_materials[(material.get('source') or '').lower()]=material
         ident=key(cls+':'+source+':'+json.dumps([m['source'] for m in materials]))
-        groups=[dict(g,texture=materials[g['materialIndex']]['texture'],settings=materials[g['materialIndex']]['settings'],kind='model') for g in data['groups']]
+        groups=[dict(g,texture=materials[g['materialIndex']]['texture'],settings=materials[g['materialIndex']]['settings'],kind='model',
+                     material_source=materials[g['materialIndex']]['source'],material_status=materials[g['materialIndex']]['status']) for g in data['groups']]
         sky=getattr(self.library,'sky_mesh',sky_mesh)(source,materials)
         if sky:
             for group in groups:group['kind']='sky'
@@ -248,7 +249,13 @@ def build_map(path,library,models,materials):
     model_library={};instances=[];decoration_rows=[];views=[];zones=[];sun=None;trees=0
     def instance(source,cls,matrix,record,overrides=(),decoration=False):
         nonlocal trees
-        look,model=models.get(source,cls,overrides);model_library[look]=model
+        look,model=models.get(source,cls,overrides)
+        reason=library.omit_model(model,materials) if hasattr(library,'omit_model') else None
+        if reason:
+            omitted.append(dict(record,source=source,category='render_helper',reason=reason,
+                                materials=[g['material_source'] for g in model['groups']]))
+            return
+        model_library[look]=model
         row=dict(record,look=look,matrix=matrix)
         if cls=='SpeedTree':
             trees+=1;decoration=True;row.update(standin=True,label='SpeedTree stand-in: '+source)
@@ -405,7 +412,9 @@ def import_maps(install,output=LOCAL_DATA,replace=False,map_names=None,model_roo
                 report['results'].append(dict(name=path.stem,actors=scene['actors'],instances=len(scene['instances']),speedtrees=scene['speedtrees'],
                     decorations=sum(d['count'] for d in scene['decorations'])-scene['speedtrees'],missing=len(scene['model_failures']),npcs=scene['npcs'],
                     terrain=[dict(width=t['width'],height=t['height'],layers=len(t['layers']),bytes=t['bytes']+t['visibility_bytes']+t['edge_bytes']) for t in scene['terrain']],
-                    sizes={f.name:f.stat().st_size for f in folder.iterdir() if f.is_file()},streamed_packages=scene['streamed_packages']))
+                    sizes={f.name:f.stat().st_size for f in folder.iterdir() if f.is_file()},streamed_packages=scene['streamed_packages'],
+                    omitted_helpers=[r for r in scene['omitted'] if r.get('category')=='render_helper'],
+                    unresolved_materials=scene.get('unresolved_materials',[])))
             except (ValueError,OSError,KeyError,IndexError) as exc:report['failed'][path.stem]=str(exc);entry.update(status='failed',reason=str(exc))
             index.append(entry);models.save()
         if (root/'index.json').is_file():
