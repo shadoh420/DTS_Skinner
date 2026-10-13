@@ -14,6 +14,7 @@ import io
 import json
 import shutil
 import pathlib
+import re
 import threading
 import os
 import sys
@@ -52,6 +53,7 @@ from tools.import_jk2 import import_catalog as import_jk2_catalog
 from tools.import_ja import import_catalog as import_ja_catalog
 from tools.import_vtmb import import_catalog as import_vtmb_catalog
 from tools.import_eye import import_catalog as import_eye_catalog
+from tools.import_eye_map import import_maps as import_eye_maps
 from tools.import_doom3 import import_catalog as import_doom3_catalog
 from tools import quake4_policy
 from tools.import_azrael import import_catalog as import_azrael_catalog
@@ -615,6 +617,48 @@ def import_doom3_maps_route():
             from tools import quake4_policy
             return jsonify(import_maps(payload['path'].strip(), local_data_dir, replace=payload.get('replace') is True,policy=quake4_policy))
         return jsonify(import_maps(payload['path'].strip(), local_data_dir, replace=payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+@app.route('/maps/eye/')
+def eye_maps_viewer():
+    response = send_from_directory(static_dir / 'eye-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/eye-map-data/<path:filename>')
+def eye_map_data(filename):
+    if filename.startswith('textures/'):
+        name = filename.removeprefix('textures/')
+        return send_from_directory(game_textures('eye'), name,
+                                   mimetype='image/vnd-ms.dds' if name.lower().endswith('.dds') else None)
+    if filename.startswith('models/'):
+        name = filename.removeprefix('models/')
+        if not re.fullmatch(r'[a-f0-9]{64}\.bin', name):
+            abort(404)
+        manifest = local_data_dir / 'eye-maps' / 'model-library.json'
+        root = pathlib.Path(json.loads(manifest.read_text(encoding='utf-8'))['root']) if manifest.is_file() else pack_dirs['eye']
+        return send_from_directory(root / 'model_json', name)
+    return send_from_directory(local_data_dir / 'eye-maps', filename)
+
+
+@app.route('/import_eye_maps', methods=['POST'])
+def import_eye_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your E.Y.E. folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        return jsonify(import_eye_maps(payload['path'].strip(), local_data_dir / 'eye-maps', payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
