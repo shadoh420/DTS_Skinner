@@ -232,7 +232,7 @@ def image_size(fmt, width, height):
     if fmt in (13, 14, 15, 20):
         return max(1, (width + 3) // 4) * max(1, (height + 3) // 4) * (8 if fmt in (13, 20) else 16)
     sizes = {0: 4, 1: 4, 2: 3, 3: 3, 4: 2, 5: 1, 6: 2, 8: 1, 9: 3, 10: 3,
-             11: 4, 12: 4, 16: 4, 17: 2, 18: 2, 19: 2, 21: 2, 22: 4, 24: 8, 25: 8}
+             11: 4, 12: 4, 16: 4, 17: 2, 18: 2, 19: 2, 21: 2, 22: 2, 24: 8, 25: 8}
     if fmt not in sizes:
         raise ValueError(f'Unsupported VTF image format {fmt}')
     return width * height * sizes[fmt]
@@ -294,6 +294,21 @@ def read_vtf(data, compressed=False):
         image = Image.frombytes(mode, (w, h), pixels, 'raw', rawmode).convert('RGBA')
         if fmt == 8:
             alpha = image.getchannel('R'); image = Image.new('RGBA', (w, h), 'white'); image.putalpha(alpha)
+    elif fmt == 22:
+        # UV88 stores two signed bump/displacement components, not RGBA bytes.
+        uv = np.frombuffer(pixels, dtype='i1').reshape(h, w, 2).astype(np.int16)
+        rgba = np.full((h, w, 4), 255, dtype=np.uint8)
+        rgba[:, :, :2] = uv + 128
+        rgba[:, :, 2] = 128
+        image = Image.fromarray(rgba)
+        info['approximation'] = 'UV88 signed components visualized as RG, neutral B; not diffuse color'
+    elif fmt == 24:
+        rgba = np.frombuffer(pixels, dtype='<f2').reshape(h, w, 4).astype(float)
+        if not np.isfinite(rgba).all():
+            raise ValueError('Nonfinite VTF RGBA16F texel')
+        rgba[:, :, :3] = np.power(np.clip(rgba[:, :, :3], 0, 1), 1/2.2)
+        image = Image.fromarray(np.rint(np.clip(rgba, 0, 1)*255).astype(np.uint8))
+        info['approximation'] = 'RGBA16F preview: exposure 1, clamp to LDR, gamma 2.2; first cubemap face only'
     elif fmt in (4, 17, 18, 19):
         colors = []
         for v, in struct.iter_unpack('<H', pixels):
