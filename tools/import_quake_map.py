@@ -438,7 +438,7 @@ def geometry(bsp, placed, light=True):
         tex = face['texture']
         png = hashlib.sha256(struct.pack('<II', tex['width'], tex['height']) + tex['pixels']).hexdigest()[:24] + '.png'
         images[png] = tex
-        group = groups.setdefault((png, face['kind']), dict(texture=png, kind=face['kind'], size=[tex['width'], tex['height']], flags=0, indices=[]))
+        group = groups.setdefault((png, face['kind']), dict(texture=png, name=tex['name'], kind=face['kind'], size=[tex['width'], tex['height']], flags=0, indices=[]))
         base = len(positions)
         positions.extend(face['placed_points'])
         uvs.extend(face['st'] / [tex['width'], tex['height']])

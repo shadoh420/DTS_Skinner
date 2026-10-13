@@ -331,6 +331,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       return element;
     }));
     $('map').value = item.key;
+    // Download the shown map as OBJ/MTL with textures (app.py export_map_obj).
+    const exportLink = $('exportObj') || $('map').insertAdjacentElement('afterend', Object.assign(document.createElement('a'), {id: 'exportObj', textContent: 'Export OBJ', title: 'Download this map as OBJ/MTL with textures (ZIP)'}));
+    exportLink.href = `/export_map_obj/${document.body.dataset.game}/${item.game}/${item.id}`;
+    exportLink.setAttribute('download', '');
     data = dataRoot(item.game);
     // Offer the import of the game whose maps are not there yet.
     const absent = GAMES.find(([id]) => !maps.some(found => found.game === id));

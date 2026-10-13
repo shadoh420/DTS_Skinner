@@ -9,7 +9,7 @@ Browse, reskin and export models from Tribes, Quake, Unreal, Wolfenstein and a d
 ## What it does
 
 - **Models:** pick a game, import it from your own install, and swap any material's texture for one from any game's library. Export as GLB (with animations where the game has them) or OBJ.
-- **Maps:** free-flight previews of each game's levels with their lightmaps, skies, placed props and pickups. Each page's **Preview notes** say what is not drawn.
+- **Maps:** free-flight previews of each game's levels with their lightmaps, skies, placed props and pickups. Each page's **Preview notes** say what is not drawn. The Quake, Quake 2, SiN, Daikatana, Anachronox, Unreal, Deus Ex, Azrael's Tear, E.Y.E. and Bloodlines pages export the shown map as OBJ.
 - **Reflex editing:** walk Reflex Arena maps with Quake-style movement and edit their brushes with the game's editor keys, then save the `.map`.
 - **Texture workshop:** a large gallery with your own tags, size and hue search, and rotate/flip copies.
 - **Your own families and notes:** sort models into families per game, and keep a note on any model or map (`local-data/notes.json`, readable by scripts and agents). Tribes 1's catalog comes sorted the way the game's files group it (Armors, Weapons, InteriorShapes and so on).
