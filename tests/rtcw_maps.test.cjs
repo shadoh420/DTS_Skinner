@@ -67,6 +67,7 @@ async function viewer(profile, options = {}) {
   vm.createContext(context);
   if (profile) vm.runInContext(fs.readFileSync(require.resolve('../static/rtcw-maps/viewer.js'),'utf8'),context);
   if (profile === 'et') vm.runInContext(fs.readFileSync(require.resolve('../static/et-maps/viewer.js'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(require.resolve('../static/q3-maps/visibility.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(require.resolve('../static/q3-maps/viewer.js'),'utf8'),context);
   await start();
   assert.equal(element('status').textContent,'Map ready · speed 400');
