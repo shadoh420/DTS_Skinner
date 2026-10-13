@@ -94,8 +94,9 @@ def lzo1x(data, expected):
 
 
 class Reader:
-    def __init__(self, data, names=(), at=0):
+    def __init__(self, data, names=(), at=0, resolve=None):
         self.data, self.names, self.at = data, names, at
+        self.resolve = resolve
 
     def take(self, size):
         if size < 0 or self.at+size > len(self.data):
@@ -155,9 +156,11 @@ class Reader:
                 raise ValueError('Invalid property tag')
             extra = self.name() if kind in ('StructProperty', 'ByteProperty') else None
             boolean = self.unpack('B')[0] if kind == 'BoolProperty' else None
-            raw = self.take(size); r = Reader(raw, self.names)
+            raw = self.take(size); r = Reader(raw, self.names, resolve=self.resolve)
             if kind in ('ObjectProperty', 'ComponentProperty', 'IntProperty'):
                 value = r.i32()
+                if kind != 'IntProperty' and self.resolve:
+                    value = self.resolve(value)
             elif kind == 'FloatProperty':
                 value = r.unpack('f')[0]
             elif kind == 'BoolProperty':
@@ -170,7 +173,7 @@ class Reader:
                 value = r.text()
             elif kind == 'StructProperty':
                 fmt = {'Vector':'3f', 'Vector2D':'2f', 'Rotator':'3i', 'LinearColor':'4f',
-                       'Color':'4B', 'Guid':'4I', 'Quat':'4f'}.get(extra)
+                       'Color':'4B', 'Guid':'4I', 'Quat':'4f', 'Matrix':'16f', 'Plane':'4f', 'Box':'6fB'}.get(extra)
                 value = r.unpack(fmt) if fmt else r.properties(depth+1)
             else:
                 value = raw; r.at = len(raw)

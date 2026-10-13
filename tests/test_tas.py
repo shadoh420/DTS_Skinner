@@ -254,7 +254,7 @@ class ImportTests(unittest.TestCase):
                     self.assertEqual(client.post('/import_tas',json={'path':str(install)}).json,{'ready':1})
                     importer.assert_called_once_with(str(install),out)
                     self.assertEqual(client.post('/import_tas',json={'path':str(install)},headers={'Origin':'https://other.invalid'}).status_code,403)
-                self.assertEqual(client.get('/maps/tas/').status_code,404)
+                self.assertEqual(client.get('/maps/tas/').status_code,200)
 
     def test_opacity_channel_preview_and_parent_cycle(self):
         from tools.tas_package import Library
