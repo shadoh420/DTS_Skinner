@@ -116,10 +116,32 @@ class Materials:
             return p.qualified(value['Expression'])
         return None
 
+    @staticmethod
+    def base_texture(graph):
+        """Rank graph samples; object names are only the last tie breaker."""
+        candidates=graph['samples']
+        def role(name,parameter=False):
+            name=name.lower()
+            # Tex_Mask can supply RGB albedo and an alpha mask: the parameter name
+            # alone must not demote its colour output (Katabatic's rock master).
+            negative=('detail','overlay','noise') if parameter else ('detail','overlay','noise','mask','normal')
+            if any(s in name for s in negative):return -1
+            return int(any(s in name for s in ('diff','dif','base','albedo','color','colour','sky')))
+        remaining=list(candidates)
+        for reason,score in [
+            ('2D colour sample',lambda c:-c.get('dimension',2)),
+            ('colour input',lambda c:-c.get('control',0)),
+            ('texture parameter',lambda c:role(c['parameter'],True)),
+            ('coordinate scale',lambda c:-max(c['uv_scale']) if c['uv_scale'] is not None else -1),
+            ('texture name tie breaker',lambda c:role(c['texture'].rsplit('.',1)[-1]))]:
+            best=max(map(score,remaining));remaining=[c for c in remaining if score(c)==best]
+            if len({c['texture'] for c in remaining})==1:return remaining[0]['texture'],reason
+        return remaining[0]['texture'],'first input fallback'
+
     def expression(self, source, parameters, trail=(), memo=None):
         """Collect only textures reachable from this material input, in graph order."""
         if not source:
-            return dict(textures=[], operations=[], constant=None, masks=[])
+            return dict(textures=[], samples=[], operations=[], constant=None, masks=[], uv_scale=None)
         if source.lower() in trail or len(trail) > 64:
             raise ValueError('Material expression cycle: '+source)
         if memo is None:
@@ -128,30 +150,63 @@ class Materials:
             return memo[source.lower()]
         p, ref = self.library.object(source)
         cls = p.entry(ref)['class']; props, _ = p.properties(ref)
+        empty=dict(textures=[], samples=[], operations=[cls], constant=None, masks=[], uv_scale=None)
         if cls.startswith('MaterialExpressionTextureSample') or cls == 'MaterialExpressionTextureObjectParameter':
             name = str(props.get('ParameterName','')).lower()
             texture = parameters['textures'].get(name) or p.qualified(props.get('Texture',0))
             if not texture:
                 raise ValueError('Texture expression without a texture: '+source)
-            return dict(textures=[texture], operations=[cls], constant=None, masks=[])
+            coords=self.input_source(p,props.get('Coordinates'))
+            uv=self.expression(coords,parameters,trail+(source.lower(),),memo)['uv_scale'] if coords else [1.,1.]
+            return dict(empty,textures=[texture],samples=[dict(texture=texture,parameter=name,uv_scale=uv,expression=source,dimension=3 if cls.endswith('Cube') else 2)])
+        if cls=='MaterialExpressionTextureCoordinate':
+            return dict(empty,uv_scale=[abs(props.get('UTiling',1)),abs(props.get('VTiling',1))])
+        if cls=='MaterialExpressionConstant2Vector':
+            return dict(empty,constant=[props.get('R',0),props.get('G',0)])
         if cls in ('MaterialExpressionConstant','MaterialExpressionScalarParameter',
                    'MaterialExpressionConstant3Vector','MaterialExpressionConstant4Vector','MaterialExpressionVectorParameter'):
             name = str(props.get('ParameterName','')).lower()
             value = parameters['vectors'].get(name, parameters['scalars'].get(name,
                     props.get('DefaultValue',props.get('Constant',props.get('R',0)))))
-            return dict(textures=[], operations=[cls], constant=value, masks=[])
+            return dict(empty,constant=value)
         inputs = [(k, self.input_source(p, v)) for k,v in props.items() if isinstance(v,dict) and v.get('Expression')]
         if cls == 'MaterialExpressionStaticSwitchParameter':
             # Static permutation binary overrides are not inferred from a name.
             chosen = 'A' if props.get('DefaultValue',False) else 'B'
             inputs = [(k,v) for k,v in inputs if k == chosen]
-        result = dict(textures=[], operations=[cls], constant=None, masks=[])
+        result = empty;children={}
         if cls == 'MaterialExpressionComponentMask':
             result['masks'].append([c for c in ('R','G','B','A') if props.get(c)])
-        for _, child in inputs:
+        for field, child in inputs:
             item = self.expression(child, parameters, trail+(source.lower(),), memo)
+            children[field]=item
             result['textures'].extend(item['textures']); result['operations'].extend(item['operations'])
             result['masks'].extend(item['masks'])
+            result['samples'].extend(dict(c,control=c.get('control',0)+int(field in ('Alpha','Percent','Exponent'))) for c in item['samples'])
+        # Only evaluate simple coordinate scaling, not arbitrary shader arithmetic.
+        uv=next((v['uv_scale'] for v in children.values() if v['uv_scale'] is not None),None)
+        if cls in ('MaterialExpressionPanner','MaterialExpressionRotator'):
+            result['uv_scale']=uv or [1.,1.]
+        elif cls=='MaterialExpressionComponentMask' and children:
+            child=next(iter(children.values()));result['uv_scale']=uv;result['constant']=child['constant']
+            if isinstance(result['constant'],(tuple,list)):
+                result['constant']=[v for c,v in zip(('R','G','B','A'),result['constant']) if props.get(c)]
+        elif cls in ('MaterialExpressionMultiply','MaterialExpressionDivide','MaterialExpressionAdd','MaterialExpressionSubtract'):
+            a=children.get('A',{}).get('constant',props.get('ConstA'))
+            b=children.get('B',{}).get('constant',props.get('ConstB'))
+            if uv is not None:
+                factor=b if children.get('A',{}).get('uv_scale') is not None else a
+                if cls.endswith(('Add','Subtract')):result['uv_scale']=uv
+                elif factor is not None:
+                    factor=np.resize(np.asarray(factor,dtype=float),2)
+                    if cls.endswith('Multiply'):result['uv_scale']=(np.abs(factor)*uv).tolist()
+                    elif children.get('A',{}).get('uv_scale') is not None and np.all(factor):result['uv_scale']=(np.asarray(uv)/np.abs(factor)).tolist()
+            if a is not None and b is not None:
+                try:
+                    op={'MaterialExpressionMultiply':np.multiply,'MaterialExpressionDivide':np.divide,'MaterialExpressionAdd':np.add,'MaterialExpressionSubtract':np.subtract}[cls]
+                    with np.errstate(all='ignore'):value=op(a,b)
+                    if np.isfinite(value).all():result['constant']=value.tolist()
+                except ValueError:pass
         result['textures'] = list(dict.fromkeys(result['textures']))
         result['operations'] = list(dict.fromkeys(result['operations']))
         memo[source.lower()] = result
@@ -189,20 +244,22 @@ class Materials:
             elif mode == 'BLEND_Modulate':
                 settings.update(blend=['gl_dst_color','gl_zero'], depthWrite=False)
             diffuse = inputs['DiffuseColor']
-            if not diffuse['textures'] and definition['inputs']['DiffuseColor'] is None and inputs['EmissiveColor']['textures']:
+            emissive=inputs['EmissiveColor']
+            if (native.get('LightingModel')=='MLM_Unlit' or definition['inputs']['DiffuseColor'] is None) and (emissive['textures'] or emissive['constant'] is not None):
                 diffuse = inputs['EmissiveColor']; settings['unlit'] = True
-                row['notes'].append('Material without diffuse: emissive input used for preview')
+                row['notes'].append('Unlit material or absent diffuse: emissive input used for preview')
             referenced = {s for value in inputs.values() for s in value['textures']}
             tex = {s:self.texture(s) for s in sorted(referenced)}
             row['recorded_maps'] = {k:[dict(source=s, texture=tex[s]['texture'], status=tex[s]['status'])
                                        for s in inputs[k]['textures']] for k in ('Normal','SpecularColor','EmissiveColor')}
             if diffuse['textures']:
-                selected = diffuse['textures'][0]
+                selected,reason=self.base_texture(diffuse)
+                row['diffuse_selection']=dict(method=reason,source=selected,candidates=diffuse['samples'])
                 row.update(texture=tex[selected]['texture'], status=tex[selected]['status'], diffuse_source=selected)
                 if tex[selected]['status'] != 'ready':
                     row['reason'] = tex[selected]['reason']
                 if len(diffuse['textures']) > 1:
-                    row['notes'].append('Multiple diffuse graph textures: first input preview; reachable textures/operators recorded')
+                    row['notes'].append('Multiple diffuse graph textures: '+reason+'; reachable textures/operators recorded')
             elif diffuse['constant'] is not None:
                 value = diffuse['constant']
                 value = list(value) if isinstance(value,(tuple,list)) else [value]*3
@@ -214,7 +271,7 @@ class Materials:
                 raise ValueError('No supported texture/constant connected to diffuse or emissive input')
             opacity = inputs['OpacityMask'] if mode == 'BLEND_Masked' else inputs['Opacity']
             if opacity['textures'] and row['status'] == 'ready':
-                same = opacity['textures'] == diffuse['textures'][:1]
+                same = opacity['textures'] == [row.get('diffuse_source')]
                 row['opacity'] = opacity
                 masks = opacity['masks']
                 if not (same and masks == [['A']]):
@@ -229,7 +286,7 @@ class Materials:
                         preview.putalpha(alpha)
                         stream = io.BytesIO(); preview.save(stream,format='PNG'); payload = stream.getvalue()
                         row['original_diffuse_texture'] = row['texture']
-                        row['texture'] = texture_filename((diffuse['textures'] or ['constant'])[0]+'_masked', hashlib.sha256(payload).hexdigest(), '.png')
+                        row['texture'] = texture_filename(row.get('diffuse_source','constant')+'_masked', hashlib.sha256(payload).hexdigest(), '.png')
                         write_texture(self.directory,row['texture'],payload)
                         row['notes'].append('Opacity-channel preview PNG; original compressed textures retained')
                     else:

@@ -5,13 +5,22 @@ global.THREE=require('../static/three.min.js');
 require('../static/tas-maps/adapter.js');
 const {decorationToggles}=require('../static/tvg-maps/materials.js');
 const adapter=global.skinnerMapViewerConfig;
-global.skinnerTasMaps={scene:new THREE.Scene(),renderer:{setClearColor(){}}};
+global.skinnerTasMaps={scene:new THREE.Scene(),renderer:{setClearColor(){}},camera:new THREE.PerspectiveCamera(60,1,.05,5000)};
 
 async function run(){
   assert.equal(adapter.dataRoot,'/tas-map-data/');
   assert.equal(adapter.storageKey,'skinner.tasmaps');
-  await adapter.load({zones:[{kind:'HeightFogComponent',density:.001,color:[32,64,128,255],start:100}]});
+  await adapter.load({preview_extent:2850,zones:[{kind:'ExponentialHeightFogComponent',density:.03,color:[32,64,128,255],start:3000,height_falloff:.3}]});
   assert.ok(global.skinnerTasMaps.scene.fog.far>global.skinnerTasMaps.scene.fog.near);
+  assert.ok(global.skinnerTasMaps.scene.fog.far>=2850*5);
+  assert.ok(global.skinnerTasMaps.scene.fog.near>=2850*.35);
+  for(const brightness of [0,.5,2.1,4,8]) {
+    const levels=adapter.lightLevels({sun:{brightness}});assert.ok(levels.ambient+levels.sun<=1);
+  }
+  const sky=adapter.skyMaterial({},new THREE.Texture());
+  assert.equal(sky.fog,false);assert.equal(sky.depthWrite,false);assert.equal(sky.depthTest,false);assert.equal(sky.transparent,false);
+  const shader={vertexShader:'#include <project_vertex>'};sky.onBeforeCompile(shader);
+  assert.ok(shader.vertexShader.includes('gl_Position.z=gl_Position.w*.999999'));
   const layer={texture:'diffuse.dds',alpha:'weight.png',matrix:new THREE.Matrix4().toArray().reduce((a,v,i)=>{if(i%4===0)a.push([]);a.at(-1).push(v);return a;},[])};
   const material=await adapter.terrainMaterial({layers:Array(5).fill(layer),textures:{}},async()=>new THREE.Texture());
   assert.ok(material.fragmentShader.includes('texture2D(layer4'));
@@ -20,13 +29,15 @@ async function run(){
 
   const desc={file:'a'.repeat(64)+'.bin',arrays:{vertices:{offset:0,count:9,dtype:'<f4'},normals:{offset:36,count:9,dtype:'<f4'},uvs:{offset:72,count:6,dtype:'<f4'},indices:{offset:96,count:3,dtype:'<u4'}}};
   const buffer=new ArrayBuffer(108);new Float32Array(buffer).set([0,0,0,1,0,0,0,1,0]);new Uint32Array(buffer,96).set([0,1,2]);
-  const model={store:'map-models',geometry:desc,groups:[{start:0,count:3,materialIndex:0,texture:'diffuse.dds',settings:{}}]};
+  const model={store:'map-models',geometry:desc,sky:true,groups:[{start:0,count:3,materialIndex:0,texture:'diffuse.dds',kind:'sky',settings:{}}]};
   const map={id:'test',model_library:{one:model},instances:[{look:'one',matrix:new THREE.Matrix4().toArray(),entity:'turret',npc:true}],terrain:[],decorations:[],sun:{direction:[0,1,0],color:[1,.5,.2],brightness:2}};
   const requests=[];
   const objects=await adapter.buildInstances(map,'/tas-map-data/',async url=>{requests.push(url);return new Response(url.endsWith('lighting.bin')?new ArrayBuffer(0):buffer);},async()=>new THREE.Texture());
   assert.ok(requests.includes('/tas-map-data/map-models/'+desc.file));
   assert.equal(objects[0].userData.npc,true);
-  assert.equal(objects.at(-1).intensity,2);
+  assert.equal(objects.at(-1).intensity,.4);
+  assert.ok(objects[0].renderOrder<0);assert.equal(objects[0].frustumCulled,false);
+  assert.equal(objects[0].material[0].fog,false);
 
   const element=()=>({children:[],events:{},append(...items){this.children.push(...items);},replaceChildren(){this.children=[];},addEventListener(name,fn){this.events[name]=fn;}});
   const panel=element(),list=element(),saved=new Map();panel.hidden=true;

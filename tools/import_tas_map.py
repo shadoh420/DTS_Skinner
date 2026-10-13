@@ -22,7 +22,7 @@ from tools.local_data import LOCAL_DATA
 from tools.model_data import write_model_data
 from tools.tas_materials import Materials
 from tools.tas_mesh import mesh
-from tools.tas_map import MapLibrary,object_properties,level,transform,terrain_native,bsp,is_npc,viewer,viewpoint
+from tools.tas_map import MapLibrary,object_properties,level,transform,terrain_native,bsp,is_npc,viewer,viewpoint,speedtree_bounds
 from tools.tvg_package import geometry,rotation_matrix
 from tools.texture_storage import game_texture_dir,write_texture
 from tools.texture_workshop import write_json_atomic
@@ -57,19 +57,35 @@ def streamed_packages(path,library):
     return result,missing
 
 
-def tree_standin():
-    """Labelled generic trunk/crown, never presented as reconstructed SpeedTree."""
+def tree_standin(bounds):
+    """Thin trunk and ellipsoid crown in asset-local units; placement scales once."""
+    low,high=np.asarray(bounds,dtype=float);span=high-low;center=(low+high)/2
+    if not np.isfinite([low,high]).all() or np.any(span<=0):raise ValueError('Invalid stand-in bounds')
     points=[];indices=[];groups=[]
-    for radius,bottom,top,cap in [(25,0,500,25),(210,250,850,0)]:
-        first=len(points)
-        for z,rad in [(bottom,radius),(top,cap)]:
-            points.extend((rad*np.cos(i*np.pi/4),rad*np.sin(i*np.pi/4),z) for i in range(8))
-        start=len(indices)
-        for i in range(8):
-            a=first+i;b=first+(i+1)%8;c=a+8;d=b+8
-            indices.extend((a,c,b,b,c,d))
-        groups.append(dict(start=start,count=len(indices)-start,materialIndex=len(groups)))
+    radius=min(span[:2])*.025
+    for z in [low[2],low[2]+span[2]*.7]:
+        points.extend((center[0]+radius*np.cos(i*np.pi/6),center[1]+radius*np.sin(i*np.pi/6),z) for i in range(12))
+    for i in range(12):
+        a=i;b=(i+1)%12;indices.extend((a,a+12,b,b,a+12,b+12))
+    groups.append(dict(start=0,count=len(indices),materialIndex=0))
+    start=len(indices);first=len(points)
+    for ring in range(9):
+        angle=np.pi*ring/8
+        for i in range(12):
+            turn=i*np.pi/6
+            points.append((center[0]+span[0]*.5*np.sin(angle)*np.cos(turn),center[1]+span[1]*.5*np.sin(angle)*np.sin(turn),low[2]+span[2]*(.65+.35*np.cos(angle))))
+    for ring in range(8):
+        for i in range(12):
+            a=first+ring*12+i;b=first+ring*12+(i+1)%12;c=a+12;d=b+12
+            indices.extend((a,b,c,b,d,c))
+    groups.append(dict(start=start,count=len(indices)-start,materialIndex=1))
     return geometry(points,np.zeros((len(points),2)),indices,groups,['standin.trunk','standin.crown'])
+
+
+def sky_mesh(source,materials):
+    # SkyBoxLevel/Depot are lit architectural backdrops, not sky surfaces.
+    return bool(re.search(r'sky(?:dome|sphere|_?hemi)|skybox(?:[_\d]*)$',source,re.I)) or any(
+        re.search(r'sky(?:dome|sphere|box)',m.get('source') or '',re.I) for m in materials)
 
 
 class Models:
@@ -92,17 +108,21 @@ class Models:
             if entry.get('status')=='ready':
                 data=json.loads((self.root/entry['model_json']).read_text(encoding='utf-8'))
                 data['_store']='models'
-            elif extra.get('status')=='ready':
+            elif extra.get('status')=='ready' and cls!='SpeedTree':
                 data=json.loads((self.output/extra['model_json']).read_text(encoding='utf-8'));data['_store']='map-models'
             else:
                 ident='map_'+key(cls+':'+source)
                 if cls=='SpeedTree':
-                    data=tree_standin();data.pop('material_refs')
+                    try:
+                        p,ref=self.library.object(source,{cls});bounds=speedtree_bounds(p,ref);bounds_source='serialized asset-local FBoxSphereBounds'
+                    except (ValueError,OSError) as exc:
+                        bounds=[[-8,-8,0],[8,8,25]];bounds_source='Generic local bounds: '+str(exc)
+                    data=tree_standin(bounds);data.pop('material_refs')
                     materials=[]
                     for label,color in [('trunk',(94,66,42)),('crown',(60,105,58))]:
                         filename='tas_tree_standin_'+label+'.png';write_texture(self.materials.directory,filename,Image.new('RGB',(1,1),color))
-                        materials.append(dict(source='standin.'+label,texture=filename,settings={},status='ready'))
-                    data['metadata'].update(approximate=True,reason='SpeedTree procedural blob not reconstructed; generic trunk/crown dimensions')
+                        materials.append(dict(source='standin.'+label,texture=filename,settings={'unlit':True},status='ready'))
+                    data['metadata'].update(approximate=True,local_bounds=bounds,bounds_source=bounds_source,reason='SpeedTree geometry approximated by trunk/ellipsoid within local bounds')
                 else:
                     reason=exclusion(dict(source=source,cls=cls))
                     if reason:raise ValueError(reason)
@@ -113,14 +133,26 @@ class Models:
                 file=self.output/'model_json'/(ident+'.json');write_model_data(file,data)
                 data=json.loads(file.read_text(encoding='utf-8'));data['_store']='map-models'
                 self.extra.setdefault(object_key,dict(source=source,by_class={}))['by_class'][cls]=dict(status='ready',looks=[ident],geometry=data['geometry_buffers'],model_json='model_json/'+ident+'.json')
+            store=self.root if data['_store']=='models' else self.output
+            desc=data['geometry_buffers'];vertices=desc['arrays']['vertices']
+            with (store/'model_json'/desc['file']).open('rb') as stream:
+                stream.seek(vertices['offset']);raw=stream.read(vertices['count']*4)
+            if len(raw)!=vertices['count']*4:raise ValueError('Truncated model vertex buffer')
+            points=np.frombuffer(raw,'<f4').reshape(-1,3)
+            data['_bounds']=[points.min(axis=0).tolist(),points.max(axis=0).tolist()]
             self.cache[cache_key]=data
         data=self.cache[cache_key];materials=list(data['metadata']['materials'])
+        if cls!='SpeedTree':materials=[self.materials.material(m['source']) for m in materials]
         for slot,material in enumerate(overrides):
             if slot<len(materials) and material:materials[slot]=self.materials.material(material)
         for material in materials:self.used_materials[(material.get('source') or '').lower()]=material
         ident=key(cls+':'+source+':'+json.dumps([m['source'] for m in materials]))
         groups=[dict(g,texture=materials[g['materialIndex']]['texture'],settings=materials[g['materialIndex']]['settings'],kind='model') for g in data['groups']]
-        result=ident,dict(source=source,geometry=data['geometry_buffers'],store=data['_store'],groups=groups,approximate=cls=='SpeedTree')
+        sky=sky_mesh(source,materials)
+        if sky:
+            for group in groups:group['kind']='sky'
+        sky_order=-10002 if any(re.search(r'skydomebg',m.get('source') or '',re.I) for m in materials) else -10001
+        result=ident,dict(source=source,geometry=data['geometry_buffers'],store=data['_store'],groups=groups,bounds=data['_bounds'],approximate=cls=='SpeedTree',sky=sky,sky_order=sky_order)
         self.variants[signature]=result;return result
 
     def save(self):
@@ -260,8 +292,9 @@ def build_map(path,library,models,materials):
                     direction=viewer(rotation_matrix(*props.get('Rotation',(0,0,0)))@np.array((-1.,0,0)))
                     color=cp.get('LightColor',(255,255,255,255));sun=dict(direction=direction.tolist(),color=[color[2]/255,color[1]/255,color[0]/255],brightness=cp.get('Brightness',1))
                 if kind in ('HeightFogComponent','ExponentialHeightFogComponent'):
-                    color=cp.get('FogInscatteringColor',cp.get('LightColor',(128,128,128,255)))
-                    zones.append(dict(kind=kind,color=color,density=cp.get('FogDensity',cp.get('Density',.001)),start=cp.get('StartDistance',0),height=props.get('Location',(0,0,0))[2]))
+                    color=cp.get('LightInscatteringColor',cp.get('FogInscatteringColor',cp.get('LightColor',(128,128,128,255))))
+                    zones.append(dict(kind=kind,color=color,density=cp.get('FogDensity',cp.get('Density',.001)),start=cp.get('StartDistance',0),
+                                      height=cp.get('FogHeight',props.get('Location',(0,0,0))[2]),height_falloff=cp.get('FogHeightFalloff')))
                 asset=cp.get('StaticMesh') or cp.get('SkeletalMesh') or cp.get('SpeedTree')
                 if not asset:continue
                 if cp.get('HiddenGame') or cp.get('bHiddenInGame') or cp.get('bIsEditorOnly') or 'collision' in component.rsplit('.',1)[-1].lower():
@@ -312,7 +345,19 @@ def build_map(path,library,models,materials):
         if terrains:
             t=terrains[0];c=np.asarray(t['to_world']).reshape(4,3);origin=viewer((np.array((t['width']/2,t['height']/2,32768))-c[0])@c[1:].T).tolist();origin[1]+=100
         views=[dict(origin=origin,yaw=0,pitch=0)]
-    scene=dict(game='tas',name=path.stem,title=locals().get('title',''),format='ascend-805',actors=len(actors),
+    extent_points=[]
+    if not terrains:
+        extent_points.extend(points)
+        for i in instances:
+            model=model_library[i['look']]
+            if model.get('sky'):continue
+            low,high=model['bounds'];matrix=np.asarray(i['matrix']).reshape(4,4).T
+            extent_points.extend((matrix@np.array((x,y,z,1)))[:3].tolist() for x in (low[0],high[0]) for y in (low[1],high[1]) for z in (low[2],high[2]))
+    for t in terrains:
+        c=np.asarray(t['to_world']).reshape(4,3)
+        extent_points.extend(viewer((np.array((x,y,32768))-c[0])@c[1:].T).tolist() for x in (0,t['width']-1) for y in (0,t['height']-1))
+    span=float(np.ptp(np.asarray(extent_points),axis=0)[[0,2]].max()) if extent_points else 3000
+    scene=dict(game='tas',name=path.stem,title=locals().get('title',''),format='ascend-805',actors=len(actors),preview_extent=span,
                vertices=len(points),indices=len(indices),groups=groups,model_library=model_library,instances=instances,decorations=decorations,
                terrain=terrains,viewpoints=views,sky=None,zones=zones,sun=sun,speedtrees=trees,npcs=len({r['entity'] for r in instances if r['npc']}),
                streamed_packages=[str(p.relative_to(library.install)) for p in paths],lightmap_references=lightmaps,
@@ -320,8 +365,8 @@ def build_map(path,library,models,materials):
                lighting=dict(display_power=1,source='Fixed ambient plus authored dominant/directional light; lightmap references retained'),
                gaps=['Lighting parity deferred; no baked-lightmap evaluation, dynamic effects or gameplay scripts',
                      'Up to five authored terrain layers; slope/noise submaterials are listed when approximated',
-                     'SpeedTrees use labelled generic trunk/crown stand-ins; vegetation shape and size are approximate',
-                     'Height fog is a distance-fog approximation; emitters and collision volumes are omitted'])
+                     'SpeedTrees use labelled trunk/ellipsoid stand-ins within local bounds; foliage shape is approximate',
+                     'Light distance haze uses authored fog colour/start and map extent, not native height integration; emitters and collision volumes are omitted'])
     blobs=dict(geometry=np.asarray(points,'<f4').tobytes()+np.asarray(uv,'<f4').tobytes()+np.asarray(indices,'<u4').tobytes(),
                terrain=b''.join(terrain_chunks),lighting=b'',decorations=b''.join(deco_chunks))
     return scene,blobs

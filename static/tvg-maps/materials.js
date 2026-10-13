@@ -82,6 +82,7 @@
     },
     material(group,texture,baked=false) {
       const s=group.settings||{},blend=s.blend||[];
+      if(group.kind==='sky'&&config.skyMaterial)return config.skyMaterial(group,texture);
       if(group.kind==='sky')return new THREE.MeshBasicMaterial({colorWrite:false,side:THREE.DoubleSide});
       // UV modifiers belong to the material, so cloned sampler state shares the image.
       if(texture&&(s.clamp||s.uvScale||s.uvOffset||s.uvRotation)) {
@@ -160,6 +161,9 @@
           g.setAttribute('color',new THREE.BufferAttribute(rgb,3,true));
         }
         const mesh=new THREE.Mesh(g,i.colors?m.baked:m.lit);mesh.matrix.fromArray(i.matrix);mesh.matrixAutoUpdate=false;
+        if(map.model_library[i.look].sky&&config.skyMaterial) {
+          mesh.renderOrder=map.model_library[i.look].sky_order??-10001;mesh.frustumCulled=false;
+        }
         mesh.userData={npc:i.npc===true,entity:i.entity,classname:i.classname};objects.push(mesh);
       }
       if(map.terrain.length) {
@@ -203,9 +207,10 @@
         }
         decorationToggles(objects.filter(o=>o.userData.terrainDecoration),config.storageKey+'.hiddenDecorations');
       }
-      const sun=new THREE.DirectionalLight(map.sun?new THREE.Color(...map.sun.color):0xffffff,map.sun?.brightness??.65);
+      const levels=config.lightLevels?config.lightLevels(map):{ambient:.65,sun:map.sun?.brightness??.65};
+      const sun=new THREE.DirectionalLight(map.sun?new THREE.Color(...map.sun.color):0xffffff,levels.sun);
       sun.position.fromArray(map.sun?.direction||[-.4,1,.6]);
-      objects.push(new THREE.AmbientLight(0xffffff,.65),sun);
+      objects.push(new THREE.AmbientLight(0xffffff,levels.ambient),sun);
       return objects;
     }
   };

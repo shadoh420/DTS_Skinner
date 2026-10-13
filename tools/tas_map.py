@@ -128,6 +128,19 @@ def is_npc(ancestry):
     return bool(names & {'trdeployable_turret','trturretpawn','trplayerpawn'})
 
 
+def speedtree_bounds(p,ref):
+    """Cooked SRH v1: wind parameters, seven presence flags, local FBoxSphereBounds."""
+    _,r=p.properties(ref)
+    data=Reader(r.take(r.count()))
+    if data.i32()!=1:raise ValueError('Unsupported SpeedTree resource revision')
+    data.take(45*4)
+    if any(x not in (0,1) for x in data.unpack('7i')):raise ValueError('Invalid SpeedTree resource flags')
+    values=np.asarray(data.unpack('7f'));origin,extent=values[:3],values[3:6]
+    if not np.isfinite(values).all() or np.any(extent<=0) or not np.isclose(np.linalg.norm(extent),values[6],rtol=.01):
+        raise ValueError('Invalid SpeedTree local bounds')
+    return [list(origin-extent),list(origin+extent)]
+
+
 def terrain_native(p,ref):
     props,r=object_properties(p,ref)
     w,h=props.get('NumVerticesX',0),props.get('NumVerticesY',0)

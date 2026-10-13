@@ -11,8 +11,8 @@ import numpy as np
 
 from tests.test_tas import Fixture,pack,bulk
 from tools.import_tas import import_catalog
-from tools.import_tas_map import import_maps,entry_maps,map_section,Models
-from tools.tas_map import MapLibrary,object_properties,transform,is_npc,bsp
+from tools.import_tas_map import import_maps,entry_maps,map_section,Models,tree_standin,sky_mesh
+from tools.tas_map import MapLibrary,object_properties,transform,is_npc,bsp,speedtree_bounds
 from tools.tas_package import Package
 
 
@@ -112,6 +112,25 @@ def fixture(root):
 
 
 class MapTests(unittest.TestCase):
+    def test_tree_local_bounds_and_single_placement_scale(self):
+        with tempfile.TemporaryDirectory() as td:
+            f=Fixture();extent=(10,12,20)
+            native=pack('i',1)+bytes(45*4)+pack('7i',1,1,1,1,0,0,1)+pack('7f',0,0,20,*extent,float(np.linalg.norm(extent)))
+            f.add('Tree','SpeedTree',f.payload(native=pack('i',len(native))+native));p=Package(f.write(Path(td)/'Tree.upk'))
+            try:bounds=speedtree_bounds(p,1)
+            finally:p.close()
+            self.assertEqual(bounds,[[-10,-12,0],[10,12,40]])
+            data=tree_standin(bounds);points=np.asarray(data['vertices']).reshape(-1,3)
+            matrix=np.asarray(transform(dict(DrawScale=32),dict(Scale=1))).reshape(4,4).T
+            placed=points@matrix[:3,:3].T
+            np.testing.assert_allclose(np.ptp(placed,axis=0),np.array([24,40,20])*32/52.5)
+            self.assertLess(np.ptp(points[:24],axis=0)[0],np.ptp(points,axis=0)[0]/10)
+            # The crown is rounded, not a pair of planes or a box.
+            self.assertGreater(len(np.unique(points[24:,1])),6)
+        self.assertFalse(sky_mesh('Buildings.SM_SkyBoxLevel',[dict(source='Materials.Concrete')]))
+        self.assertTrue(sky_mesh('Environment.SM_SkyDome_01',[]))
+        self.assertTrue(sky_mesh('Environment.Hemisphere',[dict(source='Materials.MIC_SkyDomeBG')]))
+
     def test_cdo_templates_and_dominant_shadow_prefix(self):
         with tempfile.TemporaryDirectory() as td:
             f=MapFixture();owner=f.add('Default__Light','Actor',flags=0x200)

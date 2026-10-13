@@ -8,7 +8,8 @@ from unittest.mock import patch
 
 from tools.tas_package import MAGIC, Package, Reader, lzo1x
 from tools.tas_mesh import mesh
-from tools.tas_materials import texture_payload
+from tools.tas_materials import Materials,texture_payload
+from tools.tas_package import Library
 from tools.import_tas import import_catalog
 from tools.model_data import MODEL_GAMES, load_model_data
 from tools.glb_exporter import model_to_glb
@@ -199,6 +200,39 @@ class PackageTests(unittest.TestCase):
 
 
 class ImportTests(unittest.TestCase):
+    def test_graph_base_texture_coordinates_parameters_and_fallback(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);f=Fixture()
+            detail=f.add('LooksLikeBase','Texture2D',f.texture())
+            base=f.add('LooksLikeNoise','Texture2D',f.texture(raw=b'\x1f\0'+bytes(6)))
+            coord=f.add('UV','MaterialExpressionTextureCoordinate')
+            tiling=f.add('Tile','MaterialExpressionScalarParameter',f.payload(f.prop('DefaultValue','FloatProperty',pack('f',16))+f.prop('ParameterName','NameProperty',f.name('Tiling'))))
+            scaled=f.add('Scaled','MaterialExpressionMultiply',f.payload(f.input('A',coord)+f.input('B',tiling)))
+            a=f.add('A','MaterialExpressionTextureSample',f.payload(f.obj('Texture',detail)+f.input('Coordinates',scaled)))
+            b=f.add('B','MaterialExpressionTextureSampleParameter2D',f.payload(f.obj('Texture',base)+f.input('Coordinates',coord)+f.prop('ParameterName','NameProperty',f.name('Tex_Mask'))))
+            product=f.add('Product','MaterialExpressionMultiply',f.payload(f.input('A',a)+f.input('B',b)))
+            cube=f.add('Environment','TextureCube')
+            reflection=f.add('Reflection','MaterialExpressionTextureSampleParameterCube',f.payload(f.obj('Texture',cube)))
+            summed=f.add('Sum','MaterialExpressionAdd',f.payload(f.input('A',product)+f.input('B',reflection)))
+            f.add('Mat','Material',f.payload(f.input('DiffuseColor',summed)))
+            sky=f.add('SkyColor','MaterialExpressionVectorParameter',f.payload(f.prop('DefaultValue','StructProperty',pack('4f',.2,.3,.4,1),'LinearColor')))
+            f.add('Sky','Material',f.payload(f.input('EmissiveColor',sky)))
+            f.write(root/'install/TribesGame/CookedPC/Test.upk');lib=Library(root/'install')
+            try:
+                mats=Materials(lib,root/'textures');row=mats.material('Test.Mat')
+                self.assertEqual(row['diffuse_source'],'Test.LooksLikeNoise')
+                self.assertEqual(row['diffuse_selection']['method'],'coordinate scale')
+                self.assertEqual(row['diffuse_selection']['candidates'][0]['uv_scale'],[16,16])
+                self.assertEqual(mats.material('Test.Sky')['status'],'ready')
+                self.assertTrue(mats.material('Test.Sky')['settings']['unlit'])
+                samples=[dict(texture='X.A',parameter='Detail',uv_scale=[1,1]),dict(texture='X.B',parameter='Albedo',uv_scale=[1,1])]
+                self.assertEqual(mats.base_texture({'samples':samples}),('X.B','texture parameter'))
+                for s in samples:s['parameter']=''
+                self.assertEqual(mats.base_texture({'samples':samples}),('X.A','first input fallback'))
+                samples[1]['texture']='X.BaseColor'
+                self.assertEqual(mats.base_texture({'samples':samples}),('X.BaseColor','texture name tie breaker'))
+            finally:lib.close()
+
     def test_mic_chain_diffuse_storage_and_skin_buffers(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);install=root/'install';f=Fixture();mat=f.materials()
