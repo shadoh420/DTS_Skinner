@@ -22,6 +22,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | --- | :---: | :---: | --- |
 | Starsiege: Tribes | ✓ | ✓ | Stock models bundled; custom missions and their buildings too |
 | Tribes 2 | ✓ | ✓ | Stock models bundled; IronSphere (T2RPG) see [T2_IMPORT.md](T2_IMPORT.md#ironsphere-t2rpg) |
+| Tribes: Vengeance | ✓ | | Installed stock and community models; reference poses and class/team skins; maps next |
 | Tribes conversions and mods | ✓ | | TA and TV conversion packs, TRPG, Star Wars, RedMoon; GoldenEye 007 mod (below) |
 | Starsiege, Earthsiege 1 and 2 | ✓ | | |
 | Red Baron 3D | ✓ | ✓ | Maps are experimental, see [Red Baron 3D maps](docs/redbaron-maps.md) |

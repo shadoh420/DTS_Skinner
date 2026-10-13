@@ -145,13 +145,14 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
             material['alphaMode'] = 'BLEND'
         if flag & (8 | 16):
             gltf['extras']['warnings'].append(f'{name}: additive/subtractive blending is approximated by alpha blending in glTF.')
-        if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye'):
+        if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye', 'tvg'):
             material['extras']['sourceShaderSettings'] = setting
             material['doubleSided'] = not data.get('material_settings') or setting.get('cull', 'back') != 'back'
             if setting.get('cull') == 'front':
                 gltf['extras']['warnings'].append(f'{name}: front-face culling is approximated by a double-sided material in glTF.')
-            if alpha_func:
-                material.update(alphaMode='MASK', alphaCutoff=0.5 / 255 if alpha_func == 'GT0' else .5)
+            if alpha_func or setting.get('alphaTest', 0) > 0:
+                cutoff = setting.get('alphaTest', 0.5 / 255 if alpha_func == 'GT0' else .5)
+                material.update(alphaMode='MASK', alphaCutoff=cutoff)
                 if blend:
                     gltf['extras']['warnings'].append(f'{name}: combined alpha test/blending uses MASK without partial-alpha blending in glTF.')
             elif blend:
@@ -160,6 +161,8 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
                 gltf['extras']['warnings'].append(f'{name}: nonstandard blending is approximated by alpha blending in glTF.')
             if setting.get('tcGen', 'base') != 'base':
                 gltf['extras']['warnings'].append(f'{name}: generated environment coordinates use the authored UVs in glTF.')
+            if any(k in setting for k in ('uvScale', 'uvOffset', 'uvRotation')):
+                gltf['extras']['warnings'].append(f'{name}: texture-coordinate modifiers are metadata only in glTF.')
             if not setting.get('depthWrite', True):
                 gltf['extras']['warnings'].append(f'{name}: explicit depth-write state is metadata only in glTF.')
             if data.get('game') == 'sin' and setting.get('opacity', 1) != 1:
@@ -181,7 +184,7 @@ def model_to_glb(data, textures_dir, texture_dirs=None):
                        'minFilter': (9729 if flag & 128 else 9987) if data.get('game') == 't2' else 9728,
                        'wrapS': 33071 if data.get('game') == 't2' and not flag & 1 else 10497,
                        'wrapT': 33071 if data.get('game') == 't2' and not flag & 2 else 10497}
-            if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin'):
+            if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'tvg'):
                 sampler = {'magFilter': 9729, 'minFilter': 9987,
                            'wrapS': 33071 if setting.get('clamp') else 10497,
                            'wrapT': 33071 if setting.get('clamp') else 10497}
