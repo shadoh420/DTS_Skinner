@@ -25,7 +25,7 @@ from typing import List, Tuple, Dict, Optional
 def q3_material_settings(data):
     """Keep the imported shader contract aligned with texture slot overrides."""
     count = len(data['material_textures'])
-    if data.get('game') not in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye'):
+    if data.get('game') not in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye', 'tvg'):
         return [{} for _ in range(count)]
     settings = data.get('material_settings') or [{} for _ in range(count)]
     if not isinstance(settings, list) or len(settings) != count:
@@ -367,23 +367,26 @@ def json_to_obj_zip(
     settings = q3_material_settings(data)
     opacity_maps, opacity_images, export_warnings = {}, {}, []
     reserved_names = {name.casefold() for name in export_names}
-    if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye'):
+    if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye', 'tvg'):
         for slot, (name, setting) in enumerate(zip(material_textures, settings)):
             alpha_func, blend = setting.get('alphaFunc', ''), setting.get('blend', [])
             if blend and blend != ['gl_src_alpha', 'gl_one_minus_src_alpha']:
                 export_warnings.append(f'{name}: nonstandard blending is approximated by alpha opacity in OBJ/MTL.')
             if setting.get('tcGen', 'base') != 'base':
                 export_warnings.append(f'{name}: generated environment coordinates use the authored UVs in OBJ/MTL.')
+            if any(k in setting for k in ('uvScale', 'uvOffset', 'uvRotation')):
+                export_warnings.append(f'{name}: texture-coordinate modifiers are metadata only in OBJ/MTL.')
             if setting.get('cull', 'back') != 'back' or not setting.get('depthWrite', True):
                 export_warnings.append(f'{name}: culling/depth-write settings are metadata only in OBJ/MTL.')
             source = sources[slot]
-            if (not alpha_func and not blend) or name.startswith('[') or not source.is_file():
+            alpha_test = setting.get('alphaTest', 0)
+            if (not alpha_func and not blend and not alpha_test) or name.startswith('[') or not source.is_file():
                 continue
             with Image.open(source) as texture:
                 alpha = transform_image(texture, transforms[slot]).getchannel('A')
-            if alpha_func:
+            if alpha_func or alpha_test:
                 def opacity(value):
-                    passes = value >= 128 if alpha_func == 'GE128' else value > 0 if alpha_func == 'GT0' else value < 128
+                    passes = value/255 >= alpha_test if alpha_test else value >= 128 if alpha_func == 'GE128' else value > 0 if alpha_func == 'GT0' else value < 128
                     return (value if blend else 255) if passes else 0
                 alpha = alpha.point(opacity)
             if data.get('game') == 'sin':
