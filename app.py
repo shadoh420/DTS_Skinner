@@ -575,6 +575,42 @@ def import_anachronox_maps_route():
         import_lock.release()
 
 
+@app.route('/maps/doom3/')
+def doom3_maps_viewer():
+    response = send_from_directory(static_dir / 'doom3-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/doom3-map-data/<path:filename>')
+def doom3_map_data(filename):
+    if filename.startswith('textures/'):
+        name = filename.removeprefix('textures/')
+        return send_from_directory(game_textures('doom3'), name,
+                                   mimetype='image/vnd-ms.dds' if name.lower().endswith('.dds') else None)
+    return send_from_directory(local_data_dir / 'doom3-maps', filename)
+
+
+@app.route('/import_doom3_maps', methods=['POST'])
+def import_doom3_maps_route():
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
+        return jsonify(error='Enter your Doom 3 folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        from tools.import_doom3_map import import_maps
+        return jsonify(import_maps(payload['path'].strip(), local_data_dir, replace=payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
 @app.route('/maps/vtmb/')
 def vtmb_maps_viewer():
     response = send_from_directory(static_dir / 'vtmb-maps', 'index.html')

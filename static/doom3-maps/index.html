@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DTS Skinner — Doom 3 Maps</title><link rel="stylesheet" href="/static/t1-maps/style.css">
+<link rel="stylesheet" href="/static/doom3-maps/style.css">
+<script defer src="/static/three.min.js"></script><script defer src="/static/dds.js"></script>
+<script defer src="/static/doom3-maps/materials.js"></script><script defer src="/static/doom3-maps/viewer.js"></script></head>
+<body><header><a href="/">← Models</a><strong>Doom 3 Maps</strong><select id="map" aria-label="Map"></select>
+<select id="viewpoint" aria-label="Viewpoint"></select><label>FOV <input id="fov" type="number" min="30" max="130" value="90"></label>
+<button id="reset">Reset view</button><button id="benchmark">Measure 120 frames</button>
+<details id="importPanel"><summary>Import maps</summary><div class="import">
+<label>Game folder <input id="gamePath" placeholder="C:\Program Files (x86)\Steam\steamapps\common\Doom 3"></label>
+<label><input id="replace" type="checkbox"> Re-import existing maps</label><button id="import">Import</button>
+<span id="importStatus" role="status">Doom 3 and Resurrection of Evil. The game folder is only read.</span></div></details></header>
+<main><canvas id="c"></canvas></main><footer><span id="status" role="status">Loading catalog…</span>
+<span>Click to capture · Drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–6 viewpoints</span>
+<details><summary>Preview notes / import report</summary><pre id="notes"></pre></details><span id="performance" role="status"></span></footer></body></html>
