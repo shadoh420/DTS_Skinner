@@ -13,6 +13,7 @@ if not __package__:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import numpy as np
 from PIL import Image
 from tools import source_assets, source_mdl
 from tools.import_vtmb import key, category
@@ -20,6 +21,33 @@ from tools.local_data import LOCAL_DATA
 from tools.model_data import write_model_data
 from tools.texture_storage import game_texture_dir, write_texture
 from tools.texture_workshop import write_json_atomic
+
+
+def drop_meshes(mesh, refs, drop):
+    """Remove whole meshes: their triangles and their own vertex range. vvd_first still maps kept meshes to VHV light.
+
+    Used for meshes textured from models/crosshairs: the weapons' scope and crosshair overlays, which hang far in front
+    of the gun and show only when aiming, and the additive black `inv` helpers. Left in, they set the viewer's framing
+    and the gun becomes a dot."""
+    keep = np.ones(len(mesh['vertices'])//3, bool)
+    for k in drop:
+        g = mesh['groups'][k]; keep[g['vertex_start']:g['vertex_start']+g['vertex_count']] = False
+    if not keep.any():
+        raise ValueError('Only scope/crosshair overlay meshes')
+    remap, source = np.cumsum(keep)-1, np.asarray(mesh['indices'])
+    groups, indices = [], []
+    for k, g in enumerate(mesh['groups']):
+        if k in drop:
+            continue
+        part = source[g['start']:g['start']+g['count']]
+        if not keep[part].all():
+            raise ValueError('Overlay mesh shares vertices with a kept mesh')
+        groups.append(dict(g, start=len(indices), vertex_start=int(remap[g['vertex_start']])))
+        indices.extend(remap[part].tolist())
+    for name, width in (('vertices', 3), ('normals', 3), ('uvs', 2)):
+        mesh[name] = np.asarray(mesh[name]).reshape(-1, width)[keep].ravel().tolist()
+    mesh['groups'], mesh['indices'] = groups, indices
+    return [ref for k, ref in enumerate(refs) if k not in drop]
 
 
 def import_catalog(install, output, model_paths=None):
@@ -89,8 +117,13 @@ def import_catalog(install, output, model_paths=None):
                 continue
             mesh = source_mdl.load_model(files, name)
             families, refs = mesh.pop('skin_table'), mesh.pop('skin_refs')
-            used = {family[ref] for family in families for ref in refs}
             slots = [material(n, mesh['metadata']['material_directories']) for n in mesh['material_names']]
+            overlays = [k for k, ref in enumerate(refs) if slots[families[0][ref]]['settings'].get('parameters', {})
+                        .get('$basetexture', '').lower().replace('\\', '/').startswith('models/crosshairs/')]
+            if overlays:
+                refs = drop_meshes(mesh, refs, overlays)
+                mesh['metadata']['dropped_overlay_meshes'] = len(overlays)
+            used = {family[ref] for family in families for ref in refs}
             for i in used:
                 slots[i]['used_by_exported_geometry'] = True
             mesh['material_textures'] = [s['texture'] for s in slots]

@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image
 
 from tools import source_assets, source_mdl, vtmb
-from tools.import_eye import import_catalog
+from tools.import_eye import drop_meshes, import_catalog
 from tools.model_data import load_model_data, MODEL_GAMES
 from tools.texture_workshop import TEXTURE_GAMES
 from tools.texture_storage import game_texture_dir
@@ -270,6 +270,20 @@ class EyeTests(unittest.TestCase):
             result=source_mdl.load_model(files,'models/props/tiny.mdl')
             self.assertTrue(result['metadata']['vtx'].endswith('.sw.vtx'))
             self.assertEqual(len(result['metadata']['companion_failures']),1)
+
+    def test_scope_overlay_meshes_dropped_with_their_vertices(self):
+        mesh=dict(vertices=[0,0,0, 1,0,0, 0,1,0, 9,9,99, 9,9,98, 9,8,99, 2,0,0, 2,1,0, 3,0,0],
+                  normals=[0,0,1]*9, uvs=[0,0]*9, indices=[0,1,2, 3,4,5, 6,7,8],
+                  groups=[dict(start=0,count=3,vertex_start=0,vertex_count=3,vvd_first=0),
+                          dict(start=3,count=3,vertex_start=3,vertex_count=3,vvd_first=3),
+                          dict(start=6,count=3,vertex_start=6,vertex_count=3,vvd_first=6)])
+        self.assertEqual(drop_meshes(mesh,[10,11,12],[1]),[10,12])
+        self.assertEqual(mesh['indices'],[0,1,2,3,4,5])
+        self.assertEqual(max(mesh['vertices']),3)
+        self.assertEqual(len(mesh['uvs']),12)
+        self.assertEqual([(g['start'],g['vertex_start'],g['vvd_first']) for g in mesh['groups']],[(0,0,0),(3,3,6)])
+        with self.assertRaises(ValueError):
+            drop_meshes(dict(mesh),[10,12],[0,1])
 
 
 if __name__ == '__main__': unittest.main()
