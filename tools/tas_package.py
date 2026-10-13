@@ -209,6 +209,10 @@ def compressed_blocks(read, offset, size, expected=None):
 
 
 class Package:
+    versions = ((805, 2), (805, 0), (770, 0))
+    compressions = (0, 2)
+    bulk_compressions = (16,)
+
     def __init__(self, path):
         self.path = Path(path)
         self.file = self.path.open('rb')
@@ -218,15 +222,18 @@ class Package:
         try:
             r = Reader(self.physical(0, min(self.size, 1_048_576)))
             magic, self.version, self.licensee, self.header_size = r.unpack('IHHI')
-            if magic != MAGIC or (self.version, self.licensee) not in ((805, 2), (805, 0), (770, 0)):
+            if magic != MAGIC or (self.version, self.licensee) not in self.versions:
                 raise ValueError('Not a supported Ascend/UDK package')
             self.folder = r.text(); self.flags = r.unpack('I')[0]
             nc, no, ec, eo, ic, io, self.depends = r.unpack('7i')
+            self.table_counts = (nc, ec, ic)
+            self.table_offsets = (no, eo, io)
             r.take(32)  # import/export GUID offsets, thumbnail offset, package GUID
             r.take(r.count(12, 1024)*12)
             self.engine, self.cooker, self.compression = r.unpack('3i')
             self.chunks = [r.unpack('4i') for _ in range(r.count(16, 100_000))]
-            if self.compression not in (0, 2) or bool(self.chunks) != bool(self.compression):
+            self.prepare_summary(r)
+            if self.compression not in self.compressions or bool(self.chunks) != bool(self.compression):
                 raise ValueError(f'Unsupported package compression {self.compression}')
             last = 0
             for uo, us, co, cs in self.chunks:
@@ -266,6 +273,9 @@ class Package:
         except Exception:
             self.close(); raise
 
+    def prepare_summary(self, r):
+        """Game-specific summary tail, before shared table/chunk validation."""
+
     def close(self):
         self.file.close()
 
@@ -281,6 +291,9 @@ class Package:
         start = time.perf_counter(); result = lzo1x(raw, size)
         self.lzo_seconds += time.perf_counter()-start; self.lzo_bytes += size
         return result
+
+    def decode_bulk(self, raw, size, compression):
+        return self.decode(raw, size)
 
     def read(self, offset, size):
         if offset < 0 or size < 0 or size > MAX_DATA or offset+size > self.virtual_size:
@@ -380,11 +393,12 @@ class Package:
             return None
         if flags & ~(1 | 2 | 8 | 16 | 32 | 64 | 128):
             raise ValueError(f'Unsupported BulkData flags {flags:#x}')
-        if flags & (2 | 128):
+        compression = flags & (2 | 16 | 128)
+        if compression and compression not in self.bulk_compressions:
             raise ValueError(f'Unsupported non-LZO BulkData compression {flags:#x}')
-        if flags & 16:
+        if compression:
             blocks = compressed_blocks(lambda o,n: raw[o:o+n], 0, len(raw), expected)
-            return b''.join(self.decode(raw[o:o+n], us) for _,us,o,n in blocks)
+            return b''.join(self.decode_bulk(raw[o:o+n], us, compression) for _,us,o,n in blocks)
         if len(raw) != expected:
             raise ValueError('BulkData byte count mismatch')
         return raw
