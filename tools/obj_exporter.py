@@ -25,7 +25,7 @@ from typing import List, Tuple, Dict, Optional
 def q3_material_settings(data):
     """Keep the imported shader contract aligned with texture slot overrides."""
     count = len(data['material_textures'])
-    if data.get('game') not in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb'):
+    if data.get('game') not in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye'):
         return [{} for _ in range(count)]
     settings = data.get('material_settings') or [{} for _ in range(count)]
     if not isinstance(settings, list) or len(settings) != count:
@@ -367,7 +367,7 @@ def json_to_obj_zip(
     settings = q3_material_settings(data)
     opacity_maps, opacity_images, export_warnings = {}, {}, []
     reserved_names = {name.casefold() for name in export_names}
-    if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb'):
+    if data.get('game') in ('q3', 'diabotical', 'reflex', 'rtcw', 'sin', 'azrael', 'vtmb', 'eye'):
         for slot, (name, setting) in enumerate(zip(material_textures, settings)):
             alpha_func, blend = setting.get('alphaFunc', ''), setting.get('blend', [])
             if blend and blend != ['gl_src_alpha', 'gl_one_minus_src_alpha']:

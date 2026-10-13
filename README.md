@@ -31,6 +31,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Return to Castle Wolfenstein | ✓ | ✓ | Single player and Multiplayer |
 | Wolfenstein: Enemy Territory | ✓ | ✓ | Constructibles at map start, or finished |
 | Vampire: The Masquerade - Bloodlines | ✓ | ✓ | Unofficial Patch over stock; static model poses, lightmapped maps with props and pickups, no NPCs |
+| E.Y.E.: Divine Cybermancy | ✓ | | NPCs, players, weapons and props; skin families and static poses |
 | Doom 3 | ✓ | ✓ | Base and Resurrection of Evil; maps with live lights (no shadows) and monsters in their idle pose |
 | Quake 4 | ✓ | ✓ | Strogg, marines, vehicles, weapons, items and mapobjects; idle poses |
 | Jedi Outcast | ✓ | ✓ | Single player and Multiplayer maps, static Ghoul2 models |
