@@ -2,6 +2,7 @@
 (async function() {
 'use strict';
 const $=id=>document.getElementById(id), M=window.doom3Materials, config=window.idTech4MapConfig, base=config.data;
+const npcs=window.skinnerNPCToggle;
 document.title='DTS Skinner - '+config.label+' Maps';$('gameTitle').textContent=config.label+' Maps';
 $('gamePath').placeholder=config.install;$('importStatus').textContent=config.description;
 const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:false,alpha:false});
@@ -124,12 +125,14 @@ function interactionGroups(stages) {
  flush();return out;
 }
 function disposeMap() {
+ npcs.setCount(0);
  for(const b of batches){for(const mesh of b.meshes)mesh.material.dispose();b.group.clear();b.geometry.dispose();}
  scene.clear();batches=[];geometry?.dispose();geometry=null;
  for(const value of textures.values())value.then(t=>t.dispose()).catch(()=>{});textures=new Map();
 }
 async function buildMap(meta,binary) {
  data=meta;geometry=new THREE.BufferGeometry();
+ const npcOwners=window.idTech4NPCs.owners(meta);
  for(const [key,attr,size] of [['vertices','position',3],['normals','normal',3],['uvs','uv',2],['colors','color',meta.colorSize||3]]) {
   const a=meta.geometry_buffers.arrays[key];geometry.setAttribute(attr,new THREE.BufferAttribute(new Float32Array(binary,a.offset,a.count),size));
  }
@@ -161,7 +164,7 @@ async function buildMap(meta,binary) {
   const material=meta.materials[surface.material],group=new THREE.Group(),meshes=[];
   const g=new THREE.BufferGeometry();g.attributes=geometry.attributes;g.index=geometry.index;g.setDrawRange(surface.start,surface.count);
   g.boundingBox=new THREE.Box3(new THREE.Vector3(...surface.bounds[0]),new THREE.Vector3(...surface.bounds[1]));g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
-  const batch={group,meshes,geometry:g,surface};batches.push(batch);scene.add(group);
+  const batch={group,meshes,geometry:g,surface,npc:npcOwners.has(surface.entity)};batches.push(batch);scene.add(group);
   function pass(kind,diffuse,specular,bump,light,projection,order) {
    const u=uniforms();u.vertexAlphaEnabled.value=meta.game==='quake4'?1:0;u.passKind.value=kind;u.diffuseMap.value=diffuse?.texture||(kind===1?black:white);
    u.specularMap.value=specular?.texture||black;u.bumpMap.value=bump?.texture||flat;
@@ -198,6 +201,7 @@ async function buildMap(meta,binary) {
   // Finish each surface's stage chain before another surface overwrites scratch alpha.
   material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,null,null,null,ambientOrder++));
  }
+ npcs.setCount(npcOwners.size);
  return passCount;
 }
 function updatePass(mesh,seconds,parms,sound) {
@@ -222,7 +226,7 @@ function draw(seconds=0,target=null) {
   view.updateMatrixWorld();matrix.multiplyMatrices(view.projectionMatrix,view.matrixWorldInverse);frustum.setFromProjectionMatrix(matrix);
   const areas=M.visibleAreas(view.position.toArray(),data,matrix.elements);let surfaces=0;
   for(const batch of batches){
-   batch.group.visible=(!batch.surface.areas.length||batch.surface.areas.some(a=>areas.has(a)))&&frustum.intersectsBox(batch.geometry.boundingBox);
+   batch.group.visible=(!batch.npc||npcs.enabled)&&(!batch.surface.areas.length||batch.surface.areas.some(a=>areas.has(a)))&&frustum.intersectsBox(batch.geometry.boundingBox);
    if(batch.group.visible){surfaces++;const sound=M.soundAmplitude(batch.surface.sound,seconds,soundAmplitudeOverride);for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms,sound);}
   }
   return {areas,surfaces};
@@ -264,7 +268,7 @@ async function loadMap(id) {
   $('notes').textContent=meta.notes.join('\n')+'\n'+JSON.stringify({stats:meta.stats,skippedLights:meta.skippedLights,skippedEntities:meta.skippedEntities},null,2);
   $('status').textContent=entry.label+' · '+meta.lights.length+' lights · '+meta.entities.length+' entities · '+count+' passes (uncapped)';
   mapStart=performance.now();resize();showViewpoint(0);history.replaceState(null,'','#'+encodeURIComponent(id));
- }catch(e){$('status').textContent=e.message;console.error(e);}finally{loading=false;$('map').disabled=false;}
+ }catch(e){disposeMap();data=null;$('status').textContent=e.message;console.error(e);}finally{loading=false;$('map').disabled=false;}
 }
 let catalog=[];
 async function loadCatalog(){const r=await fetch(base+'catalog.json');if(!r.ok){$('importPanel').open=true;$('status').textContent='Import '+config.label+' maps to start.';return;}
@@ -300,6 +304,7 @@ async function benchmark(frames=120) {
  }finally{benchmarking=false;$('benchmark').disabled=false;}
 }
 $('benchmark').onclick=()=>benchmark();
+npcs.onChange=()=>{if(!loading)draw((performance.now()-mapStart)/1000);};
 window.skinnerDoom3Maps={game:config.game,renderer,scene,camera,draw,showViewpoint,benchmark,get soundAmplitudeOverride(){return soundAmplitudeOverride;},set soundAmplitudeOverride(value){soundAmplitudeOverride=value;},get paused(){return paused;},set paused(value){paused=!!value;},get data(){return data;},get metrics(){return lastMetrics;}};
 resize();requestAnimationFrame(animate);await loadCatalog();
 })().catch(e=>{document.getElementById('status').textContent=e.message;console.error(e);});

@@ -1016,10 +1016,12 @@ def notes():
 
 @app.after_request
 def add_notes_to_map_pages(response):
-    # Every map page gets the notes box (static/notes.js); the pages' CSP allows same-origin scripts.
+    # The blocking helper runs before deferred/module viewers; its UI mounts when the header exists.
+    # Every map page also gets the notes box; the pages' CSP allows same-origin scripts.
     if request.path.startswith('/maps/') and response.status_code == 200 and response.mimetype == 'text/html':
         response.direct_passthrough = False
-        response.set_data(response.get_data().replace(b'</body>', b'<script src="/static/notes.js"></script></body>', 1))
+        html = response.get_data().replace(b'<head>', b'<head><script src="/static/npc-toggle.js"></script>', 1)
+        response.set_data(html.replace(b'</body>', b'<script src="/static/notes.js"></script></body>', 1))
     return response
 
 
