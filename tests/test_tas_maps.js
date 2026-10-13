@@ -21,6 +21,11 @@ async function run(){
   assert.equal(sky.fog,false);assert.equal(sky.depthWrite,false);assert.equal(sky.depthTest,false);assert.equal(sky.transparent,false);
   const shader={vertexShader:'#include <project_vertex>'};sky.onBeforeCompile(shader);
   assert.ok(shader.vertexShader.includes('gl_Position.z=gl_Position.w*.999999'));
+  const blend=['gl_src_alpha','gl_one'];
+  const field=adapter.material({texture:'constant_26_255_255_255.png',settings:{blend}},null);
+  assert.equal(field.opacity,.2);assert.equal(field.depthWrite,false);assert.equal(field.color.getHexString(),'1affff');
+  assert.equal(adapter.material({texture:'missing_tas.png',settings:{blend}},null).opacity,.2);
+  assert.notEqual(adapter.material({texture:'missing_tas.png',settings:{}},null).opacity,.2);
   const layer={texture:'diffuse.dds',alpha:'weight.png',matrix:new THREE.Matrix4().toArray().reduce((a,v,i)=>{if(i%4===0)a.push([]);a.at(-1).push(v);return a;},[])};
   const material=await adapter.terrainMaterial({layers:Array(5).fill(layer),textures:{}},async()=>new THREE.Texture());
   assert.ok(material.fragmentShader.includes('texture2D(layer4'));

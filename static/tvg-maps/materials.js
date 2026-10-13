@@ -84,6 +84,7 @@
       const s=group.settings||{},blend=s.blend||[];
       if(group.kind==='sky'&&config.skyMaterial)return config.skyMaterial(group,texture);
       if(group.kind==='sky')return new THREE.MeshBasicMaterial({colorWrite:false,side:THREE.DoubleSide});
+      const custom=config.groupMaterial?.(group,texture);if(custom)return custom;
       // UV modifiers belong to the material, so cloned sampler state shares the image.
       if(texture&&(s.clamp||s.uvScale||s.uvOffset||s.uvRotation)) {
         texture=texture.clone();texture.needsUpdate=true;

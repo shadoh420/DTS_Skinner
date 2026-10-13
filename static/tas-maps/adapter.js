@@ -7,6 +7,14 @@ window.skinnerInstancedMapOptions={
   lightLevels(map) {
     return {ambient:.35,sun:Math.min(.6,Math.max(0,(map.sun?.brightness??1)*.2))};
   },
+  // Translucent effects whose graph gives no texture (water, forcefields, fog volumes, beams) draw as a faint
+  // tint, not the missing-texture checker or a solid emissive constant.
+  groupMaterial(group) {
+    const file=group.texture||'',rgb=/^constant_(\d+)_(\d+)_(\d+)_/.exec(file);
+    if(!group.settings?.blend?.length||!(rgb||file.startsWith('missing_')))return null;
+    return new THREE.MeshBasicMaterial({color:rgb?new THREE.Color(rgb[1]/255,rgb[2]/255,rgb[3]/255):0x6f8fa0,
+      transparent:true,opacity:.2,depthWrite:false,side:THREE.DoubleSide});
+  },
   skyMaterial(group,texture) {
     const material=new THREE.MeshBasicMaterial({map:texture,color:texture?0xffffff:0x7f98aa,
       side:THREE.DoubleSide,fog:false,depthWrite:false,depthTest:false,transparent:false});
