@@ -146,7 +146,7 @@ def terrain(p,ref,props,library,materials,chunks):
             alpha_index=layer.get('AlphaMapIndex',-1);alpha=None
             if alpha_index>=0:
                 if alpha_index>=len(alphas):raise ValueError('AlphaMapIndex outside terrain arrays')
-                raw=alphas[alpha_index];alpha=hashlib.sha256(f'{w}x{h}:'.encode()+raw).hexdigest()+'.png'
+                raw=alphas[alpha_index];alpha='terrain_alpha_'+hashlib.sha256(f'{w}x{h}:'.encode()+raw).hexdigest()[:16]+'.png'
                 write_texture(materials.directory,alpha,Image.frombytes('L',(w,h),raw))
             angle=np.deg2rad(tm.get('MappingRotation',0));s=tm.get('MappingScale',4)
             if not s:raise ValueError('Zero terrain mapping scale')
