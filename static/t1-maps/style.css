@@ -9,6 +9,6 @@ canvas {position:absolute;inset:0;width:100%;height:100%;display:block;cursor:cr
 a {color:#8ce0cb;} button,input,select {font:inherit;color:inherit;background:#202e37;border:1px solid #587368;border-radius:4px;padding:5px;}
 input[type=number] {width:65px;} label {display:flex;gap:5px;align-items:center;}
 summary {cursor:pointer;}
-details[open]#importPanel {flex-basis:100%;}
+details[open]#importPanel, details[open]#decorPanel {flex-basis:100%;}
 .import {display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:8px;}
 .import input:not([type=checkbox]) {width:260px;}

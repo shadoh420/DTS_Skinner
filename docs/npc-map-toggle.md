@@ -22,6 +22,11 @@ Other pages show the disabled control until their adapter supplies NPC data.
   pose, or infer later script state. Old exports lack inheritance, so unknown custom aliases may
   need another explicit rule. Do not infer NPCs from texture names or arbitrary model substrings.
 
+Tribes: Vengeance uses serialized class ancestry: `Character` descendants and functional
+`Turret` descendants are NPCs. Its `Character -> Ragdoll -> Rook -> Pawn` chain does **not**
+mean the character is a corpse. Vehicles, stations, generators, sensors, pickups and flags
+remain visible. Hidden controls and talking heads are omitted and listed by the importer.
+
 ## Contract for importers and new viewers
 
 Export `npc: true` on each NPC **object or draw group**, retaining `classname` and a stable
