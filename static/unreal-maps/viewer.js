@@ -133,6 +133,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.colors) geometry.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buffer, vertices * 28, vertices * 4), 4, true));
     const indexAt = vertices * (map.colors ? 32 : map.lightmap ? 28 : 20);
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, indexAt, map.indices), 1));
+    if (config && config.computeNormals) geometry.computeVertexNormals();
     if (config) await config.load(map, loadTexture);
     if (quake) quakeColormap = await loadTexture('colormap.png');
     if (sin) await window.sinMaps.load(map, loadTexture);
@@ -319,14 +320,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
     let key = new URLSearchParams(location.search).get('map') || '';
     if (!key.includes('/')) key = GAMES[0][0] + '/' + key;  // Links from before UT maps name an Unreal map alone.
-    const available = azrael ? maps.filter(found => found.status === 'ready') : maps;
+    const available = azrael || config?.filterUnavailable ? maps.filter(found => found.status === 'ready') : maps;
     const item = available.find(found => found.key === key) || available.find(found => found.key === (dx ? 'dx/01_nyc_unatcoisland' : azrael ? 'azrael/room-001-entrycoord' : sin ? 'sin/bank' : anachronox ? 'anachronox/ballotine' : daikatana ? 'daikatana/e1m1a' : quake2 ? 'quake2/base1' : quake ? 'quake/start' : 'unreal/nyleve')) || available[0];
     if (!item) throw new Error("No drawable scenes imported; see the import report.");
     const byGroup = new Map();
     for (const found of maps) byGroup.set(found.group, [...(byGroup.get(found.group) || []), found]);
     $('map').replaceChildren(...[...byGroup].map(([group, items]) => {
       const element = Object.assign(document.createElement('optgroup'), {label: group});
-      element.append(...items.map(found => Object.assign(new Option(azrael ? found.name + (found.aliases.length ? ' (' + found.aliases.join(', ') + ')' : '') + (found.status !== 'ready' ? ' — unavailable' : '') : found.title ? `${found.name} · ${found.title}` : found.name, found.key), {disabled: azrael && found.status !== 'ready'})));
+      element.append(...items.map(found => Object.assign(new Option(azrael ? found.name + (found.aliases.length ? ' (' + found.aliases.join(', ') + ')' : '') + (found.status !== 'ready' ? ' — unavailable' : '') : found.title ? `${found.name} · ${found.title}` : found.name, found.key), {disabled: (azrael || config?.filterUnavailable) && found.status !== 'ready', title:found.reason||''})));
       return element;
     }));
     $('map').value = item.key;
