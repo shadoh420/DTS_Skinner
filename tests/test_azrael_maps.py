@@ -252,6 +252,7 @@ class AzraelMapsTest(unittest.TestCase):
             with patch.object(server,'local_data_dir',root/'output'):
                 client=server.app.test_client()
                 self.assertEqual(client.get('/maps/azrael/').status_code,200)
+                self.assertEqual(client.get('/maps/azrael/').data.count(b'/static/npc-toggle.js'),1)
                 self.assertIn(b'/maps/azrael/',client.get('/').data)
                 response=client.post('/import_azrael_maps',json={'path':str(root)})
                 self.assertEqual(response.status_code,200,response.json)

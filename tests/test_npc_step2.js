@@ -17,10 +17,11 @@ async function sharedGroups(game) {
     {entity: 30, npc: true, classname: 'Creature', start: 9, count: 3},
   ].map(g => ({...g, texture: 'shared.png', flags: 0, kind: 'model', alpha: 1, size: [4, 4], settings: {}, model_light: [1, 1, 1]}))};
   const context = vm.createContext({window: {skinnerNPCToggle: control}, THREE, scene, map, geometry,
-    config: null, quake: game === 'quake', quake2: game === 'quake2', azrael: false,
+    config: null, quake: game === 'quake', quake2: game === 'quake2', azrael: game === 'azrael',
     daikatana: game === 'daikatana', anachronox: game === 'anachronox', sin: game === 'sin',
     loadTexture: async () => texture});
   vm.runInContext(between(text, '  const npcDraws', '  const storageKey'), context);
+  if (game === 'azrael') vm.runInContext(fs.readFileSync(require.resolve('../static/azrael-maps/materials.js'), 'utf8'), context);
   if (['sin', 'daikatana', 'anachronox'].includes(game)) {
     vm.runInContext(fs.readFileSync(require.resolve('../static/quake2-maps/materials.js'), 'utf8'), context);
     vm.runInContext(fs.readFileSync(require.resolve('../static/' + game + '-maps/materials.js'), 'utf8'), context);
@@ -69,7 +70,7 @@ async function t1Objects() {
 }
 
 (async () => {
-  for (const game of ['unreal', 'ut', 'sin', 'daikatana', 'anachronox', 'dx', 'vtmb', 'quake', 'quake2']) await sharedGroups(game);
+  for (const game of ['unreal', 'ut', 'sin', 'daikatana', 'anachronox', 'dx', 'vtmb', 'quake', 'quake2', 'azrael']) await sharedGroups(game);
   await t1Objects();
 })().then(() => console.log('Shared group and T1 object NPC visibility/counts: OK'))
   .catch(error => { console.error(error); process.exitCode = 1; });
