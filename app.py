@@ -10,6 +10,7 @@ from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
 from tools.texture_storage import open_texture
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags, texture_files, TEXTURE_SUFFIXES
+import hashlib
 import io
 import json
 import shutil
@@ -206,6 +207,40 @@ def t1_map_data(filename):
     response = send_from_directory(local_data_dir / 't1-maps', filename, max_age=31536000 if shared else None)
     response.cache_control.immutable = shared
     return response
+
+
+t1_sky_cache = {}
+
+
+@app.route('/t1-map-skies')
+def t1_map_skies():
+    """Skies the T1 Maps page can swap in: every T1 mission's dome and every Q3 map's sky shader, each listed once."""
+    roots = {'t1': local_data_dir / 't1-maps', 'q3': local_data_dir / 'q3-maps'}
+    stamp = (str(local_data_dir), *((root / 'index.json').stat().st_mtime_ns if (root / 'index.json').is_file() else 0 for root in roots.values()))
+    if t1_sky_cache.get('stamp') != stamp:
+        skies = {}
+        for game, root in roots.items():
+            try:
+                index = json.loads((root / 'index.json').read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                continue
+            for row in index:
+                try:
+                    scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
+                except (OSError, ValueError, KeyError, TypeError):
+                    continue
+                found = ([scene['sky']] if (scene.get('sky') or {}).get('textures') else []) if game == 't1' else \
+                    [shader for shader in scene.get('shaders') or [] if shader and shader.get('sky')]
+                for sky in found:
+                    key = game + json.dumps(sky, sort_keys=True)
+                    if key not in skies:
+                        skies[key] = dict(id=game + '-' + hashlib.sha1(key.encode()).hexdigest()[:12], game=game, maps=[],
+                                          group='Tribes' if game == 't1' else row.get('group', 'Quake III Arena'),
+                                          name=sky['name'].removeprefix('textures/') if game == 'q3' else None, sky=sky,
+                                          visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A T1 dome's shape follows its mission's.
+                    skies[key]['maps'].append(row.get('name', row['id']))
+        t1_sky_cache.update(stamp=stamp, skies=list(skies.values()))
+    return jsonify(t1_sky_cache['skies'])
 
 
 @app.route('/import_t1_maps', methods=['POST'])
