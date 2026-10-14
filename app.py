@@ -263,6 +263,43 @@ def import_t1_maps_route():
         import_lock.release()
 
 
+# Starsiege Maps: the T1 viewer over a pack tools/import_ss_map.py writes.
+@app.route('/maps/ss/')
+def ss_maps_viewer():
+    response = send_from_directory(static_dir / 'ss-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/ss-map-data/<path:filename>')
+def ss_map_data(filename):
+    shared = filename.startswith(('textures/', 'models/'))  # Content-named, as the T1 pack's.
+    response = send_from_directory(local_data_dir / 'ss-maps', filename, max_age=31536000 if shared else None)
+    response.cache_control.immutable = shared
+    return response
+
+
+@app.route('/import_ss_maps', methods=['POST'])
+def import_ss_maps_route():
+    from tools.import_ss_map import import_maps as import_ss_maps
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip() or not isinstance(payload.get('missions', ''), str):
+        return jsonify(error='Enter your Starsiege folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        missions = [payload['missions'].strip()] if payload.get('missions', '').strip() else None
+        return jsonify(import_ss_maps(payload['game'].strip(), local_data_dir / 'ss-maps', missions, payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
 @app.route('/maps/q3/')
 def q3_maps_viewer():
     response = send_from_directory(static_dir / 'q3-maps', 'index.html')

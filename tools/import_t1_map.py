@@ -23,6 +23,7 @@ import sys
 import tempfile
 import zipfile
 
+import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -212,15 +213,17 @@ def read_terrain_block(data):
     """GBLK terrain block: heights, material (flags, index) pairs and 4-bit RGB lightmap.
 
     Version 5 is the game's own (LZH-compressed arrays); version 0, written by newer editors, stores them raw.
+    Starsiege also ships version 4 (as 5 up to the arrays read here) and version 3: raw materials and lightmap, heights
+    as raw top and bottom rows with the rows between delta-coded along the row (Terrain/Code/grdBlock.cpp GridBlock::read).
     """
     magic, _, version, _, _, light_scale, lowest, highest, size_x, size_y = struct.unpack_from('<4sIi16siiffii', data)
-    if magic != b'GBLK' or version not in (0, 5) or size_x != size_y or light_scale < 0:
+    if magic != b'GBLK' or version not in (0, 3, 4, 5) or size_x != size_y or light_scale < 0:
         raise ValueError('Unsupported terrain block')
     offset = 52
 
     def compressed(expected):
         nonlocal offset
-        if not version:
+        if version in (0, 3):
             offset += expected
             if offset > len(data):
                 raise ValueError('Truncated terrain block')
@@ -231,9 +234,25 @@ def read_terrain_block(data):
         offset += 4 + consumed
         return expanded
 
-    heights = compressed((size_x + 1) ** 2 * 4)
+    if version == 3:
+        row = size_x + 1
+        values = list(struct.unpack_from('<%df' % row, data, offset))
+        offset += row * 4
+        for _ in range(1, size_x):  # Scale, leading height, a signed byte step per height, trailing height.
+            scale, height = struct.unpack_from('<2f', data, offset)
+            line = [height]
+            for step in struct.unpack_from('<%db' % (size_x - 1), data, offset + 8):
+                line.append(line[-1] + step * scale)
+            values += line + list(struct.unpack_from('<f', data, offset + 8 + size_x - 1))
+            offset += 8 + size_x - 1 + 4
+        values += struct.unpack_from('<%df' % row, data, offset)
+        offset += row * 4
+        heights = struct.pack('<%df' % len(values), *values)
+    else:
+        heights = compressed((size_x + 1) ** 2 * 4)
     values = struct.unpack('<%df' % (len(heights) // 4), heights)
-    if abs(min(values) - lowest) > .01 or abs(max(values) - highest) > .01:
+    tolerance = 1 if version == 3 else .01  # Byte steps lose a little height; the stored range is the source's.
+    if abs(min(values) - lowest) > tolerance or abs(max(values) - highest) > tolerance:
         raise ValueError('Decoded terrain heights do not match the block height range')
     materials = compressed(size_x ** 2 * 2)
     for _ in range(11 if version else 0):  # Pin maps: level-of-detail hints, unused here.
@@ -769,9 +788,36 @@ def export_mounted_interior(stem, source, read, texture_png):
         return model
 
 
-def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_json'):
-    """Write one mission's pack to root/maps/<id>; returns its scene. Shared textures go to root/textures."""
-    mission = parse_mission(mission_path.read_text(encoding='cp1252', errors='replace'))
+def stitch_terrain(index, read_block):
+    """A terrain of several different blocks (Starsiege: a 12 x 12 grid of 32 blocks) as one block: the grid's
+    heights, materials and lightmaps laid side by side, neighbours sharing their edge rows. Rows run along file y."""
+    blocks = {number: read_block(number) for number in sorted(set(index['blockMap']))}
+    first_block = blocks[index['blockMap'][0]]
+    size, light_width = first_block['size'], first_block['lightWidth']
+    if any(block['size'] != size or block['lightWidth'] != light_width for block in blocks.values()):
+        raise ValueError('Terrain blocks differ in size')
+    columns, rows, step = index['columns'], index['rows'], light_width - 1
+    if rows != columns:
+        raise ValueError('Only square terrain grids are supported')
+    heights = np.zeros((rows * size + 1, columns * size + 1), '<f4')
+    materials = np.zeros((rows * size, columns * size), '<u2')
+    light = np.zeros((rows * step + 1, columns * step + 1), '<u2')
+    for row in range(rows):
+        for column in range(columns):
+            block = blocks[index['blockMap'][row * columns + column]]
+            heights[row * size:(row + 1) * size + 1, column * size:(column + 1) * size + 1] = \
+                np.frombuffer(block['heights'], '<f4').reshape(size + 1, size + 1)
+            materials[row * size:(row + 1) * size, column * size:(column + 1) * size] = np.frombuffer(block['materials'], '<u2').reshape(size, size)
+            light[row * step:(row + 1) * step + 1, column * step:(column + 1) * step + 1] = \
+                np.frombuffer(block['light'], '<u2').reshape(light_width, light_width)
+    return {'size': rows * size, 'heights': heights.tobytes(), 'materials': materials.tobytes(), 'lightWidth': rows * step + 1,
+            'light': light.tobytes()}
+
+
+def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_json', mission=None):
+    """Write one mission's pack to root/maps/<id>; returns its scene. Shared textures go to root/textures.
+    `mission` is an already read node tree (tools/starsiege_mission.py); else the file is a Tribes text mission."""
+    mission = mission or parse_mission(mission_path.read_text(encoding='cp1252', errors='replace'))
     nodes = list(walk(mission))
     folders, resources, provenance, warnings, read = mission_resources(install, mission_path, nodes)
 
@@ -815,9 +861,12 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         resources.update(install.volume(terrain_volume))
         provenance.append({'volume': terrain_volume.name, 'sha256': install.sha256(terrain_volume)})
     index = read_terrain_index(read(terrain_node['tedfilename']))
-    if len(set(index['blockMap'])) != 1:
-        raise ValueError('Only terrains that repeat a single block are supported')
-    block = read_terrain_block(read('%s#%d.dtb' % (Path(terrain_node['tedfilename']).stem, index['blockMap'][0])))
+    block_file = lambda number: read_terrain_block(read('%s#%d.dtb' % (Path(terrain_node['tedfilename']).stem, number)))  # noqa: E731
+    if len(set(index['blockMap'])) == 1:  # Tribes: one block repeated without end.
+        block = block_file(index['blockMap'][0])
+    else:  # A grid of different blocks drawn once, as one big block.
+        block = stitch_terrain(index, block_file)
+        index = {**index, 'columns': 1, 'rows': 1}
     # The block's own size is used: its arrays prove it, while some editors write a wrong detail count in the index.
     terrain_materials, textures = material_names(index['materialList']), {}
     for slot in sorted(set(block['materials'][1::2])):
@@ -938,10 +987,14 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
             if 'observerdroppoints' in groups:
                 viewpoints.append(matrix)
             continue
+        if node['class'] == 'droppoint':  # Starsiege vehicle drop points: views from about a HERC's cockpit height.
+            x, y, z = floats(fields['position'])
+            viewpoints.append(placement((x, y, z + 8), floats(fields['rotation'])))
+            continue
         if node['class'] == 'interiorshape':
             shape, kind = re.sub(r'(\.\d+)?\.dis$', '', fields.get('filename', ''), flags=re.I), 'interior'
-        else:
-            shape, kind = shapes.get(fields.get('datablock', '').lower()), 'shape'
+        else:  # A Tribes datablock names its shape; a Starsiege shape carries its file.
+            shape, kind = shapes.get(fields.get('datablock', '').lower()) or Path(fields.get('shapefile', '')).stem, 'shape'
         if not shape:
             continue
         model, source = models.get(shape.lower()), 'catalog'

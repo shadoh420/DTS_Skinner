@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DTS Skinner — Starsiege Maps</title>
+  <link rel="stylesheet" href="/static/t1-maps/style.css">
+  <script defer src="/static/ss-maps/config.js"></script>
+  <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/t1-maps/viewer.js"></script>
+</head>
+<body>
+  <header><a href="/">← Models</a><strong>Starsiege Maps</strong>
+    <select id="map" aria-label="Map"></select>
+    <label>Sky <select id="sky" aria-label="Sky" title="Show a Tribes mission's or a Quake III map's sky over this map"><option value="">Own sky</option></select></label>
+    <label>FOV <input id="fov" aria-label="Map field of view" type="number" min="30" max="110" value="90"></label>
+    <label><input id="fog" type="checkbox" checked> Fog</label>
+    <label><input id="weather" type="checkbox" checked> Weather</label>
+    <label><input id="lights" type="checkbox" checked> Animate lights</label>
+    <label><input id="invertX" type="checkbox"> Invert horizontal</label>
+    <label><input id="invertY" type="checkbox"> Invert vertical</label>
+    <button id="reset">Reset view</button>
+    <details id="importPanel"><summary>Import maps</summary>
+      <div class="import">
+        <label>Starsiege folder <input id="gamePath" placeholder="C:\Dynamix\Starsiege"></label>
+        <label>One mission file (optional) <input id="missionPath" placeholder="C:\Dynamix\Starsiege\multiplayer\DM_Impact.mis"></label>
+        <label><input id="replace" type="checkbox"> Re-import existing maps</label>
+        <button id="import">Import</button>
+        <span id="importStatus" role="status">Leave the mission field empty to import every mission: multiplayer, both campaigns (with cutscene maps) and training. The game folder is only read.</span>
+      </div>
+    </details>
+  </header>
+  <main><canvas id="c"></canvas></main>
+  <footer><span id="status" role="status">Loading map…</span>
+    <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay or audio. The whole 24 km terrain with its lightmap, buildings with their lightmaps, placed shapes, and the mission's sky, sun, moons and stars. Viewpoints 1–9 are the mission's vehicle drop points.</span></details></footer>
+</body>
+</html>
