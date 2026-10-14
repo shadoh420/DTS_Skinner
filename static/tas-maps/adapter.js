@@ -1,6 +1,6 @@
 /* Ascend supplies presentation settings; Vengeance's adapter owns shared buffers,
    the five-layer terrain shader, instancing and the per-type Decorations panel. */
-window.skinnerInstancedMapOptions={
+window.createUE3MapOptions=(options={})=>({
   label:'Tribes: Ascend',storageKey:'skinner.tasmaps',debugName:'skinnerTasMaps',
   games:[['tas','C:\\Games\\Tribes_Ascend_Parting_Gifts']],
   dataRoot:'/tas-map-data/',importRoute:'/import_tas_maps',computeNormals:true,filterUnavailable:true,
@@ -26,7 +26,7 @@ window.skinnerInstancedMapOptions={
     return material;
   },
   async load(map) {
-    const {scene,renderer,camera}=window.skinnerTasMaps;
+    const {scene,renderer,camera}=window[options.debugName||'skinnerTasMaps'];
     scene.background=null;scene.fog=null;renderer.setClearColor(0x7f98aa);
     const span=Math.max(500,map.preview_extent||3000);
     if(camera){camera.far=Math.max(5000,span*3);camera.updateProjectionMatrix();}
@@ -36,8 +36,10 @@ window.skinnerInstancedMapOptions={
       const color=bytes?new THREE.Color(c[2]/255,c[1]/255,c[0]/255):new THREE.Color(...c.slice(0,3));
       // ponytail: UE3 height integration is not reproduced; bound a light distance haze
       // by the playable extent. Keep authored colour/start and preserve native data in JSON.
-      const near=Math.max(fog.start/52.5,span*.35),far=Math.max(near+span*4,span*5);
+      const near=Math.max((fog.start??0)/52.5,span*.35),far=Math.max(near+span*4,span*5);
       scene.fog=new THREE.Fog(color,near,far);renderer.setClearColor(color);
     }
-  }
-};
+  },
+  ...options
+});
+window.skinnerInstancedMapOptions=window.createUE3MapOptions();

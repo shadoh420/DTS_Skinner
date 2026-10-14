@@ -54,10 +54,12 @@ from tools.import_ja import import_catalog as import_ja_catalog
 from tools.import_vtmb import import_catalog as import_vtmb_catalog
 from tools.import_eye import import_catalog as import_eye_catalog
 from tools.import_tas import import_catalog as import_tas_catalog
+from tools.import_nos import import_catalog as import_nos_catalog
 from tools.import_tvg import import_catalog as import_tvg_catalog
 from tools.import_eye_map import import_maps as import_eye_maps
 from tools.import_tvg_map import import_maps as import_tvg_maps
 from tools.import_tas_map import import_maps as import_tas_maps
+from tools.import_nos_map import import_maps as import_nos_maps
 from tools.import_doom3 import import_catalog as import_doom3_catalog
 from tools import quake4_policy
 from tools.import_azrael import import_catalog as import_azrael_catalog
@@ -108,7 +110,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'ge', 'doom3', 'quake4')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'ge', 'doom3', 'quake4')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -629,6 +631,7 @@ def import_doom3_maps_route():
 
 @app.route('/maps/tvg/')
 @app.route('/maps/tas/')
+@app.route('/maps/nos/')
 def tvg_maps_viewer():
     game = request.path.split('/')[2]
     response = send_from_directory(static_dir / (game + '-maps'), 'index.html')
@@ -638,8 +641,9 @@ def tvg_maps_viewer():
 
 @app.route('/tvg-map-data/<path:filename>')
 @app.route('/tas-map-data/<path:filename>')
+@app.route('/nos-map-data/<path:filename>')
 def tvg_map_data(filename):
-    game = 'tas' if request.path.startswith('/tas-map-data/') else 'tvg'
+    game = request.path.split('/')[1].removesuffix('-map-data')
     manifest = local_data_dir / (game + '-maps') / 'model-library.json'
     library = json.loads(manifest.read_text(encoding='utf-8')) if manifest.is_file() else {}
     root = pathlib.Path(library.get('root', pack_dirs[game]))
@@ -665,6 +669,7 @@ def tvg_map_data(filename):
 
 @app.route('/import_tvg_maps', methods=['POST'])
 @app.route('/import_tas_maps', methods=['POST'])
+@app.route('/import_nos_maps', methods=['POST'])
 def import_tvg_maps_route():
     if foreign_request():
         return jsonify(error='Import must be started from this Skinner window.'), 403
@@ -672,11 +677,11 @@ def import_tvg_maps_route():
         return jsonify(error='Expected a small JSON import request.'), 400
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('path'), str) or not payload['path'].strip():
-        return jsonify(error='Enter your Tribes game folder.'), 400
+        return jsonify(error='Enter your game install folder.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        importer = import_tas_maps if request.path == '/import_tas_maps' else import_tvg_maps
+        importer = {'/import_tas_maps':import_tas_maps,'/import_nos_maps':import_nos_maps,'/import_tvg_maps':import_tvg_maps}[request.path]
         return jsonify(importer(payload['path'].strip(), local_data_dir, payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
@@ -1216,6 +1221,7 @@ def import_reflex():
 @app.route('/import_ja', methods=['POST'])
 @app.route('/import_doom3', methods=['POST'])
 @app.route('/import_quake4', methods=['POST'])
+@app.route('/import_nos', methods=['POST'])
 @app.route('/import_tas', methods=['POST'])
 @app.route('/import_tvg', methods=['POST'])
 @app.route('/import_eye', methods=['POST'])
@@ -1248,6 +1254,8 @@ def import_conversion_pack():
             return jsonify(import_doom3_catalog(payload['path'].strip(), pack_dirs[game], policy=quake4_policy))
         if game == 'doom3':
             return jsonify(import_doom3_catalog(payload['path'].strip(), pack_dirs[game]))
+        if game == 'nos':
+            return jsonify(import_nos_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'tas':
             return jsonify(import_tas_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'tvg':
@@ -1328,7 +1336,7 @@ def export_glb(model_name):
         preview = load_model_data(path, request.args.get('texture'), overrides)
         # Azrael bakes its clips at import, beside the models.
         cache = (pack_dirs[game] / 'animations' if game == 'azrael' else app_local_data_dir / 'animations' / game) / (model_name+'.json.gz')
-        if cache.is_file() and game not in ('t2', 'dx', 'vtmb', 'eye', 'tvg', 'tas'):
+        if cache.is_file() and game not in ('t2', 'dx', 'vtmb', 'eye', 'tvg', 'tas', 'nos'):
             with gzip.open(cache, 'rt', encoding='utf-8') as stream:
                 data = json.load(stream)
             data = dict(preview, **data)
@@ -1346,7 +1354,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'ge', 'doom3', 'quake4'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'ge', 'doom3', 'quake4'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:

@@ -34,6 +34,14 @@ def static_mesh(p, ref):
     r.take(24)  # compressed kDOP root bounds, version >=770
     r.bulk_array(); r.bulk_array()  # collision nodes and triangles
     internal_version = r.i32()
+    if p.version >= 823:
+        if r.i32():
+            raise ValueError('StaticMesh editor extra LOD is unsupported')
+        item_size = 7 if p.version >= 829 else 4
+        r.take(r.count(item_size)*item_size)  # editor LOD remapping records
+        r.take(4)
+    if p.version >= 859:
+        r.take(4)
     lods = r.count(16, 32)
     if not lods:
         raise ValueError('StaticMesh has no render LOD')
@@ -87,10 +95,16 @@ def skeletal_mesh(p, ref):
     if not lods:
         raise ValueError('SkeletalMesh has no render LOD')
     sections = []
-    for _ in range(r.count(11, 4096)):
-        mat, chunk, first, faces, sorting = r.unpack('HHiHB')
+    modern = p.version >= 806
+    for _ in range(r.count(13 if modern else 11, 4096)):
+        mat, chunk, first, faces, sorting = r.unpack('HHiiB' if modern else 'HHiHB')
         sections.append((mat, first, faces))
-    _, raw = r.bulk_array(2); indices = np.frombuffer(raw, '<u2').astype(int).tolist()
+    index_size = 2
+    if modern:
+        _, index_size = r.unpack('iB')
+        if index_size not in (2, 4):
+            raise ValueError('Unsupported skeletal index width')
+    _, raw = r.bulk_array(index_size); indices = np.frombuffer(raw, '<u'+str(index_size)).astype(int).tolist()
     r.array('H')  # active bone indices
     chunks = r.count(24, 65536)
     for _ in range(chunks):
@@ -100,7 +114,7 @@ def skeletal_mesh(p, ref):
         r.array('H'); r.take(12)  # bone map, rigid/soft counts, maximum influences
     size, expected = r.unpack('2i')
     r.take(r.count()*1)  # required bones
-    p.bulk(r, element_size=2, load=False)  # raw point indices
+    p.bulk(r, element_size=4 if modern else 2, load=False)  # raw point indices
     lod_uvs, nuv, full, packed = r.unpack('4i')
     r.take(24)  # packed-position extent/origin (PC stream uses full positions)
     if not 1 <= nuv <= 8 or lod_uvs != nuv or full not in (0, 1) or packed not in (0, 1):
