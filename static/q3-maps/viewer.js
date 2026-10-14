@@ -17,6 +17,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   root.rotation.x = -Math.PI / 2;
   root.updateMatrixWorld();
   scene.add(root);
+  // NPC visibility belongs to a parent of the adapter's holder: JA rewrites
+  // holder.visible for distance culling every frame. Shared geometry stays shared.
+  const npcToggle = window.skinnerNPCToggle;
+  const npcHolders = [], npcEntities = new Set();
+  let npcLoadFailed = false;
+  npcToggle?.setCount(0);
+  if (npcToggle) npcToggle.onChange = enabled => npcHolders.forEach(holder => { holder.visible = enabled; });
+  const trackNPC = (item, holder) => {
+    if (npcLoadFailed || !item.npc || !holder?.children.length) return;
+    const visibility = new THREE.Group();
+    visibility.visible = npcToggle?.enabled ?? true;
+    visibility.add(holder);root.add(visibility);
+    npcHolders.push(visibility);npcEntities.add(item.entity);
+    npcToggle?.setCount(npcEntities.size);
+  };
   const camera = new THREE.PerspectiveCamera(60, 1, 2, 60000);
   camera.rotation.order = 'YXZ';
   const data = config.data || '/q3-map-data/';
@@ -601,9 +616,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
-    if (config.addPlaced) await Promise.all((map.placed || []).map(item => config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map})));
+    if (config.addPlaced) await Promise.all((map.placed || []).map(async item => {
+      const holder = await config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map});
+      trackNPC(item, holder);
+    }));
     showNotes();
     ready = true;
     showReady();
-  } catch (error) { showStatus('Map could not load: ' + error.message); }
+  } catch (error) { npcLoadFailed = true; npcToggle?.setCount(0); showStatus('Map could not load: ' + error.message); }
 });

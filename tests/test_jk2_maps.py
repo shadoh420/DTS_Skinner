@@ -71,7 +71,7 @@ class JK2MapTests(unittest.TestCase):
         styles=maps.light_styles([dict(classname='worldspawn',ls_2r='z',ls_2g='a',ls_2b='m'),dict(classname='light',targetname='lamp',style='35',switch_style='2')])
         self.assertEqual(styles[35],[1,0,12/25])
         self.assertEqual(maps.section_for('pit')[0],'sp');self.assertEqual(maps.section_for('duel_pit')[0],'mp')
-        self.assertTrue(maps.filtered(dict(classname='NPC_Kyle',model='models/test.glm'),'sp'))
+        self.assertFalse(maps.filtered(dict(classname='NPC_Kyle',model='models/test.glm'),'sp'))
         self.assertTrue(maps.filtered(dict(notfree='1'),'mp'));self.assertFalse(maps.filtered(dict(notteam='1'),'mp'))
         self.assertTrue(maps.filtered(dict(spawnflags='512'),'sp',1));self.assertFalse(maps.filtered(dict(spawnflags='512'),'sp',0))
         self.assertTrue(maps.filtered(dict(classname='team_CTF_redflag'),'mp'))

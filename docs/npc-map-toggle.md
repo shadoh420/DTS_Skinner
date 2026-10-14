@@ -183,3 +183,66 @@ Q2 soldier variants, multipart bosses/turrets and DK companions. Check an empty/
 saved preferences. Watch frame rate and memory in the hub: groups are per actor, geometry is baked, and
 hiding does not unload it. Quake/Q2 use even preview lighting and authored origins, without floor settling;
 all readers hold one pose. Full-suite, browser and gameplay visual acceptance remain host-side checks.
+
+## Step 4: RTCW / Jedi Outcast / Jedi Academy
+
+`placed[]` carries `npc:true`, `entity`, `classname` (and Jedi `npcType`). A complete RTCW
+body/head/skin-accessory assembly is one placement. `itemModels[].npcSource` records the
+definition/skins, chosen frame and pose; `entityResults` records omissions and failures.
+The shared Q3 viewer counts unique drawable IDs and hides a parent group, preserving JA's
+per-frame distance culling and shared non-NPC materials. Old packs need `--replace`.
+
+| Case | Decision |
+|---|---|
+| RTCW actors | Explicit soldier/civilian/partisan/undead/elite/blackguard/stim/boss defaults; authored model, body skin and head overrides. Existing MDS idle assembly includes skin-declared accessories. |
+| Jedi actors | Resolve classname/flag aliases or concrete `NPC_type` through `npcs.cfg` / `.npc`; GLM + GLA `BOTH_STAND1`, skin, surface switches and definition scale. Mouse/remote/seeker also support lower MD3s. Missing skin files use embedded shaders with an audit warning. |
+| Triggered/scripted actors | One authored preview, including cinematic/hidden actors and typed `NPC_spawner`, irrespective of spawn count. Keep existing difficulty/gametype exclusions. Do not execute scripts, relocate actors, invent populations or animate them. Random appearance branches choose one fixed valid variant. |
+| Controls and helpers | RTCW `ai_marker`, `ai_trigger`, `ai_effect` and unrecognized AI classes; untyped/unresolved Jedi spawners; `nulldriver`, `rocks`, and runtime-customized `NPC_Player` are omitted and uncounted. |
+| Vehicles | `NPC_Vehicle`, definitions with `CLASS_VEHICLE`, and AT-ST walkers are excluded in both Jedi paths. Stock JA SP entities include `swoop`, `swoop_cin`, `tauntaun`, `WildTauntaun`; vehicle definitions also cover ships and rideable rancor/wampa variants. Ordinary vehicle props keep their existing visibility. |
+| Other edges | Droids, creatures, bosses and undead count. Corpse/debris props remain scenery; scripts never create corpses. Separate hand weapons/sabers are omitted; RTCW skin-declared accessories remain attached. No player starts become NPCs. |
+
+Spawn-rule references: [RTCW class defaults](https://github.com/id-Software/RTCW-SP/blob/master/src/game/ai_cast_characters.c),
+[JK2 wrappers](https://github.com/JACoders/OpenJK/blob/master/codeJK2/game/NPC_spawn.cpp),
+[JA wrappers](https://github.com/JACoders/OpenJK/blob/master/code/game/NPC_spawn.cpp).
+Named-character wrappers that unconditionally assign their type override `NPC_type`, as in the source.
+
+Read-only retail inputs, scratch exports under `build/npc-step4/samples` (2026-10-13):
+
+| Game / map | NPCs | Added geometry MiB | Added textures MiB | Approx. NPC payload growth MiB |
+|---|---:|---:|---:|---:|
+| RTCW escape1 | 29 | 1.72 | 1.32 | 3.09 |
+| RTCW village1 | 44 | 2.37 | 2.17 | 4.60 |
+| JK2 kejim_post | 106 | 2.15 | 2.42 | 4.67 |
+| JK2 artus_mine | 123 | 2.32 | 2.75 | 5.18 |
+| JA t1_sour | 79 | 1.36 | 6.10 | 7.60 |
+| JA yavin1 | 16 | 0.62 | 3.15 | 3.83 |
+
+All six samples have zero NPC model failures. Growth isolates NPC placements/descriptors, unique
+model geometry and textures beyond each map's other content; shared files overlap between maps,
+and these are uncompressed payload estimates, not whole-library disk deltas. RTCW `doc` has only
+cinematic animations: existing frame-0 fallback is reported, not claimed to be a standing pose.
+JA shader-stage/specular/bloom limits and neutral entity tints remain; check these visually.
+Counts follow the installed preview difficulty profile, not a live gameplay population.
+
+Focused checks: `python -m unittest tests.test_npc_step4 tests.test_rtcw_maps tests.test_jk2_maps
+tests.test_ja_maps tests.test_rtcw.RTCWTests tests.test_jk2.JK2Tests tests.test_ja.JATests`,
+`node tests/test_npc_step4.js`, `node tests/test_npc_toggle.js`, and JS syntax checks. Synthetic
+fixtures use plain tempfile; local ACL workarounds are confined to ignored `build/` helpers.
+
+Claude: run from the step-4 checkout under the host lock. Commands are prepared, not executed
+against the real library; discovery is unchanged and verifies **32+15 RTCW, 26+19 JK2, 34+23 JA**:
+
+```powershell
+$py = 'C:\tmp\DTS_Skinner\.venv\Scripts\python.exe'
+$lib = Join-Path $env:LOCALAPPDATA 'DTS-Skinner\local-data'
+$steam = 'C:\Program Files (x86)\Steam\steamapps\common'
+& $py tools/import_rtcw_map.py --install "$steam\Return to Castle Wolfenstein" --output "$lib\rtcw-maps" --replace
+& $py tools/import_jk2_map.py --install "$steam\Jedi Outcast" --output "$lib\jk2-maps" --replace
+& $py tools/import_ja_map.py --install "$steam\Jedi Academy" --output "$lib\ja-maps" --replace
+```
+
+Browser: check these counts, RTCW head/accessory alignment, Jedi standing poses/skins and MD3 droids;
+toggle while moving across JA's cull distance, then reload OFF and visit an empty MP map. Verify
+per-page preferences, unchanged scenery/pickups/vehicle props, and one count for typed spawners.
+Watch load time/frame rate/memory on crowded maps: hiding retains CPU/GPU geometry and materials.
+Full suite and browser acceptance remain with Claude.
