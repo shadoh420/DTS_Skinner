@@ -321,7 +321,7 @@ class AzraelTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); game,textures=write_install(root); output=root/'output'
             report=import_catalog(root,output)
-            self.assertEqual(report['categories'],{'Characters':1,'Other rigs':1})
+            self.assertEqual(report['categories'],{'Characters':1,'Animation rigs':1})
             self.assertEqual(report['duplicates'],1)
             self.assertEqual(report['textures'],2)
             self.assertEqual(report['pose_counts']['evaluated'],2)

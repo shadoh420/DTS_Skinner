@@ -609,6 +609,15 @@ def evaluate_world_matrices(scene, frame):
     return worlds
 
 
+# Animation rigs (one character posed for one animation, own mesh) by the character whose material names they
+# share (measured on the GOG CD 2026-10-14); o-test and samuri01 match none and keep their own names.
+RIG_OWNERS = {stem: owner for owner, stems in {
+    'Claude': 'cl-atak cl-atak1 cl-look cl-stand cl-turn cl-walk clatak clatak01 clatak02 clatak03 clatak2 clturn clwalk clwalk2',
+    'Edgar': 'edgar', 'Eugene': 'eugbld1 eugbld2 eugene eugene3 eugtest', 'Theo': 'iktest theo-ani theonew',
+    'Leoc': 'leocath', 'Philip': 'philip', 'Kurt': 'rapblod rapblod1', 'Amrap': 'rpa-fih3 test1',
+    'Scorp': 'scorpde# trilob4', 'Tallum': 'tallnew'}.items() for stem in stems.split()}
+
+
 def canonical_alias(source, aliases):
     preferred = next((a for a in aliases if a.lower() == Path(source).stem), None)
     preferred = preferred or next((a for a in aliases if a.lower() in ('eugene', 'scorp', 'kurt')), None)
@@ -821,7 +830,7 @@ def inventory(install):
             elif name in used:
                 raise ValueError('Room scene (ROOMS.DAT); reserved for Maps')
             elif animated:
-                row.update(category='Other rigs', status='pending')
+                row.update(category='Animation rigs', status='pending')
             else:
                 raise ValueError('Static scene or camera dummy; reserved for Maps/extras')
         except (ValueError, OSError) as exc:
@@ -902,6 +911,8 @@ def import_catalog(install, output, model_filter=None):
             model ='azrael_' + safe(Path(name).stem) + '_' + hashlib.sha256(name.encode()).hexdigest()[:8]
             alias_list = row['aliases']
             title = canonical_alias(name, alias_list)
+            if Path(name).stem in RIG_OWNERS:
+                title = RIG_OWNERS[Path(name).stem] + ' · ' + title
             item = dict(model_name=model, display_name=title + (' (' + ', '.join(a for a in alias_list if a != title) + ')' if len(alias_list) > 1 else ''),
                         game='azrael', category=row['category'], texture_name=data['material_textures'][0],
                         source=name, aliases=list(alias_list), source_aliases=[], status='ready')
