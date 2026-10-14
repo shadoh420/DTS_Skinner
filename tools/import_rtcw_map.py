@@ -550,6 +550,59 @@ def placed_model(game,path,skin,frame,output,textures,model_textures,tag=None, *
     return dict(file=file,shaders=shaders,middle=[0,0,0],limitations=sorted(set(notes))),missing
 
 
+# RTCW-SP ai_cast_characters.c: class defaults, not an ai_* name heuristic.
+# Controls (ai_marker/trigger/effect/etc.) never acquire an actor model.
+NPC_DEFAULTS={
+    'ai_soldier':'infantryss', 'ai_american':'american', 'ai_zombie':'zombie',
+    'ai_warzombie':'warrior/crypt2', 'ai_venom':'venom', 'ai_loper':'loper',
+    'ai_eliteguard':'eliteguard', 'ai_blackguard':'blackguard', 'ai_frogman':'frogman',
+    'ai_stimsoldier_dual':'stim', 'ai_stimsoldier_rocket':'stim', 'ai_stimsoldier_tesla':'stim',
+    'ai_supersoldier':'supersoldier', 'ai_protosoldier':'protosoldier',
+    'ai_boss_helga':'beast', 'ai_boss_heinrich':'heinrich',
+    'ai_partisan':'partisan', 'ai_civilian':'civilian',
+}
+
+
+def npc_appearance(e):
+    model=rtcw.q3.key_name(e.get('model',''))
+    body_model=None
+    if model.endswith(('.mds','.mdc','.md3')):
+        body_model=model if model.startswith('models/') else 'models/players/'+model
+    default=NPC_DEFAULTS[e['classname'].lower()]
+    model_skin=str(Path(body_model).parent) if body_model and body_model.startswith('models/players/') else default if body_model else model
+    value=e.get('skin') or model_skin or default
+    value=rtcw.q3.key_name(value).removeprefix('models/players/')
+    if value.endswith('.skin'):
+        folder='models/players/'+str(Path(value).parent);body_skin='models/players/'+value
+    else:
+        folder,_,variant=value.partition('/');folder='models/players/'+folder
+        body_skin=folder+'/body_'+(variant or 'default')+'.skin'
+    head=e.get('head','default') or 'default'
+    head_skin=rtcw.q3.key_name(head) if head.lower().endswith('.skin') else folder+'/head_'+head.lower()+'.skin'
+    return folder,body_skin,head_skin,body_model
+
+
+def npc_model(game,appearance):
+    folder,body_skin,head_skin,body_model=appearance
+    parts,meta=rtcw.character_parts(game,folder,body_skin,head_skin,body_model=body_model)
+    if meta['pose'].startswith('Frame 0:'):
+        meta['warnings'].append(folder+': no named idle/stand; frame 0 preview')
+    surfaces=[]
+    for part in parts:
+        for original in part['model']['surfaces']:
+            surface=dict(original);names=original['shaders']
+            shader=part['skin'].get(original['name'],names[0] if names else '')
+            if shader.lower() in ('off','*off','nodraw'):continue
+            surface['shaders']=[shader]
+            # transform() returns viewer axes; placed_model serializes native axes.
+            for field,normal in (('vertices',False),('normals',True)):
+                turned=rtcw.q3.transform(original[field],part['tags'],normal)
+                surface[field]=[v for i in range(0,len(turned),3) for v in (turned[i+2],turned[i],turned[i+1])]
+            surfaces.append(surface)
+    if not any(s['indices'] for s in surfaces):raise ValueError('NPC assembly has no drawable surfaces')
+    return dict(surfaces=surfaces),meta
+
+
 def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rules=None):
     # RTCW remains the default; ET supplies only rules that differ.
     if rules is None:
@@ -568,6 +621,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     names=[(qmap.shader_name(s.split(b'\0')[0].decode('latin1')),flags) for s,flags,_ in struct.iter_unpack('<64sii',lumps[1])]
     used={struct.unpack_from('<i',draw[13],at)[0] for at in range(0,len(draw[13]),104) if struct.unpack_from('<i',draw[13],at+8)[0] in (1,2,3)}
     shaders=[None]*len(names);limits=set(NOT_DRAWN)
+    if hasattr(rules,'NPC_DEFAULTS'):
+        limits.discard('AI characters')
+        limits.add('NPCs: authored idle assemblies; scripts, runtime populations and held weapons not reconstructed')
     for i in sorted(used):
         if names[i][1]&qmap.SURF_NODRAW:continue
         shaders[i],missing,notes=rules.describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
@@ -578,7 +634,24 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
         try:
             flags=int(number(e,'spawnflags'));model=e.get('model','');item=rules.ITEMS[game.section].get(cls)
             if reason:pass
-            elif cls.startswith('ai_'):reason='AI character/control omitted by choice'
+            elif cls in getattr(rules,'NPC_DEFAULTS',{}):
+                # One authored actor preview, including triggered/scripted actors.
+                # Bosses/undead count; controls, vehicles and runtime populations do not.
+                appearance=npc_appearance(e)
+                key=hashlib.sha256(json.dumps(['npc',appearance]).encode()).hexdigest()[:24]
+                if key not in item_models:
+                    actor,meta=npc_model(game,appearance)
+                    desc,missing=placed_model(game,appearance[0],'',meta['frame'],output,textures,model_textures,model=actor)
+                    desc['npcSource']=dict(zip(('folder','bodySkin','headSkin','bodyModel'),appearance),**meta)
+                    desc['limitations']+=meta['warnings'];item_models[key]=desc;unresolved+=missing
+                    limits.update(desc['limitations'])
+                meta=item_models[key]['npcSource']
+                placed.append(dict(models=[key],origin=vector(e.get('origin')),angles=angles(e),
+                    scale=[v*meta['scale'] for v in scale(e)],spin=False,entity=serial,classname=cls,npc=True))
+                row.update(status='drawn',reason='NPC idle preview at authored position; scripts not executed',
+                    npc=True,spawnflags=flags,pose=meta['pose'],frame=meta['frame'])
+                audit.append(row);continue
+            elif cls.startswith('ai_'):reason='AI control or unsupported class; no actor preview'
             elif model.startswith('*'):
                 state=states[int(model[1:])];reason=state['hidden'] or 'inline brush at spawn transform';status='omitted' if state['hidden'] else 'drawn'
                 if not state['hidden'] and state['model2']:paths=[state['model2']];reason=''

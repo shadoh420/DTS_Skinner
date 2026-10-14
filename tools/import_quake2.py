@@ -92,7 +92,7 @@ def read_install(install, maps=False, game='quake2', base=None):
     return files, [r for r in records if r['source'].endswith('.bsp' if maps else ('.md2', '.sp2'))], counts
 
 
-def read_md2(data):
+def read_md2(data, *, standing=False):
     if len(data) < 68:
         raise ValueError('Truncated MD2 header')
     magic, version, width, height, frame_size, skins, verts, sts, tris, commands, frames, skin_at, st_at, tri_at, frame_at, cmd_at, end = struct.unpack_from('<17i', data)
@@ -114,18 +114,20 @@ def read_md2(data):
     triangles = list(struct.iter_unpack('<6H', data[tri_at:tri_at + tris * 12]))
     if any(max(t[:3]) >= verts or max(t[3:]) >= sts for t in triangles):
         raise ValueError('Invalid MD2 triangle index')
-    points, pose = None, ''
+    points, pose, selected, preferred = None, '', 0, False
     for frame in range(frames):
         at = frame_at + frame * frame_size
         values = struct.unpack_from('<6f', data, at)
         if not all(math.isfinite(v) for v in values) or min(values[:3]) < 0:
             raise ValueError('Invalid MD2 frame scale/translate')
-        if frame == 0:
-            pose = data[at + 24:at + 40].split(b'\0')[0].decode('ascii', errors='replace')
+        name = data[at + 24:at + 40].split(b'\0')[0].decode('ascii', errors='replace')
+        waiting = name.lower().startswith(('stand', 'idle', 'wait', 'ambient', 'flphor', 'search', 'blackwidow3'))
+        if frame == 0 or (standing and waiting and not preferred):
+            pose, selected, preferred = name, frame, waiting
             points = [tuple(p[k] * values[k] + values[k + 3] for k in range(3))
                       for p in struct.iter_unpack('<4B', data[at + 40:at + 40 + verts * 4])]
     return dict(points=points, st=st, triangles=triangles, skin_names=names,
-                width=width, height=height, frames=frames, pose=pose)
+                width=width, height=height, frames=frames, pose=pose, frame=selected)
 
 
 def build_model(mesh, texture):
@@ -176,10 +178,11 @@ def category(name):
     return 'Objects/Effects'
 
 
-def choose_skin(name, mesh, files):
+def choose_skin(name, mesh, files, skin_number=0):
     folder = str(PurePosixPath(name).parent)
     body = name.startswith('players/') and name.endswith('/tris.md2')
-    named = mesh['skin_names'][0] if mesh['skin_names'] else ''
+    names = mesh['skin_names']
+    named = names[skin_number if 0 <= skin_number < len(names) else 0] if names else ''
     default = f'{folder}/{PLAYER_SKINS.get(folder.split("/")[-1], "skin")}.pcx' if body else ''
     if default in files:
         return default, f'Player body preview default: {default}'

@@ -2,7 +2,7 @@
 
 python tools/import_quake2_map.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake 2/baseq2" [--replace] [--game all|quake2|xatrix|rogue|ctf]
 
-Data defaults to SKINNER_DATA_DIR/quake2-maps. No placed MD2s or gameplay simulation.
+Data defaults to SKINNER_DATA_DIR/quake2-maps. Placed monsters use standing MD2 previews; no gameplay simulation.
 Reference settings: intensity=2, gl_modulate=1, vid_gamma=1; light styles held at m,
 except switchable START_OFF lights at a. Source coordinates use the Quake map basis.
 """
@@ -440,15 +440,107 @@ def skybox(info, files):
     return dict(name=name, rotate=float(info.get('skyrotate', '0')), axis=axis.tolist(), faces=sources, missing=missing), images
 
 
+# id-Software/quake2-rerelease-dll/original/{baseq2,xatrix,rogue}: SP_monster_*.
+# Tanks, boss vehicles and sentry monsters act as characters. No target_spawner offspring.
+MONSTER_MODELS = {
+    'berserk': 'berserk', 'gladiator': 'gladiatr', 'gunner': 'gunner', 'infantry': 'infantry',
+    'soldier_light': 'soldier', 'soldier': 'soldier', 'soldier_ss': 'soldier',
+    'tank': 'tank', 'tank_commander': 'tank', 'medic': 'medic', 'flipper': 'flipper',
+    'chick': 'bitch', 'chick_heat': 'bitch', 'parasite': 'parasite', 'flyer': 'flyer', 'kamikaze': 'flyer', 'brain': 'brain', 'floater': 'float',
+    'hover': 'hover', 'mutant': 'mutant', 'supertank': 'boss1', 'boss2': 'boss2',
+    'jorg': 'boss3/jorg', 'makron': 'boss3/rider', 'boss3_stand': 'boss3/rider',
+    'gekk': 'gekk', 'gladb': 'gladb', 'boss5': 'boss5', 'fixbot': 'fixbot',
+    'soldier_hypergun': 'soldierh', 'soldier_lasergun': 'soldierh', 'soldier_ripper': 'soldierh',
+    'carrier': 'carrier', 'stalker': 'stalker', 'turret': 'turret', 'widow': 'blackwidow',
+    'widow2': 'blackwidow2', 'medic_commander': 'medic', 'daedalus': 'hover',
+}
+MONSTER_SKINS = {'soldier': 2, 'soldier_ss': 4, 'tank_commander': 2, 'medic_commander': 2,
+                 'daedalus': 2, 'soldier_hypergun': 2, 'soldier_lasergun': 4, 'chick_heat': 3}
+
+
+def append_monsters(data, bsp, files, game):
+    if __package__:
+        from .import_quake2 import read_md2, build_model, choose_skin
+        from .import_quake_map import append_alias
+    else:
+        from import_quake2 import read_md2, build_model, choose_skin
+        from import_quake_map import append_alias
+    records, images, cache = [], {}, {}
+    for entity, e in enumerate(bsp['entities']):
+        cls = e.get('classname', '')
+        if not cls.startswith('monster_'):
+            continue
+        row = dict(entity=entity, classname=cls, npc=True, parts=[])
+        records.append(row)
+        name = cls.removeprefix('monster_')
+        path = 'models/monsters/' + MONSTER_MODELS[name] + '/tris.md2' if name in MONSTER_MODELS else ''
+        reason = ('Monsters removed in deathmatch' if game == 'ctf' else
+                  'Excluded on medium skill' if excluded(e, game) else
+                  'No verified placed model mapping (helper/corpse)' if not path else '')
+        if reason:
+            row.update(status='omitted', reason=reason)
+            continue
+        if name == 'turret' and int(e.get('spawnflags') or 0) & 128 and not e.get('targetname'):
+            row.update(status='omitted', reason='Wall turret without targetname is removed by spawn')
+            continue
+        try:
+            # Triggered monsters are authored previews, not new populations. Keep their identity.
+            skin = MONSTER_SKINS.get(name, int(float(e.get('skin') or 0)))
+            flags = int(e.get('spawnflags') or 0)
+            if name == 'turret':
+                skin = 1 if flags & 16 else 2 if flags & 32 else 0
+            origin, turn = vector(e), angles(e)
+            if name == 'turret':
+                if turn[1] in (-1, -2):
+                    turn = np.array([270. if turn[1] == -1 else 90., 0., 0.])
+                origin += rotation(turn)[:, 0] * 2
+            paths = [path]
+            if name == 'jorg':
+                paths.append('models/monsters/boss3/rider/tris.md2')
+            if name == 'turret' and flags & 128:
+                paths.append('models/monsters/turretbase/tris.md2')
+            for part_index, path in enumerate(paths):
+                part_skin = skin if part_index == 0 else 0
+                key = path, part_skin
+                if key not in cache:
+                    if path not in files:
+                        raise ValueError('Missing monster model ' + path)
+                    mesh = read_md2(files[path][0], standing=True)
+                    skin_path, fallback = choose_skin(path, mesh, files, part_skin)
+                    if not skin_path:
+                        raise ValueError(fallback)
+                    image = read_pcx(files[skin_path][0])
+                    # Alias previews use an even .5 light multiplier, like other unlit groups.
+                    image = image.point([min(255, i * INTENSITY) for i in range(256)] * 3)
+                    png = 'md2_' + hashlib.sha256(image.tobytes() + struct.pack('<II', *image.size)).hexdigest()[:24] + '.png'
+                    images[png] = image
+                    cache[key] = mesh, build_model(mesh, png), png, skin_path, fallback
+                mesh, model, png, skin_path, fallback = cache[key]
+                append_alias(data, model, origin, turn,
+                             dict(texture=png, kind='model', flags=0, size=list(images[png].size), unlit=True, alpha=1,
+                                  npc=True, entity=entity, classname=cls))
+                part = dict(model=path, skin=skin_path, skin_number=part_skin, frame=mesh['frame'],
+                            pose=mesh['pose'], fallback=fallback)
+                row['parts'].append(part)
+                if part_index == 0:
+                    row.update(part)
+            row.update(status='drawn', triggered=bool(flags & 2))
+        except (ValueError, IndexError, struct.error) as exc:
+            row.update(status='partial' if row['parts'] else 'failed', reason=str(exc))
+    return records, images
+
+
 def build_map(raw, name, files, palette, game='quake2'):
     bsp = read_bsp(raw, files)
     bsp['name'] = name
     placed, skipped = instances(bsp, game)
     data = geometry(bsp, placed, game)
+    models, model_images = append_monsters(data, bsp, files, game)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp, data['floors'], game)
     info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})
     sky, images = skybox(info, files)
+    images.update(model_images)
     for png, tex in data['textures'].items():
         images[png] = upload_texture(tex, palette)
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(),
@@ -456,13 +548,15 @@ def build_map(raw, name, files, palette, game='quake2'):
     scene = dict(name=name, title=info.get('message', ''), game=game, format='quake2-bsp38',
                  vertices=len(points), indices=len(data['indices']), lightmap=list(data['atlas'].size),
                  groups=data['groups'], viewpoints=views, bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(),
-                 instances=placed, skipped_entities=skipped, faces=data['audit'], skybox=sky,
+                 instances=placed, models=models, model_failures=[r for r in models if r['status'] in ('failed', 'partial')],
+                 skipped_entities=skipped, faces=data['audit'], skybox=sky,
                  entity_classes=dict(Counter(e.get('classname', '') for e in bsp['entities'])), dark_styles=data['dark'],
                  missing=sorted({f['texture'] for f in data['audit'] if f['missing'] and f['kind'] != 'sky'} | set(sky['missing'])),
                  lighting=dict(renderer='ref_gl 3.20', intensity=2, gl_modulate=1, vid_gamma=1, normal_style=1),
                  assumptions=[('CTF deathmatch filtering; first authored red team start' if game == 'ctf' else 'medium skill single player'),
                               ('styles m; SP_light removed in deathmatch' if game == 'ctf' else 'styles m except START_OFF styles a'),
-                              'initial brush states, trains at first corner before travel', 'animated textures at first texinfo frame'])
+                              'initial brush states, trains at first corner before travel', 'animated textures at first texinfo frame',
+                              'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; triggered previews included; no runtime summons'])
     return scene, blob, images, data['atlas']
 
 

@@ -239,7 +239,7 @@ second" } // comment with braces {}
         parsed = maps.read_bsp(bsp(static=False, embedded={'../escape': b'x'}))
         with self.assertRaises(ValueError): maps.map_files(parsed, {})
 
-    def test_pipeline_patch_pickups_npc_omissions(self):
+    def test_pipeline_patch_pickups_and_npcs(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)/'install'; fixture(root)
             folder = root/'Unofficial_Patch'/'maps'; folder.mkdir()
@@ -261,11 +261,11 @@ second" } // comment with braces {}
             self.assertFalse(report['failed'], report['failed']); self.assertEqual(report['effective_maps'], 2)
             self.assertEqual(report['inventory']['patch']['.bsp'], {'added': 1, 'replaced': 1})
             scene = json.loads((output/'maps'/maps.key('sm_tiny')/'scene.json').read_text())
-            self.assertEqual(scene['skipped_by_reason']['NPC / character actor excluded'], 2)
-            self.assertEqual(len(scene['model_failures']), 2)
-            self.assertEqual(sum(m.get('status') == 'drawn' for m in scene['models']), 2)
-            self.assertTrue(all(m['pose']['skin_family'] == 1 for m in scene['models'] if m.get('status') == 'drawn'))
-            self.assertEqual(scene['models'][1]['source'], 'vdata/items/item_g_test.txt')
+            self.assertEqual({g['entity'] for g in scene['groups'] if g.get('npc')}, {2})
+            self.assertEqual(len(scene['model_failures']), 3)
+            self.assertEqual(sum(m.get('status') == 'drawn' for m in scene['models']), 3)
+            self.assertTrue(all(m['pose']['skin_family'] == 1 for m in scene['models'] if m.get('status') == 'drawn' and not m.get('npc')))
+            self.assertEqual(next(m for m in scene['models'] if m.get('classname') == 'item_g_test')['source'], 'vdata/items/item_g_test.txt')
             blob = (output/'maps'/maps.key('sm_tiny')/'geometry.bin').read_bytes()
             self.assertEqual(len(blob), scene['vertices']*28 + scene['indices']*4)
             ix = np.frombuffer(blob, '<u4', offset=scene['vertices']*28)

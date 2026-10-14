@@ -32,7 +32,7 @@ BAKED_MODELS=('misc_model',)
 PROP_MODELS={}  # Authored model keys take priority; defaults are filled below.
 BOUND_SKINS=True
 NOT_DRAWN=jk.NOT_DRAWN+[
-    'NPC_Vehicle spawners (by choice); ordinary vehicle model props still draw',
+    'NPC_Vehicle and vehicle definitions excluded; ordinary vehicle model props still draw',
     'physics after spawn, scripted objective changes and vehicle simulation',
     'native MP mode by map: CTF, duel, FFA or Siege; first eligible Red/team 1 start',
 ]
@@ -169,7 +169,7 @@ def bsp_cull(lumps,things):
 def entity_filter(game,e):
     if e.get('_prepare_error'):return 'invalid prop spawn fields: '+e['_prepare_error']
     cls=e.get('classname','').lower();flags=int(number(e,'spawnflags'))
-    if cls.startswith('npc_'):return 'NPC spawn omitted by choice (including vehicles)'
+    if cls=='npc_vehicle':return 'vehicle spawner excluded from NPCs'
     if game.section=='sp':
         why=jk.filtered(e,'sp',game.skill)
         if why:return why

@@ -254,8 +254,8 @@ textures/test/sky
                         for stage in shader.get('stages',[]):self.assertTrue((out/'textures'/stage['map']).is_file())
             exported=q3.read_bsp((out/scene['bsp']).read_bytes(),version=47)
             self.assertEqual(struct.unpack_from('<i',exported[13],104+8)[0],0)  # Hidden inline surface.
-            self.assertEqual(sum(r['status']=='failed' for r in scene['entityResults']),1)
-            self.assertTrue(any('AI' in r['reason'] for r in scene['entityResults']))
+            self.assertEqual(sum(r['status']=='failed' for r in scene['entityResults']),2) # Broken prop + NPC without its character skins.
+            self.assertEqual(next(r for r in scene['entityResults'] if r['classname']=='ai_soldier')['status'],'failed')
             with patch('app.local_data_dir',root),patch('app.import_rtcw_maps',return_value=done) as importer:
                 client=app.test_client();page=client.get('/maps/rtcw/')
                 self.assertEqual(page.status_code,200);self.assertIn(b'Fog and AI',page.data);self.assertIn(b'/static/rtcw-maps/viewer.js',page.data)

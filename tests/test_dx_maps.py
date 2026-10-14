@@ -163,7 +163,7 @@ class DxMapTests(unittest.TestCase):
             root = Path(folder); path = make_map(root)
             library = Library(root, game='dx'); level = Package(path, game='dx')
             scene, geometry, images, atlas = build_map(library, level, None, game='dx')
-            self.assertEqual(scene['actors'], dict(meshes=3, movers=1, unread=0, failed=[], excluded_npcs=1,
+            self.assertEqual(scene['actors'], dict(meshes=4, movers=1, unread=0, failed=[], excluded_players=0, npcs=1,
                                                   excluded_other=6, carcasses=1, pickups=1, decorations=1))
             self.assertEqual(scene['polygons'], 1)
             self.assertEqual(scene['missing'], [])
@@ -172,7 +172,7 @@ class DxMapTests(unittest.TestCase):
             self.assertTrue(any(g.get('pan') == (128.0, 0) for g in scene['groups']))
             self.assertAlmostEqual(scene['viewpoints'][0]['origin'][1], 87.5 / 52.5, places=3)
             points = np.frombuffer(geometry, '<f4', count=scene['vertices'] * 3).reshape(-1, 3)
-            self.assertLess(points[:, 2].max(), 50)  # The excluded pawn was placed 9000 units away.
+            self.assertGreater(points[:, 2].max(), 150)  # The admitted pawn was placed 9000 units away.
             self.assertTrue(any(np.allclose(p, (0, 10 / 52.5, 100 / 52.5)) for p in points))  # mover key 0
             # Crate overrides its class's red slot with map-owned blue, rotates yaw 90, and uses DrawScale .1.
             expected = (-214.8 / 52.5, 70 / 52.5, 220 / 52.5)
