@@ -1291,6 +1291,33 @@ def model_thumbnail(game, filename):
     return send_from_directory(folders[game] / 'thumbnails', filename, max_age=0)
 
 
+MAP_OBJ_PACKS = {'quake': ('quake-maps', ('quake', 'hipnotic', 'rogue', 'qextras', 'dopa', 'mg1', 'mg3', 'qctf')),
+                 'quake2': ('quake2-maps', ('quake2', 'xatrix', 'rogue', 'ctf')),
+                 'sin': ('sin-maps', ('sin', '2015', 'ctf')), 'unreal': ('unreal-maps', ('unreal', 'ut')),
+                 'dx': ('dx-maps', ('dx',)), 'azrael': ('azrael-maps', ('azrael',)), 'anachronox': ('anachronox-maps', ('anachronox',)),
+                 'daikatana': ('daikatana-maps', ('daikatana',)), 'eye': ('eye-maps', ('eye',)), 'vtmb': ('vtmb-maps', ('vtmb',))}
+
+
+@app.route('/export_map_obj/<page>/<game>/<map_id>')
+def export_map_obj(page, game, map_id):
+    """A Maps page's shown map as OBJ/MTL with textures in a ZIP (tools/map_obj_exporter.py)."""
+    from tools.map_obj_exporter import map_to_obj_zip
+    if page not in MAP_OBJ_PACKS or game not in MAP_OBJ_PACKS[page][1] or not re.fullmatch(r'[A-Za-z0-9_.-]+', map_id) or '..' in map_id:
+        abort(404)
+    root = local_data_dir / MAP_OBJ_PACKS[page][0]
+    pack = root / game if page in ('sin', 'unreal') or game != page else root  # The viewer's dataRoot per page.
+    folder = pack / 'maps' / map_id
+    if not (folder / 'scene.json').is_file():
+        abort(404, f"Map '{map_id}' is not imported")
+    output = io.BytesIO()
+    try:
+        map_to_obj_zip(folder, [pack / 'textures', root / 'textures', game_textures(page)], page, output)
+    except (ValueError, KeyError, TypeError) as exc:
+        abort(422, str(exc))
+    output.seek(0)
+    return send_file(output, as_attachment=True, download_name=f'{page}_{map_id}_obj.zip', mimetype='application/zip')
+
+
 @app.route('/export_glb/<model_name>')
 def export_glb(model_name):
     from tools.glb_exporter import model_to_glb

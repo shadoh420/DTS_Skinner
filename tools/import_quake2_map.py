@@ -391,7 +391,7 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
         tex = face['texture']
         png = hashlib.sha256(struct.pack('<II', tex['width'], tex['height']) + tex['pixels']).hexdigest()[:24] + '.png'
         textures[png] = tex
-        group = groups.setdefault((png, face['flags'], face.get('material_key')), dict(texture=png, kind=face['kind'], flags=face['flags'],
+        group = groups.setdefault((png, face['flags'], face.get('material_key')), dict(texture=png, name=tex['name'], kind=face['kind'], flags=face['flags'],
             size=[tex['width'], tex['height']], unlit=face['unlit'], alpha=face['alpha'], indices=[]))
         if 'settings' in face:
             group['settings'] = face['settings']
