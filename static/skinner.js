@@ -361,8 +361,9 @@ window.addEventListener('DOMContentLoaded', () => {
       if (serial !== catalogSerial) return;
       loadTextureLibrary().catch(() => { /* It reports its own failure in the texture panel. */ });
       allTextureVersions().then(values => { if (serial === catalogSerial) versions = values; }, () => { /* Edits still show after a reload. */ });
-      // Keep the server's catalog order, including its stable punctuation/case ties.
-      catalog = listed;
+      // Alphabetical by the name shown; the server's order breaks ties (stable punctuation/case).
+      shortNames(listed);
+      catalog = listed.map((entry, index) => [entry, index]).sort(([a, i], [b, j]) => compare(a.short_name, b.short_name) || i - j).map(([entry]) => entry);
       showFamilies();
       const unavailable = catalog.filter(entry => !available(entry)).length;
       $('catalogSummary').textContent = `${game.toUpperCase()} · ${catalog.length.toLocaleString()} entries · ${catalog.length - unavailable} previews${unavailable ? ` · ${unavailable} unavailable` : ''}`;
@@ -381,6 +382,24 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
     }
+  }
+  // Path names (models/character/gibs/chunk01.mdl) read by their file name; folders come back, nearest first, only
+  // where two different files would read the same (Quake II's many tris.md2 read key/tris, debris3/tris).
+  function shortNames(entries) {
+    const paths = entries.map(entry => {
+      const name = entry.display_name || entry.model_name;
+      const match = /^((?:[^/:]+: )?)([^ ]+\/[^ ]+?)(?:\.[a-z0-9]{2,4})?((?: .*)?)$/i.exec(name);
+      entry.short_name = name;
+      return match && {entry, prefix: match[1], full: match[2] + match[3], rest: match[3], depth: 1,
+        parts: match[2].split('/').filter((part, index, all) => part && part !== all[index + 1])};
+    }).filter(Boolean);
+    const label = item => item.prefix + item.parts.slice(-item.depth).join('/') + item.rest;
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const group of Map.groupBy(paths, label).values()) if (new Set(group.map(item => item.full)).size > 1)
+        for (const item of group) if (item.depth < item.parts.length) { item.depth++; changed = true; }
+    }
+    for (const item of paths) item.entry.short_name = label(item);
   }
   function showFamilies() {
     const families = [...new Set(catalog.map(x => x.category || 'Other'))].sort(compare), shown = $('categorySelect').value;
@@ -434,7 +453,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const family = $('categorySelect').value;
     filtered = catalog.filter(entry => (!family || (entry.category || 'Other') === family) && `${entry.model_name} ${entry.display_name || ''} ${entry.category || ''}`.toLocaleLowerCase().includes(search));
     $('modelSelect').replaceChildren(...filtered.map(entry => {
-      const opt = option(`${entry.display_name || entry.model_name}${available(entry) ? '' : ' [no preview]'}`, entry.model_name);
+      const opt = option(`${entry.short_name}${available(entry) ? '' : ' [no preview]'}`, entry.model_name);
+      opt.title = entry.display_name || entry.model_name;
       opt.dataset.unavailable = String(!available(entry)); return opt;
     }));
     if (filtered.some(x => x.model_name === selectedName)) $('modelSelect').value = selectedName;

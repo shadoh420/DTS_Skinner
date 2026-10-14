@@ -16,7 +16,7 @@ import zipfile
 import zlib
 
 from tools import vtmb
-from tools.import_vtmb import import_catalog, resolve_material
+from tools.import_vtmb import category, import_catalog, resolve_material
 from tools.model_data import load_model_data, MODEL_GAMES
 from tools.texture_workshop import TEXTURE_GAMES
 from tools.glb_exporter import model_to_glb
@@ -135,6 +135,11 @@ def compact_vtx(vtx):
 
 
 class BloodlinesTests(unittest.TestCase):
+    def test_gibs_family(self):
+        self.assertEqual([category(n) for n in ("models/character/gibs/chunk01.mdl", "models/character/monster/manbat/throw_objects/throwtaxi_gib01.mdl",
+                                                "models/gibs/hgibs.mdl", "models/character/npc/unique/hollywood/andrei/andrei.mdl")],
+                         ["Gibs", "Gibs", "Gibs", "Character"])
+
     def test_quantized_vertices_and_rigid_vtx(self):
         for encoding in (1, 2):
             with self.subTest(encoding=encoding):
