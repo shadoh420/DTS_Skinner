@@ -354,16 +354,15 @@ window.addEventListener('DOMContentLoaded', () => {
     $('coverageReport').textContent = `View ${game.toUpperCase()} inventory & coverage report`;
     showWarnings([]);
     try {
-      const results = await Promise.allSettled([
-        json(`/list_models?${query({}, gameId)}`),
-        loadTextureLibrary(),
-        allTextureVersions().then(values => { if (serial === catalogSerial) versions = values; return values; })
-      ]);
+      // The model list must not wait for the texture library or for every game's texture versions: on a cold
+      // start those stat every texture of every game and left the list at 0 models for a long time.
+      // They start after the list so they don't compete with it on the server.
+      const listed = await json(`/list_models?${query({}, gameId)}`);
       if (serial !== catalogSerial) return;
-      if (results[0].status === 'rejected') throw results[0].reason;
+      loadTextureLibrary().catch(() => { /* It reports its own failure in the texture panel. */ });
+      allTextureVersions().then(values => { if (serial === catalogSerial) versions = values; }, () => { /* Edits still show after a reload. */ });
       // Keep the server's catalog order, including its stable punctuation/case ties.
-      catalog = results[0].value;
-      versions = results[2].status === 'fulfilled' ? results[2].value : null;
+      catalog = listed;
       showFamilies();
       const unavailable = catalog.filter(entry => !available(entry)).length;
       $('catalogSummary').textContent = `${game.toUpperCase()} · ${catalog.length.toLocaleString()} entries · ${catalog.length - unavailable} previews${unavailable ? ` · ${unavailable} unavailable` : ''}`;
