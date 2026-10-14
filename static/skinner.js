@@ -374,6 +374,9 @@ window.addEventListener('DOMContentLoaded', () => {
       } else {
         $('status').textContent = 'This game has no imported catalog entries.';
         if (IMPORTS.includes(game)) $(`${game}Import`).open = true;
+        if (!catalog.length) json('/data_dir').then(({path, override}) => {
+          if (serial === catalogSerial) $('status').textContent = `No imported ${game.toUpperCase()} models in ${path}${override ? ' (set by SKINNER_DATA_DIR in the window that started the app)' : ''}.`;
+        }, () => { /* The plain message stays. */ });
       }
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
