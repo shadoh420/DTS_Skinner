@@ -1034,6 +1034,12 @@ def texture_versions():
             pass  # An editor can atomically replace a file while the directory is read.
     return jsonify(versions)
 
+@app.route("/data_dir")
+def data_dir():
+    # Shown when a game's catalog is empty: a leftover SKINNER_DATA_DIR otherwise looks like lost imports.
+    return jsonify(path=str(local_data_dir), override=bool(os.environ.get('SKINNER_DATA_DIR')))
+
+
 @app.route("/list_models")
 def list_models():
     if selected_game() in ("t2", "q3", "diabotical", "reflex", *pack_dirs):

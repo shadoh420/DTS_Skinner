@@ -40,8 +40,8 @@ window.addEventListener('DOMContentLoaded', () => {
   function updateHistoryButtons() {
     $('undoAction').disabled = historyBusy || loading || !history.length;
     $('redoAction').disabled = historyBusy || loading || !future.length;
-    $('undoAction').title = history.length ? `Ctrl+Z Â· ${history.at(-1).label}` : 'Ctrl+Z';
-    $('redoAction').title = future.length ? `Ctrl+Shift+Z / Ctrl+Y Â· ${future.at(-1).label}` : 'Ctrl+Shift+Z / Ctrl+Y';
+    $('undoAction').title = history.length ? `Ctrl+Z · ${history.at(-1).label}` : 'Ctrl+Z';
+    $('redoAction').title = future.length ? `Ctrl+Shift+Z / Ctrl+Y · ${future.at(-1).label}` : 'Ctrl+Shift+Z / Ctrl+Y';
     for (const [gallery, header] of [['galleryUndo', 'undoAction'], ['galleryRedo', 'redoAction']]) {
       $(gallery).disabled = $(header).disabled; $(gallery).title = $(header).title;
     }
@@ -51,7 +51,7 @@ window.addEventListener('DOMContentLoaded', () => {
     history.push({label, before, after, tagChange});
     if (history.length > 100) history.shift();
     future.length = 0; lastState = after;
-    $('historyStatus').textContent = `${label} Â· ${history.length}/100`;
+    $('historyStatus').textContent = `${label} · ${history.length}/100`;
     updateHistoryButtons();
   }
   function setHistoryBusy(value) {
@@ -171,9 +171,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const keys = new Set(), look = new THREE.Euler(0, 0, 0, 'YXZ');
   const forward = new THREE.Vector3(), right = new THREE.Vector3(), movement = new THREE.Vector3();
   let walking = false, navigationRequested = false, orbitDistance = 1;
-  const orbitHint = 'Drag: orbit Â· Wheel: zoom Â· Right-drag: pan Â· Shift + `: walk/fly';
+  const orbitHint = 'Drag: orbit · Wheel: zoom · Right-drag: pan · Shift + `: walk/fly';
   function updateNavigationHint() {
-    $('navigationHint').textContent = walking ? `${$('navigationStyle').value === 'walk' ? 'Walk' : 'Fly'} Â· WASD: move Â· E/Q: up/down Â· Shift/Alt: speed Â· Wheel: speed (${Number($('walkSpeed').value).toFixed(2)}) Â· Esc: exit` : orbitHint;
+    $('navigationHint').textContent = walking ? `${$('navigationStyle').value === 'walk' ? 'Walk' : 'Fly'} · WASD: move · E/Q: up/down · Shift/Alt: speed · Wheel: speed (${Number($('walkSpeed').value).toFixed(2)}) · Esc: exit` : orbitHint;
   }
   function stopWalking() {
     navigationRequested = false;
@@ -345,7 +345,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('exportObjBtn').disabled = true;
     $('exportGlbBtn').disabled = true;
     $('modelSearch').value = ''; $('skinSearch').value = '';
-    $('status').textContent = 'Loading catalogâ€¦';
+    $('status').textContent = 'Loading catalog…';
     $('textureGame').value = game;
     for (const id of IMPORTS) $(`${id}Import`).hidden = game !== id;
     $('modelThumbnail').hidden = true;
@@ -354,19 +354,18 @@ window.addEventListener('DOMContentLoaded', () => {
     $('coverageReport').textContent = `View ${game.toUpperCase()} inventory & coverage report`;
     showWarnings([]);
     try {
-      const results = await Promise.allSettled([
-        json(`/list_models?${query({}, gameId)}`),
-        loadTextureLibrary(),
-        allTextureVersions().then(values => { if (serial === catalogSerial) versions = values; return values; })
-      ]);
+      // The model list must not wait for the texture library or for every game's texture versions: on a cold
+      // start those stat every texture of every game and left the list at 0 models for a long time.
+      // They start after the list so they don't compete with it on the server.
+      const listed = await json(`/list_models?${query({}, gameId)}`);
       if (serial !== catalogSerial) return;
-      if (results[0].status === 'rejected') throw results[0].reason;
+      loadTextureLibrary().catch(() => { /* It reports its own failure in the texture panel. */ });
+      allTextureVersions().then(values => { if (serial === catalogSerial) versions = values; }, () => { /* Edits still show after a reload. */ });
       // Keep the server's catalog order, including its stable punctuation/case ties.
-      catalog = results[0].value;
-      versions = results[2].status === 'fulfilled' ? results[2].value : null;
+      catalog = listed;
       showFamilies();
       const unavailable = catalog.filter(entry => !available(entry)).length;
-      $('catalogSummary').textContent = `${game.toUpperCase()} Â· ${catalog.length.toLocaleString()} entries Â· ${catalog.length - unavailable} previews${unavailable ? ` Â· ${unavailable} unavailable` : ''}`;
+      $('catalogSummary').textContent = `${game.toUpperCase()} · ${catalog.length.toLocaleString()} entries · ${catalog.length - unavailable} previews${unavailable ? ` · ${unavailable} unavailable` : ''}`;
       filterCatalog();
       if (filtered.length) {
         const preferred = filtered.find(x => x.model_name === 'disc') || filtered[0];
@@ -375,6 +374,9 @@ window.addEventListener('DOMContentLoaded', () => {
       } else {
         $('status').textContent = 'This game has no imported catalog entries.';
         if (IMPORTS.includes(game)) $(`${game}Import`).open = true;
+        if (!catalog.length) json('/data_dir').then(({path, override}) => {
+          if (serial === catalogSerial) $('status').textContent = `No imported ${game.toUpperCase()} models in ${path}${override ? ' (set by SKINNER_DATA_DIR in the window that started the app)' : ''}.`;
+        }, () => { /* The plain message stays. */ });
       }
     } catch (error) {
       if (serial === catalogSerial) $('status').textContent = `Catalog unavailable: ${error.message}`;
@@ -544,7 +546,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loading = true;
     $('exportObjBtn').disabled = true;
     $('exportGlbBtn').disabled = true;
-    $('status').textContent = `Loading ${name}â€¦`;
+    $('status').textContent = `Loading ${name}…`;
     $('modelTitle').textContent = `${gameId.toUpperCase()} / ${(catalog.find(x=>x.model_name===name)||{}).display_name || name}`;
     const oldRotation = group ? group.quaternion.clone() : null;
     const oldPosition = group ? group.position.clone() : null;
@@ -622,7 +624,7 @@ window.addEventListener('DOMContentLoaded', () => {
       scene.add(group); materials = newMaterials; newMaterials = [];
       data = model; textureFailures = failures; loadedParams = params;
       if (!preserveView || !oldRotation) frameModel();
-      $('geometryInfo').textContent = `${(model.vertices.length / 3).toLocaleString()} vertices Â· ${(model.indices.length / 3).toLocaleString()} triangles Â· ${names.length} material slots${failures.size ? ` Â· ${failures.size} missing texture${failures.size === 1 ? '' : 's'}` : ''}`;
+      $('geometryInfo').textContent = `${(model.vertices.length / 3).toLocaleString()} vertices · ${(model.indices.length / 3).toLocaleString()} triangles · ${names.length} material slots${failures.size ? ` · ${failures.size} missing texture${failures.size === 1 ? '' : 's'}` : ''}`;
       $('status').textContent = failures.size ? `Preview loaded with ${failures.size} missing texture${failures.size === 1 ? '' : 's'}.` : 'Preview ready.';
       const metadata = model.metadata || {};
       const warnings = [...(entry.warnings || []), ...(model.warnings || []), ...(metadata.warnings || []), ...[...failures].map(x => `Missing texture: ${x}. Geometry remains visible in magenta.`)];
@@ -631,11 +633,11 @@ window.addEventListener('DOMContentLoaded', () => {
       const sequences = metadata.sequences || metadata.embedded_sequences || [];
       const external = metadata.external_sequences || [];
       $('animationInfo').textContent = `Static preview; GLB exports available geometry animation clips. ${gameId === 't2' ? `${sequences.length} embedded sequences; ${external.length} external animation files recorded. ` : ''}${metadata.pose || ''}`;
-      $('materialSelect').replaceChildren(...names.map((filename, index) => ({filename, index, label: (model.material_names || [])[index] || filename})).sort((a, b) => compare(a.label, b.label) || a.index - b.index).map(x => option(`${x.label} Â· slot ${x.index}`, x.index)));
+      $('materialSelect').replaceChildren(...names.map((filename, index) => ({filename, index, label: (model.material_names || [])[index] || filename})).sort((a, b) => compare(a.label, b.label) || a.index - b.index).map(x => option(`${x.label} · slot ${x.index}`, x.index)));
       $('materialSelect').disabled = false;
       if (slot && [...$('materialSelect').options].some(x => x.value === slot)) $('materialSelect').value = slot;
       $('loadedTexturesList').replaceChildren(...[...new Set(names.map((filename, index) => textureId(filename, sourceGame(model, index))))].sort(compare).map(filename => {
-        const li = document.createElement('li'); li.textContent = filename + (failures.has(filename) ? ' â€” MISSING' : '');
+        const li = document.createElement('li'); li.textContent = filename + (failures.has(filename) ? ' — MISSING' : '');
         if (failures.has(filename)) li.style.color = '#efb987'; return li;
       }));
       updateMaterialInspector();
@@ -663,13 +665,13 @@ window.addEventListener('DOMContentLoaded', () => {
     const valid = filename && !filename.startsWith('[') && !textureFailures.has(textureId(filename, textureGame));
     $('texturePreview').hidden = true;
     $('texturePreviewEmpty').hidden = false;
-    $('texturePreviewEmpty').textContent = filename ? valid ? 'Loading textureâ€¦' : 'Texture unavailable' : 'No material selected';
+    $('texturePreviewEmpty').textContent = filename ? valid ? 'Loading texture…' : 'Texture unavailable' : 'No material selected';
     $('textureDetails').textContent = filename ? `${textureGame.toUpperCase()} / ${filename}` : '';
     $('downloadTexture').classList.toggle('disabled', !valid);
     if (valid) {
       const opaque = game === 't2' && !(Number((data.material_flags || [])[slot] || 0) & (4 | 8 | 16));
       $('texturePreview').src = `${textureUrl(filename, textureGame, slotTransform(data, slot))}${opaque ? '&opaque=1' : ''}&v=${Date.now()}`;
-      if (opaque) $('textureDetails').textContent += ' Â· RGB preview; alpha retained in PNG';
+      if (opaque) $('textureDetails').textContent += ' · RGB preview; alpha retained in PNG';
       $('downloadTexture').href = textureUrl(filename, textureGame, slotTransform(data, slot)) + '&download=1';
       $('downloadTexture').download = filename.replace(/\.(dds|jpe?g)$/i, '.png');
     } else {
@@ -713,15 +715,15 @@ window.addEventListener('DOMContentLoaded', () => {
     if (list.includes(previous)) $('skinSelect').value = previous;
     $('skinSelect').disabled = !list.length;
     $('applySkin').disabled = loading || !data || !list.length || $('materialSelect').disabled;
-    $('textureCount').textContent = `${list.length.toLocaleString()} of ${textures.length.toLocaleString()} textures Â· ${library.toUpperCase()}${library === 't2' ? ' Â· RGB thumbnails' : ''}`;
-    $('similarityStatus').textContent = !validBounds ? 'Enter positive whole-pixel ranges with minimum â‰¤ maximum.' :
-      [sizeReference && `Size near ${sizeReference.filename} (${sizeReference.width} Ã— ${sizeReference.height}) Â± ${sizeTolerance} px`,
-       hueReference && `Hue near ${hueReference.filename} (${hueReference.hue === null ? 'neutral' : Math.round(hueReference.hue) + 'Â°'}) Â± ${hueTolerance}Â°`].filter(Boolean).join(' Â· ');
+    $('textureCount').textContent = `${list.length.toLocaleString()} of ${textures.length.toLocaleString()} textures · ${library.toUpperCase()}${library === 't2' ? ' · RGB thumbnails' : ''}`;
+    $('similarityStatus').textContent = !validBounds ? 'Enter positive whole-pixel ranges with minimum ≤ maximum.' :
+      [sizeReference && `Size near ${sizeReference.filename} (${sizeReference.width} × ${sizeReference.height}) ± ${sizeTolerance} px`,
+       hueReference && `Hue near ${hueReference.filename} (${hueReference.hue === null ? 'neutral' : Math.round(hueReference.hue) + '°'}) ± ${hueTolerance}°`].filter(Boolean).join(' · ');
     if (rebuild) $('textureGallery').replaceChildren(...list.map(name => {
       const button = document.createElement('button');
       button.className = 'texture-thumb'; button.type = 'button';
       const meta = textureMetadata.get(name) || {};
-      button.dataset.texture = name; button.title = `${name}${meta.width ? ` Â· ${meta.width} Ã— ${meta.height}` : ''}${meta.tags?.length ? ` Â· ${meta.tags.join(', ')}` : ''}`;
+      button.dataset.texture = name; button.title = `${name}${meta.width ? ` · ${meta.width} × ${meta.height}` : ''}${meta.tags?.length ? ` · ${meta.tags.join(', ')}` : ''}`;
       button.setAttribute('aria-pressed', String(name === $('skinSelect').value));
       const thumbnail = document.createElement('img');
       thumbnail.alt = ''; thumbnail.loading = 'lazy'; thumbnail.decoding = 'async';
@@ -729,9 +731,9 @@ window.addEventListener('DOMContentLoaded', () => {
       // T2 stores reflectivity in alpha; RGB keeps opaque skins recognizable.
       const version = versions && versions[textureId(name, library)];
       thumbnail.src = `${textureUrl(name, library)}${library === 't2' ? '&opaque=1' : ''}&v=${encodeURIComponent(JSON.stringify(version || []))}`;
-      thumbnail.addEventListener('error', () => { button.classList.add('missing'); button.title = `${name} â€” preview unavailable`; });
+      thumbnail.addEventListener('error', () => { button.classList.add('missing'); button.title = `${name} — preview unavailable`; });
       const label = document.createElement('span'); label.textContent = name;
-      const dimensions = document.createElement('small'); dimensions.textContent = meta.width ? `${meta.width} Ã— ${meta.height}${meta.tags?.length ? ' Â· ' + meta.tags.join(', ') : ''}` : meta.error || 'Metadata unavailable';
+      const dimensions = document.createElement('small'); dimensions.textContent = meta.width ? `${meta.width} × ${meta.height}${meta.tags?.length ? ' · ' + meta.tags.join(', ') : ''}` : meta.error || 'Metadata unavailable';
       button.append(thumbnail, label, dimensions);
       button.addEventListener('click', () => perform('Select texture', () => { $('skinSelect').value = name; selectThumbnail(); }));
       return button;
@@ -765,7 +767,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('candidatePreview').src = `${url}${library === 't2' ? '&opaque=1' : ''}&v=${encodeURIComponent(JSON.stringify(version || []))}`;
     $('saveTextureCopy').href = url + '&download=1';
     const swapped = transform.rotation % 180 !== 0;
-    $('candidateDetails').textContent = `${library.toUpperCase()} / ${name} Â· ${swapped ? meta.height : meta.width} Ã— ${swapped ? meta.width : meta.height} Â· ${transform.rotation}Â°${transform.flip_x ? ' Â· horizontal flip' : ''}${transform.flip_y ? ' Â· vertical flip' : ''}`;
+    $('candidateDetails').textContent = `${library.toUpperCase()} / ${name} · ${swapped ? meta.height : meta.width} × ${swapped ? meta.width : meta.height} · ${transform.rotation}°${transform.flip_x ? ' · horizontal flip' : ''}${transform.flip_y ? ' · vertical flip' : ''}`;
   }
   function transformCandidate(operation) {
     if (!$('skinSelect').value) return;
@@ -803,7 +805,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const previous = $('skinSelect').value;
     $('texturePath').textContent = gameId === 'reflex' ? 'local-data/reflex-maps/textures' : gameId === 't2' ? 'static/textures/t2' : gameId === 't1' ? 'static/textures' : `local-data/${gameId}/textures`;
     textures = []; textureMetadata = new Map(); filterSkins();
-    $('textureCount').textContent = 'Reading texture dimensionsâ€¦';
+    $('textureCount').textContent = 'Reading texture dimensions…';
     try {
       const entries = await json(`/texture_metadata?${query(hueReference ? {} : {details: 'dimensions'}, gameId)}`);
       if (serial !== textureSerial) return;
@@ -830,20 +832,28 @@ window.addEventListener('DOMContentLoaded', () => {
   action('gameSelect', 'change', 'Change game', loadCatalog);
   $('mapsSelect').addEventListener('change', event => { const page = event.target.value; event.target.value = ''; if (page) location.assign(page); });
   for (const [gameId, button, input, status] of [['q3', 'importQ3', 'q3Path', 'importStatus'], ['diabotical', 'importDiabotical', 'diaboticalPath', 'diaboticalImportStatus'], ['reflex', 'importReflex', 'reflexPath', 'reflexImportStatus'], ['ta', 'importTa', 'taPath', 'taImportStatus'], ['tv', 'importTv', 'tvPath', 'tvImportStatus'], ['trpg', 'importTrpg', 'trpgPath', 'trpgImportStatus'], ['sw', 'importSw', 'swPath', 'swImportStatus'], ['rm', 'importRm', 'rmPath', 'rmImportStatus'], ['ss', 'importSs', 'ssPath', 'ssImportStatus'], ['es1', 'importEs1', 'es1Path', 'es1ImportStatus'], ['es2', 'importEs2', 'es2Path', 'es2ImportStatus'], ['rb3d', 'importRb3d', 'rb3dPath', 'rb3dImportStatus'], ['unreal', 'importUnreal', 'unrealPath', 'unrealImportStatus'], ['ut', 'importUt', 'utPath', 'utImportStatus'], ['dx', 'importDx', 'dxPath', 'dxImportStatus'], ['quake', 'importQuake', 'quakePath', 'quakeImportStatus'], ['quake2', 'importQuake2', 'quake2Path', 'quake2ImportStatus'], ['daikatana', 'importDaikatana', 'daikatanaPath', 'daikatanaImportStatus'], ['anachronox', 'importAnachronox', 'anachronoxPath', 'anachronoxImportStatus'], ['sin', 'importSin', 'sinPath', 'sinImportStatus'], ['rtcw', 'importRtcw', 'rtcwPath', 'rtcwImportStatus'], ['et', 'importEt', 'etPath', 'etImportStatus'], ['jk2', 'importJk2', 'jk2Path', 'jk2ImportStatus'], ['ja', 'importJa', 'jaPath', 'jaImportStatus'], ['azrael', 'importAzrael', 'azraelPath', 'azraelImportStatus'], ['nos', 'importNos', 'nosPath', 'nosImportStatus'], ['tas', 'importTas', 'tasPath', 'tasImportStatus'], ['tvg', 'importTvg', 'tvgPath', 'tvgImportStatus'], ['eye', 'importEye', 'eyePath', 'eyeImportStatus'], ['vtmb', 'importVtmb', 'vtmbPath', 'vtmbImportStatus'], ['doom3', 'importDoom3', 'doom3Path', 'doom3ImportStatus'], ['quake4', 'importQuake4', 'quake4Path', 'quake4ImportStatus']]) {
+    // Each game's folder is remembered per viewer, as on the Maps pages.
+    const pathKey = `skinner.import.${gameId}.path`;
+    try { const saved = localStorage.getItem(pathKey); if (saved) $(input).value = saved; } catch (_) { /* Typing still works. */ }
     $(button).addEventListener('click', async () => {
       const path = $(input).value.trim();
       if (!path) { $(status).textContent = 'Enter a local game folder.'; return; }
-      $(button).disabled = true; $(status).textContent = 'Importing models and texturesâ€¦';
+      try { localStorage.setItem(pathKey, path); } catch (_) { /* Import still runs. */ }
+      // One request does the whole import, so show that it is still running.
+      const started = Date.now(), elapsed = () => { const s = Math.round((Date.now() - started) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+      const tick = () => { $(status).textContent = `Importing models and textures… ${elapsed()} (large games take several minutes; keep this window open)`; };
+      $(button).disabled = true; tick(); const timer = setInterval(tick, 1000);
       try {
         const response = await fetch(`/import_${gameId}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Import failed');
-        $(status).textContent = `${result.entries} entries imported; ${result.ready} previews. Existing PNG edits kept.${result.issues ? ` ${result.issues} import notes in ${result.report}.` : ''}`;
+        clearInterval(timer);
+        $(status).textContent = `${result.entries} entries imported in ${elapsed()}; ${result.ready} previews. Existing PNG edits kept.${result.issues ? ` ${result.issues} import notes in ${result.report}.` : ''}`;
         if (game === gameId) await loadCatalog();
         history.length = future.length = 0; lastState = snapshot(); updateHistoryButtons();
         $('historyStatus').textContent = 'History restarted after import';
-      } catch (error) { $(status).textContent = error.message; }
-      finally { $(button).disabled = false; }
+      } catch (error) { clearInterval(timer); $(status).textContent = `Import failed after ${elapsed()}: ${error.message}`; }
+      finally { clearInterval(timer); $(button).disabled = false; }
     });
   }
   action('modelSearch', 'input', 'Search models', filterCatalog);
@@ -900,7 +910,7 @@ window.addEventListener('DOMContentLoaded', () => {
   action('wireframe', 'change', 'Wireframe', () => materials.forEach(material => { material.wireframe = $('wireframe').checked; }));
   action('lighting', 'change', 'Lighting', () => loadModel(true));
   for (const id of ['turntable', 'navigationStyle', 'walkSpeed', 'moveStep']) action(id, 'change', 'Preview settings', updateNavigationHint);
-  $('texturePreview').addEventListener('load', () => { $('texturePreview').hidden = false; $('texturePreviewEmpty').hidden = true; $('textureDetails').textContent += ` Â· ${$('texturePreview').naturalWidth} Ã— ${$('texturePreview').naturalHeight}`; });
+  $('texturePreview').addEventListener('load', () => { $('texturePreview').hidden = false; $('texturePreviewEmpty').hidden = true; $('textureDetails').textContent += ` · ${$('texturePreview').naturalWidth} × ${$('texturePreview').naturalHeight}`; });
   $('texturePreview').addEventListener('error', () => { $('texturePreviewEmpty').textContent = 'Texture unavailable'; });
   for (const [axis, vector] of [['X', [1, 0, 0]], ['Y', [0, 1, 0]], ['Z', [0, 0, 1]]]) {
     for (const [suffix, direction] of [['90', 1], ['N90', -1]]) action(`rot${axis}${suffix}`, 'click', 'Rotate model', () => {
@@ -916,7 +926,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   action('resetAll', 'click', 'Reset all', async () => {
     if (!selectedName) return;
-    $('status').textContent = 'Restoring defaultsâ€¦';
+    $('status').textContent = 'Restoring defaults…';
     $('exportObjBtn').disabled = $('exportGlbBtn').disabled = true;
     stopWalking();
     try { localStorage.removeItem(orientationKey()); localStorage.removeItem(positionKey()); } catch (_) { /* Reset the live model even without storage. */ }
@@ -957,7 +967,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!meta?.width) return;
     if (kind === 'hue' && !Object.hasOwn(meta, 'hue')) {
       const serial = textureSerial, gameId = $('textureGame').value;
-      $('similarityStatus').textContent = 'Reading texture colors for this searchâ€¦';
+      $('similarityStatus').textContent = 'Reading texture colors for this search…';
       try {
         const entries = await json(`/texture_metadata?${query({}, gameId)}`);
         if (serial !== textureSerial) return;
@@ -989,7 +999,7 @@ window.addEventListener('DOMContentLoaded', () => {
   $('exportObjBtn').addEventListener('click', async () => {
     if (!group || loading || loadedParams === null) return;
     const name = selectedName, gameId = game, params = loadedParams;
-    $('exportObjBtn').disabled = true; $('exportStatus').textContent = 'Preparing ZIPâ€¦';
+    $('exportObjBtn').disabled = true; $('exportStatus').textContent = 'Preparing ZIP…';
     try {
       const response = await fetch(`/export_obj/${encodeURIComponent(name)}?${params}`);
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
@@ -1004,7 +1014,7 @@ window.addEventListener('DOMContentLoaded', () => {
   $('exportGlbBtn').addEventListener('click', async () => {
     if (!group || loading || loadedParams === null) return;
     const name = selectedName, gameId = game, params = loadedParams;
-    $('exportGlbBtn').disabled = true; $('exportStatus').textContent = 'Preparing GLB animation clipsâ€¦';
+    $('exportGlbBtn').disabled = true; $('exportStatus').textContent = 'Preparing GLB animation clips…';
     try {
       const response = await fetch(`/export_glb/${encodeURIComponent(name)}?${params}`);
       if (!response.ok) {
@@ -1015,7 +1025,7 @@ window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       const clips = Number(response.headers.get('X-Skinner-Animation-Clips') || 0);
       const unavailable = response.headers.get('X-Skinner-Animation-Status') === 'static-fallback';
-      $('exportStatus').textContent = `Downloaded ${gameId.toUpperCase()} ${name} GLB Â· ${unavailable ? 'static only: source animation could not be retained; details are embedded in the GLB' : clips ? `${clips} animation clips` : 'static model (no geometry animation)'}.`;
+      $('exportStatus').textContent = `Downloaded ${gameId.toUpperCase()} ${name} GLB · ${unavailable ? 'static only: source animation could not be retained; details are embedded in the GLB' : clips ? `${clips} animation clips` : 'static model (no geometry animation)'}.`;
     } catch (error) { $('exportStatus').textContent = `GLB export failed: ${error.message}`; }
     finally { $('exportGlbBtn').disabled = loading || !group; }
   });
