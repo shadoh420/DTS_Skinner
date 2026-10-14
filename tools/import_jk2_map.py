@@ -17,11 +17,12 @@ import zipfile
 import numpy as np
 
 try:
-    from tools import import_jk2 as jk2, import_rtcw_map as base
+    from tools import import_jk2 as jk2, import_ja as ja, import_rtcw_map as base
     from tools.jk2_map_items import MP_ITEMS
     from tools.model_data import read_geometry_buffers
 except ImportError:
     import import_jk2 as jk2
+    import import_ja as ja
     import import_rtcw_map as base
     from jk2_map_items import MP_ITEMS
     from model_data import read_geometry_buffers
@@ -30,7 +31,7 @@ qmap,rtcw=base.qmap,jk2.base
 number,vector=base.number,base.vector
 STRIDES=(1,72,16,36,48,4,4,40,12,12,80,4,72,148,49152,30,1,2)
 SECTIONS={'sp':'Single player','mp':'Multiplayer'}
-NOT_DRAWN=['fog (by choice)', 'NPC spawns (by choice)', 'ICARUS scripts and later mover actions',
+NOT_DRAWN=['fog (by choice)', 'NPCs: one authored idle preview; no AI, script populations or held weapons', 'ICARUS scripts and later mover actions',
            'surfaceSprites/ss foliage, particles, weather, flares, glow bloom and audio',
            'portal cameras, mirrors and portal skies', 'dynamic lights on props; light grid sampled at spawn',
            'runtime lightstyle animation (first sample shown)']
@@ -330,7 +331,6 @@ def describe(game,name,textures):
 
 def filtered(e,section,skill=0):
     cls=e.get('classname','').lower()
-    if cls.startswith('npc_'):return 'NPC spawn omitted by choice'
     if section=='sp':
         if number(e,'notsingle') or int(number(e,'spawnflags'))&(1<<(8+skill)):return 'excluded by SP difficulty/notsingle'
     else:
@@ -428,6 +428,130 @@ def load_placed(game,path,skin,frame):
 BAKED_MODELS=('misc_model','misc_model_static')
 
 
+# OpenJK NPC_spawn.cpp aliases/low spawnflag bits. Random appearance choices
+# use one fixed member, never a generated population. Most wrappers honor NPC_type;
+# the named-character wrappers below unconditionally assign their own type.
+NPC_VARIANTS={
+    'stormtrooper':((8,'rockettrooper'),(4,'stofficeralt'),(2,'stcommander'),(1,'stofficer')),
+    'imperial':((1,'impofficer'),(2,'impcommander')),
+    'galak':((1,'galak_mech'),), 'jedi':((1,'jeditrainer'),),
+    'gran':((1,'granshooter'),(2,'granboxer')), 'rodian':((1,'rodian2'),),
+    'swamptrooper':((1,'swamptrooper2'),),
+    'reborn':((1,'rebornforceuser'),(2,'rebornfencer'),(4,'rebornacrobat'),(8,'rebornboss')),
+    'r2d2':((1,'r2d2_imp'),), 'r5d2':((1,'r5d2_imp'),), 'protocol':((1,'protocol_imp'),),
+}
+JA_NPC_VARIANTS={
+    'jedi':((4,'jedi_hf1'),(2,'jedimaster'),(1,'jeditrainer')),
+    'human_merc':((1,'human_merc_bow'),(2,'human_merc_rep'),(4,'human_merc_flc'),(8,'human_merc_cnc')),
+    'cultist':((1,'cultist_saber_med'),(2,'cultist_grip'),(4,'cultist_lightning'),(8,'cultist_drain')),
+    'alora':((1,'alora_dual'),), 'rosh_penin':((1,'rosh_dark'),(2,'rosh_penin_noforce')),
+    'tavion_new':((1,'tavion_scepter'),(2,'tavion_sith_sword')), 'jawa':((1,'jawa_armed'),),
+    'hazardtrooper':((1,'hazardtrooperofficer'),(2,'hazardtrooperconcussion')),
+    'rockettrooper':((1,'rockettrooper2officer'),(0,'rockettrooper2')),
+    'kyle':((1,'kyle_boss'),), 'prisoner':((1,'elder'),), 'tusken':((1,'tuskensniper'),),
+    'saboteur':((1,'saboteursniper'),(2,'saboteurpistol'),(4,'saboteurcommando')),
+    'rancor':((1,'mutant_rancor'),), 'sand_creature':((1,'sand_creature_fast'),),
+    'kothos':((1,'vkothos'),(0,'dkothos')), 'saber_droid':((1,'saber_droid_training'),),
+    'remote':((0,'remote_sp'),),
+}
+NPC_ALIASES={'tie_pilot':'stormpilot','stormtrooperofficer':'stofficer',
+             'chewbacca':'chewie','bobafett':'boba_fett','assassin':'assassin_droid',
+             'saber':'saber_droid','cultist_commando':'cultistcommando'}
+NPC_FORCED_TYPES={'kyle','lando','jan','luke','monmothma','tavion','reelo','desann','bartender','morgankatarn',
+                 'galak','rosh_penin','tavion_new','alora','rax','bobafett','ragnos','lannik_racto','kothos','chewbacca'}
+
+
+def npc_definitions(game):
+    if not hasattr(game,'npc_definitions'):
+        result={}
+        paths=sorted(n for n in game.assets if n=='ext_data/npcs.cfg' or re.fullmatch(r'ext_data/npcs/[^/]+\.npc',n))
+        for path in paths:
+            try:
+                for block in ja.definitions(game.read(path)):
+                    result.setdefault(block['name'].lower(),dict(block['values'],_source=path))
+            except ValueError as exc:game.issues.append(dict(source=path,reason='NPC definition: '+str(exc)))
+        game.npc_definitions=result
+    return game.npc_definitions
+
+
+def npc_spec(game,e):
+    """Concrete authored NPC or a typed spawner preview; controls stay omitted."""
+    cls=e.get('classname','').lower()
+    if cls=='npc_vehicle':return None,'vehicle spawner excluded from NPCs'
+    kind=next((str(v).lower() for k,v in e.items() if k.lower()=='npc_type' and v),'')
+    if not kind or cls.removeprefix('npc_') in NPC_FORCED_TYPES:
+        if cls=='npc_spawner':return None,'untyped NPC spawner; no invented actor'
+        kind=cls.removeprefix('npc_').removeprefix('droid_').removeprefix('monster_')
+        kind=NPC_ALIASES.get(kind,kind);flags=int(number(e,'spawnflags'))
+        variants=NPC_VARIANTS.get(kind,())
+        if game.game_id=='ja':variants=JA_NPC_VARIANTS.get(kind,variants)
+        if game.game_id=='ja' and kind=='human_merc' and e.get('message'):kind='human_merc_key'
+        elif game.game_id=='ja' and kind=='reborn_new':
+            style=0 if flags&1 else 1 if flags&2 else 2
+            kind=(('rebornmasterdual','rebornmasterstaff','rebornmaster') if flags&8 else
+                  ('reborn_dual2','reborn_staff2','reborn_new2') if flags&4 else
+                  ('reborn_dual','reborn_staff','reborn_new'))[style]
+        elif game.game_id=='ja' and kind in ('cultist_saber','cultist_saber_powers'):
+            powers=kind.endswith('_powers');kind='cultist_saber'
+            kind+='_med' if flags&1 else '_strong' if flags&2 else ''
+            if flags&8:kind+='_throw'
+            # Preserve the source's fast-throw exception (and unreachable all-style branch).
+            if powers and (flags&3 or not flags&8):kind+='2'
+        else:kind=next((name for bit,name in variants if not bit or flags&bit),kind)
+    row=npc_definitions(game).get(kind)
+    if not row:return None,'no concrete NPC definition: '+kind
+    if row.get('class','').lower().removeprefix('class_') in ('vehicle','atst'):
+        return None,'vehicle NPC definition excluded: '+kind
+    if kind in ('nulldriver','rocks'):return None,'script helper/prop NPC definition excluded: '+kind
+    model=row.get('playermodel','').lower()
+    if model=='player':return None,'player appearance depends on runtime customization'
+    if not model:
+        # Stock mouse/remote/seeker use a single lower MD3 rather than Ghoul2.
+        model=row.get('legsmodel','').lower()
+        if not model or model=='none' or any(row.get(k,'none').lower()!='none' for k in ('headmodel','torsomodel')):
+            return None,'NPC definition has no supported character mesh: '+kind
+        path='models/players/'+model+'/lower.md3';skin='models/players/'+model+'/lower_default.skin'
+    else:
+        folder='models/players/'+model+'/';path=folder+'model.glm'
+        custom=row.get('customskin','default').lower()
+        skin=folder+'|'+custom if '|' in custom else folder+'model_'+custom+'.skin'
+    size=[number(row,'scale'+axis,number(row,'scale',100))/100 for axis in ('x','y','z')]
+    if any(v<=0 or v>100 for v in size):raise ValueError('Invalid NPC definition scale')
+    surface_flags={}
+    for field,value in (('surfoff',2),('surfon',0)):
+        for name in re.split(r'[\s,]+',row.get(field,'').lower()):
+            if game.game_id=='ja':name=name.removesuffix('_off')
+            if name:surface_flags[name]=value
+    return dict(type=kind,definition=row['_source'],model=path,skin=skin,scale=size,surfaceFlags=surface_flags),''
+
+
+def place_npc(game,e,serial,models,output,textures,model_textures):
+    spec,reason=npc_spec(game,e)
+    if spec is None:return None,dict(reason=reason),[],[]
+    key=hashlib.sha256(json.dumps(['npc',spec],sort_keys=True).encode()).hexdigest()[:24];missing=[]
+    if key not in models:
+        reader=game.model_rules
+        # Several MD3 and GLM droids ship only embedded shaders (no .skin).
+        pieces=spec['skin'].split('|')
+        skin_paths=[pieces[0]+p+'.skin' for p in pieces[1:]] if len(pieces)>1 else pieces
+        absent=[p for p in skin_paths if p not in game.assets]
+        skins={} if absent else (ja.skin_surfaces(game,spec['skin']) if reader is ja else jk2.read_skin(game.read(spec['skin']))['surfaces'])
+        model,meta,_=reader.load_model(game,spec['model'],skins,surface_flags=spec['surfaceFlags'])
+        if absent:meta['warnings'].append('NPC embedded-shader fallback; absent skin: '+', '.join(absent))
+        if spec['model'].endswith('.md3') and skins:
+            for surface in model['surfaces']:surface['shaders']=[skins.get(surface['name'],'')]
+        if not any(s['indices'] for s in model['surfaces']):raise ValueError('NPC has no drawable surfaces')
+        desc,missing=base.placed_model(game,spec['model'],'',meta['frame'],output,textures,model_textures,model=model)
+        desc['npcSource']=dict(spec,**meta);desc['limitations']+=meta['warnings'];models[key]=desc
+    meta=models[key]['npcSource'];pos=vector(e.get('origin'))
+    placement=dict(entity=serial,classname=e['classname'].lower(),npc=True,npcType=spec['type'],models=[key],
+        origin=pos,angles=base.angles(e),scale=[a*b for a,b in zip(base.scale(e),spec['scale'])],spin=False,bob=None)
+    if getattr(game,'light_grid',None):placement['light']=game.light_grid.sample(pos)
+    audit=dict(npc=True,npcType=spec['type'],definition=spec['definition'],frame=meta['frame'],pose=meta['pose'],
+        spawnflags=int(number(e,'spawnflags')),reason='one NPC idle preview at authored position; scripts not executed')
+    return placement,audit,missing,models[key]['limitations']
+
+
 def place_entities(game,things,states,collision,output,textures,model_textures,*,rules=None):
     rules=rules or sys.modules[__name__]
     placed=[];models={};audit=[];missing=[];limits=[]
@@ -441,6 +565,10 @@ def place_entities(game,things,states,collision,output,textures,model_textures,*
         try:
             flags=int(number(e,'spawnflags'));path=e.get('model','');item=game.items.get(cls);paths=[]
             if reason:pass
+            elif cls.startswith('npc_'):
+                placement,details,unresolved,notes=place_npc(game,e,serial,models,output,textures,model_textures)
+                if placement:placed.append(placement);row['status']='drawn'
+                row.update(details);missing+=unresolved;limits+=notes;audit.append(row);continue
             elif path.startswith('*'):
                 state=states[int(path[1:])];reason=state['hidden'] or 'inline brush at spawn transform';row['status']='omitted' if state['hidden'] else 'drawn'
                 if not state['hidden'] and e.get('model2'):paths=[e['model2']]

@@ -373,6 +373,24 @@ def scenery(bsp, dm=False):
     return drawn, omitted
 
 
+def model_is_npc(item, definition):
+    """DEF spawn class, with placed-class fallback for raw SBMs; never infer from a skin."""
+    cls, path = item['classname'].lower(), item['path'].lower()
+    spawn = definition.get('classname', '').lower()
+    # Lamprey/Manero's Monster_HelicopterBoss is a DEF vehicle, not an Actor.
+    # Reconah is an Actor warrior, not a helicopter. Functional turrets are actors;
+    # driver-operated CTF turrets remain vehicles. Explicit corpses/gibs stay scenery.
+    if (spawn in ('vehicle', 'drivablevehicle', 'ctfdrivableturret', 'hoverbike')
+            or cls.startswith('vehicles_') or cls == 'monster_helicopterboss'):
+        return False
+    if re.search(r'(?:^|[/_])(?:dead\w*|corpse\w*|gib\w*|mauled|chop\d*)(?:[/_.]|$)', cls + '/' + path):
+        return False
+    return (spawn in {'actor', 'bacrodai', 'bat', 'fish', 'rat', 'eonandpeon', 'peon', 'thrallmaster',
+                      'bob', 'mortician', 'crawler', 'goliath', 'maneroboss', 'splitter', 'ctfturret'}
+            or cls.startswith(('monster_', 'animals_', 'boss_', 'hero_', 'neutral_', 'innocent_'))
+            or cls in ('trap_securityturret', 'trap_rocketturret', 'ctf_turret'))
+
+
 def append_models(data, bsp, files, placements):
     images, cache, failures = {}, {}, []
     points, uvs, uv2 = [data['points']], [data['uvs']], [data['uv2']]
@@ -406,8 +424,9 @@ def append_models(data, bsp, files, placements):
                             errors.append(dict(source=source, reason=str(exc)))
                     png = image_name(image, 'model_'); images[png] = image
                     skin.update(texture=png, source=resolved, missing=not resolved, decode_failures=errors)
-                cache[key] = sin.build_model(mesh, definition, skins), skins, animation
-            model, skins, animation = cache[key]
+                cache[key] = sin.build_model(mesh, definition, skins), skins, animation, definition
+            model, skins, animation, definition = cache[key]
+            item['npc'] = model_is_npc(item, definition)
             local = np.asarray(model['vertices']).reshape(-1, 3)[:, [2, 0, 1]]
             placed = local * item['scale'] @ rotation(item['angles']).T + item['origin']
             light = light_point(bsp, np.array(item['origin']), data['dark'], face_reader=face_data) if bsp['nodes'] else np.ones(3)
@@ -417,6 +436,7 @@ def append_models(data, bsp, files, placements):
                 part = model['indices'][group['start']:group['start'] + group['count']]
                 settings = dict(model['material_settings'][slot])
                 data['groups'].append(dict(texture=png, kind='model', flags=0, size=list(images[png].size), unlit=True,
+                    npc=item['npc'], entity=item['entity'], classname=item['classname'],
                     alpha=item['alpha'] * settings.get('opacity', 1), start=len(data['indices']), count=len(part),
                     settings=settings, model_light=light.tolist()))
                 data['indices'].extend(count + i for i in part)

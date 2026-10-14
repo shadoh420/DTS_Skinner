@@ -109,8 +109,8 @@ def item_box(name):
     return name.startswith('maps/b_') and name.endswith('.bsp')
 
 
-def read_mdl(data):
-    """Decode IDPO v6. Keep only the first skin and pose; walk groups to validate their lengths."""
+def read_mdl(data, skin_number=0, *, standing=False):
+    """Decode IDPO v6. Select a skin and optional standing pose; validate every group."""
     at = 0
 
     def take(size):
@@ -151,30 +151,33 @@ def read_mdl(data):
         return count
 
     skin = None
-    for _ in range(skins):
+    skin_number = skin_number if 0 <= skin_number < skins else 0
+    for skin_index in range(skins):
         count = group_count(unpack('i')[0])
         pixels = take(width * height * count)
-        if skin is None:
+        if skin_index == skin_number:
             skin = pixels[:width * height]
     st = list(struct.iter_unpack('<3i', take(verts * 12)))
     triangles = list(struct.iter_unpack('<4i', take(tris * 16)))
     if any(front not in (0, 1) or min(a, b, c) < 0 or max(a, b, c) >= verts
            for front, a, b, c in triangles):
         raise ValueError('Invalid MDL triangle')
-    points, pose, pose_count = None, '', 0
-    for _ in range(frames):
+    points, pose, pose_count, frame_number = None, '', 0, 0
+    preferred = False
+    for frame_index in range(frames):
         count = group_count(unpack('i')[0], frame=True)
         pose_count += count
         for _ in range(count):
             take(8)  # Frame bounding box.
             name = take(16).split(b'\0', 1)[0].decode('ascii', errors='replace')
             packed = take(verts * 4)
-            if points is None:
+            waiting = name.lower().startswith(('stand', 'idle'))
+            if points is None or (standing and waiting and not preferred):
                 points = [tuple(p[k] * scale[k] + origin[k] for k in range(3))
                           for p in struct.iter_unpack('<4B', packed)]
-                pose = name
+                pose, frame_number, preferred = name, frame_index, waiting
     return dict(points=points, st=st, triangles=triangles, skin=skin, width=width, height=height,
-                frames=frames, poses=pose_count, skins=skins, pose=pose, flags=flags)
+                frames=frames, poses=pose_count, skins=skins, pose=pose, frame=frame_number, skin_number=skin_number, flags=flags)
 
 
 def build_model(mesh, texture):

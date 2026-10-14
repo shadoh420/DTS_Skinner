@@ -554,7 +554,7 @@ ACCESSORIES = {'md3_beltl':'tag_bleft','md3_beltr':'tag_bright','md3_belt':'tag_
                'md3_hat':'tag_mouth','md3_hat2':'tag_mouth','md3_hat3':'tag_mouth'}
 
 
-def character_parts(game, folder, body_skin, head_skin):
+def character_parts(game, folder, body_skin, head_skin, *, body_model=None):
     parts, warnings, used = [], [], []
     def skin(name):
         if not name: return dict(surfaces={},models={},scale=1.)
@@ -581,7 +581,7 @@ def character_parts(game, folder, body_skin, head_skin):
                     digest=hashlib.sha256(raw).hexdigest(),frame=at)
         parts.append(item)
         return model
-    body = part(folder+'/'+bs['models'].get('md3_part','body.mds'),bs,at=frame)
+    body = part(body_model or folder+'/'+bs['models'].get('md3_part','body.mds'),bs,at=frame)
     head = None
     head_chain = ()
     if head_skin or game.model_path(folder+'/head.md3') in game.assets:

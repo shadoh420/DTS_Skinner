@@ -585,7 +585,7 @@ def rpg_places(nodes):
                 point = [sum(axis) / len(corners) for axis in zip(*corners)]
             zones.append({'name': name.strip(), 'kind': kind.upper(), 'matrix': placement(point, (0.0, 0.0, 0.0))})
         elif groups[-1] == 'townbots' and markers and words.get('RACE'):
-            bots.append(({'class': 'staticshape', 'name': words.get('NAME') or node['name'], 'children': [],
+            bots.append(({'class': 'staticshape', 'npc': True, 'name': words.get('NAME') or node['name'], 'children': [],
                           'fields': {'datablock': words['RACE'].strip() + 'TownBot', 'position': markers[0]['fields']['position'],
                                      'rotation': markers[0]['fields'].get('rotation', '0 0 0')}}, groups + (node['name'].lower(),)))
     return zones, bots
@@ -929,7 +929,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     shapes = install.shapes(mission_path.parent)
     objects, viewpoints, missing, unlit = [], [], set(), set()
     zones, bots = rpg_places(nodes)
-    for node, groups in nodes + bots:
+    for entity, (node, groups) in enumerate(nodes + bots):
         fields = node['fields']
         if 'position' not in fields or node['class'] == 'simterrain':
             continue
@@ -949,7 +949,9 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
             model, source = convert(shape, kind), 'pack'
         if not model:
             missing.add('%s %s' % (kind, shape.lower()))
-        objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'source': source, 'matrix': matrix})
+        objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'source': source, 'matrix': matrix,
+                        'entity': entity, 'classname': node['class'], 'datablock': fields.get('datablock', ''),
+                        'npc': node.get('npc', False) or node['class'] in ('player', 'aiplayer')})
         if model and kind == 'interior':
             light = lightmap(fields['filename'], shape, floats(fields.get('rotation', '0 0 0')),
                              root / 'models' / model if source == 'pack' else model_dir / (model + '.json'))

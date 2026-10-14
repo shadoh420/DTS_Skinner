@@ -365,7 +365,7 @@ def build_map(library, level, default, game='unreal'):
             placed, uv, st = placed[::-1], uv[::-1], st[::-1]
             flipped += 1
         polygons += 1
-        groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv, st, tile, None))
+        groups.setdefault((png, flags & DRAWN_FLAGS, pan, None), []).append((placed, uv, st, tile, None))
 
     def ambient_of(number):
         found = zone(number)
@@ -465,9 +465,9 @@ def build_map(library, level, default, game='unreal'):
             placed = viewer(world)
             if np.cross(placed, np.roll(placed, -1, 0)).sum(0) @ viewer([facing])[0] < 0:
                 placed, uv, st = placed[::-1], uv[::-1], st[::-1]
-            groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv, st, tile, None))
+            groups.setdefault((png, flags & DRAWN_FLAGS, pan, None), []).append((placed, uv, st, tile, None))
 
-    def add_mesh(props, obj, owners=None, mesh_property='Mesh'):
+    def add_mesh(props, obj, owners=None, mesh_property='Mesh', npc_owner=None):
         """An actor drawn as a mesh, at Location + PrePivot + Rotation x DrawScale x the mesh's points (its
         AnimSequence's frame), each slot's texture as the game picks it, lit at its vertices; False when it shows nothing."""
         package, ref = obj(mesh_property)
@@ -481,7 +481,7 @@ def build_map(library, level, default, game='unreal'):
         seqs = {seq['name'].lower(): seq for seq in mesh['seqs']}
         seq = seqs.get(str(props.get('AnimSequence', '')).lower()) or (None if game == 'dx' else next((seqs[n] for n in POSES if n in seqs), None))
         frame = seq['start'] + min(int(props.get('AnimFrame', 0.0) * seq['frames']), max(seq['frames'] - 1, 0)) if seq else 0
-        if game == 'dx' and not seq:
+        if game == 'dx' and (npc_owner or not seq):
             frame = standing_pose(mesh)[0]
         local = np.array(mesh_points(mesh, frame if frame < mesh['frames'] else 0), np.float64)
         matrix = np.array(rotation(*vector(props, 'Rotation', '3i'))) * props.get('DrawScale', 1.0)
@@ -553,7 +553,8 @@ def build_map(library, level, default, game='unreal'):
             ids = [key[0] for key in keys]
             color = np.where(np.array([key[3] for key in keys])[:, None], unlit, light[ids])
             uv = np.array([(key[1] / 255, key[2] / 255) for key in keys])
-            groups.setdefault(group, []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
+            # Keep each Pawn's material batches separate from scenery and other Pawns.
+            groups.setdefault((*group, npc_owner), []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
         return True
 
     def events_at_spawn():
@@ -577,7 +578,7 @@ def build_map(library, level, default, game='unreal'):
     spawn_events = set() if game == 'dx' else events_at_spawn()
     meshes, counts = {}, dict(meshes=0, movers=0, unread=0, failed=[])
     if game == 'dx':
-        counts.update(excluded_npcs=0, excluded_other=0, carcasses=0, pickups=0, decorations=0)
+        counts.update(excluded_players=0, excluded_other=0, npcs=0, carcasses=0, pickups=0, decorations=0)
     def placed_order():
         movers = [r for r in layout['actors'] if r > 0 and 'Mover' in library.class_info(level.ref_path(level.exports[r - 1]['cls']))[2]]
         return movers + [r for r in layout['actors'] if r > 0 and r not in set(movers)]
@@ -589,8 +590,8 @@ def build_map(library, level, default, game='unreal'):
         placed = level.properties(ref)
         props = {**defaults, **placed}
         kind = map_actor_kind(names) if game == 'dx' else None
-        if kind in ('npc', 'other'):
-            counts['excluded_npcs' if kind == 'npc' else 'excluded_other'] += 1
+        if kind in ('player', 'other'):
+            counts['excluded_players' if kind == 'player' else 'excluded_other'] += 1
             continue
         # Lights are not drawn in the game though some leave bHidden off (227, Glathriel2: TriggerLight's sprite 87 units
         # and TorchFlame's 192-unit flame mesh 275 units in front of the camera both showed nothing).
@@ -618,10 +619,12 @@ def build_map(library, level, default, game='unreal'):
                     # DeusExCarcass.PostBeginPlay selects Mesh3 in water. No randomized death pose is invented.
                     if kind == 'carcass' and zone(zone_at(vector(props, 'Location'))).get('bWaterZone') and props.get('Mesh3'):
                         view = 'Mesh3'
-                if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view):
+                npc_owner = ((ref, '.'.join(level.ref_path(level.exports[ref - 1]['cls'])))
+                             if kind == 'npc' or (game != 'dx' and 'Pawn' in names and not {'Vehicle', 'Carcass'}.intersection(names)) else None)
+                if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view, npc_owner):
                     counts['meshes'] += 1
                     if game == 'dx':
-                        counts[{'carcass': 'carcasses', 'pickup': 'pickups', 'decoration': 'decorations'}[kind]] += 1
+                        counts[{'carcass': 'carcasses', 'pickup': 'pickups', 'decoration': 'decorations', 'npc': 'npcs'}[kind]] += 1
                 elif game == 'dx':
                     counts['failed'].append(f'{name}: no readable visible {view}')
         except (struct.error, ValueError, IndexError, KeyError) as exc:
@@ -637,7 +640,7 @@ def build_map(library, level, default, game='unreal'):
 
     positions, uvs, uv2s, colors, indices, table = [], [], [], [], [], []
     count = 0
-    for (png, flags, pan), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2])):
+    for (png, flags, pan, npc_owner), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2])):
         start = len(indices)
         for placed, uv, st, tile, color, *triangles in polys:
             n = len(placed)
@@ -653,6 +656,8 @@ def build_map(library, level, default, game='unreal'):
                 indices.extend(x for k in range(1, n - 1) for x in (count, count + k, count + k + 1))
             count += n
         table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start, **({'pan': pan} if any(pan) else {})))
+        if npc_owner:
+            table[-1].update(npc=True, entity=npc_owner[0], classname=npc_owner[1])
     positions = np.concatenate(positions).astype('<f4') if positions else np.zeros((0, 3), '<f4')
     uvs = np.concatenate(uvs).astype('<f4') if uvs else np.zeros((0, 2), '<f4')
     uv2s = np.concatenate(uv2s).astype('<f4') if uv2s else np.zeros((0, 2), '<f4')

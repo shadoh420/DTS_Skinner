@@ -58,7 +58,10 @@ def definitions(raw):
         while i<len(tokens) and tokens[i]!='}':
             if i+1>=len(tokens) or tokens[i] in ('{','}') or tokens[i+1] in ('{','}'):
                 raise ValueError('Invalid definition key/value')
-            values[tokens[i].lower()]=tokens[i+1];i+=2
+            key=tokens[i].lower();value=tokens[i+1]
+            # NPC files can repeat these directives; the engine accumulates them.
+            values[key]=(values[key]+' '+value) if key in ('surfon','surfoff') and key in values else value
+            i+=2
         if i>=len(tokens):raise ValueError('Unclosed definition block')
         i+=1;result.append(dict(name=name,values=values))
         if len(result)>4096:raise ValueError('Too many definitions')
@@ -149,7 +152,7 @@ def idle_pose(game, animation, vehicle_type=''):
     return 0,'Frame 0: '+('speeder AnimateVehicle leaves animation unset' if vehicle_type.lower()=='vh_speeder' else 'no matching idle animation')
 
 
-def load_model(game, name, skin=None, frame=None, *, vehicle_type=''):
+def load_model(game, name, skin=None, frame=None, *, vehicle_type='', surface_flags=None):
     name=game.model_path(name)
     if name.endswith('.md3'):return jk.load_model(game,name,skin,frame)
     raw=game.read(name);h=glm_header(raw);animation=q3.key_name(h['animation'])
@@ -161,7 +164,7 @@ def load_model(game, name, skin=None, frame=None, *, vehicle_type=''):
         if frame is None:frame=chosen
         else:reason='Explicit frame '+str(frame)
         skeleton=read_gla(game.read(path),frame)
-    model=read_glm(raw,skeleton,skin)
+    model=read_glm(raw,skeleton,skin,surface_flags)
     return model,dict(frame=frame,pose=reason,animation=animation,warnings=model['warnings'],hidden=model['hidden']),raw
 
 

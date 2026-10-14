@@ -257,7 +257,7 @@ def idle_pose(game, animation):
     return 0,'Frame 0: no BOTH_STAND1 in skeleton animation.cfg'
 
 
-def load_model(game, name, skin=None, frame=None):
+def load_model(game, name, skin=None, frame=None, *, surface_flags=None):
     name=game.model_path(name);raw=game.read(name)
     if name.endswith('.md3'):
         model=q3.read_md3(raw,0 if frame is None else frame)
@@ -277,7 +277,7 @@ def load_model(game, name, skin=None, frame=None):
         if frame is None:frame=chosen
         else:reason='Explicit frame '+str(frame)
         skeleton=read_gla(game.read(path),frame)
-    model=read_glm(raw,skeleton,skin)
+    model=read_glm(raw,skeleton,skin,surface_flags)
     return model,dict(frame=frame,pose=reason,animation=animation,warnings=model['warnings'],hidden=model['hidden']),raw
 
 

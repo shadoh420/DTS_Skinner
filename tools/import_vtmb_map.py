@@ -361,6 +361,9 @@ def lighting_profile(root):
                 approximation='LDR RGBExp32 /255, overbright gain, gamma 2.2 lightmap upload; brightness multiplier and cl_v_gamma display power. No native renderer calibration.')
 
 
+NPC_HELPERS = {'npc_vcamera', 'npc_maker', 'npc_template_maker', 'npc_enemyfinder', 'npc_bullseye'}
+
+
 def build_map(raw, name, files, lighting=None):
     bsp = read_bsp(raw)
     files, embedded = map_files(bsp, files)
@@ -403,8 +406,10 @@ def build_map(raw, name, files, lighting=None):
     for i, e in enumerate(ents[1:], 1):
         cls = e.get('classname', '').lower(); model = e.get('model', '')
         record = dict(entity=i, classname=cls, model=model)
-        if cls.startswith('npc_') or 'models/character/' in model.replace('\\', '/').lower():
-            omitted.append(dict(**record, reason='NPC / character actor excluded')); continue
+        # Camera/maker controls are not characters, even if an editor model is present.
+        npc = cls.startswith('npc_') and cls not in NPC_HELPERS
+        if cls in NPC_HELPERS or (npc and not model):
+            omitted.append(dict(**record, reason='NPC helper/spawner or no placed model')); continue
         if hidden(e):
             omitted.append(dict(**record, reason='StartHidden or renderamt zero')); continue
         if model.startswith('*') and cls.startswith('func_'):
@@ -413,7 +418,7 @@ def build_map(raw, name, files, lighting=None):
                 omitted.append(dict(**record, reason='Visibility/control brush')); continue
             turn, offset = brush_transform(e, row)
             brushes.append((index, e, turn, offset)); placed.append(record)
-        elif cls.startswith(('prop_', 'item_')):
+        elif npc or cls.startswith(('prop_', 'item_')):
             try:
                 source = 'entity model'
                 if not model and cls.startswith('item_'):
@@ -423,7 +428,7 @@ def build_map(raw, name, files, lighting=None):
                     model = pickup_model(files[source].read())
                 if not model:
                     raise ValueError('No model or pickup playermodel')
-                models.append(dict(**{**record, 'model': vtmb.model_reference(model)}, origin=vector(e).tolist(),
+                models.append(dict(**{**record, 'model': vtmb.model_reference(model)}, npc=npc, origin=vector(e).tolist(),
                                    angles=vector(e, 'angles').tolist(), skin=int(number(e, 'skin')), source=source,
                                    sequence=e.get('defaultanim', e.get('demo_sequence', '')), scale=number(e, 'modelscale', 1),
                                    tint=(vector(e, 'rendercolor')/255).tolist() if 'rendercolor' in e else [1, 1, 1],
@@ -455,8 +460,6 @@ def build_map(raw, name, files, lighting=None):
     for record in models:
         try:
             model = vtmb.model_reference(record['model'])
-            if model.startswith('models/character/'):
-                omitted.append(dict(**record, reason='NPC / character actor excluded')); continue
             cache = model, record['skin']
             if cache not in model_cache:
                 if model not in files:
@@ -485,7 +488,8 @@ def build_map(raw, name, files, lighting=None):
                 # Keep only this material's referenced vertices; avoid repeating entire MDLs per group.
                 unique, remap = np.unique(tri, return_inverse=True)
                 append(p[unique], uv[unique], np.zeros((len(unique), 2)), remap, mat, 'model', np.full((1, 1, 3), 255, np.uint8),
-                       model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1))
+                       model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1),
+                       **({k: record[k] for k in ('npc', 'entity', 'classname')} if record.get('npc') else {}))
             record.update(status='drawn', pose=mesh['metadata'])
         except (ValueError, OSError, KeyError, IndexError, struct.error) as exc:
             record.update(status='failed', reason=str(exc)); failures.append(dict(record))
@@ -514,7 +518,7 @@ def build_map(raw, name, files, lighting=None):
     batches = {}
     for group in groups:
         signature = (group['texture'], group['kind'], group.get('alpha', 1), tuple(group.get('tint', [1, 1, 1])),
-                     json.dumps(group['settings'], sort_keys=True))
+                     json.dumps(group['settings'], sort_keys=True), group.get('entity') if group.get('npc') else None)
         if signature not in batches:
             batches[signature] = (dict((k, v) for k, v in group.items() if k not in ('face', 'model', 'displacement')), [])
         batches[signature][1].extend(indices[group['start']:group['start']+group['count']])
@@ -527,8 +531,8 @@ def build_map(raw, name, files, lighting=None):
     points = np.array(points).reshape(-1, 3)[:, [1, 2, 0]]*SCALE
     blob = b''.join((points.astype('<f4').tobytes(), np.asarray(uvs, '<f4').tobytes(), lmuv.astype('<f4').tobytes(),
                      np.array(indices, '<u4').tobytes()))
-    gaps = ['No NPCs, gameplay/Python, particles, decals, fog, dynamic lights or 3D sky camera',
-            'Props use model idle/reference frame zero and default bodygroups, with even lighting; entity animation requests are recorded',
+    gaps = ['No gameplay/Python, particles, decals, fog, dynamic lights or 3D sky camera',
+            'Props and NPCs use model idle/reference frame zero and default bodygroups, with even lighting; entity animation requests are recorded',
             'Materials use their base texture; displacement texture blending, bump/detail/environment and water reflection effects are not evaluated',
             'Brightness is provisional until compared with the game; light styles are held at initial full intensity except start-off lights']
     gaps += [r['reason'] for r in game_audit if not r['used'] and r['size']]
