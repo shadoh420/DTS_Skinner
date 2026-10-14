@@ -10,6 +10,7 @@ from tools.obj_exporter import json_to_obj_zip
 from tools.local_data import LOCAL_DATA
 from tools.texture_storage import open_texture
 from tools.texture_workshop import normalize_transform, transform_image, transformed_name, texture_metadata, read_tags, save_tags, texture_files, TEXTURE_SUFFIXES
+import hashlib
 import io
 import json
 import shutil
@@ -206,6 +207,40 @@ def t1_map_data(filename):
     response = send_from_directory(local_data_dir / 't1-maps', filename, max_age=31536000 if shared else None)
     response.cache_control.immutable = shared
     return response
+
+
+t1_sky_cache = {}
+
+
+@app.route('/t1-map-skies')
+def t1_map_skies():
+    """Skies the T1 Maps page can swap in: every T1 mission's dome and every Q3 map's sky shader, each listed once."""
+    roots = {'t1': local_data_dir / 't1-maps', 'q3': local_data_dir / 'q3-maps'}
+    stamp = (str(local_data_dir), *((root / 'index.json').stat().st_mtime_ns if (root / 'index.json').is_file() else 0 for root in roots.values()))
+    if t1_sky_cache.get('stamp') != stamp:
+        skies = {}
+        for game, root in roots.items():
+            try:
+                index = json.loads((root / 'index.json').read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                continue
+            for row in index:
+                try:
+                    scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
+                except (OSError, ValueError, KeyError, TypeError):
+                    continue
+                found = ([scene['sky']] if (scene.get('sky') or {}).get('textures') else []) if game == 't1' else \
+                    [shader for shader in scene.get('shaders') or [] if shader and shader.get('sky')]
+                for sky in found:
+                    key = game + json.dumps(sky, sort_keys=True)
+                    if key not in skies:
+                        skies[key] = dict(id=game + '-' + hashlib.sha1(key.encode()).hexdigest()[:12], game=game, maps=[],
+                                          group='Tribes' if game == 't1' else row.get('group', 'Quake III Arena'),
+                                          name=sky['name'].removeprefix('textures/') if game == 'q3' else None, sky=sky,
+                                          visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A T1 dome's shape follows its mission's.
+                    skies[key]['maps'].append(row.get('name', row['id']))
+        t1_sky_cache.update(stamp=stamp, skies=list(skies.values()))
+    return jsonify(t1_sky_cache['skies'])
 
 
 @app.route('/import_t1_maps', methods=['POST'])
@@ -1350,7 +1385,9 @@ MAP_OBJ_PACKS = {'quake': ('quake-maps', ('quake', 'hipnotic', 'rogue', 'qextras
                  'quake2': ('quake2-maps', ('quake2', 'xatrix', 'rogue', 'ctf')),
                  'sin': ('sin-maps', ('sin', '2015', 'ctf')), 'unreal': ('unreal-maps', ('unreal', 'ut')),
                  'dx': ('dx-maps', ('dx',)), 'azrael': ('azrael-maps', ('azrael',)), 'anachronox': ('anachronox-maps', ('anachronox',)),
-                 'daikatana': ('daikatana-maps', ('daikatana',)), 'eye': ('eye-maps', ('eye',)), 'vtmb': ('vtmb-maps', ('vtmb',))}
+                 'daikatana': ('daikatana-maps', ('daikatana',)), 'eye': ('eye-maps', ('eye',)), 'vtmb': ('vtmb-maps', ('vtmb',)),
+                 'nos': ('nos-maps', ('nos',)), 'tas': ('tas-maps', ('tas',)), 'tvg': ('tvg-maps', ('tvg',))}
+INSTANCED_MAP_PAGES = ('nos', 'tas', 'tvg')  # Placed meshes in model stores (tvg_map_data), terrain in terrain.bin.
 
 
 @app.route('/export_map_obj/<page>/<game>/<map_id>')
@@ -1366,8 +1403,15 @@ def export_map_obj(page, game, map_id):
         abort(404, f"Map '{map_id}' is not imported")
     output = io.BytesIO()
     try:
-        map_to_obj_zip(folder, [pack / 'textures', root / 'textures', game_textures(page)], page, output)
-    except (ValueError, KeyError, TypeError) as exc:
+        stores, texture_dirs = None, [pack / 'textures', root / 'textures', game_textures(page)]
+        if page in INSTANCED_MAP_PAGES:
+            manifest = root / 'model-library.json'
+            library = json.loads(manifest.read_text(encoding='utf-8')) if manifest.is_file() else {}
+            models = pathlib.Path(library.get('root', pack_dirs[page]))
+            stores = {'models': models / 'model_json', 'map-models': pathlib.Path(library.get('map_root', pack_dirs[page])) / 'model_json'}
+            texture_dirs.append(models / 'textures')
+        map_to_obj_zip(folder, texture_dirs, page, output, stores)
+    except (OSError, ValueError, KeyError, TypeError) as exc:  # OSError: a placed mesh buffer is missing.
         abort(422, str(exc))
     output.seek(0)
     return send_file(output, as_attachment=True, download_name=f'{page}_{map_id}_obj.zip', mimetype='application/zip')

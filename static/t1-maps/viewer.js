@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const site = Object.assign({data: '/t1-map-data/', title: 'T1 Maps', storageKey: 'skinner.t1maps', importRoute: '/import_t1_maps',
     folder: 'Tribes', firstMap: 'raindance'}, window.skinnerT1MapConfig);
   const storageKey = adapter ? 'skinner.rb3dmaps' : site.storageKey;
-  const settings = {fov: 90, fog: true, weather: true, lights: true, invertX: false, invertY: false};
+  const settings = {fov: 90, fog: true, weather: true, lights: true, invertX: false, invertY: false, sky: ''};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
@@ -284,8 +284,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Sky: sixteen textured panels around the camera with flat caps above and below, drawn behind everything.
   // The dome is scaled down to sit inside the clip range; centred on the camera, its size does not show.
-  const sky = new THREE.Group(), haze = new THREE.Color();
-  async function buildSky(dome, visible) {
+  // The panels can be swapped for another mission's or a Quake III map's sky (the Sky list); the mission's own stars,
+  // planets and flare show only with its own sky.
+  const sky = new THREE.Group(), own = new THREE.Group(), haze = new THREE.Color();
+  let panels = new THREE.Group();
+  sky.add(panels, own);
+  async function buildSky(dome, visible, group, base = data) {
     if (!dome.textures) { scene.background = new THREE.Color(`rgb(${dome.color.join(',')})`); return; }
     const point = (index, upper) => {
       const angle = THREE.MathUtils.degToRad(67.5 + dome.feature - 22.5 * index);
@@ -299,10 +303,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       const mesh = new THREE.Mesh(geometry, Object.assign(material, {depthTest: false, depthWrite: false, fog: false, side: THREE.DoubleSide}));
       mesh.renderOrder = -3;
       mesh.frustumCulled = false;
-      sky.add(mesh);
+      group.add(mesh);
     };
     await Promise.all(dome.textures.map(async (file, slot) => {
-      const texture = file && await loadTexture(data + 'textures/' + file);
+      const texture = file && await loadTexture(base + 'textures/' + file);
       if (texture) add([point(slot, false), point(slot + 1, false), point(slot + 1, true), point(slot, true)],
         [0, 1, 1, 1, 1, 0, 0, 0], [0, 1, 2, 0, 2, 3], new THREE.MeshBasicMaterial({map: texture}));
     }));
@@ -310,6 +314,81 @@ window.addEventListener('DOMContentLoaded', async () => {
       [[0, upper ? dome.size : -dome.size, 0], ...Array.from({length: 16}, (_, slot) => point(slot, upper))], null,
       Array.from({length: 16}, (_, slot) => [0, slot + 1, (slot + 1) % 16 + 1]).flat(),
       new THREE.MeshBasicMaterial({color: `rgb(${(upper ? dome.top : dome.bottom).join(',')})`}));
+  }
+
+  // A Quake III sky shader on a ball round the camera: its box, then its cloud layers, as the Q3 Maps page draws
+  // them (q3-maps/viewer.js boxMaterial and coordinates) but at full brightness, the T1 page having no overbright.
+  const skyTime = {value: 0}, FACTORS = {gl_one: THREE.OneFactor, gl_zero: THREE.ZeroFactor, gl_src_color: THREE.SrcColorFactor,
+    gl_one_minus_src_color: THREE.OneMinusSrcColorFactor, gl_dst_color: THREE.DstColorFactor, gl_one_minus_dst_color: THREE.OneMinusDstColorFactor,
+    gl_src_alpha: THREE.SrcAlphaFactor, gl_one_minus_src_alpha: THREE.OneMinusSrcAlphaFactor, gl_dst_alpha: THREE.DstAlphaFactor,
+    gl_one_minus_dst_alpha: THREE.OneMinusDstAlphaFactor};
+  async function buildQ3Sky(shader, radius, group) {
+    const number = value => { const text = String(Number(value) || 0); return `(${/[.e]/.test(text) ? text : text + '.0'})`; };
+    const ball = new THREE.SphereGeometry(radius, 32, 16);
+    const vertexShader = 'varying vec3 vDir; void main() { vDir = vec3(position.x, -position.z, position.y); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }';
+    const add = (material, order) => {
+      Object.assign(material, {depthTest: false, depthWrite: false, side: THREE.BackSide});
+      const mesh = new THREE.Mesh(ball, material);
+      mesh.renderOrder = order;
+      mesh.frustumCulled = false;
+      group.add(mesh);
+    };
+    const box = shader.sky.box && await Promise.all(shader.sky.box.map(file => loadTexture('/q3-map-data/textures/' + file)));
+    if (box && box.every(Boolean)) {
+      const names = ['rt', 'bk', 'lf', 'ft', 'up', 'dn'];
+      add(new THREE.ShaderMaterial({uniforms: Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), vertexShader,
+        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; varying vec3 vDir;
+          vec4 side(sampler2D image, vec2 p) { return texture2D(image, vec2(p.x + 1., 1. - p.y) * .5); }
+          void main() {
+            vec3 d = vDir, a = abs(d);
+            gl_FragColor = vec4((a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
+              : a.y >= a.z ? (d.y > 0. ? side(bk, vec2(d.x, d.z) / a.y) : side(ft, vec2(-d.x, d.z) / a.y))
+              : (d.z > 0. ? side(up, vec2(-d.y, -d.x) / a.z) : side(dn, vec2(-d.y, d.x) / a.z))).rgb, 1.);
+          }`, blending: THREE.NoBlending}), -3.5);
+    }
+    await Promise.all((shader.stages || []).map(async (stage, index) => {
+      const texture = stage.map && await loadTexture('/q3-map-data/textures/' + stage.map, true);
+      if (!texture) return;
+      // ponytail: scroll, scale, transform and rotate only; stretch and turb (rare on skies) are left still.
+      const mods = (stage.tcMods || []).map(([kind, ...values]) => { const v = values.map(number); return {
+        scroll: `st += fract(uTime * vec2(${v[0]}, ${v[1]}));`, scale: `st *= vec2(${v[0]}, ${v[1]});`,
+        transform: `st = vec2(st.x * ${v[0]} + st.y * ${v[2]} + ${v[4]}, st.x * ${v[1]} + st.y * ${v[3]} + ${v[5]});`,
+        rotate: `{ float a = -${v[0]} * uTime * .01745329, c = cos(a), s = sin(a); st = vec2(st.x * c - st.y * s + .5 - .5 * c + .5 * s, st.x * s + st.y * c + .5 - .5 * s - .5 * c); }`}[kind] || ''; }).join(' ');
+      const colour = stage.rgbGen && stage.rgbGen[0] === 'const' ? `vec3(${stage.rgbGen.slice(1).map(number).join(', ')})` : 'vec3(1.)';
+      const alpha = stage.alphaGen && stage.alphaGen[0] === 'const' ? number(stage.alphaGen[1]) : '1.';
+      const test = {gt0: 'if (c.a <= 0.) discard;', lt128: 'if (c.a >= .5) discard;', ge128: 'if (c.a < .5) discard;'}[stage.alphaFunc] || '';
+      add(new THREE.ShaderMaterial({uniforms: {map: {value: texture}, uTime: skyTime}, vertexShader,
+        fragmentShader: `uniform sampler2D map; uniform float uTime; varying vec3 vDir;
+          void main() {
+            vec3 P = vDir;
+            float height = ${number(shader.sky.cloudHeight ?? 128)}, squared = dot(P, P);
+            float p = (-2. * P.z * 4096. + 2. * sqrt(max(P.z * P.z * 16777216. + squared * (8192. * height + height * height), 0.))) / (2. * squared);
+            vec3 onSphere = normalize(P * p + vec3(0., 0., 4096.));
+            vec2 st = vec2(acos(clamp(onSphere.x, -1., 1.)), acos(clamp(onSphere.y, -1., 1.)));
+            ${mods}
+            vec4 c = texture2D(map, st) * vec4(${colour}, ${alpha});
+            ${test}
+            gl_FragColor = c;
+          }`,  // Opaque pass, so the world draws after it whatever the blend.
+        blending: stage.blend ? THREE.CustomBlending : THREE.NoBlending,
+        blendSrc: stage.blend ? FACTORS[stage.blend[0]] || THREE.OneFactor : THREE.OneFactor,
+        blendDst: stage.blend ? FACTORS[stage.blend[1]] || THREE.OneFactor : THREE.ZeroFactor}), -3.4 + index * .01);
+    }));
+  }
+  let skies = [], skySerial = 0;
+  async function showSky(id) {
+    const chosen = skies.find(entry => entry.id === id), visible = chosen && chosen.visible || map.terrain.visibleDistance, radius = visible * 1.05;
+    const serial = ++skySerial, group = new THREE.Group(), dome = chosen ? chosen.game === 't1' && chosen.sky : map.sky;
+    scene.background = haze;
+    if (chosen && chosen.game === 'q3') await buildQ3Sky(chosen.sky, radius, group);
+    else if (dome) await buildSky(dome, visible, group, chosen ? '/t1-map-data/' : data);  // A T1 dome lives in the T1 pack.
+    const drop = old => old.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });  // Textures stay cached.
+    if (serial !== skySerial) return drop(group);  // A later choice is being built.
+    drop(panels);
+    sky.remove(panels);
+    sky.add(panels = group);
+    own.visible = !chosen;
+    sky.scale.setScalar(10 / Math.max(radius, dome && dome.size || 0));
   }
 
   // Toward a planet: azimuth + 90° from file x, incidence up, as the importer's sun direction.
@@ -344,7 +423,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const points = new THREE.Points(geometry, new THREE.PointsMaterial({size: wide + 1, sizeAttenuation: false, vertexColors: true, ...draw}));
         points.renderOrder = renderOrder;
         points.frustumCulled = false;
-        sky.add(points);
+        own.add(points);
       });
     }
     for (const planet of map.planets || []) {
@@ -358,7 +437,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       sprite.position.copy(toward(planet.azimuth, planet.incidence)).multiplyScalar(radius);
       sprite.scale.setScalar(2 * planet.size * radius / planet.distance);
       sprite.renderOrder = renderOrder;
-      sky.add(sprite);
+      own.add(sprite);
     }
   }
 
@@ -550,11 +629,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
     sky.position.copy(camera.position);
+    skyTime.value += delta;
     if (weather) weather(delta);
     if (streamFrame) streamFrame(delta);
     renderer.render(scene, camera);
-    if (flare) flare(canvas.clientWidth, canvas.clientHeight);
-    if (flare && overlay.visible) {
+    if (flare && own.visible) flare(canvas.clientWidth, canvas.clientHeight);
+    if (flare && own.visible && overlay.visible) {
       renderer.autoClear = false;
       renderer.render(overlay, overlayCamera);
       renderer.autoClear = true;
@@ -562,6 +642,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
+  if (!adapter) $('sky').addEventListener('change', event => { settings.sky = event.target.value; event.target.blur(); save(); if (map) showSky(settings.sky); });
   $('import').addEventListener('click', async () => {
     const game = $('gamePath').value.trim();
     if (!game) { $('importStatus').textContent = adapter ? 'Enter your Red Baron 3D folder.' : `Enter your ${site.folder} folder.`; return; }
@@ -613,12 +694,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     // Packs imported before the sky and its objects were added lack these keys.
     const radius = map.terrain.visibleDistance * 1.05;
-    if (map.sky) await buildSky(map.sky, map.terrain.visibleDistance);
+    await showSky('');
     await buildSkyObjects(radius);
     const flared = (map.planets || []).find(planet => planet.flare);
     if (flared && map.flare) await buildFlare(flared, map.flare);
-    sky.scale.setScalar(10 / Math.max(radius, map.sky && map.sky.size || 0));
     scene.add(sky);
+    // The list of other skies comes after the map's own: the first scan reads every T1 and Q3 map.
+    get('/t1-map-skies').then(response => response.json()).then(list => {
+      skies = list;
+      const groups = Map.groupBy(list, entry => entry.group), more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
+      $('sky').replaceChildren(new Option(`${map.mission}'s own`, ''), ...[...groups].map(([group, entries]) => {
+        const element = Object.assign(document.createElement('optgroup'), {label: group});
+        element.append(...entries.map(entry => new Option(entry.name ? `${entry.name} · ${entry.maps[0]}${more(entry.maps)}` : `${entry.maps[0]}${more(entry.maps)}`, entry.id)));
+        return element;
+      }));
+      if (skies.some(entry => entry.id === settings.sky)) { $('sky').value = settings.sky; return showSky(settings.sky); }
+    }).catch(() => { $('sky').disabled = true; });
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
     const sun = new THREE.DirectionalLight(new THREE.Color(...map.sun.intensity));
     sun.position.copy(toward(map.sun.azimuth, map.sun.incidence));  // Shades only what has no lightmap.
