@@ -379,7 +379,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     scene.background = haze;
     if (chosen && chosen.game === 'q3') await buildQ3Sky(chosen.sky, radius, group);
     else if (dome) await buildSky(dome, visible, group);
-    if (serial !== skySerial) return;  // A later choice is being built.
+    const drop = old => old.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });  // Textures stay cached.
+    if (serial !== skySerial) return drop(group);  // A later choice is being built.
+    drop(panels);
     sky.remove(panels);
     sky.add(panels = group);
     own.visible = !chosen;
