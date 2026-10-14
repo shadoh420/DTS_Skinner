@@ -9,7 +9,7 @@ window.quakeMaps = {
       uniforms: {indices: {value: texture}, lights: {value: lightMap}, colors: {value: colormap},
         seconds: this.time, size: {value: new THREE.Vector2(...group.size)},
         rgbLighting: {value: !!rgbLighting},
-        kind: {value: group.kind === 'sky' ? 1 : group.kind === 'turbulent' ? 2 : 0}},
+        kind: {value: group.kind === 'sky' ? 1 : group.kind === 'turbulent' ? 2 : group.kind === 'model' ? 3 : 0}},
       vertexShader: `
         attribute vec2 uv2;
         varying vec2 texUV, lightUV;
@@ -47,6 +47,9 @@ window.quakeMaps = {
             vec2 st = texUV * size;
             vec2 warp = sin(st.yx * .125 + seconds) * 8.;
             gl_FragColor = color(pixel((st + warp) / size), 32.);
+          } else if (kind == 3) {
+            // Placed MDLs use even preview lighting, independent of the brush atlas.
+            gl_FragColor = color(pixel(texUV), 32.);
           } else if (rgbLighting) {
             float index = pixel(texUV);
             vec3 base = color(index, 32.).rgb;

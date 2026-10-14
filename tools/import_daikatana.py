@@ -143,7 +143,7 @@ def read_install(install, maps=False):
     return files, records, counts
 
 
-def read_dkm(data, frame_number=0):
+def read_dkm(data, frame_number=0, *, standing=False):
     if len(data) < 80 or data[:4] != b'DKMD':
         raise ValueError('Expected DKMD header')
     h = struct.unpack_from('<20i', data)
@@ -222,6 +222,11 @@ def read_dkm(data, frame_number=0):
         draws.append(dict(count=count, skin=skin, surface=surface, corners=corners, undefined_uvs=invalid))
     if commands and (not terminated or not draws):
         raise ValueError('Empty or unterminated DKM GL command stream')
+    if standing:
+        # Prefer an authored waiting sequence; no AI or random animation state.
+        sequences = list(struct.iter_unpack('<16s2i', data[sequence_at:sequence_at + sequence_count * 24]))
+        frame_number = next((first for name, first, last in sequences
+                             if name.lower().startswith((b'amba', b'stand', b'idle')) and 0 <= first < frames), 0)
     points, normal_indices, pose = [], [], ''
     for frame in range(frames):
         at = frame_at + frame * frame_size

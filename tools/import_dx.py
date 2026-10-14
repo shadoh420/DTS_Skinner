@@ -86,14 +86,16 @@ def mesh_views(props, chain):
 
 
 def map_actor_kind(chain):
-    """Stock map snapshot: no Pawn ancestry; carcasses are decorations, not living NPCs."""
+    """Placed Pawns are NPCs; player starts and carcasses are not."""
     names = {n.lower() for n in chain}
-    if names & {'pawn', 'scriptedpawn', 'deusexplayer'}:
-        return 'npc'
+    if 'deusexplayer' in names:
+        return 'player'
     if 'mover' in names:
         return 'mover'
     if names & {'carcass', 'deusexcarcass'}:
         return 'carcass'
+    if names & {'pawn', 'scriptedpawn'}:
+        return 'npc'
     if 'inventory' in names:
         return 'pickup'
     if names & {'decoration', 'deusexdecoration'}:

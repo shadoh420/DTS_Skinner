@@ -15,9 +15,9 @@ async function sharedGroups(game) {
     {entity: 10, npc: true, classname: 'Pawn', start: 3, count: 3},
     {entity: 20, npc: false, classname: 'Prop', start: 6, count: 3},
     {entity: 30, npc: true, classname: 'Creature', start: 9, count: 3},
-  ].map(g => ({...g, texture: 'shared.png', flags: 0, kind: 'model', size: [4, 4], settings: {}, model_light: [1, 1, 1]}))};
+  ].map(g => ({...g, texture: 'shared.png', flags: 0, kind: 'model', alpha: 1, size: [4, 4], settings: {}, model_light: [1, 1, 1]}))};
   const context = vm.createContext({window: {skinnerNPCToggle: control}, THREE, scene, map, geometry,
-    config: null, quake: false, quake2: false, azrael: false,
+    config: null, quake: game === 'quake', quake2: game === 'quake2', azrael: false,
     daikatana: game === 'daikatana', anachronox: game === 'anachronox', sin: game === 'sin',
     loadTexture: async () => texture});
   vm.runInContext(between(text, '  const npcDraws', '  const storageKey'), context);
@@ -29,7 +29,13 @@ async function sharedGroups(game) {
       faces: Object.fromEntries(['rt', 'lf', 'bk', 'ft', 'up', 'dn'].map(face => [face, {texture: 'sky.png'}]))};
     await context.window[game + 'Maps'].load(map, async () => texture);
   }
+  if (['quake', 'quake2', 'vtmb'].includes(game)) {
+    vm.runInContext(fs.readFileSync(require.resolve('../static/quake2-maps/materials.js'), 'utf8'), context);
+    if (game !== 'quake2') vm.runInContext(fs.readFileSync(require.resolve('../static/' + game + '-maps/materials.js'), 'utf8'), context);
+    if (game === 'vtmb') context.config = context.window.skinnerMapViewerConfig;
+  }
   vm.runInContext(between(text, '  const MASKED', '  async function buildWorld'), context);
+  if (game === 'quake') vm.runInContext('quakeColormap = new THREE.Texture()', context);
   await vm.runInContext('(async()=>{' + between(text, '    const materials = await Promise.all(map.groups', '\n  function showNotes()').replace(/\n  }\s*$/, '') + '})()', context);
   const materials = scene.children[0].material;
   assert.equal(control.count, 2, 'groups count unique actors, not material passes');
@@ -63,7 +69,7 @@ async function t1Objects() {
 }
 
 (async () => {
-  for (const game of ['unreal', 'ut', 'sin', 'daikatana', 'anachronox']) await sharedGroups(game);
+  for (const game of ['unreal', 'ut', 'sin', 'daikatana', 'anachronox', 'dx', 'vtmb', 'quake', 'quake2']) await sharedGroups(game);
   await t1Objects();
 })().then(() => console.log('Shared group and T1 object NPC visibility/counts: OK'))
   .catch(error => { console.error(error); process.exitCode = 1; });

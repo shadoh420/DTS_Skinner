@@ -26,7 +26,7 @@ class NPCStep2Tests(unittest.TestCase):
         self.assertTrue(ordinary.intersection(g['texture'] for g in groups), 'same-material scenery stays separate')
         self.assertEqual(sum(g['count'] for g in scene['groups']), scene['indices'])
 
-    def test_unreal_ut_pawn_ancestry_and_dx_still_excluded(self):
+    def test_unreal_ut_and_dx_pawn_ancestry(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = make_map(root)
@@ -42,8 +42,8 @@ class NPCStep2Tests(unittest.TestCase):
                     self.assert_groups(scene, {9, other})
                     self.assertEqual({g['classname'] for g in scene['groups'] if g.get('npc')}, {'DeusEx.Guard'})
             scene, *_ = unreal.build_map(library, level, None, game='dx')
-            self.assertFalse(any(g.get('npc') for g in scene['groups']))
-            self.assertEqual(scene['actors']['excluded_npcs'], 2)
+            self.assert_groups(scene, {9, other})
+            self.assertEqual(scene['actors']['npcs'], 2)
 
     def test_sin_models_keep_entity_identity_despite_shared_cached_model(self):
         raw = sin_fixture.bsp(entities=entities({'classname': 'worldspawn'},

@@ -1,4 +1,4 @@
-"""Quake BSP29/BSP2/2PSB maps and BSP item boxes. No placed MDLs or gameplay simulation.
+"""Quake BSP29/BSP2/2PSB maps and BSP item boxes. Placed monster MDLs use standing previews; no gameplay simulation.
 
 python tools/import_quake_map.py --install "C:/Program Files (x86)/Steam/steamapps/common/Quake" [--replace]
 Use --game qextras|dopa|mg1|mg3|qctf for rerelease maps; default all includes installed classic and rerelease games.
@@ -292,7 +292,7 @@ def instances(bsp, game='quake'):
         if game in ('dopa', 'mg1') and classname == 'func_bossgate' and flags & 64:
             reason = 'misc.qc: inverse boss gate (64) removed with no runes'
         if classname.startswith('monster_'):
-            reason = 'QuakeC replaces the authored brush with an MDL; placed monsters are not included'
+            reason = 'QuakeC replaces the authored brush with an MDL; handled by placed monster export'
         if game == 'hipnotic':
             if classname in ('func_particlefield', 'func_multi_exploder', 'path_follow', 'func_togglewall'):
                 reason = 'Hipnotic QuakeC clears model/modelindex; non-rendered volume'
@@ -495,12 +495,91 @@ def hull_landing(bsp, origin, hull=1):
     return point[2]
 
 
-def build_map(raw, name, game='quake', lit=None):
+# Stock spawn functions in the shipped progs.dat (base, Hipnotic and Rogue).
+# Armagon's two authored parts share one entity ID; runtime summons are never created.
+MONSTER_MODELS = {
+    'army': 'soldier', 'dog': 'dog', 'enforcer': 'enforcer', 'ogre': 'ogre', 'ogre_marksman': 'ogre',
+    'knight': 'knight', 'hell_knight': 'hknight', 'zombie': 'zombie', 'shambler': 'shambler',
+    'demon1': 'demon', 'wizard': 'wizard', 'fish': 'fish', 'tarbaby': 'tarbaby', 'shalrath': 'shalrath',
+    'boss': 'boss', 'oldone': 'oldone', 'gremlin': 'grem', 'scourge': 'scor', 'spikemine': 'demon',
+    'armagon': 'armabody armalegs', 'eel': 'eel2', 'wrath': 'wrath', 'super_wrath': 's_wrath',
+    'lava_man': 'lavaman', 'dragon': 'dragon', 'mummy': 'mummy', 'sword': 'sword',
+}
+
+
+def append_alias(data, model, origin, angles, group):
+    """Append a placed alias mesh in native BSP coordinates; keep actor groups separate."""
+    base = len(data['points'])
+    local = np.asarray(model['vertices']).reshape(-1, 3)[:, [2, 0, 1]]
+    points = local @ rotation(angles).T + origin
+    if not np.isfinite(points).all():
+        raise ValueError('Non-finite placed monster position')
+    data['points'] = np.concatenate((data['points'], points))
+    data['uvs'] = np.concatenate((data['uvs'], np.asarray(model['uvs']).reshape(-1, 2)))
+    data['uv2'] = np.concatenate((data['uv2'], np.zeros((len(points), 2))))
+    data['groups'].append(dict(group, start=len(data['indices']), count=len(model['indices'])))
+    data['indices'].extend(base + v for v in model['indices'])
+
+
+def append_monsters(data, bsp, files, game):
+    if __package__:
+        from .import_quake import read_mdl, build_model
+    else:
+        from import_quake import read_mdl, build_model
+    records, cache = [], {}
+    for entity, e in enumerate(bsp['entities']):
+        cls = e.get('classname', '')
+        if not cls.startswith('monster_'):
+            continue
+        row = dict(entity=entity, classname=cls, npc=True)
+        records.append(row)
+        flags = int(float(e.get('spawnflags') or 0))
+        name = MONSTER_MODELS.get(cls.removeprefix('monster_'))
+        if game == 'rogue' and cls == 'monster_morph':
+            name = next((model for flag, model in ((2, 'morph_az'), (4, 'morph_eg'), (8, 'morph_gr')) if flags & flag), None)
+        reason = ('Monsters removed in deathmatch' if game == 'qctf' else
+                  'Excluded on normal skill' if flags & 512 else
+                  'No verified placed model mapping (helper/decoy or morph without a skin selection)' if not name else '')
+        if reason:
+            row.update(status='omitted', reason=reason)
+            continue
+        row['parts'] = []
+        try:
+            for part in name.split():
+                path = 'progs/' + part + '.mdl'
+                skin = int(float(e.get('skin') or 0))
+                if game == 'rogue' and cls in ('monster_knight', 'monster_hell_knight') and flags & 2:
+                    skin = 1  # Authored statue actors retain their stone skin.
+                key = path, skin
+                if key not in cache:
+                    if path not in files:
+                        raise ValueError('Missing monster model ' + path)
+                    mesh = read_mdl(files[path][0], skin, standing=True)
+                    png = 'mdl_' + hashlib.sha256(mesh['skin'] + struct.pack('<II', mesh['width'], mesh['height'])).hexdigest()[:24] + '.png'
+                    data['textures'][png] = dict(width=mesh['width'], height=mesh['height'], pixels=mesh['skin'])
+                    cache[key] = mesh, build_model(mesh, png), png
+                mesh, model, png = cache[key]
+                angles = vector(e, 'angles') if 'angles' in e else np.array([0., float(e.get('angle') or 0), 0.])
+                origin = vector(e)
+                if cls == 'monster_armagon' and part == 'armabody':
+                    origin += [0, 0, 64]  # Native attached body offset above the legs.
+                append_alias(data, model, origin, angles,
+                             dict(texture=png, kind='model', flags=0, size=[mesh['width'], mesh['height']],
+                                  npc=True, entity=entity, classname=cls))
+                row['parts'].append(dict(model=path, skin=mesh['skin_number'], frame=mesh['frame'], pose=mesh['pose']))
+            row['status'] = 'drawn'
+        except (ValueError, IndexError, struct.error) as exc:
+            row.update(status='partial' if row['parts'] else 'failed', reason=str(exc))
+    return records
+
+
+def build_map(raw, name, game='quake', lit=None, files=None):
     bsp = read_bsp(raw)
     bsp['rerelease'] = game in RERELEASE
     lighting = colored_lighting(bsp, lit)
     placed, skipped = instances(bsp, game)
     data = geometry(bsp, placed)
+    models = append_monsters(data, bsp, files or {}, game)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp, game)
 
@@ -533,9 +612,11 @@ def build_map(raw, name, game='quake', lit=None):
                             reason='external .lit takes precedence' if n == 'RGBLIGHTING' and lit is not None else
                             'RGB lighting' if n == 'RGBLIGHTING' else 'not handled') for n, d in bsp['bspx'].items()],
                  lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views, bounds=bounds.tolist(),
-                 instances=placed, skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
+                 instances=placed, models=models, model_failures=[r for r in models if r['status'] in ('failed', 'partial')],
+                 skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
                  assumptions=['CTF deathmatch filtering; first authored team 1 start' if game == 'qctf' else 'normal skill, single player, no runes', 'light styles held at m (264), switchable lights that start off at a (0)',
-                              'brushes at spawn; trains initialized at first corner, before travel', 'animated textures held at +0/+a'])
+                              'brushes at spawn; trains initialized at first corner, before travel', 'animated textures held at +0/+a',
+                              'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; no AI or runtime summons'])
     return scene, blob, data['textures'], data['atlas']
 
 
@@ -602,7 +683,7 @@ def import_maps(install, output, replace=False, game='quake'):
                 result['skipped'].append(name)
             else:
                 lit = files.get(name[:-4] + '.lit') if game in RERELEASE else None
-                scene, blob, textures, atlas = build_map(raw, ident, game, lit[0] if lit else None)
+                scene, blob, textures, atlas = build_map(raw, ident, game, lit[0] if lit else None, files=files)
                 if game in RERELEASE:
                     bsp = read_bsp(raw)
                     info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})

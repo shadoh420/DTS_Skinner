@@ -400,7 +400,7 @@ def decoration_table(files):
                 raise ValueError('Invalid AIData CVSC header')
             raw = bytes(x ^ 0x96 for x in raw[4:])
         for row in csv.reader(io.StringIO(raw.decode('latin1'))):
-            if len(row) > 14 and row[0].strip().lower() in AMBIENT_ANIMALS:
+            if len(row) > 14 and (row[0].strip().lower() in AMBIENT_ANIMALS or row[0].strip().lower().startswith(('monster_', 'mikiko', 'superfly', 'cine_'))):
                 cls = row[0].strip().lower()
                 table[cls, ''] = dict(path=dk.asset_name(row[1]), scale=row[14].strip(), csv=source)
                 if cls == 'e_greyfish':
@@ -425,14 +425,14 @@ def scenery(bsp, table):
         cls, named = e.get('classname', ''), e.get('model', '')
         if named.startswith('*'):
             continue
-        relevant = named or cls.startswith(('deco_', 'misc_', 'light_')) or cls in PROP_MODELS or cls in AMBIENT_ANIMALS
+        relevant = named or cls.startswith(('deco_', 'misc_', 'light_')) or cls in PROP_MODELS or cls in AMBIENT_ANIMALS or (cls, '') in table or cls.startswith('monster_')
         if not relevant:
             continue
-        row = dict(entity=index, classname=cls, named=named, npc=cls in AMBIENT_ANIMALS)
+        row = dict(entity=index, classname=cls, named=named, npc=cls in AMBIENT_ANIMALS or (cls, '') in table)
         reason = 'Excluded on medium skill' if excluded(e) else ''
-        if cls.startswith(('monster_', 'weapon_', 'ammo_', 'item_')):
-            reason = 'Monster/item/weapon: outside static scenery scope'
-        elif not cls.startswith(('deco_', 'misc_', 'light', 'e_')):
+        if cls.startswith(('weapon_', 'ammo_', 'item_')):
+            reason = 'Item/weapon: outside static scenery scope'
+        elif not row['npc'] and not cls.startswith(('deco_', 'misc_', 'light', 'e_')):
             reason = 'Gameplay/cinematic/particle entity: outside static scenery scope'
         entry = table.get((cls, named.lower())) if cls.startswith('deco_') else table.get((cls, ''))
         path = entry['path'] if entry else EPISODE_LIGHTS.get(cls, PROP_MODELS.get(cls, dk.asset_name(named) if named else ''))
@@ -559,7 +559,7 @@ def append_scenery(data, bsp, files, placements):
     colors = [np.full((len(data['points']), 4), 255, np.uint8)]
     vertex_count = len(data['points'])
     for item in placements:
-        key = item['path'], item['frame']
+        key = item['path'], item['frame'], item['npc']
         try:
             if item['path'].endswith('.sp2'):
                 if item['path'] not in files:
@@ -572,6 +572,7 @@ def append_scenery(data, bsp, files, placements):
                 copies = item.get('sprite_copies', 1)
                 oriented = item.get('oriented', False)
                 data['groups'].append(dict(texture=png, kind='sprite_oriented' if oriented else 'sprite', flags=0, size=list(image.size), unlit=True,
+                    npc=item['npc'], entity=item['entity'], classname=item['classname'],
                     alpha=item['alpha'], additive=item.get('additive', False), start=len(data['indices']), count=6 * copies,
                     sprite_size=(np.array(sprite['size']) * item['scale'][:2] * SCALE).tolist(),
                     sprite_pivot=(np.array(sprite['pivot']) * item['scale'][:2] * SCALE).tolist()))
@@ -597,7 +598,7 @@ def append_scenery(data, bsp, files, placements):
             if key not in cache:
                 if item['path'] not in files:
                     raise ValueError('Model path absent from install')
-                mesh = dk.read_dkm(dk.read_asset(files[item['path']]), item['frame'])
+                mesh = dk.read_dkm(dk.read_asset(files[item['path']]), item['frame'], standing=item['npc'])
                 textures, skin_audit = [], []
                 for named in mesh['skin_names']:
                     path, fallback = dk.choose_skin(item['path'], named, files)
@@ -639,7 +640,7 @@ def append_scenery(data, bsp, files, placements):
             uv2.append(np.zeros((len(local), 2)))
             colors.append(np.clip(vertex_colors * 255, 0, 255).astype(np.uint8))
             vertex_count += len(local)
-            item.update(status='drawn', skins=skin_audit, light=lighting.tolist(), vertices=len(local),
+            item.update(status='drawn', pose=model['metadata']['pose'], skins=skin_audit, light=lighting.tolist(), vertices=len(local),
                         warnings=model['metadata'].get('warnings', []))
         except (ValueError, IndexError, struct.error, OSError) as exc:
             item.update(status='not drawn', reason=str(exc))

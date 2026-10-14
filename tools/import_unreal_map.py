@@ -481,7 +481,7 @@ def build_map(library, level, default, game='unreal'):
         seqs = {seq['name'].lower(): seq for seq in mesh['seqs']}
         seq = seqs.get(str(props.get('AnimSequence', '')).lower()) or (None if game == 'dx' else next((seqs[n] for n in POSES if n in seqs), None))
         frame = seq['start'] + min(int(props.get('AnimFrame', 0.0) * seq['frames']), max(seq['frames'] - 1, 0)) if seq else 0
-        if game == 'dx' and not seq:
+        if game == 'dx' and (npc_owner or not seq):
             frame = standing_pose(mesh)[0]
         local = np.array(mesh_points(mesh, frame if frame < mesh['frames'] else 0), np.float64)
         matrix = np.array(rotation(*vector(props, 'Rotation', '3i'))) * props.get('DrawScale', 1.0)
@@ -578,7 +578,7 @@ def build_map(library, level, default, game='unreal'):
     spawn_events = set() if game == 'dx' else events_at_spawn()
     meshes, counts = {}, dict(meshes=0, movers=0, unread=0, failed=[])
     if game == 'dx':
-        counts.update(excluded_npcs=0, excluded_other=0, carcasses=0, pickups=0, decorations=0)
+        counts.update(excluded_players=0, excluded_other=0, npcs=0, carcasses=0, pickups=0, decorations=0)
     def placed_order():
         movers = [r for r in layout['actors'] if r > 0 and 'Mover' in library.class_info(level.ref_path(level.exports[r - 1]['cls']))[2]]
         return movers + [r for r in layout['actors'] if r > 0 and r not in set(movers)]
@@ -590,8 +590,8 @@ def build_map(library, level, default, game='unreal'):
         placed = level.properties(ref)
         props = {**defaults, **placed}
         kind = map_actor_kind(names) if game == 'dx' else None
-        if kind in ('npc', 'other'):
-            counts['excluded_npcs' if kind == 'npc' else 'excluded_other'] += 1
+        if kind in ('player', 'other'):
+            counts['excluded_players' if kind == 'player' else 'excluded_other'] += 1
             continue
         # Lights are not drawn in the game though some leave bHidden off (227, Glathriel2: TriggerLight's sprite 87 units
         # and TorchFlame's 192-unit flame mesh 275 units in front of the camera both showed nothing).
@@ -620,11 +620,11 @@ def build_map(library, level, default, game='unreal'):
                     if kind == 'carcass' and zone(zone_at(vector(props, 'Location'))).get('bWaterZone') and props.get('Mesh3'):
                         view = 'Mesh3'
                 npc_owner = ((ref, '.'.join(level.ref_path(level.exports[ref - 1]['cls'])))
-                             if game != 'dx' and 'Pawn' in names and not {'Vehicle', 'Carcass'}.intersection(names) else None)
+                             if kind == 'npc' or (game != 'dx' and 'Pawn' in names and not {'Vehicle', 'Carcass'}.intersection(names)) else None)
                 if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view, npc_owner):
                     counts['meshes'] += 1
                     if game == 'dx':
-                        counts[{'carcass': 'carcasses', 'pickup': 'pickups', 'decoration': 'decorations'}[kind]] += 1
+                        counts[{'carcass': 'carcasses', 'pickup': 'pickups', 'decoration': 'decorations', 'npc': 'npcs'}[kind]] += 1
                 elif game == 'dx':
                     counts['failed'].append(f'{name}: no readable visible {view}')
         except (struct.error, ValueError, IndexError, KeyError) as exc:
