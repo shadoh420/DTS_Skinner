@@ -31,6 +31,7 @@ class NotesTests(unittest.TestCase):
 
             with client.get('/maps/t1/') as page:
                 self.assertIn(b'<script src="/static/notes.js"></script></body>', page.data)
+                self.assertIn(b'<script src="/static/import-timer.js"></script>', page.data)
             self.assertIn(b'/static/notes.js', client.get('/').data)
 
 
