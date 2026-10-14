@@ -180,6 +180,43 @@ fail or do not become ready, terrain, interior, sky and shape files the pack
 lacks, runtime errors, and any mission whose name or types the importer read
 differently from upstream's parser. It does not draw anything.
 
+## IronSphere world map
+
+`--ironsphere <ironsphere.vl2>` adds **IronSphere (T2RPG)** to the map selector.
+Its resources live under `base/mods/ironsphere/`; `missionPacks` in the manifest
+overrides resource lookup only when that mission is selected. Base missions and
+their stock resource table stay unchanged. `SOURCES.json` records the archive hash.
+
+The supplied VL2 has eight files: the mission, terrain and six terrain textures.
+It has no NPC scripts or custom shapes/interiors. The optional explicit
+`--ironsphere-root <unpacked ironsphere>` adds its visual assets and reads scripts
+statically, recording every input file's SHA-256. This is a mission-only exception
+to the stock pack's no-loose-overrides policy. No RPG gameplay scripts enter the
+viewer VM's script search path; only visual scenery datablocks are synthesized.
+The import panel retains these input paths when rebuilding an existing pack.
+
+The supplied `missions/T2RPG_Worldmap.cs:741` (`DefineTownBots`) defines 22 service
+NPCs and three quest NPCs. All use `MaleHumanArmor`, `base_male.dts`, default skin
+(`skins/AM_skin`) and constructor sequence `light_male_root.dsq`. There are no
+placed Player/AIPlayer objects in the mission. `customTownBots()` is empty.
+The 58 enemy sites plus the conditional Reaper site are omitted: `SpawnLoop`
+depends on player proximity, random selection, respawn and quest state. Day/night
+scripts add effects, not fixed characters. No populations are invented.
+The model also references `skins/RPG_bastardsword`, absent from the supplied inputs;
+that material uses the viewer's existing missing-texture fallback.
+
+```powershell
+python tools/import_t2_map.py --game-base C:/Dynamix/Tribes2/GameData/base --ironsphere C:/tmp/tribes-planets-20261006/t2-extra/ironsphere.vl2 --ironsphere-root C:/tmp/tribes-planets-20261006/t2-extra/ironsphere --output "$env:LOCALAPPDATA/DTS-Skinner/local-data/t2-maps" --replace
+```
+
+Focused tests: `python -m unittest tests.test_t2_maps tests.test_t2rpg_maps` and
+`node tests/test_npc_toggle.js`. For one mission through the existing script checker:
+`node --import=tsx/esm skinner/check-pack.ts <pack> - T2RPG_WorldMap`.
+Browser review: world terrain/interiors, standing characters near Keldrin
+(`-323 952 52` in Torque coordinates), count 25, OFF across reload, stock map
+disabled at zero, and returning to the world map preserving OFF. This is a static
+preview; inspect authored rotations and the standing pose visually.
+
 ## Limits
 
 Free-flight only. The script runtime does not simulate gameplay: upstream skips

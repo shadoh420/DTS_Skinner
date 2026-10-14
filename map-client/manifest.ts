@@ -27,4 +27,10 @@ if (response.ok && !Object.keys(manifest.mounts ?? {}).length) {
     await fetch('/t2_map_mounts', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(manifest.mounts)}).catch(() => {});
   }
 }
+// Select an overlay before upstream loaders initialize. A fresh page is loaded for every
+// map selection; mod resources never enter stock mounts.json or another mission's cache.
+const requested = (new URLSearchParams(location.search).get('mission') ?? '').split('~')[0];
+const selected = Object.keys(manifest.missions).find(key => key.toLowerCase() === requested.toLowerCase());
+export const missionPack = manifest.missionPacks?.[selected ?? ''] ?? {npcs: [], notes: []};
+manifest.resources = {...manifest.resources, ...missionPack.resources};
 export default manifest;

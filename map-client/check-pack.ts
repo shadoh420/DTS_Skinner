@@ -1,7 +1,7 @@
 // Loads every mission of an imported pack, in each of its types, through upstream's script runtime, the way
 // its missionLoad.integration.spec.ts loads one, and lists what fails or is not in the pack.
 // Run from the pinned upstream checkout, with LOG_LEVEL=error and TSX_TSCONFIG_PATH=tsconfig.node.json set:
-//   node --import=tsx/esm skinner/check-pack.ts <pack> [report.json]
+//   node --import=tsx/esm skinner/check-pack.ts <pack> [report.json|-] [mission]
 import {existsSync, readFileSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
@@ -16,7 +16,8 @@ import {walkMissionTree} from '../src/stream/missionEntityBridge';
 const pack = process.argv[2];
 if (!pack) throw new Error('Pass the imported map pack directory');
 const manifest = JSON.parse(readFileSync(path.join(pack, 'manifest.json'), 'utf8'));
-const files = Object.keys(manifest.resources);
+let resources = manifest.resources;
+let files = Object.keys(resources);
 // The viewer writes mounts.json when it first opens a pack; before that they are read here the same way.
 const mounts: Record<string, unknown> = existsSync(path.join(pack, 'mounts.json')) ? JSON.parse(readFileSync(path.join(pack, 'mounts.json'), 'utf8')) : {};
 if (!Object.keys(mounts).length) for (const file of files.filter(file => file.endsWith('.dts')).sort()) {
@@ -24,21 +25,25 @@ if (!Object.keys(mounts).length) for (const file of files.filter(file => file.en
   const found = data.length ? extractMountTransforms(parseDTS(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength))) : null;
   if (found) mounts[path.basename(file, '.dts')] = found;
 }
-const has = (file: string) => file.toLowerCase() in manifest.resources;
+const has = (file: string) => file.toLowerCase() in resources;
 const fileSystem = {
   findFiles: (pattern: string) => { const matches = picomatch(pattern, {nocase: true}); return files.filter(file => matches(file)); },
   isFile: (file: string) => has(file.replace(/\\/g, '/')),
 };
 const loader = createScriptLoader({searchPaths: [path.join(pack, 'base')]});
-const loadScript = (file: string) => loader(file.toLowerCase());  // The pack's paths are lowercase.
+const loadScript = (file: string) => loader(resources[file.toLowerCase()]?.[0] ?? file.toLowerCase());
 const quiet = {log: console.log, warn: console.warn, error: console.error, debug: console.debug, info: console.info};
 const report: Record<string, string[]> = {};
 let runs = 0;
 
-for (const [name, mission] of Object.entries<any>(manifest.missions).sort()) {
+const selected = Object.entries<any>(manifest.missions).sort().filter(([name]) => !process.argv[4] || name.toLowerCase() === process.argv[4].toLowerCase());
+if (!selected.length) throw new Error('No matching mission');
+for (const [name, mission] of selected) {
+  resources = {...manifest.resources, ...manifest.missionPacks?.[name]?.resources};
+  files = Object.keys(resources);
   const problems: string[] = [], printed: string[] = [];
   // The importer reads names and types in Python; upstream's parser is the reference.
-  const parsed = parseMissionScript(readFileSync(path.join(pack, 'base', mission.resourcePath), 'utf8'));
+  const parsed = parseMissionScript(readFileSync(path.join(pack, 'base', resources[mission.resourcePath][0]), 'utf8'));
   if (parsed.displayName !== mission.displayName || parsed.missionTypes.join() !== mission.missionTypes.join())
     problems.push(`manifest says ${mission.displayName} [${mission.missionTypes}], upstream reads ${parsed.displayName} [${parsed.missionTypes}]`);
   for (const type of mission.missionTypes.length ? mission.missionTypes : ['']) {
@@ -82,6 +87,6 @@ for (const [name, mission] of Object.entries<any>(manifest.missions).sort()) {
     + printed.map(line => `\n  script printed, ${line}`).join(''));
   if (problems.length) report[name] = problems;
 }
-console.log(`${Object.keys(manifest.missions).length} missions, ${runs} mission/type loads, ${Object.keys(report).length} with problems`);
-if (process.argv[3]) writeFileSync(process.argv[3], JSON.stringify(report, null, 2));
+console.log(`${selected.length} missions, ${runs} mission/type loads, ${Object.keys(report).length} with problems`);
+if (process.argv[3] && process.argv[3] !== '-') writeFileSync(process.argv[3], JSON.stringify(report, null, 2));
 process.exit(Object.keys(report).length ? 1 : 0);

@@ -13,6 +13,13 @@ T1, Unreal/UT/Na Pali, SiN, Daikatana, Anachronox, Deus Ex, Bloodlines, Quake an
 exports carry NPC tags; older packs need `--replace`. E.Y.E., Tribes: Vengeance, Tribes: Ascend and Nosgoth already export tags.
 Other pages show the disabled control until their adapter supplies NPC data.
 
+Tribes 2's IronSphere world map uses `manifest.missionPacks.T2RPG_WorldMap.npcs`.
+Each literal actor retains `npc`, `entity` (source file/line/column), `classname`, `datablock`,
+shape, skin and transform. `map-client/npcs.tsx` holds the constructor's root pose;
+one parent group controls visibility, independent of child DTS LOD visibility.
+Only successfully loaded actors count. Base T2 missions have no NPC entries.
+See [T2 map viewer](t2-map-viewer.md#ironsphere-world-map) for inputs and omissions.
+
 ## Scope
 
 - Include monsters, characters, cinematic player doubles, actor turrets/sentries and tank-like

@@ -13,8 +13,10 @@ import zipfile
 
 try:
     from tools.local_data import LOCAL_DATA
+    from tools.t2rpg_map import add_ironsphere, MISSION as RPG_MISSION
 except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
+    from t2rpg_map import add_ironsphere, MISSION as RPG_MISSION
 
 # Later archives win. On the install checked, this order and the game's (by archive name) choose the same files.
 ARCHIVES = ('base.vl2', 'scripts.vl2', 'missions.vl2', 'shapes.vl2',
@@ -43,9 +45,11 @@ def mission_info(text):
     return found.get('displayname'), [MISSION_TYPES.get(name.lower(), name) for name in found.get('missiontypes', '').split()]
 
 
-def import_maps(game_base, output, replace=False):
+def import_maps(game_base, output, replace=False, ironsphere=None, ironsphere_root=None):
     """Import every mission of the install into one shared pack. Returns a report."""
     game_base, output = Path(game_base), Path(output)
+    if ironsphere_root and not ironsphere:
+        raise ValueError('An IronSphere folder requires --ironsphere archive')
     if (game_base / 'base').is_dir():
         game_base = game_base / 'base'
     if not game_base.is_dir():
@@ -103,12 +107,21 @@ def import_maps(game_base, output, replace=False):
                 warnings[name] = ['Mission names no terrain']
             elif 'terrains/' + terrain[1].replace('\\', '/').split('/')[-1].lower() not in resources:
                 warnings[name] = ['Terrain not found: ' + terrain[1]]
+        manifest = {'resources': resources, 'mounts': {}, 'missions': missions}
+        mod_sources = {}
+        if ironsphere:
+            overlay, source = add_ironsphere(staging, resources, missions, ironsphere, ironsphere_root)
+            manifest['missionPacks'] = {RPG_MISSION: overlay}
+            manifest['ironsphereInputs'] = {'archive': str(Path(ironsphere).resolve()),
+                                          'root': str(Path(ironsphere_root).resolve()) if ironsphere_root else ''}
+            mod_sources[RPG_MISSION] = source
+            warnings[RPG_MISSION] = overlay['notes']
         # Mount transforms are added by the viewer on first open (mounts.json), with t2-mapper's own shape reader.
-        (staging / 'manifest.json').write_text(json.dumps({'resources': resources, 'mounts': {}, 'missions': missions}), encoding='utf-8')
+        (staging / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
         (staging / 'skins.json').write_text('{}', encoding='utf-8')
         (staging / 'SOURCES.json').write_text(json.dumps({
             'missions': len(missions), 'policy': 'Explicit stock archive order; later archives win. No loose or mod overrides.',
-            'archives': provenance}, indent=2), encoding='utf-8')
+            'archives': provenance, 'missionPacks': mod_sources}, indent=2), encoding='utf-8')
         if output.exists():
             replaced = Path(tempfile.mkdtemp(prefix='replaced-', dir=output.parent))
             output.rename(replaced / 'pack')
@@ -126,8 +139,10 @@ if __name__ == '__main__':
     parser.add_argument('--game-base', type=Path, required=True, help='Tribes 2 GameData folder or its base folder')
     parser.add_argument('--output', type=Path, default=LOCAL_DATA / 't2-maps')
     parser.add_argument('--replace', action='store_true', help='rebuild a map pack that already exists')
+    parser.add_argument('--ironsphere', type=Path, help='IronSphere VL2; isolated to the RPG world mission')
+    parser.add_argument('--ironsphere-root', type=Path, help='Unpacked IronSphere custom assets and literal NPC scripts (hash-recorded)')
     args = parser.parse_args()
-    result = import_maps(args.game_base, args.output, args.replace)
+    result = import_maps(args.game_base, args.output, args.replace, args.ironsphere, args.ironsphere_root)
     print('Imported %d missions (%d resources), skipped %d already imported, into %s' % (
         len(result['imported']), result['resources'], len(result['skipped']), args.output))
     for name, items in result['warnings'].items():

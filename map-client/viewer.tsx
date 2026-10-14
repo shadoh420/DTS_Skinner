@@ -21,7 +21,7 @@ function label(name: string) {
 }
 const names = Object.keys(missions).sort((a, b) => label(a).localeCompare(label(b)));
 // Upstream's group names for these archives; any other archive is listed under its own name.
-const groupNames: Record<string, string> = {'missions.vl2': 'Official', 'Classic_maps_v1.vl2': 'Classic', 'TR2final105-client.vl2': 'Team Rabbit 2'};
+const groupNames: Record<string, string> = {'missions.vl2': 'Official', 'Classic_maps_v1.vl2': 'Classic', 'TR2final105-client.vl2': 'Team Rabbit 2', 'ironsphere.vl2': 'IronSphere (T2RPG)'};
 const group = (name: string) => groupNames[missions[name].source ?? ''] ?? missions[name].source ?? 'Maps';
 const groups = [...new Set(names.map(group))].sort((a, b) => Number(b === 'Official') - Number(a === 'Official') || a.localeCompare(b));
 
@@ -44,6 +44,8 @@ function choose([next, nextType]: [string, string]) {
 const client = new QueryClient({defaultOptions:{queries:{refetchOnWindowFocus:false,retry:false}}});
 const gameKey = 'skinner.t2maps.game';
 function ImportPanel() {
+  const [ironsphere, setIronsphere] = useState(manifest.ironsphereInputs?.archive ?? '');
+  const [ironsphereRoot, setIronsphereRoot] = useState(manifest.ironsphereInputs?.root ?? '');
   const [game, setGame] = useState(() => { try { return localStorage.getItem(gameKey) || ''; } catch { return ''; } });
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -53,7 +55,7 @@ function ImportPanel() {
     setBusy(true); setStatus('Importing maps… this copies about 370 MB.');
     try {
       try { localStorage.setItem(gameKey, game.trim()); } catch {/* Storage may be unavailable. */}
-      const response = await fetch('/import_t2_maps', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({game: game.trim(), replace})});
+      const response = await fetch('/import_t2_maps', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({game: game.trim(), replace, ironsphere: ironsphere.trim(), ironsphereRoot: ironsphereRoot.trim()})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Import failed');
       if (result.imported.length) { location.reload(); return; }
@@ -63,6 +65,8 @@ function ImportPanel() {
   }
   return <details className="import" open={!names.length || undefined}><summary>Import maps</summary><div>
     <label>Tribes 2 folder <input type="text" value={game} onChange={e=>setGame(e.target.value)} placeholder="C:\Dynamix\Tribes2\GameData"/></label>
+    <label>IronSphere archive (optional) <input type="text" value={ironsphere} onChange={e=>setIronsphere(e.target.value)} placeholder="ironsphere.vl2"/></label>
+    <label>IronSphere assets folder <input type="text" value={ironsphereRoot} onChange={e=>setIronsphereRoot(e.target.value)} placeholder="ironsphere"/></label>
     <label><input type="checkbox" checked={replace} onChange={e=>setReplace(e.target.checked)}/> Re-import existing maps</label>
     <button disabled={busy} onClick={run}>Import</button><span role="status">{status}</span>
   </div></details>;
