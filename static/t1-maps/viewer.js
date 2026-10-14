@@ -10,7 +10,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     npcToggle.setCount(0);
     npcToggle.onChange = enabled => { for (const draw of npcDraws) draw.visible = enabled; };
   }
-  const storageKey = adapter ? 'skinner.rb3dmaps' : 'skinner.t1maps';
+  // Another DarkStar game's page (Starsiege) keeps the T1 drawing and names its own pack, title and import.
+  const site = Object.assign({data: '/t1-map-data/', title: 'T1 Maps', storageKey: 'skinner.t1maps', importRoute: '/import_t1_maps',
+    folder: 'Tribes', firstMap: 'raindance'}, window.skinnerT1MapConfig);
+  const storageKey = adapter ? 'skinner.rb3dmaps' : site.storageKey;
   const settings = {fov: 90, fog: true, weather: true, lights: true, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
@@ -21,7 +24,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 1, .2, 9000);
   camera.rotation.order = 'YXZ';
-  let data = adapter ? '/rb3d-map-data/' : '/t1-map-data/';
+  let data = adapter ? '/rb3d-map-data/' : site.data;
   let streamFrame = null;
   let speed = 40, missing = 0, ready = false, map = null, mapId = '';
   const showStatus = text => { $('status').textContent = text; };
@@ -561,11 +564,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   $('import').addEventListener('click', async () => {
     const game = $('gamePath').value.trim();
-    if (!game) { $('importStatus').textContent = adapter ? 'Enter your Red Baron 3D folder.' : 'Enter your Tribes folder.'; return; }
+    if (!game) { $('importStatus').textContent = adapter ? 'Enter your Red Baron 3D folder.' : `Enter your ${site.folder} folder.`; return; }
     $('import').disabled = true;
     $('importStatus').textContent = 'Importing maps… a full install can take a few minutes.';
     try {
-      const response = await fetch(adapter ? '/import_rb3d_maps' : '/import_t1_maps', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      const response = await fetch(adapter ? '/import_rb3d_maps' : site.importRoute, {method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({game, missions: $('missionPath').value.trim(), replace: $('replace').checked})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Import failed');
@@ -590,14 +593,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { maps = await (await get(data + 'index.json')).json(); } catch (_) { /* No pack yet. */ }
     if (!maps.length) { $('importPanel').open = true; throw new Error('no maps imported yet. Use Import maps above.'); }
     mapId = new URLSearchParams(location.search).get('map') || '';
-    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === 'raindance') || maps[0]).id;
+    if (!maps.some(item => item.id === mapId)) mapId = (maps.find(item => item.id === site.firstMap) || maps[0]).id;
     $('map').replaceChildren(...maps.map(item => new Option(item.type ? `${item.name} · ${item.type}` : item.name, item.id)));
     $('map').value = mapId;
     const entry = maps.find(item => item.id === mapId);
     if (adapter && entry.error) throw new Error(entry.error + '. See the import report.');
     if (adapter && entry.pack) data += entry.pack + '/';
     map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
-    document.title = `${map.mission} — ${adapter ? 'Red Baron 3D Maps' : 'T1 Maps'}`;
+    document.title = `${map.mission} — ${adapter ? 'Red Baron 3D Maps' : site.title}`;
     scene.background = haze.set(`rgb(${map.haze.join(',')})`);
     if (adapter) {
       applySettings();
