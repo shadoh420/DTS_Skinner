@@ -14,12 +14,12 @@ from PIL import Image
 
 try:
     from tools import import_azrael as az
-    from tools.azrael_world import read_world, entry_spawns, room_spawns
+    from tools.azrael_world import read_world, entry_spawns, room_spawns, first_arrivals
     from tools.import_unreal_map import floor_below
     from tools.local_data import LOCAL_DATA
 except ImportError:
     import import_azrael as az
-    from azrael_world import read_world, entry_spawns, room_spawns
+    from azrael_world import read_world, entry_spawns, room_spawns, first_arrivals
     from import_unreal_map import floor_below
     from local_data import LOCAL_DATA
 
@@ -374,12 +374,18 @@ def scene_geometry(cd, source, scene, worlds, prefix):
     return model, groups, images, texture_rows
 
 
-def append_characters(cd, game, entry, model, groups, images, spawns):
+def append_characters(cd, game, entry, model, groups, images, spawns, bounds=None):
     """Bake selected actors into separate, tagged groups; no AI or floor guess."""
     characters = []
     for spawn in spawns:
         row = dict(spawn, character_id=az.safe(spawn['character']), name=spawn['character'])
         characters.append(row)
+        # Scripts park some actors far outside the room (e.g. +-1000) until a
+        # later event moves them in: not visible on arrival, so not drawn.
+        origin = np.array(row['position']) * [1,1,-1]
+        if bounds and not all(lo <= v <= hi for v, lo, hi in zip(origin, *bounds)):
+            row.update(status='staged', reason='Spawned outside the room; a later script moves it in')
+            continue
         try:
             ani_file = az.child(game, spawn['character'] + '.ANI')
             if ani_file is None:
@@ -434,7 +440,7 @@ def build_map(cd, entry, zones, *, game=None, spawns=()):
     views = viewpoints(entry['room'],zones,points,native_triangles)
     # NPCs must not affect floor selection, starts or the room's bounds.
     bounds = [vertices.min(axis=0).tolist(), vertices.max(axis=0).tolist()]
-    characters = append_characters(cd, game, entry, model, groups, images, spawns)
+    characters = append_characters(cd, game, entry, model, groups, images, spawns, bounds)
     vertices = np.array(model['vertices'], dtype='<f4').reshape(-1,3)
     indices = np.array(model['indices'], dtype='<u4')
     room_zones = {n.casefold() for n in entry['room']['zones']}
@@ -446,7 +452,7 @@ def build_map(cd, entry, zones, *, game=None, spawns=()):
                     textures=texture_rows,markers=points,zones=linked,characters=characters,
                     npc_count=sum(c['status']=='drawn' for c in characters),
                     gaps=['Fresh room frame 0; scripts, saved state and moving machinery are held still',
-                          'NPC preview is partial: only verified initial entry events; other room populations remain unresolved',
+                          'NPCs are agreed first-arrival portal populations; ambiguous and state-gated placements are excluded',
                           'NPCs use REST poses at authored spawn coordinates; no AI, falling or later puzzle/conversation spawns',
                           'Arrival selection and facing need game comparison; alternate arrivals use number keys',
                           'Unlit, no fog; original filter/lighting state and marker hiding need game comparison'])
@@ -458,16 +464,19 @@ def import_maps(install, output, replace=False, map_filter=None):
     cd, entries, zones, xafs = plan_maps(install)
     game, _ = az.read_install(install)
     spawn_rows, world_status = [], 'WORLD.DAT absent; characters unresolved'
+    simulation = dict(rooms=[], blockers=[])
     world_file = az.child(game, 'WORLD.DAT')
     if world_file:
         try:
-            spawn_rows = entry_spawns(read_world(az.read_file(world_file, 16 * 1024 * 1024)))
-            world_status = 'Partial: initial zxentry blocks only; portal continuations and gameplay history unresolved'
+            world = read_world(az.read_file(world_file, 16 * 1024 * 1024))
+            simulation = first_arrivals(world)
+            spawn_rows = entry_spawns(world, simulation=simulation)
+            world_status = 'First-arrival portal graph; all route variants must agree; no puzzle, conversation or combat events'
         except (ValueError, OSError, struct.error) as exc:
             world_status = 'Characters unresolved: ' + str(exc)
     output = Path(output); (output/'textures').mkdir(parents=True,exist_ok=True)
     report = dict(imported=[],skipped=[],failed={},results=entries,xaf_results=xafs,zone_records=len(zones),
-                  characters=dict(status=world_status, spawns=spawn_rows,
+                  characters=dict(status=world_status, spawns=spawn_rows, simulation=simulation,
                       reasons=dict(Counter(r['reason'] for r in spawn_rows))))
     index = []
     for entry in entries:
@@ -483,7 +492,10 @@ def import_maps(install, output, replace=False, map_filter=None):
                     scene = json.loads(az.read_file(folder/'scene.json').decode('utf-8'))
                     entry.update(status='cached',reason='Already imported; use --replace');report['skipped'].append(entry['id'])
                 else:
-                    selected = room_spawns(spawn_rows, entry['source']) if entry['section'] == 'Rooms' else []
+                    # Some actual WORLD scenes (notably Chimney) are cataloged
+                    # as Extras because ROOMS.DAT omits them. Exact source joins
+                    # are still authoritative; unrelated Extras get no actors.
+                    selected = room_spawns(spawn_rows, entry['source'])
                     scene, blob, images = build_map(cd,entry,zones,game=game,spawns=selected)
                     scene['character_status'] = world_status
                     for png,image in images.items():
@@ -512,7 +524,8 @@ def import_maps(install, output, replace=False, map_filter=None):
                             facing_sources={section:dict(Counter(e['start_view'].get('facing_source','unrecorded; re-import')
                                 for e in entries if e['section']==section and 'start_view' in e)) for section in ('Rooms','Extras')})
     report['characters']['per_entry'] = [dict(id=e['id'], title=e['title'], status=e['status'],
-        drawn=e.get('npc_count', 0), coverage=e.get('character_status', 'Not imported')) for e in entries]
+        drawn=e.get('npc_count', 0), names=[c['name'] for c in e.get('characters',[]) if c['status']=='drawn'],
+        coverage=e.get('character_status', 'Not imported')) for e in entries]
     (output/'index.json').write_text(json.dumps(index,indent=1),encoding='utf-8')
     (output/'import-report.json').write_text(json.dumps(report,indent=1,allow_nan=False),encoding='utf-8')
     return report
