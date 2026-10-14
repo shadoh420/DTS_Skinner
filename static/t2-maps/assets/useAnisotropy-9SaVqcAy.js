@@ -1,0 +1,1 @@
+import{g as e}from"./events-156d8d12.esm-D-eg-5DH.js";function t(){return e(e=>e.gl.capabilities.getMaxAnisotropy())}export{t};

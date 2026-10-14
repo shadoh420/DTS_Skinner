@@ -158,10 +158,14 @@ def import_t2_maps_route():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip():
         return jsonify(error='Enter your local Tribes 2 folder.'), 400
+    if any(not isinstance(payload.get(key, ''), str) for key in ('ironsphere', 'ironsphereRoot')):
+        return jsonify(error='IronSphere paths must be text.'), 400
     if not import_lock.acquire(blocking=False):
         return jsonify(error='Another import is running. Wait for it to finish.'), 409
     try:
-        return jsonify(import_t2_maps(payload['game'].strip(), local_data_dir / 't2-maps', payload.get('replace') is True))
+        return jsonify(import_t2_maps(payload['game'].strip(), local_data_dir / 't2-maps', payload.get('replace') is True,
+                                      payload.get('ironsphere', '').strip() or None,
+                                      payload.get('ironsphereRoot', '').strip() or None))
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
         return jsonify(error=str(exc)), 422
     finally:
