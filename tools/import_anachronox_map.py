@@ -236,7 +236,7 @@ def scenery(bsp, table):
         if cls == 'worldspawn' or model.startswith('*'):
             continue
         entry = table.get(cls.lower())
-        row = dict(entity=index, classname=cls)
+        row = dict(entity=index, classname=cls, npc=bool(entry and entry['type'] in ('char', 'charfly', 'playerchar')))
         reason = hidden_reason(entity, entry)
         path = entry['path'] if entry else anox.asset_name(model)
         if cls.startswith(('trigger_', 'target_', 'info_', 'light', 'path_')):
@@ -402,6 +402,7 @@ def append_models(data, bsp, files, placements):
                 if item['alphaflags']:
                     settings.update(blend=['gl_src_alpha', 'gl_one' if item['alphaflags'] & 1 else 'gl_one_minus_src_alpha'], depthWrite=False)
                 data['groups'].append(dict(texture=png, kind='model', flags=0, size=list(images[png].size), unlit=True,
+                    npc=item['npc'], entity=item['entity'], classname=item['classname'],
                     alpha=item['alpha'], start=len(data['indices']), count=len(part), settings=settings, model_light=light.tolist()))
                 data['indices'].extend(count + i for i in part)
             points.append(placed)

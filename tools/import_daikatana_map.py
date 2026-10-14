@@ -428,7 +428,7 @@ def scenery(bsp, table):
         relevant = named or cls.startswith(('deco_', 'misc_', 'light_')) or cls in PROP_MODELS or cls in AMBIENT_ANIMALS
         if not relevant:
             continue
-        row = dict(entity=index, classname=cls, named=named)
+        row = dict(entity=index, classname=cls, named=named, npc=cls in AMBIENT_ANIMALS)
         reason = 'Excluded on medium skill' if excluded(e) else ''
         if cls.startswith(('monster_', 'weapon_', 'ammo_', 'item_')):
             reason = 'Monster/item/weapon: outside static scenery scope'
@@ -631,6 +631,7 @@ def append_scenery(data, bsp, files, placements):
                 png = model['material_textures'][group['materialIndex']]
                 part = model['indices'][group['start']:group['start'] + group['count']]
                 data['groups'].append(dict(texture=png, kind='model', flags=0, size=list(images[png].size),
+                                           npc=item['npc'], entity=item['entity'], classname=item['classname'],
                                            unlit=True, alpha=item['alpha'], start=len(data['indices']), count=len(part)))
                 data['indices'].extend(i + vertex_count for i in part)
             points.append(placed)

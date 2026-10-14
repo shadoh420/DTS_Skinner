@@ -365,7 +365,7 @@ def build_map(library, level, default, game='unreal'):
             placed, uv, st = placed[::-1], uv[::-1], st[::-1]
             flipped += 1
         polygons += 1
-        groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv, st, tile, None))
+        groups.setdefault((png, flags & DRAWN_FLAGS, pan, None), []).append((placed, uv, st, tile, None))
 
     def ambient_of(number):
         found = zone(number)
@@ -465,9 +465,9 @@ def build_map(library, level, default, game='unreal'):
             placed = viewer(world)
             if np.cross(placed, np.roll(placed, -1, 0)).sum(0) @ viewer([facing])[0] < 0:
                 placed, uv, st = placed[::-1], uv[::-1], st[::-1]
-            groups.setdefault((png, flags & DRAWN_FLAGS, pan), []).append((placed, uv, st, tile, None))
+            groups.setdefault((png, flags & DRAWN_FLAGS, pan, None), []).append((placed, uv, st, tile, None))
 
-    def add_mesh(props, obj, owners=None, mesh_property='Mesh'):
+    def add_mesh(props, obj, owners=None, mesh_property='Mesh', npc_owner=None):
         """An actor drawn as a mesh, at Location + PrePivot + Rotation x DrawScale x the mesh's points (its
         AnimSequence's frame), each slot's texture as the game picks it, lit at its vertices; False when it shows nothing."""
         package, ref = obj(mesh_property)
@@ -553,7 +553,8 @@ def build_map(library, level, default, game='unreal'):
             ids = [key[0] for key in keys]
             color = np.where(np.array([key[3] for key in keys])[:, None], unlit, light[ids])
             uv = np.array([(key[1] / 255, key[2] / 255) for key in keys])
-            groups.setdefault(group, []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
+            # Keep each Pawn's material batches separate from scenery and other Pawns.
+            groups.setdefault((*group, npc_owner), []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
         return True
 
     def events_at_spawn():
@@ -618,7 +619,9 @@ def build_map(library, level, default, game='unreal'):
                     # DeusExCarcass.PostBeginPlay selects Mesh3 in water. No randomized death pose is invented.
                     if kind == 'carcass' and zone(zone_at(vector(props, 'Location'))).get('bWaterZone') and props.get('Mesh3'):
                         view = 'Mesh3'
-                if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view):
+                npc_owner = ((ref, '.'.join(level.ref_path(level.exports[ref - 1]['cls'])))
+                             if game != 'dx' and 'Pawn' in names and not {'Vehicle', 'Carcass'}.intersection(names) else None)
+                if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view, npc_owner):
                     counts['meshes'] += 1
                     if game == 'dx':
                         counts[{'carcass': 'carcasses', 'pickup': 'pickups', 'decoration': 'decorations'}[kind]] += 1
@@ -637,7 +640,7 @@ def build_map(library, level, default, game='unreal'):
 
     positions, uvs, uv2s, colors, indices, table = [], [], [], [], [], []
     count = 0
-    for (png, flags, pan), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2])):
+    for (png, flags, pan, npc_owner), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2])):
         start = len(indices)
         for placed, uv, st, tile, color, *triangles in polys:
             n = len(placed)
@@ -653,6 +656,8 @@ def build_map(library, level, default, game='unreal'):
                 indices.extend(x for k in range(1, n - 1) for x in (count, count + k, count + k + 1))
             count += n
         table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start, **({'pan': pan} if any(pan) else {})))
+        if npc_owner:
+            table[-1].update(npc=True, entity=npc_owner[0], classname=npc_owner[1])
     positions = np.concatenate(positions).astype('<f4') if positions else np.zeros((0, 3), '<f4')
     uvs = np.concatenate(uvs).astype('<f4') if uvs else np.zeros((0, 2), '<f4')
     uv2s = np.concatenate(uv2s).astype('<f4') if uv2s else np.zeros((0, 2), '<f4')

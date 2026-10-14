@@ -5,6 +5,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   // RB3D supplies only its pack/streaming adapter; the T1 path keeps its defaults.
   const adapter = window.rb3dMaps;
+  const npcDraws = [], npcIDs = new Set(), npcToggle = window.skinnerNPCToggle;
+  if (npcToggle) {
+    npcToggle.setCount(0);
+    npcToggle.onChange = enabled => { for (const draw of npcDraws) draw.visible = enabled; };
+  }
   const storageKey = adapter ? 'skinner.rb3dmaps' : 'skinner.t1maps';
   const settings = {fov: 90, fog: true, weather: true, lights: true, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
@@ -242,8 +247,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   async function addObject(object) {
     const matrix = new THREE.Matrix4().fromArray(object.matrix), loading = new THREE.Mesh(loadingBox, loadingMaterial);
     loading.applyMatrix4(matrix);
-    if (object.model) scene.add(loading);
-    let mesh;
+    if (object.model && !object.npc) scene.add(loading);
+    let mesh, drawn = false;
     try {
       if (!object.model) throw new Error('No preview model');
       const model = await loadModel(object.model, object.source === 'pack', object.light && object.light.uv);
@@ -252,11 +257,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       mesh = new THREE.Mesh(model.geometry, !lightMap ? model.materials : model.materials.map(material => new THREE.MeshBasicMaterial(
         {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap,
           transparent: material.transparent, depthWrite: material.depthWrite, alphaTest: material.alphaTest})));
+      drawn = true;
     } catch (_) { missing++; mesh = new THREE.Mesh(placeholder, magenta); }
     mesh.name = object.name;
     mesh.applyMatrix4(matrix);
     scene.remove(loading);
     scene.add(mesh);
+    if (object.npc === true) {
+      npcDraws.push(mesh);
+      mesh.visible = npcToggle ? npcToggle.enabled : true;
+      if (drawn) npcIDs.add(object.entity); // Missing-model boxes are hidden too, but do not count as actors.
+    }
     occluders.push(mesh);
     if (weather && object.shelter) try {
       if (!shelterFiles.has(object.shelter)) shelterFiles.set(object.shelter, get(data + 'textures/' + object.shelter).then(response => response.arrayBuffer()));
@@ -617,9 +628,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     await buildTerrain(map.terrain);
     let loaded = 0;
     await Promise.all(map.objects.map(async object => { await addObject(object); showStatus(`Loading map objects ${++loaded}/${map.objects.length}`); }));
+    if (npcToggle) npcToggle.setCount(npcIDs.size);
     $('lights').disabled = !lightSteps.length;  // Most buildings have no lights that change.
     $('notes').textContent += map.warnings.length ? ' This map: ' + map.warnings.join('. ') + '.' : '';
     ready = true;
     showReady();
-  } catch (error) { showStatus('Map could not load: ' + error.message); }
+  } catch (error) { if (npcToggle) npcToggle.setCount(0); showStatus('Map could not load: ' + error.message); }
 });
