@@ -253,6 +253,24 @@ class T1MapTests(unittest.TestCase):
             self.assertFalse(list((root / 'pack').glob('maps/*')))
             self.assertEqual(map_id('My Map'), 'my_map')
 
+    def test_sky_list_has_each_t1_dome_and_q3_sky_once(self):
+        dome = {'textures': ['a.png'], 'size': 600.0, 'feature': 0.0, 'top': [1, 2, 3], 'bottom': [4, 5, 6]}
+        toxic = {'name': 'textures/skies/toxicsky', 'stages': [], 'sky': {'cloudHeight': 512.0}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for game, rows in {'t1-maps': {'raindance': {'sky': dome, 'terrain': {'visibleDistance': 450}}, 'snowblind': {'sky': dome},
+                                           'old': {'sky': {'color': [0, 0, 0]}}},
+                               'q3-maps': {'q3dm5': {'shaders': [None, toxic, {'name': 'wall'}]}, 'q3dm2': {'shaders': [toxic]}}}.items():
+                (root / game).mkdir()
+                (root / game / 'index.json').write_text(json.dumps([{'id': key, 'name': key, 'group': 'Quake III Arena'} for key in rows]))
+                for key, scene in rows.items():
+                    (root / game / 'maps' / key).mkdir(parents=True)
+                    (root / game / 'maps' / key / 'scene.json').write_text(json.dumps(scene))
+            with patch('app.local_data_dir', root):
+                skies = app.test_client().get('/t1-map-skies').json
+        self.assertEqual([(s['game'], s['group'], s['name'], s['maps'], s['visible']) for s in skies],
+                         [('t1', 'Tribes', None, ['raindance', 'snowblind'], 450), ('q3', 'Quake III Arena', 'skies/toxicsky', ['q3dm5', 'q3dm2'], None)])
+
     def test_routes_are_local_and_confined_to_pack(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

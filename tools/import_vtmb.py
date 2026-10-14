@@ -34,6 +34,9 @@ def key(name):
 
 
 def category(name):
+    # Gibs live beside what they break off: character/gibs, gargoyle_gibbs, throwtaxi_gib01, fishmarket/tunabgiba.
+    if 'gib' in name.lower():
+        return 'Gibs'
     parts = name.split('/')
     return parts[1].title() if len(parts) > 2 else 'Other'
 
