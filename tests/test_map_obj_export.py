@@ -70,6 +70,36 @@ class MapObjExportTests(unittest.TestCase):
                 self.assertEqual(image.mode, 'RGB')
                 self.assertEqual(image.getpixel((1, 0)), (1, 254, 7))  # Colormap row 32, not the overbright row 0.
 
+    def test_instanced_pack_exports_placed_meshes_and_terrain(self):
+        # Nosgoth-like: no world geometry, a library triangle placed twice (one NPC, left out) and a 2x2 terrain grid.
+        with tempfile.TemporaryDirectory() as temp:
+            root, name = Path(temp), 'ab' * 32 + '.bin'
+            (root / 'models').mkdir()
+            (root / 'models' / name).write_bytes(np.array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1], '<f4').tobytes() + np.array([0, 1, 2], '<u4').tobytes())
+            arrays = dict(vertices=dict(offset=0, count=9, dtype='<f4'), uvs=dict(offset=36, count=6, dtype='<f4'), indices=dict(offset=60, count=3, dtype='<u4'))
+            library = {'tri': dict(geometry=dict(file=name, arrays=arrays), store='models', groups=[dict(start=0, count=3, texture='aa.png', name='rock')])}
+            moved = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 10, 0, 0, 1]
+            terrain = [dict(width=2, height=2, offset=0, bytes=8, visibility_bytes=0, edge_bytes=0, textures={'MacroTexture': 'mm.png'},
+                            to_world=[0, 0, 0, 52.5, 0, 0, 0, 52.5, 0, 0, 0, 52.5])]
+            scene = dict(name='test', vertices=0, indices=0, groups=[], model_library=library, terrain=terrain,
+                         instances=[dict(look='tri', matrix=moved), dict(look='tri', matrix=moved, npc=True)])
+            folder = root / 'maps' / 'test'
+            folder.mkdir(parents=True)
+            (folder / 'scene.json').write_text(json.dumps(scene), encoding='utf-8')
+            (folder / 'geometry.bin').write_bytes(b'')
+            (folder / 'terrain.bin').write_bytes(bytes(8))
+            (root / 'textures').mkdir()
+            for texture in ('aa.png', 'mm.png'):
+                Image.new('RGB', (2, 2)).save(root / 'textures' / texture)
+            output = io.BytesIO()
+            summary = map_to_obj_zip(folder, [root / 'textures'], 'nos', output, {'models': root / 'models', 'map-models': root / 'models'})
+            obj = zipfile.ZipFile(io.BytesIO(output.getvalue())).read('test.obj').decode()
+        self.assertEqual(summary, dict(materials=2, triangles=3, skipped=0, missing=[]))
+        self.assertEqual(obj.count('\nv '), 7)
+        self.assertIn('v 11.000000 0.000000 0.000000', obj)  # The triangle's (1, 0, 0) moved 10 along x.
+        self.assertIn('v -1.000000 0.000000 1.000000', obj)  # Terrain corner (x 1, y 1) in viewer axes.
+        self.assertIn('o rock\n', obj)
+
     def test_bad_geometry_size_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

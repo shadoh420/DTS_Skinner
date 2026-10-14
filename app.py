@@ -1348,7 +1348,9 @@ MAP_OBJ_PACKS = {'quake': ('quake-maps', ('quake', 'hipnotic', 'rogue', 'qextras
                  'quake2': ('quake2-maps', ('quake2', 'xatrix', 'rogue', 'ctf')),
                  'sin': ('sin-maps', ('sin', '2015', 'ctf')), 'unreal': ('unreal-maps', ('unreal', 'ut')),
                  'dx': ('dx-maps', ('dx',)), 'azrael': ('azrael-maps', ('azrael',)), 'anachronox': ('anachronox-maps', ('anachronox',)),
-                 'daikatana': ('daikatana-maps', ('daikatana',)), 'eye': ('eye-maps', ('eye',)), 'vtmb': ('vtmb-maps', ('vtmb',))}
+                 'daikatana': ('daikatana-maps', ('daikatana',)), 'eye': ('eye-maps', ('eye',)), 'vtmb': ('vtmb-maps', ('vtmb',)),
+                 'nos': ('nos-maps', ('nos',)), 'tas': ('tas-maps', ('tas',)), 'tvg': ('tvg-maps', ('tvg',))}
+INSTANCED_MAP_PAGES = ('nos', 'tas', 'tvg')  # Placed meshes in model stores (tvg_map_data), terrain in terrain.bin.
 
 
 @app.route('/export_map_obj/<page>/<game>/<map_id>')
@@ -1364,8 +1366,15 @@ def export_map_obj(page, game, map_id):
         abort(404, f"Map '{map_id}' is not imported")
     output = io.BytesIO()
     try:
-        map_to_obj_zip(folder, [pack / 'textures', root / 'textures', game_textures(page)], page, output)
-    except (ValueError, KeyError, TypeError) as exc:
+        stores, texture_dirs = None, [pack / 'textures', root / 'textures', game_textures(page)]
+        if page in INSTANCED_MAP_PAGES:
+            manifest = root / 'model-library.json'
+            library = json.loads(manifest.read_text(encoding='utf-8')) if manifest.is_file() else {}
+            models = pathlib.Path(library.get('root', pack_dirs[page]))
+            stores = {'models': models / 'model_json', 'map-models': pathlib.Path(library.get('map_root', pack_dirs[page])) / 'model_json'}
+            texture_dirs.append(models / 'textures')
+        map_to_obj_zip(folder, texture_dirs, page, output, stores)
+    except (OSError, ValueError, KeyError, TypeError) as exc:  # OSError: a placed mesh buffer is missing.
         abort(422, str(exc))
     output.seek(0)
     return send_file(output, as_attachment=True, download_name=f'{page}_{map_id}_obj.zip', mimetype='application/zip')
