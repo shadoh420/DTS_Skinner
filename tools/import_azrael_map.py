@@ -14,10 +14,12 @@ from PIL import Image
 
 try:
     from tools import import_azrael as az
+    from tools.azrael_world import read_world, entry_spawns, room_spawns
     from tools.import_unreal_map import floor_below
     from tools.local_data import LOCAL_DATA
 except ImportError:
     import import_azrael as az
+    from azrael_world import read_world, entry_spawns, room_spawns
     from import_unreal_map import floor_below
     from local_data import LOCAL_DATA
 
@@ -341,10 +343,8 @@ def viewpoints(room, zones, points, triangles):
     return views
 
 
-def build_map(cd, entry, zones):
-    source = entry['source']; scene = az.parse_xaf(cd.read(source), allow_identical_materials=True)
-    worlds, pose = room_pose(scene)
-    visible, hidden = visible_scene(scene)
+def scene_geometry(cd, source, scene, worlds, prefix):
+    """Same XAF model builder and bundle-local textures for rooms and actors."""
     res_source = source[:-4] + '.res'
     if res_source not in cd.files: raise ValueError('Missing RES bundle: ' + res_source)
     records = list(az.res_records(cd.read(res_source)))
@@ -352,7 +352,7 @@ def build_map(cd, entry, zones):
     images, textures, texture_rows = {}, {}, []
     for texture, record in zip(scene['textures'], records):
         # Each entry owns its palette and PNG, even if another room uses the name.
-        png = f"{entry['id']}_{record['index']}_{az.safe(Path(texture).stem)}.png"
+        png = f"{prefix}_{record['index']}_{az.safe(Path(texture).stem)}.png"
         images[png] = az.decode_res(record, texture); textures[texture] = png
         texture_rows.append(dict(name=texture, source=res_source, record=record['index'], png=png))
     slots = {}
@@ -361,14 +361,9 @@ def build_map(cd, entry, zones):
             slots[name] = textures[material['texture']]
         else:
             rgba = tuple(round(v*255) for v in material['colour'])
-            png = entry['id'] + '_colour_' + bytes(rgba).hex() + '.png'
+            png = prefix + '_colour_' + bytes(rgba).hex() + '.png'
             images[png] = Image.new('RGBA',(1,1),rgba); slots[name] = png
-    model = az.build_model(visible, slots, worlds)
-    vertices = np.array(model['vertices'], dtype='<f4').reshape(-1,3)
-    indices = np.array(model['indices'], dtype='<u4')
-    native_triangles = vertices[indices].reshape(-1,3,3) * [1,1,-1]
-    points = markers(scene,worlds)
-    views = viewpoints(entry['room'],zones,points,native_triangles)
+    model = az.build_model(scene, slots, worlds)
     groups = []
     for group in model['groups']:
         slot = group['materialIndex']; name = model['material_names'][slot]; mat = scene['materials'][name]
@@ -376,15 +371,83 @@ def build_map(cd, entry, zones):
                            material=name, masked=bool(mat['texture'] and '#' in mat['texture']),
                            alpha=mat['colour'][3] if mat['texture'] else 1., transparent=mat['colour'][3] < 1,
                            colour=mat['colour'], specular=mat['specular']))
+    return model, groups, images, texture_rows
+
+
+def append_characters(cd, game, entry, model, groups, images, spawns):
+    """Bake selected actors into separate, tagged groups; no AI or floor guess."""
+    characters = []
+    for spawn in spawns:
+        row = dict(spawn, character_id=az.safe(spawn['character']), name=spawn['character'])
+        characters.append(row)
+        try:
+            ani_file = az.child(game, spawn['character'] + '.ANI')
+            if ani_file is None:
+                raise ValueError('Missing character ANI')
+            ani = az.parse_ani(az.read_file(ani_file, 1024 * 1024))
+            if len(ani['files']) != 1:
+                raise ValueError('Multiple ANI rigs need a verified selection rule')
+            rig = ani['files'][0]; source = 'textures/' + rig
+            clips = ani['clips'][rig]
+            if 'REST' not in clips:
+                raise ValueError('No verified REST pose')
+            frame = clips['REST'][0]
+            actor_scene = az.parse_xaf(cd.read(source))
+            worlds = az.evaluate_world_matrices(actor_scene, frame)
+            actor, actor_groups, actor_images, textures = scene_geometry(
+                cd, source, actor_scene, worlds, entry['id'] + '_npc_' + row['entity'])
+            offset = np.asarray(ani['properties'].get('OFFSET', [0, 0, 0]), dtype=float)
+            if offset.shape != (3,) or not np.isfinite(offset).all():
+                raise ValueError('Invalid ANI OFFSET')
+            angle = math.radians(row['heading']); c, s = math.cos(angle), math.sin(angle)
+            rotation = np.array([[c,0,-s],[0,1,0],[s,0,c]])
+            # build_model already reflects Z; undo it, place in native row-vector
+            # coordinates, then reflect once. ANI OFFSET is a parent-space offset.
+            points = np.asarray(actor['vertices']).reshape(-1,3) * [1,1,-1]
+            points = (points @ rotation + offset + row['position']) * [1,1,-1]
+            if not np.isfinite(points).all():
+                raise ValueError('Non-finite character placement')
+            base, start = len(model['vertices']) // 3, len(model['indices'])
+            model['vertices'].extend(points.ravel().tolist())
+            model['uvs'].extend(actor['uvs'])
+            model['indices'].extend(base + i for i in actor['indices'])
+            groups.extend(dict(g, start=g['start'] + start, npc=True, entity=row['entity'],
+                               character_id=row['character_id']) for g in actor_groups)
+            images.update(actor_images)
+            row.update(status='drawn', model_source=source, ani=ani_file.name, frame=frame,
+                       pose='ANI REST start', origin=(np.array(row['position']) * [1,1,-1]).tolist(),
+                       textures=textures, triangles=len(actor['indices']) // 3)
+        except (ValueError, OSError, KeyError, IndexError, struct.error) as exc:
+            row.update(status='failed', reason=str(exc))
+    return characters
+
+
+def build_map(cd, entry, zones, *, game=None, spawns=()):
+    source = entry['source']; scene = az.parse_xaf(cd.read(source), allow_identical_materials=True)
+    worlds, pose = room_pose(scene)
+    visible, hidden = visible_scene(scene)
+    model, groups, images, texture_rows = scene_geometry(cd, source, visible, worlds, entry['id'])
+    vertices = np.array(model['vertices'], dtype='<f4').reshape(-1,3)
+    indices = np.array(model['indices'], dtype='<u4')
+    native_triangles = vertices[indices].reshape(-1,3,3) * [1,1,-1]
+    points = markers(scene,worlds)
+    views = viewpoints(entry['room'],zones,points,native_triangles)
+    # NPCs must not affect floor selection, starts or the room's bounds.
+    bounds = [vertices.min(axis=0).tolist(), vertices.max(axis=0).tolist()]
+    characters = append_characters(cd, game, entry, model, groups, images, spawns)
+    vertices = np.array(model['vertices'], dtype='<f4').reshape(-1,3)
+    indices = np.array(model['indices'], dtype='<u4')
     room_zones = {n.casefold() for n in entry['room']['zones']}
     linked = [z for z in zones if z['name'].casefold() in room_zones]
     metadata = dict(name=entry['id'],title=entry['title'],source=source,game='azrael',format='azrael-xaf',
                     vertices=len(vertices),indices=len(indices),groups=groups,viewpoints=views,camera=dict(CAMERA),
-                    bounds=[vertices.min(axis=0).tolist(),vertices.max(axis=0).tolist()],
+                    bounds=bounds,
                     aliases=entry['aliases'],section=entry['section'],room=entry['room'],pose=pose,hidden=hidden,
-                    textures=texture_rows,markers=points,zones=linked,characters=[],
+                    textures=texture_rows,markers=points,zones=linked,characters=characters,
+                    npc_count=sum(c['status']=='drawn' for c in characters),
                     gaps=['Fresh room frame 0; scripts, saved state and moving machinery are held still',
-                          'Additional characters omitted: initial WORLD.DAT/script placement not verified',
+                          'NPC preview is partial: only verified initial entry events; other room populations remain unresolved',
+                          'NPCs use REST poses at authored spawn coordinates; no AI, falling or later puzzle/conversation spawns',
                           'Arrival selection and facing need game comparison; alternate arrivals use number keys',
                           'Unlit, no fog; original filter/lighting state and marker hiding need game comparison'])
     blob = vertices.tobytes() + np.asarray(model['uvs'], '<f4').tobytes() + indices.tobytes()
@@ -393,8 +456,19 @@ def build_map(cd, entry, zones):
 
 def import_maps(install, output, replace=False, map_filter=None):
     cd, entries, zones, xafs = plan_maps(install)
+    game, _ = az.read_install(install)
+    spawn_rows, world_status = [], 'WORLD.DAT absent; characters unresolved'
+    world_file = az.child(game, 'WORLD.DAT')
+    if world_file:
+        try:
+            spawn_rows = entry_spawns(read_world(az.read_file(world_file, 16 * 1024 * 1024)))
+            world_status = 'Partial: initial zxentry blocks only; portal continuations and gameplay history unresolved'
+        except (ValueError, OSError, struct.error) as exc:
+            world_status = 'Characters unresolved: ' + str(exc)
     output = Path(output); (output/'textures').mkdir(parents=True,exist_ok=True)
-    report = dict(imported=[],skipped=[],failed={},results=entries,xaf_results=xafs,zone_records=len(zones))
+    report = dict(imported=[],skipped=[],failed={},results=entries,xaf_results=xafs,zone_records=len(zones),
+                  characters=dict(status=world_status, spawns=spawn_rows,
+                      reasons=dict(Counter(r['reason'] for r in spawn_rows))))
     index = []
     for entry in entries:
         if entry['status'] == 'alias': continue
@@ -409,7 +483,9 @@ def import_maps(install, output, replace=False, map_filter=None):
                     scene = json.loads(az.read_file(folder/'scene.json').decode('utf-8'))
                     entry.update(status='cached',reason='Already imported; use --replace');report['skipped'].append(entry['id'])
                 else:
-                    scene, blob, images = build_map(cd,entry,zones)
+                    selected = room_spawns(spawn_rows, entry['source']) if entry['section'] == 'Rooms' else []
+                    scene, blob, images = build_map(cd,entry,zones,game=game,spawns=selected)
+                    scene['character_status'] = world_status
                     for png,image in images.items():
                         target = output/'textures'/png
                         if replace or not target.is_file(): image.save(target)
@@ -418,7 +494,9 @@ def import_maps(install, output, replace=False, map_filter=None):
                     (folder/'scene.json').write_text(json.dumps(scene,separators=(',',':'),allow_nan=False),encoding='utf-8')
                     entry['status'] = 'imported'; report['imported'].append(entry['id'])
                 entry.update(pose=scene['pose'],hidden=scene['hidden'],start_view=scene['viewpoints'][0],viewpoints=scene['viewpoints'],
-                             texture_count=len(scene['textures']))
+                             texture_count=len(scene['textures']),characters=scene.get('characters', []),
+                             character_status=scene.get('character_status', 'Old cache; re-import to include NPCs'),
+                             npc_count=sum(c['status']=='drawn' for c in scene.get('characters', [])))
             except (ValueError,OSError,KeyError,IndexError,struct.error) as exc:
                 entry.update(status='failed',reason=str(exc));report['failed'][entry['id']] = str(exc)
         if entry['section']=='Rooms' or entry['status'] in ('imported','cached'):
@@ -433,6 +511,8 @@ def import_maps(install, output, replace=False, map_filter=None):
                             extras=sum(e['section']=='Extras' for e in entries),statuses=dict(Counter(e['status'] for e in entries)),
                             facing_sources={section:dict(Counter(e['start_view'].get('facing_source','unrecorded; re-import')
                                 for e in entries if e['section']==section and 'start_view' in e)) for section in ('Rooms','Extras')})
+    report['characters']['per_entry'] = [dict(id=e['id'], title=e['title'], status=e['status'],
+        drawn=e.get('npc_count', 0), coverage=e.get('character_status', 'Not imported')) for e in entries]
     (output/'index.json').write_text(json.dumps(index,indent=1),encoding='utf-8')
     (output/'import-report.json').write_text(json.dumps(report,indent=1,allow_nan=False),encoding='utf-8')
     return report

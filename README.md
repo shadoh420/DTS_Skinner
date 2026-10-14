@@ -42,7 +42,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Unreal, Unreal Tournament | ✓ | ✓ | Unreal Gold / 227 and UT 469, see [Unreal maps](docs/unreal-map-viewer.md) |
 | Deus Ex | ✓ | ✓ | Stock GOTY models with class skins; [maps](docs/unreal-map-viewer.md#deus-ex) with props and pickups, without NPCs |
 | Daikatana, Anachronox, SiN | ✓ | ✓ | |
-| Azrael's Tear | ✓ | ✓ | Models export with their animation clips |
+| Azrael's Tear | ✓ | ✓ | Models export with their animation clips; Maps' NPC toggle shows CORICORI's two creatures in resting poses (other rooms unresolved) |
 | Diabotical | ✓ | ✓ | Editpad props and your own maps, see [Diabotical maps](docs/diabotical-map-viewer.md) |
 | Reflex Arena | ✓ | ✓ | Brush editor, see [Reflex maps](docs/reflex-map-viewer.md) |
 | N64 conversions | | ✓ | [L. Spiro](https://github.com/L-Spiro)'s GoldenEye, Perfect Dark, Diddy Kong Racing and more; bring your own copy |
