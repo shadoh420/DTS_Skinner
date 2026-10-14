@@ -1142,7 +1142,7 @@ def add_notes_to_map_pages(response):
     if request.path.startswith('/maps/') and response.status_code == 200 and response.mimetype == 'text/html':
         response.direct_passthrough = False
         html = response.get_data().replace(b'<head>', b'<head><script src="/static/npc-toggle.js"></script>', 1)
-        response.set_data(html.replace(b'</body>', b'<script src="/static/notes.js"></script></body>', 1))
+        response.set_data(html.replace(b'</body>', b'<script src="/static/import-timer.js"></script><script src="/static/notes.js"></script></body>', 1))
     return response
 
 
