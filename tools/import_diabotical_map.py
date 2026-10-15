@@ -684,7 +684,8 @@ def read_lights(entities, box=None):
     hexes = lambda value, default=0xffffff: np.array([(default if colour(value) is None else colour(value)) >> s & 255 for s in (16, 8, 0)]) / 255
     number = lambda fields, key, default: next(iter(re.findall(r'-?\d*\.?\d+(?:e-?\d+)?', fields.get(key, ''))), None) or default
     ambient_level = lambda value: np.round(hexes(value, 0), 4).tolist()
-    out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=DEFAULT_SHADOW, sun=None, envmap='default_envmap', gloss=1.0)
+    out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=DEFAULT_SHADOW, sun=None, envmap='default_envmap', gloss=1.0,
+               fog=None, vertical_fog=None)
     for name, position, rotation, scale, fields in entities:
         if name == 'global':
             if 'shadow_color' in fields:
@@ -698,6 +699,12 @@ def read_lights(entities, box=None):
             out[kind] = ambient_level(fields.get('color'))
             continue
         travel = game_matrix((0, 0, 0), rotation, (1, 1, 1))[:3, 2] * (1, 1, -1)
+        if kind in ('fog', 'vertical_fog'):  # The first of each kind (the editor makes them unique).
+            if out[kind] is None:
+                far = [float(number(fields, 'radius', 8000)), float(number(fields, 'margin', 0))] if kind == 'fog' else \
+                      [y + float(number(fields, 'height', 0)), float(number(fields, 'radius', 1000))]
+                out[kind] = np.round([*hexes(fields.get('color')), float(number(fields, 'intensity', 1)), *far], 4).tolist()
+            continue
         if kind == 'sun':
             if out['sun'] is None:
                 out['sun'] = np.round([*travel, *hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * SUN, 1 / SUN], 4).tolist()

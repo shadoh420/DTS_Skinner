@@ -117,6 +117,8 @@
     uniform sampler3D gameGrid;
     uniform vec3 gameCellMin, gameCellCount, gameGridMin, gameGridMax, gameAmbient, gameShadowAmbient, gameShadowColour, gameSunColour, gameSunToward;
     uniform float gameSunSpecular;
+    uniform vec4 gameFog, gameVerticalFog;
+    uniform vec2 gameFogRange, gameVerticalFogRange;
     vec3 gameF0, gameSpecular, gameAmbientLight;
     float gameRough, gameStrength, gameAmbientScale;
     vec3 gameGGX(vec3 n, vec3 l, vec3 v, float nl) {
@@ -193,8 +195,20 @@
       reflectedLight.directDiffuse = colour;
       reflectedLight.indirectDiffuse = vec3(0.);
     }`;
+  /* Fog, as tile.cs puts it over the lit picture: toward the fog colour by intensity x how far into the fog's
+     range the point is (from margin x radius to radius from the eye), then toward the vertical fog's colour by its
+     intensity x how far the point is below its height (over `falloff` units). An intensity above 1 overshoots, as in
+     the game. */
+  const fog = `
+    {
+      float fogDepth = clamp((length(vViewPosition) - gameFogRange.x * gameFogRange.y) / max(gameFogRange.x * (1. - gameFogRange.y), 1e-3), 0., 1.);
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, gameFog.rgb, fogDepth * gameFog.a);
+      float fogBelow = clamp((gameVerticalFogRange.x - vGameWorld.y) / max(gameVerticalFogRange.y, 1e-3), 0., 1.);
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, gameVerticalFog.rgb, fogBelow * gameVerticalFog.a);
+    }
+    #include <tonemapping_fragment>`;
   const fragmentUniforms = 'uniform sampler2D gameSpecularMap;\nuniform samplerCube gameEnvmap;\nuniform vec3 gameClass;\nuniform float gameGloss;\n';
 
   exports.DiaboticalLighting = {buildGrid, buildLights, nodeWeight, nodeShare, materialClass,
-    shader: {vertexHead, vertexBody, fragmentHead: fragmentUniforms + fragmentHead, fragmentBody}, CELL, WIDTH};
+    shader: {vertexHead, vertexBody, fragmentHead: fragmentUniforms + fragmentHead, fragmentBody, fog}, CELL, WIDTH};
 })(typeof module !== 'undefined' ? module.exports : window);

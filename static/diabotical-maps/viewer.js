@@ -37,7 +37,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     gameGridMax: {value: new THREE.Vector3(1, 1, 1)}, gameAmbient: {value: new THREE.Vector3(.55, .55, .55)},
     gameShadowAmbient: {value: new THREE.Vector3(.55, .55, .55)}, gameShadowColour: {value: new THREE.Vector3(1, 1, 1)},
     gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()},
-    gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}};
+    gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}, gameFog: {value: new THREE.Vector4()},
+    gameFogRange: {value: new THREE.Vector2(1, 0)}, gameVerticalFog: {value: new THREE.Vector4()}, gameVerticalFogRange: {value: new THREE.Vector2(0, 1)}};
   const gameTime = {value: 0};  // Seconds, for what moves.
   // A material's specular map (materials.json `spec`: a texture, or [gloss, strength] made a texel) and material id.
   const evenTexels = new Map();
@@ -54,7 +55,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (own) own(shader, renderer);
       Object.assign(shader.uniforms, gameUniforms, surface);
       shader.vertexShader = glsl.vertexHead + shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>' + glsl.vertexBody);
-      shader.fragmentShader = glsl.fragmentHead + shader.fragmentShader.replace('#include <aomap_fragment>', glsl.fragmentBody);
+      shader.fragmentShader = glsl.fragmentHead + shader.fragmentShader.replace('#include <aomap_fragment>', glsl.fragmentBody)
+        .replace('#include <tonemapping_fragment>', glsl.fog);
     };
     made.customProgramCacheKey = () => 'game' + (own ? own.toString() : '');
     return made;
@@ -503,15 +505,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   // everything), on a box around the camera at the far plane.
   function addSky({cube, rotation}) {
     if (!cube) return;
-    const material = new THREE.ShaderMaterial({uniforms: {sky: {value: null}, turn: {value: THREE.MathUtils.degToRad(rotation || 0)}},
+    const material = new THREE.ShaderMaterial({uniforms: {sky: {value: null}, turn: {value: THREE.MathUtils.degToRad(rotation || 0)}, gameFog: gameUniforms.gameFog},
       side: THREE.BackSide, depthWrite: false,
       vertexShader: `varying vec3 vDirection;
         void main() { vDirection = position; gl_Position = (projectionMatrix * vec4(mat3(viewMatrix) * position, 1.)).xyww; }`,
-      fragmentShader: `uniform samplerCube sky; uniform float turn; varying vec3 vDirection;
+      fragmentShader: `uniform samplerCube sky; uniform float turn; uniform vec4 gameFog; varying vec3 vDirection;
         void main() {
           vec3 g = normalize(vec3(vDirection.xy, -vDirection.z));
           float c = cos(turn), s = sin(turn);
           gl_FragColor = vec4(textureCube(sky, vec3(c * g.x + s * g.z, g.y, c * g.z - s * g.x)).rgb, 1.);
+          // Toward the fog colour by (angle from straight up / 90 degrees)^4 x fog intensity / 10.
+          float down = acos(clamp(g.y, -1., 1.)) / 1.5707963;
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, gameFog.rgb, min(1., pow(down, 4.) * clamp(gameFog.a * .1, 0., 1.)));
           #include <tonemapping_fragment>
         }`});
     loadCube(`skies/${fileName(cube)}.jpg`, loaded => {
@@ -521,7 +526,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // A map's lights (read_lights in the importer) into the shaders' uniforms, and the sun's shadow over the blocks.
-  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1}) {
+  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1, fog, vertical_fog: verticalFog}) {
     const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
     u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
     u.gameCells.value = float(built.cells, width, built.cells.length / 2 / width, THREE.RGFormat);
@@ -543,6 +548,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     u.gameSunColour.value.fromArray(sunLight ? sunLight.slice(3) : [0, 0, 0]);
     u.gameSunSpecular.value = sunLight && sunLight[6] || 0;
     u.gameGloss.value = gloss;
+    // Fog: [r, g, b, intensity, radius, margin]; vertical fog: [r, g, b, intensity, height, falloff].
+    u.gameFog.value.fromArray(fog || [0, 0, 0, 0]);
+    u.gameFogRange.value.fromArray(fog ? fog.slice(4) : [1, 0]);
+    u.gameVerticalFog.value.fromArray(verticalFog || [0, 0, 0, 0]);
+    u.gameVerticalFogRange.value.fromArray(verticalFog ? verticalFog.slice(4) : [0, 1]);
     // The envmap: its six faces side by side (envmaps/NAME.png), made a cube whose mips WebGL makes as the game does.
     u.gameEnvmap.value = null;
     if (envmap) loadCube(`envmaps/${fileName(envmap)}.png`, cube => {
