@@ -493,6 +493,13 @@ thing's own axes (seen in the game: Ruin's pads at 180 90 0 lie flat as at
   skinned mesh (the teleporter's portal) is posed by its bones. A Teleporter
   shows nothing of its own (seen in the game); the stock maps place their
   portals as Effects.
+- Shootable and Turret entities (the training maps, 68 and 6) show their
+  effects, `shootable_target` and `turret` (`ENTITY_EFFECTS` in
+  `tools/reflex_models.py`), placed by their position and angles as an Effect
+  is. Seen in the game with a test map (a floor, a shootable at angles −90
+  and turrets at −270 and −45, outside training mode): both are drawn, the
+  target facing the spawn and the turrets idle in their rest pose, as on the
+  page; the game turns a turret toward a player it sees.
 - Mesh vertex colours are BGRA (the editor's target, red in the game, holds
   (0, 28, 180)).
 - While editing, entities show the game editor's models (effects.json's

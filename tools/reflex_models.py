@@ -50,9 +50,11 @@ def pickup_pad(effect):
     return re.sub(r'_pickup$', '', effect) + '_pad'
 
 
-# What the game draws for entities that are not Effects: in its editor only, a reflection probe. (A Teleporter shows
-# nothing of its own, seen in the game: the stock maps place their portals as Effects.)
-ENTITY_EFFECTS = {'ReflectionProbe': 'internal/misc/reflectionprobe'}
+# What the game draws for entities that are not Effects: a shootable target (the training maps), a turret (its rest
+# pose; the game aims it) and, in its editor only, a reflection probe. (A Teleporter shows nothing of its own, seen in
+# the game: the stock maps place their portals as Effects.)
+ENTITY_EFFECTS = {'ReflectionProbe': 'internal/misc/reflectionprobe', 'Shootable': 'internal/misc/shootable_target/shootable_target',
+                  'Turret': 'internal/weapons/turret/turret'}
 # What the game's editor shows for an entity (seen in its editor: a target is a red flag, a point light a blue diamond,
 # an effect with no model a red "!"); a mesh named where an effect goes is drawn as it is. NavLink: its start, and
 # with isStart 0 its end. Reflection probes show a mirror sphere, which the page makes.
@@ -144,8 +146,14 @@ def read_mesh(raw):
     at += 64 * bones
     poses = [struct.unpack_from('<16f', raw, at + 64 * k) for k in range(bones)]
     named = {name: dict(position=list(pose[12:15]), axis=list(pose[0:3]), rows=[list(pose[0:3]), list(pose[4:7]), list(pose[8:11])]) for name, pose in zip(names, poses)}
-    # A skinned mesh is drawn in its pose: each vertex (a row) times its bones' bind and pose matrices, by weight.
-    skins = [[sum(bind[r * 4 + k] * pose[k * 4 + c] for k in range(4)) for r in range(4) for c in range(4)] for bind, pose in zip(binds, poses)]
+    # A skinned mesh is drawn in its pose: each vertex (a row) times its bone's bind, then the bone's pose, which is in
+    # its parent's frame, then its parents' poses up to the root (the turret's yaw, pitch and barrel hang so).
+    parents = struct.unpack_from(f'<{bones}i', raw, at - 68 * bones - sum(len(name) + 1 for name in names))
+    times = lambda a, b: [sum(a[r * 4 + k] * b[k * 4 + c] for k in range(4)) for r in range(4) for c in range(4)]
+    world = []
+    for k, pose in enumerate(poses):
+        world.append(times(pose, world[parents[k]]) if 0 <= parents[k] < k else list(pose))
+    skins = [times(bind, placed) for bind, placed in zip(binds, world)]
     for part in parts:
         for v, (*weights, b0, b1, b2, b3) in enumerate(part.pop('skin', [])):
             p, n = part['positions'][v * 3:v * 3 + 3], part['normals'][v * 3:v * 3 + 3]

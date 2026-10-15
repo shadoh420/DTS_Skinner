@@ -347,7 +347,11 @@ class ReflexModelsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             materials, failed = export_models(files.get, {'test/effect', 'test/missing'}, Path(directory))
             self.assertEqual((materials, failed), ({'common/materials/stone/stone', 'test/particle_flame'}, {'test/missing': 'no such effect'}))
-            written = json.loads((Path(directory) / 'effects.json').read_text())['effects']['test/effect']
+            pack = json.loads((Path(directory) / 'effects.json').read_text())
+            # Entities that are not Effects but show a model in the game: shootable targets and turrets.
+            self.assertEqual((pack['entities']['Shootable'], pack['entities']['Turret']),
+                             ('internal/misc/shootable_target/shootable_target', 'internal/weapons/turret/turret'))
+            written = pack['effects']['test/effect']
             # A spot light hangs from its bone and shines along the bone's x axis.
             self.assertEqual((written['lights'][0]['position'], written['lights'][0]['direction']), ([0, -2, 0], [0, -1, 0]))
             # A particle emitter: its material, births and life, motion, sizes, hanging point, colours, flags, and its
@@ -359,3 +363,17 @@ class ReflexModelsTest(unittest.TestCase):
             raw = (Path(directory) / 'models' / written['meshes'][0]['file']).read_bytes()
             self.assertEqual(struct.unpack_from('<4I', raw), (2, 0, 3, 3))
             self.assertEqual(len(raw), 4 + 2 * (12 + 3 * (12 + 12 + 8 + 4) + 3 * 4))
+
+    def test_a_skinned_mesh_is_posed_down_its_bone_parents(self):
+        """A triangle skinned to a child bone (posed 10 up in its parent's frame; the parent 5 along x): drawn 5 along
+        and 10 up, as the turret's yaw, pitch and barrel hang from its root."""
+        from tools.reflex_models import read_mesh
+        head = b'\x23\x00\x0a\xd0' + struct.pack('<I6f3I', 1, 0, 0, 0, 8, 8, 0, 2, 1, 9) + b'MaterialA\0'
+        vertex = lambda x, y, z: struct.pack('<3f4B3f2f4f4f4B', x, y, z, 255, 255, 255, 255, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0)
+        block = struct.pack('<4I', 3, 3, 0x3d, 4) + vertex(0, 0, 0) + vertex(8, 0, 0) + vertex(0, 0, 8) + struct.pack('<3H', 0, 1, 2)
+        shadow = struct.pack('<4I', 0, 0, 0, 4)
+        identity = (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+        moved = lambda x, y: (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, 0, 1)
+        bones = struct.pack('<2i', -1, 0) + b'b_root\0b_child\0' + struct.pack('<32f', *identity, *identity) + struct.pack('<32f', *moved(5, 0), *moved(0, 10))
+        mesh = read_mesh(head + block + shadow + bones)
+        self.assertEqual(mesh['parts'][0]['positions'][:6], [5, 10, 0, 13, 10, 0])
