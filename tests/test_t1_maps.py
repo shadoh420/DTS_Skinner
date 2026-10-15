@@ -363,6 +363,13 @@ class T1MapTests(unittest.TestCase):
                 tree = list(struct.iter_unpack('<H2h', cover[32 + planes * 16:32 + planes * 16 + nodes * 6]))
                 self.assertTrue(all(plane < planes and -leaf - 1 < len(cover) - 32 - planes * 16 - nodes * 6 and max(front, back) < nodes
                                     for plane, front, back in tree for leaf in (front, back) if leaf < 0))
+            # Powered shapes carry their baked "power" sequence (StaticShape::onPower): the radar's turn, the
+            # generator's IFL material frames; a frames file of float32 vertices per time.
+            animated = {item['model']: item['animation'] for item in scene['objects'] if item.get('animation')}
+            self.assertLessEqual({'generator', 'radar', 'inventory_sta'}, set(animated))
+            clip = json.loads((pack / 'textures' / animated['generator']).read_text())
+            self.assertTrue(clip['loop'] and clip['ifl'])
+            self.assertEqual((pack / 'textures' / clip['frames']).stat().st_size, len(clip['times']) * len(clip['uvs']) // 2 * 12)
             # The flags glow and pulse (Item::getLight); the repair pack turns.
             self.assertEqual([(light['range'], light['pulse'], light['static']) for light in scene['lights']], [(4.0, 1.5, False)] * 2)
             self.assertTrue(any(item.get('spin') for item in scene['objects'] if item['datablock'] == 'RepairPack'))

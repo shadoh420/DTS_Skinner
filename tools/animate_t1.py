@@ -93,8 +93,12 @@ def _matrix(a, b=None, weight=0.):
     return np.array(transpose_rotation_in_4x4(get_matrix_from_quat_trans(q * 32767, translation, scale)))
 
 
-def load_animated_model(name, source_path, preview_data):
-    """Return normalized geometry and named, timed baked source sequences."""
+def load_animated_model(name, source_path, preview_data, only=None):
+    """Return normalized geometry and named, timed baked source sequences (only: just the sequence of that name).
+
+    A clip whose sequence has IFL subsequences carries `ifl`: per subsequence, its cel keys as (time, material slot,
+    replacement slot), which TS::ShapeInstance::Thread applies with setMaterialRemap at the key at or before the time.
+    """
     if preview_data.get('metadata', {}).get('source_format') == 'dis':
         result = copy.deepcopy(preview_data)
         result['animation_clips'] = []
@@ -226,6 +230,8 @@ def load_animated_model(name, source_path, preview_data):
     unsupported = []
     for sequence_index, sequence in enumerate(shape.sequences):
         title = shape.names[sequence.name_index].split(b'\0')[0].decode('cp1252')
+        if only is not None and title.casefold() != only.casefold():
+            continue
         duration = float(sequence.duration)
         if not math.isfinite(duration) or not 0 <= duration <= 600:
             unsupported.append(dict(name=title, reason='Invalid DTS sequence duration'))
@@ -254,6 +260,12 @@ def load_animated_model(name, source_path, preview_data):
         result['animation_clips'].append(dict(name=title, fps=30., frames=frames,
                                              times=times, duration=duration,
                                              loop=bool(sequence.cyclic), interpolation='LINEAR'))
+        first = sequence.first_ifl_subsequence
+        ifl = [[(float(key.position) * duration, key.mat_index & 0x0fff, key.key_value)
+                for key in shape.keyframes[sub.first_key_frame:sub.first_key_frame + sub.num_key_frames]]
+               for sub in shape.sub_sequences[first:first + sequence.num_ifl_subsequences]]
+        if ifl:
+            result['animation_clips'][-1]['ifl'] = ifl
     if result['animation_clips']:
         result.update(vertices=result['animation_clips'][0]['frames'][0]['vertices'],
                       uvs=uvs, indices=indices, groups=groups)

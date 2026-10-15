@@ -160,7 +160,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
         // Models without flags (older packs, most catalog models): a texture with alpha is blended by it, as the game draws its leaves.
         const transparent = flags === null && Boolean(texture && texture.userData.alpha);
-        return new THREE.MeshLambertMaterial({map: texture, color, side, transparent, depthWrite: !transparent, alphaTest: transparent ? .02 : 0});
+        const look = {map: texture, color, side, transparent, depthWrite: !transparent, alphaTest: transparent ? .02 : 0};
+        return map.sun.ramp ? withRampShade(new THREE.MeshBasicMaterial(look)) : new THREE.MeshLambertMaterial(look);
       }));
       return {geometry, materials};
     })());
@@ -270,6 +271,30 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ponytail: every light is summed for every terrain and building pixel; cull by distance if a map with many stutters.
   let pointLights = [], dynamicLights = [];
   const lightUniforms = {t1LightPos: {value: []}, t1LightColor: {value: []}, t1LightRange: {value: []}};
+  // Earthsiege 2 shapes (a scene with sun.ramp): each face takes the sun as DBSIM's Light_ComputeShadeForFace does,
+  // shade = min(255, 512 cos) with no ambient, through the .RMP row shade * 31 >> 8 (the ramp: row, light). The face
+  // normal is the one facing the eye, as DBSIM lights a back face with its normal negated.
+  const rampUniforms = {t1Toward: {value: new THREE.Vector3()}, t1Ramp: {value: []}};
+  function withRampShade(material) {
+    material.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, rampUniforms);
+      shader.vertexShader = 'varying vec3 t1Shaded;\n' + shader.vertexShader.replace('#include <project_vertex>',
+        '#include <project_vertex>\n\tt1Shaded = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      shader.fragmentShader = `varying vec3 t1Shaded;
+        uniform vec3 t1Toward;
+        uniform vec2 t1Ramp[${map.sun.ramp.length}];
+        float t1Shade() {
+          vec3 n = normalize(cross(dFdx(t1Shaded), dFdy(t1Shaded)));
+          if (dot(n, cameraPosition - t1Shaded) < 0.) n = -n;
+          float row = floor(min(255., 512. * max(dot(n, t1Toward), 0.)) * 31. / 256.), light = t1Ramp[0].y;
+          for (int i = 1; i < ${map.sun.ramp.length}; i++) if (row > t1Ramp[i - 1].x)
+            light = mix(t1Ramp[i - 1].y, t1Ramp[i].y, clamp((row - t1Ramp[i - 1].x) / (t1Ramp[i].x - t1Ramp[i - 1].x), 0., 1.));
+          return light;
+        }\n` + shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n\tdiffuseColor.rgb *= t1Shade();');
+    };
+    return material;
+  }
+
   function withPointLights(material) {
     if (!dynamicLights.length) return material;
     material.onBeforeCompile = shader => {
@@ -300,6 +325,44 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const spinners = [], up = new THREE.Vector3(0, 1, 0);  // Items that turn, 3 rad/s (Item::clientProcess).
 
+  // A powered shape's "power" sequence (StaticShape::onPower), baked by the importer: vertex frames blended over the
+  // clip's times, looping or held at the end (a turret raised), and its IFL tracks remapping material slots
+  // (TS::ShapeInstance::Thread: each track's key at or before the time; a later track wins). Every placement of a
+  // shape shares one geometry, so they run in step, as a base powered at the mission's start does.
+  // ponytail: frames blended and normals rebuilt on the CPU each frame; move to a vertex shader if many shapes stutter.
+  const animations = new Map(), animators = [];
+  function loadAnimation(file) {
+    if (!animations.has(file)) animations.set(file, (async () => {
+      const clip = await (await get(data + 'textures/' + file)).json();
+      const frames = new Float32Array(await (await get(data + 'textures/' + clip.frames)).arrayBuffer());
+      const size = frames.length / clip.times.length, last = clip.times.length - 1, slots = clip.groups.map(group => group.materialIndex);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(frames.slice(0, size), 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(clip.uvs, 2));
+      geometry.setIndex(clip.indices);
+      for (const {start, count, materialIndex} of clip.groups) geometry.addGroup(start, count, materialIndex);
+      geometry.computeVertexNormals();
+      geometry.boundingSphere = new THREE.Sphere().setFromPoints(Array.from({length: frames.length / 3}, (_, n) => new THREE.Vector3().fromArray(frames, n * 3)));
+      const position = geometry.attributes.position.array;
+      animators.push(seconds => {
+        const time = clip.loop && clip.duration ? seconds % clip.duration : Math.min(seconds, clip.duration);
+        let i = 0;
+        while (i < last - 1 && clip.times[i + 1] <= time) i++;
+        if (last) {
+          const span = clip.times[i + 1] - clip.times[i], mix = span > 0 ? Math.min(1, Math.max(0, (time - clip.times[i]) / span)) : 0;
+          for (let k = 0; k < size; k++) position[k] = frames[i * size + k] + (frames[(i + 1) * size + k] - frames[i * size + k]) * mix;
+          geometry.attributes.position.needsUpdate = true;
+          geometry.computeVertexNormals();
+        }
+        const remap = new Map();
+        for (const keys of clip.ifl) remap.set(keys[0][1], keys.reduce((found, key) => key[0] <= time ? key : found, keys[0])[2]);
+        geometry.groups.forEach((group, n) => { group.materialIndex = remap.get(slots[n]) ?? slots[n]; });
+      });
+      return geometry;
+    })());
+    return animations.get(file);
+  }
+
   const placeholder = new THREE.BoxGeometry(4, 4, 4).translate(0, 2, 0), magenta = new THREE.MeshBasicMaterial({color: 0xcc00cc});
   // Until its model arrives each placed object is the orange wireframe box t2-mapper shows for a loading interior.
   const loadingBox = new THREE.BoxGeometry(10, 10, 10), loadingMaterial = new THREE.MeshStandardMaterial({color: 'orange', wireframe: true});
@@ -313,7 +376,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       const model = await loadModel(object.model, object.source === 'pack', object.light && object.light.uv);
       const lightMap = object.light && await loadLightMap(object.light);
       // The mission lightmap already holds the sun and the building's own lights: texture × lightmap, no scene lights.
-      mesh = new THREE.Mesh(model.geometry, !lightMap ? model.materials : model.materials.map(material => withPointLights(new THREE.MeshBasicMaterial(
+      const geometry = object.animation ? await loadAnimation(object.animation).catch(() => model.geometry) : model.geometry;
+      mesh = new THREE.Mesh(geometry, !lightMap ? model.materials : model.materials.map(material => withPointLights(new THREE.MeshBasicMaterial(
         {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap,
           transparent: material.transparent, depthWrite: material.depthWrite, alphaTest: material.alphaTest}))));
       drawn = true;
@@ -744,6 +808,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     skyTime.value += delta;
     if (weather) weather(delta);
     if (pointLights.length) stepPointLights(clock.elapsedTime);
+    for (const step of animators) step(clock.elapsedTime);
     for (const mesh of spinners) mesh.rotateOnWorldAxis(up, 3 * delta);
     if (streamFrame) streamFrame(delta);
     drawFrame();
@@ -855,6 +920,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (saved) { $('sky').value = settings.sky; return showSky(settings.sky); }
     }).catch(() => { $('sky').disabled = true; });
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
+    if (map.sun.ramp) {
+      rampUniforms.t1Toward.value.copy(toward(map.sun.azimuth, map.sun.incidence));
+      rampUniforms.t1Ramp.value = map.sun.ramp.map(([row, light]) => new THREE.Vector2(row, light));
+    }
     pointLights = (map.lights || []).map(light => {  // Packs imported before point lights have none.
       const shape = new THREE.PointLight(new THREE.Color(...light.color), 1, light.range, 1);
       shape.position.fromArray(light.position);
