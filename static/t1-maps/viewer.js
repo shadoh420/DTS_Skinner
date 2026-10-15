@@ -55,6 +55,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const [heightData, squareData, lightData] = await Promise.all(['heights.bin', 'materials.bin', 'light.bin']
       .map(async name => (await get(`${data}maps/${mapId}/${name}`)).arrayBuffer()));
     const heights = new Float32Array(heightData), squares = new Uint8Array(squareData), light = new Uint16Array(lightData);
+    // A pack with pieces draws a k x k piece of its slot's texture on each square (pieces.bin: piece index, row-major from the top).
+    const pieces = terrain.pieces && new Uint8Array(await (await get(`${data}maps/${mapId}/pieces.bin`)).arrayBuffer());
     const size = terrain.squares, unit = terrain.unit, lightStep = (terrain.lightWidth - 1) / size;
     // Texture corners (lower-left, lower-right, upper-right, upper-left) for the 3-bit square orientation:
     // bit 2 and bit 4 mirror, bit 1 rotates, applied in that order as DarkStar does.
@@ -77,12 +79,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       const x = square % size, y = Math.floor(square / size), slot = squares[square * 2 + 1];
       [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]].forEach(([px, py], corner) => {
         positions.set([px * unit, heights[py * (size + 1) + px], -py * unit], n * 12 + corner * 3);
-        uvs.set(corners[squares[square * 2] & 7][corner], n * 8 + corner * 2);
+        const uv = corners[squares[square * 2] & 7][corner], k = pieces ? terrain.pieces[slot] : 1, piece = pieces ? pieces[square] : 0;
+        uvs.set([(piece % k + uv[0]) / k, (Math.floor(piece / k) + uv[1]) / k], n * 8 + corner * 2);
         const packed = light[py * lightStep * terrain.lightWidth + px * lightStep];
         colors.set([(packed >> 8 & 15) / 15, (packed >> 4 & 15) / 15, (packed & 15) / 15], n * 12 + corner * 3);
       });
-      // DarkStar alternates the split diagonal in a checkerboard.
-      indices.set(((x ^ y) & 1 ? [0, 1, 3, 1, 2, 3] : [0, 1, 2, 0, 2, 3]).map(corner => n * 4 + corner), n * 6);
+      // DarkStar alternates the split diagonal in a checkerboard; a pack with splitBit flips it per square (bit 6).
+      const flip = terrain.splitBit ? squares[square * 2] >> 6 & 1 : 0;
+      indices.set(((x ^ y) & 1 ^ flip ? [0, 1, 3, 1, 2, 3] : [0, 1, 2, 0, 2, 3]).map(corner => n * 4 + corner), n * 6);
       if (slots[slots.length - 1] !== slot) { slots.push(slot); geometry.addGroup(n * 6, 0, slots.length - 1); }
       geometry.groups[geometry.groups.length - 1].count += 6;
     });
@@ -284,7 +288,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Sky: sixteen textured panels around the camera with flat caps above and below, drawn behind everything.
   // The dome is scaled down to sit inside the clip range; centred on the camera, its size does not show.
-  // The panels can be swapped for another mission's or a Quake III map's sky (the Sky list); the mission's own stars,
+  // The panels can be swapped for another game's sky (the Sky list: domes, Quake III shaders, Quake II boxes); the own stars,
   // planets and flare show only with its own sky.
   const sky = new THREE.Group(), own = new THREE.Group(), haze = new THREE.Color();
   let panels = new THREE.Group();
@@ -322,7 +326,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     gl_one_minus_src_color: THREE.OneMinusSrcColorFactor, gl_dst_color: THREE.DstColorFactor, gl_one_minus_dst_color: THREE.OneMinusDstColorFactor,
     gl_src_alpha: THREE.SrcAlphaFactor, gl_one_minus_src_alpha: THREE.OneMinusSrcAlphaFactor, gl_dst_alpha: THREE.DstAlphaFactor,
     gl_one_minus_dst_alpha: THREE.OneMinusDstAlphaFactor};
-  async function buildQ3Sky(shader, radius, group) {
+  async function buildQ3Sky(shader, radius, group, base = '/q3-map-data/') {
     const number = value => { const text = String(Number(value) || 0); return `(${/[.e]/.test(text) ? text : text + '.0'})`; };
     const ball = new THREE.SphereGeometry(radius, 32, 16);
     const vertexShader = 'varying vec3 vDir; void main() { vDir = vec3(position.x, -position.z, position.y); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }';
@@ -333,12 +337,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       mesh.frustumCulled = false;
       group.add(mesh);
     };
-    const box = shader.sky.box && await Promise.all(shader.sky.box.map(file => loadTexture('/q3-map-data/textures/' + file)));
+    const box = shader.sky.box && await Promise.all(shader.sky.box.map(file => loadTexture(base + 'textures/' + file)));
     if (box && box.every(Boolean)) {
       const names = ['rt', 'bk', 'lf', 'ft', 'up', 'dn'];
+      // As the Quake II page draws its box: no mipmaps (they seam where the face changes) and the edge texels clamped.
+      for (const face of box) Object.assign(face, {generateMipmaps: false, minFilter: THREE.LinearFilter, needsUpdate: true});
       add(new THREE.ShaderMaterial({uniforms: Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), vertexShader,
         fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; varying vec3 vDir;
-          vec4 side(sampler2D image, vec2 p) { return texture2D(image, vec2(p.x + 1., 1. - p.y) * .5); }
+          vec4 side(sampler2D image, vec2 p) { return texture2D(image, clamp(vec2(p.x + 1., 1. - p.y) * .5, .002, .998)); }
           void main() {
             vec3 d = vDir, a = abs(d);
             gl_FragColor = vec4((a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
@@ -347,7 +353,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           }`, blending: THREE.NoBlending}), -3.5);
     }
     await Promise.all((shader.stages || []).map(async (stage, index) => {
-      const texture = stage.map && await loadTexture('/q3-map-data/textures/' + stage.map, true);
+      const texture = stage.map && await loadTexture(base + 'textures/' + stage.map, true);
       if (!texture) return;
       // ponytail: scroll, scale, transform and rotate only; stretch and turb (rare on skies) are left still.
       const mods = (stage.tcMods || []).map(([kind, ...values]) => { const v = values.map(number); return {
@@ -378,10 +384,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   let skies = [], skySerial = 0;
   async function showSky(id) {
     const chosen = skies.find(entry => entry.id === id), visible = chosen && chosen.visible || map.terrain.visibleDistance, radius = visible * 1.05;
-    const serial = ++skySerial, group = new THREE.Group(), dome = chosen ? chosen.game === 't1' && chosen.sky : map.sky;
+    // Each entry names its renderer and its pack's data path (/t1-map-skies); a dome is a T1-style mission sky.
+    const kind = chosen && (chosen.renderer || (chosen.game === 'q3' ? 'q3' : 'dome'));
+    const serial = ++skySerial, group = new THREE.Group(), dome = chosen ? kind === 'dome' && chosen.sky : map.sky;
     scene.background = haze;
-    if (chosen && chosen.game === 'q3') await buildQ3Sky(chosen.sky, radius, group);
-    else if (dome) await buildSky(dome, visible, group, chosen ? '/t1-map-data/' : data);  // A T1 dome lives in the T1 pack.
+    if (kind === 'q3') await buildQ3Sky(chosen.sky, radius, group, chosen.base);
+    else if (dome) await buildSky(dome, visible, group, chosen ? chosen.base || '/t1-map-data/' : data);  // Its own pack's textures.
     const drop = old => old.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });  // Textures stay cached.
     if (serial !== skySerial) return drop(group);  // A later choice is being built.
     drop(panels);
@@ -699,11 +707,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     const flared = (map.planets || []).find(planet => planet.flare);
     if (flared && map.flare) await buildFlare(flared, map.flare);
     scene.add(sky);
-    // The list of other skies comes after the map's own: the first scan reads every T1 and Q3 map.
+    // The list of other skies comes after the map's own: the first scan reads every imported pack /t1-map-skies lists.
     get('/t1-map-skies').then(response => response.json()).then(list => {
       skies = list;
       const groups = Map.groupBy(list, entry => entry.group), more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
-      $('sky').replaceChildren(new Option(`${map.mission}'s own`, ''), ...[...groups].map(([group, entries]) => {
+      $('sky').replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...[...groups].map(([group, entries]) => {
         const element = Object.assign(document.createElement('optgroup'), {label: group});
         element.append(...entries.map(entry => new Option(entry.name ? `${entry.name} · ${entry.maps[0]}${more(entry.maps)}` : `${entry.maps[0]}${more(entry.maps)}`, entry.id)));
         return element;

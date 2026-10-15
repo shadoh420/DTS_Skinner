@@ -212,32 +212,50 @@ def t1_map_data(filename):
 t1_sky_cache = {}
 
 
+# Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it). 'dome' is the T1
+# viewer's sixteen-panel dome (scene.sky), 'q3' a Quake III sky shader (scene.shaders[].sky), 'q2' a Quake II six-face
+# skybox (scene.skybox.faces), drawn as a Q3 box: both use the rt/bk/lf/ft/up/dn faces the same way (gl_warp.c, tr_sky.c).
+SKY_PACKS = {'t1': ('Tribes', 'dome'), 'q3': ('Quake III Arena', 'q3'), 'ss': ('Starsiege', 'dome'),
+             'es1': ('Earthsiege', 'dome'), 'es2': ('Earthsiege 2', 'dome'), 'rtcw': ('Return to Castle Wolfenstein', 'q3'),
+             'et': ('Wolfenstein: Enemy Territory', 'q3'), 'jk2': ('Jedi Outcast', 'q3'), 'ja': ('Jedi Academy', 'q3'),
+             'quake2': ('Quake II', 'q2'), 'daikatana': ('Daikatana', 'q2'), 'anachronox': ('Anachronox', 'q2')}
+
+
 @app.route('/t1-map-skies')
 def t1_map_skies():
-    """Skies the T1 Maps page can swap in: every T1 mission's dome and every Q3 map's sky shader, each listed once."""
-    roots = {'t1': local_data_dir / 't1-maps', 'q3': local_data_dir / 'q3-maps'}
+    """Skies the T1 Maps page can swap in, each listed once: every pack in SKY_PACKS that is imported. Entry ids are
+    the game and a hash of the sky, so a saved choice survives re-imports (and T1/Q3 ids are unchanged)."""
+    roots = {game: local_data_dir / f'{game}-maps' for game in SKY_PACKS}
     stamp = (str(local_data_dir), *((root / 'index.json').stat().st_mtime_ns if (root / 'index.json').is_file() else 0 for root in roots.values()))
     if t1_sky_cache.get('stamp') != stamp:
         skies = {}
         for game, root in roots.items():
+            group, kind = SKY_PACKS[game]
             try:
                 index = json.loads((root / 'index.json').read_text(encoding='utf-8'))
             except (OSError, ValueError):
                 continue
-            for row in index:
+            for row in index if isinstance(index, list) else []:
                 try:
                     scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
                 except (OSError, ValueError, KeyError, TypeError):
                     continue
-                found = ([scene['sky']] if (scene.get('sky') or {}).get('textures') else []) if game == 't1' else \
-                    [shader for shader in scene.get('shaders') or [] if shader and shader.get('sky')]
+                if kind == 'dome':
+                    found = [scene['sky']] if (scene.get('sky') or {}).get('textures') else []
+                elif kind == 'q3':
+                    found = [shader for shader in scene.get('shaders') or [] if isinstance(shader, dict) and shader.get('sky')]
+                else:
+                    faces = (scene.get('skybox') or {}).get('faces') or {}
+                    boxed = [(faces.get(side) or {}).get('texture') for side in ('rt', 'bk', 'lf', 'ft', 'up', 'dn')]
+                    found = [dict(name=scene['skybox'].get('name') or row['id'], stages=[], sky=dict(box=boxed))] if all(boxed) else []
                 for sky in found:
                     key = game + json.dumps(sky, sort_keys=True)
                     if key not in skies:
                         skies[key] = dict(id=game + '-' + hashlib.sha1(key.encode()).hexdigest()[:12], game=game, maps=[],
-                                          group='Tribes' if game == 't1' else row.get('group', 'Quake III Arena'),
-                                          name=sky['name'].removeprefix('textures/') if game == 'q3' else None, sky=sky,
-                                          visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A T1 dome's shape follows its mission's.
+                                          group=row.get('group', group) if game == 'q3' else group,
+                                          name=sky['name'].removeprefix('textures/') if kind != 'dome' else None, sky=sky,
+                                          renderer='dome' if kind == 'dome' else 'q3', base=f'/{game}-map-data/',
+                                          visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A dome's shape follows its mission's.
                     skies[key]['maps'].append(row.get('name', row['id']))
         t1_sky_cache.update(stamp=stamp, skies=list(skies.values()))
     return jsonify(t1_sky_cache['skies'])
@@ -294,6 +312,40 @@ def import_ss_maps_route():
     try:
         missions = [payload['missions'].strip()] if payload.get('missions', '').strip() else None
         return jsonify(import_ss_maps(payload['game'].strip(), local_data_dir / 'ss-maps', missions, payload.get('replace') is True))
+    except (OSError, ValueError) as exc:
+        return jsonify(error=str(exc)), 422
+    finally:
+        import_lock.release()
+
+
+# Earthsiege 1 and 2 Maps: the T1 viewer over packs tools/import_es_map.py writes.
+@app.route('/maps/<any(es1, es2):game>/')
+def es_maps_viewer(game):
+    response = send_from_directory(static_dir / 'es-maps', 'index.html')
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    return response
+
+
+@app.route('/<any(es1, es2):game>-map-data/<path:filename>')
+def es_map_data(game, filename):
+    return send_from_directory(local_data_dir / f'{game}-maps', filename)
+
+
+@app.route('/import_es_maps/<any(es1, es2):game>', methods=['POST'])
+def import_es_maps_route(game):
+    from tools.import_es_map import import_maps as import_es_maps
+    if foreign_request():
+        return jsonify(error='Import must be started from this Skinner window.'), 403
+    if not request.is_json or request.content_length is None or request.content_length > 8192:
+        return jsonify(error='Expected a small JSON import request.'), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get('game'), str) or not payload['game'].strip() or not isinstance(payload.get('missions', ''), str):
+        return jsonify(error='Enter your Earthsiege folder.'), 400
+    if not import_lock.acquire(blocking=False):
+        return jsonify(error='Another import is running. Wait for it to finish.'), 409
+    try:
+        missions = [pathlib.Path(payload['missions'].strip()).stem] if payload.get('missions', '').strip() else None
+        return jsonify(import_es_maps(payload['game'].strip(), local_data_dir / f'{game}-maps', game, missions, payload.get('replace') is True))
     except (OSError, ValueError) as exc:
         return jsonify(error=str(exc)), 422
     finally:
