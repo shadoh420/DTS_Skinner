@@ -66,6 +66,47 @@ saving comes from moving the air (8 steps per pixel) into the sky texture.
 - On a GPU about 4× slower (GTX 1060 class), expect about 0.8 ms for the default and about 3.2 ms for the merged sky.
   This is scaled from the measurements, not measured.
 
+## Unity (URP)
+
+`static/volumetrics` also holds the Unity side. It uses the same `.cginc` files through a macro header,
+`SkinnerVolumetricsHLSL.cginc`.
+- **`Skinner/Volumetric Sky`.** The skybox. It reads the sky texture and adds the sun, stars, moon and aurora per pixel.
+- **`Hidden/Skinner Volumetrics`.** Three passes: pass 0 draws the sky texture, pass 1 the fog ring, and pass 2 the fog,
+  exposure and ACES over the frame. It declares the same properties as the sky, because Unity keeps only declared
+  values on a material.
+- **`SkinnerVolumetrics.cs`.** Keeps the sky texture and ring up to date, one band of rows per frame. It copies the sky
+  material's values onto the work material property by property. `CopyPropertiesFromMaterial` replaces the whole set
+  instead. That dropped the fog's keys, and the fog pass read zeros: NaN and black frames.
+- **Tools > Skinner Sky > Set Up Volumetrics.** Makes a volumetric copy of the current `Skinner/Sky` preset and the work
+  material, adds URP's Full Screen Pass feature for the fog (pass 2, before post-processing, with depth), and adds the
+  component to the scene.
+
+Checked 2026-10-15 in a scratch URP project, Unity 6000.3.11f1, D3D11, on an RX 7800 XT, at 2560×1440. GPU times per
+draw, from n draws in one command buffer synced by a 1-pixel readback: (t(220) − t(20)) / 200, median of 5.
+
+| Pass | Clear afternoon | Stormfront | Moonlit night |
+|---|---|---|---|
+| Merged `Skinner/Sky` | 0.679 | 0.640 | 0.739 |
+| Volumetric sky (screen) | 0.107 | 0.105 | 0.196 |
+| Sky texture 1024×256, 1/8 band (whole) | 0.012 (0.098) | 0.009 (0.073) | 0.013 (0.101) |
+| Sky texture 512×128, 1/8 band | 0.007 | 0.005 | 0.007 |
+| Sky texture 2048×512, 1/8 band (whole) | 0.037 (0.299) | 0.027 (0.213) | 0.036 (0.289) |
+| Fog ring | 0.001 | 0.001 | 0.001 |
+| Fog, exposure and ACES (pass 2) | 0.066 | 0.063 | 0.064 |
+
+The default costs about **0.19 ms** by day and 0.27 ms at night, against 0.64–0.74 ms for the merged sky, which has no
+fog. Whole URP frames in editor batchmode (moonlit, CPU and GPU) took 0.86 ms with volumetrics and fog, and 1.03 ms
+with the merged sky.
+
+Against the page at 1280×720, over five views (afternoon, afternoon looking up, golden hour, storm, moonlit), the sky
+differs by 0.3–2.2/255 on average. 0.03–3.6% of sky pixels differ by more than 10, at cloud edges and near the sun.
+The scene itself is lit differently by design: three.js Lambert against URP Lit.
+
+The fog pass's exposure applies to the whole frame. At night (exposure 6), the scene's lights have to be night lights,
+or the ground blows out.
+- Evidence: `C:\tmp\skinner-evidence\volumetrics\unity` holds the frames, `timing.txt`, `compare.txt` and `unity.log`.
+  `unity-diag-run4` holds the run that found the zeroed values.
+
 ## Limits
 
 - Clouds don't move with the player, and nothing can fly into them. They are kilometres up; the sky texture is drawn
@@ -76,9 +117,7 @@ saving comes from moving the air (8 steps per pixel) into the sky texture.
 - Fog has no light shafts: there is no shadow map in the march. A shaft tier (a low-resolution march of the shadow
   map) would be a separate, measured option.
 - The test scene's lighting is rough: the sun's colour comes from the same air model, and the fill light is a guess.
-- In this checkout, the page is the only user. The T1 Maps pages still draw the merged sky, and Unity still has
-  `Skinner/Sky` only. The HLSL side compiles offline with fxc (ps_5_0, Unity 6000.3.11f1 CGIncludes, `/Gec`): the
-  sky-texture pass, the screen sky and the fog. It has not run in Unity yet.
+- The T1 Maps pages still draw the merged sky; only the test page and the Unity files above use this.
   The HLSL wrapper needs three macros beyond `Skinner/Sky`'s: `vec4`, `atan(y, x)` as `atan2`, and `SAMPLE_LOD` as
   `tex2Dlod` with the v flip. The march loop must sample with an explicit level.
 - Evidence: `C:\tmp\skinner-evidence\volumetrics` holds the bench table, the screenshots and the fxc wrapper.

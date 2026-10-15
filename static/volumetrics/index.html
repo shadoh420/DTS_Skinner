@@ -78,7 +78,7 @@
     fetch('/static/skinner-sky/presets.json').then(response => response.json())]);
   Object.assign(noise, {flipY: false, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, needsUpdate: true});
   const U = {skyNoise: {value: noise}, uTime: {value: 0}, layerCoverage: {value: 0}, usePano: {value: 1}, pano: {value: null}, ring: {value: null}};
-  window.U = U;  // For checks from the console.
+  window.U = U;  // For checks from the console (and window.scene below).
   for (const [key, value] of Object.entries(defaults)) U[key] = {value: Array.isArray(value) ? new THREE.Vector3(...value) : value};
   const declared = Object.entries(defaults).map(([key, value]) => `uniform ${Array.isArray(value) ? 'vec3' : 'float'} ${key};`).join(' ');
   // The sky's own 2.5D cloud layer reads layerCoverage (0 when the volumetric clouds replace it); sunSize can be
@@ -141,7 +141,7 @@
   skyScene.add(skyBall);
 
   // A test scene in metres, y up: rolling ground 8 km across and pillars out to 2 km, so the fog has depth to show.
-  const scene = new THREE.Scene(), sunLight = new THREE.DirectionalLight(), skyLight = new THREE.HemisphereLight();
+  const scene = window.scene = new THREE.Scene(), sunLight = new THREE.DirectionalLight(), skyLight = new THREE.HemisphereLight();
   scene.add(sunLight, sunLight.target, skyLight);
   const ground = new THREE.PlaneGeometry(8000, 8000, 256, 256).rotateX(-Math.PI / 2), at = ground.attributes.position;
   const lift = (x, z) => 25 * Math.sin(x / 410) * Math.cos(z / 530) + 9 * Math.sin(x / 97 + z / 143) + 4 * Math.cos(z / 61 - x / 77);
