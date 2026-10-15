@@ -267,6 +267,28 @@ angles are half the cone. The page
 keeps the lights in a grid of 128-unit cells and sums, per point, only those
 of its cell (ironguard has 362 lights).
 
+**Spot shadows.** A spot light casts shadows as `gbuffer_light_spot_shadow`
+draws them: its depth from the light, one tile of a shadow atlas each, read
+through the light's view and projection (outside its frustum nothing is
+shadowed), a slope-scaled bias (the tangent of the angle to the light,
+clamped to 0.05 at least) and a filtered four-tap compare. Which spots cast:
+an Effect that overrides its spot light (`spotLightOverridden`) says so with
+`spotLightCastsShadow` (366 entities in the stock maps, every one of them
+overriding), and an effect left as it is casts as its record says (the byte
+at +173 of a spot record: 1 in the light fittings, 0 in the pickup pads and
+jump pads; packs imported before this read none, so only the overriding
+entities cast). The page draws each casting spot's depth once per map
+build (the map does not move) into a tile of a 4096² atlas, 512² for up to 64
+spots and 256² for up to 256 (ironguard has 139); a camera along the cone as
+wide as its outer angle and as deep as its reach, near plane 4. The bias is 1.5 texels plus 2 per
+unit of slope, in distance from the light. Checked in the game with a test map
+(a ceiling `light_spot_sml` over the floor of a closed room, a pillar beside
+its pool, October 2026): the floor in the pillar's shadow reads as without the
+spot in the game and on the page alike (89 of 255 on screen, the lit floor
+around it 92 to 94 in the game, 91 to 92 on the page). On Aerowalk's
+spawn view the 21 casting spots change the frame by under 2 %, so they were
+not what made its right wall bright.
+
 **Light through paper and cloth.** Materials drawn with the `…_SSS` shaders
 (paper, whose `sss` is 0.8, which the import keeps) let light through, as
 `gbuffer_light_point`, `_spot` and `_directional` do: with s the material's
@@ -499,7 +521,12 @@ thing's own axes (seen in the game: Ruin's pads at 180 90 0 lie flat as at
   is. Seen in the game with a test map (a floor, a shootable at angles −90
   and turrets at −270 and −45, outside training mode): both are drawn, the
   target facing the spawn and the turrets idle in their rest pose, as on the
-  page; the game turns a turret toward a player it sees.
+  page; the game turns a turret toward a player it sees. Both take their
+  weapon's colour from `weaponType` (0 melee white, 1 burst gun cyan, 2
+  shotgun orange, 3 grenade green, 4 plasma magenta, 5 rocket red, 6 ion
+  blue, 7 bolt yellow, 8 stake dark red; none: the effect's red), measured
+  on a row of targets in the game: a target's rings (slot 0, 0.75 at most) and
+  a turret's red paint (slots 5 and 6, at full strength).
 - Mesh vertex colours are BGRA (the editor's target, red in the game, holds
   (0, 28, 180)).
 - While editing, entities show the game editor's models (effects.json's
@@ -1003,8 +1030,7 @@ random convex brushes.
   measured in the game; on slopes the direction of v is taken from u × v = n,
   as on the axis faces, not measured by itself. Library textures show in
   Skinner only.
-- **Light**: spot lights cast no shadows (the game's do: Aerowalk's right wall
-  is about 30 % too bright); the sun has two shadow maps where the game has
+- **Light**: the sun has two shadow maps where the game has
   four cascades, and alpha-cut leaves shadow as solid; reflection probes are
   taken from the point's cell only, where the game blends the eight around
   it; SSAO is not drawn.

@@ -139,7 +139,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     uLightCount: {value: 0}, uLightCell: {value: 128}, uLightOrigin: {value: new THREE.Vector3()}, uLightSize: {value: [1, 1, 1]},
     uLights: {value: null}, uLightList: {value: null}, uLightCells: {value: empty3D},
     uSun: {value: new THREE.Vector3(0, 1, 0)}, uSunColour: {value: new THREE.Vector3()}, uSunMatrix: {value: new THREE.Matrix4()}, uSunDepth: {value: null}, uSunTexel: {value: 0},
-    uSunBias: {value: 0}, uNearMatrix: {value: new THREE.Matrix4().makeTranslation(9, 9, 9)}, uNearDepth: {value: null}, uNearBias: {value: 0}};
+    uSunBias: {value: 0}, uNearMatrix: {value: new THREE.Matrix4().makeTranslation(9, 9, 9)}, uNearDepth: {value: null}, uNearBias: {value: 0},
+    uSpotDepth: {value: null}, uSpotTile: {value: 1}, uSpotPerRow: {value: 1}};
   for (let i = 0; i < 7; i++) uniforms['uSH' + i] = {value: empty3D};
   scene.onBeforeRender = (_, __, view) => uniforms.uEye.value.set(view.position.x, view.position.y, -view.position.z);
   // A direction's place in a cube map kept as six layers (+x, -x, +y, -y, +z, -z, rows top down): (s, t, layer).
@@ -150,25 +151,47 @@ window.addEventListener('DOMContentLoaded', async () => {
       else { face = r.z > 0. ? 4. : 5.; st = vec2(r.z > 0. ? r.x : -r.x, -r.y) / a.z; }
       return vec3(st * .5 + .5, face);
     }`;
+  // The spot lights' shadow maps: one tile each of a SPOT_ATLAS² atlas, their cameras' near plane SPOT_NEAR.
+  const SPOT_ATLAS = 4096, SPOT_NEAR = 4;
   const LIGHTING = `precision highp sampler3D; precision highp sampler2DArray;
     uniform float uLit, uGain, uCubes, uCubeMips; uniform vec3 uEye, uAmbient, uProbeScale, uProbeOffset;
     uniform sampler3D uSH0, uSH1, uSH2, uSH3, uSH4, uSH5, uSH6, uProbeIndex; uniform sampler2DArray uCube;
     uniform float uLightCount, uLightCell; uniform vec3 uLightOrigin; uniform ivec3 uLightSize;
     uniform sampler2D uLights, uLightList; uniform sampler3D uLightCells;
     uniform vec3 uSun, uSunColour; uniform mat4 uSunMatrix, uNearMatrix; uniform sampler2D uSunDepth, uNearDepth; uniform float uSunTexel, uSunBias, uNearBias;
-    // How much of the sun reaches the point in one shadow map: a 3 × 3 texel box, each compare weighted bilinearly, so
-    // edges ramp instead of stepping (the game's cascades are about as soft). -1 outside the map.
+    uniform sampler2D uSpotDepth; uniform float uSpotTile, uSpotPerRow;
+    // How much of a depth map at uv is no nearer than depth z: a 3 × 3 texel box, each compare weighted bilinearly, so
+    // edges ramp instead of stepping (the game's cascades and spot shadows are about as soft).
+    float pcf(sampler2D depth, vec2 uv, float z, float texel) {
+      vec2 t = uv / texel - .5, f = fract(t), at = (floor(t) + .5) * texel;
+      float lit = 0.;
+      for (int y = -1; y <= 2; y++) for (int x = -1; x <= 2; x++) {
+        float w = (x == -1 ? 1. - f.x : x == 2 ? f.x : 1.) * (y == -1 ? 1. - f.y : y == 2 ? f.y : 1.);
+        lit += w * (z <= texture(depth, at + vec2(x, y) * texel).r ? 1. : 0.);
+      }
+      return lit / 9.;
+    }
+    // How much of the sun reaches the point in one shadow map; -1 outside the map.
     float sunShadow(sampler2D depth, mat4 matrix, float bias, vec3 p) {
       vec4 s = matrix * vec4(p.x, p.y, -p.z, 1.);
       vec3 q = s.xyz / s.w * .5 + .5;
       if (any(lessThan(q, vec3(.002))) || any(greaterThan(q, vec3(.998)))) return -1.;
-      vec2 t = q.xy / uSunTexel - .5, f = fract(t), at = (floor(t) + .5) * uSunTexel;
-      float lit = 0.;
-      for (int y = -1; y <= 2; y++) for (int x = -1; x <= 2; x++) {
-        float w = (x == -1 ? 1. - f.x : x == 2 ? f.x : 1.) * (y == -1 ? 1. - f.y : y == 2 ? f.y : 1.);
-        lit += w * (q.z - bias <= texture(depth, at + vec2(x, y) * uSunTexel).r ? 1. : 0.);
-      }
-      return lit / 9.;
+      return pcf(depth, q.xy, q.z - bias, uSunTexel);
+    }
+    // How much of spot light i reaches the point, from its tile of the spot shadow atlas (gbuffer_light_spot_shadow:
+    // the light's view-projection, a slope-scaled bias, a filtered 4-tap compare; lit outside its frustum). The bias
+    // here is in distance from the light: 1.5 texels plus 2 per unit of the slope's tangent (clamped to 0.05–4, as the
+    // game's), compared through the camera's depth (near SPOT_NEAR, far the light's).
+    float spotShadow(int i, float tile, float texel, float distance, float far, float nl, vec3 p) {
+      mat4 m = mat4(texelFetch(uLights, ivec2(4, i), 0), texelFetch(uLights, ivec2(5, i), 0), texelFetch(uLights, ivec2(6, i), 0), texelFetch(uLights, ivec2(7, i), 0));
+      vec4 s = m * vec4(p.x, p.y, -p.z, 1.);
+      vec2 q = s.xy / s.w * .5 + .5;
+      if (s.w <= 0. || any(lessThan(q, vec2(0.))) || any(greaterThan(q, vec2(1.)))) return 1.;
+      float w = s.w - s.w * texel * (1.5 + 2. * clamp(sqrt(1. - nl * nl) / max(nl, .05), .05, 4.)), n = ${SPOT_NEAR.toFixed(1)};
+      float z = (far * (w - n)) / (max(w, n) * (far - n));
+      float edge = 2. / ${SPOT_ATLAS.toFixed(1)} / uSpotTile;
+      vec2 at = (vec2(mod(tile, uSpotPerRow), floor(tile / uSpotPerRow)) + clamp(q, vec2(edge), vec2(1. - edge))) * uSpotTile;
+      return pcf(uSpotDepth, at, z, 1. / ${SPOT_ATLAS.toFixed(1)});
     }
     // The lights' highlight as the game's lighting shaders (gbuffer_light_point, _spot, _directional) have it: GGX D ×
     // Smith-Schlick G (k = (rough + 1)² / 8) × Schlick F (Unreal's exp2 fit, toward sat(50 f0.g)) / (4 nl nv), nl and
@@ -246,6 +269,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (e.y > .5) { float edge = clamp((dot(-l, d.xyz) - d.w) * e.x, 0., 1.); fall *= edge * edge; }
         float nl = clamp(dot(n, l), 0., 1.);
         if (fall <= 0. || (nl <= 0. && s <= 0.)) continue;
+        if (e.z > -.5) { fall *= spotShadow(i, e.z, e.w, distance, b.w, nl, p); if (fall <= 0.) continue; }
         vec3 light = b.rgb * fall * nl;
         sum += (1. - dot(f0, vec3(.299, .587, .114))) * (diffuse * light + through(n, v, l, s, diffuse, b.rgb * fall)) + highlight(n, v, l, f0, rough) * light;
       }
@@ -689,8 +713,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (drawn !== modelsDrawn) { modelsDrawn = drawn; mergeModels(placed); }
     editorModels.visible = editing;
     updateSun();
+    renderSpotShadows();
     applySky();
   }
+  // Shootables and turrets take their weapon's colour (weaponType 0 melee, 1 burst gun … 8 stake launcher; measured
+  // in the game on a row of targets): a target's rings (slot 0) as listed, a turret's red paint (slots 5 and 6) at
+  // full strength. Without a weaponType both keep the effect's red.
+  const WEAPON_COLOURS = [[.75, .75, .75], [0, .75, .75], [.75, .47, 0], [.33, .66, .26], [.75, 0, .75], [.75, 0, 0], [0, .41, .75], [.75, .75, 0], [.41, 0, 0]];
+  const weaponTint = (entity, slot) => {
+    const colour = WEAPON_COLOURS[M.property(entity, 'weaponType')];
+    if (!colour) return null;
+    if (entity.type === 'Shootable' && slot === 0) return [...colour, 1];
+    return entity.type === 'Turret' && (slot === 5 || slot === 6) ? [...colour.map(c => c / .75), 1] : null;
+  };
   // Every placed mesh part into the geometry of where it goes: lit (per texture, untextured first), shining, or the
   // editor's; planned first (material, colour, count), then written into arrays of their final size.
   function mergeModels(placed) {
@@ -715,7 +750,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           const read = packColours[name] || {};
           if (isClip({material: name}) || /godrays|powerup_resist/.test(read.shader || '')) continue;
           const own = M.property(entity, `material${slot}Albedo`), ownColour = own !== undefined && hexColour(own);
-          const set = record.colours[slot], material = materialOf(name), glow = glowOf(name);
+          const set = weaponTint(entity, slot) || record.colours[slot], material = materialOf(name), glow = glowOf(name);
           // The effect's slot colour goes with the effect's material: an entity that swaps the material drops it
           // (measured: pipes given water and glow show those materials' own colours, not the slot's).
           const given = ownColour && ownColour[0] > 0 ? ownColour.slice(1) : set && !M.property(entity, `material${slot}Name`) ? set.slice(0, 3) : null;
@@ -927,19 +962,63 @@ window.addEventListener('DOMContentLoaded', async () => {
           entry.direction = d.map(c => c / l);
           entry.cosInner = Math.cos(value('InnerAnglesDegrees', light.inner) * Math.PI / 180);
           entry.cosOuter = Math.cos(value('OuterAnglesDegrees', light.outer) * Math.PI / 180);
+          // Shadows: the entity's spotLightCastsShadow where it overrides the light (every stock entity that sets it
+          // overrides), else the effect's own (+173 of its record: the light fittings cast, pads do not).
+          entry.casts = own ? Boolean(M.property(entity, 'spotLightCastsShadow')) : Boolean(light.shadow);
         }
         if (entry.far > entry.near && Math.max(...entry.colour) > 0) lights.push(entry);
       }
     }
+    // Each casting spot gets a camera along its cone (as wide as its outer angle, as deep as its reach) and a tile of
+    // the atlas: 512² for up to 64 of them, 256² for up to 256 (ironguard has 139; ponytail: any past 256 cast none).
+    const casting = lights.filter(light => light.casts), size = casting.length > 64 ? 256 : 512, perRow = SPOT_ATLAS / size;
+    spotCasters = casting.slice(0, perRow * perRow).map((light, tile) => {
+      const fov = Math.min(2 * Math.acos(Math.max(-1, Math.min(1, light.cosOuter))), 2.9), [x, y, z] = light.position, [dx, dy, dz] = light.direction;
+      const camera = new THREE.PerspectiveCamera(fov * 180 / Math.PI, 1, SPOT_NEAR, Math.max(light.far, SPOT_NEAR + 1));
+      camera.up.set(...(Math.abs(dy) > .99 ? [1, 0, 0] : [0, 1, 0]));
+      camera.position.set(x, y, -z);
+      camera.lookAt(x + dx, y + dy, -(z + dz));
+      camera.updateMatrixWorld();
+      camera.layers.set(1);
+      light.shadow = {tile, texel: 2 * Math.tan(fov / 2) / size, matrix: new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).elements};
+      return {camera, tile};
+    });
+    uniforms.uSpotTile.value = size / SPOT_ATLAS; uniforms.uSpotPerRow.value = perRow;
     for (const texture of lightTextures2.splice(0)) texture.dispose();
     const grid = L.lightGrid(lights);
     const texture = (tex, more) => { Object.assign(tex, {type: THREE.FloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, needsUpdate: true}, more); lightTextures2.push(tex); return tex; };
-    uniforms.uLights.value = texture(new THREE.DataTexture(grid.data, 4, Math.max(1, grid.count)), {format: THREE.RGBAFormat});
+    uniforms.uLights.value = texture(new THREE.DataTexture(grid.data, 8, Math.max(1, grid.count)), {format: THREE.RGBAFormat});
     uniforms.uLightList.value = texture(new THREE.DataTexture(grid.list, Math.min(4096, grid.list.length), Math.ceil(grid.list.length / 4096)), {format: THREE.RedFormat});
     if (grid.list.length > 4096) uniforms.uLightList.value.image.data = Float32Array.from({length: 4096 * Math.ceil(grid.list.length / 4096)}, (_, i) => grid.list[i] || 0);
     uniforms.uLightCells.value = texture(new THREE.Data3DTexture(grid.cells, ...grid.size), {format: THREE.RGFormat});
     uniforms.uLightOrigin.value.fromArray(grid.origin); uniforms.uLightSize.value = grid.size; uniforms.uLightCell.value = grid.cell;
     uniforms.uLightCount.value = grid.count;
+  }
+  // The casting spots' depth from their cameras, each into its tile of the atlas: the brushes (textured faces cut out
+  // as for the sun) and the models' shadow meshes (layer 1). The map does not move, so once per build.
+  let spotCasters = [];
+  const spotTarget = new THREE.WebGLRenderTarget(SPOT_ATLAS, SPOT_ATLAS, {depthTexture: new THREE.DepthTexture(SPOT_ATLAS, SPOT_ATLAS), depthBuffer: true});
+  function renderSpotShadows() {
+    uniforms.uSpotDepth.value = spotTarget.depthTexture;
+    const was = {target: renderer.getRenderTarget(), background: scene.background, autoClear: renderer.autoClear}, materials = world.material;
+    world.material = [].concat(world.material).map(casterOf);
+    scene.background = null;
+    renderer.setRenderTarget(spotTarget);
+    renderer.clear();
+    renderer.autoClear = false;
+    spotTarget.scissorTest = true;
+    const size = uniforms.uSpotTile.value * SPOT_ATLAS, perRow = uniforms.uSpotPerRow.value;
+    for (const {camera: view, tile} of spotCasters) {
+      const x = (tile % perRow) * size, y = Math.floor(tile / perRow) * size;
+      spotTarget.viewport.set(x, y, size, size); spotTarget.scissor.set(x, y, size, size);
+      renderer.setRenderTarget(spotTarget);
+      renderer.render(scene, view);
+    }
+    spotTarget.viewport.set(0, 0, SPOT_ATLAS, SPOT_ATLAS); spotTarget.scissor.set(0, 0, SPOT_ATLAS, SPOT_ATLAS); spotTarget.scissorTest = false;
+    renderer.setRenderTarget(was.target);
+    renderer.autoClear = was.autoClear;
+    world.material = materials;
+    scene.background = was.background;
   }
 
   // ---- The map ----
