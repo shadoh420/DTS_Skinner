@@ -51,6 +51,8 @@ def expressions(tokens,count,policy=None):
     return result
 
 
+# Heat-haze ARB programs: distort _currentRender by a normal map (optionally masked) in screen space.
+HAZE=('heathaze.vfp','heathazewithmask.vfp','heathazewithmaskandvertex.vfp','heathazegraywithmask.vfp')
 # texgen with a cube image: skybox/wobblesky (view ray), reflect (environment.vfp), normal (TG_DIFFUSE_CUBE).
 CUBE_TEXGENS=('skybox','wobblesky','reflect','normal')
 DEFORM_ARGS={'flare':1,'expand':1,'move':1,'sprite':0,'rectsprite':0,'tube':0}
@@ -155,6 +157,11 @@ def compile_stage(tokens,textures):
             elif key in ('screen','screen2','glasswarp'):stage['texgen']=key
             elif key in ('clamp','zeroclamp','alphazeroclamp'):stage['clamp']=True
             elif key in ('name','forcehighquality','highquality','uncompressed','nearest','linear','nopicmip','nomips','noclamp'):pass
+            elif key in ('program','vertexprogram','fragmentprogram') and args:stage['program']=args[0].lower()
+            elif key=='vertexparm' and len(args)>1:stage.setdefault('vertexParms',{})[str(int(float(args[0])))]=[expr(x) for x in split_args(args[1:])]
+            elif key=='fragmentmap' and len(args)>1:
+                image=args[-1]
+                if image.lower()!='_currentrender':stage.setdefault('fragmentMaps',{})[str(int(float(args[0])))]=textures.resolve(image)
             elif key in ('privatepolygonoffset','polygonoffset'):stage['polygonOffset']=True
             elif key=='texgen' and args:
                 stage['texgen']=args[0].lower()
@@ -186,6 +193,7 @@ def compile_material(name,defs,materials,textures):
         reflection|=s.get('texgen')=='reflect'
         if s.get('cube') and s.get('texgen') not in CUBE_TEXGENS:
             notes.append('unsupported cube texgen: '+s.get('texgen','normal'))
+        elif s.get('program') in HAZE:parsed.append(s)
         elif s.get('image') or s.get('cube'):parsed.append(s)
     t=compact(global_tokens);lower=[x.lower() for x in t];i=0;falloff=None
     while i<len(t):
@@ -225,6 +233,8 @@ def compile_material(name,defs,materials,textures):
     decal='decal_macro' in lower
     sort=sort_value(t[lower.index('sort')+1]) if 'sort' in lower[:-1] else SORTS['decal'] if decal else None
     if sort is None:sort=SORTS['medium'] if translucent else SORTS['opaque']
+    # Material.cpp: a stage reading _currentRender makes the material post-process (the copy is taken first).
+    if any(s.get('program') in HAZE for s in parsed):sort=SORTS['postprocess'];translucent=True
     portal_sky='portalsky' in lower
     # Material.cpp: `mirror` = sort subview, opaque coverage; the viewer draws a reflected view under its stages.
     mirror='mirror' in lower
@@ -238,7 +248,7 @@ def compile_material(name,defs,materials,textures):
     for feature in ('guisurf','foglight','blendlight'):
         if feature in lower:notes.append(feature)
     for s in parsed:
-        for image in s['cube']['faces'] if s.get('cube') else [s['image']]:
+        for image in s['cube']['faces'] if s.get('cube') else [s['image']] if 'image' in s else list(s.get('fragmentMaps',{}).values()):
             if image['status']!='ready' and not (portal_sky and image['expression']=='_currentrender'):
                 notes.append('missing image: '+image['expression'])
         if any(x in lower for x in ('clamp','zeroclamp','alphazeroclamp')):s['clamp']=True

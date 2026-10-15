@@ -268,6 +268,24 @@ class DoomMapTest(unittest.TestCase):
         self.assertEqual(s['uv'],[['shear',['table','a','time'],0.0]])
         with self.assertRaises(ValueError):expression('IsMultiplayer')
 
+    def test_heat_haze_program_stage_is_post_process(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);fixture(root/'install')
+            with Install(root/'install') as archive:
+                d=Declarations(archive.files['base']);t=Textures(archive.files['base'],root/'textures');m=Materials(d,t)
+                d.materials['textures/sfx/vp1']=lex('''deform sprite\n{ vertexProgram heatHazeWithMask.vfp
+                    vertexParm 0 time * 0.1 , time * 0.5 // scroll
+                    vertexParm 1 0.9
+                    fragmentProgram heatHazeWithMask.vfp
+                    fragmentMap 0 _currentRender
+                    fragmentMap 1 _flat
+                    fragmentMap 2 _white }''')
+                haze=compile_material('textures/sfx/vp1',d,m,t);stage=haze['stages'][0]
+                self.assertEqual((haze['sort'],haze['translucent'],haze['approximations']),(100,True,[]))
+                self.assertEqual(stage['program'],'heathazewithmask.vfp')
+                self.assertEqual(stage['vertexParms'],{'0':[['*','time',.1],['*','time',.5]],'1':[.9]})
+                self.assertEqual(sorted(stage['fragmentMaps']),['1','2'],'_currentRender is the frame copy, not an image')
+
     def test_deform_lines(self):
         from tools.doom3_map_materials import parse_deform
         self.assertEqual(parse_deform(lex('translucent\ndeform flare ( 16 + parm4 )\n{ map _quadratic }')),

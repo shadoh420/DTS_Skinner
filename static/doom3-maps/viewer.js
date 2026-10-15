@@ -126,6 +126,17 @@ const blendLightFragment=`precision highp float;varying vec3 positionWorld;unifo
 void main(){vec4 p=vec4(positionWorld,1.0);vec2 uv;float f;if(outside(p,uv,f))discard;
  gl_FragColor=texture2D(projectionMap,(projectionUV*vec3(clamp(uv,0.0,1.0),1.0)).xy)*texture2D(falloffMap,vec2(clamp(f,0.0,1.0),.5))*lightColor;}`;
 const FOG_ORDER=5e8;
+// heatHaze*.vfp: _currentRender at the fragment's window position, pushed by the (RXGB) normal map times
+// min(P00/depth, 0.02) * vertexParm 1; the mask variants discard where mask.xy (times vertex colour) <= 0.01.
+const hazeFragment=`precision highp float;varying vec2 st;varying vec3 positionWorld,vertexRGB;
+uniform sampler2D currentRender,hazeNormal,hazeMask;uniform vec2 scroll,screenSize;uniform float magnitude,maskMode,focal,normalRXGB;
+void main(){
+ vec4 mask=vec4(1.0);
+ if(maskMode>0.5){mask=texture2D(hazeMask,st);if(maskMode>1.5)mask.xy*=vertexRGB.xy;mask.xy-=0.01;if(mask.x<0.0||mask.y<0.0)discard;}
+ vec4 n=texture2D(hazeNormal,st+scroll);n.x=normalRXGB>0.5?n.a:n.r;n=(n*2.0-1.0)*mask;
+ float depth=-(viewMatrix*vec4(positionWorld,1.0)).z,scale=min(focal/max(depth,1.0),.02)*magnitude;
+ gl_FragColor=vec4(texture2D(currentRender,clamp(gl_FragCoord.xy/screenSize+n.xy*scale,0.0,1.0)).rgb,1.0);}`;
+const hazeTarget=new THREE.WebGLRenderTarget(1,1,{depthBuffer:false});let hazeMeshes=[];
 function mirrorPlane(surface) {
  const i=geometry.index.array[surface.start],p=geometry.attributes.position.array,n=geometry.attributes.normal.array;
  const normal=new THREE.Vector3(n[i*3],n[i*3+1],n[i*3+2]).normalize(),point=new THREE.Vector3(p[i*3],p[i*3+1],p[i*3+2]);
@@ -254,7 +265,7 @@ function applyParticles(batch,view,seconds) {
 function disposeMap() {
  npcs.setCount(0);
  for(const b of batches){for(const mesh of b.meshes)mesh.material.dispose();b.mirror?.target?.dispose();b.group.clear();b.geometry.dispose();}
- scene.clear();batches=[];geometry?.dispose();geometry=null;
+ scene.clear();batches=[];hazeMeshes=[];geometry?.dispose();geometry=null;
  for(const value of textures.values())value.then(t=>t.dispose()).catch(()=>{});textures=new Map();
 }
 async function buildMap(meta,binary) {
@@ -270,6 +281,7 @@ async function buildMap(meta,binary) {
  // Resolve each image once before constructing passes. No run-time fetch waterfall per surface.
  const stages=Object.values(meta.materials).flatMap(m=>m.stages);
  await Promise.all(stages.map(async s=>s.texture=await texture(s.image,s.clamp)));
+ await Promise.all(stages.filter(s=>s.fragmentMaps).map(async s=>{s.hazeTextures={};for(const [k,image] of Object.entries(s.fragmentMaps))s.hazeTextures[k]=await texture(image);}));
  await Promise.all(stages.filter(s=>s.cube).map(async s=>s.cubeTextures=await Promise.all(s.cube.faces.map(f=>texture(f,true)))));
  // Faces are picked per pixel, so derivatives jump at face edges and pick tiny mips (dashed seams).
  for(const s of stages)for(const t of s.cubeTextures||[])if(t)t.minFilter=THREE.LinearFilter;
@@ -324,9 +336,15 @@ async function buildMap(meta,binary) {
     u.cubeMode={value:diffuse.texgen==='reflect'?(bump?2:1):diffuse.texgen==='normal'?3:0};
    }
    if(kind===5)u.fogPlane={value:new THREE.Vector4(...M.fogPlane(light))};
+   if(kind===8) {
+    const maps=diffuse.hazeTextures||{},n=maps['1']||flat;
+    Object.assign(u,{currentRender:{value:hazeTarget.texture},hazeNormal:{value:n},hazeMask:{value:maps['2']||white},scroll:{value:new THREE.Vector2()},
+     screenSize:{value:new THREE.Vector2(1,1)},magnitude:{value:0},focal:{value:1},normalRXGB:{value:n.userData.normalEncoding==='rxgb'?1:0},
+     maskMode:{value:diffuse.program==='heathaze.vfp'?0:diffuse.program==='heathazewithmaskandvertex.vfp'?2:1}});
+   }
    if(kind===4){u.mirrorMap={value:black};u.textureMatrix={value:new THREE.Matrix4()};
    }
-   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:[fragment,fragment,fragment,cubeFragment,mirrorFragment,fogFragment,blendLightFragment][kind],uniforms:u,vertexColors:true,
+   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:[fragment,fragment,fragment,cubeFragment,mirrorFragment,fogFragment,blendLightFragment,null,hazeFragment][kind],uniforms:u,vertexColors:true,
     side:material.twoSided||deformed||particle?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
     blending:kind===0?THREE.NoBlending:THREE.CustomBlending,blendSrc:THREE.OneFactor,blendDst:kind===1?THREE.OneFactor:THREE.ZeroFactor});
    if(kind===2||kind===3||kind===6) {
@@ -335,7 +353,7 @@ async function buildMap(meta,binary) {
    }
    if(kind===5){sm.blendSrc=THREE.SrcAlphaFactor;sm.blendDst=THREE.OneMinusSrcAlphaFactor;}
    if(diffuse?.polygonOffset){sm.polygonOffset=true;sm.polygonOffsetFactor=-1;sm.polygonOffsetUnits=-1;}
-   const mesh=new THREE.Mesh(g,sm);mesh.renderOrder=order;mesh.userData={kind,diffuse,specular,bump,light,projection,cubeAxis:surface.cubeAxis};group.add(mesh);meshes.push(mesh);passCount++;
+   const mesh=new THREE.Mesh(g,sm);mesh.renderOrder=order;if(kind===8){mesh.layers.set(1);hazeMeshes.push(mesh);}mesh.userData={kind,diffuse,specular,bump,light,projection,cubeAxis:surface.cubeAxis};group.add(mesh);meshes.push(mesh);passCount++;
   }
   const cut=material.stages.filter(s=>s.alphaTest!==0),opaque=material.stages.find(s=>s.role==='diffuse')||material.stages[0];
   // RoE portal-sky surfaces show the sky view already in the color buffer (_currentRender): depth only.
@@ -350,7 +368,7 @@ async function buildMap(meta,binary) {
   // Finish each surface's stage chain before another surface overwrites scratch alpha.
   // RB_STD_T_RenderShaderPasses: a reflect stage uses the material's bump stage (GetBumpStage) when it has one.
   const bumpStage=material.stages.find(s=>s.role==='bump')||null;
-  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,s.texgen==='reflect'?bumpStage:null,null,null,M.ambientOrder(material.sort,ambientOrder++)));
+  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:s.program?8:2,s,null,s.texgen==='reflect'?bumpStage:null,null,null,M.ambientOrder(material.sort,ambientOrder++)));
   // RB_FogAllLights, after every shader pass: fog lights, then blend lights, over opaque surfaces in their volumes.
   if(!material.translucent)for(const index of surface.lights) {
    const light=meta.lights[index],stages=meta.materials[light.shader].stages;if(light.authoredOff)continue;
@@ -402,6 +420,10 @@ function updatePass(mesh,seconds,parms,sound) {
  const sa=specular?stageColor(specular,seconds,parms,u.specularColor.value,sound):false;
  mesh.visible=kind===1?(da||sa)&&(!bump||M.evaluate(bump.condition,seconds,parms,tables,data.globalShaderParms,sound)!==0):da;
  stageUV(d,seconds,parms,u.diffuseUV.value,sound);u.alphaCut.value=kind===1?0:M.evaluate(d.alphaTest,seconds,parms,tables,data.globalShaderParms,sound);
+ if(kind===8&&d.vertexParms) {
+  const v=k=>(d.vertexParms[k]||[]).map(x=>M.evaluate(x,seconds,parms,tables,data.globalShaderParms,sound));
+  u.scroll.value.fromArray([...v('0'),0,0].slice(0,2));u.magnitude.value=v('1')[0]||0;
+ }
  if(kind===3){
   const wobble=d.wobble?.map(v=>M.evaluate(v,seconds,parms,tables,data.globalShaderParms,sound));
   u.skyMatrix.value.set(...M.skyMatrix(wobble,seconds,mesh.userData.cubeAxis));
@@ -443,6 +465,14 @@ function draw(seconds=0,target=null) {
   renderer.clearDepth();selected=select(camera);renderer.autoClear=false;
  }
  renderer.render(scene,camera);renderer.autoClear=true;
+ // Post-process sort: copy the frame to _currentRender, then draw the heat-haze passes (layer 1) over it.
+ const haze=hazeMeshes.filter(m=>m.visible&&m.parent.visible);
+ if(haze.length) {
+  if(hazeTarget.width!==width||hazeTarget.height!==height)hazeTarget.setSize(width,height);
+  renderer.setRenderTarget(hazeTarget);renderer.render(copyScene,copyCamera);renderer.setRenderTarget(colorTarget);
+  for(const m of haze){m.material.uniforms.screenSize.value.set(width,height);m.material.uniforms.focal.value=camera.projectionMatrix.elements[0];}
+  camera.layers.set(1);renderer.autoClear=false;renderer.render(scene,camera);renderer.autoClear=true;camera.layers.set(0);
+ }
  lastMetrics={areas:selected.areas.size,surfaces:selected.surfaces,calls:renderer.info.render.calls+skyMetrics.calls,triangles:renderer.info.render.triangles+skyMetrics.triangles,sky:skyMetrics};
  renderer.setRenderTarget(target);renderer.render(copyScene,copyCamera);renderer.setRenderTarget(null);
  lastMetrics.calls+=renderer.info.render.calls;lastMetrics.triangles+=renderer.info.render.triangles;
