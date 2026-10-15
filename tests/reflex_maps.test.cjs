@@ -642,14 +642,18 @@ test('a .light file gives its probe grid, the light each probe sends a surface, 
 
 test('the light grid lists in each cell the lights that reach it, and packs a spot light\'s cone', () => {
   const grid = L.lightGrid([{position: [0, 0, 0], colour: [1, 1, 1], near: 0, far: 100},
-    {position: [1000, 0, 0], colour: [1, 0, 0], near: 16, far: 64, direction: [0, -1, 0], cosInner: Math.cos(.1), cosOuter: Math.cos(.5)}]);
+    {position: [1000, 0, 0], colour: [1, 0, 0], near: 16, far: 64, direction: [0, -1, 0], cosInner: Math.cos(.1), cosOuter: Math.cos(.5),
+      shadow: {tile: 3, texel: .01, matrix: Array.from({length: 16}, (_, k) => k + 1)}}]);
   const cellOf = p => p.map((v, k) => Math.floor((v - grid.origin[k]) / grid.cell));
   const listed = p => { const [x, y, z] = cellOf(p), i = x + grid.size[0] * (y + grid.size[1] * z); return [...grid.list.slice(grid.cells[i * 2], grid.cells[i * 2] + grid.cells[i * 2 + 1])]; };
   assert.deepEqual(listed([0, 0, 0]), [0]);
   assert.deepEqual(listed([1000, 0, 0]), [1]);
   assert.deepEqual(listed([500, 0, 0]), []);
-  assert.deepEqual([...grid.data.slice(16, 28)].map(v => Math.round(v * 1000) / 1000), [1000, 0, 0, 16, 1, 0, 0, 64, 0, -1, 0, Math.round(Math.cos(.5) * 1000) / 1000]);
-  assert.equal(grid.data[29], 1);  // a spot
+  assert.deepEqual([...grid.data.slice(32, 44)].map(v => Math.round(v * 1000) / 1000), [1000, 0, 0, 16, 1, 0, 0, 64, 0, -1, 0, Math.round(Math.cos(.5) * 1000) / 1000]);
+  assert.equal(grid.data[45], 1);  // a spot
+  // Its shadow: the atlas tile, the texel size, then its matrix; a light without one has tile -1.
+  assert.deepEqual([...grid.data.slice(46, 64)].map(v => Math.round(v * 1000) / 1000), [3, .01, ...Array.from({length: 16}, (_, k) => k + 1)]);
+  assert.equal(grid.data[14], -1);
 });
 
 test('flatten gives each entity the transform of the prefab placement it is in', () => {

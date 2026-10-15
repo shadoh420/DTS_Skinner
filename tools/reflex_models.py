@@ -32,7 +32,8 @@ at +385 (pickup holograms, pads' glow); per material of the mesh, eight of each:
 a paint, green until given one) and the material at +1025 (128 bytes, empty to keep the mesh's: its names are often
 placeholders, MaterialA); its scale at +2117. A light record: colour at +1 (four
 floats), intensity +17, near +21 and far +25 attenuation; a point light's bone at +33, a spot light's inner and outer
-angles (degrees) at +37 and +41 and its bone at +45 (128 bytes).
+angles (degrees) at +37 and +41, its bone at +45 (128 bytes) and whether it casts shadows at +173 (a byte: 1 in the
+light fittings, 0 in the pickup pads and jump pads).
 """
 import json
 import re
@@ -202,7 +203,8 @@ def read_effect(raw):
             intensity, near, far = struct.unpack_from('<3f', record, 17)
             light = dict(kind='point' if kind == 3 else 'spot', colour=colour, intensity=intensity, near=near, far=far)
             if kind == 4:
-                light.update(inner=struct.unpack_from('<f', record, 37)[0], outer=struct.unpack_from('<f', record, 41)[0], bone=_name(record, 45))
+                light.update(inner=struct.unpack_from('<f', record, 37)[0], outer=struct.unpack_from('<f', record, 41)[0], bone=_name(record, 45),
+                             shadow=bool(record[173]))
             else:
                 light['bone'] = _name(record, 33)
             lights.append(light)

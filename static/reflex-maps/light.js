@@ -99,15 +99,19 @@
      it shines), cosInner and cosOuter}. Its light falls off as clamp(1 - (distance - near) / (far - near))², and a
      spot's also as clamp((cos - cosOuter) / (cosInner - cosOuter))² across its edge.
 
-     Packed for textures: `data`, four RGBA floats per light (position, near; colour, far; direction, cosOuter; 1 /
-     (cosInner - cosOuter), spot or not, 0, 0); `cells`, per cell of the grid (x fastest) the first entry of its list
-     and its count; `list`, the light numbers. */
+     A spot that casts shadows also has `shadow`: {tile, its place in the shadow atlas; texel, a shadow-map texel's
+     width per unit of distance; matrix, its view-projection, 16 floats column by column}.
+
+     Packed for textures: `data`, eight RGBA floats per light (position, near; colour, far; direction, cosOuter; 1 /
+     (cosInner - cosOuter), spot or not, shadow tile or -1, texel; then the shadow matrix's four columns); `cells`,
+     per cell of the grid (x fastest) the first entry of its list and its count; `list`, the light numbers. */
   function lightGrid(lights, cell = 128) {
-    const data = new Float32Array(Math.max(1, lights.length) * 16);
+    const data = new Float32Array(Math.max(1, lights.length) * 32);
     lights.forEach((light, i) => {
-      const spot = !!light.direction, d = light.direction || [0, -1, 0];
+      const spot = !!light.direction, d = light.direction || [0, -1, 0], shadow = spot && light.shadow;
       data.set([...light.position, light.near, ...light.colour, light.far, ...d, spot ? light.cosOuter : -2,
-        spot ? 1 / Math.max(light.cosInner - light.cosOuter, 1e-4) : 0, spot ? 1 : 0, 0, 0], i * 16);
+        spot ? 1 / Math.max(light.cosInner - light.cosOuter, 1e-4) : 0, spot ? 1 : 0, shadow ? shadow.tile : -1, shadow ? shadow.texel : 0,
+        ...(shadow ? shadow.matrix : new Array(16).fill(0))], i * 32);
     });
     if (!lights.length) return {data, count: 0, origin: [0, 0, 0], size: [1, 1, 1], cell, cells: new Float32Array(2), list: new Float32Array(1)};
     const low = [0, 1, 2].map(k => Math.min(...lights.map(l => l.position[k] - l.far)));

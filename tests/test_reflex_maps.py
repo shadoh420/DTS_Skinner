@@ -316,6 +316,7 @@ def effect_file_bytes():
     struct.pack_into('<4f4f', spot, 1, 1, .9, .7, 1, 2.5, 16, 192, 0)
     struct.pack_into('<2f', spot, 37, 5, 40)
     spot[45:52] = b'b_light'
+    spot[173] = 1  # casts shadows
     particle = bytearray(525)
     particle[0] = 2
     particle[1:20] = b'test/particle_flame'
@@ -341,8 +342,8 @@ class ReflexModelsTest(unittest.TestCase):
         effect = read_effect(effect_file_bytes())
         self.assertEqual(effect['meshes'][0]['materials'][0], 'common/materials/stone/stone')
         self.assertEqual((effect['meshes'][0]['colours'][0], effect['meshes'][0]['colours'][1], effect['meshes'][0]['scale']), ([.5, .5, .5, 1], None, 2))
-        self.assertEqual({k: effect['lights'][0][k] for k in ('kind', 'intensity', 'near', 'far', 'inner', 'outer', 'bone')},
-                         dict(kind='spot', intensity=2.5, near=16, far=192, inner=5, outer=40, bone='b_light'))
+        self.assertEqual({k: effect['lights'][0][k] for k in ('kind', 'intensity', 'near', 'far', 'inner', 'outer', 'bone', 'shadow')},
+                         dict(kind='spot', intensity=2.5, near=16, far=192, inner=5, outer=40, bone='b_light', shadow=True))
         files = {'test/effect.effect': effect_file_bytes(), 'test/mesh.mesh': mesh_file_bytes()}
         with tempfile.TemporaryDirectory() as directory:
             materials, failed = export_models(files.get, {'test/effect', 'test/missing'}, Path(directory))
