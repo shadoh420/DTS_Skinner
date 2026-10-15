@@ -309,6 +309,10 @@ class T1MapTests(unittest.TestCase):
             self.assertGreaterEqual(len(scene['objects']), 50)
             self.assertTrue(all(item['model'] for item in scene['objects']))
             self.assertEqual(len(scene['viewpoints']), 7)
+            # DarkStar haze: the band starts at h²/v (at most 0.75 v), 89 m here, not at the mission's 200.
+            terrain = scene['terrain']
+            self.assertEqual(terrain['hazeModel'], 'darkstar')
+            self.assertAlmostEqual(min(terrain['hazeDistance'] ** 2 / terrain['visibleDistance'], .75 * terrain['visibleDistance']), 89, delta=1)
             self.assertEqual(json.loads((pack / 'index.json').read_text())[0]['id'], 'raindance')
             # Every building carries its mission lightmap: an atlas plus two coordinates per model vertex.
             lit = [item for item in scene['objects'] if 'light' in item]

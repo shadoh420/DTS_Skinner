@@ -36,6 +36,8 @@ class SkinnerSkyTest(unittest.TestCase):
         for preset in presets:
             self.assertLessEqual(set(preset) - {'id', 'name'}, set(self.properties), preset['id'])
             for key, value in preset.items():
+                if key in self.defaults:  # A number where the shader declares a colour, or the reverse, is an authoring slip.
+                    self.assertEqual(isinstance(value, list), isinstance(self.defaults[key], list), (preset['id'], key))
                 if isinstance(value, list):
                     self.assertEqual(len(value), 3, (preset['id'], key))  # The Unity menu reads three-number lists only.
 
