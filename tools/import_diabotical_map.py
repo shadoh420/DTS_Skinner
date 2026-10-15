@@ -98,7 +98,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 29  # Of the files written per map: maps imported with another are read again.
+FORMAT = 30  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -432,8 +432,12 @@ def prop_key(piece, matrix, fields, asset, assets, known=()):
     matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
     own = (fields.get('material') or '').lower()
     material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
-    # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds).
-    flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '')
+    # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds), s casts the sun's shadow: a prop of
+    # a plain model does unless `skip_shadows`; the pieces of a dynamic asset (trims, pillars, the generator) cast none,
+    # `force_shadows` or not (runs 32, 45 and 46: boulders and a tree canopy cast, forced or not; dynamic pillars and
+    # generators standing on the floor or floating, forced or not, cast none seen from play distance).
+    casts = asset.get('dynamic') != 'true' and fields.get('skip_shadows') not in ('1', 'true')
+    flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '') + ('s' if casts else '')
     return f"{model}|{material}|{flags}", matrix
 
 

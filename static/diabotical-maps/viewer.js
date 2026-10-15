@@ -315,7 +315,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       [model, await get(`${data}models/${models[model].file}`).then(r => r.arrayBuffer())])));
     const geometries = new Map(), matrix = new THREE.Matrix4();
     let drawn = 0, absent = 0;
-    for (const {model, material: override, mirrored, noDecals, matrices, tints} of props) {
+    for (const {model, material: override, mirrored, noDecals, shadow, matrices, tints} of props) {
       if (!buffers.has(model)) { absent += matrices.length / 12; continue; }
       let at = 0;
       for (const [own, corners] of models[model].groups) {
@@ -351,7 +351,8 @@ window.addEventListener('DOMContentLoaded', async () => {
           mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
         }
         mesh.frustumCulled = false;  // r149 culls an instanced mesh by its one model's bounds.
-        mesh.castShadow = mesh.receiveShadow = true;
+        mesh.castShadow = shadow;  // Plain models do, dynamic assets' pieces do not (the importer's `s`).
+        mesh.receiveShadow = true;
         layers.props.add(mesh);
         if (!noDecals) surfaces.props.push({floats: geometries.get(key).attributes.position.data.array, matrices});
       }

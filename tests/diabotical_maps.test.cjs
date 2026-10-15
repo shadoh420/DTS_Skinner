@@ -97,7 +97,7 @@ test('shapes that draw nothing and an empty map give no surfaces', () => {
 
 test('an entities file gives each prop group its matrices and tints, and the markers, liquids and decals', () => {
   const {parseEntities} = require('../static/diabotical-maps/entities.js').DiaboticalEntities;
-  let head = Buffer.from(JSON.stringify({props: [['a/b|stone|', 2, 1], ['c||mn', 1, 0]], markers: [['spawn', 1, 2, 3]], liquids: [], decals: [['arrow', 2]], sky: {cube: 'skybox_dawn', rotation: 90}}));
+  let head = Buffer.from(JSON.stringify({props: [['a/b|stone|', 2, 1], ['c||mns', 1, 0]], markers: [['spawn', 1, 2, 3]], liquids: [], decals: [['arrow', 2]], sky: {cube: 'skybox_dawn', rotation: 90}}));
   head = Buffer.concat([head, Buffer.alloc((4 - head.length % 4) % 4, 32)]);
   const matrices = Float32Array.from({length: 36}, (_, i) => i), tints = Uint32Array.of(0x1ff0000, 0, 0, 0, 0, 0x1336699);
   const boxes = Float32Array.from({length: 48}, (_, i) => 100 + i), extras = Int32Array.of(-1, 1, 1000, 0x112233ff, 4, -2);
@@ -110,6 +110,7 @@ test('an entities file gives each prop group its matrices and tints, and the mar
     [['a/b', 'stone', false, false, 24, 0], ['c', '', true, true, 12, 24]]);
   assert.deepEqual([...props[0].tints], [...tints]);
   assert.equal(props[1].tints, null);
+  assert.deepEqual(props.map(prop => prop.shadow), [false, true]);  // s: casts the sun's shadow.
   assert.deepEqual(markers, [['spawn', 1, 2, 3]]);
   assert.deepEqual(liquids, []);
   assert.deepEqual(sky, {cube: 'skybox_dawn', rotation: 90});

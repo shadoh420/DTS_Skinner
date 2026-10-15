@@ -243,8 +243,8 @@ class DiaboticalMapsTest(unittest.TestCase):
             raw = (root / 'pack/maps' / index[0]['entities']).read_bytes()
             length, = struct.unpack_from('<I', raw)
             head = json.loads(raw[4:4 + length])
-            self.assertEqual(head['props'], [['props/sub/quad|stone_floor|', 1, 0], ['props/sub/quad||', 1, 0], ['props/gone||', 1, 0],
-                                             ['props/sub/quad|props/tinted|', 1, 1]])
+            self.assertEqual(head['props'], [['props/sub/quad|stone_floor|s', 1, 0], ['props/sub/quad||s', 1, 0], ['props/gone||s', 1, 0],
+                                             ['props/sub/quad|props/tinted|s', 1, 1]])
             self.assertEqual(np.frombuffer(raw[-12 - 108:-108], '<u4').tolist(), [0, 0x1336699, 0])  # The tinted key's tints.
             # Then the decals: their box matrices, then colour, flags and order each.
             self.assertEqual(head['decals'], [['arrow', 1]])
@@ -325,12 +325,13 @@ class DiaboticalMapsTest(unittest.TestCase):
         assets = {'quad_prop': {'model': 'props/quad', 'material': 'stone_floor', 'rules': []},
                   'quad_strip': {'dynamic': 'true', 'rules': [(0, [], ['props/quad']), (0, ['offset_right is 0'], ['props/quad_flipx'])]}}
         props, tints, markers, liquids, decals = placements(parsed['entities'], assets)
-        self.assertEqual({key: len(value) for key, value in props.items()}, {'props/quad|stone_floor|': 1, 'props/quad||': 2, 'props/quad||m': 1})
+        # A plain model's prop casts the sun's shadow (s); a dynamic asset's pieces do not.
+        self.assertEqual({key: len(value) for key, value in props.items()}, {'props/quad|stone_floor|s': 1, 'props/quad||': 2, 'props/quad||m': 1})
         # Tints: color, color2, color3 as 0x1RRGGBB, 0 unset; accentN is the global entity's. Only tinted keys are listed.
         self.assertEqual(sorted(tints), ['props/quad||', 'props/quad||m'])
         self.assertEqual(tints['props/quad||m'].tolist(), [[0x1ff8000, 0, 0x100ff7f]])
         # Page axes: the game's z negated. A static prop keeps its scale; a dynamic one is 40-unit cells from its corner.
-        static = props['props/quad|stone_floor|'][0].reshape(3, 4)
+        static = props['props/quad|stone_floor|s'][0].reshape(3, 4)
         self.assertEqual(static[:, 3].tolist(), [40, 20, -80])
         self.assertAlmostEqual(np.linalg.det(static[:, :3]), 8, 4)
         self.assertEqual(sorted(m[3] for key in ('props/quad||', 'props/quad||m') for m in props[key]), [20, 60, 100])
@@ -338,9 +339,10 @@ class DiaboticalMapsTest(unittest.TestCase):
         # A prop's material field X is the shader MODEL_X where there is one (bioplant's door frames), else X.
         framed = [('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'Frame_Red'}),
                   ('prop_e', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'stone_floor'}),
-                  ('prop_f', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'no_decals': '1'})]
-        self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|', 'props/quad|stone_floor|',
-                                                                                     'props/quad||n'])
+                  ('prop_f', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'no_decals': '1'}),
+                  ('prop_g', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'skip_shadows': 'true', 'no_decals': '1'})]
+        self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|s', 'props/quad|stone_floor|s',
+                                                                                     'props/quad||n', 'props/quad||ns'])
         # Billboards: a unit square scaled x by y, placed as a prop (page axes), colour, texture path with / , reflection.
         panes = [('billboard_1', (10, 20, 30), (0, 0, 0), (100, 50, 1), {'color': 'accent2', 'texture': 'Textures\Decals\Glow.png', 'reflection': 'on'}),
                  ('billboard_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'no_show': 'true'})]

@@ -33,7 +33,15 @@ left (`static/diabotical-maps/blocks.js`).
   missing corner set by the turn. Shapes 2, 4, 5 and 6 draw nothing in the
   game's own OBJ export (probably invisible blocks: clips, triggers…), so the
   page leaves them out; run 32 showed a roof of each casts no sun shadow
-  either (nor do props, with or without `__shadow`).
+  either.
+- **Prop shadows.** A prop of a plain model casts the sun's shadow unless it
+  has `skip_shadows`; the pieces of a dynamic asset (trims, pillars, pipes,
+  the generator) cast none. Runs 45 and 46 tested props on a sunlit floor:
+  boulders and a tree canopy cast a shadow with or without `force_shadows`,
+  while dynamic pillars and generators, standing on the floor or floating,
+  cast none seen from play distance, with `force_shadows`, `skip_shadows`,
+  `__shadow` or none (run 45 saw one faint blob under a forced generator
+  from 1,100 units up only). So the page does not read `force_shadows`.
 - **Bevels.** The game's export splits a cube's face into a 4-unit flat rim
   along each edge it shares with another of the cube's open faces, and the
   game shades that rim round (run 33: a gray pillar under bioplant's sun,
