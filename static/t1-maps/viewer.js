@@ -145,13 +145,22 @@ window.addEventListener('DOMContentLoaded', async () => {
       let start = 0;
       byMaterial.forEach((list, index) => { if (list.length) geometry.addGroup(start, list.length, index); start += list.length; });
       geometry.computeVertexNormals();
-      const materials = await Promise.all(model.material_textures.map(async file => {
+      const materials = await Promise.all(model.material_textures.map(async (file, slot) => {
         const blank = file.startsWith('[');
         const texture = blank || !file ? null : await loadTexture(pack ? data + 'textures/' + file : `/texture/${encodeURIComponent(file)}?game=t1`, true);
-        // Catalog models keep no material flags; a texture with alpha is blended by it, as the game draws its leaves.
-        const transparent = Boolean(texture && texture.userData.alpha);
-        return new THREE.MeshLambertMaterial({map: texture, color: texture ? 0xffffff : blank ? 0x999999 : 0xcc00cc, side: THREE.DoubleSide,
-          transparent, depthWrite: !transparent, alphaTest: transparent ? .02 : 0});
+        const color = texture ? 0xffffff : blank ? 0x999999 : 0xcc00cc, side = THREE.DoubleSide;
+        // The shape's TS material flags, as ts_matRender.cpp draws them: unshaded (0x100), transparent (0x1000: colour key,
+        // depth written) and translucent (0x2000: blended, no depth write, no haze) are all drawn unlit; an additive
+        // bitmap (0x10000, set at import) adds itself. Other flagged slots are opaque.
+        const flags = model.material_flags ? model.material_flags[slot] || 0 : null;
+        if (flags & 0x3100) {
+          const translucent = Boolean(flags & 0x2000), additive = translucent && flags & 0x10000;
+          return new THREE.MeshBasicMaterial({map: texture, color, side, transparent: translucent, depthWrite: !translucent, fog: !translucent,
+            alphaTest: flags & 0x1000 ? .5 : 0, ...additive ? {blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor} : {}});
+        }
+        // Models without flags (older packs, most catalog models): a texture with alpha is blended by it, as the game draws its leaves.
+        const transparent = flags === null && Boolean(texture && texture.userData.alpha);
+        return new THREE.MeshLambertMaterial({map: texture, color, side, transparent, depthWrite: !transparent, alphaTest: transparent ? .02 : 0});
       }));
       return {geometry, materials};
     })());

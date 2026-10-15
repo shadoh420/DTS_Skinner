@@ -15,7 +15,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from app import app
-from tools.import_t1_map import (Install, bake_lightmap, bitmap_png, import_maps, interior_dml, light_colours, lzh_expand, map_id,
+from tools.import_t1_map import (Install, bake_lightmap, bitmap_attributes, bitmap_png, import_maps, interior_dml, light_colours, lzh_expand, map_id,
                                  open_volume, pack_shelter, parse_mission, placement, read_lighting, read_palettes,
                                  read_terrain_block, read_terrain_index, rpg_places, walk)
 
@@ -111,6 +111,20 @@ class T1MapTests(unittest.TestCase):
             with Image.open(io.BytesIO(bitmap_png(sprite, palettes, True))) as image:
                 self.assertEqual((image.mode, [image.getpixel((x, y))[3] for y in range(2) for x in range(2)], image.getpixel((1, 0))[:3]),
                                  ('RGBA', alphas, (0, 255, 0)))
+            self.assertEqual(bitmap_attributes(sprite), flags)
+        self.assertEqual(bitmap_attributes(b'BM' + bytes(60)), 0)
+
+    def test_catalog_material_flags_line_up_with_the_slots(self):
+        # tools/t1_material_flags.py added them to the shipped shapes with unshaded, transparent or translucent slots.
+        flagged = {}
+        for path in (Path(app.static_folder) / 'model_json').glob('*.json'):
+            model = json.loads(path.read_text(encoding='utf-8'))
+            if 'material_flags' in model:
+                self.assertEqual(len(model['material_flags']), len(model['material_textures']), path.stem)
+                flagged[path.stem.lower()] = model['material_flags']
+        self.assertGreaterEqual(len(flagged), 100)
+        self.assertEqual(flagged['ammopad'][2], 0x103)  # The station's display: unshaded.
+        self.assertTrue(all(flag & 0x12000 == 0x12000 for flag in flagged['forcefield_3x4'][:6]))  # Translucent, additive bitmap.
 
     def test_windows_bitmap_takes_colours_from_the_game_palette_it_names(self):
         # The engine colours an 8-bit Windows bitmap from the palette bfReserved2 names (g_bitmap.cpp readMSBitmap),
@@ -368,6 +382,9 @@ class T1MapTests(unittest.TestCase):
             for name in {item['model'] for item in exported['objects']}:
                 model, twin = (json.loads(path.read_text()) for path in (bare / 'pack/models' / name, catalog[name.rsplit('-', 1)[0]]))
                 self.assertEqual((model['vertices'], all(model['material_textures'])), (twin.get('vertices', twin.get('v')), True))
+                # The exporter now writes the material flags; this PNG install cannot mark additive bitmaps (0x10000).
+                if 'material_flags' in twin:
+                    self.assertEqual(model['material_flags'], [flag & 0xffff for flag in twin['material_flags']], name)
             # A custom mission folder whose own script places shapes the catalog lacks: the install's editor arrow is
             # exported; its cube, which the shape exporter reads no geometry from, is reported and left a placeholder.
             custom = Path(directory) / 'custom'
