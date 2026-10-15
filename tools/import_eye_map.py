@@ -128,9 +128,23 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
         try:
             vmt,path=source_assets.resolve_material(files,name,dirs);p=vmt['params'];settings,mnotes=vtmb.material_settings(vmt)
             out.update(settings=settings,notes=mnotes,source=path)
-            # HDR sky RGB is a mantissa with alpha scale, never ordinary diffuse.
-            if '$hdrcompressedtexture' in json.dumps(p).lower() or (sky and '$hdrbasetexture' in p):
-                out['texture']='eye_sky_plain.png';out['notes'].append('HDR sky replaced with fixed plain colour; encoded mantissa is not displayed');return out
+            # HDR sky RGB is a mantissa with alpha scale, never ordinary diffuse: Valve's sky_hdr_compressed_rgbs shader
+            # draws rgb*a*8 (linear, any texture format), here at the fixed exposure, clamped, gamma 2.2. That reproduces
+            # Valve's own LDR sky_day01_01 faces from their _hdr twins to 0.35/255.
+            # noctis_hdrft spells its key "$hdrcompressedtexture<tab>"; read it as meant (the game binds no HDR texture there).
+            hdr=next((v for k,v in p.items() if k.strip()=='$hdrcompressedtexture' and isinstance(v,str) and v),None)
+            if hdr:
+                rgba,info=vtmb.read_texture(files,hdr,linear=True)
+                rgb=np.clip(rgba[...,:3]*rgba[...,3:]*8*exposure,0,1)**(1/2.2)
+                scale=re.search(r'scale\s+(\S+)\s+(\S+)',str(p.get('$basetexturetransform','')))
+                if scale and float(scale[1])==1 and float(scale[2])>1:  # Half-height sides: the image on top, its clamped last row below.
+                    rgb=np.pad(rgb,((0,round(len(rgb)*(float(scale[2])-1))),(0,0),(0,0)),mode='edge')
+                filename=key(f'{path} hdr {exposure}')+'_sky.png'
+                if any(s['origin']=='BSP pakfile' for s in info['sources']):filename=key(name_map)+'_'+filename
+                images[filename]=Image.fromarray(np.rint(rgb*255).astype(np.uint8))
+                out['texture']=filename;out['notes'].append(f'HDR sky: $hdrcompressedtexture rgb*alpha*8, exposure {exposure}, clamped, gamma 2.2');return out
+            if sky and '$hdrbasetexture' in p:
+                out['texture']='eye_sky_plain.png';out['notes'].append('Float HDR sky replaced with fixed plain colour');return out
             if vmt['shader'].lower()=='water' and not p.get('$basetexture'):
                 tint=str(p.get('$refracttint',p.get('$fogcolor','[.25 .35 .4]')))
                 values=np.asarray([float(v) for v in tint.strip('[]{} ').split()])
@@ -239,7 +253,7 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
         faces_omitted=face_skips,model_failures=failures,omitted=omitted,npcs=len({r['entity'] for r in instances if r['npc']}),
         entity_data=b['entities'],entity_classes=dict(Counter(e.get('classname','') for e in entities)),lump_audit=b['audit'],game_lumps=gameaudit,pakfile=pak,
         missing=sorted({r['source'] for r in missing}),missing_reasons=missing,materials=list(materials.values()),
-        lighting=dict(exposure=exposure,display_power=1,source='HDR lump53; VHV2; nearest leaf ambient cube',curve='fixed exposure, clamp to LDR, gamma2.2'),
+        lighting=dict(exposure=exposure,display_power=1,source='HDR lump53; VHV2; nearest leaf ambient cube',curve='fixed exposure, clamp to LDR, gamma2.2 (lightmaps and HDR sky faces)'),
         gaps=['2D sky only; 3D sky camera recorded but not rendered', 'Water is a base texture/tint; overlays, decals, sprites, particles and dynamic lights omitted',
               'Terrain blends two base textures using displacement alpha; blend masks, detail textures and bump lighting are not evaluated',
               'NPCs use model-library pose/default bodygroups; FGD editor defaults when entity has no model; armor choices, attachments and scripts not simulated',
