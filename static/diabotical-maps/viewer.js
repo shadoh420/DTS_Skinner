@@ -324,7 +324,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   /* Light beams (volumetric entities; read_volumetrics in the importer): panels in the entity's unit box, a grid of
      `segments` across x by `segments_y` along z facing z, or `segments` fanned about the vertical (radial), each
      cell less its gap, the top narrowed by `taper`; brightest at the top and fading down, soft at the sides, times
-     the colour, its strength and the texture where there is one; added to the picture (alpha blended with `alpha`),
+     the colour, its strength and the texture where there is one, fading where seen edge on (run 47: bioplant's
+     map-sized volumetric_64 is invisible from above); added to the picture (alpha blended with `alpha`),
      turning about the vertical by `rotation_speed` (radians a second, not measured). */
   const beams = [];
   function addVolumetrics(list, entries) {
@@ -350,14 +351,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.computeVertexNormals();
       const entry = entries[name], map = entry && entry.texture ? texture(entry.texture) : null;
       const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
         uniforms: {colour: {value: new THREE.Color(rgb).multiplyScalar(strength)}, map: {value: map}, textured: {value: map ? 1 : 0}},
         transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: blended ? THREE.NormalBlending : THREE.AdditiveBlending,
-        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-        fragmentShader: `uniform vec3 colour; uniform sampler2D map; uniform float textured; varying vec2 vUv;
+        vertexShader: `varying vec2 vUv; varying vec3 vFacing, vView;
+          void main() { vUv = uv; vec4 view = modelViewMatrix * vec4(position, 1.); vView = view.xyz; vFacing = normalMatrix * normal;
+            gl_Position = projectionMatrix * view; }`,
+        fragmentShader: `uniform vec3 colour; uniform sampler2D map; uniform float textured; varying vec2 vUv; varying vec3 vFacing, vView;
           void main() {
             float fade = smoothstep(0., 1., vUv.y) * (1. - smoothstep(.9, 1., vUv.y)) * sin(3.14159 * vUv.x);
+            fade *= abs(dot(normalize(vFacing), normalize(vView)));  // A panel seen edge on fades out.
             vec4 texel = textured > .5 ? texture2D(map, vUv) : vec4(1.);
             gl_FragColor = vec4(colour * texel.rgb * fade, fade * texel.a);
           }`}));
@@ -886,7 +891,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateParticles(delta);
     draw();
   });
-  window.skinnerDiaboticalMaps = {renderer, scene, camera, draw};  // For checks in a hidden page, where no frame is drawn.
+  window.skinnerDiaboticalMaps = {renderer, scene, camera, draw, gameUniforms};  // For checks in a hidden page, where no frame is drawn.
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   $('import').addEventListener('click', async () => {
