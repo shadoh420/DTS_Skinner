@@ -48,3 +48,29 @@ assert.ok(M.ambientOrder(-3,0)>10,'GUI/subview stages still follow interactions'
 assert.ok(M.ambientOrder(0,999)<M.ambientOrder(4,0),'opaque sky before translucent windows');
 assert.ok(M.ambientOrder(2,5)<M.ambientOrder(2,6));
 assert.equal(M.ambientOrder(undefined,1),M.ambientOrder(0,1),'old imports without sort');
+// tr_deform.cpp rebuilds. Quad in z=0 facing +z, corners not in cyclic order.
+const quad={position:new Float32Array([-1,-1,0, 1,1,0, 1,-1,0, -1,1,0]),normal:new Float32Array([0,0,1,0,0,1,0,0,1,0,0,1]),
+ uv:new Float32Array(8),color:new Float32Array(12).fill(1),index:new Uint32Array([0,2,1,0,1,3])};
+const flareLayout=M.deformLayout('flare',quad),buffers=n=>({position:new Float32Array(n*3),uv:new Float32Array(n*2),color:new Float32Array(n*3)});
+assert.equal(flareLayout.vertices,16);assert.equal(flareLayout.index.length,54);
+let out=buffers(16);
+assert.equal(M.deform('flare',quad,flareLayout,out,[0,0,-10],[1,0,0],[0,0,1],[4]),false,'flares vanish from behind');
+assert.ok(M.deform('flare',quad,flareLayout,out,[0,0,10],[1,0,0],[0,0,1],[4]));
+assert.equal(out.color[0],1,'facing flares are full bright');
+for(let v=4;v<16;v++){const r=Math.hypot(out.position[v*3],out.position[v*3+1]);assert.ok(r>2.5&&r<7,'halo ring lies `spread` outside the quad: '+r);assert.equal(out.uv[v*2],0);}
+M.deform('flare',quad,flareLayout,out,[3,0,10],[1,0,0],[0,0,1],[4]);for(let v=4;v<16;v++)assert.ok(out.position[v*3+2]>=-1e-6,'halo never sinks behind the flare plane');
+M.deform('flare',quad,flareLayout,out,[1000,0,10],[1,0,0],[0,0,1],[4]);assert.ok(out.color[0]>0&&out.color[0]<.1,'edge-on flares fade');
+assert.equal(M.deformLayout('flare',{...quad,index:new Uint32Array(3)}),null,'only single quads, like the engine');
+// Sprite: view-aligned square of radius |v0-mid|/sqrt(2), standard corner texcoords.
+out=buffers(4);M.deform('sprite',quad,M.deformLayout('sprite',quad),out,[0,0,10],[0,1,0],[0,0,1]);
+assert.deepEqual([...out.position.slice(0,3)].map(v=>+v.toFixed(3)),[0,1,1]);assert.deepEqual([...out.uv.slice(0,4)],[0,0,1,0]);
+// Tube: a 100 x 2 strip along x turns its short ends toward a viewer in its own plane.
+const tube={position:new Float32Array([0,-1,0, 0,1,0, 100,1,0, 100,-1,0]),normal:quad.normal,uv:new Float32Array(8),color:quad.color,index:new Uint32Array([0,1,2,0,2,3])};
+out=buffers(4);M.deform('tube',tube,M.deformLayout('tube',tube),out,[50,100,0],[1,0,0],[0,0,1]);
+for(let v=0;v<4;v++){assert.ok(Math.abs(Math.abs(out.position[v*3+2])-1)<1e-6,'width now spans z');assert.ok(Math.abs(out.position[v*3+1])<1e-6);}
+assert.ok(out.position[2]*out.position[11]>0,'no twist: corners 0 and 3 stay on one side');
+// Turbulent: st += range*table(f), range*table(f+.5); f = offset + domain*(.003x+.007y+.011z) + offset.
+const flatQuad={...tube,uv:new Float32Array(8)};out=buffers(4);
+M.deform('turbulent',flatQuad,M.deformLayout('turbulent',flatQuad),out,[0,0,0],[1,0,0],[0,0,1],[2,.25,1],f=>f);
+assert.ok(Math.abs(out.uv[0]-2*(.5-.007))<1e-6&&Math.abs(out.uv[1]-2*(1-.007))<1e-6,"vertex 0 is at y=-1");
+console.log('Deforms OK');

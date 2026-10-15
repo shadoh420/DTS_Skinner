@@ -37,6 +37,30 @@ def expression(source,policy=None):
     return result
 
 
+def expressions(tokens,count,policy=None):
+    """Consecutive greedy expressions, as ParseExpression reads them: 'time * .2 1' -> time*.2, 1."""
+    result=[];at=0
+    for _ in range(count):
+        for end in range(len(tokens),at,-1):
+            try:result.append(expression(' '.join(tokens[at:end]),policy));at=end;break
+            except ValueError:continue
+        else:raise ValueError('Expected '+str(count)+' expressions: '+' '.join(tokens))
+    return result
+
+
+DEFORM_ARGS={'flare':1,'expand':1,'move':1,'sprite':0,'rectsprite':0,'tube':0}
+
+
+def parse_deform(tokens,policy=None):
+    """Material.cpp ParseDeform on the global 'deform' line; None for kinds the viewer doesn't rebuild."""
+    lower=[t.lower() for t in tokens];at=lower.index('deform')+1
+    end=lower.index('\n',at) if '\n' in lower[at:] else len(tokens)
+    kind,args=lower[at],[t for t in tokens[at+1:end]]
+    if kind=='turbulent':return dict(kind=kind,table=args[0].lower(),values=expressions(args[1:],3,policy))
+    if kind in DEFORM_ARGS:return dict(kind=kind,values=expressions(args,DEFORM_ARGS[kind],policy))
+    return None
+
+
 def tables(files):
     result={}
     for name,asset in sorted(files.items(),key=lambda item:(item[1].campaign=='d3xp',item[0])):
@@ -193,7 +217,12 @@ def compile_material(name,defs,materials,textures):
     sort=sort_value(t[lower.index('sort')+1]) if 'sort' in lower[:-1] else SORTS['decal'] if decal else None
     if sort is None:sort=SORTS['medium'] if translucent else SORTS['opaque']
     portal_sky='portalsky' in lower
-    for feature in ('deform','guisurf','foglight','blendlight','mirror'):
+    deform=None
+    if 'deform' in lower[:-1]:
+        try:deform=parse_deform(global_tokens,defs.policy)
+        except (ValueError,IndexError) as exc:notes.append('deform: '+str(exc))
+        if not deform:notes.append('deform '+lower[lower.index('deform')+1])
+    for feature in ('guisurf','foglight','blendlight','mirror'):
         if feature in lower:notes.append(feature)
     for s in parsed:
         for image in s['cube']['faces'] if s.get('cube') else [s['image']]:
@@ -206,4 +235,4 @@ def compile_material(name,defs,materials,textures):
     return dict(name=record['name'],visible=record['visible'],twoSided=record['twoSided'],translucent=translucent,
                 soundReactive=any(sound_reactive([s['color'],s['condition'],s['uv'],s['alphaTest']]) for s in parsed),
                 unsmoothedTangents='unsmoothedtangents' in lower,ambientLight='ambientlight' in lower,fogLight='foglight' in lower,blendLight='blendlight' in lower,
-                stages=parsed,falloff=falloff,spectrum=spectrum,sort=sort,portalSky=portal_sky,approximations=sorted(set(notes)))
+                stages=parsed,falloff=falloff,spectrum=spectrum,sort=sort,portalSky=portal_sky,deform=deform,approximations=sorted(set(notes)))

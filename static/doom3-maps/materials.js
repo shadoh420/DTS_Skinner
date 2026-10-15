@@ -162,6 +162,93 @@
     const rows=[x.map((v,i)=>v*rc+y[i]*rs),y.map((v,i)=>v*rc-x[i]*rs),up];
     return rows.flatMap(row=>[0,1,2].map(j=>row.reduce((n,v,k)=>n+v*axis[k*3+j],0)));
   }
-  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,ambientOrder,portalSkyOrigin,skyMatrix};
+  // tr_deform.cpp view-dependent deforms, rebuilt on the CPU for visible surfaces only.
+  // base: {position,uv,color,normal,index} of one surface; out: same-size typed arrays.
+  const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const unit3=a=>{const l=Math.hypot(...a)||1;return a.map(v=>v/l);};
+  const vert=(p,i)=>[p[i*3],p[i*3+1],p[i*3+2]];
+  const DEFORMS={flare:1,sprite:1,rectsprite:1,tube:1,turbulent:1,expand:1,move:1};
+  function cyclicQuad(p,start) {
+    // Corner order around the centre; PROC/model quads are not guaranteed cyclic.
+    const v=[0,1,2,3].map(k=>vert(p,start+k)),c=v.reduce((s,x)=>s.map((y,i)=>y+x[i]/4),[0,0,0]);
+    const n=unit3(cross(sub(v[1],v[0]),sub(v[2],v[0]))),a=unit3(sub(v[0],c)),b=cross(n,a);
+    return [0,1,2,3].map(k=>[k,Math.atan2(dot3(sub(v[k],c),b),dot3(sub(v[k],c),a))]).sort((x,y)=>x[1]-y[1]).map(x=>start+x[0]);
+  }
+  function deformLayout(kind,base) {
+    // Returns {vertices,index} for the rebuilt surface, or null when the deform can't apply (drawn unchanged, like the engine).
+    const n=base.position.length/3;
+    if(kind==='flare') {
+      if(n!==4||base.index.length!==6)return null;
+      const q=cyclicQuad(base.position,0),index=[0,1,2,0,2,3];
+      for(let j=0;j<4;j++){const k=(j+1)%4,o=j=>4+j*3;index.push(j,k,o(k)+2,j,o(k)+2,o(j),j,o(j),o(j)+1,j,o(j)+1,o(j)+2);}
+      return {vertices:16,index,order:q};
+    }
+    if(kind==='sprite'||kind==='rectsprite') {
+      if(n%4)return null;
+      const index=[];for(let i=0;i<n;i+=4)index.push(i,i+1,i+2,i,i+2,i+3);
+      return {vertices:n,index};
+    }
+    if(kind==='tube') {
+      if(n%4)return null;
+      return {vertices:n,index:Array.from(base.index),order:Array.from({length:n/4},(_,i)=>cyclicQuad(base.position,i*4)).flat()};
+    }
+    return {vertices:n,index:Array.from(base.index)};
+  }
+  function deform(kind,base,layout,out,eye,left,up,values=[],lookup=null) {
+    // Fills out.position/uv/color; returns false when the surface draws nothing this view.
+    const p=base.position,n=p.length/3;
+    if(kind==='flare') {
+      // R_FlareDeform: invisible from behind, dimmed edge-on (dot*8), halo of `spread` units in _quadratic falloff.
+      const q=layout.order.map(i=>vert(p,i)),c=q.reduce((s,x)=>s.map((y,i)=>y+x[i]/4),[0,0,0]);
+      const normal=unit3([0,1,2,3].reduce((s,i)=>s.map((y,k)=>y+base.normal[i*3+k]),[0,0,0]));
+      const toEye=sub(eye,c);if(dot3(toEye,normal)<=0)return false;
+      const shade=Math.min(1,Math.floor(dot3(unit3(toEye),normal)*8*256)/255),spread=values[0]||0;
+      for(let j=0;j<4;j++) {
+        const v=q[j],next=q[(j+1)%4],prev=q[(j+3)%4],e=unit3(sub(eye,v));
+        const outward=(d,edgeMid)=>{d=unit3(d);return dot3(d,sub(edgeMid,c))<0?d.map(x=>-x):d;};
+        const e0=outward(cross(e,sub(next,v)),v.map((x,i)=>(x+next[i])/2)),e2=outward(cross(e,sub(v,prev)),v.map((x,i)=>(x+prev[i])/2));
+        const e1=unit3(e0.map((x,i)=>x+e2[i]));
+        out.position.set(v,j*3);out.uv.set([.5,.5],j*2);
+        [e0,e1,e2].forEach((d,k)=>{
+          // Pull each halo point back along its view ray onto the flare plane: same screen spot, nearer depth.
+          let o=v.map((x,i)=>x+d[i]*spread);const ray=sub(o,eye),len=Math.hypot(...ray),u=ray.map(x=>x/len);
+          const along=-dot3(toEye,normal)/dot3(u,normal);if(along>0&&along<len)o=eye.map((x,i)=>x+u[i]*along);
+          const at=4+j*3+k;out.position.set(o,at*3);out.uv.set([0,.5],at*2);});
+      }
+      out.color.fill(shade);return true;
+    }
+    if(kind==='sprite'||kind==='rectsprite') {
+      // R_AutospriteDeform: each 4-vertex group becomes a view-aligned square of radius |v0-mid|/sqrt(2).
+      const st=[[0,0],[1,0],[1,1],[0,1]],corner=[[1,1],[-1,1],[-1,-1],[1,-1]];
+      for(let i=0;i<n;i+=4) {
+        const v=[0,1,2,3].map(k=>vert(p,i+k)),mid=v.reduce((s,x)=>s.map((y,k)=>y+x[k]/4),[0,0,0]);
+        const r=Math.hypot(...sub(v[0],mid))*.707;
+        for(let k=0;k<4;k++){out.position.set(mid.map((x,a)=>x+(left[a]*corner[k][0]+up[a]*corner[k][1])*r),(i+k)*3);out.uv.set(st[k],(i+k)*2);}
+      }
+      return true;
+    }
+    out.position.set(p);out.uv.set(base.uv);
+    if(kind==='tube') {
+      // R_TubeDeform: keep the long axis, turn the short ends to face the viewer.
+      for(let i=0;i<n;i+=4) {
+        const o=layout.order.slice(i,i+4),v=o.map(k=>vert(p,k)),len=k=>Math.hypot(...sub(v[k],v[(k+1)%4]));
+        const s=len(0)+len(2)<=len(1)+len(3)?0:1,ends=[[o[s],o[s+1]],[o[s+2],o[(s+3)%4]]];
+        const mids=ends.map(([a,b])=>vert(p,a).map((x,k)=>(x+vert(p,b)[k])/2));
+        // Cyclic order: the second end starts beside the first end's last corner, so its signs flip (no twist).
+        ends.forEach(([a,b],e)=>{const h=Math.hypot(...sub(vert(p,a),vert(p,b)))/2*(e?-1:1);
+          const minor=unit3(cross(sub(mids[1],mids[0]),sub(eye,mids[e])));
+          out.position.set(mids[e].map((x,k)=>x+minor[k]*h),a*3);out.position.set(mids[e].map((x,k)=>x-minor[k]*h),b*3);});
+      }
+    } else if(kind==='turbulent') {
+      // R_TurbulentDeform, including its doubled time offset.
+      const [range,offset,domain]=values;
+      for(let i=0;i<n;i++){const f=offset+domain*(p[i*3]*.003+p[i*3+1]*.007+p[i*3+2]*.011)+offset;
+        out.uv[i*2]+=range*lookup(f);out.uv[i*2+1]+=range*lookup(f+.5);}
+    } else if(kind==='expand') {for(let i=0;i<n*3;i++)out.position[i]+=base.normal[i]*values[0];}
+    else if(kind==='move') {for(let i=0;i<n;i++)out.position[i*3]+=values[0];}
+    return true;
+  }
+  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,ambientOrder,portalSkyOrigin,skyMatrix,DEFORMS,deformLayout,deform};
   if(typeof module!=='undefined')module.exports=api;else root.doom3Materials=api;
 })(typeof window!=='undefined'?window:globalThis);

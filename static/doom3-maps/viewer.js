@@ -124,6 +124,34 @@ function interactionGroups(stages) {
  }
  flush();return out;
 }
+function deformGeometry(surface,spec) {
+ // A private copy of one surface, so tr_deform.cpp rebuilds don't touch the shared map buffers.
+ const ix=geometry.index.array.subarray(surface.start,surface.start+surface.count);let lo=Infinity,hi=-1;
+ for(const i of ix){if(i<lo)lo=i;if(i>hi)hi=i;}
+ const a=geometry.attributes,slice=attr=>attr.array.slice(lo*attr.itemSize,(hi+1)*attr.itemSize);
+ const base={position:slice(a.position),normal:slice(a.normal),uv:slice(a.uv),color:slice(a.color),index:Uint32Array.from(ix,i=>i-lo)};
+ const layout=M.deformLayout(spec.kind,base);if(!layout)return null;
+ const n=layout.vertices,g=new THREE.BufferGeometry();
+ for(const [name,source,size] of [['position',base.position,3],['normal',base.normal,3],['uv',base.uv,2],['color',base.color,3],
+   ['doomAlpha',slice(a.doomAlpha),1],['doomTangent',slice(a.doomTangent),3],['doomBitangent',slice(a.doomBitangent),3]]) {
+  const values=new Float32Array(n*size);
+  if(source.length===values.length)values.set(source);else for(let i=0;i<n;i++)values.set(source.subarray(0,size),i*size);
+  const attribute=new THREE.BufferAttribute(values,size);if(['position','uv','color'].includes(name))attribute.setUsage(THREE.DynamicDrawUsage);
+  g.setAttribute(name,attribute);
+ }
+ g.setIndex(layout.index);
+ const at0=spec.values.map(v=>Math.abs(M.evaluate(v,0,surface.parms,tables,data.globalShaderParms)));
+ const size=Math.hypot(...surface.bounds[1].map((v,i)=>v-surface.bounds[0][i]));
+ return {geometry:g,spec,base,layout,margin:size+(at0[0]||0)*2,out:{position:g.attributes.position.array,uv:g.attributes.uv.array,color:g.attributes.color.array}};
+}
+function applyDeform(batch,view,seconds,sound) {
+ const d=batch.deform,{spec}=d,parms=batch.surface.parms,e=view.matrixWorld.elements;
+ const values=spec.values.map(v=>M.evaluate(v,seconds,parms,tables,data.globalShaderParms,sound));
+ const lookup=tables[spec.table]?f=>M.evaluate(['table',spec.table,f],seconds,parms,tables):f=>Math.sin(f*2*Math.PI);
+ if(!M.deform(spec.kind,d.base,d.layout,d.out,view.position.toArray(),[-e[0],-e[1],-e[2]],[e[4],e[5],e[6]],values,lookup))return false;
+ for(const name of ['position','uv','color'])batch.geometry.attributes[name].needsUpdate=true;
+ return true;
+}
 function disposeMap() {
  npcs.setCount(0);
  for(const b of batches){for(const mesh of b.meshes)mesh.material.dispose();b.group.clear();b.geometry.dispose();}
@@ -164,9 +192,13 @@ async function buildMap(meta,binary) {
  let passCount=0,ambientOrder=100;
  for(const surface of meta.surfaces) {
   const material=meta.materials[surface.material],group=new THREE.Group(),meshes=[];
-  const g=new THREE.BufferGeometry();g.attributes=geometry.attributes;g.index=geometry.index;g.setDrawRange(surface.start,surface.count);
-  g.boundingBox=new THREE.Box3(new THREE.Vector3(...surface.bounds[0]),new THREE.Vector3(...surface.bounds[1]));g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
-  const batch={group,meshes,geometry:g,surface,npc:npcOwners.has(surface.entity)};batches.push(batch);scene.add(group);
+  const deformed=M.DEFORMS[material.deform?.kind]?deformGeometry(surface,material.deform):null;
+  let g=deformed?.geometry;
+  if(!g){g=new THREE.BufferGeometry();g.attributes=geometry.attributes;g.index=geometry.index;g.setDrawRange(surface.start,surface.count);}
+  g.boundingBox=new THREE.Box3(new THREE.Vector3(...surface.bounds[0]),new THREE.Vector3(...surface.bounds[1]));
+  if(deformed)g.boundingBox.expandByScalar(deformed.margin);
+  g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
+  const batch={group,meshes,geometry:g,surface,deform:deformed,npc:npcOwners.has(surface.entity)};batches.push(batch);scene.add(group);
   function pass(kind,diffuse,specular,bump,light,projection,order) {
    const u=uniforms();u.vertexAlphaEnabled.value=meta.game==='quake4'?1:0;u.passKind.value=kind;u.diffuseMap.value=diffuse?.texture||(kind===1?black:white);
    u.specularMap.value=specular?.texture||black;u.bumpMap.value=bump?.texture||flat;
@@ -184,7 +216,7 @@ async function buildMap(meta,binary) {
     u.cameraCube={value:+diffuse.cube.camera};u.skyMatrix={value:unit()};
    }
    const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:kind===3?cubeFragment:fragment,uniforms:u,vertexColors:true,
-    side:material.twoSided?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
+    side:material.twoSided||deformed?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
     blending:kind===0?THREE.NoBlending:THREE.CustomBlending,blendSrc:THREE.OneFactor,blendDst:kind===1?THREE.OneFactor:THREE.ZeroFactor});
    if(kind===2||kind===3) {
     const factors=M.ambientBlend(diffuse).map(f=>blendFactors[f]);
@@ -231,7 +263,11 @@ function draw(seconds=0,target=null) {
   const areas=M.visibleAreas(view.position.toArray(),data,matrix.elements);let surfaces=0;
   for(const batch of batches){
    batch.group.visible=(!batch.npc||npcs.enabled)&&(!batch.surface.areas.length||batch.surface.areas.some(a=>areas.has(a)))&&frustum.intersectsBox(batch.geometry.boundingBox);
-   if(batch.group.visible){surfaces++;const sound=M.soundAmplitude(batch.surface.sound,seconds,soundAmplitudeOverride);for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms,sound);}
+   if(batch.group.visible){
+    const sound=M.soundAmplitude(batch.surface.sound,seconds,soundAmplitudeOverride);
+    if(batch.deform&&!applyDeform(batch,view,seconds,sound)){batch.group.visible=false;continue;}
+    surfaces++;for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms,sound);
+   }
   }
   return {areas,surfaces};
  }

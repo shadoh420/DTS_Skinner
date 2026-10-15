@@ -247,6 +247,24 @@ class DoomMapTest(unittest.TestCase):
                 self.assertEqual([s['role'] for s in compile_material('textures/reflect',d,m,t)['stages']],['bump'],
                                  'AddImplicitStages adds no white diffuse beside a reflection stage')
 
+    def test_deform_lines(self):
+        from tools.doom3_map_materials import parse_deform
+        self.assertEqual(parse_deform(lex('translucent\ndeform flare ( 16 + parm4 )\n{ map _quadratic }')),
+                         dict(kind='flare',values=[['+',16.0,'parm4']]))
+        self.assertEqual(parse_deform(lex('deform turbulent sinTable .0295 time * .2 1\n')),
+                         dict(kind='turbulent',table='sintable',values=[.0295,['*','time',.2],1.0]))
+        self.assertEqual(parse_deform(lex('deform sprite\nsort nearest')),dict(kind='sprite',values=[]))
+        self.assertIsNone(parse_deform(lex('deform eyeBall')))
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);fixture(root/'install')
+            with Install(root/'install') as archive:
+                d=Declarations(archive.files['base']);t=Textures(archive.files['base'],root/'textures');m=Materials(d,t)
+                d.materials['textures/sfx/flare']=lex('translucent\ndeform flare 16\n{ blend add map _quadratic colored vertexcolor }')
+                flare=compile_material('textures/sfx/flare',d,m,t)
+                self.assertEqual(flare['deform'],dict(kind='flare',values=[16.0]));self.assertEqual(flare['approximations'],[])
+                d.materials['textures/eye']=lex('deform eyeBall\n{ blend filter map _white }')
+                self.assertEqual(compile_material('textures/eye',d,m,t)['approximations'],['deform eyeball'])
+
     def test_roe_portal_sky_entity_and_areas(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);fixture(root/'install')
