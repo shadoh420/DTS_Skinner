@@ -964,7 +964,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     preview = load_model_data(root / 'models' / model if source == 'pack' else model_dir / (model + '.json'))
                     with contextlib.redirect_stdout(io.StringIO()):
                         baked = load_animated_model(stem, Path(work) / (stem + '.dts'), preview, only='power')
-                except (ValueError, KeyError, IndexError, OSError, struct.error):
+                except Exception:  # As the shape exporter: a file it cannot read just stays still.
                     return None
             if baked['animation_clips']:
                 clip = baked['animation_clips'][0]
