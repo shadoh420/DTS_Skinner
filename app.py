@@ -222,7 +222,8 @@ SKY_PACKS = {'t1': ('Tribes', 'dome', ('',)), 'q3': ('Quake III Arena', 'q3', ('
              'jk2': ('Jedi Outcast', 'q3', ('',)), 'ja': ('Jedi Academy', 'q3', ('',)), 'quake2': ('Quake II', 'q2', ('',)),
              'daikatana': ('Daikatana', 'q2', ('',)), 'anachronox': ('Anachronox', 'q2', ('',)),
              'sin': ('SiN', 'q2', ('sin', '2015', 'ctf')), 'vtmb': ('Vampire: The Masquerade – Bloodlines', 'q2', ('',)),
-             'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',)), 'quake': ('Quake (1996)', 'quake1', ('', 'hipnotic', 'rogue'))}
+             'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',)), 'quake': ('Quake (1996)', 'quake1', ('', 'hipnotic', 'rogue')),
+             'nos': ('Nosgoth', 'ue3dome', ('',))}
 PLACEHOLDER_SKIES = {'eye_sky_plain.png'}  # E.Y.E.'s stand-in for its HDR skies: one flat colour (import_eye_map.py).
 
 
@@ -236,6 +237,18 @@ def scene_skies(kind, scene, row):
         if not (scene.get('skybox') or {}).get('faces'):
             return [(dict(name=group['name'], texture=group['texture']), {'renderer': 'quake1'})
                     for group in {g.get('texture'): g for g in scene.get('groups') or [] if g.get('kind') == 'sky' and g.get('texture')}.values()]
+    if kind == 'ue3dome':  # Dome meshes the importer flags sky (skies.js meshes), centred on the first one's pivot.
+        library = scene.get('model_library') or {}
+        placed = [(library[i['look']], i['matrix']) for i in scene.get('instances') or []
+                  if (library.get(i.get('look')) or {}).get('sky') and len(i.get('matrix') or ()) == 16]
+        placed.sort(key=lambda item: item[0].get('sky_order', -10001))  # Background dome (-10002) first.
+        if not placed:
+            return []
+        centre = placed[0][1][12:15]
+        models = [dict(file=m['geometry']['file'], arrays=m['geometry']['arrays'], store=m.get('store', 'models'),
+                       groups=[{k: g.get(k) for k in ('start', 'count', 'texture', 'settings', 'kind')} for g in m.get('groups') or []],
+                       matrix=matrix[:12] + [v - c for v, c in zip(matrix[12:15], centre)] + matrix[15:]) for m, matrix in placed]
+        return [(dict(name=placed[0][0].get('source', row['id']), models=models), {'renderer': 'meshes'})]
     faces = (scene.get('skybox') or {}).get('faces') or {}
     boxed = [(faces.get(side) or {}).get('texture') for side in ('rt', 'bk', 'lf', 'ft', 'up', 'dn')]
     if not all(boxed) or set(boxed) <= PLACEHOLDER_SKIES:
