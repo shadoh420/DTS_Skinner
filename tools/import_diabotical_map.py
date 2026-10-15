@@ -441,14 +441,17 @@ def prop_key(piece, matrix, fields, asset, assets, known=()):
     return f"{model}|{material}|{flags}", matrix
 
 
-def placements(entities, assets, known=(), pickups=None):
+def placements(entities, assets, known=(), pickups=None, movers=None):
     """A map's props as {"model|material|m": float32 array of page matrices' top three rows} (material empty for the
     model's own, m when mirrored), their tints ({key: uint32 (n, 3)}, for the keys with any: each prop's color,
     color2 and color3 as 0x1RRGGBB, 0 if unset), its spawns, pickups and other markers, liquids, and decals ({material:
     (float32 (n, 24) page matrices of their boxes, projected from and cut to, uint32 (n, 3): colour 0xRRGGBBAA, flags (1 mirrored, 2 v2, 4 v3),
     order as int32)}). A prop's material field X names the shader MODEL_X where `known` (the material names) has one
     (bioplant's door frames: corridor_path_..._frame_red), else X. A dynamic prop's scale is its size in 40-unit cells, each cell a model its asset's rules pick by
-    the cell's offsets from the prop's ends. A pickup of a kind in `pickups` ({kind: scale}) is the prop pickup/KIND."""
+    the cell's offsets from the prop's ends. A pickup of a kind in `pickups` ({kind: scale}) is the prop pickup/KIND.
+    Props that move by themselves (`movement float A W`: up and down, A units at W radians a second; `rotate S`: S
+    degrees a second about the vertical; run 46) are listed in
+    `movers` ({key: [[index in the key's props, kind (0 float, 1 rotate), A or S, W, pivot x, y, z (page axes)]]})."""
     props, tints, markers, liquids, decals = {}, {}, [], [], {}
     palette = next((fields for name, *_, fields in entities if name == 'global'), {})
     for number, (name, position, rotation, scale, fields) in enumerate(entities):
@@ -504,9 +507,13 @@ def placements(entities, assets, known=(), pickups=None):
                     pieces.append((choice, base @ offset))
         else:
             pieces.append((model, game_matrix(position, rotation, scale)))
+        motion = (fields.get('movement') or '').lower().split()
+        motion = [MOVEMENT[motion[0]], *[float(w) for w in motion[1:3] if re.fullmatch(r'-?\d*\.?\d+', w)]] if motion and motion[0] in MOVEMENT else None
         for piece, matrix in pieces:
             found = prop_key(piece, matrix, fields, asset, assets, known)
             if found:
+                if motion and movers is not None and len(motion) > 1:
+                    movers.setdefault(found[0], []).append([len(props.get(found[0], [])), *(motion + [1.0] * 3)[:3], position[0], position[1], -position[2]])
                 props.setdefault(found[0], []).append(found[1][:3].ravel())
                 tints.setdefault(found[0], []).append(tint)
     tints = {key: np.array(value, np.uint32) for key, value in tints.items() if any(map(any, value))}
@@ -689,6 +696,7 @@ DEFAULT_SHADOW = [.325, .469, .519]  # Run 20: a pillar's shadow over the sunlit
 BLOCK = np.array([40, 20, 40])  # A block's size in entity units.
 # Light animations (the editor's "Vis. Function"), as the page numbers them.
 VISIBILITY = {name: n for n, name in enumerate(('none', 'sin', 'hills', 'valleys', 'peaks', 'ascending_saw', 'descending_saw', 'binary', 'binary_flicker', 'flicker'))}
+MOVEMENT = {'float': 0, 'rotate': 1}  # A prop's `movement` (static, none: still).
 UNLIT = ('indicator', 'forcefield', 'shield', 'bubble', 'bubblesm')  # Besides statictrans*: see read_materials.
 SPECULAR = ('point', 'spot', 'capsule')  # tile.cs: diffuse lights (and no type: diffuse) add no specular light.
 
@@ -1029,7 +1037,8 @@ def import_maps(game, output, replace=False, extra=None):
                 continue
             parsed = read_map(raw)
             blocks = visible_blocks(parsed['blocks'])
-            props, tints, markers, liquids, decals = placements(parsed['entities'], assets, found, {kind: scale for kind, (_, scale, _) in pickups.items()})
+            movers = {}
+            props, tints, markers, liquids, decals = placements(parsed['entities'], assets, found, {kind: scale for kind, (_, scale, _) in pickups.items()}, movers)
             heights, terrain = read_terrain(parsed['entities'], read)
             xyz = parsed['blocks']['xyz']
             lights = read_lights(parsed['entities'], (xyz.min(0) * BLOCK, (xyz.max(0) + 1) * BLOCK) if len(xyz) else None)
