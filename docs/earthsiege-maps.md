@@ -102,17 +102,4 @@ are reported as failed.
 
 ## T1 sky list
 
-`/t1-map-skies` now lists skies from every imported pack in `SKY_PACKS` (app.py), grouped by game, with `renderer`
-(`dome` or `q3`) and `base` (the pack's data route):
-
-| Source | How it is drawn |
-|---|---|
-| Tribes, Starsiege, Earthsiege, Earthsiege 2 | the dome panels (`scene.sky`) |
-| Quake III (+ Team Arena, mods), RTCW, ET, Jedi Outcast, Jedi Academy | the Q3 shader path (box + cloud stages) |
-| Quake II, Daikatana, Anachronox | their six `env` faces as a Q3 box (same rt/bk/lf/ft/up/dn convention, gl_warp.c / tr_sky.c); rotation speed not applied |
-
-Not offered: Source skyboxes (VTMB, E.Y.E.; DDS faces), Unreal sky zones (Deus Ex, Vengeance), Doom 3 / Quake 4
-(portal skies / cubemaps), Quake 1 (scrolling layers), Nosgoth / Ascend (no sky in the pack). The mission's own sky
-is the first entry, "(default)". A choice is stored in the page's local settings only; nothing is written to a pack.
-The box sky now draws without mipmaps and with clamped edges (seams were visible at face edges). Fog under a swapped
-sky keeps the mission's haze colour (as before).
+See [t1-sky-list.md](t1-sky-list.md).
