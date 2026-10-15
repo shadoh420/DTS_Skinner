@@ -240,4 +240,4 @@ def compile_material(name,defs,materials,textures):
     return dict(name=record['name'],visible=record['visible'],twoSided=record['twoSided'],translucent=translucent,
                 soundReactive=any(sound_reactive([s['color'],s['condition'],s['uv'],s['alphaTest']]) for s in parsed),
                 unsmoothedTangents='unsmoothedtangents' in lower,ambientLight='ambientlight' in lower,fogLight='foglight' in lower,blendLight='blendlight' in lower,
-                stages=parsed,falloff=falloff,spectrum=spectrum,sort=sort,portalSky=portal_sky,mirror=mirror,deform=deform,approximations=sorted(set(notes)))
+                stages=parsed,falloff=falloff,spectrum=spectrum,sort=sort,portalSky=portal_sky,mirror=mirror,deform=deform,guiSurf=t[lower.index('guisurf')+1].lower() if 'guisurf' in lower[:-1] else None,approximations=sorted(set(notes)))
