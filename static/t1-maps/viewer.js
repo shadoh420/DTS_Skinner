@@ -398,6 +398,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     scene.background = haze;
     if (kind === 'q3') await buildQ3Sky(chosen.sky, radius, group, chosen.base, chosen.power || 1);
     else if (dome) await buildSky(dome, visible, group, chosen ? chosen.base || '/t1-map-data/' : data);  // Its own pack's textures.
+    else if (window.t1Skies?.[kind]) await window.t1Skies[kind]({entry: chosen, radius, group, loadTexture, time: skyTime});  // skies.js.
     const drop = old => old.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });  // Textures stay cached.
     if (serial !== skySerial) return drop(group);  // A later choice is being built.
     drop(panels);

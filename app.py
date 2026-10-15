@@ -222,7 +222,7 @@ SKY_PACKS = {'t1': ('Tribes', 'dome', ('',)), 'q3': ('Quake III Arena', 'q3', ('
              'jk2': ('Jedi Outcast', 'q3', ('',)), 'ja': ('Jedi Academy', 'q3', ('',)), 'quake2': ('Quake II', 'q2', ('',)),
              'daikatana': ('Daikatana', 'q2', ('',)), 'anachronox': ('Anachronox', 'q2', ('',)),
              'sin': ('SiN', 'q2', ('sin', '2015', 'ctf')), 'vtmb': ('Vampire: The Masquerade – Bloodlines', 'q2', ('',)),
-             'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',))}
+             'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',)), 'quake': ('Quake (1996)', 'quake1', ('', 'hipnotic', 'rogue'))}
 PLACEHOLDER_SKIES = {'eye_sky_plain.png'}  # E.Y.E.'s stand-in for its HDR skies: one flat colour (import_eye_map.py).
 
 
@@ -232,6 +232,10 @@ def scene_skies(kind, scene, row):
         return [(scene['sky'], {})] if (scene.get('sky') or {}).get('textures') else []
     if kind == 'q3':
         return [(shader, {}) for shader in scene.get('shaders') or [] if isinstance(shader, dict) and shader.get('sky')]
+    if kind == 'quake1':  # The sky texture's two layers (skies.js quake1); a rerelease skybox map is a box.
+        if not (scene.get('skybox') or {}).get('faces'):
+            return [(dict(name=group['name'], texture=group['texture']), {'renderer': 'quake1'})
+                    for group in {g.get('texture'): g for g in scene.get('groups') or [] if g.get('kind') == 'sky' and g.get('texture')}.values()]
     faces = (scene.get('skybox') or {}).get('faces') or {}
     boxed = [(faces.get(side) or {}).get('texture') for side in ('rt', 'bk', 'lf', 'ft', 'up', 'dn')]
     if not all(boxed) or set(boxed) <= PLACEHOLDER_SKIES:
@@ -268,7 +272,8 @@ def t1_map_skies():
                                           name=sky['name'].removeprefix('textures/') if kind != 'dome' else None, sky=sky,
                                           renderer='dome' if kind == 'dome' else 'q3',
                                           base=f'/{game}-map-data/' + (section + '/' if section else ''),
-                                          visible=(scene.get('terrain') or {}).get('visibleDistance'), **extra)  # A dome's shape follows its mission's.
+                                          visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A dome's shape follows its mission's.
+                        skies[key].update(extra)
                     elif skies[key]['section'] != row.get('group'):  # Noted only while every map with it shares it.
                         skies[key]['section'] = None
                     skies[key]['maps'].append(row.get('name', row['id']))
