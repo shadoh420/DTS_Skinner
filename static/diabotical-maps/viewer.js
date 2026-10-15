@@ -466,6 +466,43 @@ window.addEventListener('DOMContentLoaded', async () => {
     return boxes.length;
   }
 
+  // A cube from its six faces side by side (D3D order, as in the game's files), its mips made by WebGL.
+  const fileName = name => name.replace(/[^a-z0-9_-]/g, '_');
+  function loadCube(file, use) {
+    const forMap = map;
+    new THREE.ImageLoader().load(data + file, image => {
+      if (map !== forMap) return;  // Another map was opened meanwhile.
+      const size = image.height, faces = [0, 1, 2, 3, 4, 5].map(face => {
+        const canvas = Object.assign(document.createElement('canvas'), {width: size, height: size});
+        canvas.getContext('2d').drawImage(image, face * size, 0, size, size, 0, 0, size, size);
+        return canvas;
+      });
+      use(Object.assign(new THREE.CubeTexture(faces), {needsUpdate: true}));
+      draw();
+    });
+  }
+  // The sky (tilesky.ps): the skybox cube (default_skybox where the map names none) along the view's direction in
+  // game axes, turned about the vertical by skybox_rotation, written to the screen as it is (then the LUT step, as
+  // everything), on a box around the camera at the far plane.
+  function addSky({cube, rotation}) {
+    if (!cube) return;
+    const material = new THREE.ShaderMaterial({uniforms: {sky: {value: null}, turn: {value: THREE.MathUtils.degToRad(rotation || 0)}},
+      side: THREE.BackSide, depthWrite: false,
+      vertexShader: `varying vec3 vDirection;
+        void main() { vDirection = position; gl_Position = (projectionMatrix * vec4(mat3(viewMatrix) * position, 1.)).xyww; }`,
+      fragmentShader: `uniform samplerCube sky; uniform float turn; varying vec3 vDirection;
+        void main() {
+          vec3 g = normalize(vec3(vDirection.xy, -vDirection.z));
+          float c = cos(turn), s = sin(turn);
+          gl_FragColor = vec4(textureCube(sky, vec3(c * g.x + s * g.z, g.y, c * g.z - s * g.x)).rgb, 1.);
+          #include <tonemapping_fragment>
+        }`});
+    loadCube(`skies/${fileName(cube)}.jpg`, loaded => {
+      material.uniforms.sky.value = loaded;
+      scene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material), {frustumCulled: false, renderOrder: -1}));
+    });
+  }
+
   // A map's lights (read_lights in the importer) into the shaders' uniforms, and the sun's shadow over the blocks.
   function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1}) {
     const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
@@ -491,17 +528,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     u.gameGloss.value = gloss;
     // The envmap: its six faces side by side (envmaps/NAME.png), made a cube whose mips WebGL makes as the game does.
     u.gameEnvmap.value = null;
-    const forMap = map;
-    if (envmap) new THREE.ImageLoader().load(`${data}envmaps/${envmap.replace(/[^a-z0-9_-]/g, '_')}.png`, image => {
-      if (map !== forMap) return;  // Another map was opened meanwhile.
-      const size = image.height, faces = [0, 1, 2, 3, 4, 5].map(face => {
-        const canvas = Object.assign(document.createElement('canvas'), {width: size, height: size});
-        canvas.getContext('2d').drawImage(image, face * size, 0, size, size, 0, 0, size, size);
-        return canvas;
-      });
-      u.gameEnvmap.value = Object.assign(new THREE.CubeTexture(faces), {needsUpdate: true});
-      for (const mirror of mirrors) Object.assign(mirror, {envMap: u.gameEnvmap.value, needsUpdate: true});
-      draw();
+    if (envmap) loadCube(`envmaps/${fileName(envmap)}.png`, cube => {
+      u.gameEnvmap.value = cube;
+      for (const mirror of mirrors) Object.assign(mirror, {envMap: cube, needsUpdate: true});
     });
     if (sunLight) u.gameSunToward.value.fromArray(sunLight).negate().normalize();
     if (start) {
@@ -659,8 +688,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights, billboards, pfx} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards, pfx, sky} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
+      if (sky) addSky(sky);
       addMarkers(markers);
       addLiquids(liquids);
       map.props = await addProps(props, models, entries);
