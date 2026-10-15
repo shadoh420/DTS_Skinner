@@ -37,6 +37,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const loader = new THREE.TextureLoader(), textures = new Map();
   function loadTexture(url, repeat) {
+    // Other games' skies may be DDS (Bloodlines, E.Y.E.): the shared loader, opaque, as their own pages draw them.
+    if (!textures.has(url) && /\.dds$/i.test(url) && window.skinnerDDS) textures.set(url, window.skinnerDDS.load(url).then(texture => {
+      if (repeat) texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.userData.alpha = false;
+      return texture;
+    }, () => { missing++; return null; }));
     if (!textures.has(url)) textures.set(url, new Promise(resolve => loader.load(url, texture => {
       texture.flipY = false;
       texture.anisotropy = 8;
@@ -326,7 +332,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     gl_one_minus_src_color: THREE.OneMinusSrcColorFactor, gl_dst_color: THREE.DstColorFactor, gl_one_minus_dst_color: THREE.OneMinusDstColorFactor,
     gl_src_alpha: THREE.SrcAlphaFactor, gl_one_minus_src_alpha: THREE.OneMinusSrcAlphaFactor, gl_dst_alpha: THREE.DstAlphaFactor,
     gl_one_minus_dst_alpha: THREE.OneMinusDstAlphaFactor};
-  async function buildQ3Sky(shader, radius, group, base = '/q3-map-data/') {
+  async function buildQ3Sky(shader, radius, group, base = '/q3-map-data/', power = 1) {
     const number = value => { const text = String(Number(value) || 0); return `(${/[.e]/.test(text) ? text : text + '.0'})`; };
     const ball = new THREE.SphereGeometry(radius, 32, 16);
     const vertexShader = 'varying vec3 vDir; void main() { vDir = vec3(position.x, -position.z, position.y); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }';
@@ -342,14 +348,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       const names = ['rt', 'bk', 'lf', 'ft', 'up', 'dn'];
       // As the Quake II page draws its box: no mipmaps (they seam where the face changes) and the edge texels clamped.
       for (const face of box) Object.assign(face, {generateMipmaps: false, minFilter: THREE.LinearFilter, needsUpdate: true});
-      add(new THREE.ShaderMaterial({uniforms: Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), vertexShader,
-        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; varying vec3 vDir;
+      // power: the source page's display ramp, pow(rgb, power) (Bloodlines draws its whole frame through 2/3).
+      add(new THREE.ShaderMaterial({uniforms: {...Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), power: {value: power}}, vertexShader,
+        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; uniform float power; varying vec3 vDir;
           vec4 side(sampler2D image, vec2 p) { return texture2D(image, clamp(vec2(p.x + 1., 1. - p.y) * .5, .002, .998)); }
           void main() {
             vec3 d = vDir, a = abs(d);
             gl_FragColor = vec4((a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
               : a.y >= a.z ? (d.y > 0. ? side(bk, vec2(d.x, d.z) / a.y) : side(ft, vec2(-d.x, d.z) / a.y))
               : (d.z > 0. ? side(up, vec2(-d.y, -d.x) / a.z) : side(dn, vec2(-d.y, d.x) / a.z))).rgb, 1.);
+            gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(power));
           }`, blending: THREE.NoBlending}), -3.5);
     }
     await Promise.all((shader.stages || []).map(async (stage, index) => {
@@ -388,7 +396,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const kind = chosen && (chosen.renderer || (chosen.game === 'q3' ? 'q3' : 'dome'));
     const serial = ++skySerial, group = new THREE.Group(), dome = chosen ? kind === 'dome' && chosen.sky : map.sky;
     scene.background = haze;
-    if (kind === 'q3') await buildQ3Sky(chosen.sky, radius, group, chosen.base);
+    if (kind === 'q3') await buildQ3Sky(chosen.sky, radius, group, chosen.base, chosen.power || 1);
     else if (dome) await buildSky(dome, visible, group, chosen ? chosen.base || '/t1-map-data/' : data);  // Its own pack's textures.
     const drop = old => old.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });  // Textures stay cached.
     if (serial !== skySerial) return drop(group);  // A later choice is being built.
@@ -710,10 +718,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     // The list of other skies comes after the map's own: the first scan reads every imported pack /t1-map-skies lists.
     get('/t1-map-skies').then(response => response.json()).then(list => {
       skies = list;
-      const groups = Map.groupBy(list, entry => entry.group), more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
-      $('sky').replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...[...groups].map(([group, entries]) => {
+      // One group per game, games and their skies in alphabetical order.
+      const more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
+      const text = entry => [entry.section, entry.name, entry.maps[0] + more(entry.maps)].filter(Boolean).join(' · ');
+      const groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
+      $('sky').replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...groups.map(([group, entries]) => {
         const element = Object.assign(document.createElement('optgroup'), {label: group});
-        element.append(...entries.map(entry => new Option(entry.name ? `${entry.name} · ${entry.maps[0]}${more(entry.maps)}` : `${entry.maps[0]}${more(entry.maps)}`, entry.id)));
+        element.append(...entries.map(entry => [text(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
         return element;
       }));
       if (skies.some(entry => entry.id === settings.sky)) { $('sky').value = settings.sky; return showSky(settings.sky); }

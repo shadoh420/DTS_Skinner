@@ -212,25 +212,44 @@ def t1_map_data(filename):
 t1_sky_cache = {}
 
 
-# Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it). 'dome' is the T1
-# viewer's sixteen-panel dome (scene.sky), 'q3' a Quake III sky shader (scene.shaders[].sky), 'q2' a Quake II six-face
-# skybox (scene.skybox.faces), drawn as a Q3 box: both use the rt/bk/lf/ft/up/dn faces the same way (gl_warp.c, tr_sky.c).
-SKY_PACKS = {'t1': ('Tribes', 'dome'), 'q3': ('Quake III Arena', 'q3'), 'ss': ('Starsiege', 'dome'),
-             'es1': ('Earthsiege', 'dome'), 'es2': ('Earthsiege 2', 'dome'), 'rtcw': ('Return to Castle Wolfenstein', 'q3'),
-             'et': ('Wolfenstein: Enemy Territory', 'q3'), 'jk2': ('Jedi Outcast', 'q3'), 'ja': ('Jedi Academy', 'q3'),
-             'quake2': ('Quake II', 'q2'), 'daikatana': ('Daikatana', 'q2'), 'anachronox': ('Anachronox', 'q2')}
+# Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it, its sections). 'dome' is
+# the T1 viewer's sixteen-panel dome (scene.sky), 'q3' a Quake III sky shader (scene.shaders[].sky), 'q2' a Quake II
+# six-face skybox (scene.skybox.faces), drawn as a Q3 box: both use the rt/bk/lf/ft/up/dn faces the same way (gl_warp.c,
+# tr_sky.c). Sections are pack sub-folders with their own index.json, maps/ and textures/ ('' the pack itself).
+SKY_PACKS = {'t1': ('Tribes', 'dome', ('',)), 'q3': ('Quake III Arena', 'q3', ('',)), 'ss': ('Starsiege', 'dome', ('',)),
+             'es1': ('Earthsiege', 'dome', ('',)), 'es2': ('Earthsiege 2', 'dome', ('',)),
+             'rtcw': ('Return to Castle Wolfenstein', 'q3', ('',)), 'et': ('Wolfenstein: Enemy Territory', 'q3', ('',)),
+             'jk2': ('Jedi Outcast', 'q3', ('',)), 'ja': ('Jedi Academy', 'q3', ('',)), 'quake2': ('Quake II', 'q2', ('',)),
+             'daikatana': ('Daikatana', 'q2', ('',)), 'anachronox': ('Anachronox', 'q2', ('',)),
+             'sin': ('SiN', 'q2', ('sin', '2015', 'ctf')), 'vtmb': ('Vampire: The Masquerade – Bloodlines', 'q2', ('',)),
+             'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',))}
+PLACEHOLDER_SKIES = {'eye_sky_plain.png'}  # E.Y.E.'s stand-in for its HDR skies: one flat colour (import_eye_map.py).
+
+
+def scene_skies(kind, scene, row):
+    """The skies a map's scene holds for one SKY_PACKS kind, as (sky, extra entry fields)."""
+    if kind == 'dome':
+        return [(scene['sky'], {})] if (scene.get('sky') or {}).get('textures') else []
+    if kind == 'q3':
+        return [(shader, {}) for shader in scene.get('shaders') or [] if isinstance(shader, dict) and shader.get('sky')]
+    faces = (scene.get('skybox') or {}).get('faces') or {}
+    boxed = [(faces.get(side) or {}).get('texture') for side in ('rt', 'bk', 'lf', 'ft', 'up', 'dn')]
+    if not all(boxed) or set(boxed) <= PLACEHOLDER_SKIES:
+        return []
+    power = (scene.get('lighting') or {}).get('display_power')  # The page's own display ramp (Bloodlines), if any.
+    return [(dict(name=scene['skybox'].get('name') or row['id'], stages=[], sky=dict(box=boxed)), {'power': power} if power else {})]
 
 
 @app.route('/t1-map-skies')
 def t1_map_skies():
     """Skies the T1 Maps page can swap in, each listed once: every pack in SKY_PACKS that is imported. Entry ids are
     the game and a hash of the sky, so a saved choice survives re-imports (and T1/Q3 ids are unchanged)."""
-    roots = {game: local_data_dir / f'{game}-maps' for game in SKY_PACKS}
-    stamp = (str(local_data_dir), *((root / 'index.json').stat().st_mtime_ns if (root / 'index.json').is_file() else 0 for root in roots.values()))
+    roots = [(game, section, local_data_dir / f'{game}-maps' / section) for game, (_, _, sections) in SKY_PACKS.items() for section in sections]
+    stamp = (str(local_data_dir), *((root / 'index.json').stat().st_mtime_ns if (root / 'index.json').is_file() else 0 for *_, root in roots))
     if t1_sky_cache.get('stamp') != stamp:
         skies = {}
-        for game, root in roots.items():
-            group, kind = SKY_PACKS[game]
+        for game, section, root in roots:
+            group, kind, _ = SKY_PACKS[game]
             try:
                 index = json.loads((root / 'index.json').read_text(encoding='utf-8'))
             except (OSError, ValueError):
@@ -240,22 +259,18 @@ def t1_map_skies():
                     scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
                 except (OSError, ValueError, KeyError, TypeError):
                     continue
-                if kind == 'dome':
-                    found = [scene['sky']] if (scene.get('sky') or {}).get('textures') else []
-                elif kind == 'q3':
-                    found = [shader for shader in scene.get('shaders') or [] if isinstance(shader, dict) and shader.get('sky')]
-                else:
-                    faces = (scene.get('skybox') or {}).get('faces') or {}
-                    boxed = [(faces.get(side) or {}).get('texture') for side in ('rt', 'bk', 'lf', 'ft', 'up', 'dn')]
-                    found = [dict(name=scene['skybox'].get('name') or row['id'], stages=[], sky=dict(box=boxed))] if all(boxed) else []
-                for sky in found:
+                for sky, extra in scene_skies(kind, scene, row):
                     key = game + json.dumps(sky, sort_keys=True)
                     if key not in skies:
                         skies[key] = dict(id=game + '-' + hashlib.sha1(key.encode()).hexdigest()[:12], game=game, maps=[],
-                                          group=row.get('group', group) if game == 'q3' else group,
+                                          group=group,  # One list group per game; a pack's own section is noted.
+                                          section=row.get('group') if row.get('group') not in (None, group) else None,
                                           name=sky['name'].removeprefix('textures/') if kind != 'dome' else None, sky=sky,
-                                          renderer='dome' if kind == 'dome' else 'q3', base=f'/{game}-map-data/',
-                                          visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A dome's shape follows its mission's.
+                                          renderer='dome' if kind == 'dome' else 'q3',
+                                          base=f'/{game}-map-data/' + (section + '/' if section else ''),
+                                          visible=(scene.get('terrain') or {}).get('visibleDistance'), **extra)  # A dome's shape follows its mission's.
+                    elif skies[key]['section'] != row.get('group'):  # Noted only while every map with it shares it.
+                        skies[key]['section'] = None
                     skies[key]['maps'].append(row.get('name', row['id']))
         t1_sky_cache.update(stamp=stamp, skies=list(skies.values()))
     return jsonify(t1_sky_cache['skies'])
