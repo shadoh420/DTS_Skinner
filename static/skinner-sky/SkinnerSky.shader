@@ -94,7 +94,10 @@ Shader "Skinner/Sky"
                 #ifdef UNITY_COLORSPACE_GAMMA
                 return float4(shown, 1.);
                 #else
-                return float4(pow(max(shown, 0.), 2.2), 1.);  // A linear project encodes it again on the way out.
+                // A linear project sRGB-encodes on the way out: decode with the same curve, so the frame holds the page's
+                // bytes (a 2.2 power here left night skies up to 6/255 darker than the page).
+                shown = max(shown, 0.);
+                return float4(shown <= .04045 ? shown / 12.92 : pow((shown + .055) / 1.055, 2.4), 1.);
                 #endif
             }
             ENDCG

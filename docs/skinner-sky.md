@@ -84,16 +84,30 @@ be well under a millisecond on a current GPU (estimated, not measured).
    fog colour, turns the Sun Source (or the first directional light) to the preset's sun, and updates the environment
    lighting.
 
-The shader is written for Built-in and URP (a plain CG skybox, as Unity's own procedural sky is) and for linear and
-gamma colour space; see the check below for what has been run. If the camera does
+The shader is a plain CG skybox, like Unity's own procedural sky, so it should also work in Built-in and in gamma
+colour space. The check below ran URP in linear colour space only. If the camera does
 its own tone mapping (URP post-processing with ACES), switch off the material's **tonemap** toggle. The shader then
 outputs HDR light × exposure, and the sun disc can drive bloom.
 
 **Check (2026-10-15).** The shader body was compiled with fxc 10.0.19041 (ps_5_0 and vs_5_0) against Unity
 6000.3.11f1's own `CGIncludes`, with the `/Gec` flag that Unity's headers need. Both compiled with no errors or
 warnings. `SkinnerSkyPresets.cs` was compiled with Unity's own Roslyn (`DotNetSdkRoslyn\csc.dll`, with
-`UNITY_EDITOR` defined) against `UnityEngine.CoreModule` and `UnityEditor.CoreModule`, and also compiled cleanly. It
-has not been opened in the Unity Editor, and no Unity frame has been compared with the page.
+`UNITY_EDITOR` defined) against `UnityEngine.CoreModule` and `UnityEditor.CoreModule`, and also compiled cleanly.
+
+Then it ran in Unity. The project was a fresh scratch URP 17.3 project on Unity 6000.3.11f1, in linear colour space,
+driven in batchmode by an editor script (`C:\tmp\skinner-evidence\skinner-sky\unity\SkyCheck.cs`):
+- The noise imported as linear, repeating and uncompressed.
+- The shader was supported, with 0 messages.
+- Both Tools menus worked: Use Selected set the skybox, the preset's fog colour, and a sun pointing away from the
+  preset's sun.
+- Each preset was rendered at 640 × 360 with a 60° vertical field of view, with the wind stopped. The page rendered the
+  same views, and the two were compared pixel by pixel.
+
+The first run left night skies up to 6/255 darker. The cause was a 2.2 decode before Unity's sRGB encode; the shader
+now decodes with the exact sRGB curve. After that fix, all seven presets match the page to 0.1–0.3/255 (mean per
+channel). The only pixels more than 10/255 apart are stars on the night presets (0.5–0.7% of pixels), which should be
+twinkle: Unity's clock was at 0.36 s and the page's at 0.5 s. Not run: Built-in, gamma colour space, a camera with its
+own tone mapping, GPU timing.
 
 ## Limits
 
