@@ -360,7 +360,7 @@ async function buildMap(meta,binary) {
   g.boundingBox=new THREE.Box3(new THREE.Vector3(...light.bounds[0]),new THREE.Vector3(...light.bounds[1]));g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
   const u=uniforms();u.lightColor.value.set(0,0,0,0);['projectS','projectT','projectQ','projectF'].forEach((n,i)=>u[n].value.fromArray(light.projection[i]));
   u.fogPlane={value:new THREE.Vector4(...M.fogPlane(light))};
-  const mesh=new THREE.Mesh(g,new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:fogFragment,uniforms:u,side:THREE.BackSide,depthWrite:false,
+  const mesh=new THREE.Mesh(g,new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:fogFragment,uniforms:u,vertexColors:true,side:THREE.BackSide,depthWrite:false,
    depthFunc:THREE.LessDepth,transparent:true,blending:THREE.CustomBlending,blendSrc:THREE.SrcAlphaFactor,blendDst:THREE.OneMinusSrcAlphaFactor}));
   mesh.renderOrder=FOG_ORDER;mesh.userData={kind:5,light,projection:stage};
   const group=new THREE.Group();group.add(mesh);scene.add(group);
