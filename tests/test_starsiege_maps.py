@@ -12,7 +12,7 @@ import numpy as np
 
 from app import app
 from tools.import_t1_map import read_terrain_block, rotation_rows, stitch_terrain, walk
-from tools.starsiege_mission import read_mission, read_tags
+from tools.starsiege_mission import read_mission, read_tags, read_vehicles
 
 
 def block(tag, body):
@@ -78,6 +78,22 @@ class StarsiegeMissionTest(unittest.TestCase):
         # The drop point's rotation rows come back as the Euler angles that make them.
         for got, want in zip(rotation_rows([float(v) for v in drop['rotation'].split()]), rotation_rows((0.1, -0.2, 1.3))):
             self.assertTrue(all(math.isclose(a, b, abs_tol=1e-5) for a, b in zip(got, want)))
+
+    def test_units_and_turrets_become_npc_shapes(self):
+        # A Terran Talon (vehicle 4) from the install's ca0.MIS, LZH-packed as the game stores it; a synthetic turret.
+        talon = bytes.fromhex('00000000c6468031b1c05c58b8c006201f2590ca7c2eaa5dd763f7186556e4d67955fd162cd155f56147bb1df19b5c076be83a6ff45d19252ce75617556007220067e18ebfff7fafea6ebbc1cdec76fd74a0310037557f9fe676ba4e450800')
+        vehicles = read_vehicles({'datvehicle.cs': 'buildHerc( 4, "H", "datHerc_tr_talo.cs" );\nbuildTank( 6, "H", "datTank_tr_pala.cs" );',
+                                  'datherc_tr_talo.cs': 'hercBase(  IDVEH_TR_TALO,"TALO",  "tr_talon.dts",  6.0 , 30 , 0.85 , 1 , 1000);'})
+        self.assertEqual(vehicles, {4: 'tr_talon.dts'})
+        mission = group([(block(b'HERC', talon), '2hs1'),
+                         (block(b'TRRT', model(bytes(48), (10, 20, 30), (0, 0, 1.5), 'hVenusLaserShort.dts')), 'Turret1')])
+        nodes = {node['name']: node for node, _ in walk(read_mission(mission, {}, vehicles))}
+        self.assertEqual((nodes['2hs1']['class'], nodes['2hs1']['npc'], nodes['2hs1']['fields']),
+                         ('staticshape', True, {'shapefile': 'tr_talon.dts', 'position': '1787.87 2403.24 80', 'rotation': '0 0 0'}))
+        self.assertEqual((nodes['Turret1']['npc'], nodes['Turret1']['fields']['shapefile'], nodes['Turret1']['fields']['rotation']),
+                         (True, 'hVenusLaserShort.dts', '0 0 1.5'))
+        # Without the vehicle table a unit has no shape and is left out.
+        self.assertNotIn('2hs1', {node['name'] for node, _ in walk(read_mission(mission, {}))})
 
     def test_rejects_other_files(self):
         with self.assertRaises(ValueError):

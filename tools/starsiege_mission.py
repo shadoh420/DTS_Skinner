@@ -9,18 +9,63 @@ SimObjects/Code/simSky.cpp, simPlanet.cpp, simStarField.cpp, simVolume.cpp). Sta
 interiors use numeric tags 0x100 and 0x10c, measured on the install: position and Euler rotation at fixed offsets, the
 model file as an int32-length name. Resource tags (sky material lists, planet bitmaps) resolve through the
 `ID... = number, "file";` lines of scripts.vol mission.strings.cs.
+
+Campaign units (HERC, TANK, FLYR) are DarkStar LZH-packed after their version word; the expanded record (measured on
+all 755 in the install) holds the net header (20 bytes), a 6, the vehicle number, a count n and n u16 component ids,
+three flag bytes, a u32, a u8-length name, a u8 count and that many bytes, then position and heading (4 floats). The
+number is the mission editor's (scripts.vol datvehicle.cs build*(number, ..., "datHerc_tr_mino.cs"), whose script
+names the shape). Turrets (TRRT) lay out like placed shapes. Both are drawn as NPCs.
 """
 import math
 import re
 import struct
 
 SHAPE, INTERIOR = 0x100, 0x10c
+UNITS = (b'HERC', b'TANK', b'FLYR')
 HEADER = 24  # Version, SimNetObject id, net flags, address and one more word.
 
 
 def read_tags(text):
     """Resource tag number -> file name from a DarkStar strings script."""
     return {int(number): name for number, name in re.findall(r'^\s*ID\w+\s*=\s*(\d+)\s*,\s*"([^"]*)"', text, re.M)}
+
+
+def read_vehicles(scripts):
+    """Vehicle number -> shape file, from datvehicle.cs and the vehicle scripts it names ({lower-case name: text})."""
+    found = {}
+    for number, script in re.findall(r'build(?:Herc|Tank|Drone|Flyer)\(\s*(\d+)\s*,[^;]*?"([^"]+\.cs)"', scripts.get('datvehicle.cs', '')):
+        shape = re.search(r'Base\([^;]*?"([^"]+\.dts)"', scripts.get(script.lower(), ''))
+        if shape:
+            found[int(number)] = shape[1]
+    return found
+
+
+def _expand(body):
+    """A unit's LZH record after its version word, as long as the block holds (no length is stored)."""
+    from tools.import_t1_map import lzh_expand  # The importer's LZH; imported here, as it imports this module's users.
+    low, high = 0, 4096
+    while low < high:  # The longest length that expands without running out of input.
+        middle = (low + high + 1) // 2
+        try:
+            lzh_expand(body, 4, middle)
+            low = middle
+        except (ValueError, IndexError):
+            high = middle - 1
+    return lzh_expand(body, 4, low)[0]
+
+
+def _unit(body, name, vehicles):
+    record = _expand(body)
+    at = 23 + 2 * record[22] + 3 + 4  # Component ids, three flags, a u32.
+    at += 1 + record[at]  # Name.
+    at += 1 + record[at]  # Counted bytes.
+    x, y, z, heading = struct.unpack_from('<4f', record, at)
+    shape = vehicles.get(record[21])
+    if not shape or not all(math.isfinite(value) for value in (x, y, z, heading)):
+        return None
+    node = _node('staticshape', name, shapefile=shape, position='%g %g %g' % (x, y, z), rotation='0 0 %g' % heading)
+    node['npc'] = True
+    return node
 
 
 def _string(body, offset):
@@ -73,7 +118,7 @@ def _node(cls, name='', **fields):
     return {'class': cls, 'name': name, 'fields': fields, 'children': []}
 
 
-def _read(data, raw, tag, body, offset, name, tags):
+def _read(data, raw, tag, body, offset, name, tags, vehicles):
     """One block as a node, or None for classes the maps do not draw (triggers, nav markers, sounds)."""
     if len(body) >= 16:
         count = struct.unpack_from('<i', body, 4)[0]
@@ -88,7 +133,7 @@ def _read(data, raw, tag, body, offset, name, tags):
             group = _node('simgroup', name)
             for (child_raw, child_tag, child_body, child_offset), child_name in zip(blocks, names):
                 try:
-                    child = _read(data, child_raw, child_tag, child_body, child_offset, child_name, tags)
+                    child = _read(data, child_raw, child_tag, child_body, child_offset, child_name, tags, vehicles)
                 except (ValueError, struct.error, IndexError):  # One unreadable object; the rest of the mission stays.
                     child = None
                 if child:
@@ -128,6 +173,15 @@ def _read(data, raw, tag, body, offset, name, tags):
     if raw == b'DPNT':  # A spare word, then the transform's rotation rows and position.
         rows = [struct.unpack_from('<3f', body, HEADER + 4 + 12 * row) for row in range(3)]
         return _node('droppoint', name, position=_floats(body, HEADER + 40), rotation=_euler(rows))
+    if raw in UNITS:
+        return _unit(body, name, vehicles)
+    if raw == b'TRRT' and len(body) > 72:
+        model = _model_name(body, b'dts')
+        if model:
+            node = _node('staticshape', name, shapefile=model, position=_floats(body, 48), rotation=_floats(body, 60))
+            node['npc'] = True
+            return node
+        return None
     if tag == SHAPE and len(body) > 72:
         model = _model_name(body, b'dts')
         return model and _node('staticshape', name, shapefile=model, position=_floats(body, 48), rotation=_floats(body, 60))
@@ -137,14 +191,14 @@ def _read(data, raw, tag, body, offset, name, tags):
     return None
 
 
-def read_mission(data, tags=None):
-    """Root node of a Starsiege .mis: {'class': 'root', 'children': [the mission's SimGroup]}."""
+def read_mission(data, tags=None, vehicles=None):
+    """Root node of a Starsiege .mis: {'class': 'root', 'children': [the mission's SimGroup]}; vehicles from read_vehicles."""
     if data[:4] != b'SIMG':
         raise ValueError('Not a Starsiege binary mission')
     size = struct.unpack_from('<I', data, 4)[0] & 0x7fffffff
     if 8 + size > len(data):
         raise ValueError('Truncated mission file')
-    group = _read(data, b'SIMG', 0, data[8:8 + size], 8, '', tags or {})
+    group = _read(data, b'SIMG', 0, data[8:8 + size], 8, '', tags or {}, vehicles or {})
     if not group or group['class'] != 'simgroup':
         raise ValueError('Mission has no object group')
     return {'class': 'root', 'name': '', 'fields': {}, 'children': [group]}
