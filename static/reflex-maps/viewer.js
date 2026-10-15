@@ -525,6 +525,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (type === 'Target') return [0xffffff, 6];
     if (type === 'PointLight') return [0xfff3b0, 5];
     if (type === 'Effect') return [0x8a949a, 3];
+    if (type === 'Shootable' || type === 'Turret') return [0xe5534b, 11];
     return null;  // WorldSpawn, Prefab, probes, paths and the rest are not marked.
   }
   const markers = [];  // {entry, mesh} of every marked entity, for picking.
@@ -542,7 +543,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const matrix = new THREE.Matrix4();
     for (const {marker: [colour, size], entries} of byKind.values()) {
       // Not drawn where a model shows the entity (the game's editor models, effects, pickups); still picked by.
-      const modelled = packEffects.editor && ['PlayerSpawn', 'Target', 'PointLight', 'Effect', 'Pickup', 'WorkshopScreenshot', 'NavLink', 'ReflectionProbe'].includes(entries[0].entity.type);
+      const type = entries[0].entity.type, modelled = packEffects.editor && (['PlayerSpawn', 'Target', 'PointLight', 'Effect', 'Pickup', 'WorkshopScreenshot', 'NavLink', 'ReflectionProbe'].includes(type)
+        || packEffects.effects[(packEffects.entities || {})[type]]);
       const mesh = new THREE.InstancedMesh(markerGeometry, new THREE.MeshBasicMaterial({color: colour, visible: !modelled}), entries.length);
       // Marked while editing only, as the game's play mode shows none (models show effects and pickups).
       mesh.userData.editOnly = true;
