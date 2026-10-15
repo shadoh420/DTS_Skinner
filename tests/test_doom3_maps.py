@@ -244,8 +244,14 @@ class DoomMapTest(unittest.TestCase):
                 d.materials['textures/near']=lex('sort nearest { blend add map _white }')
                 self.assertEqual(compile_material('textures/near',d,m,t)['sort'],7)
                 d.materials['textures/reflect']=lex('bumpmap _flat { blend add cubeMap env/gen1 texgen reflect }')
-                self.assertEqual([s['role'] for s in compile_material('textures/reflect',d,m,t)['stages']],['bump'],
+                reflect=compile_material('textures/reflect',d,m,t)
+                self.assertEqual([s['role'] for s in reflect['stages']],['ambient','bump'],
                                  'AddImplicitStages adds no white diffuse beside a reflection stage')
+                self.assertEqual(reflect['stages'][0]['texgen'],'reflect');self.assertEqual(len(reflect['approximations']),6,'six fixture-missing faces')
+                self.assertEqual([f['expression'] for f in reflect['stages'][0]['cube']['faces']],['env/gen1_'+f for f in ('px','nx','py','ny','pz','nz')])
+                d.materials['textures/washroom/mirror']=lex('discrete { blend gl_dst_color,gl_zero map _white } solid mirror')
+                mirror=compile_material('textures/washroom/mirror',d,m,t)
+                self.assertTrue(mirror['mirror']);self.assertEqual(mirror['sort'],-3);self.assertFalse(mirror['translucent'])
 
     def test_deform_lines(self):
         from tools.doom3_map_materials import parse_deform
