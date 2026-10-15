@@ -170,6 +170,15 @@ asks the app for none of them (Raindance: ready in 0.37 seconds instead of
   three point light with the same linear falloff (the game's shape path stops hard at
   the range instead). Every `SimLight`'s `ambient` is added to the shapes' ambient, as
   `SimLightSet` sums them. Items with `rotates` turn 3 rad/s (`Item::clientProcess`).
+- Powered shapes run their `power` sequence, as `StaticShape::onPower` starts it on a base
+  powered at the mission's start: 32 stock shapes have one (generators, radars, stations,
+  antennas, displays, turrets). The importer bakes it from the install's DTS with
+  `tools/animate_t1.py` into a JSON (layout, times, IFL tracks) and a float32 file of
+  vertex frames; the viewer blends the frames, loops the sequence or holds its last frame
+  (turrets stay raised), and applies the IFL tracks as material remaps (generator lights,
+  station and pad displays). Every placement of a shape runs in step. Elevators and doors
+  (`Moveable`) start at their first waypoint and stop there until something triggers
+  them (`Moveable::setPathId`), so they stay where the mission places them.
 - `Snowfall` objects with rendering enabled draw rain or snow around the camera
   (Starsiege's binary `SNOW` blocks too: 8 missions, 2 of them rain).
 - Starsiege campaign units (`HERC`, `TANK`, `FLYR`: 755 in the install) and turrets
@@ -260,8 +269,8 @@ it from shared state) and are not snapped to the palette on classic installs. A
 planet bitmap stays upright on screen rather than keeping its top toward the
 zenith, and only the first flared planet has a flare. Seen from outside, rain and
 snow still fall through a building's roof, as in the game: only depth hides them.
-Shapes (not buildings) are shaded by the mission sun without shadows, use the
-workshop's static pose, and elevators stay where the mission places them. The sun
+Shapes (not buildings) are shaded by the mission sun without shadows; shapes without a
+`power` sequence use the workshop's static pose, and Starsiege shapes do not animate. The sun
 direction used for shapes and for buildings without a lit instance follows
 ArenaPrototype's convention; the mission-baked lightmaps agree with it better than
 with the alternatives tried, but only by a small margin.

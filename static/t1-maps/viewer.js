@@ -300,6 +300,44 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const spinners = [], up = new THREE.Vector3(0, 1, 0);  // Items that turn, 3 rad/s (Item::clientProcess).
 
+  // A powered shape's "power" sequence (StaticShape::onPower), baked by the importer: vertex frames blended over the
+  // clip's times, looping or held at the end (a turret raised), and its IFL tracks remapping material slots
+  // (TS::ShapeInstance::Thread: each track's key at or before the time; a later track wins). Every placement of a
+  // shape shares one geometry, so they run in step, as a base powered at the mission's start does.
+  // ponytail: frames blended and normals rebuilt on the CPU each frame; move to a vertex shader if many shapes stutter.
+  const animations = new Map(), animators = [];
+  function loadAnimation(file) {
+    if (!animations.has(file)) animations.set(file, (async () => {
+      const clip = await (await get(data + 'textures/' + file)).json();
+      const frames = new Float32Array(await (await get(data + 'textures/' + clip.frames)).arrayBuffer());
+      const size = frames.length / clip.times.length, last = clip.times.length - 1, slots = clip.groups.map(group => group.materialIndex);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(frames.slice(0, size), 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(clip.uvs, 2));
+      geometry.setIndex(clip.indices);
+      for (const {start, count, materialIndex} of clip.groups) geometry.addGroup(start, count, materialIndex);
+      geometry.computeVertexNormals();
+      geometry.boundingSphere = new THREE.Sphere().setFromPoints(Array.from({length: frames.length / 3}, (_, n) => new THREE.Vector3().fromArray(frames, n * 3)));
+      const position = geometry.attributes.position.array;
+      animators.push(seconds => {
+        const time = clip.loop && clip.duration ? seconds % clip.duration : Math.min(seconds, clip.duration);
+        let i = 0;
+        while (i < last - 1 && clip.times[i + 1] <= time) i++;
+        if (last) {
+          const span = clip.times[i + 1] - clip.times[i], mix = span > 0 ? Math.min(1, Math.max(0, (time - clip.times[i]) / span)) : 0;
+          for (let k = 0; k < size; k++) position[k] = frames[i * size + k] + (frames[(i + 1) * size + k] - frames[i * size + k]) * mix;
+          geometry.attributes.position.needsUpdate = true;
+          geometry.computeVertexNormals();
+        }
+        const remap = new Map();
+        for (const keys of clip.ifl) remap.set(keys[0][1], keys.reduce((found, key) => key[0] <= time ? key : found, keys[0])[2]);
+        geometry.groups.forEach((group, n) => { group.materialIndex = remap.get(slots[n]) ?? slots[n]; });
+      });
+      return geometry;
+    })());
+    return animations.get(file);
+  }
+
   const placeholder = new THREE.BoxGeometry(4, 4, 4).translate(0, 2, 0), magenta = new THREE.MeshBasicMaterial({color: 0xcc00cc});
   // Until its model arrives each placed object is the orange wireframe box t2-mapper shows for a loading interior.
   const loadingBox = new THREE.BoxGeometry(10, 10, 10), loadingMaterial = new THREE.MeshStandardMaterial({color: 'orange', wireframe: true});
@@ -313,7 +351,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       const model = await loadModel(object.model, object.source === 'pack', object.light && object.light.uv);
       const lightMap = object.light && await loadLightMap(object.light);
       // The mission lightmap already holds the sun and the building's own lights: texture × lightmap, no scene lights.
-      mesh = new THREE.Mesh(model.geometry, !lightMap ? model.materials : model.materials.map(material => withPointLights(new THREE.MeshBasicMaterial(
+      const geometry = object.animation ? await loadAnimation(object.animation).catch(() => model.geometry) : model.geometry;
+      mesh = new THREE.Mesh(geometry, !lightMap ? model.materials : model.materials.map(material => withPointLights(new THREE.MeshBasicMaterial(
         {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap,
           transparent: material.transparent, depthWrite: material.depthWrite, alphaTest: material.alphaTest}))));
       drawn = true;
@@ -744,6 +783,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     skyTime.value += delta;
     if (weather) weather(delta);
     if (pointLights.length) stepPointLights(clock.elapsedTime);
+    for (const step of animators) step(clock.elapsedTime);
     for (const mesh of spinners) mesh.rotateOnWorldAxis(up, 3 * delta);
     if (streamFrame) streamFrame(delta);
     drawFrame();

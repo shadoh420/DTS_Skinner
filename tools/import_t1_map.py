@@ -31,7 +31,7 @@ import export_interior  # noqa: E402
 import export_model  # noqa: E402
 from interior_module import dml as interior_dml, interiorshape  # noqa: E402
 from local_data import LOCAL_DATA  # noqa: E402
-from tools.model_data import t1_building_names  # noqa: E402
+from tools.model_data import load_model_data, t1_building_names  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -947,6 +947,36 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     pass
         return install.converted[key]
 
+    def power_animation(stem, model, source):
+        """The shape's baked "power" sequence, which StaticShape::onPower plays on a powered base: a JSON file (layout,
+        times, IFL material remaps) naming a float32 file of vertex frames; None when the shape has no such sequence."""
+        try:
+            data = read(stem + '.dts')
+        except ValueError:
+            return None
+        key = ('power', hashlib.sha1(data).hexdigest(), model)
+        if key not in install.converted:
+            install.converted[key] = None
+            from tools.animate_t1 import load_animated_model
+            with tempfile.TemporaryDirectory() as work:
+                (Path(work) / (stem + '.dts')).write_bytes(data)
+                try:
+                    preview = load_model_data(root / 'models' / model if source == 'pack' else model_dir / (model + '.json'))
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        baked = load_animated_model(stem, Path(work) / (stem + '.dts'), preview, only='power')
+                except (ValueError, KeyError, IndexError, OSError, struct.error):
+                    return None
+            if baked['animation_clips']:
+                clip = baked['animation_clips'][0]
+                frames = np.array([frame['vertices'] for frame in clip['frames']], dtype='<f4')
+                slots = len(preview['material_textures'])  # A remap to a slot the model lacks is dropped.
+                ifl = [keys for keys in ([key for key in track if key[1] < slots and key[2] < slots] for track in clip.get('ifl', [])) if keys]
+                install.converted[key] = store(json.dumps({
+                    'frames': store(frames.tobytes(), '.bin'), 'times': clip['times'], 'duration': clip['duration'],
+                    'loop': clip['loop'], 'ifl': ifl, 'uvs': baked['uvs'], 'indices': baked['indices'],
+                    'groups': baked['groups']}).encode(), '.json')
+        return install.converted[key]
+
     sun = next((node['fields'] for node, _ in nodes if node['class'] == 'planet' and node['fields'].get('castshadows', '').lower() == 'true'), {})
     light = next((node['fields'] for node, _ in nodes if node['class'] == 'simlight' and node['fields'].get('type') == '1'), None)
     # SimLightSet::getSceneLighting adds every light's ambient to the scene's (a point light's is nearly always 0).
@@ -1055,6 +1085,10 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'source': source, 'matrix': matrix,
                         'entity': entity, 'classname': node['class'], 'datablock': fields.get('datablock', ''),
                         'npc': node.get('npc', False) or node['class'] in ('player', 'aiplayer')})
+        if model and node['class'] in ('staticshape', 'sensor', 'turret') and fields.get('datablock'):
+            animation = power_animation(shape, model, source)  # Tribes datablocks only; Starsiege's scripts differ.
+            if animation:
+                objects[-1]['animation'] = animation
         if node['class'] == 'item':
             if fields.get('rotates', '').lower() == 'true':
                 objects[-1]['spin'] = True  # Item::clientProcess turns it 3 rad/s about z.

@@ -18,6 +18,17 @@ class T1AnimationTests(unittest.TestCase):
         preview = load_model_data(ROOT / 'static/model_json' / (name + '.json'))
         return load_animated_model(name, ROOT / 'tools/dts_files', preview)
 
+    def test_one_sequence_and_its_ifl_material_remaps(self):
+        preview = load_model_data(ROOT / 'static/model_json/energygun.json')
+        with contextlib.redirect_stdout(io.StringIO()):
+            data = load_animated_model('energygun', ROOT / 'tools/dts_files', preview, only='ambient')
+        [clip] = data['animation_clips']
+        self.assertEqual((clip['name'], clip['loop']), ('ambient', True))
+        # One IFL track: slot 1 shows slots 3..11 in turn, a frame every 1/30 s (TS cel keys, setMaterialRemap).
+        [track] = clip['ifl']
+        self.assertEqual([(slot, shown) for _, slot, shown in track], [(1, frame) for frame in range(3, 12)])
+        self.assertAlmostEqual(track[1][0], 1 / 30, places=5)
+
     def test_real_armor_run_has_motion_and_source_duration(self):
         data = self.load('larmor')
         self.assertEqual(len(data['animation_clips']), 45)
