@@ -54,6 +54,14 @@ left (`static/diabotical-maps/blocks.js`).
   `models_theme.dbp`'s scale 0.5, not `scripts.dbp`'s 1). 13 material names of
   the stock maps are not in the game files and are drawn in a flat colour of
   their own, listed in the map's Preview notes.
+- **Unlit materials.** Stages drawn by the game's forward shaders
+  (`statictrans*`: screens, holograms, glow panes, the digit displays;
+  `indicator`, `forcefield`, `shield`, `bubble`; 1,424 stages) write their
+  texel to the screen as it is, with no lighting (read from the shaders'
+  disassembly). The page draws them unlit (`unlit` in `materials.json`).
+  `statictranstex` scrolls its texture by `float_params`' first two numbers,
+  in texture units a second (`scroll`), and `statictrans` glass shows the
+  envmap times 1 − the first (`mirror`).
 - **Half blocks.** The sloped side takes the material and texture axes of the
   stored face numbered by the turn (face 0 for turn 0, …), so its texture is
   stretched across the slope by √2, as in the game.
