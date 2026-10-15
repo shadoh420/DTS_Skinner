@@ -162,6 +162,14 @@ asks the app for none of them (Raindance: ready in 0.37 seconds instead of
   A 1.40 PNG install cannot mark additive bitmaps, so its own custom shapes blend those
   by alpha instead. Models without flags (older packs) keep blending any texture with
   alpha.
+- Point lights: `SimLight` type 2 objects and items whose datablock glows (`lightType`
+  1 constant, 2 pulsing: the flags, `Item::getLight`). Terrain and buildings take the
+  ones not marked `isStatic` as the game does at run time (`GridRender`,
+  `ITRInstance::mergeDynamicLight`): colour × (1 − distance / range) added to the baked
+  light and saturated; static ones are already in the bakes. Shapes take every one as a
+  three point light with the same linear falloff (the game's shape path stops hard at
+  the range instead). Every `SimLight`'s `ambient` is added to the shapes' ambient, as
+  `SimLightSet` sums them. Items with `rotates` turn 3 rad/s (`Item::clientProcess`).
 - `Snowfall` objects with rendering enabled draw rain or snow around the camera
   (Starsiege's binary `SNOW` blocks too: 8 missions, 2 of them rain).
   Buildings keep it out as in the game (`Snowfall::processQuery` and

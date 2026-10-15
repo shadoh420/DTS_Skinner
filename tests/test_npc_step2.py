@@ -127,7 +127,7 @@ position = "2 0 0";
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); source = root / 'test.mis'; source.write_text(mission)
             models = root / 'models'; models.mkdir(); (models / 'shared.json').write_text('{}')
-            install = SimpleNamespace(find=lambda *a: None, shapes=lambda *a: {'prop': 'shared', 'armor': 'shared', 'humantownbot': 'shared'})
+            install = SimpleNamespace(find=lambda *a: None, datablocks=lambda *a: {name: {'shape': 'shared'} for name in ('prop', 'armor', 'humantownbot')})
             index = dict(blockMap=[0], materialList='test.dml', unit=1, columns=1, rows=1)
             block = dict(size=1, heights=struct.pack('<4f', 0, 0, 0, 0), materials=b'', light=b'', lightWidth=2)
             dml = SimpleNamespace(load_binary=lambda _: None, materials=[])

@@ -120,7 +120,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await Promise.all(slots.map(async (slot, index) => {
       const texture = terrain.textures[slot] && await loadTexture(data + 'textures/' + terrain.textures[slot]);
       materials[index].dispose();
-      materials[index] = new THREE.MeshBasicMaterial(texture ? {map: texture, vertexColors: true} : {color: 0xcc00cc});
+      materials[index] = withPointLights(new THREE.MeshBasicMaterial(texture ? {map: texture, vertexColors: true} : {color: 0xcc00cc}));
     }));
   }
 
@@ -263,6 +263,43 @@ window.addEventListener('DOMContentLoaded', async () => {
     return lightMaps.get(key);
   }
 
+  // Mission point lights (SimLight type 2, and items such as flags that glow, Item::getLight). The terrain and buildings
+  // take the ones that are not static at run time, as GridRender and ITRInstance::mergeDynamicLight do: colour ×
+  // (1 - distance / range) added to the baked light, saturating; static ones are already in those bakes. Shapes take
+  // every one as a three PointLight with the same linear falloff (the game's shape path has a hard edge at the range).
+  // ponytail: every light is summed for every terrain and building pixel; cull by distance if a map with many stutters.
+  let pointLights = [], dynamicLights = [];
+  const lightUniforms = {t1LightPos: {value: []}, t1LightColor: {value: []}, t1LightRange: {value: []}};
+  function withPointLights(material) {
+    if (!dynamicLights.length) return material;
+    material.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, lightUniforms);
+      shader.vertexShader = 'varying vec3 t1World;\n' + shader.vertexShader.replace('#include <project_vertex>',
+        '#include <project_vertex>\n\tt1World = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      shader.fragmentShader = `#define T1_LIGHTS ${dynamicLights.length}
+        varying vec3 t1World;
+        uniform vec3 t1LightPos[T1_LIGHTS], t1LightColor[T1_LIGHTS];
+        uniform float t1LightRange[T1_LIGHTS];
+        vec3 t1Dynamic() {
+          vec3 sum = vec3(0.);
+          for (int i = 0; i < T1_LIGHTS; i++) sum += t1LightColor[i] * max(0., 1. - distance(t1World, t1LightPos[i]) / t1LightRange[i]);
+          return sum;
+        }\n` + shader.fragmentShader  // Terrain: the bake is the vertex colour; buildings: the lightmap.
+        .replace('#include <color_fragment>', '#ifdef USE_COLOR\n\tdiffuseColor.rgb *= min(vColor + t1Dynamic(), 1.);\n#endif')
+        .replace('lightMapTexel.rgb * lightMapIntensity * RECIPROCAL_PI', 'min(lightMapTexel.rgb * lightMapIntensity * RECIPROCAL_PI + t1Dynamic(), 1.)');
+    };
+    return material;
+  }
+  // Item::getLight's pulse: 0.15 + 0.85 (0.5 + 0.5 sin(π t / period)).
+  function stepPointLights(seconds) {
+    for (const light of pointLights) if (light.pulse) {
+      const level = .15 + .85 * (.5 + .5 * Math.sin(Math.PI * seconds / light.pulse));
+      light.shape.intensity = level;
+      if (light.uniform) light.uniform.setRGB(...light.color).multiplyScalar(level);
+    }
+  }
+  const spinners = [], up = new THREE.Vector3(0, 1, 0);  // Items that turn, 3 rad/s (Item::clientProcess).
+
   const placeholder = new THREE.BoxGeometry(4, 4, 4).translate(0, 2, 0), magenta = new THREE.MeshBasicMaterial({color: 0xcc00cc});
   // Until its model arrives each placed object is the orange wireframe box t2-mapper shows for a loading interior.
   const loadingBox = new THREE.BoxGeometry(10, 10, 10), loadingMaterial = new THREE.MeshStandardMaterial({color: 'orange', wireframe: true});
@@ -276,9 +313,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       const model = await loadModel(object.model, object.source === 'pack', object.light && object.light.uv);
       const lightMap = object.light && await loadLightMap(object.light);
       // The mission lightmap already holds the sun and the building's own lights: texture × lightmap, no scene lights.
-      mesh = new THREE.Mesh(model.geometry, !lightMap ? model.materials : model.materials.map(material => new THREE.MeshBasicMaterial(
+      mesh = new THREE.Mesh(model.geometry, !lightMap ? model.materials : model.materials.map(material => withPointLights(new THREE.MeshBasicMaterial(
         {map: material.map, color: material.color, side: THREE.DoubleSide, lightMap,
-          transparent: material.transparent, depthWrite: material.depthWrite, alphaTest: material.alphaTest})));
+          transparent: material.transparent, depthWrite: material.depthWrite, alphaTest: material.alphaTest}))));
       drawn = true;
     } catch (_) { missing++; mesh = new THREE.Mesh(placeholder, magenta); }
     mesh.name = object.name;
@@ -291,6 +328,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (drawn) npcIDs.add(object.entity); // Missing-model boxes are hidden too, but do not count as actors.
     }
     occluders.push(mesh);
+    if (object.spin) spinners.push(mesh);
     if (weather && object.shelter) try {
       if (!shelterFiles.has(object.shelter)) shelterFiles.set(object.shelter, get(data + 'textures/' + object.shelter).then(response => response.arrayBuffer()));
       // The layout is in the importer's pack_shelter: box, plane and node counts, planes, nodes, a byte per leaf.
@@ -705,6 +743,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     sky.position.copy(camera.position);
     skyTime.value += delta;
     if (weather) weather(delta);
+    if (pointLights.length) stepPointLights(clock.elapsedTime);
+    for (const mesh of spinners) mesh.rotateOnWorldAxis(up, 3 * delta);
     if (streamFrame) streamFrame(delta);
     drawFrame();
     if (flare && own.visible) flare(canvas.clientWidth, canvas.clientHeight);
@@ -815,6 +855,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (saved) { $('sky').value = settings.sky; return showSky(settings.sky); }
     }).catch(() => { $('sky').disabled = true; });
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
+    pointLights = (map.lights || []).map(light => {  // Packs imported before point lights have none.
+      const shape = new THREE.PointLight(new THREE.Color(...light.color), 1, light.range, 1);
+      shape.position.fromArray(light.position);
+      scene.add(shape);
+      const uniform = light.static ? null : new THREE.Color(...light.color);
+      if (uniform) {
+        lightUniforms.t1LightPos.value.push(new THREE.Vector3(...light.position));
+        lightUniforms.t1LightColor.value.push(uniform);
+        lightUniforms.t1LightRange.value.push(light.range);
+      }
+      return {...light, shape, uniform};
+    });
+    dynamicLights = pointLights.filter(light => light.uniform);
     const sun = new THREE.DirectionalLight(new THREE.Color(...map.sun.intensity));
     sun.position.copy(toward(map.sun.azimuth, map.sun.incidence));  // Shades only what has no lightmap.
     scene.add(sun);
