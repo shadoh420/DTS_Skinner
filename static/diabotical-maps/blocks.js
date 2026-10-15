@@ -34,12 +34,13 @@
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 
   /* The surfaces of `buffer`'s blocks, one per material index: {positions, normals, uvs} (Float32Array, three
-     corners a triangle). `scales` is each material's uv_scale (1 where missing). */
-  function buildBlocks(buffer, scales) {
+     corners a triangle). `scales` is each material's uv_scale (1 where missing); `bevel` the map's (global `bevel`:
+     how far the rims' normals bend, 1 by default; 0 leaves the edges sharp, as run 46 saw in the game). */
+  function buildBlocks(buffer, scales, bevel = 1) {
     // Twice over the blocks: counting each material's triangles, then writing them into arrays of that size (a
     // big map has millions; growing plain arrays held several times their memory).
     const triangles = new Map();
-    eachPolygon(buffer, (material, corners) => triangles.set(material, (triangles.get(material) || 0) + corners.length - 2));
+    eachPolygon(buffer, (material, corners) => triangles.set(material, (triangles.get(material) || 0) + corners.length - 2), bevel);
     const out = new Map(), filled = new Map();
     for (const [material, count] of triangles) {
       out.set(material, {positions: new Float32Array(count * 9), normals: new Float32Array(count * 9), uvs: new Float32Array(count * 6)});
@@ -61,12 +62,12 @@
         at++;
       }
       filled.set(material, at);
-    });
+    }, bevel);
     return out;
   }
 
   // Calls polygon(material, corners, outward normal, texture axes) for each face of `buffer`'s blocks.
-  function eachPolygon(buffer, polygon) {
+  function eachPolygon(buffer, polygon, bevel = 1) {
     const view = new DataView(buffer), count = Math.floor(buffer.byteLength / SIZE);
     for (let i = 0; i < count; i++) {
       const at = i * SIZE, shape = view.getUint8(at + 6), turn = view.getUint8(at + 7) & 3, open = view.getUint8(at + 8);
@@ -83,7 +84,7 @@
           // edges), and where the face is cut for their rims.
           const ends = others.map(other => [-1, 1].map(sign => {
             const side = FACE.findIndex(entry => entry.normal[other] === sign);
-            return open & 1 << side ? FACE[side].normal : null;
+            return bevel > 0 && open & 1 << side ? FACE[side].normal : null;
           }));
           const cuts = others.map((other, j) => [0, ...(ends[j][0] ? [BEVEL / extent[other]] : []), ...(ends[j][1] ? [1 - BEVEL / extent[other]] : []), 1]);
           const point = (a, b) => {
@@ -97,7 +98,7 @@
             const sum = normal.slice();
             [a, b].forEach((at, j) => {
               const end = at === 0 ? ends[j][0] : at === 1 ? ends[j][1] : null;
-              if (end) end.forEach((value, i) => { sum[i] += value; });
+              if (end) end.forEach((value, i) => { sum[i] += value * bevel; });
             });
             const length = Math.hypot(...sum);
             return sum.map(value => value / length);

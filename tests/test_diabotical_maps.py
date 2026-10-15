@@ -489,6 +489,13 @@ class DiaboticalMapsTest(unittest.TestCase):
             with Image.open(root / 'skies/a_b.jpg') as sky, Image.open(root / 'envmaps/a_b.png') as envmap:
                 self.assertEqual((sky.size, envmap.size), ((48, 8), (24, 4)))
 
+    def test_labels_are_read(self):
+        from tools.import_diabotical_map import read_labels
+        labels = read_labels([('label_1', (1, 2, 3), (0, 0, 0), (1, 1, 1), {'text': 'HELLO', 'size': '4'}),
+                              ('label_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'text': 'Hi'}),
+                              ('label_3', (0, 0, 0), (0, 0, 0), (1, 1, 1), {})])
+        self.assertEqual(labels, [[1, 2, -3, 'HELLO', 4], [0, 0, 0, 'Hi', 10]])
+
     def test_volumetrics_are_read_as_beams(self):
         from tools.import_diabotical_map import read_volumetrics
         beams = read_volumetrics([

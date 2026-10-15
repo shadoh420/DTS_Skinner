@@ -556,6 +556,17 @@ def read_volumetrics(entities):
     return out
 
 
+def read_labels(entities):
+    """A map's labels (`label` entities: text the game shows where they stand, run 46): [x, y, z (page axes), text,
+    size (10 by default: about the height of its capitals in units)]."""
+    out = []
+    for name, position, rotation, scale, fields in entities:
+        if name.startswith('label') and fields.get('text') and fields.get('no_show') not in ('1', 'true'):
+            size = next(iter(re.findall(r'\d*\.?\d+', fields.get('size', ''))), None)
+            out.append([*np.round([position[0], position[1], -position[2]], 2).tolist(), fields['text'][:200], float(size) if size else 10.0])
+    return out
+
+
 def read_billboards(entities):
     """A map's billboards (flat panes: glass, light glows, signs): [12 page-matrix floats of a unit square in local
     x, y (the entity's scale x by y, placed as a prop), colour 0xRRGGBB or None, texture (a decal asset or a texture
@@ -1095,7 +1106,7 @@ def import_maps(game, output, replace=False, extra=None):
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
                                decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky, lut=lut, movers=[[list(props).index(key), *entry] for key, value in movers.items() for entry in value],
                                billboards=read_billboards(parsed['entities']), volumetrics=read_volumetrics(parsed['entities']),
-                               pfx=read_pfx(parsed['entities'], assets, pickups)),
+                               labels=read_labels(parsed['entities']), pfx=read_pfx(parsed['entities'], assets, pickups)),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
         placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +
@@ -1105,7 +1116,10 @@ def import_maps(game, output, replace=False, extra=None):
         file, entities = f'{ident}-{digest}.bin', f'{ident}-{hashlib.sha256(placed).hexdigest()[:12]}.ent'
         if terrain:
             terrain['file'] = f'{ident}-{hashlib.sha256(heights).hexdigest()[:12]}.png'
-        item = dict(id=ident, format=FORMAT, name=name, group=group, file=file, entities=entities, terrain=terrain, hash=digest, version=parsed['version'],
+        # The global entity's bevel: how round the blocks' edges are shaded (1 where unset; run 46: 0 leaves them sharp).
+        bevel = next((f.get('bevel') for n, *_, f in parsed['entities'] if n == 'global'), None)
+        bevel = float(bevel) if bevel and re.fullmatch(r'\s*\d*\.?\d+\s*', bevel) else 1.0
+        item = dict(id=ident, format=FORMAT, name=name, group=group, file=file, entities=entities, terrain=terrain, hash=digest, version=parsed['version'], bevel=bevel,
                     author=parsed['author'], materials=parsed['materials'], blocks=len(blocks))
         for old in files(index.get(ident, {})):
             if old and old not in files(item):

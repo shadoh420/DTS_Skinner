@@ -244,6 +244,21 @@ window.addEventListener('DOMContentLoaded', async () => {
       layers.markers.add(mesh);
     }
   }
+  // Labels: their text where they stand, white, facing the camera, about `size` units tall (run 46).
+  function addLabels(list) {
+    for (const [x, y, z, text, size] of list) {
+      const canvas = document.createElement('canvas'), context = canvas.getContext('2d'), font = 'bold 64px sans-serif';
+      context.font = font;
+      canvas.width = Math.ceil(context.measureText(text).width) + 16;
+      canvas.height = 96;
+      Object.assign(context, {font, fillStyle: '#fff', textBaseline: 'middle', shadowColor: 'rgba(0,0,0,.6)', shadowBlur: 6});
+      context.fillText(text, 8, 48);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas), depthWrite: false}));
+      sprite.scale.set(size * 1.25 * canvas.width / 64, size * 1.25 * 96 / 64, 1);
+      sprite.position.set(x, y, z);
+      layers.markers.add(sprite);
+    }
+  }
   // Liquids as see-through boxes, their size the entity's scale, centred on it (as the game's water surface is: top at y + height / 2).
   // Liquids: the top of a box of the entity's scale. Unlit, so lava and acid glow their own colour as in the game;
   // the colour's alpha (AARRGGBB) is the surface's opacity, and one with no colour is clear water (bioplant's pools
@@ -916,7 +931,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // The last material of a map is unnamed and drawn as default, as the game does.
     const names = map.materials.map(name => name || 'default');
     map.untextured = [...new Set(names.filter(name => !entries[name]))];
-    const groups = DiaboticalBlocks.buildBlocks(buffer, names.map(name => (entries[name] || {}).scale ?? 1));
+    const groups = DiaboticalBlocks.buildBlocks(buffer, names.map(name => (entries[name] || {}).scale ?? 1), map.bevel ?? 1);
     const bounds = new THREE.Box3();
     for (const [index, {positions, normals, uvs}] of groups) {
       const geometry = new THREE.BufferGeometry();
@@ -944,7 +959,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky, lut, movers} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky, lut, movers, labels} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       if (sky) addSky(sky);
       if (lut) new THREE.TextureLoader().load(`${data}luts/${fileName(lut)}.png`, loaded => {
@@ -959,6 +974,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       map.decals = addDecals(decals, entries);
       addBillboards(billboards, entries);
       addVolumetrics(volumetrics, entries);
+      addLabels(labels);
       await addParticles(pfx);
     }
     renderer.shadowMap.needsUpdate = true;
