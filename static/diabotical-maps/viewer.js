@@ -55,7 +55,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         gl_FragColor = vec4(vec3(pow(clamp(1. - hidden / 6., 0., 1.), power)), 1.);
       }`}));
   const occlusionScene = new THREE.Scene().add(occlusionPass);
-  gameUniforms.gameOcclusion.value = occlusionTarget.texture;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9fc4e0);
   // Every material is lit the game's way (lighting.js); the directional light only casts the sun's shadow.
@@ -77,7 +76,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()},
     gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}, gameFog: {value: new THREE.Vector4()},
     gameFogRange: {value: new THREE.Vector2(1, 0)}, gameVerticalFog: {value: new THREE.Vector4()}, gameVerticalFogRange: {value: new THREE.Vector2(0, 1)},
-    gameHorizon: {value: new THREE.Vector4(1, 1, 1, 1)}, gameOcclusion: {value: null}, gameScreen: {value: new THREE.Vector2(1, 1)}};
+    gameHorizon: {value: new THREE.Vector4(1, 1, 1, 1)}, gameOcclusion: {value: occlusionTarget.texture}, gameScreen: {value: new THREE.Vector2(1, 1)}};
   const gameTime = {value: 0};  // Seconds, for what moves.
   // A material's specular map (materials.json `spec`: a texture, or [gloss, strength] made a texel) and material id.
   const evenTexels = new Map();
@@ -847,6 +846,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const draw = () => {
     renderer.getDrawingBufferSize(drawn);
+    if (!drawn.x || !drawn.y) return;  // A hidden page has no canvas size yet.
     if (drawn.x !== target.width || drawn.y !== target.height) {
       for (const made of [target, depthTarget, occlusionTarget]) made.setSize(drawn.x, drawn.y);
       gameUniforms.gameScreen.value.copy(drawn);
