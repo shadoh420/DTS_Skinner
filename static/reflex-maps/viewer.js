@@ -691,6 +691,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateSun();
     applySky();
   }
+  // Shootables and turrets take their weapon's colour (weaponType 0 melee, 1 burst gun … 8 stake launcher; measured
+  // in the game on a row of targets): a target's rings (slot 0) as listed, a turret's red paint (slots 5 and 6) at
+  // full strength. Without a weaponType both keep the effect's red.
+  const WEAPON_COLOURS = [[.75, .75, .75], [0, .75, .75], [.75, .47, 0], [.33, .66, .26], [.75, 0, .75], [.75, 0, 0], [0, .41, .75], [.75, .75, 0], [.41, 0, 0]];
+  const weaponTint = (entity, slot) => {
+    const colour = WEAPON_COLOURS[M.property(entity, 'weaponType')];
+    if (!colour) return null;
+    if (entity.type === 'Shootable' && slot === 0) return [...colour, 1];
+    return entity.type === 'Turret' && (slot === 5 || slot === 6) ? [...colour.map(c => c / .75), 1] : null;
+  };
   // Every placed mesh part into the geometry of where it goes: lit (per texture, untextured first), shining, or the
   // editor's; planned first (material, colour, count), then written into arrays of their final size.
   function mergeModels(placed) {
@@ -715,7 +725,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           const read = packColours[name] || {};
           if (isClip({material: name}) || /godrays|powerup_resist/.test(read.shader || '')) continue;
           const own = M.property(entity, `material${slot}Albedo`), ownColour = own !== undefined && hexColour(own);
-          const set = record.colours[slot], material = materialOf(name), glow = glowOf(name);
+          const set = weaponTint(entity, slot) || record.colours[slot], material = materialOf(name), glow = glowOf(name);
           // The effect's slot colour goes with the effect's material: an entity that swaps the material drops it
           // (measured: pipes given water and glow show those materials' own colours, not the slot's).
           const given = ownColour && ownColour[0] > 0 ? ownColour.slice(1) : set && !M.property(entity, `material${slot}Name`) ? set.slice(0, 3) : null;

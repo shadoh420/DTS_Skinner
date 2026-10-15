@@ -499,7 +499,12 @@ thing's own axes (seen in the game: Ruin's pads at 180 90 0 lie flat as at
   is. Seen in the game with a test map (a floor, a shootable at angles −90
   and turrets at −270 and −45, outside training mode): both are drawn, the
   target facing the spawn and the turrets idle in their rest pose, as on the
-  page; the game turns a turret toward a player it sees.
+  page; the game turns a turret toward a player it sees. Both take their
+  weapon's colour from `weaponType` (0 melee white, 1 burst gun cyan, 2
+  shotgun orange, 3 grenade green, 4 plasma magenta, 5 rocket red, 6 ion
+  blue, 7 bolt yellow, 8 stake dark red; none: the effect's red), measured
+  on a row of targets in the game: a target's rings (slot 0, 0.75 at most) and
+  a turret's red paint (slots 5 and 6, at full strength).
 - Mesh vertex colours are BGRA (the editor's target, red in the game, holds
   (0, 28, 180)).
 - While editing, entities show the game editor's models (effects.json's
