@@ -9,7 +9,7 @@ const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:false,alpha:fals
 renderer.setPixelRatio(1);renderer.outputEncoding=THREE.LinearEncoding;renderer.toneMapping=THREE.NoToneMapping;
 renderer.setClearColor(0);renderer.sortObjects=true;
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(75,1,2,100000);camera.up.set(0,0,1);
-const skyCamera=camera.clone();
+const skyCamera=camera.clone(),mirrorCamera=camera.clone();
 // Doom uses destination alpha as scratch storage (makealpha + maskColor).
 // Keep RGBA offscreen, then copy opaque RGB so browser compositing cannot alter it.
 const colorTarget=new THREE.WebGLRenderTarget(1,1,{format:THREE.RGBAFormat,depthBuffer:true});
@@ -69,12 +69,22 @@ gl_FragColor=vec4((diffuse+s*vertexColor(specularVertexMode))*light*ndl,1);
 // R_LoadCubeImages camera-face transpose/flips, performed on coordinates so
 // source DDS bytes and their mip chains stay intact. No lighting/overbright.
 const cubeFragment=`precision highp float;
-varying vec3 positionWorld,vertexRGB;varying float vertexAlpha;
-uniform sampler2D cube0,cube1,cube2,cube3,cube4,cube5;
-uniform mat3 skyMatrix;uniform float cameraCube,vertexMode,vertexAlphaEnabled,alphaCut;
+varying vec3 positionWorld,vertexRGB,tangentX,tangentY,tangentZ;varying float vertexAlpha;varying vec2 st;
+uniform sampler2D cube0,cube1,cube2,cube3,cube4,cube5,bumpMap;
+uniform mat3 skyMatrix,bumpUV;uniform float cameraCube,vertexMode,vertexAlphaEnabled,alphaCut,cubeMode,normalRXGB;
 uniform vec4 diffuseColor;
+vec3 bumpNormal(){vec4 b=texture2D(bumpMap,(bumpUV*vec3(st,1)).xy);vec3 l=vec3(normalRXGB>0.5?b.a:b.r,b.g,b.b)*2.0-1.0;
+ return normalize(l.x*tangentX+l.y*tangentY+l.z*tangentZ);}
 void main(){
- vec3 d=skyMatrix*(positionWorld-cameraPosition),a=abs(d);vec2 st;vec4 pixel;
+ // cubeMode 0: view ray (skybox). 1: environment.vfp reflection off the vertex normal.
+ // 2: bumpyEnvironment.vfp, normal map in the tangent frame (the program ignores stage colour).
+ // 3: TG_DIFFUSE_CUBE, the normal itself.
+ vec3 d=positionWorld-cameraPosition;
+ if(cubeMode>0.5){
+  vec3 n=cubeMode>1.5&&cubeMode<2.5?bumpNormal():normalize(tangentZ);
+  vec3 e=normalize(-d);d=cubeMode>2.5?n:2.0*dot(e,n)*n-e;
+ }
+ d=skyMatrix*d;vec3 a=abs(d);vec2 st;vec4 pixel;
  if(a.x>=a.y&&a.x>=a.z){
   if(d.x>0.0){st=vec2(-d.z,-d.y)/a.x*.5+.5;if(cameraCube>0.5)st=st.yx;pixel=texture2D(cube0,st);}
   else{st=vec2(d.z,-d.y)/a.x*.5+.5;if(cameraCube>0.5)st=1.0-st.yx;pixel=texture2D(cube1,st);}
@@ -85,10 +95,37 @@ void main(){
   if(d.z>0.0){st=vec2(d.x,-d.y)/a.z*.5+.5;if(cameraCube>0.5)st=st.yx;pixel=texture2D(cube4,st);}
   else{st=vec2(-d.x,-d.y)/a.z*.5+.5;if(cameraCube>0.5)st=st.yx;pixel=texture2D(cube5,st);}
  }
+ if(cubeMode>1.5&&cubeMode<2.5){if(pixel.a<alphaCut)discard;gl_FragColor=pixel;return;}
  pixel*=diffuseColor;
  if(vertexMode!=0.0){pixel.rgb*=vertexMode>0.0?vertexRGB:1.0-vertexRGB;if(vertexAlphaEnabled>0.5)pixel.a*=vertexMode>0.0?vertexAlpha:1.0-vertexAlpha;}
  if(pixel.a<alphaCut)discard;gl_FragColor=pixel;
 }`;
+// R_MirrorRender: the reflected view, projected onto the mirror; its own stages blend over it.
+const mirrorFragment=`precision highp float;varying vec3 positionWorld;uniform sampler2D mirrorMap;uniform mat4 textureMatrix;
+void main(){gl_FragColor=vec4(texture2DProj(mirrorMap,textureMatrix*vec4(positionWorld,1.0)).rgb,1.0);}`;
+function mirrorPlane(surface) {
+ const i=geometry.index.array[surface.start],p=geometry.attributes.position.array,n=geometry.attributes.normal.array;
+ const normal=new THREE.Vector3(n[i*3],n[i*3+1],n[i*3+2]).normalize(),point=new THREE.Vector3(p[i*3],p[i*3+1],p[i*3+2]);
+ return {plane:new THREE.Plane().setFromNormalAndCoplanarPoint(normal,point),target:null,mesh:null};
+}
+function renderMirror(batch,select,width,height) {
+ // three.js Reflector: mirrored eye/forward/up, projective texture matrix, then an oblique near plane on the mirror.
+ const {plane}=batch.mirror;if(plane.distanceToPoint(camera.position)<=0)return false;
+ const reflect=v=>v.sub(plane.normal.clone().multiplyScalar(2*v.dot(plane.normal)));
+ const forward=reflect(camera.getWorldDirection(new THREE.Vector3())),up=reflect(new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion));
+ mirrorCamera.copy(camera);mirrorCamera.position.copy(camera.position).sub(plane.normal.clone().multiplyScalar(2*plane.distanceToPoint(camera.position)));
+ mirrorCamera.up.copy(up);mirrorCamera.lookAt(mirrorCamera.position.clone().add(forward));mirrorCamera.updateMatrixWorld();mirrorCamera.updateProjectionMatrix();
+ batch.mirror.mesh.material.uniforms.textureMatrix.value.set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1).multiply(mirrorCamera.projectionMatrix).multiply(mirrorCamera.matrixWorldInverse);
+ const clip=plane.clone().applyMatrix4(mirrorCamera.matrixWorldInverse),c=new THREE.Vector4(clip.normal.x,clip.normal.y,clip.normal.z,clip.constant),m=mirrorCamera.projectionMatrix.elements;
+ const q=new THREE.Vector4((Math.sign(c.x)+m[8])/m[0],(Math.sign(c.y)+m[9])/m[5],-1,(1+m[10])/m[14]);c.multiplyScalar(2/c.dot(q));
+ m[2]=c.x;m[6]=c.y;m[10]=c.z+1;m[14]=c.w;mirrorCamera.projectionMatrixInverse.copy(mirrorCamera.projectionMatrix).invert();
+ const target=batch.mirror.target||(batch.mirror.target=new THREE.WebGLRenderTarget(width,height));
+ if(target.width!==width||target.height!==height)target.setSize(width,height);
+ select(mirrorCamera);for(const b of batches)if(b.mirror)b.mirror.mesh.visible=false;
+ renderer.setRenderTarget(target);renderer.clear();renderer.render(scene,mirrorCamera);
+ batch.mirror.mesh.material.uniforms.mirrorMap.value=target.texture;
+ return true;
+}
 const defaultStage={color:[1,1,1,1],condition:1,uv:[],vertexColor:0,alphaTest:0};
 const unit=()=>new THREE.Matrix3();
 function uniforms() {return {diffuseMap:{value:white},bumpMap:{value:flat},specularMap:{value:black},projectionMap:{value:white},falloffMap:{value:white},
@@ -99,15 +136,22 @@ function uniforms() {return {diffuseMap:{value:white},bumpMap:{value:flat},specu
 const blendFactors={gl_zero:THREE.ZeroFactor,gl_one:THREE.OneFactor,gl_src_alpha:THREE.SrcAlphaFactor,gl_one_minus_src_alpha:THREE.OneMinusSrcAlphaFactor,
  gl_dst_color:THREE.DstColorFactor,gl_one_minus_dst_color:THREE.OneMinusDstColorFactor,gl_dst_alpha:THREE.DstAlphaFactor,gl_one_minus_dst_alpha:THREE.OneMinusDstAlphaFactor,
  gl_src_color:THREE.SrcColorFactor,gl_one_minus_src_color:THREE.OneMinusSrcColorFactor};
+// Big maps (mars_city1) reference thousands of images; unbounded parallel fetches intermittently
+// fail with net::ERR_INSUFFICIENT_RESOURCES and the whole map load aborts.
+let loadSlots=32;const loadQueue=[];
+async function limited(job) {
+ if(loadSlots>0)loadSlots--;else await new Promise(r=>loadQueue.push(r));
+ try{return await job();}finally{const next=loadQueue.shift();if(next)next();else loadSlots++;}
+}
 async function texture(image,clamp=false) {
  if(!image||image.status!=='ready')return null;
  const key=image.texture+':'+clamp;
- if(!textures.has(key))textures.set(key,(async()=>{
+ if(!textures.has(key))textures.set(key,limited(async()=>{
    const url=base+'textures/'+encodeURIComponent(image.texture);
    const t=image.texture.toLowerCase().endsWith('.dds')?await skinnerDDS.load(url):await new THREE.TextureLoader().loadAsync(url);
    t.flipY=false;t.encoding=THREE.LinearEncoding;t.wrapS=t.wrapT=clamp?THREE.ClampToEdgeWrapping:THREE.RepeatWrapping;
    t.needsUpdate=true;return t;
- })());return textures.get(key);
+ }));return textures.get(key);
 }
 function stageColor(stage,seconds,parms,target,sound=0) {
  const active=M.evaluate(stage.condition,seconds,parms,tables,data.globalShaderParms,sound)!==0;
@@ -185,7 +229,7 @@ function applyParticles(batch,view,seconds) {
 }
 function disposeMap() {
  npcs.setCount(0);
- for(const b of batches){for(const mesh of b.meshes)mesh.material.dispose();b.group.clear();b.geometry.dispose();}
+ for(const b of batches){for(const mesh of b.meshes)mesh.material.dispose();b.mirror?.target?.dispose();b.group.clear();b.geometry.dispose();}
  scene.clear();batches=[];geometry?.dispose();geometry=null;
  for(const value of textures.values())value.then(t=>t.dispose()).catch(()=>{});textures=new Map();
 }
@@ -249,8 +293,11 @@ async function buildMap(meta,binary) {
    if(kind===3){
     diffuse.cubeTextures.forEach((t,i)=>u['cube'+i]={value:t||black});
     u.cameraCube={value:+diffuse.cube.camera};u.skyMatrix={value:unit()};
+    u.cubeMode={value:diffuse.texgen==='reflect'?(bump?2:1):diffuse.texgen==='normal'?3:0};
    }
-   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:kind===3?cubeFragment:fragment,uniforms:u,vertexColors:true,
+   if(kind===4){u.mirrorMap={value:black};u.textureMatrix={value:new THREE.Matrix4()};
+   }
+   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:kind===3?cubeFragment:kind===4?mirrorFragment:fragment,uniforms:u,vertexColors:true,
     side:material.twoSided||deformed||particle?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
     blending:kind===0?THREE.NoBlending:THREE.CustomBlending,blendSrc:THREE.OneFactor,blendDst:kind===1?THREE.OneFactor:THREE.ZeroFactor});
    if(kind===2||kind===3) {
@@ -263,6 +310,7 @@ async function buildMap(meta,binary) {
   const cut=material.stages.filter(s=>s.alphaTest!==0),opaque=material.stages.find(s=>s.role==='diffuse')||material.stages[0];
   // RoE portal-sky surfaces show the sky view already in the color buffer (_currentRender): depth only.
   if(material.portalSky){pass(0,null,null,null,null,null,0);meshes.at(-1).material.colorWrite=false;continue;}
+  if(material.mirror){batch.mirror=mirrorPlane(surface);pass(4,null,null,null,null,null,50);batch.mirror.mesh=meshes.at(-1);}
   if(!material.translucent)for(const stage of cut.length?cut:[opaque])pass(0,stage,null,null,null,null,0);
   for(const interaction of interactionGroups(material.stages))for(const index of surface.lights) {
     const light=meta.lights[index];if(light.authoredOff)continue;
@@ -270,7 +318,9 @@ async function buildMap(meta,binary) {
       pass(1,interaction.diffuse,interaction.specular,interaction.bump,light,projection,10);
   }
   // Finish each surface's stage chain before another surface overwrites scratch alpha.
-  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,null,null,null,M.ambientOrder(material.sort,ambientOrder++)));
+  // RB_STD_T_RenderShaderPasses: a reflect stage uses the material's bump stage (GetBumpStage) when it has one.
+  const bumpStage=material.stages.find(s=>s.role==='bump')||null;
+  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,s.texgen==='reflect'?bumpStage:null,null,null,M.ambientOrder(material.sort,ambientOrder++)));
  }
  npcs.setCount(npcOwners.size);
  return passCount;
@@ -309,6 +359,8 @@ function draw(seconds=0,target=null) {
  const width=target?target.width:renderer.domElement.width,height=target?target.height:renderer.domElement.height;
  if(colorTarget.width!==width||colorTarget.height!==height)colorTarget.setSize(width,height);
  let selected=select(camera),skyMetrics={calls:0,triangles:0};
+ const mirrors=batches.filter(b=>b.mirror&&b.group.visible).map(b=>[b,renderMirror(b,select,width,height)]);
+ if(mirrors.length){selected=select(camera);for(const [b,ok] of mirrors)if(!ok)b.mirror.mesh.visible=false;}
  renderer.setRenderTarget(colorTarget);
  const portalSky=M.portalSkyOrigin(data,selected.areas);
  if(portalSky){

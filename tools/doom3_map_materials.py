@@ -48,6 +48,8 @@ def expressions(tokens,count,policy=None):
     return result
 
 
+# texgen with a cube image: skybox/wobblesky (view ray), reflect (environment.vfp), normal (TG_DIFFUSE_CUBE).
+CUBE_TEXGENS=('skybox','wobblesky','reflect','normal')
 DEFORM_ARGS={'flare':1,'expand':1,'move':1,'sprite':0,'rectsprite':0,'tube':0}
 
 
@@ -155,7 +157,7 @@ def compile_stage(tokens,textures):
                     stage['wobble']=[expr(v) for v in values]
             else:notes.append(key)
         except (ValueError,IndexError) as exc:notes.append(str(exc))
-    if stage.get('cube') and stage.get('texgen') in ('skybox','wobblesky'):
+    if stage.get('cube') and stage.get('texgen') in CUBE_TEXGENS:
         cube=stage['cube']
         suffixes=('forward','back','left','right','up','down') if cube['camera'] else ('px','nx','py','ny','pz','nz')
         cube['faces']=[textures.resolve(cube['expression']+'_'+face) for face in suffixes]
@@ -175,7 +177,7 @@ def compile_material(name,defs,materials,textures):
     for stage in stages:
         s,n=compile_stage(stage,textures);notes.extend(n)
         reflection|=s.get('texgen')=='reflect'
-        if s.get('cube') and s.get('texgen') not in ('skybox','wobblesky'):
+        if s.get('cube') and s.get('texgen') not in CUBE_TEXGENS:
             notes.append('unsupported cube texgen: '+s.get('texgen','normal'))
         elif s.get('image') or s.get('cube'):parsed.append(s)
     t=compact(global_tokens);lower=[x.lower() for x in t];i=0;falloff=None
@@ -217,12 +219,15 @@ def compile_material(name,defs,materials,textures):
     sort=sort_value(t[lower.index('sort')+1]) if 'sort' in lower[:-1] else SORTS['decal'] if decal else None
     if sort is None:sort=SORTS['medium'] if translucent else SORTS['opaque']
     portal_sky='portalsky' in lower
+    # Material.cpp: `mirror` = sort subview, opaque coverage; the viewer draws a reflected view under its stages.
+    mirror='mirror' in lower
+    if mirror:sort=SORTS['subview']
     deform=None
     if 'deform' in lower[:-1]:
         try:deform=parse_deform(global_tokens,defs.policy)
         except (ValueError,IndexError) as exc:notes.append('deform: '+str(exc))
         if not deform:notes.append('deform '+lower[lower.index('deform')+1])
-    for feature in ('guisurf','foglight','blendlight','mirror'):
+    for feature in ('guisurf','foglight','blendlight'):
         if feature in lower:notes.append(feature)
     for s in parsed:
         for image in s['cube']['faces'] if s.get('cube') else [s['image']]:
@@ -235,4 +240,4 @@ def compile_material(name,defs,materials,textures):
     return dict(name=record['name'],visible=record['visible'],twoSided=record['twoSided'],translucent=translucent,
                 soundReactive=any(sound_reactive([s['color'],s['condition'],s['uv'],s['alphaTest']]) for s in parsed),
                 unsmoothedTangents='unsmoothedtangents' in lower,ambientLight='ambientlight' in lower,fogLight='foglight' in lower,blendLight='blendlight' in lower,
-                stages=parsed,falloff=falloff,spectrum=spectrum,sort=sort,portalSky=portal_sky,deform=deform,approximations=sorted(set(notes)))
+                stages=parsed,falloff=falloff,spectrum=spectrum,sort=sort,portalSky=portal_sky,mirror=mirror,deform=deform,approximations=sorted(set(notes)))
