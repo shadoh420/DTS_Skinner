@@ -325,12 +325,13 @@ window.addEventListener('DOMContentLoaded', async () => {
      `segments` across x by `segments_y` along z facing z, or `segments` fanned about the vertical (radial), each
      cell less its gap, the top narrowed by `taper`; brightest at the top and fading down, soft at the sides, times
      the colour, its strength and the texture where there is one, fading where seen edge on (run 47: bioplant's
-     map-sized volumetric_64 is invisible from above); added to the picture (alpha blended with `alpha`),
+     map-sized volumetric_64 is invisible from above), blended over the picture (run 46: a red beam over the blue sky
+     is saturated red, which added light could not be; the editor calls `alpha` the switch from additive, unseen),
      turning about the vertical by `rotation_speed` (radians a second, not measured). */
   const beams = [];
   function addVolumetrics(list, entries) {
     for (const beam of list) {
-      const [kind, columns, rows, gap, gapY, taper, rgb, strength, name, blended, spin] = beam.slice(12);
+      const [kind, columns, rows, gap, gapY, taper, rgb, strength, name, , spin] = beam.slice(12);
       const positions = [], uvs = [], quad = (corners) => {
         const [a, b, c, d] = corners;
         positions.push(...a, ...b, ...c, ...a, ...c, ...d);
@@ -354,17 +355,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       geometry.computeVertexNormals();
       const entry = entries[name], map = entry && entry.texture ? texture(entry.texture) : null;
       const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
-        uniforms: {colour: {value: new THREE.Color(rgb).multiplyScalar(strength)}, map: {value: map}, textured: {value: map ? 1 : 0}},
-        transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: blended ? THREE.NormalBlending : THREE.AdditiveBlending,
+        uniforms: {colour: {value: new THREE.Color(rgb)}, strength: {value: strength}, map: {value: map}, textured: {value: map ? 1 : 0}},
+        transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending,
         vertexShader: `varying vec2 vUv; varying vec3 vFacing, vView;
           void main() { vUv = uv; vec4 view = modelViewMatrix * vec4(position, 1.); vView = view.xyz; vFacing = normalMatrix * normal;
             gl_Position = projectionMatrix * view; }`,
-        fragmentShader: `uniform vec3 colour; uniform sampler2D map; uniform float textured; varying vec2 vUv; varying vec3 vFacing, vView;
+        fragmentShader: `uniform vec3 colour; uniform float strength; uniform sampler2D map; uniform float textured; varying vec2 vUv; varying vec3 vFacing, vView;
           void main() {
             float fade = smoothstep(0., 1., vUv.y) * (1. - smoothstep(.9, 1., vUv.y)) * sin(3.14159 * vUv.x);
             fade *= abs(dot(normalize(vFacing), normalize(vView)));  // A panel seen edge on fades out.
             vec4 texel = textured > .5 ? texture2D(map, vUv) : vec4(1.);
-            gl_FragColor = vec4(colour * texel.rgb * fade, fade * texel.a);
+            gl_FragColor = vec4(colour * texel.rgb, fade * strength * texel.a);
           }`}));
       mesh.matrixAutoUpdate = false;
       mesh.matrix.set(...beam.slice(0, 12), 0, 0, 0, 1);
