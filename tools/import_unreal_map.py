@@ -31,7 +31,9 @@ reference only, walks the same node list). Invisible surfaces and zone portals a
 Written under local-data/unreal-maps/GAME (dx: local-data/dx-maps): index.json (one entry per map), maps/ID/scene.json (texture groups,
 viewpoints, counts, the lightmap atlas's size) with maps/ID/geometry.bin (float32 positions xyz, float32 texture uv,
 float32 lightmap uv, uint8 RGBA vertex colours, uint32 triangle indices, one after the other) and maps/ID/lightmap.png,
-and textures/*.png shared by every map (kept when already there, rewritten by --replace).
+and textures/*.png shared by every map (kept when already there, rewritten by --replace). Maps with changing lights
+add maps/ID/lightanim.png and lightanim-ids.png (scene light_anim); fog zones and view tints come as fog_lights,
+regions and region_tree; AnimNext chains as a group's anim. static/unreal-maps/ue1-extras.js draws them.
 """
 import argparse
 import itertools
@@ -108,21 +110,42 @@ def light_color(hue, saturation, brightness):
 LIGHT_AVERAGE = {2: .65, 3: .5, 4: .5, 5: .5, 7: .8}  # LT_Pulse, LT_Blink, LT_Flicker, LT_Strobe, LT_SubtlePulse
 
 
-def light_of(props):
+def light_of(props, ref=None):
     """What a light actor's (class defaults merged) properties light with, or None when it gives none: location,
-    radius, colour, effect, spot axis and cone."""
+    radius, colour, effect, spot axis and cone; a changing light also its (LightType, LightPeriod, LightPhase) and
+    full-brightness colour."""
     kind = props.get('LightType', 0)
-    # A changing light is drawn at its average brightness (a page shows one still): pulse 0.65 + 0.35 sin, subtle
-    # pulse 0.8 + 0.2 sin, blink, strobe and flicker on half the time. ponytail: the palette ones as steady.
+    # A changing light is drawn at its average brightness where it stays still (meshes, a surface's fourth): pulse
+    # 0.65 + 0.35 sin, subtle pulse 0.8 + 0.2 sin, blink, strobe and flicker on half the time. ponytail: the palette ones as steady.
     brightness = props.get('LightBrightness', 0) * LIGHT_AVERAGE.get(kind, 1)
     # A TriggerLight (bInitiallyOn False by default) that starts off gives no light until triggered.
     if not kind or brightness <= 0 or not props.get('bInitiallyOn', True):
         return None
     pitch, yaw, roll = vector(props, 'Rotation', '3i')
-    return dict(location=np.array(vector(props, 'Location')), radius=(int(props.get('LightRadius', 0)) + 1) * 25,
-                color=light_color(props.get('LightHue', 0), props.get('LightSaturation', 0), brightness),
-                effect=props.get('LightEffect', 0), axis=np.array(rotation(pitch, yaw, roll))[:, 0],
-                cone=props.get('LightCone', 0))
+    hue, saturation = props.get('LightHue', 0), props.get('LightSaturation', 0)
+    found = dict(location=np.array(vector(props, 'Location')), radius=(int(props.get('LightRadius', 0)) + 1) * 25,
+                 color=light_color(hue, saturation, brightness), effect=props.get('LightEffect', 0),
+                 axis=np.array(rotation(pitch, yaw, roll))[:, 0], cone=props.get('LightCone', 0), ref=ref)
+    if kind in LIGHT_AVERAGE:
+        found.update(anim=(kind, props.get('LightPeriod', 0), props.get('LightPhase', 0)),
+                     full=light_color(hue, saturation, props.get('LightBrightness', 0)))
+    return found
+
+
+def fog_light(props, location):
+    """A volumetric light's sphere and fog as SurrealEngine's FogmapBuilder::AddLight reads them, or None:
+    [x, y, z, radius] in the page's units and metres, [r, g, b] x brightness and brightness x fog for the page's
+    shader. Radius (VolumeRadius + 1) x 25 (UActor::WorldVolumetricRadius); brightness LightBrightness / 255 x
+    VolumeBrightness / 64 x 5; fog VolumeFog / 255."""
+    brightness = props.get('LightBrightness', 0) / 255 * props.get('VolumeBrightness', 0) / 64 * 5
+    if not props.get('VolumeRadius', 0) or brightness <= 0:
+        return None
+    # Hypothesis: the colour as SurrealEngine's hsbtorgb (Math/hsb.h: value 6.512735 sqrt(brightness), the hue and
+    # saturation as light_color reads them); the page's lightmaps found that sqrt too strong for dim lights, and no fog
+    # has been checked against the game.
+    color = light_color(props.get('LightHue', 0), props.get('LightSaturation', 0), 255) / 127.5 * 6.512735 * math.sqrt(props.get('LightBrightness', 0))
+    return [round(float(c), 4) for c in (*viewer([location])[0], (props['VolumeRadius'] + 1) * 25 * SCALE, *(color * brightness),
+                                         brightness * props.get('VolumeFog', 0) / 255)]
 
 
 # Light effects (ELightEffect) drawn other than the plain one: static spot and spotlight, non-incidence, shell, omni
@@ -130,12 +153,15 @@ def light_of(props):
 STATIC_SPOT, SPOTLIGHT, NON_INCIDENCE, SHELL, OMNI_BUMP_MAP, CYLINDER = 8, 12, 13, 14, 15, 17
 
 
-def lightmap(model, entry, base, u, v, normal, ambient, lights, place=None):
+def lightmap(model, entry, base, u, v, normal, ambient, lights, place=None, moving=None):
     """Light (h, w, 3), 0 to 1, of lightmap entry `entry` on a surface (base point, U and V vectors, normal): the
     zone's ambient colour plus, for each light the entry lists, its shadow bits (blurred 3 by 3 with weights summing
     to 2) times its falloff and incidence times its colour, each light at most 1 a channel. Texel (i, j) is the point
     of the surface's plane where U.(P - base) = PanX + i UScale and V.(P - base) = PanY + j VScale. `place` (a mover's
-    surfaces: matrix, offset) takes those points and the normal from the surface's own space into the world."""
+    surfaces: matrix, offset) takes those points and the normal from the surface's own space into the world.
+    `moving` (a dict) takes the changing lights instead, {light reference: shadow x falloff (h, w)}: the three that
+    give the surface most light (the page animates three a texel); any more stay in at their average."""
+    changing = []
     width, height = entry['size']
     pitch = (width + 7) // 8
     solve = np.linalg.pinv(np.array([u, v, normal], np.float64))  # Pseudo: Crashsite has U along V.
@@ -182,7 +208,15 @@ def lightmap(model, entry, base, u, v, normal, ambient, lights, place=None):
                 along = -(to_light @ found['axis']) / distance
                 spot = 1 - np.minimum((1 - along) / (1 - edge), 1) if edge < 1 else np.zeros_like(near)
                 strength = strength * spot ** 2
+        if moving is not None and 'anim' in found and (shadow * strength).any():
+            changing.append((shadow * strength, found))
+            continue
         light += np.minimum(shadow[..., None] * strength[..., None] * found['color'], 1)
+    changing.sort(key=lambda item: -item[0].sum())
+    for term, found in changing[3:]:
+        light += np.minimum(term[..., None] * found['color'], 1)
+    if changing:
+        moving.update((found['ref'], term) for term, found in changing[:3])
     return np.minimum(light, 1)
 
 
@@ -201,6 +235,35 @@ def vertex_light(points, normals, two_sided, base, lights, scale_glow=1.0):
         strength = np.where(near < 1, np.minimum((1 + 2 * near ** 3 - 3 * near ** 2) / near, 1), 0) * facing
         light = light + scale_glow * np.minimum(2 * strength[:, None] * found['color'], 1)
     return np.minimum(light, 1)
+
+
+def region_tree(nodes, region_of):
+    """The BSP as the page's region tree: {root, nodes: [[a, b, c, d, front, back]]}, a point in front where
+    a*x + b*y + c*z - d >= 0 (page axes and metres), a child below 0 the leaf -1 - region; a node's empty side is its
+    zone there (Zones[1] in front, Zones[0] behind, as zone_at walks it), mapped through `region_of`. Subtrees all in
+    one region become that leaf."""
+    if not nodes:
+        return dict(root=-1 - region_of.get(0, 0), nodes=[])
+    out, done, stack = [], {}, [0]
+    while stack:  # Children before parents, without recursion (BSPs run deep).
+        index = stack[-1]
+        node = nodes[index]
+        waiting = [c for c in (node['front'], node['back']) if c >= 0 and c not in done]
+        if waiting:
+            stack.extend(waiting)
+            continue
+        stack.pop()
+        if index in done:
+            continue
+        front, back = (done[c] if c >= 0 else -1 - region_of.get(node['zones'][side], 0)
+                       for c, side in ((node['front'], 1), (node['back'], 0)))
+        if front == back and front < 0:
+            done[index] = front
+            continue
+        nx, ny, nz, d = node['plane']
+        out.append([round(-ny, 6), round(nz, 6), round(nx, 6), round(d * SCALE, 5), front, back])
+        done[index] = len(out) - 1
+    return dict(root=done[0], nodes=out)
 
 
 def pack(sizes):
@@ -236,8 +299,9 @@ def floor_below(floors, x, y, z, which=False):
     return (float(heights[under].max()), int(best)) if which else float(heights[under].max())
 
 
-def build_map(library, level, default, game='unreal'):
-    """(scene, geometry bytes, {png: image}, lightmap atlas image) of map package `level`."""
+def build_map(library, level, default, game='unreal', files=None):
+    """(scene, geometry bytes, {png: image}, lightmap atlas image) of map package `level`; `files` (a dict) takes
+    the map's other images by file name (the changing lights' layers)."""
     found = level.find({'Level'})
     if not found:
         raise ValueError('no Level export')
@@ -275,12 +339,33 @@ def build_map(library, level, default, game='unreal'):
     skies = [props for props in skies if bool(props.get('bHighDetail')) == high] or skies
     sky = skies[-1] if skies else None
 
-    textures, images, missing = {}, {}, []
+    textures, images, missing, chains = {}, {}, [], {}
 
-    def texture_of(package, ref):
+    def texture_of(package, ref, follow=True):
         """(png name, width, height, the texture's own poly flags) of texture reference `ref` in `package`; none draws
-        the default texture."""
+        the default texture. `follow`: also its AnimNext frames into chains."""
         key = package.path, ref
+        if follow and key in textures and textures[key][0] in chains:
+            return textures[key]
+        if follow:
+            found = texture_of(package, ref, False)
+            pick = library.resolve(package, ref) if ref else default and library.resolve(*default)
+            if found[0] == 'missing.png' or not pick:
+                chains[found[0]] = None
+            elif found[0] not in chains:
+                # SurrealEngine UTexture::UpdateFrame: AnimCurrent steps to AnimNext, back to the first at None;
+                # UTexture::Update steps MaxFrameRate times a second, 25 where it is 0 (SurrealEngine's cap: the
+                # original stepped once a drawn frame). MinFrameRate is not read.
+                props, frames, seen = pick[0].properties(pick[1]), [found[0]], {(pick[0].path, pick[1])}
+                step = library.resolve(pick[0], props.get('AnimNext', 0)) if props.get('AnimNext') else None
+                while step and (step[0].path, step[1]) not in seen and len(frames) < 64:
+                    seen.add((step[0].path, step[1]))
+                    frames.append(texture_of(*step, False)[0])
+                    after = step[0].properties(step[1]).get('AnimNext')
+                    step = library.resolve(step[0], after) if after else None
+                rate = props.get('MaxFrameRate', 0) or 0
+                chains[found[0]] = dict(frames=frames, fps=round(rate, 3) if rate > 0 else 25) if len(frames) > 1 else None
+            return found
         if key not in textures:
             pick = (package, ref) if ref else default
             # Index 0 clear on every palette texture: where a surface is masked the game cuts it out (even where
@@ -373,13 +458,14 @@ def build_map(library, level, default, game='unreal'):
 
     # The lightmaps, rebuilt from the lights and shadow bits the map keeps: None is the neutral tile (the texture as it
     # is), 'white' the one meshes take (their light is in their vertex colours).
-    lights = ['end' if ref == 0 else ref > 0 and light_of(actor(ref)) or None for ref in model['lights']]
+    lights = ['end' if ref == 0 else ref > 0 and light_of(actor(ref), ref) or None for ref in model['lights']]
     surf_of = {s['lightmap']: s for s in reversed(model['surfs'])}
-    tiles = {None: np.full((1, 1, 3), .5), 'white': np.ones((1, 1, 3))}
+    tiles, moving = {None: np.full((1, 1, 3), .5), 'white': np.ones((1, 1, 3))}, {}  # moving: tile: {light: (h, w)}
     for index, front in sorted({record[3] for polys in groups.values() for record in polys if record[3]}):
         surf = surf_of[index]
         tiles[index, front] = lightmap(model, model['lightmaps'][index], points[surf['base']], vectors[surf['u']],
-                                       vectors[surf['v']], vectors[surf['normal']], ambient_of(front), lights)
+                                       vectors[surf['v']], vectors[surf['normal']], ambient_of(front), lights,
+                                       moving=moving.setdefault((index, front), {}))
 
     # Placed actors: movers at their start key, and actors drawn as meshes. The game finds an actor's zone as it
     # starts (the saved Region is often stale): down the BSP to the leaf its location falls in.
@@ -434,7 +520,7 @@ def build_map(library, level, default, game='unreal'):
         start, traced = pose(key), pose(props.get('BrushRaytraceKey', 0))
         number = zone_at(start[1] + start[0] @ pivot)
         front = zone(number)
-        brush_lights = ['end' if r == 0 else r > 0 and light_of(actor(r)) or None for r in brush['lights']]
+        brush_lights = ['end' if r == 0 else r > 0 and light_of(actor(r), r) or None for r in brush['lights']]
         normal_matrix = np.linalg.inv(start[0]).T
         for poly in found:
             png, width, height, own = texture_of(level, poly['texture'])
@@ -453,7 +539,8 @@ def build_map(library, level, default, game='unreal'):
                 entry = brush['lightmaps'][poly['brush_poly']]
                 tile = 'mover', ref, poly['brush_poly']
                 if tile not in tiles:
-                    tiles[tile] = lightmap(brush, entry, base, u, v, normal, ambient_of(number), brush_lights, traced)
+                    tiles[tile] = lightmap(brush, entry, base, u, v, normal, ambient_of(number), brush_lights, traced,
+                                           moving.setdefault(tile, {}))
                 st = np.stack([((local - base) @ u - entry['pan'][0]) / entry['scale'][0] + .5,
                                ((local - base) @ v - entry['pan'][1]) / entry['scale'][1] + .5], 1)
             world = local @ start[0].T + start[1]
@@ -637,6 +724,21 @@ def build_map(library, level, default, game='unreal'):
         t = tiles[key]
         atlas[y:y + t.shape[0] + 2, x:x + t.shape[1] + 2] = np.pad(t, ((1, 1), (1, 1), (0, 0)), mode='edge')
     corner = {key: (x + 1, y + 1) for key, (x, y) in zip(atlas_keys, places)}
+    # The changing lights, on the atlas's layout: lightanim.png holds up to three lights a tile (shadow x falloff / 2,
+    # one a channel), lightanim-ids.png which (1 + the light's place in light_anim). ponytail: a 256th changing light
+    # (the install's most is 61, Crashsite1) would go dark, not back to its average; give ids two bytes if a map nears it.
+    changing = {}
+    if any(moving.values()):
+        values, ids = np.zeros((atlas_height, atlas_width, 3)), np.zeros((atlas_height, atlas_width, 3), np.uint8)
+        for (x, y), key in zip(places, atlas_keys):
+            for k, (ref, term) in enumerate(moving.get(key, {}).items()):
+                number = changing.setdefault(ref, len(changing) + 1)
+                if number < 256:
+                    values[y:y + term.shape[0] + 2, x:x + term.shape[1] + 2, k] = np.pad(term / 2, 1, mode='edge')
+                    ids[y:y + term.shape[0] + 2, x:x + term.shape[1] + 2, k] = number
+        if files is not None:
+            files['lightanim.png'] = Image.fromarray(np.round(np.minimum(values, 1) * 255).astype(np.uint8), 'RGB')
+            files['lightanim-ids.png'] = Image.fromarray(ids, 'RGB')
 
     positions, uvs, uv2s, colors, indices, table = [], [], [], [], [], []
     count = 0
@@ -655,7 +757,9 @@ def build_map(library, level, default, game='unreal'):
             else:  # A convex polygon: a fan.
                 indices.extend(x for k in range(1, n - 1) for x in (count, count + k, count + k + 1))
             count += n
-        table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start, **({'pan': pan} if any(pan) else {})))
+        table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start, **({'pan': pan} if any(pan) else {}),
+                          **({'anim': chains[png]} if chains.get(png) else {}),
+                          **({'light_anim': True} if any(moving.get(record[3]) for record in polys if record[3] not in (None, 'white')) else {})))
         if npc_owner:
             table[-1].update(npc=True, entity=npc_owner[0], classname=npc_owner[1])
     positions = np.concatenate(positions).astype('<f4') if positions else np.zeros((0, 3), '<f4')
@@ -707,6 +811,35 @@ def build_map(library, level, default, game='unreal'):
                  vertices=len(positions), indices=len(indices), lightmap=[atlas_width, atlas_height], colors=True,
                  actors=counts, groups=table, viewpoints=views, sky=sky,
                  polygons=polygons, flipped=flipped, missing=sorted(missing))
+    if changing:  # [LightType, LightPeriod, LightPhase, r, g, b at full brightness x 2] of each changing light
+        found = {ref: light_of(actor(ref), ref) for ref in list(changing)[:255]}
+        scene['light_anim'] = dict(lights=[[*found[ref]['anim'], *(round(float(c), 4) for c in np.minimum(found[ref]['full'] * 2, 1))] for ref in found])
+    # Volumetric fog: every light the level lists with a VolumeRadius (SurrealEngine LightSystem::OnMapLoaded's
+    # FogBalls), drawn while the eye is in a bFogZone zone (VisibleNode.cpp: GetLevelFogmap is asked with the
+    # camera's zone, GetFogmap draws nothing unless it is a fog zone).
+    fog_lights = [found for ref in sorted({r for r in model['lights'] if r > 0}) for found in [fog_light(actor(ref), vector(actor(ref), 'Location'))] if found]
+    # The eye's zone tints the view: PlayerPawn.ViewFlash (Engine.u script: UT and Deus Ex read HeadRegion.Zone, 227
+    # CameraRegion.Zone) aims FlashScale at 1 + ViewFlash.X (1 above 0.981) and FlashFog at ViewFog (each part under
+    # 0.003 in UT, 0.019 in 227 and Deus Ex, dropped); the device draws the frame x FlashScale + FlashFog
+    # (SurrealEngine GLRenderDevice::EndFlash: FlashFog + frame x min(2 x scale, 1); its neutral scale 0.5 says the
+    # engine hands the device half the PlayerPawn's, inferred: SurrealEngine itself passes it whole).
+    cut = .003 if game == 'ut' else .019
+    regions, region_of = [None], {}
+    for number in range(max(len(model['zones']), 1)):
+        found, region = zone(number), {}
+        scale = 1 + vector(found, 'ViewFlash')[0]
+        tint = [c if c >= cut else 0 for c in vector(found, 'ViewFog')]
+        if scale <= .981 or any(tint):
+            region['flash'] = [round(min(max(scale, 0), 1) if scale <= .981 else 1, 4)] * 3 + [round(c, 4) for c in tint]
+        if fog_lights and found.get('bFogZone'):
+            region['fog'] = True
+        if region and region not in regions:
+            regions.append(region)
+        region_of[number] = regions.index(region) if region else 0
+    if len(regions) > 1:
+        scene['regions'], scene['region_tree'] = regions, region_tree(model['nodes'], region_of)
+        if fog_lights:
+            scene['fog_lights'] = fog_lights
     if game == 'dx':
         scene['game'] = 'dx'
         scene['issues'] = list(library.issues)
@@ -746,7 +879,8 @@ def import_maps(install, output, replace=False, game='unreal'):
             result['skipped'].append(ident)
             continue
         try:
-            scene, geometry, images, atlas = build_map(library, Package(path, game=game), default, game=game)
+            files = {}
+            scene, geometry, images, atlas = build_map(library, Package(path, game=game), default, game=game, files=files)
             if game == 'dx':
                 scene['display'] = display
         except (OSError, ValueError, struct.error, IndexError, KeyError) as exc:
@@ -762,6 +896,8 @@ def import_maps(install, output, replace=False, game='unreal'):
         folder.mkdir(parents=True, exist_ok=True)
         (folder / 'geometry.bin').write_bytes(geometry)
         atlas.save(folder / 'lightmap.png')
+        for name, image in files.items():
+            image.save(folder / name)
         (folder / 'scene.json').write_text(json.dumps(scene, separators=(',', ':')), encoding='utf-8')
         group = GROUPS.get(path.parent.name.lower(), 'Unreal Tournament' if game == 'ut' else 'Unreal')
         if game == 'dx':

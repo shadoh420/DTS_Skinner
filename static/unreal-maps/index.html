@@ -6,6 +6,7 @@
   <title>DTS Skinner — Unreal Maps</title>
   <link rel="stylesheet" href="/static/t1-maps/style.css">
   <script defer src="/static/three.min.js"></script>
+  <script defer src="/static/unreal-maps/ue1-extras.js"></script>
   <script defer src="/static/unreal-maps/viewer.js"></script>
 </head>
 <body>
@@ -28,6 +29,6 @@
   <main><canvas id="c"></canvas></main>
   <footer><span id="status" role="status">Loading map…</span>
     <span>Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · Esc release · 1–9 viewpoints</span>
-    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay or audio. The level's BSP surfaces are drawn with their textures and the map's own lighting (its lights, shadows and zone ambient light, at the game's default brightness; flickering and pulsing lights at their average, lights switched on by triggers off): masked, translucent, modulated and two-sided as the game draws them, panning where the game pans them, and the sky zone seen through the sky surfaces. Unreal (Gold, with OldUnreal 227) and Unreal Tournament maps alike. Placed actors stand where the game starts them: decorations, pickups and monsters as meshes in one pose, doors and lifts (movers) at their first position. Not drawn: fog, sprites and particle effects, animated and wavy textures, mirrors.</span></details></footer>
+    <details><summary>Preview notes</summary><span id="notes">Free-flight preview without collision, gameplay or audio. The level's BSP surfaces are drawn with their textures and the map's own lighting (its lights, shadows and zone ambient light, at the game's default brightness; pulsing, blinking, strobing and flickering lights animate, up to three per lightmap texel, lights switched on by triggers off): masked, translucent, modulated and two-sided as the game draws them, panning where the game pans them, and the sky zone seen through the sky surfaces. Unreal (Gold, with OldUnreal 227) and Unreal Tournament maps alike. Placed actors stand where the game starts them: decorations, pickups and monsters as meshes in one pose, doors and lifts (movers) at their first position. Animated (AnimNext) textures cycle; volumetric zone fog and water-zone view tints follow SurrealEngine's reading and are not checked against the game. Not drawn: sprites and particle effects, wavy and procedural textures, mirrors.</span></details></footer>
 </body>
 </html>

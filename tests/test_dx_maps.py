@@ -104,7 +104,7 @@ def make_map(root, water=False, legacy=False):
     level += (index(1) + b'\0') * 4 + index(0) + bytes(8) + index(2)
     exports = [(level_cls, 'Level', level), (model_cls, 'World', f.model(tex, 4, 5)),
                (info_cls, 'LevelInfo0', f.props({})),
-               (zone_cls, 'Zone0', f.props({'bWaterZone': water, 'TexUPanSpeed': 2.0})),
+               (zone_cls, 'Zone0', f.props({'bWaterZone': water, 'TexUPanSpeed': 2.0, **({'ViewFog': vec(0, .05, .1)} if water else {})})),
                (light_cls, 'Light0', f.props({'Location': vec(0, 0, 80)})),
                (start_cls, 'PlayerStart0', f.props({'Location': vec(0, 0, 70)})),
                (crate_cls, 'Crate0', f.props({'Location': vec(20, 0, 0), 'DrawScale': .1, 'MultiSkins': tex,
@@ -186,6 +186,9 @@ class DxMapTests(unittest.TestCase):
             self.assertEqual(scene['actors']['carcasses'], 1)
             self.assertEqual(scene['actors']['failed'], [])
             self.assertIn('deusexitems.own.png', images)
+            # The water zone tints the view (PlayerPawn.ViewFlash: 0.05 and 0.1 kept, over Deus Ex's 0.019).
+            self.assertEqual(scene['regions'], [None, {'flash': [1, 1, 1, 0, .05, .1]}])
+            self.assertEqual(scene['region_tree'], {'root': -2, 'nodes': []})  # Its one node has zone 1 both sides.
 
     def test_sections_discovery_import_and_separate_routes(self):
         with tempfile.TemporaryDirectory() as folder:

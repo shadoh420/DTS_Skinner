@@ -23,7 +23,8 @@ class UnrealMapInstallTest(unittest.TestCase):
         for name, version, title in (('Vortex2', 61, 'Vortex Rikers'), ('UPak/Abyss', 68, "Gala's Peak")):
             level = Package(INSTALL / 'Maps' / f'{name}.unr')
             self.assertEqual(level.version, version)
-            scene, geometry, images, atlas = build_map(library, level, default)  # Reads raise unless they end exactly.
+            files = {}
+            scene, geometry, images, atlas = build_map(library, level, default, files=files)  # Reads raise unless they end exactly.
             self.assertEqual(scene['title'], title)
             self.assertGreater(scene['polygons'], 1000)
             # Unreal's corners wind clockwise seen from the front; all but a few semisolid faces are reversed.
@@ -55,6 +56,17 @@ class UnrealMapInstallTest(unittest.TestCase):
             self.assertTrue([group for group in groups if group.get('pan')])
             if name == 'Vortex2':  # Its grates' texture is bMasked though the surfaces are not flagged masked.
                 self.assertTrue(all(group['flags'] & 0x2 for group in groups if 'mgratem' in group['texture']))
+                # Its two fog zones and 11 volumetric lights; 45 pulsing and flickering lights on their own layer;
+                # the screens' AnimNext chain at its MaxFrameRate.
+                self.assertEqual(len(scene['fog_lights']), 11)
+                self.assertEqual(scene['regions'], [None, {'fog': True}])
+                self.assertLess(scene['region_tree']['root'], len(scene['region_tree']['nodes']))
+                self.assertEqual(len(scene['light_anim']['lights']), 45)
+                self.assertEqual(set(files), {'lightanim.png', 'lightanim-ids.png'})
+                self.assertEqual(files['lightanim.png'].size, atlas.size)
+                self.assertTrue([group for group in groups if group.get('light_anim')])
+                screens = [group['anim'] for group in groups if group['texture'] == 'playrshp.animated.scrn_a00.png']
+                self.assertEqual((len(screens[0]['frames']), screens[0]['fps']), (16, 15.0))
             else:  # Abyss shows its sky zone through its backdrops.
                 self.assertEqual(len(scene['sky']['rotation']), 9)
                 self.assertTrue([group for group in groups if group['flags'] & 0x80])

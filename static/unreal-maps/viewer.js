@@ -56,9 +56,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     uniforms: {frame: {value: frame.texture}, power: {value: POWER.unreal}, viewBlend: {value: new THREE.Vector4(0, 0, 0, 0)},
       flashScale: {value: new THREE.Vector3(1, 1, 1)}, flashAdd: {value: new THREE.Vector3()}}, depthTest: false, depthWrite: false,
     vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
-    // viewBlend mixes toward a colour (Quake-family cshifts); flash scales and adds (UE1 zone ViewFlash/ViewFog).
+    // viewBlend mixes toward a colour after the ramp (Quake-family cshifts); flash scales and adds before it, as UE1's
+    // EndFlash draws into the frame ahead of the gamma ramp (zone ViewFlash/ViewFog).
     fragmentShader: 'uniform sampler2D frame; uniform float power; uniform vec4 viewBlend; uniform vec3 flashScale, flashAdd; varying vec2 at;' +
-      'void main() { vec3 c = clamp(pow(texture2D(frame, at).rgb, vec3(power)) * flashScale + flashAdd, 0., 1.);' +
+      'void main() { vec3 c = pow(clamp(texture2D(frame, at).rgb * flashScale + flashAdd, 0., 1.), vec3(power));' +
       ' gl_FragColor = vec4(mix(c, viewBlend.rgb, viewBlend.a), 1.); }'})));
   const rampUniforms = ramp.children[0].material.uniforms;
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
