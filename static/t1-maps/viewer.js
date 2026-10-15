@@ -671,6 +671,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   let lightTime = 0;
+  function drawFrame() {
+    if (skyPass) {  // The other game's sky first, then the world over it without clearing.
+      skyPass.render(renderer, camera, skyTime.value);
+      renderer.clearDepth();
+      renderer.autoClear = false;
+      renderer.render(scene, camera);
+      renderer.autoClear = true;
+    } else renderer.render(scene, camera);
+  }
+  // For checks in a script or a hidden page, as the other Maps pages have: draw a frame and pick a sky by id.
+  window.skinnerT1Maps = {renderer, scene, camera, drawFrame, showSky: id => showSky(id), skies: () => skies};
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
     // The game steps building lights 67 ms at a time (InteriorShape::sm_minLightUpdateMS); switched off, they hold still.
@@ -684,13 +695,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     skyTime.value += delta;
     if (weather) weather(delta);
     if (streamFrame) streamFrame(delta);
-    if (skyPass) {  // The other game's sky first, then the world over it without clearing.
-      skyPass.render(renderer, camera, skyTime.value);
-      renderer.clearDepth();
-      renderer.autoClear = false;
-      renderer.render(scene, camera);
-      renderer.autoClear = true;
-    } else renderer.render(scene, camera);
+    drawFrame();
     if (flare && own.visible) flare(canvas.clientWidth, canvas.clientHeight);
     if (flare && own.visible && overlay.visible) {
       renderer.autoClear = false;
@@ -764,12 +769,27 @@ window.addEventListener('DOMContentLoaded', async () => {
       const more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
       const text = entry => [entry.section, entry.name, entry.maps[0] + more(entry.maps)].filter(Boolean).join(' · ');
       const groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
-      $('sky').replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...groups.map(([group, entries]) => {
-        const element = Object.assign(document.createElement('optgroup'), {label: group});
-        element.append(...entries.map(entry => [text(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
-        return element;
-      }));
-      if (skies.some(entry => entry.id === settings.sky)) { $('sky').value = settings.sky; return showSky(settings.sky); }
+      // The game first, then its skies: one list of 900+ skies is slow to open and some browsers leave it half drawn.
+      const game = $('skyGame') || $('sky').insertAdjacentElement('beforebegin', Object.assign(document.createElement('select'),
+        {id: 'skyGame', title: 'Game the sky comes from'}));
+      game.setAttribute('aria-label', 'Sky source game');
+      game.replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...groups.map(([group, entries]) => new Option(`${group} (${entries.length})`, group)));
+      const fill = group => {
+        const entries = groups.find(([name]) => name === group)?.[1] || [];
+        $('sky').replaceChildren(...entries.map(entry => [text(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
+        $('sky').hidden = !group;
+      };
+      game.addEventListener('change', () => {
+        fill(game.value);
+        settings.sky = game.value ? $('sky').value : '';  // A game's first sky, or the map's own.
+        game.blur();
+        save();
+        showSky(settings.sky);
+      });
+      const saved = skies.find(entry => entry.id === settings.sky);
+      game.value = saved ? saved.group : '';
+      fill(game.value);
+      if (saved) { $('sky').value = settings.sky; return showSky(settings.sky); }
     }).catch(() => { $('sky').disabled = true; });
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
     const sun = new THREE.DirectionalLight(new THREE.Color(...map.sun.intensity));

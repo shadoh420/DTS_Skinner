@@ -16,6 +16,11 @@ assert.deepEqual([...a.indices],[0,2,1,1,2,3]);
 new Uint8Array(grid)[12]=1;assert.deepEqual([...terrainArrays(terrain,grid).indices],[0,3,1,0,2,3]);
 new Uint8Array(grid)[8]=0;assert.equal(terrainArrays(terrain,grid).indices.length,0);new Uint8Array(grid)[8]=1;
 assert.throws(()=>terrainArrays({...terrain,width:3},grid),/Invalid terrain/);
+// Clamped sky faces: a face offset by whole tiles comes back to 0..1, one a tile off (v -1..0) too; repeating ones stay.
+const {normalizeClampedUVs}=require('../static/tvg-maps/materials.js');
+const uv=new Float32Array([-219,212.945,-218,213.945,0,-1,1,0,5,5,7,7]);
+normalizeClampedUVs(uv,new Uint32Array([0,1,2,3,4,5]),[{start:0,count:2,settings:{clamp:true}},{start:2,count:2,settings:{clamp:true}},{start:4,count:2,settings:{}}]);
+assert.deepEqual([...uv].map(x=>+x.toFixed(3)),[0,0,1,1,0,0,1,1,5,5,7,7]);
 
 global.THREE=require('../static/three.min.js');
 delete require.cache[require.resolve('../static/tvg-maps/materials.js')];

@@ -62,7 +62,23 @@
     all.addEventListener('change',()=>{for(const [i,name] of [...types.keys()].sort((a,b)=>a.localeCompare(b)).entries()){boxes[i].checked=all.checked;show(name,all.checked);}sync();save();});
     sync();panel.hidden=false;
   }
-  const api={arrays,terrainArrays,decorationToggles};
+  // A clamped BSP surface (Vengeance's sky cube faces) can come out of the importer a whole number of tiles away, or
+  // with v running -1..0: right under wrapping, smeared edge texels under clamping. Bring each clamped group's
+  // coordinates back into 0..1 per axis, exactly when it spans one tile, as UT2004's renderer normalises a surface.
+  function normalizeClampedUVs(uv,index,groups) {
+    for(const g of groups) {
+      if(!g.settings?.clamp)continue;
+      const ids=[...new Set(index.subarray(g.start,g.start+g.count))];
+      for(let axis=0;axis<2;axis++) {
+        let low=Infinity,high=-Infinity;
+        for(const i of ids){low=Math.min(low,uv[i*2+axis]);high=Math.max(high,uv[i*2+axis]);}
+        const shift=Math.abs(high-low-1)<.01?low:Math.round(low);
+        if(shift)for(const i of ids)uv[i*2+axis]-=shift;
+      }
+    }
+    return uv;
+  }
+  const api={arrays,terrainArrays,decorationToggles,normalizeClampedUVs};
   if(typeof module!=='undefined')module.exports=api;
   if(!root.THREE)return;
   const config=root.skinnerMapViewerConfig={
@@ -70,6 +86,10 @@
     games:[['tvg','C:\\Program Files (x86)\\VUGames\\Tribes Vengeance']],
     dataRoot:'/tvg-map-data/',importRoute:'/import_tvg_maps',computeNormals:true,filterUnavailable:true,
     configureTexture(texture) { texture.anisotropy=4; },
+    prepareGeometry(geometry,map) {  // Vengeance only: the other UE pages' adapters keep their own coordinates.
+      if(map.game!=='tvg')return;
+      normalizeClampedUVs(geometry.attributes.uv.array,geometry.index.array,map.groups);geometry.attributes.uv.needsUpdate=true;
+    },
     async load(map) {
       const {scene,renderer}=root[config.debugName];
       scene.background=null;renderer.setClearColor(0x28313c);

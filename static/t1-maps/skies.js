@@ -94,6 +94,7 @@ window.t1Skies = {
     if (map.colors) geometry.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buffer, n * 28, n * 4), 4, true));
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, n * (map.colors ? 32 : map.lightmap ? 28 : 20), map.indices), 1));
     if (adapter?.computeNormals) geometry.computeVertexNormals();
+    adapter?.prepareGeometry?.(geometry, map);
     // Poly flags as unreal-maps/viewer.js surfaceMaterial: masked 0x2, translucent 0x4, modulated 0x40, fake backdrop
     // 0x80, two-sided 0x100; panning surfaces move their own copy of the texture.
     const panning = [], materials = await Promise.all(map.groups.map(async (group, index) => {

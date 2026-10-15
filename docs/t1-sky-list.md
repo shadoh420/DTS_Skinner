@@ -2,9 +2,11 @@
 
 The Sky list on the T1, Starsiege and Earthsiege Maps pages swaps the map's own sky for one from any imported map
 pack. `/t1-map-skies` (app.py `SKY_PACKS`, `scene_skies`, `t2_mission_sky`) lists them, one group per game in
-alphabetical order. The viewer draws each entry with the renderer the entry names: `static/t1-maps/viewer.js` holds the
-dome and the Quake III box, and `static/t1-maps/skies.js` holds the others. The first entry, "(mission)'s own
-(default)", restores the map's sky. A choice is saved only in the page's local settings, and nothing is written to any
+alphabetical order. The page shows two lists: the game (with its sky count), then that game's skies. One native
+list of 900+ entries opened slowly and some browsers left its lower part undrawn until scrolled. Picking a game shows its
+first sky. The viewer draws each entry with the renderer the entry names: `static/t1-maps/viewer.js` holds the
+dome and the Quake III box, and `static/t1-maps/skies.js` holds the others. The game list's first entry, "(mission)'s own
+(default)", restores the map's sky and hides the second list. A choice is saved only in the page's local settings, and nothing is written to any
 pack. Entry ids are the game plus a hash of the sky, so a saved choice survives re-imports.
 
 A swapped sky brings its own haze: once it is built, the viewer renders it alone (or its Unreal-engine pass) into a
@@ -56,7 +58,13 @@ Whiteout from 31.6 to 8.9 and Underhill from 13.7 to 1.5. Screenshots are in `C:
 - T2RPG_WorldMap is not offered, and no re-import would bring it in. Its mission file was extracted (into the
   manifest's `missionPacks`, which the list reads for that mission only), but its `RPG_50.dml` is in neither the
   install nor `ironsphere.vl2` and its loose folder.
-- E.Y.E.'s flat placeholder skies (40 of 60 maps) are left out.
+- E.Y.E. offers 2 skies: 40 of its 60 maps were imported with a flat placeholder (`tools/import_eye_map.py` swaps in
+  `eye_sky_plain.png` for the game's HDR skyboxes), which the list leaves out. The other 20 share `sky_day01_01` and
+  `sky_arcturus_hdr`. More would need the importer to tone-map those HDR faces and a re-import of the E.Y.E. maps.
+- Vengeance sky boxes are six clamped faces whose UVs the editor left whole tiles away from 0..1 (or at -1..0), which
+  smeared the edge texels into streaks, on its own page as well. `tvg-maps/materials.js prepareGeometry` shifts each
+  clamped group back into one tile at load (the shared Unreal viewer and `skies.js unreal` call it). Regicide's bottom
+  face repeats (not clamped) and keeps a pale band low on the horizon.
 - Not offered: Tribes: Ascend (excluded for now), Doom 3 (no sky drawn), Quake 4 (camera cubemaps and portal skies,
   not ported), Azrael's Tear (no sky).
 - A pack whose maps change without its index changing keeps the kept list until another index changes.
