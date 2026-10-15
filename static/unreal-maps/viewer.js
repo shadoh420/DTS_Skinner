@@ -11,6 +11,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   const anachronox = document.body.dataset.game === 'anachronox';
   const daikatana = document.body.dataset.game === 'daikatana';
   const config = window.skinnerMapViewerConfig; // Optional adapter; existing pages keep their original paths/rendering.
+  // Page seconds as a shared uniform, so adapters' shaders animate without their own clocks.
+  const time = window.skinnerMapTime = window.skinnerMapTime || {value: 0};
+  // Per-frame extras: the adapter plus any script that pushed onto window.skinnerMapExtras. Each may define
+  // load(map, context), patchMaterial(material, group, map), update(seconds, camera, map, region) and pass('sky' | 'main').
+  const extras = () => [config, ...(window.skinnerMapExtras || []),
+    quake && window.quakeMaps, (quake || quake2 || sin || anachronox || daikatana) && window.quake2Maps,
+    sin && window.sinMaps, anachronox && window.anachronoxMaps, daikatana && window.daikatanaMaps].filter(Boolean);
   const npcDraws = [], npcIDs = new Set();
   const npcToggle = window.skinnerNPCToggle;
   if (npcToggle) {
@@ -46,10 +53,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   const frame = new THREE.WebGLRenderTarget(1, 1, {samples: 4});
   const ramp = new THREE.Scene(), flat = new THREE.Camera();
   ramp.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-    uniforms: {frame: {value: frame.texture}, power: {value: POWER.unreal}, viewBlend: {value: new THREE.Vector4(0, 0, 0, 0)}}, depthTest: false, depthWrite: false,
+    uniforms: {frame: {value: frame.texture}, power: {value: POWER.unreal}, viewBlend: {value: new THREE.Vector4(0, 0, 0, 0)},
+      flashScale: {value: new THREE.Vector3(1, 1, 1)}, flashAdd: {value: new THREE.Vector3()}}, depthTest: false, depthWrite: false,
     vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
-    fragmentShader: 'uniform sampler2D frame; uniform float power; uniform vec4 viewBlend; varying vec2 at;' +
-      'void main() { gl_FragColor = vec4(mix(pow(texture2D(frame, at).rgb, vec3(power)), viewBlend.rgb, viewBlend.a), 1.); }'})));
+    // viewBlend mixes toward a colour (Quake-family cshifts); flash scales and adds (UE1 zone ViewFlash/ViewFog).
+    fragmentShader: 'uniform sampler2D frame; uniform float power; uniform vec4 viewBlend; uniform vec3 flashScale, flashAdd; varying vec2 at;' +
+      'void main() { vec3 c = clamp(pow(texture2D(frame, at).rgb, vec3(power)) * flashScale + flashAdd, 0., 1.);' +
+      ' gl_FragColor = vec4(mix(c, viewBlend.rgb, viewBlend.a), 1.); }'})));
+  const rampUniforms = ramp.children[0].material.uniforms;
   // At least 1 x 1: a hidden page has no size, and a zero-sized target fails every draw.
   const fitFrame = () => { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); frame.setSize(Math.max(size.x, 1), Math.max(size.y, 1)); };
   const GAMES = config ? config.games : dx ? [['dx', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Deus Ex']] : azrael ? [['azrael', "C:\\Program Files (x86)\\GOG Galaxy\\Games\\Azrael's Tear"]] : sin ? ['sin', '2015', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\SiN 1']) : anachronox ? [['anachronox', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Anachronox']] : daikatana ? [['daikatana', 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Daikatana\\data']] : quake2 ? ['quake2', 'xatrix', 'rogue', 'ctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake 2\\baseq2']) : quake ? ['quake', 'hipnotic', 'rogue', 'qextras', 'dopa', 'mg1', 'mg3', 'qctf'].map(id => [id, 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Quake']) : [['unreal', 'C:\\Unreal'], ['ut', 'C:\\UnrealTournament']];  // Each game's pack and usual folder.
@@ -90,7 +101,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // (one, one minus source colour), modulated doubles what is behind by it (destination colour, source colour); neither
   // hides what is behind it from later surfaces.
   const MASKED = 0x2, TRANSLUCENT = 0x4, MODULATED = 0x40, FAKE_BACKDROP = 0x80, TWO_SIDED = 0x100;
-  const panning = [];
+  const panning = [], animated = [];
+  // Source 3D skies: the sky area's surfaces and props, drawn first from the sky camera; the level's sky faces show it.
+  const sky3dDraws = [], mainDraws = [], skyFaces = [];
   let lightMap = null;  // The map's lightmaps in one atlas: the game draws texture x lightmap x 2.
   let quakeColormap = null;
   function surfaceMaterial(group, texture) {
@@ -142,16 +155,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (daikatana) await window.daikatanaMaps.load(map, loadTexture);
     if (quake2) await window.quake2Maps.loadSky(map.skybox, loadTexture);
     if (quake && map.skybox) await window.quake2Maps.loadSky(map.skybox, loadTexture);
+    for (const extra of window.skinnerMapExtras || []) await extra.load?.(map, {data, get, loadTexture, loader, scene, renderer, camera, lightMap});
     const materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
       const material = surfaceMaterial(group, !config && !quake2 && !daikatana && !anachronox && !sin && group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
+      for (const extra of extras()) extra.patchMaterial?.(material, group, map);
       trackNPC(material, group);
+      // Frame chains (Quake +0..+9, Quake II/SiN nexttexinfo, UE1 AnimNext, Source AnimatedTexture): every frame's
+      // texture, swapped at the chain's rate. ponytail: world groups only; placed models keep their first frame.
+      if (group.anim?.frames?.length > 1) animated.push({material, fps: group.anim.fps, frames: await Promise.all(group.anim.frames.map(loadTexture))});
+      if (map.sky3d) (group.sky3d ? sky3dDraws : mainDraws).push(material);
+      if (map.sky3d && group.kind === 'sky') skyFaces.push(material);
       return material;
     }));
     scene.add(new THREE.Mesh(geometry, materials));
     if (config && config.buildInstances) {
       for (const object of await config.buildInstances(map, data, get, loadTexture)) {
         scene.add(object); trackNPC(object, object.userData);
+        if (map.sky3d) (object.userData.sky3d ? sky3dDraws : mainDraws).push(object);
       }
     }
     if (npcToggle) npcToggle.setCount(npcIDs.size);
@@ -247,10 +268,44 @@ window.addEventListener('DOMContentLoaded', async () => {
   // The sky zone is the level seen from the SkyZoneInfo, turned with the view and by the zone's own rotation (turning
   // on by its rate where the game turns it); the level is drawn over it, its backdrops leaving it showing; then the
   // display gamma, onto `target` (the screen by default).
+  // The convex region holding a point: map.region_brushes first (planes [a, b, c, d], inside where a*x + b*y + c*z <= d),
+  // then map.region_tree (nodes [a, b, c, d, front, back]; a negative child -1 - i ends at map.regions[i]). Page axes.
+  function regionAt(p) {
+    if (!map || !map.regions) return null;
+    for (const brush of map.region_brushes || []) {
+      if (brush.planes.every(([a, b, c, d]) => a * p.x + b * p.y + c * p.z <= d)) return map.regions[brush.region] || null;
+    }
+    const tree = map.region_tree;
+    if (!tree) return null;
+    let node = tree.root;
+    while (node >= 0) { const q = tree.nodes[node]; node = q[0] * p.x + q[1] * p.y + q[2] * p.z - q[3] >= 0 ? q[4] : q[5]; }
+    return map.regions[-1 - node] || null;
+  }
+  const npcHidden = draw => npcDraws.includes(draw) && !(npcToggle ? npcToggle.enabled : true);
+  function showPass(sky) {
+    for (const draw of sky3dDraws) draw.visible = sky && !npcHidden(draw);
+    for (const draw of mainDraws) draw.visible = !sky && !npcHidden(draw);
+    for (const material of skyFaces) material.colorWrite = sky;  // In the level, sky faces are holes onto the 3D sky.
+    for (const extra of extras()) extra.pass?.(sky ? 'sky' : 'main');
+  }
+
   function draw(seconds, target = null) {
-    if (sin) ramp.children[0].material.uniforms.viewBlend.value.fromArray(window.sinMaps.viewBlend(map, camera.position));
+    time.value = seconds;
     if (quake) window.quakeMaps.time.value = seconds;
-    if (quake2) window.quake2Maps.time.value = seconds;
+    if (window.quake2Maps) window.quake2Maps.time.value = seconds;
+    const region = regionAt(camera.position);
+    if (sin) rampUniforms.viewBlend.value.fromArray(window.sinMaps.viewBlend(map, camera.position));
+    else rampUniforms.viewBlend.value.fromArray(region?.blend || [0, 0, 0, 0]);
+    const flash = region?.flash || [1, 1, 1, 0, 0, 0];
+    rampUniforms.flashScale.value.fromArray(flash, 0);
+    rampUniforms.flashAdd.value.fromArray(flash, 3);
+    if (map) for (const extra of extras()) extra.update?.(seconds, camera, map, region);
+    for (const {material, fps, frames} of animated) {
+      const texture = frames[Math.floor(seconds * fps) % frames.length];
+      if (!texture) continue;
+      const uniform = material.uniforms && (material.uniforms.surface || material.uniforms.indices);
+      if (uniform) uniform.value = texture; else if (material.map) material.map = texture;
+    }
     for (const {texture, pan} of panning) texture.offset.set(pan[0] * seconds % 1, pan[1] * seconds % 1);
     if (map && map.sky && map.sky.rate) skyTurn.copy(unrealTurn(map.sky.rotator.map((a, i) => a + map.sky.rate[i] * seconds)));
     if (target) frame.setSize(target.width, target.height);
@@ -262,6 +317,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       skyCamera.quaternion.copy(skyTurn).multiply(camera.quaternion);
       renderer.render(scene, skyCamera);
       renderer.clearDepth();
+    }
+    if (map && map.sky3d) {  // Source sky_camera: the sky area seen from origin + view / scale, turned with the view.
+      skyCamera.position.fromArray(map.sky3d.origin).addScaledVector(camera.position, 1 / map.sky3d.scale);
+      skyCamera.quaternion.copy(camera.quaternion);
+      skyCamera.projectionMatrix.copy(camera.projectionMatrix);
+      skyCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
+      showPass(true);
+      renderer.render(scene, skyCamera);
+      renderer.clearDepth();
+      showPass(false);
     }
     renderer.render(scene, camera);
     renderer.setRenderTarget(target);
