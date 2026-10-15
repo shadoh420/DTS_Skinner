@@ -74,3 +74,6 @@ const flatQuad={...tube,uv:new Float32Array(8)};out=buffers(4);
 M.deform('turbulent',flatQuad,M.deformLayout('turbulent',flatQuad),out,[0,0,0],[1,0,0],[0,0,1],[2,.25,1],f=>f);
 assert.ok(Math.abs(out.uv[0]-2*(.5-.007))<1e-6&&Math.abs(out.uv[1]-2*(1-.007))<1e-6,"vertex 0 is at y=-1");
 console.log('Deforms OK');
+// Fog plane: a 100-unit point light at z=50 has its fog top at z=150, positive above.
+const fog=M.fogPlane({projection:[[0,0,0,0],[0,0,0,0],[0,0,0,1],[0,0,.005,.25]]});
+assert.deepEqual(fog.map(v=>+v.toFixed(6)),[0,0,1,-150]);

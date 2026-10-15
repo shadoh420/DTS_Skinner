@@ -260,6 +260,28 @@ def light_projection(entity):
                 bounds=[np.min(corners,axis=0).tolist(),np.max(corners,axis=0).tolist()])
 
 
+def volume_faces(planes):
+    """Triangles of the convex light volume (positive half-spaces inside), wound to face outward.
+
+    RB_FogPass draws the light frustum's back faces so fog also covers what lies beyond its far walls."""
+    planes=np.asarray(planes,dtype=float);corners=[]
+    for ids in itertools.combinations(range(len(planes)),3):
+        p=planes[list(ids)]
+        if abs(np.linalg.det(p[:,:3]))<1e-12*np.prod(np.linalg.norm(p[:,:3],axis=1)):continue
+        point=np.linalg.solve(p[:,:3],-p[:,3])
+        if np.all(planes[:,:3]@point+planes[:,3]>=-1e-4*np.linalg.norm(planes[:,:3],axis=1)) and not any(np.allclose(point,c) for c in corners):corners.append(point)
+    triangles=[]
+    for plane in planes:
+        length=np.linalg.norm(plane[:3]);n=plane[:3]/length
+        on=[c for c in corners if abs(n@c+plane[3]/length)<1e-3*max(1,np.abs(c).max())]
+        if len(on)<3:continue
+        mid=np.mean(on,axis=0);u=on[0]-mid;u/=np.linalg.norm(u);v=np.cross(n,u)
+        # n points inside, so clockwise about n (counter-clockwise from outside) faces outward.
+        ring=sorted(on,key=lambda c:-np.arctan2((c-mid)@v,(c-mid)@u))
+        for i in range(1,len(ring)-1):triangles+=[*ring[0],*ring[i],*ring[i+1]]
+    return [round(float(x),3) for x in triangles]
+
+
 def light_intersects(bounds,light):
     lo,hi=np.asarray(bounds);planes=np.asarray(light['planes']);p=(lo+hi)/2;extent=(hi-lo)/2
     return bool(np.all(planes[:,:3]@p+planes[:,3]+np.abs(planes[:,:3])@extent>=-1e-3))
@@ -404,8 +426,9 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                 skipped_lights.append(dict(name=label,reason='detailLevel <= r_lightDetailLevel 0'));continue
             default='lights/squarelight1' if policy else 'lights/defaultprojectedlight' if light['projected'] else 'lights/defaultpointlight'
             shader=material(entity.get('texture') or default)
-            if shader['fogLight'] or shader['blendLight']:
-                skipped_lights.append(dict(name=label,shader=shader['name'],reason='fogLight' if shader['fogLight'] else 'blendLight'));continue
+            # RB_FogAllLights: fog and blend lights draw after the shader passes instead of interacting.
+            light.update(fog=shader['fogLight'],blend=shader['blendLight'])
+            if shader['fogLight']:light['volume']=volume_faces(light['planes'])
             falloff_default='lights/defaultprojectedlight' if light['projected'] else 'lights/defaultpointlight'
             falloff=shader['falloff'] or material(falloff_default if policy else default)['falloff']
             sound=material_cache['sounds'].resolve(entity) if shader['soundReactive'] else None
@@ -568,7 +591,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                surfaces=surfaces,materials=shader_records,lights=lights,nodes=proc['nodes'],portals=proc['portals'],areaCount=proc['areas'],
                emitters=emitters,particles={n:material_cache['particles'][n] for n in sorted(used_particles)},
                viewpoints=viewpoints,entities=entity_records,skippedEntities=skipped,skippedLights=skipped_lights,stats=stats,
-               notes=['No shadows or fog/blend lights. Doors/movers stay at authored start transforms; scripts and binds are not simulated.',
+               notes=['No shadows. Fog and blend lights draw after the shader passes (RB_FogAllLights). Doors/movers stay at authored start transforms; scripts and binds are not simulated.',
                       'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
                       'Sound-reactive stages use the sample envelope without audio playback. Sample phase starts at map load; triggered sounds, random choices, leadins and multiple channels are not simulated.',
                       'All renderable monsters/items are shown, including hidden/triggered entities. Start-off lights stay off.',
@@ -588,7 +611,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
         for s in surfaces:
             if shader_records[s['material']]['portalSky']:scene['areaSky'].update({'_area'+str(a):True for a in s['areas']})
     if policy:
-        scene['notes'][0]='No shadows or fog/blend lights. Authored movers and static attachments are evaluated once; no physics or script VM.'
+        scene['notes'][0]='No shadows. Fog and blend lights draw after the shader passes (RB_FogAllLights). Authored movers and static attachments are evaluated once; no physics or script VM.'
         scene['notes'] += ['Quake 4: r_lightDetailLevel 0; only detailLevel > 0 lights. falloff spawnarg is ignored (not read by SDK ParseSpawnArgsToRenderLight).',
                            'Deathmatch filters; one deterministic spawner appearance. See stats.mapRules for provenance and other layouts.',
                            'GLSL capability conditions use the non-GLSL fallback. Portal fade tuples are retained but fading is disabled.']

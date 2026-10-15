@@ -103,6 +103,29 @@ void main(){
 // R_MirrorRender: the reflected view, projected onto the mirror; its own stages blend over it.
 const mirrorFragment=`precision highp float;varying vec3 positionWorld;uniform sampler2D mirrorMap;uniform mat4 textureMatrix;
 void main(){gl_FragColor=vec4(texture2DProj(mirrorMap,textureMatrix*vec4(positionWorld,1.0)).rgb,1.0);}`;
+// Fog and blend lights draw only inside the light volume (a small margin keeps the fog volume's own faces).
+const lightVolume=`uniform vec4 projectS,projectT,projectQ,projectF;
+bool outside(vec4 p,out vec2 uv,out float f){float q=dot(projectQ,p);f=dot(projectF,p);uv=vec2(dot(projectS,p),dot(projectT,p))/max(q,1e-6);
+ return q<=0.0||f<-.01||f>1.01||any(lessThan(uv,vec2(-.01)))||any(greaterThan(uv,vec2(1.01)));}`;
+// RB_FogPass: R_FogImage alpha 1-0.982^(255*min(depth/distance,1)) by view depth, times R_FogEnterImage's
+// FogFraction of the view and surface heights against the light's top plane (0.064 units per world unit).
+const fogFragment=`precision highp float;varying vec3 positionWorld;uniform vec4 lightColor,fogPlane;${lightVolume}
+float fogFraction(float view,float target){
+ float total=abs(target-view);if(target>0.0&&view>0.0)return 0.0;if(target<-8.0&&view<-8.0)return 1.0;
+ float above=target>0.0?target:view>0.0?view:0.0,top=min(max(view,target),0.0),bottom=max(min(view,target),-8.0);
+ if(total==0.0)return -view/8.0;
+ float ramp=(1.0-(top/8.0+bottom/8.0)*-0.5)*(top-bottom),frac=(total-above-ramp)/total,deep=min(view,target)/-30.0;
+ return deep>=1.0?1.0:frac*(1.0-deep)+deep;}
+void main(){vec4 p=vec4(positionWorld,1.0);vec2 uv;float f;if(outside(p,uv,f))discard;
+ float distance=lightColor.a<=1.0?500.0:lightColor.a,depth=-(viewMatrix*p).z;
+ float a=1.0-pow(.982,floor(clamp(depth/distance,0.0,1.0)*255.0));
+ a*=clamp(fogFraction(.064*(dot(fogPlane.xyz,cameraPosition)+fogPlane.w),.064*(dot(fogPlane.xyz,positionWorld)+fogPlane.w)),0.0,1.0);
+ gl_FragColor=vec4(lightColor.rgb,a);}`;
+// RB_BlendLight: projected image x falloff x stage colour (alpha included), with the stage's own blend.
+const blendLightFragment=`precision highp float;varying vec3 positionWorld;uniform sampler2D projectionMap,falloffMap;uniform mat3 projectionUV;uniform vec4 lightColor;${lightVolume}
+void main(){vec4 p=vec4(positionWorld,1.0);vec2 uv;float f;if(outside(p,uv,f))discard;
+ gl_FragColor=texture2D(projectionMap,(projectionUV*vec3(clamp(uv,0.0,1.0),1.0)).xy)*texture2D(falloffMap,vec2(clamp(f,0.0,1.0),.5))*lightColor;}`;
+const FOG_ORDER=5e8;
 function mirrorPlane(surface) {
  const i=geometry.index.array[surface.start],p=geometry.attributes.position.array,n=geometry.attributes.normal.array;
  const normal=new THREE.Vector3(n[i*3],n[i*3+1],n[i*3+2]).normalize(),point=new THREE.Vector3(p[i*3],p[i*3+1],p[i*3+2]);
@@ -295,15 +318,17 @@ async function buildMap(meta,binary) {
     u.cameraCube={value:+diffuse.cube.camera};u.skyMatrix={value:unit()};
     u.cubeMode={value:diffuse.texgen==='reflect'?(bump?2:1):diffuse.texgen==='normal'?3:0};
    }
+   if(kind===5)u.fogPlane={value:new THREE.Vector4(...M.fogPlane(light))};
    if(kind===4){u.mirrorMap={value:black};u.textureMatrix={value:new THREE.Matrix4()};
    }
-   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:kind===3?cubeFragment:kind===4?mirrorFragment:fragment,uniforms:u,vertexColors:true,
+   const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:[fragment,fragment,fragment,cubeFragment,mirrorFragment,fogFragment,blendLightFragment][kind],uniforms:u,vertexColors:true,
     side:material.twoSided||deformed||particle?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
     blending:kind===0?THREE.NoBlending:THREE.CustomBlending,blendSrc:THREE.OneFactor,blendDst:kind===1?THREE.OneFactor:THREE.ZeroFactor});
-   if(kind===2||kind===3) {
-    const factors=M.ambientBlend(diffuse).map(f=>blendFactors[f]);
+   if(kind===2||kind===3||kind===6) {
+    const factors=M.ambientBlend(kind===6?projection:diffuse).map(f=>blendFactors[f]);
     [sm.blendSrc,sm.blendDst,sm.blendSrcAlpha,sm.blendDstAlpha]=factors;
    }
+   if(kind===5){sm.blendSrc=THREE.SrcAlphaFactor;sm.blendDst=THREE.OneMinusSrcAlphaFactor;}
    if(diffuse?.polygonOffset){sm.polygonOffset=true;sm.polygonOffsetFactor=-1;sm.polygonOffsetUnits=-1;}
    const mesh=new THREE.Mesh(g,sm);mesh.renderOrder=order;mesh.userData={kind,diffuse,specular,bump,light,projection,cubeAxis:surface.cubeAxis};group.add(mesh);meshes.push(mesh);passCount++;
   }
@@ -313,7 +338,7 @@ async function buildMap(meta,binary) {
   if(material.mirror){batch.mirror=mirrorPlane(surface);pass(4,null,null,null,null,null,50);batch.mirror.mesh=meshes.at(-1);}
   if(!material.translucent)for(const stage of cut.length?cut:[opaque])pass(0,stage,null,null,null,null,0);
   for(const interaction of interactionGroups(material.stages))for(const index of surface.lights) {
-    const light=meta.lights[index];if(light.authoredOff)continue;
+    const light=meta.lights[index];if(light.authoredOff||light.fog||light.blend)continue;
     for(const projection of meta.materials[light.shader].stages)if(projection.texture)
       pass(1,interaction.diffuse,interaction.specular,interaction.bump,light,projection,10);
   }
@@ -321,6 +346,25 @@ async function buildMap(meta,binary) {
   // RB_STD_T_RenderShaderPasses: a reflect stage uses the material's bump stage (GetBumpStage) when it has one.
   const bumpStage=material.stages.find(s=>s.role==='bump')||null;
   material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,s.texgen==='reflect'?bumpStage:null,null,null,M.ambientOrder(material.sort,ambientOrder++)));
+  // RB_FogAllLights, after every shader pass: fog lights, then blend lights, over opaque surfaces in their volumes.
+  if(!material.translucent)for(const index of surface.lights) {
+   const light=meta.lights[index],stages=meta.materials[light.shader].stages;if(light.authoredOff)continue;
+   if(light.fog&&stages[0])pass(5,null,null,null,light,stages[0],FOG_ORDER);
+   else if(light.blend)for(const projection of stages)if(projection.texture)pass(6,null,null,null,light,projection,FOG_ORDER+1);
+  }
+ }
+ // RB_FogPass also draws the fog volume's back faces (depth less), so fog covers what lies beyond the volume.
+ for(const light of meta.lights) {
+  const stage=meta.materials[light.shader].stages[0];if(!light.fog||!light.volume?.length||!stage||light.authoredOff)continue;
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(light.volume),3));
+  g.boundingBox=new THREE.Box3(new THREE.Vector3(...light.bounds[0]),new THREE.Vector3(...light.bounds[1]));g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
+  const u=uniforms();u.lightColor.value.set(0,0,0,0);['projectS','projectT','projectQ','projectF'].forEach((n,i)=>u[n].value.fromArray(light.projection[i]));
+  u.fogPlane={value:new THREE.Vector4(...M.fogPlane(light))};
+  const mesh=new THREE.Mesh(g,new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:fogFragment,uniforms:u,side:THREE.BackSide,depthWrite:false,
+   depthFunc:THREE.LessDepth,transparent:true,blending:THREE.CustomBlending,blendSrc:THREE.SrcAlphaFactor,blendDst:THREE.OneMinusSrcAlphaFactor}));
+  mesh.renderOrder=FOG_ORDER;mesh.userData={kind:5,light,projection:stage};
+  const group=new THREE.Group();group.add(mesh);scene.add(group);
+  batches.push({group,meshes:[mesh],geometry:g,surface:{areas:light.areas,parms:light.parms,entity:light.name},npc:false});passCount++;
  }
  npcs.setCount(npcOwners.size);
  return passCount;
