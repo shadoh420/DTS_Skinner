@@ -179,6 +179,9 @@ def material_colours(game, names, files=None):
         # Light beams' and pads' glows (alphaFresnel): how the glow falls off away from facing the viewer, and its strength.
         if isinstance(parameters.get('fresnelMulPow'), list) and isinstance(parameters.get('intensityMul'), float):
             entry['fresnel'] = [round(value, 4) for value in parameters['fresnelMulPow'][:2]] + [round(parameters['intensityMul'], 4)]
+        # God rays: how fast their texture scrolls (x, y a second).
+        if 'godrays' in shader and isinstance(parameters.get('scrollSpeedXY'), list):
+            entry['scroll'] = [round(value, 4) for value in parameters['scrollSpeedXY'][:2]]
         # Glass (…_GLASS_REFLECTION shaders): how strongly it reflects its fixed cube map and how blurred (a mip), and
         # that cube map and its lit sphere, which the textures step decodes.
         if 'GLASS_REFLECTION' in shader and all(isinstance(parameters.get(key), str) and parameters[key] for key in ('textureLitSphere', 'textureCubemap')):
@@ -194,12 +197,16 @@ def material_colours(game, names, files=None):
         if shader.startswith('internal/shaders/particle_') and isinstance(parameters.get('particleDiffuseProperties'), list):
             entry['particle'] = [round(value, 4) for value in parameters['particleDiffuseProperties'][:2]] + [
                 round(parameters.get('fadeRoughness', 1.), 4), round(parameters.get('intensityMultiplier', 1.), 4)]
-        if shader.startswith(('internal/shaders/deferredPbr', 'internal/shaders/standard_', 'internal/shaders/clouds', 'internal/shaders/sky2', 'internal/shaders/particle')):
+        if shader.startswith(('internal/shaders/deferredPbr', 'internal/shaders/standard_', 'internal/shaders/clouds', 'internal/shaders/sky2', 'internal/shaders/particle',
+                              'internal/shaders/godrays')):
             albedo = parameters.get('textureAlbedoSpec') or parameters.get('textureDiffuse') or parameters.get('textureStars')
             if isinstance(albedo, str) and albedo:
                 entry['textures'] = [albedo] + ([parameters['textureMeta']] if isinstance(parameters.get('textureMeta'), str) and parameters['textureMeta'] else [])
                 # A diffuse texture's alpha is how see-through it is (ivy leaves); an albedoSpec's is its specular level.
                 entry['seeThrough'] = not isinstance(parameters.get('textureAlbedoSpec'), str)
+            # Its normal map, where its shader reads one (…TEXTURENORMALS: the dev grids' grooves and scratches).
+            if 'TEXTURENORMALS' in shader and isinstance(parameters.get('textureNormals'), str) and parameters['textureNormals']:
+                entry['normalsTexture'] = parameters['textureNormals']
     return colours, sorted(name for name in names if name and 'colour' not in colours.get(name, {}))
 
 
@@ -258,7 +265,7 @@ def texture_file(textures):
 def material_textures(game, colours, output, replace=False):
     """Decodes the textures and thumbnails of the materials in `colours` into output/textures and output/thumbs,
     noting each one's files in its entry. Returns how many of each it has."""
-    textures, done, counts = Textures(game), {}, dict(textures=0, thumbs=0)
+    textures, done, roughness, counts = Textures(game), {}, {}, dict(textures=0, thumbs=0)
     (output / 'textures').mkdir(parents=True, exist_ok=True)
     (output / 'thumbs').mkdir(parents=True, exist_ok=True)
     for name, entry in colours.items():
@@ -278,6 +285,30 @@ def material_textures(game, colours, output, replace=False):
             if done[file]:
                 entry['texture'] = file
                 counts['textures'] += 1
+            # The meta texture's red is the surface's roughness (the dev shaders write it to the G-buffer, at least
+            # 0.05): the page takes its mean where the material gives none (dev_grid16 0.65, dev_nogrid 0.73).
+            if len(wanted) > 1 and 'roughness' not in entry:
+                if wanted[1] not in roughness:
+                    try:
+                        red = textures.image(wanted[1]).getchannel('R')
+                        roughness[wanted[1]] = round(max(sum(i * n for i, n in enumerate(red.histogram())) / (255 * red.width * red.height), .05), 3)
+                    except (KeyError, OSError, ValueError, struct.error, zipfile.BadZipFile):
+                        roughness[wanted[1]] = None
+                if roughness[wanted[1]] is not None:
+                    entry['roughness'] = roughness[wanted[1]]
+        # A normal map as its bytes are (the game's: x in alpha times red, y in green, z in blue), as normals.
+        normals = entry.pop('normalsTexture', None)
+        if normals:
+            file = normals.lower().rsplit('/', 1)[-1] + '.png'
+            try:
+                if replace or not (output / 'textures' / file).is_file():
+                    image = textures.image(normals).convert('RGBA')
+                    if max(image.size) > 1024:
+                        image = image.resize((min(image.width, 1024), min(image.height, 1024)))
+                    image.save(output / 'textures' / file)
+                entry['normals'] = file
+            except (KeyError, OSError, ValueError, struct.error, zipfile.BadZipFile) as exc:
+                entry['textureError'] = f'{exc.__class__.__name__}: {exc}'
         # Glass: its lit sphere and its cube map (the faces stacked), as litSphere and cube.
         for key, texture in zip(('litSphere', 'cube'), entry.pop('glassTextures', None) or ()):
             file = texture.lower().rsplit('/', 1)[-1] + '.png'

@@ -65,6 +65,12 @@ class ReflexMapsTest(unittest.TestCase):
                                         (4, 'textureAlbedoSpec', b'dev_nogrid_albedospec'), (2, 'tintColor', struct.pack('<3f', 1, 0, 0)),
                                         (1, 'uvScale', struct.pack('<2f', .01, .01))))
         self.assertEqual((dev['tintColor'], [round(v, 4) for v in dev['uvScale']]), ([1, 0, 0], [.01, .01]))
+        # God rays keep their texture, how it scrolls and their fresnel falloff and strength for the page.
+        from tools.import_reflex_map import material_colours
+        rays = material('internal/shaders/godrays_TEXTUREDIFFUSE', (4, 'textureDiffuse', b'internal/effects/godrays/godrays_c'),
+                        (1, 'fresnelMulPow', struct.pack('<2f', 1, 1)), (1, 'scrollSpeedXY', struct.pack('<2f', .02, 0)), (0, 'intensityMul', struct.pack('<f', 8)))
+        entry = material_colours(None, ['fx/rays'], {'fx/rays': (lambda: rays, 'internal.pak')})[0]['fx/rays']
+        self.assertEqual((entry['scroll'], entry['fresnel'], entry['textures']), ([.02, 0], [1, 1, 8], ['internal/effects/godrays/godrays_c']))
         with self.assertRaisesRegex(ValueError, 'not a Reflex material'):
             read_material(b'PK\x03\x04' + bytes(200))
         with self.assertRaisesRegex(ValueError, 'cut short'):
@@ -245,9 +251,11 @@ class ReflexTexturesTest(unittest.TestCase):
             (game / 'base').mkdir()
             with zipfile.ZipFile(game / 'base/structural.pak', 'w') as pak:
                 pak.writestr('structural/dev/dev_grey128.material', material('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED',
-                    (4, 'textureAlbedoSpec', b'dev_grid16_albedospec'), (4, 'textureMeta', b'dev_grid16_meta'), (2, 'tintColor', struct.pack('<3f', .5, .5, .5))))
+                    (4, 'textureAlbedoSpec', b'dev_grid16_albedospec'), (4, 'textureMeta', b'dev_grid16_meta'), (4, 'textureNormals', b'dev_grid16_normals'),
+                    (2, 'tintColor', struct.pack('<3f', .5, .5, .5))))
                 pak.writestr('structural/dev/dev_grid16.textureset', textureset('structural/dev/dev_grid16', {
-                    'structural/dev/dev_grid16_albedoSpec': (72, Image.new('RGBA', (8, 8), (200, 200, 200, 255))), 'structural/dev/dev_grid16_meta': (71, meta)}))
+                    'structural/dev/dev_grid16_albedoSpec': (72, Image.new('RGBA', (8, 8), (200, 200, 200, 255))), 'structural/dev/dev_grid16_meta': (71, meta),
+                    'structural/dev/dev_grid16_normals': (71, Image.new('RGBA', (8, 8), (255, 128, 255, 128)))}))
                 pak.writestr('structural/dev/dev_unused.material', CONCRETE)
             with zipfile.ZipFile(game / 'base/thumbs_material.pak', 'w') as pak:
                 pak.writestr('thumbs_material/structural/dev/dev_grey128.textureset', textureset('thumbs_material/structural/dev/dev_grey128', {
@@ -263,6 +271,13 @@ class ReflexTexturesTest(unittest.TestCase):
             self.assertEqual(baked.mode, 'RGB')
             self.assertTrue(all(abs(channel - 200) < 10 for channel in baked.getpixel((4, 4))), baked.getpixel((4, 4)))
             self.assertGreater(baked.getpixel((0, 4))[0], 240)
+            # Its normal map, kept as its bytes are with their alpha (x is alpha × red; the made-up one is BC1, so alpha 1).
+            self.assertEqual(entry['normals'], 'dev_grid16_normals.png')
+            # Its roughness: the meta texture's mean red (7 columns of 161, one of 255; BC1 keeps it within a level or two).
+            self.assertAlmostEqual(entry['roughness'], (7 * 161 + 255) / 8 / 255, delta=.02)
+            normals = Image.open(pack / 'textures' / entry['normals'])
+            self.assertEqual(normals.mode, 'RGBA')
+            self.assertTrue(all(abs(a - b) < 6 for a, b in zip(normals.getpixel((4, 4))[:3], (255, 128, 255))), normals.getpixel((4, 4)))
             self.assertEqual(Image.open(pack / 'thumbs' / entry['thumb']).size, (128, 128))
             # Every material of the game is listed for the browser, also those no map names.
             self.assertIn('structural/dev/dev_unused', colours)
@@ -378,3 +393,29 @@ class ReflexModelsTest(unittest.TestCase):
         bones = struct.pack('<2i', -1, 0) + b'b_root\0b_child\0' + struct.pack('<32f', *identity, *identity) + struct.pack('<32f', *moved(5, 0), *moved(0, 10))
         mesh = read_mesh(head + block + shadow + bones)
         self.assertEqual(mesh['parts'][0]['positions'][:6], [5, 10, 0, 13, 10, 0])
+
+    def test_a_looping_animation_is_kept_with_the_vertices_it_moves(self):
+        """A skinned triangle on one bone that turns a quarter about y between its two frames (looping): the page gets
+        the frames, the bind and the triangle before posing with its weights; a mesh at rest gets none."""
+        from tools.reflex_models import read_mesh, write_mesh
+        head = b'\x23\x00\x0a\xd0' + struct.pack('<I6f3I', 1, 0, 0, 0, 8, 8, 0, 1, 1, 9) + b'MaterialA\0'
+        vertex = lambda x, y, z: struct.pack('<3f4B3f2f4f4f4B', x, y, z, 255, 255, 255, 255, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0)
+        block = struct.pack('<4I', 3, 3, 0x3d, 4) + vertex(0, 0, 0) + vertex(8, 0, 0) + vertex(0, 0, 8) + struct.pack('<3H', 0, 1, 2)
+        shadow = struct.pack('<4I', 0, 0, 0, 4)
+        identity = (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+        rest = struct.pack('<10f', 0, 0, 0, 0, 0, 0, 1, 1, 1, 1)
+        bones = struct.pack('<i', -1) + b'b_turn\0' + struct.pack('<16f', *identity) * 2 + rest
+        frames = lambda loops, turned: struct.pack('<IfII', 2, 30, loops, 0) + b'spin\0' + rest + (struct.pack('<10f', 0, 0, 0, 0, .7071, 0, .7071, 1, 1, 1) if turned else rest)
+        mesh = read_mesh(head + block + shadow + bones + frames(1, True) + struct.pack('<f', 1))
+        self.assertEqual((mesh['animation']['frames'], mesh['animation']['fps'], mesh['animation']['parents']), (2, 30, [-1]))
+        self.assertEqual([round(v, 4) for v in mesh['animation']['records'][13:17]], [0, .7071, 0, .7071])
+        self.assertEqual(mesh['parts'][0]['animated']['positions'], [0, 0, 0, 8, 0, 0, 0, 0, 8])
+        with tempfile.TemporaryDirectory() as directory:
+            write_mesh(mesh, Path(directory) / 'm.bin')
+            raw = (Path(directory) / 'm.bin').read_bytes()
+        at = raw.index(b'ANIM')
+        self.assertEqual(struct.unpack_from('<2If', raw, at + 4), (1, 2, 30))
+        self.assertEqual(len(raw) - at, 4 + 12 + 4 + 64 + 2 * 40 + 4 + 4 + 3 * (20 + 12 + 12))
+        # Not looping, or not moving: drawn at rest, nothing more written.
+        self.assertNotIn('animation', read_mesh(head + block + shadow + bones + frames(0, True) + struct.pack('<f', 1)))
+        self.assertNotIn('animation', read_mesh(head + block + shadow + bones + frames(1, False) + struct.pack('<f', 1)))
