@@ -832,7 +832,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky, lut} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky, lut, movers} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       if (sky) addSky(sky);
       if (lut) new THREE.TextureLoader().load(`${data}luts/${fileName(lut)}.png`, loaded => {

@@ -98,7 +98,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 31  # Of the files written per map: maps imported with another are read again.
+FORMAT = 32  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -1045,7 +1045,7 @@ def import_maps(game, output, replace=False, extra=None):
             index.pop(ident, None)
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
-                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky, lut=lut, movers=[[list(props).index(key), *entry] for key, value in movers.items() for entry in value], lut=lut, movers=[[list(props).index(key), *entry] for key, value in movers.items() for entry in value], lut=lut, movers=[[list(props).index(key), *entry] for key, value in movers.items() for entry in value], lut=lut,
+                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky, lut=lut, movers=[[list(props).index(key), *entry] for key, value in movers.items() for entry in value],
                                billboards=read_billboards(parsed['entities']), volumetrics=read_volumetrics(parsed['entities']),
                                pfx=read_pfx(parsed['entities'], assets, pickups)),
                           separators=(',', ':')).encode()
