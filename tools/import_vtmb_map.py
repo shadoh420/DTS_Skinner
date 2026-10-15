@@ -35,15 +35,15 @@ except ImportError:
     from texture_workshop import write_json_atomic
 
 
-LUMPS = {0: 'entities', 1: 'planes', 2: 'texdata', 3: 'vertices', 6: 'texinfo',
-         7: 'faces', 8: 'lighting', 12: 'edges', 13: 'surfedges', 14: 'models',
-         26: 'dispinfo', 33: 'dispverts', 35: 'game', 40: 'pakfile',
+LUMPS = {0: 'entities', 1: 'planes', 2: 'texdata', 3: 'vertices', 5: 'nodes', 6: 'texinfo',
+         7: 'faces', 8: 'lighting', 10: 'leaves', 12: 'edges', 13: 'surfedges', 14: 'models', 16: 'leaffaces',
+         26: 'dispinfo', 33: 'dispverts', 35: 'game', 36: 'leafwaterdata', 40: 'pakfile',
          43: 'texdata_string_data', 44: 'texdata_string_table', 48: 'disptris'}
-SKIPPED_LUMPS = {4: 'visibility', 5: 'nodes', 9: 'occlusion', 10: 'leaves', 11: 'faceids',
-                 15: 'worldlights', 16: 'leaffaces', 17: 'leafbrushes', 18: 'brushes', 19: 'brushsides',
+SKIPPED_LUMPS = {4: 'visibility', 9: 'occlusion', 11: 'faceids',
+                 15: 'worldlights', 17: 'leafbrushes', 18: 'brushes', 19: 'brushsides',
                  20: 'areas', 21: 'areaportals', 27: 'originalfaces', 28: 'physdisp', 29: 'physcollide',
                  30: 'vertnormals', 31: 'vertnormalindices', 32: 'displightmapalphas',
-                 34: 'displightmapsamplepositions', 36: 'leafwaterdata', 37: 'primitives', 38: 'primverts',
+                 34: 'displightmapsamplepositions', 37: 'primitives', 38: 'primverts',
                  39: 'primindices', 41: 'clipportalverts', 42: 'cubemaps', 45: 'overlays',
                  46: 'leafmindisttowater', 47: 'face_macrotexture_info'}
 
@@ -218,6 +218,130 @@ def indexed(seq, index, name):
     return seq[index]
 
 
+class Tree:
+    """World BSP for point queries. dnode_t / dleaf_t (bspflags.h, bspfile.h): leaf area is the low 9 bits of the short at 6,
+    firstleafface/numleaffaces at 20, leafWaterDataID at 28 (version 0 keeps these offsets before its ambient cube).
+    Bloodlines BSP17 leaves are the same 32 bytes. ok is False when the lumps are absent (synthetic maps)."""
+    def __init__(self, lumps, planes, head, leaf_stride=32):
+        self.nodes = [r[:3] for r in rows(lumps[5], '3i20x')]
+        if len(lumps[10]) % leaf_stride:
+            raise ValueError('Incomplete BSP leaves')
+        self.leaves = [struct.unpack_from('<i', lumps[10], at) + (struct.unpack_from('<h', lumps[10], at+6)[0] & 0x1FF,)
+                       + struct.unpack_from('<2H', lumps[10], at+20) + struct.unpack_from('<h', lumps[10], at+28)
+                       for at in range(0, len(lumps[10]), leaf_stride)]
+        self.leaffaces = [r[0] for r in rows(lumps[16], 'H')]
+        self.water = rows(lumps[36], '2fh2x')  # dleafwaterdata_t: surfaceZ, minZ, surfaceTexInfoID
+        self.planes, self.head, self.ok = planes, head, bool(self.nodes and self.leaves)
+
+    def leaf(self, point):
+        node, steps = self.head, 0
+        while node >= 0:
+            steps += 1
+            if steps > len(self.nodes):
+                raise ValueError('Cyclic BSP nodes')
+            plane, front, back = indexed(self.nodes, node, 'node')
+            q = indexed(self.planes, plane, 'plane')
+            node = front if np.dot(point, q[:3]) >= q[3] else back
+        return indexed(self.leaves, -1-node, 'leaf')
+
+    def face_areas(self):
+        areas = {}
+        for leaf in self.leaves:
+            for i in range(leaf[2], leaf[2]+leaf[3]) if not leaf[0] & 1 else ():  # CONTENTS_SOLID leaves have no area
+                areas.setdefault(indexed(self.leaffaces, i, 'leaf face'), leaf[1])
+        return areas
+
+    def regions(self, water_fog):
+        """map.regions / map.region_tree (page axes) for the eye in water: one region per leafwaterdata whose surface
+        material has fog. Subtrees that end in one region collapse to it. A page plane is [n1, n2, n0, d*SCALE]."""
+        regions, ids = [None], {}
+        for i, (_, _, texinfo) in enumerate(self.water):
+            fog = water_fog(texinfo)
+            if fog:
+                ids[i] = len(regions); regions.append(fog)
+        nodes = []
+
+        def walk(node, depth):
+            if node < 0:
+                return -1 - ids.get(indexed(self.leaves, -1-node, 'leaf')[4], 0)
+            if depth > 4096:
+                raise ValueError('BSP too deep or cyclic')
+            plane, front, back = indexed(self.nodes, node, 'node')
+            front, back = walk(front, depth+1), walk(back, depth+1)
+            if front == back and front < 0:
+                return front
+            q = indexed(self.planes, plane, 'plane')
+            nodes.append([q[1], q[2], q[0], q[3]*SCALE, front, back])
+            return len(nodes) - 1
+        root = walk(self.head, 0) if self.ok and ids else -1
+        return (regions, dict(root=root, nodes=nodes)) if root != -1 else (None, None)
+
+
+def fog_params(entity, scale=1):
+    """Fog keys of env_fog_controller and sky_camera (fogcontroller.cpp, SkyCamera.cpp DATADESC), page units; None when
+    fogenable is off (its default). use_angles replaces fogdir by -forward(angles) (CFogController/CSkyCamera::Activate);
+    the sky camera's distances are divided by its scale (viewrender.cpp CSkyboxView::Enable3dSkyboxFog).
+    Bloodlines puts the same keys on worldspawn. Hypothesis: Troika reads them like env_fog_controller."""
+    if not number(entity, 'fogenable'):
+        return None
+    direction = -rotation(vector(entity, 'angles'))[:, 0] if number(entity, 'use_angles') else vector(entity, 'fogdir')
+    length = np.linalg.norm(direction)
+    return dict(color=(vector(entity, 'fogcolor')/255).tolist(), color2=(vector(entity, 'fogcolor2')/255).tolist(),
+                dir=(direction[[1, 2, 0]]/(length or 1)).tolist(), blend=bool(number(entity, 'fogblend')),
+                start=number(entity, 'fogstart')*SCALE/scale, end=number(entity, 'fogend')*SCALE/scale,
+                max=number(entity, 'fogmaxdensity', 1))
+
+
+def water_fog(params):
+    """Fog seen from inside a water volume: the fog volume material's $fogcolor/$fogstart/$fogend (viewrender.cpp
+    CUnderWaterView::Draw -> SetFogVolumeState; water.cpp sends $fogcolor gamma-to-linear). Hypothesis: the engine side
+    (not public) sets linear range fog from them, as noclip's Material_Water reads them. None without those keys."""
+    if not all(k in params for k in ('$fogcolor', '$fogstart', '$fogend')):
+        return None
+    text = str(params['$fogcolor']); values = np.array([float(v) for v in text.strip('[]{} ').split()])
+    if len(values) != 3 or not np.isfinite(values).all():
+        raise ValueError('Invalid water $fogcolor')
+    if '{' in text:
+        values = values/255
+    start, end = float(params['$fogstart']), float(params['$fogend'])
+    if not np.isfinite([start, end]).all():
+        raise ValueError('Invalid water fog range')
+    return dict(fog=dict(color=np.clip(values, 0, 1).tolist(), start=start*SCALE, end=end*SCALE, max=1))
+
+
+def sky_camera(tree, entities, start):
+    """The current sky_camera is the last spawned (SkyCamera.cpp GetCurrentSkyCamera; CEntityClassList::Insert prepends);
+    its area is the one holding its origin (CSkyCamera::Spawn). start: the first viewpoint, page axes.
+    Returns (camera, area, reason): no split when the camera shares the start's area (the level would be hidden)."""
+    cameras = [e for e in entities if e.get('classname') == 'sky_camera']
+    if not cameras or not tree.ok:
+        return None, None, 'no sky_camera' if not cameras else 'no BSP tree'
+    camera = cameras[-1]; area = tree.leaf(vector(camera))[1]
+    if area == tree.leaf(np.asarray(start)[[2, 0, 1]]/SCALE)[1]:
+        return None, None, 'sky_camera shares the start area'
+    return camera, area, ''
+
+
+def sky3d(camera):
+    scale = number(camera, 'scale', 16) or 16
+    return dict(origin=(vector(camera)[[1, 2, 0]]*SCALE).tolist(), scale=scale, fog=fog_params(camera, scale))
+
+
+def proxy_gap(materials):
+    """Proxies the page does not draw, counted by material: TextureScroll on $basetexturetransform is drawn by the page
+    and AnimatedTexture on $basetexture by group.anim."""
+    found = Counter()
+    for m in materials:
+        proxies = (m.get('settings') or {}).get('parameters', {}).get('proxies')
+        for name, block in (proxies.items() if isinstance(proxies, dict) else ()):
+            if name == 'texturescroll' and isinstance(block, dict) and str(block.get('texturescrollvar', '')).lower() == '$basetexturetransform':
+                continue
+            if name == 'animatedtexture' and m.get('anim'):
+                continue
+            found[name] += 1
+    return 'Material proxies not drawn (materials): ' + ', '.join(f'{k} {v}' for k, v in found.most_common()) if found else ''
+
+
 def face_geometry(bsp, number):
     face = indexed(bsp['faces'], number, 'face')
     first, count = face['first'], face['count']
@@ -386,6 +510,12 @@ def build_map(raw, name, files, lighting=None):
             settings, notes = vtmb.material_settings(vmt)
             png, image, info = prepare_texture(files, vmt, path)
             images[png] = image
+            rate = vtmb.animated_texture_rate(vmt['params'])
+            if rate and info.get('frames', 1) > 1:  # AnimatedTexture: every VTF frame, swapped by the viewer at the proxy's rate.
+                stem, ext = png.rsplit('.', 1); frames = [png] + [f'{stem}_f{k}.{ext}' for k in range(1, info['frames'])]
+                for k, frame in enumerate(frames[1:], 1):
+                    images[frame] = vtmb.material_texture(files, vmt, compressed=True, frame=k)[0]
+                record['anim'] = dict(frames=frames, fps=rate)
             notes = [n for n in notes if not n.startswith('$selfillum recorded;')]
             record.update(texture=png, settings=settings, notes=notes, source=path, origin=files[path].origin)
         except (ValueError, OSError, KeyError) as exc:
@@ -438,13 +568,29 @@ def build_map(raw, name, files, lighting=None):
         else:
             omitted.append(dict(**record, reason='Non-prop/pickup entity; gameplay, decals, lights or effects'))
 
+    views = []
+    for e in ents:
+        if e.get('classname', '').startswith(('info_player_', 'info_landmark')):
+            origin = vector(e) + [0, 0, 64]; angles = vector(e, 'angles')
+            views.append(dict(origin=(origin[[1, 2, 0]]*SCALE).tolist(), yaw=-float(angles[1]), pitch=-float(angles[0]), roll=float(angles[2])))
+    if not views:
+        origin = (np.array(bsp['models'][0][:3])+bsp['models'][0][3:6])/2
+        views = [dict(origin=(origin[[1, 2, 0]]*SCALE).tolist(), yaw=0, pitch=0)]
+    tree = Tree(bsp['lumps'], bsp['planes'], bsp['models'][0][9])
+    camera, sky_area, sky_reason = sky_camera(tree, ents, views[0]['origin'])
+    face_area = tree.face_areas() if camera else {}
+    in_sky = lambda point: camera is not None and tree.leaf(point)[1] == sky_area
     for model, entity, turn, origin in brushes:
         row = bsp['models'][model]; first, count = row[10:12]
         if first < 0 or count < 0 or first+count > len(bsp['faces']):
             raise ValueError('Invalid brush face range')
+        brush_sky = model and in_sky(origin + turn @ ((np.array(row[:3])+row[3:6])/2))
         for n in range(first, first+count):
             face = bsp['faces'][n]
             p, uv, lm, tri, flags, texture = face_geometry(bsp, n)
+            # 3D sky area: world faces by their leaves (leaffaces), else by a point just in front of the face.
+            sky = brush_sky if model else camera is not None and (
+                face_area[n] == sky_area if n in face_area else in_sky(p.mean(0) + bsp['planes'][face['plane']][:3]))
             if flags & (128 | 256 | 512):
                 faces_audit.append(dict(face=n, model=model, reason='Nodraw/hint/skip')); continue
             tile = light_pixels(bsp, face, flags, lighting['light_gain'])
@@ -454,7 +600,7 @@ def build_map(raw, name, files, lighting=None):
             append(p @ turn.T + origin, uv, lm, tri, mat, 'sky' if flags & 6 else 'surface', tile,
                    face=n, model=model, displacement=face['disp'],
                    tint=(vector(entity, 'rendercolor')/255).tolist() if 'rendercolor' in entity else [1, 1, 1],
-                   alpha=number(entity, 'renderamt', 255)/255)
+                   alpha=number(entity, 'renderamt', 255)/255, **({'sky3d': True} if sky else {}))
 
     model_cache = {}
     for record in models:
@@ -482,13 +628,15 @@ def build_map(raw, name, files, lighting=None):
             if not np.isfinite(p).all():
                 raise ValueError('Non-finite prop position')
             uv = np.asarray(mesh['uvs']).reshape(-1, 2)
+            sky = camera is not None and (indexed(tree.leaves, record['leaves'][0], 'leaf')[1] == sky_area if record.get('leaves')
+                                          else in_sky(np.array(record['origin'])))
             for g in mesh['groups']:
                 mat = material(mesh['material_names'][g['materialIndex']], mesh['metadata']['material_directories'])
                 tri = mesh['indices'][g['start']:g['start']+g['count']]
                 # Keep only this material's referenced vertices; avoid repeating entire MDLs per group.
                 unique, remap = np.unique(tri, return_inverse=True)
                 append(p[unique], uv[unique], np.zeros((len(unique), 2)), remap, mat, 'model', np.full((1, 1, 3), 255, np.uint8),
-                       model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1),
+                       model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1), **({'sky3d': True} if sky else {}),
                        **({k: record[k] for k in ('npc', 'entity', 'classname')} if record.get('npc') else {}))
             record.update(status='drawn', pose=mesh['metadata'])
         except (ValueError, OSError, KeyError, IndexError, struct.error) as exc:
@@ -504,21 +652,13 @@ def build_map(raw, name, files, lighting=None):
     sky = dict(name=world.get('skyname', ''), rotate=0, axis=[0, 0, 1], faces={})
     for suffix in ('rt', 'lf', 'bk', 'ft', 'up', 'dn'):
         sky['faces'][suffix] = material('skybox/' + sky['name'] + suffix)
-    views = []
-    for e in ents:
-        if e.get('classname', '').startswith(('info_player_', 'info_landmark')):
-            origin = vector(e) + [0, 0, 64]; angles = vector(e, 'angles')
-            views.append(dict(origin=(origin[[1, 2, 0]]*SCALE).tolist(), yaw=-float(angles[1]), pitch=-float(angles[0]), roll=float(angles[2])))
-    if not views:
-        origin = (np.array(bsp['models'][0][:3])+bsp['models'][0][3:6])/2
-        views = [dict(origin=(origin[[1, 2, 0]]*SCALE).tolist(), yaw=0, pitch=0)]
     # Atlas coordinates are per vertex: compatible faces/props can share a draw
     # call without changing their lightmaps or positions. Large hubs have thousands
     # of faces but only hundreds of materials.
     batches = {}
     for group in groups:
         signature = (group['texture'], group['kind'], group.get('alpha', 1), tuple(group.get('tint', [1, 1, 1])),
-                     json.dumps(group['settings'], sort_keys=True), group.get('entity') if group.get('npc') else None)
+                     json.dumps(group['settings'], sort_keys=True), group.get('entity') if group.get('npc') else None, group.get('sky3d', False))
         if signature not in batches:
             batches[signature] = (dict((k, v) for k, v in group.items() if k not in ('face', 'model', 'displacement')), [])
         batches[signature][1].extend(indices[group['start']:group['start']+group['count']])
@@ -531,7 +671,14 @@ def build_map(raw, name, files, lighting=None):
     points = np.array(points).reshape(-1, 3)[:, [1, 2, 0]]*SCALE
     blob = b''.join((points.astype('<f4').tobytes(), np.asarray(uvs, '<f4').tobytes(), lmuv.astype('<f4').tobytes(),
                      np.array(indices, '<u4').tobytes()))
-    gaps = ['No gameplay/Python, particles, decals, fog, dynamic lights or 3D sky camera',
+    def water(texinfo):
+        name = bsp['names'][indexed(bsp['texdata'], indexed(bsp['texinfo'], texinfo, 'texinfo')[17], 'texdata')[3]]
+        return water_fog(material(name)['settings'].get('parameters', {}))
+    regions, region_tree = tree.regions(water)
+    proxies = proxy_gap(materials.values())
+    gaps = ['No gameplay/Python, particles, decals or dynamic lights',
+            'Fog is the worldspawn fog at spawn (fogenable); underwater fog only where the water material sets $fogcolor/$fogstart/$fogend',
+            *([f'3D sky not drawn: {sky_reason}'] if sky_reason not in ('', 'no sky_camera') else []), *([proxies] if proxies else []),
             'Props and NPCs use model idle/reference frame zero and default bodygroups, with even lighting; entity animation requests are recorded',
             'Materials use their base texture; displacement texture blending, bump/detail/environment and water reflection effects are not evaluated',
             'Brightness is provisional until compared with the game; light styles are held at initial full intensity except start-off lights']
@@ -544,7 +691,8 @@ def build_map(raw, name, files, lighting=None):
                  lump_audit=bsp['audit'], entity_repairs=bsp['entity_repairs'], game_lumps=game_audit, embedded_assets=embedded, lighting=lighting,
                  entity_classes=dict(Counter(e.get('classname', '') for e in ents)),
                  skipped_by_reason=dict(Counter(e['reason'] for e in omitted)),
-                 materials=list(materials.values()), missing=sorted({r['source'] for r in missing}), missing_reasons=missing, gaps=gaps)
+                 materials=list(materials.values()), missing=sorted({r['source'] for r in missing}), missing_reasons=missing, gaps=gaps,
+                 fog=fog_params(world), sky3d=sky3d(camera) if camera else None, regions=regions, region_tree=region_tree)
     return scene, blob, images, Image.fromarray(atlas)
 
 

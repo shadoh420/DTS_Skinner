@@ -18,7 +18,7 @@ if not __package__:
     sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from tools import source_bsp as bspreader, source_assets, vtmb
 from tools.import_vtmb import key
-from tools.import_vtmb_map import number, brush_transform
+from tools.import_vtmb_map import number, brush_transform, indexed, Tree, fog_params, water_fog, sky_camera, sky3d, proxy_gap
 from tools.import_quake_map import rotation, vector, SCALE
 from tools.import_unreal_map import pack
 from tools.model_data import read_geometry_buffers
@@ -159,6 +159,11 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
                 if any(s['origin']=='BSP pakfile' for s in info.get('sources',[])) or (not vm['params'].get('$basetexture') and files[path].origin=='BSP pakfile'):
                     filename=key(name_map)+'_'+filename
                 images[filename]=payload
+                rate=vtmb.animated_texture_rate(p) if vm is vmt else None
+                if rate and info.get('frames',1)>1:  # AnimatedTexture: every VTF frame, swapped by the viewer at the proxy's rate.
+                    stem,ext=filename.rsplit('.',1);frames=[filename]+[f'{stem}_f{k}.{ext}' for k in range(1,info['frames'])]
+                    for k,frame in enumerate(frames[1:],1):images[frame]=vtmb.material_texture(files,vm,compressed=True,frame=k)[0]
+                    out['anim']=dict(frames=frames,fps=rate)
                 return filename
             out['texture']=texture(vmt)
             if vmt['shader'].lower()=='worldvertextransition' and p.get('$basetexture2'):
@@ -193,12 +198,28 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
             failures.append(dict(audit,reason='No placed model or FGD model default'))
         elif i:omitted.append(dict(audit,reason='Logic/effects/decals/lights; not geometry'))
 
+    views=[]
+    for e in entities:
+        if e.get('classname','').startswith('info_player_'):
+            p=vector(e)+[0,0,64];a=vector(e,'angles');views.append(dict(origin=(p[[1,2,0]]*SCALE).tolist(),yaw=-float(a[1]),pitch=-float(a[0])))
+    if not views:
+        p=(np.asarray(b['models'][0][:3])+b['models'][0][3:6])/2;views=[dict(origin=(p[[1,2,0]]*SCALE).tolist(),yaw=0,pitch=0)]
+    # Fog at spawn: the last env_fog_controller flagged Master (spawnflags 1), else the first (fogcontroller.cpp CFogSystem::LevelInitPostEntity).
+    controllers=[e for e in entities if e.get('classname')=='env_fog_controller']
+    master=next((e for e in reversed(controllers) if int(number(e,'spawnflags'))&1),controllers[0] if controllers else None)
+    tree=Tree(b['lumps'],b['source_planes'],b['models'][0][9],56 if b['audit'][10]['version']==0 else 32)
+    camera,sky_area,sky_reason=sky_camera(tree,entities,views[0]['origin'])
+    face_area=tree.face_areas() if camera else {}
+    in_sky=lambda point:camera is not None and tree.leaf(point)[1]==sky_area
     points=[];uvs=[];lmuv=[];colors=[];indices=[];groups=[];tiles=[];face_skips=[];faces=disps=0
     for model,e,turn,origin,entity in brushes:
         row=b['models'][model];first,count=row[10:12]
         if first<0 or count<0 or first+count>len(b['faces']):raise ValueError('Invalid brush face range')
+        brush_sky=model and in_sky(origin+turn@((np.asarray(row[:3])+row[3:6])/2))
         for n in range(first,first+count):
             face=b['faces'][n];p,uv,lm,tri,flags,tex=bspreader.face_geometry(b,n)
+            # 3D sky area: world faces by their leaves (leaffaces), else by a point just in front of the face.
+            sky=brush_sky if model else camera is not None and (face_area[n]==sky_area if n in face_area else in_sky(p.mean(0)+b['planes'][face['plane']][:3]))
             if flags&(128|256|512):face_skips.append(dict(face=n,reason='Nodraw/hint/skip'));continue
             mat=material(tex) if not flags&6 else dict(texture='eye_sky_plain.png',settings={})
             tile=bspreader.light_tile(b,face,flags,exposure)
@@ -209,7 +230,8 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
                 d=b['displacements'][face['disp']];blend=np.array(b['dispverts'][d['vertex']:d['vertex']+len(p)])[:,4];disps+=1
             colors.extend(np.column_stack([np.full((len(p),3),255),np.clip(blend,0,255)]));indices.extend((tri.ravel()+base).tolist());faces+=1
             groups.append(dict(mat,start=start,count=len(indices)-start,kind='sky' if flags&6 else 'surface',entity=entity,npc=False,
-                classname=e.get('classname','worldspawn'),alpha=number(e,'renderamt',255)/255,tint=(vector(e,'rendercolor')/255).tolist() if 'rendercolor' in e else [1,1,1]))
+                classname=e.get('classname','worldspawn'),alpha=number(e,'renderamt',255)/255,tint=(vector(e,'rendercolor')/255).tolist() if 'rendercolor' in e else [1,1,1],
+                **({'sky3d':True} if sky else {})))
             tiles.append((base,len(points),tile))
     width,height,places=pack([(t.shape[1],t.shape[0]) for _,_,t in tiles]);height=max(height,1)
     atlas=np.full((height,width,3),255,np.uint8);lmuv=np.array(lmuv).reshape(-1,2)
@@ -237,24 +259,28 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
             if not np.isfinite(light).all():raise ValueError('Nonfinite model lighting')
             light_chunks.append(light.astype('<f4').tobytes());turn=rotation(record['angles']);basis=np.eye(3)[[1,2,0]]
             matrix=np.eye(4);matrix[:3,:3]=basis@turn@basis.T*SCALE*record.get('scale',1);matrix[:3,3]=np.asarray(record['origin'])[[1,2,0]]*SCALE
-            instances.append(dict(record,look=look,matrix=matrix.T.ravel().tolist(),lighting=dict(receipt,offset=light_offset,count=len(light))))
+            leaf=(record.get('leaves') or [record.get('leaf')])[0]
+            sky=camera is not None and (indexed(tree.leaves,leaf,'leaf')[1]==sky_area if leaf is not None else in_sky(np.asarray(record['origin'])))
+            instances.append(dict(record,look=look,matrix=matrix.T.ravel().tolist(),lighting=dict(receipt,offset=light_offset,count=len(light)),**({'sky3d':True} if sky else {})))
             light_offset+=len(light)*12
         except (ValueError,OSError,KeyError) as exc:failures.append(dict(record,reason=str(exc)))
     sky=dict(name=world.get('skyname',''),rotate=0,axis=[0,0,1],faces={})
     for suffix in ('rt','lf','bk','ft','up','dn'):sky['faces'][suffix]=material('skybox/'+sky['name']+suffix,sky=True)
-    views=[]
-    for e in entities:
-        if e.get('classname','').startswith('info_player_'):
-            p=vector(e)+[0,0,64];a=vector(e,'angles');views.append(dict(origin=(p[[1,2,0]]*SCALE).tolist(),yaw=-float(a[1]),pitch=-float(a[0])))
-    if not views:
-        p=(np.asarray(b['models'][0][:3])+b['models'][0][3:6])/2;views=[dict(origin=(p[[1,2,0]]*SCALE).tolist(),yaw=0,pitch=0)]
+    def water(texinfo):
+        name=b['names'][indexed(b['texdata'],indexed(b['texinfo'],texinfo,'texinfo')[17],'texdata')[3]]
+        return water_fog(material(name)['settings'].get('parameters',{}))
+    regions,region_tree=tree.regions(water)
+    proxies=proxy_gap(materials.values())
     scene=dict(game='eye',name=name,title=world.get('message',name),format='source-bsp20',vertices=len(points),indices=len(indices),colors=True,
         lightmap=[width,height],groups=groups,model_library=models,instances=instances,viewpoints=views,skybox=sky,faces_drawn=faces,displacements_drawn=disps,
         faces_omitted=face_skips,model_failures=failures,omitted=omitted,npcs=len({r['entity'] for r in instances if r['npc']}),
         entity_data=b['entities'],entity_classes=dict(Counter(e.get('classname','') for e in entities)),lump_audit=b['audit'],game_lumps=gameaudit,pakfile=pak,
         missing=sorted({r['source'] for r in missing}),missing_reasons=missing,materials=list(materials.values()),
         lighting=dict(exposure=exposure,display_power=1,source='HDR lump53; VHV2; nearest leaf ambient cube',curve='fixed exposure, clamp to LDR, gamma2.2 (lightmaps and HDR sky faces)'),
-        gaps=['2D sky only; 3D sky camera recorded but not rendered', 'Water is a base texture/tint; overlays, decals, sprites, particles and dynamic lights omitted',
+        fog=fog_params(master) if master else None,sky3d=sky3d(camera) if camera else None,regions=regions,region_tree=region_tree,
+        gaps=[*([f'3D sky not drawn: {sky_reason}'] if sky_reason not in ('','no sky_camera') else []),
+              'Fog is the master env_fog_controller at spawn; fog inputs, lerps and trigger_fog are not run; underwater fog only where the water material sets $fogcolor/$fogstart/$fogend',
+              *([proxies] if proxies else []), 'Water is a base texture/tint; overlays, decals, sprites, particles and dynamic lights omitted',
               'Terrain blends two base textures using displacement alpha; blend masks, detail textures and bump lighting are not evaluated',
               'NPCs use model-library pose/default bodygroups; FGD editor defaults when entity has no model; armor choices, attachments and scripts not simulated',
               'Spawners/makers create no preview; all omissions/missing models are listed', 'HDR fixed exposure; no game parity, automatic tonemapping, bump lighting or visibility/PVS culling'],
