@@ -524,7 +524,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                       'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
                       'Sound-reactive stages use the sample envelope without audio playback. Sample phase starts at map load; triggered sounds, random choices, leadins and multiple channels are not simulated.',
                       'All renderable monsters/items are shown, including hidden/triggered entities. Start-off lights stay off.',
-                      'Sky cubemaps and the authored portal-sky camera are rendered. Reflection cubemaps, heat haze, GUIs, video, deforms and particles remain skipped/approximated; see per-material and per-entity details.',
+                      'Sky cubemaps and the authored portal-sky camera are rendered. Flare, sprite, tube, turbulent, expand and move deforms are rebuilt per view. Reflection cubemaps, heat haze, GUIs, video, eyeball deforms and particles remain skipped/approximated; see per-material and per-entity details.',
                       'r_lightScale 2 is applied once to interactions. No display gamma or second overbright multiplier.',
                       'Analytic light normalization/specular lookup approximates the original quantized lookup textures. Portal culling is conservative; door portal blocking is not simulated.'])
     # rvCameraPortalSky::GetViewParms / RoE idPlayerView::SingleView replace only the
