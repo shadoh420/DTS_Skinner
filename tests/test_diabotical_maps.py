@@ -248,7 +248,7 @@ class DiaboticalMapsTest(unittest.TestCase):
             self.assertEqual((materials['props/tinted']['spec'], materials['props/tinted']['id']), ([0, 1], 255))
             self.assertFalse({'spec', 'id'} & (set(materials['stone']) | set(materials['arrow']) | set(materials['props/tinted#4'])))
             self.assertIsNone(head['lights']['envmap'])  # No textures_cubemaps.dbp here.
-            self.assertEqual(head['sky'], dict(cube=None, rotation=0, texture=None))  # Nor its default sky.
+            self.assertEqual(head['sky'], dict(cube=None, rotation=0))  # Nor its default sky.
             self.assertEqual(head['markers'], [['hpt', 5, 6, 7]])
             self.assertEqual(np.frombuffer(raw, '<f4', 12, 4 + length)[[3, 7, 11]].tolist(), [0, 40, 0])
             # Terrain: heights in red and dirt in green (a texel shared by the four vertices at its corners); its
@@ -413,8 +413,8 @@ class DiaboticalMapsTest(unittest.TestCase):
         from PIL import Image
         from tools.import_diabotical_map import Pack, cube_file, read_sky, write_envmaps
         sky = read_sky([('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'skybox': 'tmp/Sky_Day Sun_Cam', 'skybox_rotation': '-60', 'sky_texture': 'Blue_Sky_2'})])
-        self.assertEqual(sky, dict(cube='tmp/sky_day sun_cam', rotation=-60, texture='blue_sky_2'))
-        self.assertEqual(read_sky([]), dict(cube=None, rotation=0, texture=None))
+        self.assertEqual(sky, dict(cube='tmp/sky_day sun_cam', rotation=-60))
+        self.assertEqual(read_sky([]), dict(cube=None, rotation=0))
         self.assertEqual(cube_file(sky['cube']), 'textures\\cubemaps\\tmp\\sky_day sun_cam.dds')
         # A BC7 cube 16 square with three mips: a sky at most 8 square takes the second, an envmap the first at most 4.
         sizes = [16, 4, 1]  # 4 x 4 blocks of 16 bytes, then 2 x 2, then 1.

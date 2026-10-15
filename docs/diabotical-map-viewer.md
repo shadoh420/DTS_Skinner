@@ -2,8 +2,8 @@
 
 Opens Diabotical maps from Skinner for a free-flight look at their blocks,
 props, heightmap terrain and decals, drawn in the textures of their materials, with the pickups' models, markers for spawns,
-jump pads and teleporters, and liquids as glowing see-through surfaces. No lights or baked lighting,
-one fixed sun, and no editing. Reflex, Q3, T1
+jump pads and teleporters, and liquids as glowing see-through surfaces, under the map's sky and lit
+as the game lights it (sun and its shadow, ambient grid, point, spot and capsule lights). No editing. Reflex, Q3, T1
 and T2 maps have their own pages, see [reflex-map-viewer.md](reflex-map-viewer.md),
 [q3-map-viewer.md](q3-map-viewer.md), [t1-map-viewer.md](t1-map-viewer.md) and
 [t2-map-viewer.md](t2-map-viewer.md).
@@ -144,6 +144,17 @@ left (`static/diabotical-maps/blocks.js`).
   yaws, rolls, a `v3` and a square box, matched the game's outlines). A prop
   or terrain with `no_decals` takes none (b_ancient's snow mounds,
   duel_raya's terrain).
+- **Sky.** The `global` entity's `skybox` names a cube in
+  `packs/textures_cubemaps.dbp` (78 of 177 stock maps; the import keeps its
+  512-pixel mip as `skies/NAME.jpg`); a map with none, or one not in the game's
+  files (`black.png`), shows `default_skybox`, as the game does (run 45). The
+  game's `tilesky.ps` samples the cube along the view direction turned about
+  the vertical by `skybox_rotation` and writes the texel to the screen as it
+  is; the page does the same on a box around the camera at the far plane. Run
+  45 checked the turn: with rotation 90, looking along +z shows what rotation 0
+  shows looking along +x, and the page matches the game from the same cameras.
+  `sky_texture` (7 maps; `tileskyuv.ps` on `models/skydome`) changes nothing
+  in the game: a map with only `sky_texture blue_sky_2` drew the default sky.
 - **Lights.** Lit as the game's lighting shader (`tile.cs`) does, with the
   numbers measured in it: the picture is the texture's bytes times the light,
   then the game's last pass, which looks the colour up in a 16-step LUT (the
@@ -492,7 +503,7 @@ through bioplant's overall brightness, the reflections leave out the per-pixel
 material id (the commonest
 value of a material's id map is used), the spot lights' extra specular factor
 (the shader's `mMapMax.w`, taken as 1), `video_specularity_factor`,
-`reflectivity` and `skybox_rotation` (whether they turn or scale the
+`reflectivity` (whether it scales the
 reflection), the reflections of the envmap's two finest mips (the page keeps
 256 × 256 faces), the flat ambients of bots and pickups (ids 25, 44, 45, 48,
 49, 65, 120 to 139), decals' own specular maps (a decal dims the reflection

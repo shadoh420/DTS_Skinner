@@ -72,7 +72,8 @@ map (props with their tints, decals, markers, liquids, billboards, particle emit
 terrain (heights in red, dirt mask in green; the index item's `terrain` says how to place it), the models the maps place in
 models.json with models/HASH.bin, the particle systems the maps use in particles.json, the materials of the maps and models in materials.json, with
 textures/HASH.png (specular maps HASH-s.png, red and green), and the maps' envmaps in envmaps/NAME.png (the six faces of
-the cube's third mip, 256 square, side by side in D3D order: +x, -x, +y, -y, +z, -z).
+the cube's mip at most 256 square, side by side in D3D order: +x, -x, +y, -y, +z, -z), and their skies in
+skies/NAME.jpg (the same at most 512 square).
 """
 import argparse
 import functools
@@ -855,30 +856,13 @@ def write_envmaps(pack, names, output, replace=False, folder='envmaps', face=256
 
 def read_sky(entities):
     """The global entity's sky: {cube: its `skybox` (a cube's name; lowercased, slashes forward) or None, rotation:
-    `skybox_rotation` in degrees (tilesky.vs turns the cube about the vertical by it), texture: `sky_texture` (a 2D
-    texture under textures/, drawn by tileskyuv.ps on models/skydome) or None}."""
+    `skybox_rotation` in degrees (tilesky.vs turns the cube about the vertical by it; run 45: rotation 90 looking
+    along +z shows what rotation 0 shows looking along +x)}. `sky_texture` (7 stock maps) changes nothing in the game:
+    run 45's map with only sky_texture blue_sky_2 drew the same default sky as one with none."""
     fields = next((fields for name, *_, fields in entities if name == 'global'), {})
     rotation = next(iter(re.findall(r'-?\d*\.?\d+', fields.get('skybox_rotation', ''))), '0')
     word = lambda key: (fields.get(key) or '').strip().lower().replace('\\', '/') or None
-    return dict(cube=word('skybox'), rotation=float(rotation), texture=word('sky_texture'))
-
-
-def write_sky_textures(packs, names, output, replace=False):
-    """Each named sky texture (textures/NAME.png.dds or .dds) as skies/dome-NAME.jpg, 2048 wide at most."""
-    where = {name: pack for pack in packs for name in pack.files if name.startswith('textures\\')}
-    (output / 'skies').mkdir(parents=True, exist_ok=True)
-    done = []
-    for name in sorted(names):
-        file = next((f for f in (f'textures\\{name}.png.dds', f'textures\\{name}.dds') if f in where), None)
-        target = output / 'skies' / f'dome-{map_id(name)}.jpg'
-        if not file:
-            continue
-        if replace or not target.is_file():
-            image = decode_dds(where[file].read(file)).convert('RGB')
-            image.thumbnail((2048, 2048))
-            image.save(target, 'JPEG', quality=92)
-        done.append(name)
-    return done
+    return dict(cube=word('skybox'), rotation=float(rotation))
 
 
 def convert_models(packs, paths, materials, output, replace=False, previous=None, heads=None, pickups=None):
@@ -991,7 +975,7 @@ def import_maps(game, output, replace=False, extra=None):
             if not has_cube(lights['envmap']):  # Not in the game's files: its default.
                 lights['envmap'] = 'default_envmap' if has_cube('default_envmap') else None
             sky = read_sky(parsed['entities'])
-            if not has_cube(sky['cube']):  # No skybox, or none in the game's files: its default.
+            if not has_cube(sky['cube']):  # No skybox, or none in the game's files: its default (run 45).
                 sky['cube'] = DEFAULT_SKY if has_cube(DEFAULT_SKY) else None
         except (OSError, ValueError, EOFError, struct.error) as exc:
             result['failed'][name] = str(exc)
@@ -1026,7 +1010,7 @@ def import_maps(game, output, replace=False, extra=None):
         for old in files(index.pop(ident)):
             if old:
                 (output / 'maps' / old).unlink(missing_ok=True)
-    keys, decal_materials, envmaps, systems, skies, domes = set(), set(), set(), set(), set(), set()
+    keys, decal_materials, envmaps, systems, skies = set(), set(), set(), set(), set()
     for item in index.values():
         with open(output / 'maps' / item['entities'], 'rb') as file:
             length, = struct.unpack('<I', file.read(4))
@@ -1036,13 +1020,9 @@ def import_maps(game, output, replace=False, extra=None):
             envmaps.add(head['lights']['envmap'])
             systems |= {entry[12] for entry in head.get('pfx', [])}
             skies.add(head['sky']['cube'])
-            domes.add(head['sky']['texture'])
     if cubes is not None:
         write_envmaps(cubes, envmaps - {None}, output, replace)
         write_envmaps(cubes, skies - {None}, output, replace, 'skies', 512, '.jpg')
-    write_sky_textures(packs, domes - {None}, output, replace)
-    if domes - {None}:
-        keys.add('skydome||')  # The mesh tileskyuv.ps draws a sky texture on.
     models_path = output / 'models.json'
     previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
     models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous, piece_shaders(assets, found),
