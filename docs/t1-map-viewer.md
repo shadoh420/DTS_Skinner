@@ -149,7 +149,12 @@ asks the app for none of them (Raindance: ready in 0.37 seconds instead of
   it); for one flagged translucent, alpha is the fourth byte of its palette
   entries. ArenaPrototype has no rule for the translucent ones; this one was
   checked against the 1.40 PNG lens flares, which it reproduces exactly.
-- `Snowfall` objects with rendering enabled draw rain or snow around the camera.
+- The sun for shapes, and for buildings without a lit instance, is the `Planet` with
+  `castShadows`; a mission without one (BloodRunsCold, Slipstream, Valhalla) is lit
+  by its directional `SimLight` (type 1) shining along `aim`, with its `color` and
+  `ambient`.
+- `Snowfall` objects with rendering enabled draw rain or snow around the camera
+  (Starsiege's binary `SNOW` blocks too: 8 missions, 2 of them rain).
   Buildings keep it out as in the game (`Snowfall::processQuery` and
   `InteriorShape::getWeatherDistance`, which ArenaPrototype's
   TribesWeatherInterior ports the same way): the test is on the camera, not on

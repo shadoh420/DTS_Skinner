@@ -44,6 +44,7 @@ def mission():
         (block(b'SKYT', bytes(24) + struct.pack('<3fIfff', 0, 0, 0.5, 252031, 120, 7500, 20000) + bytes(range(1, 17))), 'sky'),
         (block(b'SKPL', bytes(24) + struct.pack('<Iff??3f3fff', 252033, -28.6, 17.5, True, False, .6, .6, .6, .1, .1, .1, 2000, 19000)), 'planet'),
         (block(b'ESpt', bytes(24) + text('Europa.t.ppl')), 'terrainPal'),
+        (block(b'SNOW', bytes(24) + struct.pack('<4f??', .3, 20, 10, -85, False, True)), 'Rain1'),  # CTF_Stab_n_Grab's bytes, wind changed.
         (block(0x100, model(bytes(48), (191, 521.25, 227.5), (0, 0, 1.5), 'xblastdoor_anim.dts')), 'Door1'),
         (block(0x10c, model(bytes(55), (203.25, 960, 223), (0, 0, 3.1), 'hRuinsT2.dis')), 'Ruins'),
         (block(b'ESNM', bytes(88)), 'navigationMarker1'),  # Not drawn.
@@ -66,6 +67,8 @@ class StarsiegeMissionTest(unittest.TestCase):
         self.assertEqual((planet['filename'], planet['azimuth'], planet['castshadows'], planet['uselensflare'], planet['size']),
                          ('europa.d.moon.bmp', '-28.6', 'true', 'false', '2000'))
         self.assertEqual(nodes['terrainPal']['fields'], {'filename': 'Europa.t.ppl'})
+        self.assertEqual((nodes['Rain1']['class'], nodes['Rain1']['fields']),
+                         ('snowfall', {'intensity': '0.3', 'wind': '20 10 -85', 'suspendrendering': 'false', 'rain': 'true'}))
         self.assertEqual(nodes['Door1']['fields'], {'shapefile': 'xblastdoor_anim.dts', 'position': '191 521.25 227.5', 'rotation': '0 0 1.5'})
         self.assertEqual((nodes['Ruins']['class'], nodes['Ruins']['fields']['filename'], nodes['Ruins']['fields']['position']),
                          ('interiorshape', 'hRuinsT2.dis', '203.25 960 223'))
