@@ -11,13 +11,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   const anachronox = document.body.dataset.game === 'anachronox';
   const daikatana = document.body.dataset.game === 'daikatana';
   const config = window.skinnerMapViewerConfig; // Optional adapter; existing pages keep their original paths/rendering.
-  // Page seconds as a shared uniform, so adapters' shaders animate without their own clocks.
-  const time = window.skinnerMapTime = window.skinnerMapTime || {value: 0};
-  // Per-frame extras: the adapter plus any script that pushed onto window.skinnerMapExtras. Each may define
-  // load(map, context), patchMaterial(material, group, map), update(seconds, camera, map, region) and pass('sky' | 'main').
-  const extras = () => [config, ...(window.skinnerMapExtras || []),
-    quake && window.quakeMaps, (quake || quake2 || sin || anachronox || daikatana) && window.quake2Maps,
-    sin && window.sinMaps, anachronox && window.anachronoxMaps, daikatana && window.daikatanaMaps].filter(Boolean);
   const npcDraws = [], npcIDs = new Set();
   const npcToggle = window.skinnerNPCToggle;
   if (npcToggle) {
@@ -29,6 +22,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     npcDraws.push(draw); npcIDs.add(metadata.entity);
     draw.visible = npcToggle ? npcToggle.enabled : true;
   }
+  // Page seconds as a shared uniform, so adapters' shaders animate without their own clocks.
+  const time = window.skinnerMapTime = window.skinnerMapTime || {value: 0};
+  // Per-frame extras: the adapter plus any script that pushed onto window.skinnerMapExtras. Each may define
+  // load(map, context), patchMaterial(material, group, map), update(seconds, camera, map, region) and pass('sky' | 'main').
+  const extras = () => [config, ...(window.skinnerMapExtras || []),
+    quake && window.quakeMaps, (quake || quake2 || sin || anachronox || daikatana) && window.quake2Maps,
+    sin && window.sinMaps, anachronox && window.anachronoxMaps, daikatana && window.daikatanaMaps].filter(Boolean);
   const storageKey = config ? config.storageKey : dx ? 'skinner.dxmaps' : azrael ? 'skinner.azraelmaps' : sin ? 'skinner.sinmaps' : anachronox ? 'skinner.anachronoxmaps' : daikatana ? 'skinner.daikatanamaps' : quake2 ? 'skinner.quake2maps' : quake ? 'skinner.quakemaps' : 'skinner.unrealmaps';
   const settings = {fov: azrael ? 2 * Math.atan(.8) * 180 / Math.PI : 90, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
