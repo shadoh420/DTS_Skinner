@@ -172,6 +172,11 @@ asks the app for none of them (Raindance: ready in 0.37 seconds instead of
   `SimLightSet` sums them. Items with `rotates` turn 3 rad/s (`Item::clientProcess`).
 - `Snowfall` objects with rendering enabled draw rain or snow around the camera
   (Starsiege's binary `SNOW` blocks too: 8 missions, 2 of them rain).
+- Starsiege campaign units (`HERC`, `TANK`, `FLYR`: 755 in the install) and turrets
+  (`TRRT`, 124) are drawn behind the NPCs toggle, as T1's AI players are. A unit's
+  block is LZH-packed (layout in `tools/starsiege_mission.py`); its vehicle number goes
+  through `datvehicle.cs` to the vehicle script that names the shape. Units stand in the
+  shape's static pose with its default skin (the record's own skin is not applied).
   Buildings keep it out as in the game (`Snowfall::processQuery` and
   `InteriorShape::getWeatherDistance`, which ArenaPrototype's
   TribesWeatherInterior ports the same way): the test is on the camera, not on

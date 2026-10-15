@@ -18,7 +18,7 @@ if __package__ in (None, ''):
 
 from tools.import_t1_map import Install, import_mission, map_id, walk  # noqa: E402
 from tools.local_data import LOCAL_DATA  # noqa: E402
-from tools.starsiege_mission import read_mission, read_tags  # noqa: E402
+from tools.starsiege_mission import read_mission, read_tags, read_vehicles  # noqa: E402
 
 
 def mission_kind(path, base):
@@ -49,7 +49,10 @@ def import_maps(game, output, missions=None, replace=False):
     base = install.base
     if not (base / 'Starsiege.exe').is_file() and not (base / 'gameObjects.vol').is_file():
         raise ValueError('Not a Starsiege folder: %s' % base)
-    tags = read_tags(install.volume(base / 'scripts.vol')['mission.strings.cs']().decode('latin1'))
+    scripts = install.volume(base / 'scripts.vol')
+    tags = read_tags(scripts['mission.strings.cs']().decode('latin1'))
+    vehicles = read_vehicles({name.lower(): reader().decode('latin1') for name, reader in scripts.items()
+                              if name.lower() == 'datvehicle.cs' or name.lower().startswith(('datherc', 'dattank', 'datflyer', 'datdrone'))})
     paths = [Path(item) for item in missions] if missions else sorted(
         {path for folder in ('multiplayer', 'campaign', 'training') for path in (base / folder).rglob('*') if path.suffix.lower() == '.mis'})
     output = Path(output)
@@ -60,7 +63,7 @@ def import_maps(game, output, missions=None, replace=False):
                 report['skipped'].append(path.stem)
                 continue
             try:
-                mission = read_mission(path.read_bytes(), tags)
+                mission = read_mission(path.read_bytes(), tags, vehicles)
                 scene = import_mission(install, path, output, Path(no_catalog) / 'model_json', mission)
             except (ValueError, KeyError, IndexError, OSError, struct.error, zipfile.BadZipFile) as error:
                 report['failed'][path.stem] = str(error) or type(error).__name__
