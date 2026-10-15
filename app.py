@@ -226,7 +226,7 @@ SKY_PACKS = {'t1': ('Tribes', 'dome', ('',)), 'q3': ('Quake III Arena', 'q3', ('
              'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',)), 'quake': ('Quake (1996)', 'quake1', ('', 'hipnotic', 'rogue')),
              'nos': ('Nosgoth', 'ue3dome', ('',)), 'unreal': ('Unreal', 'ue1', ('unreal',)),
              'ut': ('Unreal Tournament', 'ue1', ('ut',), 'unreal'), 'dx': ('Deus Ex', 'ue1', ('',)),
-             'tvg': ('Tribes: Vengeance', 'ue1', ('',))}
+             'tvg': ('Tribes: Vengeance', 'ue1', ('',)), 't2': ('Tribes 2', 't2mis', ('',))}
 UE1_POWER = {'unreal': 1 / (2.5 * .5), 'ut': .67, 'dx': 1 / (2.5 * .6)}  # unreal-maps/viewer.js POWER: each game's display gamma.
 PLACEHOLDER_SKIES = {'eye_sky_plain.png'}  # E.Y.E.'s stand-in for its HDR skies: one flat colour (import_eye_map.py).
 
@@ -250,6 +250,9 @@ def scene_skies(kind, scene, row, game=None):
         return [(dict(name=row.get('title') or row.get('name') or row['id'], map=row['id'], **{k: sky[k] for k in ('origin', 'rotation', 'rotator', 'rate') if k in sky}),
                  {'renderer': 'vengeance' if game == 'tvg' else 'unreal',
                   'power': power if isinstance(power, (int, float)) and power > 0 else UE1_POWER.get(game, 1)})]
+    if kind == 't2mis':  # A Tribes 2 mission's Sky (t2_mission_sky), drawn as a Q3 box with its cloud layers or a colour.
+        sky = scene.get('t2sky')
+        return [(sky, {'renderer': 'dome'} if 'color' in sky else {})] if sky else []
     if kind == 'ue3dome':  # Dome meshes the importer flags sky (skies.js meshes), centred on the first one's pivot.
         library = scene.get('model_library') or {}
         placed = [(library[i['look']], i['matrix']) for i in scene.get('instances') or []
@@ -270,24 +273,71 @@ def scene_skies(kind, scene, row, game=None):
     return [(dict(name=scene['skybox'].get('name') or row['id'], stages=[], sky=dict(box=boxed)), {'power': power} if power else {})]
 
 
+def t2_mission_sky(root, manifest, name, mission):
+    """A Tribes 2 mission's Sky object as a Q3 sky shader: its material list's first six names are the box faces
+    (front, right, back, left, top, down: Quake's bk, rt, ft, lf, up, dn; the top a quarter turn round, the turn that
+    joins its edges to the sides) and the next three the cloud layers, each at
+    its cloudHeightPer and scrolling at its cloudSpeed (t2-mapper's misToScene: speed per 32 ms). Files under base/."""
+    resources = manifest.get('resources') or {}
+    found = resources.get((mission.get('resourcePath') or '').lower())
+    try:
+        text = (root / 'base' / found[0]).read_text(encoding='latin1') if found else ''
+    except OSError:
+        return None
+    block = re.search(r'new\s+Sky\s*\([^)]*\)\s*\{(.*?)\};', text, re.S | re.I)
+    fields = dict(re.findall(r'^\s*(\w+(?:\[\d+\])?)\s*=\s*"([^"]*)"', block.group(1), re.M)) if block else {}
+    if fields.get('useSkyTextures', '1') == '0':  # A solid sky colour: the T1 viewer's untextured dome.
+        rgb = [float(v) for v in fields.get('SkySolidColor', '0 0 0').split()[:3]]
+        return dict(name='solid colour', color=[round(min(max(v, 0), 1) * 255) for v in rgb]) if len(rgb) == 3 else None
+    if not fields.get('materialList'):
+        return None
+    dml = resources.get('textures/' + fields['materialList'].lower())
+    try:
+        lines = [line.strip().lower() for line in (root / 'base' / dml[0]).read_text(encoding='latin1').splitlines()] if dml else []
+    except OSError:
+        return None
+    def file(line):  # A name with or without its extension.
+        return next((name for name in (line, *(f'{line}.{ext}' for ext in ('png', 'jpg', 'bmp'))) if f'textures/{name}' in resources and '.' in name), None)
+    faces = [file(line) for line in lines[:6]] if len(lines) >= 6 else []
+    if len(faces) < 6 or not all(faces):
+        return None
+    front, right, back, left, top, down = faces
+    stages = []
+    for layer, line in enumerate(lines[7:10]):
+        cloud = file(line) if line else None
+        speed = [float(v) for v in fields.get(f'cloudSpeed[{layer}]', '0 0').split()[:2]] + [0, 0]
+        if cloud:
+            stages.append(dict(map=cloud, blend=['gl_src_alpha', 'gl_one_minus_src_alpha'],
+                               tcMods=[['scroll', speed[0] * 1000 / 32, speed[1] * 1000 / 32]]))
+    return dict(name=fields['materialList'], stages=stages, sky=dict(box=[right, front, left, back, top, down], cloudHeight=512, upTurn=1))  # Top face: seam check.
+
+
 @app.route('/t1-map-skies')
 def t1_map_skies():
     """Skies the T1 Maps page can swap in, each listed once: every pack in SKY_PACKS that is imported. Entry ids are
     the game and a hash of the sky, so a saved choice survives re-imports (and T1/Q3 ids are unchanged)."""
     roots = [(game, section, local_data_dir / f'{(entry[3:] or (game,))[0]}-maps' / section) for game, entry in SKY_PACKS.items() for section in entry[2]]
-    stamp = (str(local_data_dir), *((root / 'index.json').stat().st_mtime_ns if (root / 'index.json').is_file() else 0 for *_, root in roots))
+    listed = lambda root: root / ('manifest.json' if (root / 'manifest.json').is_file() else 'index.json')  # Tribes 2 lists missions in its manifest.
+    stamp = (str(local_data_dir), *(listed(root).stat().st_mtime_ns if listed(root).is_file() else 0 for *_, root in roots))
     if t1_sky_cache.get('stamp') != stamp:
         skies = {}
         for game, section, root in roots:
             group, kind, _, *pack = SKY_PACKS[game]
             try:
-                index = json.loads((root / 'index.json').read_text(encoding='utf-8'))
+                index = json.loads(listed(root).read_text(encoding='utf-8'))
             except (OSError, ValueError):
                 continue
+            manifest = index
+            if kind == 't2mis':
+                index = [dict(id=name, name=mission.get('displayName') or name, mission=mission)
+                         for name, mission in (index.get('missions') or {}).items()] if isinstance(index, dict) else []
             for row in index if isinstance(index, list) else []:
                 try:
-                    scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
-                except (OSError, ValueError, KeyError, TypeError):
+                    if kind == 't2mis':
+                        scene = {'t2sky': t2_mission_sky(root, manifest, row['id'], row['mission'])}
+                    else:
+                        scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
+                except (OSError, ValueError, KeyError, TypeError, AttributeError):
                     continue
                 for sky, extra in scene_skies(kind, scene, row, game):
                     key = game + json.dumps(sky, sort_keys=True)
@@ -297,7 +347,7 @@ def t1_map_skies():
                                           section=row.get('group') if row.get('group') not in (None, group) else None,
                                           name=sky['name'].removeprefix('textures/') if kind != 'dome' else None, sky=sky,
                                           renderer='dome' if kind == 'dome' else 'q3',
-                                          base=f'/{(pack or [game])[0]}-map-data/' + (section + '/' if section else ''),
+                                          base=f'/{(pack or [game])[0]}-map-data/' + (section + '/' if section else '') + ('base/' if kind == 't2mis' else ''),
                                           visible=(scene.get('terrain') or {}).get('visibleDistance') if kind == 'dome' else None)  # A dome's shape follows its mission's.
                         skies[key].update(extra)
                     elif skies[key]['section'] != row.get('group'):  # Noted only while every map with it shares it.

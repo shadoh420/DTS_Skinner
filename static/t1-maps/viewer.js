@@ -349,14 +349,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       // As the Quake II page draws its box: no mipmaps (they seam where the face changes) and the edge texels clamped.
       for (const face of box) Object.assign(face, {generateMipmaps: false, minFilter: THREE.LinearFilter, needsUpdate: true});
       // power: the source page's display ramp, pow(rgb, power) (Bloodlines draws its whole frame through 2/3).
-      add(new THREE.ShaderMaterial({uniforms: {...Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), power: {value: power}}, vertexShader,
-        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; uniform float power; varying vec3 vDir;
+      add(new THREE.ShaderMaterial({uniforms: {...Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), power: {value: power}, upTurn: {value: !!shader.sky.upTurn}}, vertexShader,
+        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; uniform float power; uniform bool upTurn; varying vec3 vDir;
+          vec2 top(vec2 p) { return upTurn ? vec2(-p.y, p.x) : p; }  // Tribes 2's top face is a quarter turn round.
           vec4 side(sampler2D image, vec2 p) { return texture2D(image, clamp(vec2(p.x + 1., 1. - p.y) * .5, .002, .998)); }
           void main() {
             vec3 d = vDir, a = abs(d);
             gl_FragColor = vec4((a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
               : a.y >= a.z ? (d.y > 0. ? side(bk, vec2(d.x, d.z) / a.y) : side(ft, vec2(-d.x, d.z) / a.y))
-              : (d.z > 0. ? side(up, vec2(-d.y, -d.x) / a.z) : side(dn, vec2(-d.y, d.x) / a.z))).rgb, 1.);
+              : (d.z > 0. ? side(up, top(vec2(-d.y, -d.x) / a.z)) : side(dn, vec2(-d.y, d.x) / a.z))).rgb, 1.);
             gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(power));
           }`, blending: THREE.NoBlending}), -3.5);
     }
@@ -403,7 +404,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (serial !== skySerial) { pass?.dispose?.(); return drop(group); }  // A later choice is being built.
     skyPass?.dispose();
     skyPass = pass?.render ? pass : null;
-    scene.background = skyPass ? null : haze;
+    if (skyPass) scene.background = null;  // Otherwise the haze set above, or the colour an untextured dome set.
     drop(panels);
     sky.remove(panels);
     sky.add(panels = group);
