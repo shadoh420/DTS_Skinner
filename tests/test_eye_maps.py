@@ -129,18 +129,24 @@ class EyeMapTests(unittest.TestCase):
         directional=struct.pack('<6I',2,123,2,12,1,1)+bytes(16)+struct.pack('<3I',0,1,68)+bytes(16)+bytes([16,32,64,255])*3
         np.testing.assert_allclose(bsp.vhv(directional,123)[0][0],(np.array([64,32,16])/255*2)**2.2)
 
-    def test_water_byte_tint_and_encoded_hdr_sky_preview(self):
+    def test_water_byte_tint_and_hdr_sky_tone_mapped(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);game,models=fixture(root);files,_=read_install(game)
             files['materials/test/floor.vmt']=bsp.EmbeddedAsset(b'Water { "$refracttint" "{0 75 150}" }','test')
+            # BGRA8888 mantissa with alpha scale; the tabbed key, .hdr name and half-height transform are E.Y.E.'s noctis/neweden.
+            files['materials/skybox/test.vtf']=bsp.EmbeddedAsset(vtf_fixture(fmt=12,pixels=bytes([0,64,128,32])*16),'test')
             for suffix in ('rt','lf','bk','ft','up','dn'):
-                files['materials/skybox/test'+suffix+'.vmt']=bsp.EmbeddedAsset(b'UnlitGeneric { "$hdrcompressedtexture" "encoded/mantissa" }','test')
-            scene,_,images,_,_=maps.build_map(bsp_fixture(),'cc_test',files,maps.ModelLibrary(models,files),{})
+                files['materials/skybox/test'+suffix+'.vmt']=bsp.EmbeddedAsset(b'Sky { "$hdrcompressedTexture\t" "skybox/test.hdr" '
+                    b'"$basetexturetransform" "center 0 0 scale 1 2 rotate 0 translate 0 0" }','test')
+            scene,_,images,_,_=maps.build_map(bsp_fixture(),'cc_test',files,maps.ModelLibrary(models,files),{},exposure=.5)
             water=scene['groups'][0]
             self.assertEqual(images[water['texture']].getpixel((0,0)),(0,75,150,96))
             self.assertTrue(water['settings']['blend'])
-            self.assertEqual({m['texture'] for m in scene['skybox']['faces'].values()},{'eye_sky_plain.png'})
             self.assertFalse(scene['missing_reasons'])
+            expected=tuple(round(255*min(c/255*32/255*8*.5,1)**(1/2.2)) for c in (128,64,0))
+            for face in scene['skybox']['faces'].values():
+                image=images[face['texture']]
+                self.assertEqual((image.size,image.getpixel((0,0)),image.getpixel((3,7))),((4,8),expected,expected))
 
     def test_instance_library_aliases_pak_namespaces_and_routes(self):
         with tempfile.TemporaryDirectory() as temp:

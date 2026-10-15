@@ -58,9 +58,16 @@ Whiteout from 31.6 to 8.9 and Underhill from 13.7 to 1.5. Screenshots are in `C:
 - T2RPG_WorldMap is not offered, and no re-import would bring it in. Its mission file was extracted (into the
   manifest's `missionPacks`, which the list reads for that mission only), but its `RPG_50.dml` is in neither the
   install nor `ironsphere.vl2` and its loose folder.
-- E.Y.E. offers 2 skies: 40 of its 60 maps were imported with a flat placeholder (`tools/import_eye_map.py` swaps in
-  `eye_sky_plain.png` for the game's HDR skyboxes), which the list leaves out. The other 20 share `sky_day01_01` and
-  `sky_arcturus_hdr`. More would need the importer to tone-map those HDR faces and a re-import of the E.Y.E. maps.
+- E.Y.E.'s HDR skies (40 of its 60 maps) are tone-mapped at import. `tools/import_eye_map.py` draws each
+  `$hdrcompressedtexture` face as rgb × alpha × 8, which is Valve's `sky_hdr_compressed_rgbs` shader (E.Y.E. ships the
+  stock `stdshader_dx9.dll`). It uses the map's fixed exposure, clamped, at gamma 2.2. On `sky_day01_01`'s HDR faces this
+  reproduces Valve's own LDR faces to 0.35/255. Maps imported before this change keep the flat placeholder
+  `eye_sky_plain.png`, which the list leaves out. A re-import with `--replace` brings in their 8 skies (10 in all).
+  Most are one flat colour, since E.Y.E.'s scenery is in the 3D skybox, which is not drawn. `forgotten_hdr`, `jian_` and
+  `noctis_hdr` are DXT5 with alpha 1, so the rule clamps them to white. `huxley_canal_hdr` is RGBA16F with alpha 0, so it
+  comes out black. The shader has no per-format branch, but none of this has been checked in the game. `neweden_hdr`'s
+  half-height sides (`scale 1 2`) keep the image on top and the clamped last row below. `noctis_hdrft`'s key has a
+  stray tab; it is read as meant.
 - Vengeance sky boxes are six clamped faces whose UVs the editor left whole tiles away from 0..1 (or at -1..0), which
   smeared the edge texels into streaks, on its own page as well. `tvg-maps/materials.js prepareGeometry` shifts each
   clamped group back into one tile at load (the shared Unreal viewer and `skies.js unreal` call it). Regicide's bottom

@@ -238,7 +238,8 @@ def image_size(fmt, width, height):
     return width * height * sizes[fmt]
 
 
-def read_vtf(data, compressed=False):
+def read_vtf(data, compressed=False, linear=False):
+    """linear=True returns the largest mip's RGBA as floats (bytes / 255, RGBA16F as stored) instead of an image."""
     if data[:4] != b'VTF\0':
         raise ValueError('Expected VTF signature')
     major, minor, header = unpack(data, 'III', 4)
@@ -306,6 +307,8 @@ def read_vtf(data, compressed=False):
         rgba = np.frombuffer(pixels, dtype='<f2').reshape(h, w, 4).astype(float)
         if not np.isfinite(rgba).all():
             raise ValueError('Nonfinite VTF RGBA16F texel')
+        if linear:
+            return rgba, info
         rgba[:, :, :3] = np.power(np.clip(rgba[:, :, :3], 0, 1), 1/2.2)
         image = Image.fromarray(np.rint(np.clip(rgba, 0, 1)*255).astype(np.uint8))
         info['approximation'] = 'RGBA16F preview: exposure 1, clamp to LDR, gamma 2.2; first cubemap face only'
@@ -323,15 +326,15 @@ def read_vtf(data, compressed=False):
         image = Image.new('RGBA', (w, h)); image.putdata(colors)
     else:
         raise ValueError(f'Unsupported VTF pixel decoder {fmt}')
-    return image, info
+    return (np.asarray(image, dtype=float) / 255 if linear else image), info
 
 
-def read_texture(files, name, compressed=False):
+def read_texture(files, name, compressed=False, linear=False):
     base = asset_reference(name).removeprefix('materials/')
-    base = re.sub(r'\.(vtf|tth|ttz)$', '', base)
+    base = re.sub(r'\.(vtf|tth|ttz|hdr)$', '', base)  # E.Y.E.'s noctis_hdrup names its texture noctis_hdrup.hdr.
     base = 'materials/' + base
     if base + '.vtf' in files:
-        image, info = read_vtf(files[base + '.vtf'].read(), compressed=compressed)
+        image, info = read_vtf(files[base + '.vtf'].read(), compressed=compressed, linear=linear)
         info['sources'] = [dict(path=base+'.vtf', origin=files[base+'.vtf'].origin)]
         return image, info
     if base + '.tth' not in files:
@@ -364,7 +367,7 @@ def read_texture(files, name, compressed=False):
             raise ValueError(f'Invalid TTZ zlib data: {exc}') from exc
         if len(tail) != expected - end or not decoder.eof or decoder.unused_data:
             raise ValueError('TTZ decompressed size/stream mismatch')
-    image, info = read_vtf(head[at:] + tail, compressed=compressed)
+    image, info = read_vtf(head[at:] + tail, compressed=compressed, linear=linear)
     info['container'] = 'TTH/TTZ'
     info['sources'] = [dict(path=base+suffix, origin=files[base+suffix].origin)
                        for suffix in (('.tth', '.ttz') if resident < levels else ('.tth',))]
