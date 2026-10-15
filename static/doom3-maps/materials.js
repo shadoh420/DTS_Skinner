@@ -146,6 +146,10 @@
     // RB_STD_DrawShaderPasses: after all interactions, by material sort; stage chains keep import order.
     return 100+((sort??0)+3)*1e6+sequence;
   }
+  function fogPlane(light) {
+    // R_SetLightFrustum frustum[5] = vLight->fogPlane: the falloff f=1 plane, positive outside (above) the fog.
+    const [a,b,c,d]=light.projection[3],l=Math.hypot(a,b,c);return [a/l,b/l,c/l,(d-1)/l];
+  }
   function portalSkyOrigin(data,areas) {
     return data.portalSky&&[...areas].some(a=>data.areaSky?.['_area'+a])?data.portalSky.origin:null;
   }
@@ -249,6 +253,6 @@
     else if(kind==='move') {for(let i=0;i<n;i++)out.position[i*3]+=values[0];}
     return true;
   }
-  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,ambientOrder,portalSkyOrigin,skyMatrix,DEFORMS,deformLayout,deform};
+  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,ambientOrder,fogPlane,portalSkyOrigin,skyMatrix,DEFORMS,deformLayout,deform};
   if(typeof module!=='undefined')module.exports=api;else root.doom3Materials=api;
 })(typeof window!=='undefined'?window:globalThis);

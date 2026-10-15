@@ -197,8 +197,9 @@ class Quake4MapsTest(unittest.TestCase):
             self.assertEqual(len(colors),scene['stats']['vertices']*4)
             self.assertAlmostEqual(float(colors[3]),192/255,places=6)
             self.assertEqual(scene['game'],'quake4');self.assertEqual(scene['colorSize'],4)
-            self.assertEqual(scene['stats']['lights'],1);self.assertEqual(scene['stats']['skippedLights'],2)
-            light=scene['lights'][0]
+            self.assertEqual(scene['stats']['lights'],2);self.assertEqual(scene['stats']['skippedLights'],1,'only the detailLevel 0 light')
+            fog=next(l for l in scene['lights'] if l['fog']);self.assertEqual(len(fog['volume']),12*9)
+            light=next(l for l in scene['lights'] if not l['fog'])
             self.assertTrue(all(light[k] for k in ('noDiffuse','noSpecular','globalLight','authoredOff')))
             self.assertEqual(light['parms'][:3],[0,0,0]);self.assertIsNotNone(light['falloff'])
             self.assertEqual(scene['stats']['hiddenEntitiesShown'],1)
