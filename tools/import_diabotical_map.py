@@ -702,7 +702,7 @@ def read_lights(entities, box=None):
         if kind in ('fog', 'vertical_fog'):  # The first of each kind (the editor makes them unique).
             if out[kind] is None:
                 far = [float(number(fields, 'radius', 8000)), float(number(fields, 'margin', 0))] if kind == 'fog' else \
-                      [y + float(number(fields, 'height', 0)), float(number(fields, 'radius', 1000))]
+                      [float(number(fields, 'height', 0)), float(number(fields, 'radius', 1000))]
                 out[kind] = np.round([*hexes(fields.get('color')), float(number(fields, 'intensity', 1)), *far], 4).tolist()
             continue
         if kind == 'sun':
@@ -720,6 +720,8 @@ def read_lights(entities, box=None):
             out['lights'].append([LIGHT_KINDS[kind], *np.round([x, y, -z, *travel, *rgb, radius, radius * min(1, max(0, float(number(fields, 'falloff', .33)))),
                                   np.cos(angle / 2), float(number(fields, 'softness', 0)), float(number(fields, 'length', 0)),
                                   1 / POINT if kind in SPECULAR else 0], 4).tolist()])
+    if out['fog'] and out['vertical_fog']:  # The vertical fog takes the fog's colour (run 45).
+        out['vertical_fog'][:3] = out['fog'][:3]
     if out['shadow_ambient'] is None:
         out['shadow_ambient'] = out['ambient']
     return out

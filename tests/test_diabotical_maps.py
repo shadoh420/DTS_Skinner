@@ -418,12 +418,15 @@ class DiaboticalMapsTest(unittest.TestCase):
         # Diffuse lights (and those of no type) add no specular light; the others turn their colour back into
         # colour x intensity for it.
         self.assertEqual([lamp[15], spot[15], tube[15]], [0, 0, round(1 / POINT, 4)])
-        # Fog: colour, intensity (1), radius (8000) and margin (0) by default; the vertical fog's height counts from
-        # its entity, over `radius` units.
+        # Fog: colour, intensity (1), radius (8000) and margin (0) by default; the vertical fog's height is a world y
+        # (not from its entity), over `radius` units, in the fog's colour where there is a fog (run 45).
         self.assertEqual(out['fog'], [1, 1, 1, 1, 8000, 0])
         fogs = read_lights([('light_v', (0, 200, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog', 'color': '0000ff', 'height': '700', 'radius': '600', 'intensity': '.5'}),
                             ('light_v2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog'})])
-        self.assertEqual((fogs['fog'], fogs['vertical_fog']), (None, [0, 0, 1, .5, 900, 600]))
+        self.assertEqual((fogs['fog'], fogs['vertical_fog']), (None, [0, 0, 1, .5, 700, 600]))
+        fogs = read_lights([('light_fog', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'fog', 'color': 'ff0000'}),
+                            ('light_v', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog', 'color': '0000ff'})])
+        self.assertEqual(fogs['vertical_fog'][:3], [1, 0, 0])
 
     def test_sky_is_read_and_its_cube_written(self):
         from PIL import Image
