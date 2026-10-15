@@ -499,6 +499,11 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                                  lights=matched,entity=entity.get('name','worldspawn'),parms=parms(entity)))
             if any(s.get('cube') for s in shader['stages']):surfaces[-1]['cubeAxis']=np.linalg.inv(axis).ravel().tolist()
             if mover is not None:surfaces[-1].update(mover=mover,moverBounds=reach)
+            spec=shader.get('deform') or {}
+            if spec.get('particle') in material_cache['particles']:
+                decl=material_cache['particles'][spec['particle']];used_particles.add(spec['particle'])
+                grow=particle_extent(decl);box=[(np.asarray(reach[0])-grow).tolist(),(np.asarray(reach[1])+grow).tolist()]
+                surfaces[-1]['particleDeform']=dict(particle=spec['particle'],area=spec['kind']=='particle2',bounds=box,materials=[material(st['material'])['name'] for st in decl['stages']])
             count+=1
         return count
     for model,parts in proc['models'].items():

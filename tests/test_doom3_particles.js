@@ -33,3 +33,14 @@ const aimed={...base,orientation:'aimed',orientationParms:[2,.3,0,0],speed:[100,
 out=buffers(aimed);assert.equal(P.simulate(aimed,500,[1,1,1,1],view,out,table),12);
 assert.deepEqual(P.quadIndex(4),[0,2,3,0,3,1]);
 console.log('Particles OK');
+// R_ParticleDeform: per-triangle emission at a barycentric point, particle offset along the triangle's frame.
+const tri=P.surfaceTriangles(new Float32Array([0,0,0, 64,0,0, 0,64,0]),new Float32Array([0,0,1,0,0,1,0,0,1]),new Float32Array([1,0,0,1,0,0,1,0,0]),new Float32Array([0,1,0,0,1,0,0,1,0]),[0,1,2]);
+assert.equal(tri.total,2048);
+const lift={...base,offset:[0,0,5],count:2};
+assert.equal(P.stageCapacity(lift,tri,true),4,'particle2: count * area / 4096 particles');
+assert.equal(P.stageCapacity(lift,tri,false),8);
+out={position:new Float32Array(24),uv:new Float32Array(16),color:new Float32Array(32),count:0};
+assert.equal(P.simulate(lift,500,[1,1,1,1],view,out,table,tri,false),4,'one of two bunched particles is alive');
+const c=[0,1,2].map(k=>(out.position[k]+out.position[3+k]+out.position[6+k]+out.position[9+k])/4);
+assert.ok(Math.abs(c[2]-5)<1e-2&&c[0]>=0&&c[1]>=0&&c[0]+c[1]<=64.01,'inside the triangle, lifted along its normal: '+c);
+console.log('Particle deform OK');

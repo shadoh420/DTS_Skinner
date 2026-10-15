@@ -230,18 +230,18 @@ function applyDeform(batch,view,seconds,sound) {
  for(const name of ['position','uv','color'])batch.geometry.attributes[name].needsUpdate=true;
  return true;
 }
-function particleGeometry({emitter,stage,index}) {
- const n=emitter.effect?B.capacity(stage):P.stageCapacity(stage),g=new THREE.BufferGeometry();
+function particleGeometry({emitter,stage,index,surface,area}) {
+ const n=emitter.effect?B.capacity(stage):P.stageCapacity(stage,surface,area),g=new THREE.BufferGeometry();
  for(const [name,size] of [['position',3],['normal',3],['uv',2],['color',3],['doomAlpha',1],['doomTangent',3],['doomBitangent',3]]) {
   const attribute=new THREE.BufferAttribute(new Float32Array(n*size),size);
   if(['position','uv','color','doomAlpha'].includes(name))attribute.setUsage(THREE.DynamicDrawUsage);g.setAttribute(name,attribute);
  }
  g.setIndex(P.quadIndex(n));g.setDrawRange(0,0);
- return {geometry:g,emitter,stage,index,out:{position:new Float32Array(n*3),uv:g.attributes.uv.array,color:new Float32Array(n*4),count:0}};
+ return {geometry:g,emitter,stage,index,surface,area,out:{position:new Float32Array(n*3),uv:g.attributes.uv.array,color:new Float32Array(n*4),count:0}};
 }
 function applyParticles(batch,view,seconds) {
  // idRenderModelPrt in emitter space: view axes go in through the emitter axis, quads come out to world space.
- const {emitter,stage,index,out}=batch.particle,A=emitter.axis,o=emitter.origin,e=view.matrixWorld.elements,g=batch.geometry;
+ const {emitter,stage,index,out,surface,area}=batch.particle,A=emitter.axis,o=emitter.origin,e=view.matrixWorld.elements,g=batch.geometry;
  const local=w=>[0,1,2].map(j=>A[j]*w[0]+A[3+j]*w[1]+A[6+j]*w[2]);
  const axes={left:local([-e[0],-e[1],-e[2]]),up:local([e[4],e[5],e[6]]),forward:local([-e[8],-e[9],-e[10]]),down:local([0,0,-1])};
  let t=seconds;
@@ -251,7 +251,7 @@ function applyParticles(batch,view,seconds) {
   t-=f.delay;if(t<0||t>=f.length)return false;
  }
  const table=(name,f)=>M.evaluate(['table',name,f],seconds,emitter.parms,tables);
- const n=emitter.effect?B.simulate(data.effects[emitter.effect],index,t,emitter.fx.loop,axes,out,table):P.simulate(stage,t*1000,emitter.parms,axes,out,table);
+ const n=emitter.effect?B.simulate(data.effects[emitter.effect],index,t,emitter.fx.loop,axes,out,table):P.simulate(stage,t*1000,emitter.parms,axes,out,table,surface,area);
  if(!n)return false;
  const p=g.attributes.position.array,c=g.attributes.color.array,a=g.attributes.doomAlpha.array,q=out.position;
  for(let i=0;i<n;i++) {
@@ -307,7 +307,16 @@ async function buildMap(meta,binary) {
   .filter(({stage})=>emitter.effect||stage.cycleMsec>0)
   .map(({stage,k})=>({material:emitter.materials[k],bounds:emitter.bounds,areas:emitter.areas,lights:emitter.lights,entity:emitter.entity,parms:emitter.parms,
    ...(emitter.mover!==undefined?{mover:emitter.mover}:{}),particle:{emitter,stage,index:k}})));
+ // R_ParticleDeform: the surface is replaced by its .prt system, emitted from its own triangles in world space.
+ const still={origin:[0,0,0],axis:[1,0,0,0,1,0,0,0,1]};
+ for(const surface of meta.surfaces.filter(s=>s.particleDeform)) {
+  const pd=surface.particleDeform,a=geometry.attributes;
+  const tris=P.surfaceTriangles(a.position.array,a.normal.array,a.doomTangent.array,a.doomBitangent.array,geometry.index.array.subarray(surface.start,surface.start+surface.count));
+  meta.particles[pd.particle].stages.forEach((stage,k)=>{if(stage.cycleMsec>0)particleSurfaces.push({material:pd.materials[k],bounds:pd.bounds,areas:surface.areas,lights:surface.lights,
+   entity:surface.entity,parms:surface.parms,...(surface.mover!==undefined?{mover:surface.mover}:{}),particle:{emitter:{...still,parms:surface.parms},stage,index:k,surface:tris,area:pd.area}});});
+ }
  for(const surface of [...meta.surfaces,...particleSurfaces]) {
+  if(surface.particleDeform)continue;
   const material=meta.materials[surface.material],group=new THREE.Group(),meshes=[];
   const deformed=M.DEFORMS[material.deform?.kind]?deformGeometry(surface,material.deform):null;
   const particle=surface.particle?particleGeometry(surface.particle):null;
