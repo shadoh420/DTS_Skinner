@@ -209,7 +209,8 @@ def t1_map_data(filename):
     return response
 
 
-t1_sky_cache = {}
+t1_sky_cache, t1_sky_lock = {}, threading.Lock()
+SKY_LIST_VERSION = 2  # Part of the cache stamp: bump it when the entries scene_skies or t2_mission_sky build change.
 
 
 # Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it, its sections). 'dome' is
@@ -270,15 +271,19 @@ def scene_skies(kind, scene, row, game=None):
     if not all(boxed) or set(boxed) <= PLACEHOLDER_SKIES:
         return []
     power = (scene.get('lighting') or {}).get('display_power')  # The page's own display ramp (Bloodlines), if any.
-    return [(dict(name=scene['skybox'].get('name') or row['id'], stages=[], sky=dict(box=boxed)), {'power': power} if power else {})]
+    box = dict(box=boxed)
+    if scene['skybox'].get('rotate'):  # skyrotate, degrees a second about skyaxis; only then, so still skies keep their ids.
+        box.update(rotate=scene['skybox']['rotate'], axis=scene['skybox'].get('axis') or [0, 0, 1])
+    return [(dict(name=scene['skybox'].get('name') or row['id'], stages=[], sky=box), {'power': power} if power else {})]
 
 
 def t2_mission_sky(root, manifest, name, mission):
     """A Tribes 2 mission's Sky object as a Q3 sky shader: its material list's first six names are the box faces
     (front, right, back, left, top, down: Quake's bk, rt, ft, lf, up, dn; the top a quarter turn round, the turn that
     joins its edges to the sides) and the next three the cloud layers, each at
-    its cloudHeightPer and scrolling at its cloudSpeed (t2-mapper's misToScene: speed per 32 ms). Files under base/."""
-    resources = manifest.get('resources') or {}
+    its cloudHeightPer and scrolling at its cloudSpeed (t2-mapper's misToScene: speed per 32 ms). Files under base/;
+    a mission pack's (IronSphere's) own files serve its mission only."""
+    resources = (manifest.get('resources') or {}) | (((manifest.get('missionPacks') or {}).get(name) or {}).get('resources') or {})
     found = resources.get((mission.get('resourcePath') or '').lower())
     try:
         text = (root / 'base' / found[0]).read_text(encoding='latin1') if found else ''
@@ -316,10 +321,26 @@ def t2_mission_sky(root, manifest, name, mission):
 def t1_map_skies():
     """Skies the T1 Maps page can swap in, each listed once: every pack in SKY_PACKS that is imported. Entry ids are
     the game and a hash of the sky, so a saved choice survives re-imports (and T1/Q3 ids are unchanged)."""
+    return jsonify(t1_sky_list())
+
+
+def t1_sky_list():
+    """The Sky list, scanned again only when a pack's index changes. A full library takes about 15 s, so the list is
+    kept in the data folder for the next start too (t1-map-skies.json), and the app starts the scan as it starts."""
     roots = [(game, section, local_data_dir / f'{(entry[3:] or (game,))[0]}-maps' / section) for game, entry in SKY_PACKS.items() for section in entry[2]]
     listed = lambda root: root / ('manifest.json' if (root / 'manifest.json').is_file() else 'index.json')  # Tribes 2 lists missions in its manifest.
-    stamp = (str(local_data_dir), *(listed(root).stat().st_mtime_ns if listed(root).is_file() else 0 for *_, root in roots))
-    if t1_sky_cache.get('stamp') != stamp:
+    stamp = [SKY_LIST_VERSION, str(local_data_dir), *(listed(root).stat().st_mtime_ns if listed(root).is_file() else 0 for *_, root in roots)]
+    saved = local_data_dir / 't1-map-skies.json'
+    with t1_sky_lock:  # A request waits for the scan the app started rather than running a second one.
+        if t1_sky_cache.get('stamp') == stamp:
+            return t1_sky_cache['skies']
+        try:
+            kept = json.loads(saved.read_text(encoding='utf-8'))
+            if kept['stamp'] == stamp and isinstance(kept['skies'], list):
+                t1_sky_cache.update(kept)
+                return kept['skies']
+        except (OSError, ValueError, KeyError, TypeError):
+            pass  # None kept yet, or unreadable: scan.
         skies = {}
         for game, section, root in roots:
             group, kind, _, *pack = SKY_PACKS[game]
@@ -354,7 +375,12 @@ def t1_map_skies():
                         skies[key]['section'] = None
                     skies[key]['maps'].append(row.get('name', row['id']))
         t1_sky_cache.update(stamp=stamp, skies=list(skies.values()))
-    return jsonify(t1_sky_cache['skies'])
+        try:
+            saved.with_suffix('.tmp').write_text(json.dumps(t1_sky_cache), encoding='utf-8')
+            os.replace(saved.with_suffix('.tmp'), saved)
+        except OSError:
+            pass  # No data folder yet: the list is simply scanned again next start.
+        return t1_sky_cache['skies']
 
 
 @app.route('/import_t1_maps', methods=['POST'])
@@ -1864,6 +1890,7 @@ if __name__ == "__main__":
             if item.name != 'animations':
                 shutil.move(item, local_data_dir / item.name)
     print(f"Imported data: {local_data_dir}")
+    threading.Thread(target=t1_sky_list, daemon=True).start()  # The Sky list's first scan, before a Maps page asks.
     textures_dir.mkdir(parents=True, exist_ok=True)
     model_json_dir.mkdir(parents=True, exist_ok=True) # Crucial for pre-processing
 

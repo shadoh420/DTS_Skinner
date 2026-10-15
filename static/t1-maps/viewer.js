@@ -349,12 +349,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       // As the Quake II page draws its box: no mipmaps (they seam where the face changes) and the edge texels clamped.
       for (const face of box) Object.assign(face, {generateMipmaps: false, minFilter: THREE.LinearFilter, needsUpdate: true});
       // power: the source page's display ramp, pow(rgb, power) (Bloodlines draws its whole frame through 2/3).
-      add(new THREE.ShaderMaterial({uniforms: {...Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), power: {value: power}, upTurn: {value: !!shader.sky.upTurn}}, vertexShader,
-        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; uniform float power; uniform bool upTurn; varying vec3 vDir;
+      // A Quake II skyrotate turns the look direction about skyaxis, rotate degrees a second (quake2-maps/materials.js).
+      add(new THREE.ShaderMaterial({uniforms: {...Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), power: {value: power}, upTurn: {value: !!shader.sky.upTurn},
+        uTime: skyTime, rate: {value: shader.sky.rotate || 0}, axis: {value: new THREE.Vector3(...shader.sky.axis || [0, 0, 1]).normalize()}}, vertexShader,
+        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; uniform float power, uTime, rate; uniform bool upTurn; uniform vec3 axis; varying vec3 vDir;
           vec2 top(vec2 p) { return upTurn ? vec2(-p.y, p.x) : p; }  // Tribes 2's top face is a quarter turn round.
           vec4 side(sampler2D image, vec2 p) { return texture2D(image, clamp(vec2(p.x + 1., 1. - p.y) * .5, .002, .998)); }
           void main() {
-            vec3 d = vDir, a = abs(d);
+            float turn = radians(-uTime * rate), c = cos(turn), s = sin(turn);
+            vec3 d = vDir * c + cross(axis, vDir) * s + axis * dot(axis, vDir) * (1. - c), a = abs(d);
             gl_FragColor = vec4((a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
               : a.y >= a.z ? (d.y > 0. ? side(bk, vec2(d.x, d.z) / a.y) : side(ft, vec2(-d.x, d.z) / a.y))
               : (d.z > 0. ? side(up, top(vec2(-d.y, -d.x) / a.z)) : side(dn, vec2(-d.y, d.x) / a.z))).rgb, 1.);
@@ -390,13 +393,30 @@ window.addEventListener('DOMContentLoaded', async () => {
         blendDst: stage.blend ? FACTORS[stage.blend[1]] || THREE.OneFactor : THREE.ZeroFactor}), -3.4 + index * .01);
     }));
   }
+  // A swapped sky's haze: fog and background take the average colour of its band from the horizon to 10° above, all the
+  // way round, read back from a small render of that sky alone. The mission's own sky keeps the mission's haze.
+  const probe = {target: new THREE.WebGLRenderTarget(96, 8), eye: new THREE.PerspectiveCamera(10, 12, .01, 100), pixels: new Uint8Array(96 * 8 * 4)};
+  function horizonHaze() {
+    const {target, eye, pixels} = probe, sum = [0, 0, 0];
+    eye.position.copy(sky.position);
+    for (let quarter = 0; quarter < 4; quarter++) {  // Each view is 93° wide.
+      eye.rotation.set(THREE.MathUtils.degToRad(5), quarter * Math.PI / 2, 0, 'YXZ');
+      eye.updateMatrixWorld();
+      renderer.setRenderTarget(target);
+      if (skyPass) skyPass.render(renderer, eye, skyTime.value); else renderer.render(sky, eye);
+      renderer.readRenderTargetPixels(target, 0, 0, 96, 8, pixels);
+      pixels.forEach((value, index) => { if (index % 4 < 3) sum[index % 4] += value; });
+    }
+    renderer.setRenderTarget(null);
+    haze.setRGB(...sum.map(total => total / (4 * 96 * 8 * 255)));
+  }
   let skies = [], skySerial = 0, skyPass = null;  // skyPass: a sky drawn in its own pass behind the world (skies.js unreal).
   async function showSky(id) {
     const chosen = skies.find(entry => entry.id === id), visible = chosen && chosen.visible || map.terrain.visibleDistance, radius = visible * 1.05;
     // Each entry names its renderer and its pack's data path (/t1-map-skies); a dome is a T1-style mission sky.
     const kind = chosen && (chosen.renderer || (chosen.game === 'q3' ? 'q3' : 'dome'));
     const serial = ++skySerial, group = new THREE.Group(), dome = chosen ? kind === 'dome' && chosen.sky : map.sky;
-    scene.background = haze;
+    scene.background = haze.set(`rgb(${map.haze.join(',')})`);
     if (kind === 'q3') await buildQ3Sky(chosen.sky, radius, group, chosen.base, chosen.power || 1);
     else if (dome) await buildSky(dome, visible, group, chosen ? chosen.base || '/t1-map-data/' : data);  // Its own pack's textures.
     const pass = window.t1Skies?.[kind] && !dome && kind !== 'q3' ? await window.t1Skies[kind]({entry: chosen, radius, group, loadTexture, time: skyTime}) : null;  // skies.js.
@@ -410,6 +430,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     sky.add(panels = group);
     own.visible = !chosen;
     sky.scale.setScalar(10 / Math.max(radius, dome && dome.size || 0));
+    if (chosen && scene.background?.isColor && scene.background !== haze) haze.copy(scene.background);  // An untextured dome's colour.
+    else if (chosen) horizonHaze();
+    scene.fog?.color.copy(haze);
   }
 
   // Toward a planet: azimuth + 90° from file x, incidence up, as the importer's sun direction.

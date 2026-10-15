@@ -1,11 +1,14 @@
 """The T1 Maps Sky list (app.py /t1-map-skies): one group per game, each pack's sky kind turned into an entry the
 T1 viewer's renderers draw (static/t1-maps/viewer.js showSky, skies.js), from synthetic packs."""
+import hashlib
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 
+import app as skinner
 from app import app
 
 FACES = ('rt', 'bk', 'lf', 'ft', 'up', 'dn')
@@ -95,3 +98,47 @@ class SkyListTest(unittest.TestCase):
         self.assertEqual(box['sky']['stages'], [{'map': 'ice/c2.png', 'blend': ['gl_src_alpha', 'gl_one_minus_src_alpha'],
                                                   'tcMods': [['scroll', 0.001, 0.0]]}])  # Layer 1 only: c1 has no file.
         self.assertEqual((solid['renderer'], solid['sky']), ('dome', {'name': 'solid colour', 'color': [128, 255, 0]}))
+
+    def test_quake_2_rotation_only_where_the_sky_turns(self):
+        def build(root):
+            pack(root, 'quake2-maps', {'base1': ({}, {'skybox': skybox('unit1_')}),
+                                       'space': ({}, {'skybox': {**skybox('space1_'), 'rotate': 2.5, 'axis': [0, 1, 0]}}),
+                                       'still': ({}, {'skybox': {**skybox('still_'), 'rotate': 0, 'axis': [0, 0, 1]}})})
+        entries = {entry['sky']['name']: entry for entry in self.skies(build)['_all']}
+        self.assertEqual({k: entries['space1_']['sky']['sky'][k] for k in ('rotate', 'axis')}, {'rotate': 2.5, 'axis': [0, 1, 0]})
+        still = {'name': 'still_', 'stages': [], 'sky': {'box': [f'still__{side}.png' for side in FACES]}}
+        self.assertEqual(entries['still_']['sky'], still)  # A still sky's entry, and so its saved id, is as it was.
+        self.assertEqual(entries['still_']['id'], 'quake2-' + hashlib.sha1(('quake2' + json.dumps(still, sort_keys=True)).encode()).hexdigest()[:12])
+
+    def test_tribes_2_mission_pack_files_serve_their_mission(self):
+        def build(root):
+            base = root / 't2-maps' / 'base'
+            mis = 'new Sky(Sky) {\n\tmaterialList = "rpg.dml";\n};'
+            for name, text in {'mods/rpg/missions/world.mis': mis, 'missions/stock.mis': mis,
+                               'mods/rpg/textures/rpg.dml': 'r/f\nr/r\nr/b\nr/l\nr/t\nr/d\n'}.items():
+                (base / name).parent.mkdir(parents=True, exist_ok=True)
+                (base / name).write_text(text)
+            own = {name: ['mods/rpg/' + name, ['']] for name in ('missions/world.mis', 'textures/rpg.dml', *(f'textures/r/{f}.png' for f in 'frbltd'))}
+            (root / 't2-maps' / 'manifest.json').write_text(json.dumps({
+                'resources': {'missions/stock.mis': ['missions/stock.mis', ['']]}, 'missionPacks': {'World': {'resources': own}},
+                'missions': {'World': {'resourcePath': 'missions/world.mis'}, 'Stock': {'resourcePath': 'missions/stock.mis'}}}))
+        entry, = [entry for entry in self.skies(build)['_all'] if entry['game'] == 't2']
+        self.assertEqual((entry['maps'], entry['sky']['sky']['box'][0]), (['World'], 'r/r.png'))  # Not lent to the stock mission.
+
+    def test_list_kept_in_the_data_folder_until_an_index_changes(self):
+        with tempfile.TemporaryDirectory() as directory, patch('app.local_data_dir', Path(directory)):
+            root = Path(directory)
+            pack(root, 'sin-maps/sin', {'dm1': ({}, {'skybox': skybox('a_')})})
+            client = app.test_client()
+            first = client.get('/t1-map-skies').json
+            self.assertEqual(json.loads((root / 't1-map-skies.json').read_text(encoding='utf-8'))['skies'], first)
+            skinner.t1_sky_cache.clear()  # A new start: the list comes from the file, with no scan.
+            with patch('app.scene_skies', side_effect=AssertionError('scanned')):
+                self.assertEqual(client.get('/t1-map-skies').json, first)
+            index = root / 'sin-maps' / 'sin' / 'index.json'
+            (root / 'sin-maps' / 'sin' / 'maps' / 'dm2').mkdir()
+            (root / 'sin-maps' / 'sin' / 'maps' / 'dm2' / 'scene.json').write_text(json.dumps({'skybox': skybox('b_')}))
+            index.write_text(json.dumps([{'id': 'dm1', 'name': 'dm1'}, {'id': 'dm2', 'name': 'dm2'}]))
+            os.utime(index, ns=(index.stat().st_mtime_ns + 10**9,) * 2)
+            skinner.t1_sky_cache.clear()
+            self.assertEqual(sorted(entry['maps'][0] for entry in client.get('/t1-map-skies').json), ['dm1', 'dm2'])
