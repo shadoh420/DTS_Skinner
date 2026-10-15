@@ -180,7 +180,9 @@ class Quake4MapsTest(unittest.TestCase):
                 { "classname" "func_static" "name" "hidden" "model" "fixture" "hide" "2" }
                 { "classname" "func_static" "name" "compiled" "model" "fixture" "inline" "1" }
                 { "classname" "func_camera_portalsky" "name" "skycam" "origin" "200 300 400" "angle" "123" }
-                { "classname" "func_fx" "name" "effect" }
+                { "classname" "func_fx" "name" "effect" "fx" "effects/test/steam.fx" "start_on" "1" "loop" "1" "origin" "8 0 0" }
+                { "classname" "func_fx" "name" "waits" "fx" "effects/test/steam.fx" "start_on" "1" "triggered" "1" }
+                { "classname" "func_fx" "name" "sound" "fx" "effects/test/hum.fx" "start_on" "1" }
                 { "classname" "info_player_start" "origin" "0 0 0" "name" "#str_1" }
                 ''')
                 z.writestr('materials/test.mtr','''textures/test { diffusemap _white }
@@ -188,6 +190,8 @@ class Quake4MapsTest(unittest.TestCase):
                 lights/defaultpointlight { lightFalloffImage _quadratic { map _white } }
                 fog { fogLight { map _white } }''')
                 z.writestr('strings/english.lang','{ "#str_1" "Landing" }')
+                z.writestr('effects/test/steam.fx','effect effects/test/steam { size 64 spawner { count 5,5 sprite { duration 3,5 material "textures/test" start { position { point 0,0,0 } } } } }')
+                z.writestr('effects/test/hum.fx','effect effects/test/hum { sound { soundShader "hum" } }')
             report=maps.import_maps(install,root/'maps',maps=['q4base:game/test'],models_root=root/'models',policy=q4)
             self.assertEqual(report['ready'],1)
             scene=json.loads((root/'maps/quake4-maps/maps/q4base_game_test/scene.json').read_text())
@@ -204,7 +208,11 @@ class Quake4MapsTest(unittest.TestCase):
             self.assertEqual(light['parms'][:3],[0,0,0]);self.assertIsNotNone(light['falloff'])
             self.assertEqual(scene['stats']['hiddenEntitiesShown'],1)
             self.assertEqual(scene['stats']['renderedEntities'],2)
-            self.assertEqual(scene['stats']['excluded']['BSE effect'],1)
+            effect=next(e for e in scene['emitters'] if e['name']=='effect')
+            self.assertEqual((effect['effect'],effect['fx'],effect['origin'],effect['materials']),('effects/test/steam',{'loop':True},[8.0,0.0,0.0],['textures/test']))
+            self.assertIn('effects/test/steam',scene['effects'])
+            self.assertEqual(scene['stats']['excluded']['BSE effect waits for a trigger'],1)
+            self.assertEqual(scene['stats']['excluded']['BSE effect without drawable particles'],1)
             self.assertEqual(scene['stats']['excluded']['Static already compiled into world PROC'],1)
             self.assertEqual(scene['portalSky'],{'name':'skycam','origin':[200,300,400]})
             self.assertEqual(scene['viewpoints'][0]['name'],'Landing')
