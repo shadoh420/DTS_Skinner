@@ -18,3 +18,7 @@ from those games ships with Skinner.
 
 **Vendored code** (exogen's t2-mapper, Three.js, es-module-shims and others) keeps its own licence; see
 `static/t2-maps/THIRD-PARTY-NOTICES.txt` and the headers of the files under `static`.
+
+**Earthsiege format notes**: the Earthsiege importers follow Kevin Foley's Herculan documentation
+(github.com/kevinfoley/Herculan, MIT License); `tools/import_es_map.py` carries its table of DBSIM's random-stream
+start state.

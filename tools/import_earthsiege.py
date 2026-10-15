@@ -389,6 +389,45 @@ def mission_fits(files, game):
     return {mech: dict(enumerate(counts.most_common(1)[0][0])) for mech, counts in seen.items()}
 
 
+def chassis_hardpoints(files, stem):
+    """Herculan (gun-layout-gl.md, mech-shape-drawing.md): a chassis' .GL is int16 count, 26-byte records of
+    int16 part id (bone), at +6 the mounting code (below 4 drawn, so the bone's part is a placeholder), at +0x10
+    the mount point and at +0x17 the fit slot. As (bone, code, mount point, slot), the drawn ones only."""
+    data = files.get(stem + '.GL', b'')
+    count = struct.unpack_from('<h', data)[0] if len(data) >= 2 else 0
+    records = [struct.unpack_from('<h4xB9x3h1xB', data, 2 + 26 * i) for i in range(count) if 2 + 26 * (i + 1) <= len(data)]
+    return [(r[0], r[1], r[2:5], r[5]) for r in records if r[1] < 4]
+
+
+def weapon_shapes(files):
+    """The sim WEAPONS.DAT templates (each the MECHWPNS.DTS root per mounting code, None for the empty weapon) and
+    the MECHWPNS.DTS roots."""
+    templates, weapon_roots = [], []
+    if 'DAT/WEAPONS.DAT' in files and 'MECHWPNS.DTS' in files:
+        table, at = files['DAT/WEAPONS.DAT'], 2
+        for _ in range(struct.unpack_from('<H', table)[0]):  # A .DMG piece, a .COL cluster, then a 48-byte tail.
+            at += 8 + 4 * max(struct.unpack_from('<h', table, at + 6)[0], 0)
+            spheres = struct.unpack_from('<h', table, at + 2)[0]
+            at += 4 + (8 * spheres if spheres & 0x1fff else 0)
+            # The empty weapon (ES2 0, ES1 17) has no hit spheres; nothing is drawn for it.
+            templates.append(struct.unpack_from('<4h', table, at) if spheres & 0x1fff else None)
+            at += 0x30
+        reader = Reader(files['MECHWPNS.DTS'])
+        while reader.at + 8 <= len(reader.data):
+            weapon_roots.append(read_object(reader))
+    return templates, weapon_roots
+
+
+def fitted_weapons(files, stem, fit, templates, weapon_roots, bank):
+    """build_model's `weapons` for chassis `stem` carrying `fit` ({fit slot: weapon id})."""
+    out = []
+    for bone, code, mount, slot in chassis_hardpoints(files, stem):
+        weapon = fit.get(slot, -1)  # -1: an empty hardpoint.
+        if 0 <= weapon < len(templates) and templates[weapon] and 0 <= templates[weapon][code] < len(weapon_roots):
+            out.append((weapon_roots[templates[weapon][code]], bank, bone, mount))
+    return out
+
+
 def import_catalog(install, output, game):
     """Import every shape of the Earthsiege (game es1) or Earthsiege 2 (es2) install `install` into `output`.
     Returns counts of entries, previews and polys not drawn for want of a frame."""
@@ -410,13 +449,7 @@ def import_catalog(install, output, game):
         return banks[name]
 
     def hardpoints(stem):
-        """Herculan (gun-layout-gl.md, mech-shape-drawing.md): a chassis' .GL is int16 count, 26-byte records of
-        int16 part id (bone), at +6 the mounting code (below 4 drawn, so the bone's part is a placeholder), at +0x10
-        the mount point and at +0x17 the fit slot. As (bone, code, mount point, slot), the drawn ones only."""
-        data = files.get(stem + '.GL', b'')
-        count = struct.unpack_from('<h', data)[0] if len(data) >= 2 else 0
-        records = [struct.unpack_from('<h4xB9x3h1xB', data, 2 + 26 * i) for i in range(count) if 2 + 26 * (i + 1) <= len(data)]
-        return [(r[0], r[1], r[2:5], r[5]) for r in records if r[1] < 4]
+        return chassis_hardpoints(files, stem)
 
     # The weapon each fit slot carries (an ES2 player chassis' stock fit over the missions' favourite), drawn as the
     # MECHWPNS.DTS root its sim template names for the hardpoint's mounting code (Herculan: herc-catalogs.md,
@@ -427,27 +460,10 @@ def import_catalog(install, output, game):
         if len(data) >= 8:
             fits[stem] = {slot: weapon for slot, weapon, _, _ in
                           struct.iter_unpack('<4h', data[8:8 + 8 * struct.unpack_from('<h', data, 6)[0]])}
-    templates, weapon_roots = [], []
-    if 'DAT/WEAPONS.DAT' in files and 'MECHWPNS.DTS' in files and fits:
-        table, at = files['DAT/WEAPONS.DAT'], 2
-        for _ in range(struct.unpack_from('<H', table)[0]):  # A .DMG piece, a .COL cluster, then a 48-byte tail.
-            at += 8 + 4 * max(struct.unpack_from('<h', table, at + 6)[0], 0)
-            spheres = struct.unpack_from('<h', table, at + 2)[0]
-            at += 4 + (8 * spheres if spheres & 0x1fff else 0)
-            # The empty weapon (ES2 0, ES1 17) has no hit spheres; nothing is drawn for it.
-            templates.append(struct.unpack_from('<4h', table, at) if spheres & 0x1fff else None)
-            at += 0x30
-        reader = Reader(files['MECHWPNS.DTS'])
-        while reader.at + 8 <= len(reader.data):
-            weapon_roots.append(read_object(reader))
+    templates, weapon_roots = weapon_shapes(files) if fits else ([], [])
 
     def weapons(stem):
-        fit, out = fits.get(stem, {}), []
-        for bone, code, mount, slot in hardpoints(stem):
-            weapon = fit.get(slot, -1)  # -1: an empty hardpoint.
-            if 0 <= weapon < len(templates) and templates[weapon] and 0 <= templates[weapon][code] < len(weapon_roots):
-                out.append((weapon_roots[templates[weapon][code]], bank('wpntex'), bone, mount))
-        return out
+        return fitted_weapons(files, stem, fits.get(stem, {}), templates, weapon_roots, bank('wpntex'))
 
     selector = {}
     for name in shapes:
