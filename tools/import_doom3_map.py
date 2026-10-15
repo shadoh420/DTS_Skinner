@@ -22,6 +22,7 @@ try:
     from tools.doom3_map_sounds import Sounds
     from tools.doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
     from tools.doom3_gui import GuiImages,gui_texture
+    from tools.doom3_movers import mover_records,swept_bounds
     from tools.import_doom3 import load_parts,idle_animation,FORMATS
     from tools.model_data import write_model_data,load_model_data
     from tools.texture_storage import game_texture_dir
@@ -33,6 +34,7 @@ except ImportError:
     from doom3_map_sounds import Sounds
     from doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
     from doom3_gui import GuiImages,gui_texture
+    from doom3_movers import mover_records,swept_bounds
     from import_doom3 import load_parts,idle_animation,FORMATS
     from model_data import write_model_data,load_model_data
     from texture_storage import game_texture_dir
@@ -413,6 +415,17 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
         resolved,map_notes=prepare_entities(resolved,defs,name)
         transforms,attachment_notes=attachment_transforms(resolved,defs,files,proc['models'])
         map_notes['attachments']=attachment_notes
+    def moved_frame(entity):
+        origin=vector(entity.get('origin'));axis=rotation(entity)
+        if policy and entity.get('name') in transforms:
+            delta=transforms[entity['name']];origin=(delta @ np.r_[origin,1])[:3];axis=delta[:3,:3] @ axis
+        return origin,axis
+    def local_min_z(entity):
+        parts=proc['models'].get(path_name(entity.get('model','')))
+        return min(float(np.asarray(p['vertices'])[:,2].min()) for p in parts) if parts else None
+    movers,mover_of=mover_records(resolved,lambda e:moved_frame(e)[0].tolist(),lambda e:moved_frame(e)[1],local_min_z)
+    def aabb_planes(bounds):
+        lo,hi=bounds;return [[1,0,0,-lo[0]],[0,1,0,-lo[1]],[0,0,1,-lo[2]],[-1,0,0,hi[0]],[0,-1,0,hi[1]],[0,0,-1,hi[2]]]
     for index,entity in enumerate(resolved):
         if entity.get('classname')!='light' and entity.get('spawnclass')!='idLight':continue
         label=entity.get('name','light'+str(index))
@@ -437,9 +450,13 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                          noDiffuse=policy is not None and entity.get('nodiffuse')=='1',globalLight=policy is not None and entity.get('globallight')=='1')
             # Start-off is an authored light state; unlike hidden monsters, don't switch it on.
             if light['authoredOff']:light['parms'][:3]=[0,0,0]
+            if entity.get('name') in mover_of:
+                # A light riding a mover lights whatever its volume sweeps over.
+                light['mover']=mover_of[entity['name']];swept=swept_bounds(light['bounds'],movers,light['mover'])
+                light.update(matchPlanes=aabb_planes(swept),areas=bounds_areas(swept,proc['nodes']))
             lights.append(light)
         except (ValueError,KeyError) as exc:skipped_lights.append(dict(name=label,reason=str(exc)))
-    light_planes=np.array([l['planes'] for l in lights])
+    light_planes=np.array([l.get('matchPlanes',l['planes']) for l in lights])
     light_by_area={}
     for i,light in enumerate(lights):
         for area in (range(proc['areas']) if light['globalLight'] else light['areas']):light_by_area.setdefault(area,set()).add(i)
@@ -458,12 +475,14 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
             normals=np.asarray(part['normals']) @ np.linalg.inv(axis)
             normals/=np.maximum(np.linalg.norm(normals,axis=1,keepdims=True),1e-12)
             bounds=[positions.min(axis=0).tolist(),positions.max(axis=0).tolist()]
-            areas=[area] if area is not None else bounds_areas(bounds,proc['nodes'])
+            mover=mover_of.get(entity.get('name'))
+            reach=swept_bounds(bounds,movers,mover) if mover is not None else bounds
+            areas=[area] if area is not None else bounds_areas(reach,proc['nodes'])
             candidates=sorted(set().union(*(light_by_area.get(a,set()) for a in areas))) if areas else list(range(len(lights)))
             candidates=[i for i in candidates if lights[i]['spectrum']==shader['spectrum']]
             matched=[]
             if candidates:
-                p=light_planes[candidates];center=(positions.min(axis=0)+positions.max(axis=0))/2;extent=(positions.max(axis=0)-positions.min(axis=0))/2
+                p=light_planes[candidates];center=(np.asarray(reach[0])+reach[1])/2;extent=(np.asarray(reach[1])-reach[0])/2
                 inside=np.all(p[:,:,:3]@center+p[:,:,3]+np.abs(p[:,:,:3])@extent>=-1e-3,axis=1)
                 matched=np.array(candidates)[inside].tolist()
             start=len(geometry['indices']);offset=len(geometry['vertices'])//3
@@ -477,6 +496,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                                  sound=material_cache['sounds'].resolve(entity) if shader['soundReactive'] else None,
                                  lights=matched,entity=entity.get('name','worldspawn'),parms=parms(entity)))
             if any(s.get('cube') for s in shader['stages']):surfaces[-1]['cubeAxis']=np.linalg.inv(axis).ravel().tolist()
+            if mover is not None:surfaces[-1].update(mover=mover,moverBounds=reach)
             count+=1
         return count
     for model,parts in proc['models'].items():
@@ -584,12 +604,12 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
         stats['particleReferences']=sum(isinstance(v,str) and v.lower().endswith('.prt') for e in resolved for v in e.values())
         stats['guiEntities']=sum(any(k.startswith('gui') and v for k,v in e.items()) for e in resolved)
         stats['guiSurfaces']=sum('guisurf' in shader_records[s['material']]['approximations'] for s in surfaces)
-        stats['portalFadesIgnored']=sum('fade' in p for p in proc['portals'])
+        stats['portalFades']=sum('fade' in p for p in proc['portals'])
         stats['mapRules']=map_notes
     scene=dict(game=policy.game if policy else 'doom3',sourceArchive=files['maps/'+name+'.proc'].origin,colorSize=4 if policy else 3,areaSky=proc['areaSky'],name=name,campaign=campaign,coordinateSystem='Doom native XYZ, Z up',lightScale=2,
                globalShaderParms=global_parms,startupShaderEntities=startup_entities,
                surfaces=surfaces,materials=shader_records,lights=lights,nodes=proc['nodes'],portals=proc['portals'],areaCount=proc['areas'],
-               emitters=emitters,particles={n:material_cache['particles'][n] for n in sorted(used_particles)},
+               movers=movers,emitters=emitters,particles={n:material_cache['particles'][n] for n in sorted(used_particles)},
                viewpoints=viewpoints,entities=entity_records,skippedEntities=skipped,skippedLights=skipped_lights,stats=stats,
                notes=['No shadows. Fog and blend lights draw after the shader passes (RB_FogAllLights). Doors/movers stay at authored start transforms; scripts and binds are not simulated.',
                       'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
@@ -614,7 +634,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
         scene['notes'][0]='No shadows. Fog and blend lights draw after the shader passes (RB_FogAllLights). Authored movers and static attachments are evaluated once; no physics or script VM.'
         scene['notes'] += ['Quake 4: r_lightDetailLevel 0; only detailLevel > 0 lights. falloff spawnarg is ignored (not read by SDK ParseSpawnArgsToRenderLight).',
                            'Deathmatch filters; one deterministic spawner appearance. See stats.mapRules for provenance and other layouts.',
-                           'GLSL capability conditions use the non-GLSL fallback. Portal fade tuples are retained but fading is disabled.']
+                           'GLSL capability conditions use the non-GLSL fallback. Portal fades draw black over the portal by viewer distance to its centre and close it at the far distance (hypothesis for the PROC fade tuple).']
     write_model_data(directory/'scene.json',dict(scene,**geometry))
     saved=json.loads((directory/'scene.json').read_text(encoding='utf8'))
     stats['geometryBytes']=(directory/saved['geometry_buffers']['file']).stat().st_size

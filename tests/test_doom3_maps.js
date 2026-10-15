@@ -77,3 +77,25 @@ console.log('Deforms OK');
 // Fog plane: a 100-unit point light at z=50 has its fog top at z=150, positive above.
 const fog=M.fogPlane({projection:[[0,0,0,0],[0,0,0,0],[0,0,0,1],[0,0,.005,.25]]});
 assert.deepEqual(fog.map(v=>+v.toFixed(6)),[0,0,1,-150]);
+// Quake 4 portal fade: open within near, black (and closed to traversal) from far.
+const fadePortal={areas:[0,1],points:[[0,-.5,0],[0,.5,0],[0,.5,1],[0,-.5,1]],fade:['_black',150,200]};
+assert.equal(M.portalFade(fadePortal,[100,0,.5]),0);assert.equal(M.portalFade(fadePortal,[175,0,.5]),.5);assert.equal(M.portalFade(fadePortal,[250,0,.5]),1);
+assert.deepEqual([...M.visibleAreas([1,0,0],{...data,portals:[{...data.portals[0],fade:['_black',-2,-1]},data.portals[1]],portalIndexed:false,portalAdjacency:null},identity)],[0],'faded portal blocks visibility');
+// Material.cpp shear: about the texture centre.
+assert.deepEqual(M.uvMatrix({uv:[['shear',.5,0]]},0,[],{}),[1,.5,-.25,0,1,0]);
+assert.equal(M.evaluate('ismultiplayer',0,[],{},Object.assign([],{isMultiplayer:1})),1);
+assert.equal(M.evaluate('decallife',0,[],{}),0);
+// Movers: idRotater spins about its origin from its spawn angles; idBobber DECELSINE amplitude; parents compose.
+const apply=(m,p)=>[0,1,2].map(r=>m[r][0]*p[0]+m[r][1]*p[1]+m[r][2]*p[2]+m[r][3]);
+const near=(a,b)=>a.forEach((v,i)=>assert.ok(Math.abs(v-b[i])<1e-6,a+' != '+b));
+const movers=[{kind:'rotate',origin:[10,0,0],angles:[0,30,0],delta:[0,90,0],parent:null},
+ {kind:'bob',origin:[0,0,0],delta:[0,0,64],start:0,duration:2000,parent:null},
+ {kind:'rotate',origin:[0,0,0],angles:[0,0,0],delta:[0,90,0],parent:1}];
+near(apply(M.moverMatrix(movers,0,1000),[11,0,0]),[10,1,0]);
+near(apply(M.moverMatrix(movers,0,0),[11,0,0]),[11,0,0]);
+near(apply(M.moverMatrix(movers,1,2000),[0,0,0]),[0,0,64*2*Math.SQRT1_2]);
+near(apply(M.moverMatrix(movers,1,4000),[0,0,0]),[0,0,0]);
+near(apply(M.moverMatrix(movers,2,2000),[1,0,0]),[-1,0,64*2*Math.SQRT1_2]);
+near(apply(M.moverMatrix(movers,null,5),[1,2,3]),[1,2,3]);
+// anglesAxis matches idAngles::ToMat3: yaw 90 turns forward (x) to y.
+near(M.anglesAxis([0,90,0]).map(r=>r[0]),[0,1,0]);

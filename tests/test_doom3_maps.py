@@ -254,6 +254,20 @@ class DoomMapTest(unittest.TestCase):
                 mirror=compile_material('textures/washroom/mirror',d,m,t)
                 self.assertTrue(mirror['mirror']);self.assertEqual(mirror['sort'],-3);self.assertFalse(mirror['translucent'])
 
+    def test_expression_suffixes_keyword_tables_registers_and_shear(self):
+        class Images:
+            def resolve(self,v):return dict(expression=v,status='ready',texture=v)
+        q4=type('Images',(Images,),{'policy':type('P',(),{'programs':set()})()})()
+        self.assertEqual(expression('(1.0f - time)'),['-',1.0,'time'])
+        s,n=compile_stage(lex('map _white rgb linear [Parm6 - time]'),Images())
+        self.assertEqual(n,[]);self.assertEqual(s['color'][0],['table','linear',['-','parm6','time']])
+        s,n=compile_stage(lex('rgba 0\nremoteRenderMap 512 256\nmap textures/dynamic/camera1.tga'),Images())
+        self.assertEqual(s['color'],[0.0]*4);self.assertEqual(n,['remoterendermap'],'its own keyword, not trailing rgba tokens')
+        s,n=compile_stage(lex('map _white rgba decalFade[ DecalLife ] if IsMultiplayer != 1 shear a[time], 0'),q4)
+        self.assertEqual(n,[]);self.assertEqual(s['condition'],['!=','ismultiplayer',1.0])
+        self.assertEqual(s['uv'],[['shear',['table','a','time'],0.0]])
+        with self.assertRaises(ValueError):expression('IsMultiplayer')
+
     def test_deform_lines(self):
         from tools.doom3_map_materials import parse_deform
         self.assertEqual(parse_deform(lex('translucent\ndeform flare ( 16 + parm4 )\n{ map _quadratic }')),

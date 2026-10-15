@@ -27,9 +27,9 @@ const flat=new THREE.DataTexture(new Uint8Array([128,128,255,255]),1,1);flat.nee
 const vertex=`attribute vec3 doomTangent;attribute vec3 doomBitangent;attribute float doomAlpha;varying float vertexAlpha;
 varying vec2 st;varying vec3 positionWorld, tangentX, tangentY, tangentZ, vertexRGB;
 varying vec3 lightVector, halfVector;uniform vec3 lightOrigin;
-void main(){st=uv;positionWorld=position;vertexRGB=color;vertexAlpha=doomAlpha;
-tangentZ=normal;tangentX=doomTangent;tangentY=doomBitangent;
-vec3 L=lightOrigin-position,V=cameraPosition-position;
+void main(){st=uv;positionWorld=(modelMatrix*vec4(position,1.0)).xyz;vertexRGB=color;vertexAlpha=doomAlpha;
+mat3 turn=mat3(modelMatrix);tangentZ=turn*normal;tangentX=turn*doomTangent;tangentY=turn*doomBitangent;
+vec3 L=lightOrigin-positionWorld,V=cameraPosition-positionWorld;
 lightVector=vec3(dot(L,tangentX),dot(L,tangentY),dot(L,tangentZ));
 vec3 H=normalize(L)+normalize(V);halfVector=vec3(dot(H,tangentX),dot(H,tangentY),dot(H,tangentZ));
 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
@@ -297,10 +297,11 @@ async function buildMap(meta,binary) {
   const particle=surface.particle?particleGeometry(surface.particle):null;
   let g=deformed?.geometry||particle?.geometry;
   if(!g){g=new THREE.BufferGeometry();g.attributes=geometry.attributes;g.index=geometry.index;g.setDrawRange(surface.start,surface.count);}
-  g.boundingBox=new THREE.Box3(new THREE.Vector3(...surface.bounds[0]),new THREE.Vector3(...surface.bounds[1]));
+  const box=surface.moverBounds||surface.bounds;g.boundingBox=new THREE.Box3(new THREE.Vector3(...box[0]),new THREE.Vector3(...box[1]));
   if(deformed)g.boundingBox.expandByScalar(deformed.margin);
   g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
   const batch={group,meshes,geometry:g,surface,deform:deformed,particle,npc:npcOwners.has(surface.entity)};batches.push(batch);scene.add(group);
+  if(surface.mover!==undefined)group.matrixAutoUpdate=false;
   function pass(kind,diffuse,specular,bump,light,projection,order) {
    const u=uniforms();u.vertexAlphaEnabled.value=meta.game==='quake4'||particle?1:0;u.passKind.value=kind;u.diffuseMap.value=diffuse?.texture||(kind===1?black:white);
    u.specularMap.value=specular?.texture||black;u.bumpMap.value=bump?.texture||flat;
@@ -353,6 +354,14 @@ async function buildMap(meta,binary) {
    else if(light.blend)for(const projection of stages)if(projection.texture)pass(6,null,null,null,light,projection,FOG_ORDER+1);
   }
  }
+ // Quake 4 portal fades: a black polygon over the portal, faded by viewer distance.
+ for(const portal of meta.portals.filter(p=>p.fade)) {
+  const pts=portal.points,g=new THREE.BufferGeometry(),tri=[];for(let i=1;i<pts.length-1;i++)tri.push(...pts[0],...pts[i],...pts[i+1]);
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(tri),3));g.computeBoundingBox();g.computeBoundingSphere();
+  const mesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
+  mesh.renderOrder=FOG_ORDER-1;mesh.userData={kind:7,portal};const group=new THREE.Group();group.add(mesh);scene.add(group);
+  batches.push({group,meshes:[mesh],geometry:g,surface:{areas:portal.areas,parms:[],entity:'portal'},npc:false});passCount++;
+ }
  // RB_FogPass also draws the fog volume's back faces (depth less), so fog covers what lies beyond the volume.
  for(const light of meta.lights) {
   const stage=meta.materials[light.shader].stages[0];if(!light.fog||!light.volume?.length||!stage||light.authoredOff)continue;
@@ -369,7 +378,20 @@ async function buildMap(meta,binary) {
  npcs.setCount(npcOwners.size);
  return passCount;
 }
+function moveAll(seconds) {
+ // Movers first, then everything riding them: surfaces through their group matrix, lights through their planes.
+ const movers=data.movers||[];if(!movers.length)return;
+ const now=movers.map((_,i)=>M.moverMatrix(movers,i,seconds*1000));
+ for(const b of batches)if(b.surface.mover!==undefined){b.group.matrix.set(...now[b.surface.mover].flat());b.group.matrixWorldNeedsUpdate=true;}
+ for(const light of data.lights)if(light.mover!==undefined) {
+  const m=new THREE.Matrix4().set(...now[light.mover].flat()),inverse=m.clone().invert().elements;
+  // Plane rows transform by the inverse: p' = p * M^-1.
+  light.moved={origin:new THREE.Vector3(...light.origin).applyMatrix4(m).toArray(),
+   projection:light.projection.map(p=>[0,1,2,3].map(c=>p[0]*inverse[c*4]+p[1]*inverse[c*4+1]+p[2]*inverse[c*4+2]+p[3]*inverse[c*4+3]))};
+ }
+}
 function updatePass(mesh,seconds,parms,sound) {
+ if(mesh.userData.kind===7){mesh.material.opacity=M.portalFade(mesh.userData.portal,camera.position.toArray());mesh.visible=mesh.material.opacity>0;return;}
  const {kind,diffuse,specular,bump,light,projection}=mesh.userData,u=mesh.material.uniforms;
  const d=diffuse||defaultStage;
  const da=stageColor(d,seconds,parms,u.diffuseColor.value,sound);
@@ -382,6 +404,7 @@ function updatePass(mesh,seconds,parms,sound) {
  }
  if(bump)stageUV(bump,seconds,parms,u.bumpUV.value,sound);
  if(specular)stageUV(specular,seconds,parms,u.specularUV.value,sound);
+ if(light?.moved){u.lightOrigin.value.fromArray(light.moved.origin);['projectS','projectT','projectQ','projectF'].forEach((n,i)=>u[n].value.fromArray(light.moved.projection[i]));}
  if(light) {const amplitude=M.soundAmplitude(light.sound,seconds,soundAmplitudeOverride);mesh.visible=stageColor(projection,seconds,light.parms,u.lightColor.value,amplitude)&&mesh.visible;stageUV(projection,seconds,light.parms,u.projectionUV.value,amplitude);}
 }
 let lastMetrics={};
@@ -402,6 +425,7 @@ function draw(seconds=0,target=null) {
  }
  const width=target?target.width:renderer.domElement.width,height=target?target.height:renderer.domElement.height;
  if(colorTarget.width!==width||colorTarget.height!==height)colorTarget.setSize(width,height);
+ moveAll(seconds);
  let selected=select(camera),skyMetrics={calls:0,triangles:0};
  const mirrors=batches.filter(b=>b.mirror&&b.group.visible).map(b=>[b,renderMirror(b,select,width,height)]);
  if(mirrors.length){selected=select(camera);for(const [b,ok] of mirrors)if(!ok)b.mirror.mesh.visible=false;}
@@ -434,6 +458,7 @@ async function loadMap(id) {
  try {
   const entry=catalog.find(e=>e.id===id);const url=base+entry.scene,dir=url.slice(0,url.lastIndexOf('/')+1);
   const response=await fetch(url);if(!response.ok)throw Error('Map data missing');const meta=await response.json();
+  meta.globalShaderParms.isMultiplayer=+(meta.game==='quake4'&&meta.name.startsWith('mp/')); // Raven IsMultiplayer register
   const [binary,tab]=await Promise.all([fetch(dir+meta.geometry_buffers.file).then(r=>r.arrayBuffer()),fetch(dir+'tables.json').then(r=>r.json())]);tables=tab;
   const count=await buildMap(meta,binary);$('viewpoint').replaceChildren(...meta.viewpoints.map((v,i)=>new Option(v.name,i)));
   $('notes').textContent=meta.notes.join('\n')+'\n'+JSON.stringify({stats:meta.stats,skippedLights:meta.skippedLights,skippedEntities:meta.skippedEntities},null,2);
