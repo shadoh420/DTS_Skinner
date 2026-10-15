@@ -280,6 +280,24 @@ left (`static/diabotical-maps/blocks.js`).
   game's smoke (accent 3) and refraction are left out. `weapongl` is an ASCII
   FBX, read as the binary ones are; `weaponfg`, `weapondf`, `ammodf` and
   `weaponbfg` have no model in the game files and stay markers.
+- **Colour grading.** The game's last pass looks every pixel up in a 3D LUT,
+  `textures/lut.png` (the identity) or the global entity's `lut` (14 stock
+  maps; 256 × 16 PNGs: x is red plus 16 × blue, y green), without the
+  half-texel fix. The page draws the scene into a float target and looks it
+  up the same way in a last pass (`luts/NAME.png`); on the identity that is
+  the (16x − 0.5) / 15 step measured in runs 21 to 23.
+- **Flickering lights.** A light's `visibility_function` (4,487 stock lights:
+  flicker, sin, hills, peaks, valleys, binary_flicker, binary, ascending_saw,
+  descending_saw, the editor's list) scales its colour between
+  `visibility_function_min` (0) and 1, `visibility_function_speed` (1) cycles
+  a second. The curves follow their names; the game's own are not measured.
+- **Moving props.** A prop's `movement` makes it move by itself (2,493 stock
+  props), measured in run 46 from shots 6.0 s apart by the game's log:
+  `float A W` goes up and down A units from top to bottom at W radians a
+  second (A 20 at W 4 drifted smoothly from shot to shot, which a period of W
+  seconds would not); `rotate S` turns S degrees a second about the vertical
+  through the entity, clockwise seen from above (rotate 10 turned 61° in
+  6 s). Props moved by logic (`action move ...`, triggered) stay at rest.
 - **Markers and liquids.** Spawns, jump pads, teleporters and any pickup
   without a model it can read are coloured shapes. A `liquid_*` entity is a box of its scale centred on it, its top
   the surface: drawn unlit (lava and acid glow their colour, as in the game)
