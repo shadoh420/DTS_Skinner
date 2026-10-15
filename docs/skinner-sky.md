@@ -91,7 +91,9 @@ outputs HDR light × exposure, and the sun disc can drive bloom.
 
 **Check (2026-10-15).** The shader body was compiled with fxc 10.0.19041 (ps_5_0 and vs_5_0) against Unity
 6000.3.11f1's own `CGIncludes`, with the `/Gec` flag that Unity's headers need. Both compiled with no errors or
-warnings. It has not been opened in the Unity Editor, and no Unity frame has been compared with the page.
+warnings. `SkinnerSkyPresets.cs` was compiled with Unity's own Roslyn (`DotNetSdkRoslyn\csc.dll`, with
+`UNITY_EDITOR` defined) against `UnityEngine.CoreModule` and `UnityEditor.CoreModule`, and also compiled cleanly. It
+has not been opened in the Unity Editor, and no Unity frame has been compared with the page.
 
 ## Limits
 
