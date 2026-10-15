@@ -248,6 +248,7 @@ class DiaboticalMapsTest(unittest.TestCase):
             self.assertEqual((materials['props/tinted']['spec'], materials['props/tinted']['id']), ([0, 1], 255))
             self.assertFalse({'spec', 'id'} & (set(materials['stone']) | set(materials['arrow']) | set(materials['props/tinted#4'])))
             self.assertIsNone(head['lights']['envmap'])  # No textures_cubemaps.dbp here.
+            self.assertEqual(head['sky'], dict(cube=None, rotation=0, texture=None))  # Nor its default sky.
             self.assertEqual(head['markers'], [['hpt', 5, 6, 7]])
             self.assertEqual(np.frombuffer(raw, '<f4', 12, 4 + length)[[3, 7, 11]].tolist(), [0, 40, 0])
             # Terrain: heights in red and dirt in green (a texel shared by the four vertices at its corners); its
@@ -407,6 +408,29 @@ class DiaboticalMapsTest(unittest.TestCase):
         # Diffuse lights (and those of no type) add no specular light; the others turn their colour back into
         # colour x intensity for it.
         self.assertEqual([lamp[15], spot[15], tube[15]], [0, 0, round(1 / POINT, 4)])
+
+    def test_sky_is_read_and_its_cube_written(self):
+        from PIL import Image
+        from tools.import_diabotical_map import Pack, cube_file, read_sky, write_envmaps
+        sky = read_sky([('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'skybox': 'tmp/Sky_Day Sun_Cam', 'skybox_rotation': '-60', 'sky_texture': 'Blue_Sky_2'})])
+        self.assertEqual(sky, dict(cube='tmp/sky_day sun_cam', rotation=-60, texture='blue_sky_2'))
+        self.assertEqual(read_sky([]), dict(cube=None, rotation=0, texture=None))
+        self.assertEqual(cube_file(sky['cube']), 'textures\\cubemaps\\tmp\\sky_day sun_cam.dds')
+        # A BC7 cube 16 square with three mips: a sky at most 8 square takes the second, an envmap the first at most 4.
+        sizes = [16, 4, 1]  # 4 x 4 blocks of 16 bytes, then 2 x 2, then 1.
+        header = bytearray(148)
+        header[:4] = b'DDS '
+        struct.pack_into('<5I', header, 12, 16, 16, 0, 0, 3)
+        header[84:88] = b'DX10'
+        struct.pack_into('<I', header, 128, 98)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'cubes.dbp').write_bytes(dbp({cube_file('a/b'): bytes(header) + bytes(6 * 16 * sum(sizes))}))
+            pack = Pack(root / 'cubes.dbp')
+            self.assertEqual(write_envmaps(pack, {'a/b', 'missing'}, root, folder='skies', face=8, suffix='.jpg'), ['a/b'])
+            self.assertEqual(write_envmaps(pack, {'a/b'}, root, face=4), ['a/b'])
+            with Image.open(root / 'skies/a_b.jpg') as sky, Image.open(root / 'envmaps/a_b.png') as envmap:
+                self.assertEqual((sky.size, envmap.size), ((48, 8), (24, 4)))
 
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds
