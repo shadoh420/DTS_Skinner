@@ -9,7 +9,8 @@ import unittest
 from unittest.mock import patch
 
 from app import app
-from tools.import_es_map import SimRandom, Zone, import_maps, placement_matrix, point, read_mission
+from tools.import_es_map import (ES1_LAYOUT, SimRandom, Zone, es1_placements, import_maps, placement_matrix, point,
+                                 read_mission, turn)
 
 
 def words(*values):
@@ -65,6 +66,49 @@ class MissionTest(unittest.TestCase):
         self.assertEqual([(g[0], g[23], g[24], g[25]) for g in loaded['groups']], [(5, 2, 3, 1)])
         with self.assertRaises(ValueError):
             read_mission(b'\x04\x00', flags)
+
+    def test_earthsiege_1_rows_variants_overlays_and_placement(self):
+        data = words(5)
+        rows = {1: [record(7, w0=10, w1=-1, w2=3, w3=7, w5=2),  # Variant key 7; its child 11 takes the draw (0).
+                    record(7, w0=11, w1=10, w2=2, w3=0, w4=0),
+                    record(7, w0=12, w1=-1, w2=0, w3=4, w4=0x117, w5=0)],  # ES1's "flag 4 > 0".
+                2: [[12, 3] + [0] * 9, [-1, 1, 77] + [0] * 8],  # Theatre 3 only when flag 4 is set; zone 77.
+                3: [record(11, w0=1, w4=0, w5=1000, w6=0, w7=2000, w8=0, w9=0, w10=0),
+                    record(11, w0=2, w4=0, w5=5000, w6=0, w7=2000, w8=0, w9=0, w10=0),
+                    record(11, w0=3, w4=0, w5=7000, w6=0, w7=0, w8=0, w9=0, w10=0)],
+                4: [[20, -1, -1, -1, 90], [21, -1, -1, -1, 1]],  # Degrees as DBSIM reads them: 90 -> half a turn.
+                5: [[30, -1, -1, -1, 2, [1, 2]]],
+                8: [record(53, w0=-1, w1=11, w4=0, w24=6),  # The variant's payload: HERC type 6.
+                    record(53, w0=40, w2=7),  # Keyed: takes the whole payload.
+                    record(53, w0=41, w4=0, w24=2),
+                    record(53, w0=42, w4=0, w24=3, w35=3)],  # Its own point.
+                9: [record(32, w0=50, w4=0, w26=0)],
+                11: [record(44, w0=60, w3=0, w23=0, w26=1, w29=-1),  # Group 0, the player's squad.
+                     record(44, w0=61, w3=0, w23=0, w24=0, w26=1, w27=21, w29=40, w30=41, w31=42, w37=1),
+                     record(44, w0=61, w3=0, w24=1),  # Same GUID: set fields overlay, -1 keeps.
+                     record(44, w0=62, w3=0, w23=1, w24=0, w28=30, w29=50, w37=1)]}
+        for number in range(1, 12):
+            data += struct.pack('<H', len(rows.get(number, [])))
+            for item in rows.get(number, []):
+                data += words(*item[:5]) + words(*item[5]) if number == 5 else words(*item)
+        flags = [0] * 1000
+        self.assertEqual(read_mission(data, flags, ES1_LAYOUT)['header'][:2], [1, 77])
+        flags[4] = 1
+        mission = read_mission(data, flags, ES1_LAYOUT)
+        self.assertEqual(mission['header'][:2], [3, 77])
+        self.assertEqual(mission[8][40][24], 6)
+        self.assertEqual(point(mission, 2, 3), (5000, 2000, 0))
+        self.assertEqual([(g[0], g[23], g[24], g[29]) for g in mission['groups']], [(60, 0, -1, -1), (61, 0, 1, 40), (62, 1, 0, 50)])
+        forms = {0: [[(0, 0)] * 7, [(100, -50)] + [(0, 0)] * 6], 1: [[(9, 9, 300)] * 3]}
+        units, unplaced, player = es1_placements(mission, forms)
+        self.assertEqual((unplaced, player), (0, (1000, 2000, 0)))
+        dx, dy = turn(100, -50, 0x4000)  # Heading 1 = a quarter turn (the leader has none of its own).
+        self.assertEqual([(u[0], u[1], u[2][0]) + tuple(round(v) for v in u[3:]) for u in units],
+                         [(0, 1, 40, 1000, 2000, 0, 0x4000),
+                          (0, 1, 41, round(1000 + dx), round(2000 + dy), 0, 0x4000),
+                          (0, 1, 42, 7000, 0, 0, 0x4000),  # Its own point, no formation offset.
+                          # Flyers at the route's start facing its first leg (east), climbed to 5000 from the ground.
+                          (1, 1, 50, 1000, 2000, 5000, -0x4000)])
 
     def test_random_stream_is_the_retail_additive_table(self):
         random = SimRandom()
@@ -156,3 +200,18 @@ class InstallTest(unittest.TestCase):
             self.assertGreater(len(scene['objects']), 40)
             self.assertTrue(all(o['model'] for o in scene['objects']))
             self.assertEqual(len((out / 'maps/c1_01/pieces.bin').read_bytes()), 255 * 255)
+
+
+@unittest.skipUnless(os.environ.get('ES1_INSTALL'), 'set ES1_INSTALL to an Earthsiege folder to import three missions')
+class Es1InstallTest(unittest.TestCase):
+    def test_campaign_and_simulator_units(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            report = import_maps(os.environ['ES1_INSTALL'], out, 'es1', ['B0_C1_00', 'B1_C0_1A', 'S2_ASS01'])
+            self.assertEqual((sorted(report['imported']), report['failed']), (['B0_C1_00', 'B1_C0_1A', 'S2_ASS01'], {}))
+            for stem, least in (('b0_c1_00', 30), ('b1_c0_1a', 20), ('s2_ass01', 25)):
+                scene = json.loads((out / 'maps' / stem / 'scene.json').read_text())
+                units = [o for o in scene['objects'] if 'feature' not in o['name']]
+                self.assertGreaterEqual(len(units), least, stem)
+                self.assertTrue(all(o['model'] for o in units), stem)
+                self.assertTrue(any(o.get('npc') for o in units) and any(not o.get('npc') for o in units), stem)

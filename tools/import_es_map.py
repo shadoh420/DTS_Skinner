@@ -35,6 +35,7 @@ import argparse
 import hashlib
 import json
 import math
+import operator
 from pathlib import Path
 import shutil
 import struct
@@ -85,10 +86,13 @@ def words(data, at, count):
     return list(struct.unpack_from(f'<{count}h', data, at))
 
 
-def read_mission(data, flags, patch_words=41, rows=ES2_ROWS):
-    """An Earthsiege 2 .MSN as the shell's generator leaves it: {'header': ten words, row number: {GUID: record}},
-    records as word lists with refs left as GUIDs. Only the rows a map needs are kept (6, 7, 8, 12-16).
-    `flags` is the campaign flag array (1000 words) the conditions read; every draw is 0."""
+def read_mission(data, flags, layout=None):
+    """An Earthsiege 2 .MSN (or, with ES1_LAYOUT, an Earthsiege 1 one) as the shell's generator leaves it:
+    {'header': ten words, row number: {GUID: record}, 'groups': [records]}, records as word lists with refs left as
+    GUIDs. Only the rows a map needs are kept. `flags` is the campaign flag array (1000 words) the conditions read;
+    every draw is 0."""
+    layout = layout or ES2_LAYOUT
+    rows, patch_words = layout['rows'], layout['patch']
     if data[:2] != b'\x05\x00':
         raise ValueError('Not a revision 5 mission')
     at, conditions = 2, []
@@ -122,9 +126,7 @@ def read_mission(data, flags, patch_words=41, rows=ES2_ROWS):
         kind = record[2]
         if kind == 0 and gate(record[1]):
             flag = flags[record[3]] if 0 <= record[3] < len(flags) else 0
-            holds = {0x119: flag == record[5], 0x11a: flag != record[5], 0x11b: flag < record[5], 0x11c: flag <= record[5],
-                     0x11d: record[5] < flag, 0x11e: record[5] <= flag}.get(record[4], False)
-            if holds:
+            if record[4] in layout['ops'] and layout['ops'][record[4]](flag, record[5]):
                 conditions.append(record)
         elif kind == 1 and gate(record[1]):
             record[4] = 0  # The draw.
@@ -162,17 +164,16 @@ def read_mission(data, flags, patch_words=41, rows=ES2_ROWS):
             else:
                 record = words(data, at, size)
                 at += size * 2
-            condition = record[0] if number == 4 else record[1]
-            if number not in KEPT or not gate(condition):
+            condition = record[0] if number in layout['cond0'] else record[1]
+            if number not in layout['kept'] or not gate(condition):
                 continue
-            key = record[2] if number in (6, 7, 8, 12, 13, 14, 15) else -1
+            key = record[2] if number in layout['spans'] else -1
             if key != -1 and (origin := source(row, key)) is not None:
-                span = {6: (5, 11), 7: (4, 5), 8: (4, 6), 12: (4, 72), 13: (4, 51), 14: (4, 31), 15: (4, 11)}[number]
-                keep = {12: (37,), 13: (27,), 14: (7,)}.get(number, ())  # Pair counts are not copied.
-                for word in range(*span):
+                keep = layout['keep'].get(number, ())  # ES2's pair counts are not copied.
+                for word in range(*layout['spans'][number]):
                     if word not in keep:
                         record[word] = origin[word]
-            if number == 6 and record[4]:  # The sum of two earlier points, named by the low words of X and Y.
+            if number == layout['points'] and record[4]:  # The sum of two earlier points, named by the low words of X and Y.
                 a, b = (next((r for r in row if r[0] == guid != -1), None) for guid in (record[5], record[7]))
                 if a and b:
                     for axis in (5, 7, 9):
@@ -181,15 +182,15 @@ def read_mission(data, flags, patch_words=41, rows=ES2_ROWS):
             earlier = next((r for r in row if r[0] == record[0] != -1), None)
             if earlier is None:
                 row.append(record)
-            elif number in (3, 6, 7, 8, 9):
+            elif number in layout['replace']:
                 earlier[:] = record
-            else:  # Rows 10-16 overlay the fields that are set (Msn_MergeRow10 and siblings).
-                for first, length, unset in OVERLAYS.get(number, ()):
+            else:  # The roster and group rows overlay the fields that are set (Msn_MergeRow10 and siblings).
+                for first, length, unset in layout['overlays'].get(number, ()):
                     for word in range(first, first + length):
                         if record[word] != unset:
                             earlier[word] = record[word]
     return {'header': header, **{number: {r[0]: r for r in row if r[0] != -1} for number, row in lists.items()},
-            'groups': [r for r in lists.get(16, []) if r[0] != -1]}
+            'groups': [r for r in lists.get(layout['groups'], []) if r[0] != -1]}
 
 
 OVERLAYS = {12: ((4, 20, 0), (25, 10, -1), (58, 10, 5), (24, 1, -1), (35, 2, -1), (38, 20, -1), (68, 1, 2), (69, 2, -1), (71, 1, 100)),
@@ -197,14 +198,32 @@ OVERLAYS = {12: ((4, 20, 0), (25, 10, -1), (58, 10, 5), (24, 1, -1), (35, 2, -1)
             14: ((4, 3, -1), (8, 22, -1), (30, 1, 100)),
             15: ((4, 7, -1),),
             16: ((3, 20, 0), (28, 30, -1), (23, 5, -1), (58, 2, -1), (60, 21, -1))}
+# Per game: record words per row, the rows kept, the rows whose condition is word 0, the points row, the rows a repeated
+# GUID replaces (the rest overlay), the groups row, variant-key rows and the words a variant copies, flag tests.
+ES2_LAYOUT = dict(patch=41, rows=ES2_ROWS, kept=KEPT, cond0=(4,), points=6, replace=(3, 6, 7, 8, 9), groups=16,
+                  spans={6: (5, 11), 7: (4, 5), 8: (4, 6), 12: (4, 72), 13: (4, 51), 14: (4, 31), 15: (4, 11)},
+                  keep={12: (37,), 13: (27,), 14: (7,)}, overlays=OVERLAYS,
+                  ops={0x119: operator.eq, 0x11a: operator.ne, 0x11b: operator.lt, 0x11c: operator.le, 0x11d: operator.gt,
+                       0x11e: operator.ge})
+# Earthsiege 1, from GO.EXE's generator (0x30120; X-32 image, address = file offset - 0x491d) and checked against the
+# data\script.dat it wrote for S2_ASS01: rows 3 points, 4 headings, 5 routes, 6 areas, 7 triggers, 8-10 HERC/flyer/
+# structure rosters, 11 groups. A variant copies the whole record (0x31060); merges 0x2f924, 0x2fb4c, 0x2fce4, 0x2fe28.
+ES1_LAYOUT = dict(patch=11, rows={3: 11, 4: 5, 5: None, 6: 6, 7: 15, 8: 53, 9: 32, 10: 12, 11: 44},
+                  kept=(3, 4, 5, 8, 9, 10, 11), cond0=(), points=3, replace=(3, 4, 5, 6, 7), groups=11,
+                  spans={3: (5, 11), 4: (4, 5), 5: (4, 6), 8: (4, 53), 9: (4, 32), 10: (4, 12)}, keep={},
+                  overlays={8: ((4, 20, 0), (25, 10, -1), (39, 10, 5), (24, 1, -1), (35, 4, -1), (49, 1, 2), (50, 2, -1), (52, 1, 100)),
+                            9: ((4, 20, 0), (24, 7, -1), (31, 1, 100)),
+                            10: ((4, 7, -1), (11, 1, 100)),
+                            11: ((3, 20, 0), (29, 8, -1), (23, 6, -1), (37, 7, -1))},
+                  ops={0x114: operator.eq, 0x115: operator.ne, 0x116: operator.lt, 0x117: operator.gt})
 
 
 def point_word(record, word):
     return (record[word] & 0xffff) | (record[word + 1] << 16)
 
 
-def point(mission, guid):
-    record = mission.get(6, {}).get(guid)
+def point(mission, guid, row=6):
+    record = mission.get(row, {}).get(guid)
     return tuple(point_word(record, word) for word in (5, 7, 9)) if record else None
 
 
@@ -368,6 +387,9 @@ class Pack:
         self.weapons = weapon_shapes(files)
         self.dgs = dgs_shapes(files['DGS/BASES.DGS']) if 'DGS/BASES.DGS' in files else []
         self.animated = dts_roots(files['DTS/BASES_AN.DTS'] if 'DTS/BASES_AN.DTS' in files else files.get('BASES_AN.DTS', b''))
+        # Earthsiege 1's Cybrid structures (a group of side 1): BASES_E.DGS and BASES_AE.DTS.
+        self.enemy_dgs = dgs_shapes(files['DGS/BASES_E.DGS']) if 'DGS/BASES_E.DGS' in files else []
+        self.enemy_animated = dts_roots(files.get('DTS/BASES_AE.DTS', b''))
 
     def palette(self, world):
         if world not in self.palettes:
@@ -417,6 +439,25 @@ class Pack:
         self.models[name] = name
         return name
 
+    def herc(self, stem, fit, world):
+        """HERC chassis `stem` carrying `fit` ({fit slot: weapon id}), in the bank its .DAT names; None without one."""
+        files = self.files
+        selector = files.get(stem + '.DAT', b'')
+        number = struct.unpack_from('<h', selector, 0x94)[0] if len(selector) >= 0x96 else -1
+        if stem + '.DTS' not in files or not 0 <= number < len(BANKS[self.game]):
+            return None
+        weapons = fitted_weapons(files, stem, fit, *self.weapons, None)
+        key = stem + ('-' + hashlib.sha1(repr(sorted(fit.items())).encode()).hexdigest()[:8] if weapons else '')
+        return self.model(key, read_object(Reader(files[stem + '.DTS'])), BANKS[self.game][number], world, weapons,
+                          {bone for bone, _, _, _ in chassis_hardpoints(files, stem)})
+
+
+def formation_table(data, slots, fmt):
+    """MFORMS/FFORMS.DAT (and Earthsiege 1's BFORMS.DAT): int16 count, then per formation `slots` offsets `fmt`."""
+    size = struct.calcsize(fmt)
+    count = struct.unpack_from('<h', data)[0] if len(data) >= 2 else 0
+    return [[struct.unpack_from(fmt, data, 2 + (f * slots + s) * size) for s in range(slots)] for f in range(count)]
+
 
 def es2_scene(pack, stem, stage, number):
     """Build one Earthsiege 2 mission's map into a staging folder; returns (scene, staging files)."""
@@ -438,10 +479,8 @@ def es2_scene(pack, stem, stage, number):
     zone.roll_materials(mat0[0][1])
     types = structure_types(files['DAT/BASES.DAT'])
     bforms = base_formations(files['DAT/BFORMS.DAT'])
-    mforms = files['DAT/MFORMS.DAT']
-    mforms = [[struct.unpack_from('<2h', mforms, 2 + 28 * f + 4 * s) for s in range(7)] for f in range(struct.unpack_from('<h', mforms)[0])]
-    fforms = files['DAT/FFORMS.DAT']
-    fforms = [[struct.unpack_from('<3h', fforms, 2 + 18 * f + 6 * s) for s in range(3)] for f in range(struct.unpack_from('<h', fforms)[0])]
+    mforms = formation_table(files['DAT/MFORMS.DAT'], 7, '<2h')
+    fforms = formation_table(files['DAT/FFORMS.DAT'], 3, '<3h')
     mechs = files['MECHS.NAM'].decode('latin1').split('\0')
     flyers = files.get('FLYERS.NAM', b'').decode('latin1').split('\0')
 
@@ -524,15 +563,7 @@ def es2_scene(pack, stem, stage, number):
                 stem_name = mechs[roster[24]].strip().upper() if 0 <= roster[24] < len(mechs) else ''
                 if not stem_name:
                     continue
-                fit = {s: roster[25 + s] for s in range(10) if roster[25 + s] >= 0}
-                selector = files.get(stem_name + '.DAT', b'')
-                number = struct.unpack_from('<h', selector, 0x94)[0] if len(selector) >= 0x96 else -1
-                bank = BANKS['es2'][number] if 0 <= number < len(BANKS['es2']) else None
-                weapons = fitted_weapons(files, stem_name, fit, *pack.weapons, None) if stem_name + '.DTS' in files else []
-                key = stem_name + ('-' + hashlib.sha1(repr(sorted(fit.items())).encode()).hexdigest()[:8] if weapons else '')
-                model = pack.model(key, read_object(Reader(files[stem_name + '.DTS'])), bank, world, weapons,
-                                   {bone for bone, _, _, _ in chassis_hardpoints(files, stem_name)}) \
-                    if stem_name + '.DTS' in files and bank else None
+                model = pack.herc(stem_name, {s: roster[25 + s] for s in range(10) if roster[25 + s] >= 0}, world)
                 objects.append(dict(name=stem_name or 'HERC', model=model, z=ground, x=px, y=py, bam=heading, npc=True))
             elif kind == 1:
                 name = flyers[roster[26]].strip().upper() if 0 <= roster[26] < len(flyers) else ''
@@ -684,17 +715,124 @@ def es2_missions(files):
 # ground is the world file's fourth name as a raw 256x256 dba\<name>.64k (gndtex.cpp, 0x2c150).
 ES1_THEATRES = ('desert', 'temper', 'ice', 'urban', 'waste', 'ruins')  # Name table at 0x9910c.
 ES1_TILE = 32768  # ponytail: world units one ground repeat covers (ES2's 128 units a texel); the .64k tiling is not decoded.
+# A group (row 11; DBSIM's script loader 0x20c88, group set-up 0x1f628): word 23 kind (0 HERCs, 1 flyers,
+# 2 structures), 24 formation, 26 point, 27 heading, 28 route, 29-36 members, 37 side (0 Terran, else Cybrid).
+# Per kind: the roster row, its own point and heading words, and the formation table's slots per formation.
+ES1_ROSTERS = {0: (8, 35, 36, 7), 1: (9, 24, 25, 3), 2: (10, 5, 6, 7)}
+
+
+def es1_heading(mission, guid):
+    """DBSIM keeps a heading word as (value << 14) & 0xffff (0x203ba): its low two bits as quarter turns, so the
+    missions' 90 reads as a half turn. Replicated, not corrected."""
+    record = mission.get(4, {}).get(guid)
+    return (record[4] << 14) & 0xffff if record else None
+
+
+def es1_placements(mission, forms):
+    """Where DBSIM stands each group member at mission start: ([(kind, side, roster, x, y, z, bam)], groups with
+    no point or route, the player's squad as (x, y, bam) or None). `forms` holds the MFORMS, FFORMS and BFORMS
+    offsets by kind. Every member of groups 1.. is built at the start (0x1feb4); group 0's HERCs are the player's,
+    from the shell's player.mec, so only its point is taken."""
+    units, unplaced, player = [], 0, None
+    for index, group in enumerate(mission['groups']):
+        route = mission.get(5, {}).get(group[28])
+        route = [p for p in (point(mission, guid, 3) for guid in (route[5] if route else [])) if p][:2]
+        start = point(mission, group[26], 3) or (route[0] if route else None)
+        bam = es1_heading(mission, group[27])
+        if bam is None:  # The route's first leg (0x6b784): atan2 less a quarter turn, forward being model +y.
+            bam = int(math.atan2(route[1][1] - route[0][1], route[1][0] - route[0][0]) / (2 * math.pi) * 0x10000) - 0x4000 \
+                if len(route) > 1 else 0
+        if index == 0:
+            player = (start[0], start[1], bam) if start else None
+            continue
+        if group[23] not in ES1_ROSTERS:
+            continue
+        row, own_point, own_heading, slots = ES1_ROSTERS[group[23]]
+        members = [(slot, mission.get(row, {}).get(group[29 + slot])) for slot in range(8)]
+        members = [(slot, roster) for slot, roster in members if roster]
+        if not members:
+            continue
+        # Offsets turn with the group's first member (0xf360): its own heading, else the group's.
+        lead = es1_heading(mission, members[0][1][own_heading])
+        lead = bam if lead is None else lead
+        offsets = [o for formation in forms.get(group[23], []) for o in formation]
+        missing = False
+        for slot, roster in members:
+            heading = es1_heading(mission, roster[own_heading])
+            own = point(mission, roster[own_point], 3)
+            if own:
+                x, y, z = own
+            elif start:  # Slot n takes formation entry n-1, counted on through the table as DBSIM does.
+                at = group[24] * slots + slot - 1
+                dx, dy, *dz = offsets[at] if slot and 0 <= at < len(offsets) else (0, 0)
+                dx, dy = turn(dx, dy, lead)
+                x, y, z = start[0] + dx, start[1] + dy, start[2] + sum(dz)
+            else:
+                missing = True
+                continue
+            if group[23] == 1 and z == 0:  # Flyers at ground level climb to 5000 units (0x1d898).
+                z = 5000
+            units.append((group[23], group[37], roster, x, y, z, bam if heading is None else heading))
+        unplaced += missing
+    return units, unplaced, player
+
+
+def es1_structure_types(data):
+    """Earthsiege 1's BASES.DAT (base.cpp 0x5000): int16 count, 70-byte records; +2 shape, +6 non-zero when the
+    shape is a BASES_AN/AE.DTS root rather than a BASES/BASES_E.DGS record."""
+    count = struct.unpack_from('<h', data)[0] if len(data) >= 2 else 0
+    return [struct.unpack_from('<2xh2xh', data, 2 + 70 * i) for i in range(count)]
+
+
+def es1_units(pack, mission, world):
+    """The mission's HERCs, flyers and structures as scene objects, the player's squad (x, y, bam) and warnings."""
+    files, objects, warnings = pack.files, [], []
+    mechs = files.get('MECHS.NAM', b'').decode('latin1').split('\0')
+    flyers = files.get('FLYERS.NAM', b'').decode('latin1').split('\0')
+    forms = {0: formation_table(files.get('DAT/MFORMS.DAT', b''), 7, '<2h'),
+             1: formation_table(files.get('DAT/FFORMS.DAT', b''), 3, '<3h'),
+             2: formation_table(files.get('DAT/BFORMS.DAT', b''), 7, '<2i')}
+    types = es1_structure_types(files.get('DAT/BASES.DAT', b''))
+    units, unplaced, player = es1_placements(mission, forms)
+    for kind, side, roster, x, y, z, bam in units:
+        if kind == 0:
+            name = mechs[roster[24]].strip().upper() if 0 <= roster[24] < len(mechs) else ''
+            model = pack.herc(name, {s: roster[25 + s] for s in range(10) if roster[25 + s] >= 0}, world) if name else None
+        elif kind == 1:
+            name = flyers[roster[26]].strip().upper() if 0 <= roster[26] < len(flyers) else ''
+            model = pack.model(name, read_object(Reader(files[name + '.DTS'])), 'enemy', world) \
+                if name in FLYER_SHAPES and name + '.DTS' in files else None
+        else:
+            number, model = roster[4], None
+            name = f'structure {number}'
+            if 0 <= number < len(types):
+                shape, animated = types[number]
+                library = (pack.enemy_animated if side else pack.animated) if animated else (pack.enemy_dgs if side else pack.dgs)
+                if 0 <= shape < len(library):
+                    key = ('an' if animated else 'dgs') + ('e' if side else '') + f'{shape:02d}-basetex'
+                    model = pack.model(key, library[shape][1], 'basetex', world)
+        entry = dict(name=name or ('HERC', 'flyer')[kind], matrix=placement_matrix(x, y, z, bam), model=model, source='pack')
+        if kind < 2:
+            entry.update(npc=True, entity=f'{entry["name"]}#{len(objects)}')
+        objects.append(entry)
+    if unplaced:
+        warnings.append(f'{unplaced} group(s) have no point or route and are not shown')
+    missing = sum(1 for item in objects if not item['model'])
+    if missing:
+        warnings.append(f'{missing} unit(s) have no drawable shape (magenta boxes)')
+    return objects, player, warnings
 
 
 def es1_scene(pack, stem):
-    """An Earthsiege 1 mission's ground and terrain features. The zone (dat\\zoneN: u16, u16 count, then records of
-    u16 shape, int32 x, y, z, int16 x, y, z turn) places shapes of the theatre's grid-shape library (dgs\\<theatre>,
-    textured from dba\\terrain) on flat ground. Mission units are not read."""
+    """An Earthsiege 1 mission: ground, the zone's terrain features and the mission's units. The zone (dat\\zoneN:
+    u16, u16 count, then records of u16 shape, int32 x, y, z, int16 x, y, z turn) places shapes of the theatre's
+    grid-shape library (dgs\\<theatre>, textured from dba\\terrain) on flat ground; units as es1_placements."""
     files, warnings = pack.files, []
     try:
-        header = read_mission(files[f'MSN/{stem}.MSN'], [0] * 1000, 11, {})['header']
+        mission = read_mission(files[f'MSN/{stem}.MSN'], [0] * 1000, ES1_LAYOUT)
     except struct.error:
-        raise ValueError('Mission file ends inside its header rows (truncated, or not the retail layout)') from None
+        raise ValueError('Mission file ends inside its rows (truncated, or not the retail layout)') from None
+    header = mission['header']
     theatre, zone_number = header[0], header[1]
     if not 0 <= theatre < len(ES1_THEATRES):
         raise ValueError(f'Theatre {theatre} out of range')
@@ -716,8 +854,12 @@ def es1_scene(pack, stem):
         model = pack.model(f'{ES1_THEATRES[theatre]}{shape:02d}', library[shape][1], 'terrain', world)
         objects.append(dict(name=f'{ES1_THEATRES[theatre]} feature {shape}', matrix=placement_matrix(x, y, z, turn_z),
                             model=model, source='pack'))
-    warnings.append('Earthsiege 1 mission units (HERCs, structures, flyers) are not decoded yet: ground, terrain '
-                    'features, sky and fog only')
+    units, player, notes = es1_units(pack, mission, world)
+    objects += units
+    warnings += notes
+    warnings.append("The player's squad (the shell's player.mec) is not shown; viewpoint 1 stands at its point")
+    warnings.append("Units stand at their points' height (ground level); settling onto terrain features is not checked")
+    warnings.append('Random mission variants are shown as their first alternative; campaign flags as on first play')
     warnings.append('Ground texture tiling and draw distance are estimates, not read from the game')
     raw = files.get(f'DBA/{ground_name}.64K')
     squares, unit = 128, ES1_TILE * SCALE
@@ -739,7 +881,8 @@ def es1_scene(pack, stem):
                  incidence=math.degrees(math.asin(-sun[2]))),
         haze=list(colours[horizon]), sky=sky_dome(pack, f'es1w{world}', colours, hzline, visible), planets=[], stars=None,
         flare=None, weather=None, objects=objects,
-        viewpoints=[view_matrix(0, 0, EYE / SCALE, 0), view_matrix(-60000, -60000, 200 / SCALE, -0x2000, -.35)],
+        viewpoints=[view_matrix(*(player or (0, 0, 0))[:2], EYE / SCALE, player[2] if player else 0),
+                    view_matrix(-60000, -60000, 200 / SCALE, -0x2000, -.35)],
         warnings=warnings)
     return scene, dict(heights=bytes((squares + 1) ** 2 * 4), materials=bytes(squares * squares * 2),
                        light=struct.pack('<H', 0xfff) * (squares + 1) ** 2)
@@ -767,7 +910,7 @@ def es1_section(stem):
 
 
 def import_es1(files, install, output, missions=None, replace=False):
-    """Import every Earthsiege 1 mission (its ground and terrain features), or the named ones."""
+    """Import every Earthsiege 1 mission (ground, terrain features and units), or the named ones."""
     if 'DGS/DESERT.DGS' not in files or not any(k.startswith('MSN/') for k in files):
         raise ValueError(f'Not an Earthsiege folder (no VOL volumes with missions and terrain shapes): {install}')
     pack = Pack(files, output, 'es1')

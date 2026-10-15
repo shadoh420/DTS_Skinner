@@ -41,10 +41,57 @@ the script header's first two words as theatre and zone; the world loader (0x280
 256×256 `dba\<name>.64k` ground. A zone is a list of grid shapes from `dgs\<theatre>.dgs` (desert, temper, ice, urban,
 waste, ruins) placed with an int32 position and a yaw on flat ground.
 
-**Incomplete:** mission units (HERCs, structures, flyers) are not decoded; ES1's `.MSN` rows differ from ES2's and their
-roster/group layout is unknown. Ground texture tiling (one repeat per 32768 units) and the draw/fog distance are
-estimates. Header patches are read with the ES2 sentinel rules; GO.EXE may override the theatre or time of day (not
-checked). B0_C1_20 and B0_C1_30 end inside their header rows and are reported as failed.
+### Earthsiege 1 units
+
+The shell (`GO.EXE`, X-32 image, linear = file offset − 0x491D; generator at 0x30120) reads a `.MSN` with the same
+rules as ES2's VSHELL (conditions, variants, repeated GUIDs) and writes `data\script.dat`, which DBSIM loads (0x1feb4
+first pass, 0x20c88 units). The `data\script.dat` left in the retail `data` folder is the shell's output for
+`S2_ASS01`; the importer's rows match it in every group field it uses (kind, formation, point, heading, route,
+members, side), all 29 points and 8 of 9 routes. The ninth route, the header and the variant contents differ only
+by the shell's random draws.
+
+| Row | Words | What |
+|---|---|---|
+| 1 | 7 | conditions; flag tests are 0x114 `==`, 0x115 `!=`, 0x116 `<`, 0x117 `>` (ES2: 0x119-0x11e) |
+| 2 | 11 | header patches (condition + ten header words) |
+| 3 | 11 | points (int32 x, y, z at words 5-10; word 4 set = sum of two earlier points) |
+| 4 | 5 | headings (word 4) |
+| 5 | 5 + n | routes (word 4 count, then point GUIDs) |
+| 6, 7 | 6, 15 | areas and triggers (not drawn) |
+| 8 | 53 | HERC roster: 24 type (`MECHS.NAM`), 25-34 weapon fit, 35 point, 36 heading |
+| 9 | 32 | flyer roster: 24 point, 25 heading, 26 type (`FLYERS.NAM`) |
+| 10 | 12 | structure roster: 4 type (`BASES.DAT`), 5 point, 6 heading |
+| 11 | 44 | groups: 23 kind (0 HERCs, 1 flyers, 2 structures), 24 formation, 26 point, 27 heading, 28 route, 29-36 members, 37 side (0 Terran) |
+
+A variant key (word 2 of rows 3-5, 8-10) copies the whole record from the picked alternative. A repeated GUID replaces
+rows 3-7 and overlays the set fields of rows 8-11 (unset = 0, -1, 5, 2 or 100 by field, GO.EXE 0x2f924, 0x2fb4c,
+0x2fce4, 0x2fe28).
+
+Placement as DBSIM does it: every member of every group except group 0 is built at the start (0x1feb4; no late
+arrivals in ES1). Group 0 is the player's squad, whose HERCs come from the shell's `player.mec`, so only its point is
+used (viewpoint 1). A member with its own point stands there. Otherwise it stands at the group's point, else at its
+route's first point, plus the formation offset of its slot (`MFORMS` 7 × int16 x, y; `FFORMS` 3 × int16 x, y, z;
+`BFORMS` 7 × int32 x, y; slot n takes entry n-1, read straight on through the table) turned by the first member's
+heading (0xf360). A member without its own heading takes the group's. The group's heading is its heading record, else
+the first leg's atan2 less a quarter turn. Flyers at height 0 climb to 5000 (0x1d898). Structures draw from
+`BASES.DAT` (11 × 70 bytes: +2 shape, +6 animated): `BASES.DGS`/`BASES_AN.DTS` for side 0, `BASES_E.DGS`/`BASES_AE.DTS`
+otherwise, in `BASETEX`.
+
+**Heading quirk, replicated:** DBSIM stores a heading word as `(value << 14) & 0xffff` (0x203ba), so only its low two
+bits count. The missions' headings are degrees (0, 45, 90 …), so 90 and 270 read as a half turn and 0/180 as none.
+This is read from the binary, not checked in the running game.
+
+All 112 readable missions import with their units (1,310 HERCs, 467 flyers, 1,056 structures, every one drawable;
+SM_ESC50 has only the player's group). Some missions start several one-craft flyer groups on the same route, so their
+Skimmers stand stacked at its first point, as the game spawns them.
+
+**Not shown or not checked:** the player's own HERCs; HOVTANK/DROPSHIP flyers have no shape (none are used in the
+retail missions); units stand at their point's height, and whether DBSIM then settles them onto terrain features is
+not checked. Every random draw is 0 and every campaign flag 0 (first play; most flag tests are "flag > 0" for earlier
+outcomes), so a mission shows its first authored alternative, and a simulator mission its first location rather than
+the shell's random one. Ground texture tiling (one repeat per 32768 units) and the draw/fog distance are estimates.
+GO.EXE may override the theatre or time of day (not checked). B0_C1_20 and B0_C1_30 end inside their header rows and
+are reported as failed.
 
 ## T1 sky list
 
