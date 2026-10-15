@@ -1,7 +1,7 @@
 /* Doom 3 ARB2 interactions, without stencil shadows. No Three lighting/color transforms. */
 (async function() {
 'use strict';
-const $=id=>document.getElementById(id), M=window.doom3Materials, config=window.idTech4MapConfig, base=config.data;
+const $=id=>document.getElementById(id), M=window.doom3Materials, P=window.doom3Particles, config=window.idTech4MapConfig, base=config.data;
 const npcs=window.skinnerNPCToggle;
 document.title='DTS Skinner - '+config.label+' Maps';$('gameTitle').textContent=config.label+' Maps';
 $('gamePath').placeholder=config.install;$('importStatus').textContent=config.description;
@@ -152,6 +152,37 @@ function applyDeform(batch,view,seconds,sound) {
  for(const name of ['position','uv','color'])batch.geometry.attributes[name].needsUpdate=true;
  return true;
 }
+function particleGeometry({emitter,stage}) {
+ const n=P.stageCapacity(stage),g=new THREE.BufferGeometry();
+ for(const [name,size] of [['position',3],['normal',3],['uv',2],['color',3],['doomAlpha',1],['doomTangent',3],['doomBitangent',3]]) {
+  const attribute=new THREE.BufferAttribute(new Float32Array(n*size),size);
+  if(['position','uv','color','doomAlpha'].includes(name))attribute.setUsage(THREE.DynamicDrawUsage);g.setAttribute(name,attribute);
+ }
+ g.setIndex(P.quadIndex(n));g.setDrawRange(0,0);
+ return {geometry:g,emitter,stage,out:{position:new Float32Array(n*3),uv:g.attributes.uv.array,color:new Float32Array(n*4),count:0}};
+}
+function applyParticles(batch,view,seconds) {
+ // idRenderModelPrt in emitter space: view axes go in through the emitter axis, quads come out to world space.
+ const {emitter,stage,out}=batch.particle,A=emitter.axis,o=emitter.origin,e=view.matrixWorld.elements,g=batch.geometry;
+ const local=w=>[0,1,2].map(j=>A[j]*w[0]+A[3+j]*w[1]+A[6+j]*w[2]);
+ const axes={left:local([-e[0],-e[1],-e[2]]),up:local([e[4],e[5],e[6]]),forward:local([-e[8],-e[9],-e[10]]),down:local([0,0,-1])};
+ let t=seconds;
+ if(emitter.fx) {
+  // idEntityFx: each particle action lives [delay, delay+duration) of an effect that repeats every `period` (0: once).
+  const f=emitter.fx;if(f.period>0)t%=f.period;else if(t>=f.duration)return false;
+  t-=f.delay;if(t<0||t>=f.length)return false;
+ }
+ const n=P.simulate(stage,t*1000,emitter.parms,axes,out,(name,f)=>M.evaluate(['table',name,f],seconds,emitter.parms,tables));
+ if(!n)return false;
+ const p=g.attributes.position.array,c=g.attributes.color.array,a=g.attributes.doomAlpha.array,q=out.position;
+ for(let i=0;i<n;i++) {
+  for(let r=0;r<3;r++){p[i*3+r]=o[r]+A[r*3]*q[i*3]+A[r*3+1]*q[i*3+1]+A[r*3+2]*q[i*3+2];c[i*3+r]=out.color[i*4+r];}
+  a[i]=out.color[i*4+3];
+ }
+ g.setDrawRange(0,n/4*6);
+ for(const name of ['position','uv','color','doomAlpha'])g.attributes[name].needsUpdate=true;
+ return true;
+}
 function disposeMap() {
  npcs.setCount(0);
  for(const b of batches){for(const mesh of b.meshes)mesh.material.dispose();b.group.clear();b.geometry.dispose();}
@@ -190,17 +221,21 @@ async function buildMap(meta,binary) {
   }));
  }
  let passCount=0,ambientOrder=100;
- for(const surface of meta.surfaces) {
+ // Each emitter stage draws like one more surface whose quads are rebuilt per view.
+ const particleSurfaces=(meta.emitters||[]).flatMap(emitter=>meta.particles[emitter.particle].stages.map((stage,k)=>({stage,k})).filter(({stage})=>stage.cycleMsec>0)
+  .map(({stage,k})=>({material:emitter.materials[k],bounds:emitter.bounds,areas:emitter.areas,lights:emitter.lights,entity:emitter.entity,parms:emitter.parms,particle:{emitter,stage}})));
+ for(const surface of [...meta.surfaces,...particleSurfaces]) {
   const material=meta.materials[surface.material],group=new THREE.Group(),meshes=[];
   const deformed=M.DEFORMS[material.deform?.kind]?deformGeometry(surface,material.deform):null;
-  let g=deformed?.geometry;
+  const particle=surface.particle?particleGeometry(surface.particle):null;
+  let g=deformed?.geometry||particle?.geometry;
   if(!g){g=new THREE.BufferGeometry();g.attributes=geometry.attributes;g.index=geometry.index;g.setDrawRange(surface.start,surface.count);}
   g.boundingBox=new THREE.Box3(new THREE.Vector3(...surface.bounds[0]),new THREE.Vector3(...surface.bounds[1]));
   if(deformed)g.boundingBox.expandByScalar(deformed.margin);
   g.boundingSphere=g.boundingBox.getBoundingSphere(new THREE.Sphere());
-  const batch={group,meshes,geometry:g,surface,deform:deformed,npc:npcOwners.has(surface.entity)};batches.push(batch);scene.add(group);
+  const batch={group,meshes,geometry:g,surface,deform:deformed,particle,npc:npcOwners.has(surface.entity)};batches.push(batch);scene.add(group);
   function pass(kind,diffuse,specular,bump,light,projection,order) {
-   const u=uniforms();u.vertexAlphaEnabled.value=meta.game==='quake4'?1:0;u.passKind.value=kind;u.diffuseMap.value=diffuse?.texture||(kind===1?black:white);
+   const u=uniforms();u.vertexAlphaEnabled.value=meta.game==='quake4'||particle?1:0;u.passKind.value=kind;u.diffuseMap.value=diffuse?.texture||(kind===1?black:white);
    u.specularMap.value=specular?.texture||black;u.bumpMap.value=bump?.texture||flat;
    u.normalRXGB.value=u.bumpMap.value.userData.normalEncoding==='rxgb'?1:0;
    u.vertexMode.value=diffuse?.vertexColor||0;u.specularVertexMode.value=specular?.vertexColor||0;
@@ -216,7 +251,7 @@ async function buildMap(meta,binary) {
     u.cameraCube={value:+diffuse.cube.camera};u.skyMatrix={value:unit()};
    }
    const sm=new THREE.ShaderMaterial({vertexShader:vertex,fragmentShader:kind===3?cubeFragment:fragment,uniforms:u,vertexColors:true,
-    side:material.twoSided||deformed?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
+    side:material.twoSided||deformed||particle?THREE.DoubleSide:THREE.FrontSide,depthWrite:kind===0,depthFunc:kind===0||material.translucent?THREE.LessEqualDepth:THREE.EqualDepth,transparent:kind!==0,
     blending:kind===0?THREE.NoBlending:THREE.CustomBlending,blendSrc:THREE.OneFactor,blendDst:kind===1?THREE.OneFactor:THREE.ZeroFactor});
    if(kind===2||kind===3) {
     const factors=M.ambientBlend(diffuse).map(f=>blendFactors[f]);
@@ -265,7 +300,7 @@ function draw(seconds=0,target=null) {
    batch.group.visible=(!batch.npc||npcs.enabled)&&(!batch.surface.areas.length||batch.surface.areas.some(a=>areas.has(a)))&&frustum.intersectsBox(batch.geometry.boundingBox);
    if(batch.group.visible){
     const sound=M.soundAmplitude(batch.surface.sound,seconds,soundAmplitudeOverride);
-    if(batch.deform&&!applyDeform(batch,view,seconds,sound)){batch.group.visible=false;continue;}
+    if(batch.deform&&!applyDeform(batch,view,seconds,sound)||batch.particle&&!applyParticles(batch,view,seconds)){batch.group.visible=false;continue;}
     surfaces++;for(const mesh of batch.meshes)updatePass(mesh,seconds,batch.surface.parms,sound);
    }
   }
