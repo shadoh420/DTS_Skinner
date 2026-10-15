@@ -38,6 +38,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     gameShadowAmbient: {value: new THREE.Vector3(.55, .55, .55)}, gameShadowColour: {value: new THREE.Vector3(1, 1, 1)},
     gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()},
     gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}};
+  const gameTime = {value: 0};  // Seconds, for what moves.
   // A material's specular map (materials.json `spec`: a texture, or [gloss, strength] made a texel) and material id.
   const evenTexels = new Map();
   function evenTexel([r, g] = [0, 0]) {
@@ -104,6 +105,21 @@ window.addEventListener('DOMContentLoaded', async () => {
         shader.fragmentShader = 'uniform vec4 glassBase, glassEdge;\n' + shader.fragmentShader.replace('#include <output_fragment>', `
           float edgeOn = pow(1. - abs(dot(normal, normalize(vViewPosition))), 2.);
           gl_FragColor = mix(glassBase, glassEdge, edgeOn);`);
+      };
+      materials.set(key, made);
+      return made;
+    }
+    if (entry && entry.unlit && entry.texture) {
+      // Screens, holograms and glow panes (statictrans*): the texel as it is, unlit, scrolling by `scroll` units a
+      // second; statictrans glass is the envmap times `mirror`, see-through.
+      made = new THREE.MeshBasicMaterial(entry.mirror != null ? {color: 0, combine: THREE.AddOperation, reflectivity: entry.mirror,
+        envMap: gameUniforms.gameEnvmap.value, transparent: true, opacity: .5, depthWrite: false, side} : {map: texture(entry.texture),
+        side: entry.cutout ? THREE.DoubleSide : side, alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
+      if (entry.mirror != null) mirrors.push(made);
+      if (entry.scroll) made.onBeforeCompile = shader => {
+        Object.assign(shader.uniforms, {gameTime, gameScroll: {value: new THREE.Vector2(entry.scroll[0], -entry.scroll[1])}});
+        shader.fragmentShader = 'uniform float gameTime; uniform vec2 gameScroll;\n' + shader.fragmentShader.replace('#include <map_fragment>',
+          'diffuseColor *= texture2D(map, vUv + gameScroll * gameTime);');
       };
       materials.set(key, made);
       return made;
@@ -612,6 +628,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
     move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
+    gameTime.value += delta;
     updateParticles(delta);
     draw();
   });

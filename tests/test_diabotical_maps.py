@@ -191,6 +191,14 @@ class DiaboticalMapsTest(unittest.TestCase):
                  b"\tpixel_shader_param accent1 0 0.5 0.4 0.15\n\tpixel_shader_param accent2 0.75 0.5  0.25 0.6\n  }\n}\n"
         self.assertEqual(read_materials([pack])['hpt1_mat_2'][0][3]['glass'], [[0, .5, .4, .15], [.75, .5, .25, .6]])
         self.assertIsNone(found['pad_mat_1'][0][3]['glass'])
+        # Forward shaders are unlit: a scrolling screen (statictranstex, float_params' first two), glass (statictrans:
+        # the envmap times 1 - the first), a lit tile material for contrast.
+        shader = b"screen\n{\n {\n  map led_d.png\n  pixel_shader statictranstex.ps.cso\n  pixel_shader_param float_params 0 -0.09\n  blendfunc blend\n }\n}\n" \
+                 b"pane\n{\n {\n  map a.png\n  pixel_shader statictrans.ps.cso\n  pixel_shader_param float_params 0.25\n }\n}\n" \
+                 b"wall\n{\n {\n  map w.png\n  pixel_shader tile.ps.cso\n }\n}\n"
+        found = {name: definitions[0][3] for name, definitions in read_materials([pack]).items()}
+        self.assertEqual([(found[n]['unlit'], found[n]['scroll'], found[n]['mirror']) for n in ('screen', 'pane', 'wall')],
+                         [(True, [0, -.09], None), (True, None, .75), (False, None, None)])
 
     def test_import_writes_blocks_index_and_material_textures(self):
         with tempfile.TemporaryDirectory() as directory:

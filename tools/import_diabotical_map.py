@@ -250,6 +250,14 @@ def read_materials(packs):
                     # The efferv glass (health bubbles): its base and edge (fresnel) colours, linear RGBA; no texture.
                     params = dict(re.findall(r'pixel_shader_param\s+(accent[12])\s+(\S+\s+\S+\s+\S+\s+\S+)', stage))
                     flags['glass'] = [[float(v) for v in params[k].split()] for k in ('accent1', 'accent2')] if 'efferv' in stage and len(params) == 2 else None
+                    # Forward shaders (statictrans*: screens, holograms, glow panes; indicator, forcefield, shield,
+                    # bubble) write their texel to the screen as it is, unlit. statictranstex* scroll their texture by
+                    # float_params' first two, units a second; statictrans is glass: the envmap times 1 - the first.
+                    shader_name = (re.findall(r'pixel_shader\s+(\w+)', stage) or [''])[0].lower()
+                    floats = [float(v) for v in re.findall(r'-?\d*\.?\d+', next(iter(re.findall(r'float_params([^\n]*)', stage)), ''))]
+                    flags['unlit'] = shader_name.startswith('statictrans') or shader_name in UNLIT
+                    flags['scroll'] = floats[:2] if shader_name.startswith('statictranstex') and any(floats[:2]) else None
+                    flags['mirror'] = round(1 - (floats or [0])[0], 3) if shader_name == 'statictrans' else None
                     # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5;
                     # a tinted material's (tilemask) colour mask is its map 4: NAME#4.
                     for slot in (0, 3, 5) if 'tileter' in stage else (0, 4) if 'tilemask' in stage else (0,):
@@ -649,6 +657,7 @@ POINT = SUN = 1 / np.pi  # Light per unit of colour x intensity on a white surfa
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
 DEFAULT_SHADOW = [.325, .469, .519]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
 BLOCK = np.array([40, 20, 40])  # A block's size in entity units.
+UNLIT = ('indicator', 'forcefield', 'shield', 'bubble', 'bubblesm')  # Besides statictrans*: see read_materials.
 SPECULAR = ('point', 'spot', 'capsule')  # tile.cs: diffuse lights (and no type: diffuse) add no specular light.
 
 
@@ -813,7 +822,8 @@ def material_textures(packs, names, materials, output, replace=False):
             data = io.BytesIO()
             image.save(data, 'PNG')
             target.write_bytes(data.getvalue())
-        entries[name] = (dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend') if flags[key]} |
+        entries[name] = (dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend', 'unlit') if flags.get(key)} |
+                         {key: flags[key] for key in ('scroll', 'mirror') if flags.get(key) is not None} |
                          ({'accents': flags['accents']} if any(a is not None for a in flags['accents']) else {}) |
                          ({} if '#' in name else surface(flags, folder)))
     return entries, sorted(set(missing))
