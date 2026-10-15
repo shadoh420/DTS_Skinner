@@ -671,6 +671,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   let lightTime = 0;
+  function drawFrame() {
+    if (skyPass) {  // The other game's sky first, then the world over it without clearing.
+      skyPass.render(renderer, camera, skyTime.value);
+      renderer.clearDepth();
+      renderer.autoClear = false;
+      renderer.render(scene, camera);
+      renderer.autoClear = true;
+    } else renderer.render(scene, camera);
+  }
+  // For checks in a script or a hidden page, as the other Maps pages have: draw a frame and pick a sky by id.
+  window.skinnerT1Maps = {renderer, scene, camera, drawFrame, showSky: id => showSky(id), skies: () => skies};
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
     // The game steps building lights 67 ms at a time (InteriorShape::sm_minLightUpdateMS); switched off, they hold still.
@@ -684,13 +695,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     skyTime.value += delta;
     if (weather) weather(delta);
     if (streamFrame) streamFrame(delta);
-    if (skyPass) {  // The other game's sky first, then the world over it without clearing.
-      skyPass.render(renderer, camera, skyTime.value);
-      renderer.clearDepth();
-      renderer.autoClear = false;
-      renderer.render(scene, camera);
-      renderer.autoClear = true;
-    } else renderer.render(scene, camera);
+    drawFrame();
     if (flare && own.visible) flare(canvas.clientWidth, canvas.clientHeight);
     if (flare && own.visible && overlay.visible) {
       renderer.autoClear = false;

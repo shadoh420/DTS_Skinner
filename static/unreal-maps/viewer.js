@@ -134,6 +134,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const indexAt = vertices * (map.colors ? 32 : map.lightmap ? 28 : 20);
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, indexAt, map.indices), 1));
     if (config && config.computeNormals) geometry.computeVertexNormals();
+    if (config && config.prepareGeometry) config.prepareGeometry(geometry, map);
     if (config) await config.load(map, loadTexture);
     if (quake) quakeColormap = await loadTexture('colormap.png');
     if (sin) await window.sinMaps.load(map, loadTexture);
