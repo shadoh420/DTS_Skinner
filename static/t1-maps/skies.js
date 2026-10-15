@@ -72,9 +72,15 @@ window.t1Skies = {
   // Unreal, Unreal Tournament, Deus Ex: the sky zone is the source level itself, seen from its SkyZoneInfo and turned
   // with the view and by the zone's rotation (and rate), as unreal-maps/viewer.js draw() does; its fake backdrops
   // draw nothing. Its own pass behind the T1 world, through the game's display power. Returns {render, dispose}.
-  async unreal({entry, loadTexture}) {
+  // `adapter` is a map page's adapter (Vengeance's) whose surfaces, models and terrain the level is built with instead.
+  async unreal({entry, loadTexture}, adapter = null) {
     const source = entry.sky, scene = new THREE.Scene(), get = async url => { const r = await fetch(url); if (!r.ok) throw Error(url); return r; };
-    const map = await (await get(`${entry.base}maps/${source.map}/scene.json`)).json();
+    const map = {...await (await get(`${entry.base}maps/${source.map}/scene.json`)).json(), id: source.map};
+    const file = name => loadTexture(entry.base + 'textures/' + name, true);
+    if (adapter) {  // Its load and terrain read the page's scene by its debug name: give them this one.
+      window[adapter.debugName] = {scene, renderer: {setClearColor() {}}};
+      await adapter.load(map, file);
+    }
     const buffer = await (await get(`${entry.base}maps/${source.map}/geometry.bin`)).arrayBuffer(), n = map.vertices;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buffer, 0, n * 3), 3));
@@ -87,10 +93,12 @@ window.t1Skies = {
     }
     if (map.colors) geometry.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buffer, n * 28, n * 4), 4, true));
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, n * (map.colors ? 32 : map.lightmap ? 28 : 20), map.indices), 1));
+    if (adapter?.computeNormals) geometry.computeVertexNormals();
     // Poly flags as unreal-maps/viewer.js surfaceMaterial: masked 0x2, translucent 0x4, modulated 0x40, fake backdrop
     // 0x80, two-sided 0x100; panning surfaces move their own copy of the texture.
     const panning = [], materials = await Promise.all(map.groups.map(async (group, index) => {
       geometry.addGroup(group.start, group.count, index);
+      if (adapter) return adapter.material(group, group.texture && await file(group.texture), lightMap);
       const side = group.flags & 0x100 ? THREE.DoubleSide : THREE.FrontSide;
       if (group.flags & 0x80) return new THREE.MeshBasicMaterial({colorWrite: false, side});
       let texture = group.texture && await loadTexture(entry.base + 'textures/' + group.texture, true);
@@ -104,6 +112,7 @@ window.t1Skies = {
       return new THREE.MeshBasicMaterial({...common, alphaTest: group.flags & 0x2 ? .5 : 0});
     }));
     scene.add(new THREE.Mesh(geometry, materials));
+    if (adapter?.buildInstances) for (const object of await adapter.buildInstances(map, entry.base, get, file)) scene.add(object);
     const turn = rotator => {  // unreal-maps/viewer.js unrealTurn: Unreal's x, y, z are the page's z, -x, y.
       const [p, y, r] = rotator.map(a => a * Math.PI / 32768);
       const [cp, sp, cy, sy, cr, sr] = [Math.cos(p), Math.sin(p), Math.cos(y), Math.sin(y), Math.cos(r), Math.sin(r)];
@@ -136,13 +145,19 @@ window.t1Skies = {
         renderer.render(ramp, flat);
       },
       dispose() {
-        geometry.dispose();
-        for (const material of materials) material.dispose();
+        scene.traverse(object => { object.geometry?.dispose(); [].concat(object.material || []).forEach(material => material.dispose()); });
         for (const {texture} of panning) texture.dispose();
         lightMap?.dispose();
         target.dispose();
       },
     };
+  },
+
+  // Tribes: Vengeance: the same pass over the level as its own page builds it (tvg-maps/materials.js, loaded on first use).
+  async vengeance(args) {
+    if (!window.skinnerMapViewerConfig) await new Promise((resolve, reject) => document.head.append(Object.assign(document.createElement('script'),
+      {src: '/static/tvg-maps/materials.js', onload: resolve, onerror: reject})));
+    return this.unreal(args, window.skinnerMapViewerConfig);
   },
 
   // Quake: the sky texture's halves as two layers, front over back (index 0 clear), scrolling at 16 and 8 texels a

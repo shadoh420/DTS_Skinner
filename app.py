@@ -225,7 +225,8 @@ SKY_PACKS = {'t1': ('Tribes', 'dome', ('',)), 'q3': ('Quake III Arena', 'q3', ('
              'sin': ('SiN', 'q2', ('sin', '2015', 'ctf')), 'vtmb': ('Vampire: The Masquerade – Bloodlines', 'q2', ('',)),
              'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',)), 'quake': ('Quake (1996)', 'quake1', ('', 'hipnotic', 'rogue')),
              'nos': ('Nosgoth', 'ue3dome', ('',)), 'unreal': ('Unreal', 'ue1', ('unreal',)),
-             'ut': ('Unreal Tournament', 'ue1', ('ut',), 'unreal'), 'dx': ('Deus Ex', 'ue1', ('',))}
+             'ut': ('Unreal Tournament', 'ue1', ('ut',), 'unreal'), 'dx': ('Deus Ex', 'ue1', ('',)),
+             'tvg': ('Tribes: Vengeance', 'ue1', ('',))}
 UE1_POWER = {'unreal': 1 / (2.5 * .5), 'ut': .67, 'dx': 1 / (2.5 * .6)}  # unreal-maps/viewer.js POWER: each game's display gamma.
 PLACEHOLDER_SKIES = {'eye_sky_plain.png'}  # E.Y.E.'s stand-in for its HDR skies: one flat colour (import_eye_map.py).
 
@@ -244,9 +245,11 @@ def scene_skies(kind, scene, row, game=None):
         sky = scene.get('sky')
         if not (sky and sky.get('origin') and len(sky.get('rotation') or ()) == 9):
             return []
-        power = (scene.get('display') or {}).get('power') if game == 'dx' else None
+        # Deus Ex may carry its own display power; Vengeance's page draws through its lighting's (its adapter builds the level).
+        power = (scene.get('display') or {}).get('power') if game == 'dx' else (scene.get('lighting') or {}).get('display_power') if game == 'tvg' else None
         return [(dict(name=row.get('title') or row.get('name') or row['id'], map=row['id'], **{k: sky[k] for k in ('origin', 'rotation', 'rotator', 'rate') if k in sky}),
-                 {'renderer': 'unreal', 'power': power if isinstance(power, (int, float)) and power > 0 else UE1_POWER[game]})]
+                 {'renderer': 'vengeance' if game == 'tvg' else 'unreal',
+                  'power': power if isinstance(power, (int, float)) and power > 0 else UE1_POWER.get(game, 1)})]
     if kind == 'ue3dome':  # Dome meshes the importer flags sky (skies.js meshes), centred on the first one's pivot.
         library = scene.get('model_library') or {}
         placed = [(library[i['look']], i['matrix']) for i in scene.get('instances') or []
@@ -295,7 +298,7 @@ def t1_map_skies():
                                           name=sky['name'].removeprefix('textures/') if kind != 'dome' else None, sky=sky,
                                           renderer='dome' if kind == 'dome' else 'q3',
                                           base=f'/{(pack or [game])[0]}-map-data/' + (section + '/' if section else ''),
-                                          visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A dome's shape follows its mission's.
+                                          visible=(scene.get('terrain') or {}).get('visibleDistance') if kind == 'dome' else None)  # A dome's shape follows its mission's.
                         skies[key].update(extra)
                     elif skies[key]['section'] != row.get('group'):  # Noted only while every map with it shares it.
                         skies[key]['section'] = None
