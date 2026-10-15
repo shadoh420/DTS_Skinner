@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skinner Volumetrics</title>
+<style>
+  body { margin: 0; background: #000; color: #ddd; font: 12px system-ui, sans-serif; overflow: hidden; }
+  canvas { width: 100vw; height: 100vh; display: block; }
+  #ui { position: fixed; top: 0; left: 0; background: #000b; padding: 8px; width: 300px; }
+  #ui label { display: flex; justify-content: space-between; gap: 6px; margin: 2px 0; }
+  #ui input[type=range] { width: 130px; }
+  #times { margin: 6px 0 0; font: 11px ui-monospace, monospace; white-space: pre; }
+</style>
+<script src="/static/three.min.js"></script>
+<script src="/static/t1-maps/skies.js"></script>
+</head>
+<body>
+<div id="ui">
+  <label>Preset <select id="preset"></select></label>
+  <label>Clouds <select id="mode"><option value="layer">Skinner Sky layer (per pixel)</option><option value="pano" selected>Volumetric (sky texture)</option></select></label>
+  <label>Sky texture <select id="pano"><option>512x128</option><option selected>1024x256</option><option>2048x512</option></select></label>
+  <label>Rows per frame <select id="slices"><option value="1">all</option><option value="4">1/4</option><option value="8" selected>1/8</option><option value="16">1/16</option></select></label>
+  <label>Steps <select id="steps"><option>16</option><option selected>24</option><option>32</option><option>48</option></select></label>
+  <label>Cloud thickness km <input id="cloudThickness" type="range" min="0.2" max="4" step="0.1" value="1.5"></label>
+  <label><span><input id="fog" type="checkbox" checked> Height fog</span></label>
+  <label>Fog density /km <input id="fogDensity" type="range" min="0" max="5" step="0.05" value="1.2"></label>
+  <label>Fog height m <input id="fogHeight" type="range" min="5" max="400" step="5" value="40"></label>
+  <label>Fog brightness <input id="fogBrightness" type="range" min="0.2" max="2" step="0.05" value="1"></label>
+  <div id="times">GPU times: waiting</div>
+  <div>Drag to look, WASD to move, Q/E down/up, Shift faster.</div>
+</div>
+<script>
+'use strict';
+// Volumetrics test bed: Skinner Sky with volumetric clouds marched into a small sky texture a slice at a time, and
+// closed-form height fog over a test scene, each pass timed on the GPU (EXT_disjoint_timer_query_webgl2).
+// ?w=&h= sets the drawing size (default 2560x1440, whatever the window), ?t= freezes the clock, ?mode=layer starts on
+// the merged sky, ?core= reads another SkinnerSky.cginc (to compare against).
+(async () => {
+  const query = new URLSearchParams(location.search), $ = id => document.getElementById(id);
+  const width = +query.get('w') || 2560, height = +query.get('h') || 1440, frozen = query.has('t') ? +query.get('t') : null;
+  const renderer = new THREE.WebGLRenderer({antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: query.has('shot')});
+  renderer.setPixelRatio(1);
+  renderer.setSize(width, height, false);
+  renderer.autoClear = false;
+  document.body.append(renderer.domElement);
+  const gl = renderer.getContext(), timer = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+
+  // Per-pass GPU time: one query per pass per frame, read back when ready; the median of the last 120 is shown.
+  const passes = {};
+  function timed(name, draw) {
+    const pass = passes[name] ??= {pending: [], samples: []};
+    pass.used = true;
+    if (!timer) return draw();
+    const q = gl.createQuery();
+    gl.beginQuery(timer.TIME_ELAPSED_EXT, q);
+    draw();
+    gl.endQuery(timer.TIME_ELAPSED_EXT);
+    pass.pending.push(q);
+  }
+  function collect() {
+    const disjoint = timer && gl.getParameter(timer.GPU_DISJOINT_EXT);
+    for (const pass of Object.values(passes)) while (pass.pending.length && gl.getQueryParameter(pass.pending[0], gl.QUERY_RESULT_AVAILABLE)) {
+      const q = pass.pending.shift(), ns = gl.getQueryParameter(q, gl.QUERY_RESULT);
+      gl.deleteQuery(q);
+      if (!disjoint) pass.samples.push(ns / 1e6);
+      if (pass.samples.length > 120) pass.samples.shift();
+    }
+  }
+  const median = list => list.length ? [...list].sort((a, b) => a - b)[list.length >> 1] : NaN;
+  window.gpuTimes = () => Object.fromEntries(Object.entries(passes).filter(([, pass]) => pass.used).map(([name, pass]) => [name, +median(pass.samples).toFixed(3)]));
+
+  // Uniforms shared by every material: the preset's keys (Skinner Sky's defaults), the clouds' and fog's own keys.
+  const defaults = {...t1Skies.skinnerDefaults, cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1};
+  const [noise, core, clouds, fog, presets] = await Promise.all([
+    new THREE.TextureLoader().loadAsync('/static/skinner-sky/SkinnerSkyNoise.png'),
+    ...[query.get('core') ?? '/static/skinner-sky/SkinnerSky.cginc', 'SkinnerClouds.cginc', 'SkinnerFog.cginc'].map(url => fetch(url).then(response => response.text())),
+    fetch('/static/skinner-sky/presets.json').then(response => response.json())]);
+  Object.assign(noise, {flipY: false, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, needsUpdate: true});
+  const U = {skyNoise: {value: noise}, uTime: {value: 0}, layerCoverage: {value: 0}, usePano: {value: 1}, pano: {value: null}, ring: {value: null}};
+  window.U = U;  // For checks from the console.
+  for (const [key, value] of Object.entries(defaults)) U[key] = {value: Array.isArray(value) ? new THREE.Vector3(...value) : value};
+  const declared = Object.entries(defaults).map(([key, value]) => `uniform ${Array.isArray(value) ? 'vec3' : 'float'} ${key};`).join(' ');
+  // The sky's own 2.5D cloud layer reads layerCoverage (0 when the volumetric clouds replace it); sunSize can be
+  // swapped the same way, so the sky texture holds no blocky sun disc.
+  const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring; uniform float uTime, layerCoverage, usePano; ${declared}
+    #define UNROLL\n#define SAMPLE_LOD(s, uv, lod) textureLod(s, uv, lod)\n${prefix}#define cloudCoverage layerCoverage\n${core}\n#undef cloudCoverage\n${clouds}\n${fog}\n`;
+  const quadVertex = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
+  const quad = material => Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material), {frustumCulled: false});
+  const flat = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+  // The sky texture: the air with the clouds over it (rgb) and how much of what is behind still shows (a), per
+  // direction, rewritten a band of rows per frame.
+  let panoTarget, panoScene, panoRow = 0;
+  function makePano() {
+    const [w, h] = $('pano').value.split('x').map(Number);
+    panoTarget?.dispose();
+    panoTarget = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, depthBuffer: false, wrapS: THREE.RepeatWrapping, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter});
+    panoTarget.scissorTest = true;
+    U.pano.value = panoTarget.texture;
+    panoScene = new THREE.Scene().add(quad(new THREE.ShaderMaterial({uniforms: {...U, panoSize: {value: new THREE.Vector2(w, h)}}, vertexShader: quadVertex,
+      fragmentShader: header(`#define CLOUD_STEPS ${$('steps').value}\n#define SKINNER_SKIP_BEHIND\n`) + `uniform vec2 panoSize;
+        void main() {
+          vec3 d = panoDir(gl_FragCoord.xy / panoSize), s = skinnerSky(d);
+          vec4 c = skinnerClouds(d, s);
+          gl_FragColor = vec4(s * c.a + c.rgb, c.a);
+        }`, depthTest: false})));
+    panoRow = 0;
+    fullPano = 2;  // Draw it whole on the next frames, so a new preset does not wipe in.
+  }
+  let fullPano = 0;
+
+  // The horizon ring, the fog's colour in 64 directions: the low sky round each, clouds included, averaged over 72
+  // degrees of azimuth and 2 to 26 degrees up. Fog is lit by the sky round it, not by one cloud; a sharp ring shows
+  // through thin fog on the sky as spokes from the zenith.
+  const ringTarget = new THREE.WebGLRenderTarget(64, 1, {type: THREE.HalfFloatType, depthBuffer: false, wrapS: THREE.RepeatWrapping});
+  U.ring.value = ringTarget.texture;
+  // Two materials, from the sky texture or from the merged sky: 64 pixels are one wave, so its time is its slowest path.
+  const ringMaterial = sample => new THREE.ShaderMaterial({uniforms: U, vertexShader: quadVertex, depthTest: false, fragmentShader: header() + `
+    void main() {
+      vec3 s = vec3(0., 0., 0.);
+      for (int i = -3; i <= 3; i++) for (int j = 0; j < 3; j++) {
+        vec3 d = toward(gl_FragCoord.x / 64. * 360. + float(i) * 12., 2. + float(j * j) * 6.);
+        s += ${sample};
+      }
+      gl_FragColor = vec4(s / 21., 1.);
+    }`});
+  const ringPano = ringMaterial('texture2D(pano, panoUV(d)).rgb'), ringLayer = ringMaterial('skinnerSky(d)'), ring = quad(ringPano);
+  const ringScene = new THREE.Scene().add(ring);
+
+  // The sky behind the scene: Skinner Sky per pixel as merged (with its layer clouds), or the sky texture with the
+  // sun disc, stars and moon added per pixel. Two materials, so neither pays for the other's registers.
+  const skyScene = new THREE.Scene();
+  const skyMaterial = body => new THREE.ShaderMaterial({uniforms: U, side: THREE.BackSide, depthTest: false, depthWrite: false,
+    vertexShader: t1Skies.vertexShader, fragmentShader: header() + `varying vec3 vDir; void main() { vec3 d = normalize(vDir); ${body} }`});
+  const skyLayer = skyMaterial('gl_FragColor = vec4(skinnerSky(d), 1.);'), skyPano = skyMaterial(`
+    vec4 c = texture2D(pano, panoUV(d));
+    gl_FragColor = vec4(c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.)), 1.);`);
+  const skyBall = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), skyPano);
+  skyBall.frustumCulled = false;
+  skyScene.add(skyBall);
+
+  // A test scene in metres, y up: rolling ground 8 km across and pillars out to 2 km, so the fog has depth to show.
+  const scene = new THREE.Scene(), sunLight = new THREE.DirectionalLight(), skyLight = new THREE.HemisphereLight();
+  scene.add(sunLight, sunLight.target, skyLight);
+  const ground = new THREE.PlaneGeometry(8000, 8000, 256, 256).rotateX(-Math.PI / 2), at = ground.attributes.position;
+  const lift = (x, z) => 25 * Math.sin(x / 410) * Math.cos(z / 530) + 9 * Math.sin(x / 97 + z / 143) + 4 * Math.cos(z / 61 - x / 77);
+  for (let i = 0; i < at.count; i++) at.setY(i, lift(at.getX(i), at.getZ(i)) - lift(0, 0));
+  ground.computeVertexNormals();
+  scene.add(new THREE.Mesh(ground, new THREE.MeshLambertMaterial({color: new THREE.Color(.1, .12, .07)})));
+  const pillar = new THREE.BoxGeometry(10, 60, 10), stone = new THREE.MeshLambertMaterial({color: new THREE.Color(.25, .24, .22)});
+  let seed = 7;
+  const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 80; i++) {
+    const angle = random() * Math.PI * 2, r = 60 + 2000 * random() ** 1.5, x = Math.cos(angle) * r, z = Math.sin(angle) * r;
+    const mesh = new THREE.Mesh(pillar, stone);
+    mesh.position.set(x, lift(x, z) - lift(0, 0) + 25, z);
+    scene.add(mesh);
+  }
+
+  const camera = new THREE.PerspectiveCamera(70, width / height, .5, 20000);
+  camera.position.set(0, 2, 0);
+  let yaw = 0, pitch = .08;
+  const target = new THREE.WebGLRenderTarget(width, height, {type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(width, height, THREE.UnsignedIntType)});
+  const post = new THREE.ShaderMaterial({uniforms: {...U, sceneColor: {value: target.texture}, sceneDepth: {value: target.depthTexture},
+    projectionInverse: {value: camera.projectionMatrixInverse}, viewInverse: {value: camera.matrixWorld}, eyeZ: {value: 2}, fogOn: {value: 1}, showPano: {value: 0}, panoWindow: {value: new THREE.Vector4(0, 0, 1, 1)}},
+    vertexShader: quadVertex, depthTest: false, fragmentShader: header() + `uniform sampler2D sceneColor, sceneDepth; uniform mat4 projectionInverse, viewInverse; uniform vec4 panoWindow;
+      uniform float eyeZ, fogOn, showPano; varying vec2 vUv;
+      void main() {
+        vec3 c = showPano > .5 ? texture2D(pano, panoWindow.xy + vUv * panoWindow.zw).rgb : texture2D(sceneColor, vUv).rgb;  // showPano: the sky texture itself, for checks.
+        if (fogOn > .5) {
+          float z = texture2D(sceneDepth, vUv).r;
+          vec4 v = projectionInverse * vec4(vUv * 2. - 1., z * 2. - 1., 1.);
+          v /= v.w;
+          vec3 w = normalize((viewInverse * vec4(v.xyz, 0.)).xyz), rd = vec3(w.x, -w.z, w.y);
+          c = skinnerFog(c, eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz), texture2D(ring, vec2(panoUV(rd).x, .5)).rgb);
+        }
+        gl_FragColor = vec4(pow(aces(c * exposure), vec3(1. / 2.2)) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
+      }`});
+  const postScene = new THREE.Scene().add(quad(post));
+  window.post = post;
+
+  // Sunlight on the scene: the preset's sun through the air (SkinnerSky.cginc toLight at the ground, in JS).
+  function lightScene() {
+    const v = key => U[key].value, rad = Math.PI / 180, az = v('sunAzimuth') * rad, el = v('sunElevation') * rad;
+    const sun = [Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el)];
+    const x = [6360 / 8, 6360 / 1.2], c = sun[2], column = x.map((x, i) => [8, 1.2][i] * (Math.sqrt(x * x * c * c + 2 * x + 1) - x * c));
+    const ray = [5.802e-3, 13.558e-3, 33.1e-3], ozone = [.65e-3, 1.881e-3, .085e-3], r = v('rayleigh');
+    const through = [r.x, r.y, r.z].map((scale, i) => Math.exp(-((ray[i] * scale + ozone[i] * v('ozone') * 1.5) * column[0] + 3.996e-3 * v('mie') * 1.11 * column[1])));
+    const shown = Math.max(c, 0) > 0 ? v('sunIntensity') / Math.PI : 0, color = v('sunColor');
+    sunLight.color.setRGB(color.x * through[0] * shown, color.y * through[1] * shown, color.z * through[2] * shown);
+    sunLight.position.set(sun[0], sun[2], -sun[1]);
+    const glow = Math.max(.02, .25 * Math.max(c + .1, 0)) * v('sunIntensity') / Math.PI;
+    skyLight.color.setRGB(.35 * glow, .45 * glow, .65 * glow);
+    skyLight.groundColor.setRGB(.15 * glow, .14 * glow, .12 * glow);
+  }
+
+  function usePreset(preset) {
+    for (const [key, value] of Object.entries(defaults)) if (key in t1Skies.skinnerDefaults) {
+      const chosen = preset[key] ?? value;
+      if (Array.isArray(chosen)) U[key].value.set(...chosen); else U[key].value = chosen;
+    }
+    lightScene();
+    fullPano = 2;
+  }
+  for (const preset of presets) $('preset').append(new Option(preset.name, preset.id));
+  $('preset').onchange = () => usePreset(presets.find(preset => preset.id === $('preset').value));
+  const fogInputs = {cloudThickness: 1, fogDensity: .001, fogHeight: 1, fogBrightness: 1};
+  for (const [key, scale] of Object.entries(fogInputs)) $(key).oninput = () => { U[key].value = +$(key).value * scale; if (key === 'cloudThickness') fullPano = 2; };
+  $('pano').onchange = $('steps').onchange = makePano;
+  if (query.has('mode')) $('mode').value = query.get('mode');
+  makePano();
+  usePreset(presets[0]);
+
+  // Free look: drag to turn, WASD/QE to move.
+  const held = new Set();
+  addEventListener('keydown', event => held.add(event.code));
+  addEventListener('keyup', event => held.delete(event.code));
+  renderer.domElement.addEventListener('pointermove', event => {
+    if (!event.buttons) return;
+    yaw -= event.movementX * .004;
+    pitch = Math.max(-1.5, Math.min(1.5, pitch - event.movementY * .004));
+  });
+  window.look = (y, p, position) => { yaw = y; pitch = p; if (position) camera.position.set(...position); };
+
+  // ?tick runs the loop on timers: a hidden browser pane fires no animation frames. With ?shot, shot() shows the
+  // last frame as an image (a hidden pane's screenshots miss the canvas).
+  window.shot = () => { const image = Object.assign(new Image(), {src: renderer.domElement.toDataURL()}); image.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:9'; image.onclick = () => image.remove(); document.body.append(image); };
+  const next = query.has('tick') ? draw => setTimeout(() => draw(performance.now()), 4) : requestAnimationFrame;
+  let last = performance.now(), frames = 0;
+  window.frameCount = () => frames;
+  function frame(now) {
+    next(frame);
+    collect();
+    const step = Math.min((now - last) / 1000, .1) * (held.has('ShiftLeft') ? 200 : 20);
+    last = now;
+    camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)), right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    if (held.has('KeyW')) camera.position.addScaledVector(forward, step);
+    if (held.has('KeyS')) camera.position.addScaledVector(forward, -step);
+    if (held.has('KeyD')) camera.position.addScaledVector(right, step);
+    if (held.has('KeyA')) camera.position.addScaledVector(right, -step);
+    if (held.has('KeyE')) camera.position.y += step;
+    if (held.has('KeyQ')) camera.position.y -= step;
+    camera.updateMatrixWorld();
+    skyBall.position.copy(camera.position);
+    post.uniforms.eyeZ.value = camera.position.y;
+    post.uniforms.fogOn.value = $('fog').checked ? 1 : 0;
+    U.uTime.value = frozen ?? now / 1000;
+    const pano = $('mode').value === 'pano';
+    U.usePano.value = pano ? 1 : 0;
+    skyBall.material = pano ? skyPano : skyLayer;
+    ring.material = pano ? ringPano : ringLayer;
+    U.layerCoverage.value = pano ? 0 : U.cloudCoverage.value;
+
+    if (pano) {  // A band of the sky texture's rows (all of it after a change).
+      const rows = fullPano ? panoTarget.height : Math.ceil(panoTarget.height / +$('slices').value);
+      panoTarget.scissor.set(0, fullPano ? 0 : panoRow, panoTarget.width, rows);
+      renderer.setRenderTarget(panoTarget);
+      timed(fullPano ? 'clouds (whole)' : 'clouds', () => renderer.render(panoScene, flat));
+      if (fullPano) fullPano--; else panoRow = (panoRow + rows) % panoTarget.height;
+    }
+    renderer.setRenderTarget(ringTarget);
+    timed('ring', () => renderer.render(ringScene, flat));
+    renderer.setRenderTarget(target);
+    renderer.clear();
+    timed('sky', () => renderer.render(skyScene, camera));
+    timed('scene', () => renderer.render(scene, camera));
+    renderer.setRenderTarget(null);
+    timed('fog + tone map', () => renderer.render(postScene, flat));
+
+    if (++frames % 30 === 0) {
+      const times = window.gpuTimes();
+      $('times').textContent = timer ? `GPU ms at ${width}x${height} (median):\n` + Object.entries(times).map(([name, ms]) => `${name.padEnd(16)} ${ms.toFixed(3)}`).join('\n')
+        : 'No GPU timer in this browser (EXT_disjoint_timer_query_webgl2).';
+    }
+  }
+  next(frame);
+})();
+</script>
+</body>
+</html>
