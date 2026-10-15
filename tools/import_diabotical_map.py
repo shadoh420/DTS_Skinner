@@ -98,7 +98,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 32  # Of the files written per map: maps imported with another are read again.
+FORMAT = 33  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -106,6 +106,7 @@ CUBE, HALF = 1, 3
 NEIGHBOURS = ((0, 0, 1), (-1, 0, 0), (0, 0, -1), (1, 0, 0), (0, 1, 0), (0, -1, 0))
 OUT = np.dtype([('x', '<i2'), ('y', '<i2'), ('z', '<i2'), ('shape', 'u1'), ('turn', 'u1'), ('open', 'u1'), ('pad', 'u1'), ('faces', 'u1', 6)])
 TEXTURE_SIZE = 512
+NORMAL_SIZE = 256
 ASSET = re.compile(r'\basset\s+(\S+)\s*\{([^{}]*)\}')
 # A shader's own lines (`visible false`: the jump pads' ring band) may come before its stage. Some files end mid-shader.
 SHADER = re.compile(r'(?:^|\n)\s*([^\s{}]+)\s*\{([^{}]*)\{(.*?)(?:\}|\Z)', re.S)
@@ -245,7 +246,8 @@ def read_materials(packs):
                                  accents=[colour(next(iter(re.findall(rf'pixel_shader_param\s+accent{n}\s+(\S+)', stage)), None)) for n in (1, 2, 3)])
                     lit = re.search(r'pixel_shader\s+tile', stage) and 'tiledecal' not in stage
                     found = re.search(r'\bmaterial_id\s+(\d+)', stage)
-                    flags.update(lit=bool(lit), spec=maps[2] if lit and len(maps) > 2 else None, ids=maps[3] if lit and len(maps) > 3 else None,
+                    flags.update(lit=bool(lit), normal=maps[1] if lit and len(maps) > 1 else None,
+                                 spec=maps[2] if lit and len(maps) > 2 else None, ids=maps[3] if lit and len(maps) > 3 else None,
                                  id=int(found.group(1)) if found else 0)
                     # The efferv glass (health bubbles): its base and edge (fresnel) colours, linear RGBA; no texture.
                     params = dict(re.findall(r'pixel_shader_param\s+(accent[12])\s+(\S+\s+\S+\s+\S+\s+\S+)', stage))
@@ -258,6 +260,10 @@ def read_materials(packs):
                     flags['unlit'] = shader_name.startswith('statictrans') or shader_name in UNLIT
                     flags['scroll'] = floats[:2] if shader_name.startswith('statictranstex') and any(floats[:2]) else None
                     flags['mirror'] = round(1 - (floats or [0])[0], 3) if shader_name == 'statictrans' else None
+                    # A *_col vertex shader passes the model's vertex colours: statictranstex(col) takes their red as
+                    # alpha, statictranstexfog multiplies its colour by them; the tile shaders read none.
+                    coloured = re.search(r'vertex_shader\s+\w+_col\.vs', stage)
+                    flags['vertex'] = ('rgb' if shader_name.startswith('statictranstexfog') else 'alpha' if shader_name.startswith('statictranstex') else None) if coloured else None
                     # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5;
                     # a tinted material's (tilemask) colour mask is its map 4: NAME#4.
                     for slot in (0, 3, 5) if 'tileter' in stage else (0, 4) if 'tilemask' in stage else (0,):
@@ -470,8 +476,11 @@ def placements(entities, assets, known=(), pickups=None, movers=None):
             if fields.get('no_show') not in ('1', 'true'):
                 word = (fields.get('color') or '').strip().lstrip('#').lower()
                 ocean = fields.get('shader', '').lower() == 'ocean' or fields.get('material', '').lower() == 'core_ocean'
+                # Then its texture_scale (how large its ripples are, 1 where unset) and an ocean's shallow_color.
+                ripple = next(iter(re.findall(r'-?\d*\.?\d+', fields.get('texture_scale', ''))), None)
                 liquids.append([*np.round(position, 2).tolist(), *np.round(scale, 2).tolist(), fields.get('material', ''), colour(fields.get('color'), palette),
-                                int(word[:2], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else None, int(ocean)])
+                                int(word[:2], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else None, int(ocean), float(ripple) if ripple else 1.0,
+                                colour(fields.get('shallow_color'), palette)])
             continue
         # A pickup the game draws as a model (pickup_kinds: {kind: scale}): the prop pickup/KIND, as placed (the game spins it).
         kind = name.split('_')[0].lower()
@@ -728,6 +737,12 @@ def read_lights(entities, box=None):
                 out['shadow_colour'] = np.round(hexes(fields['shadow_color'], 0), 4).tolist()
             out['envmap'] = fields.get('envmap', '').strip().lower() or out['envmap']
             out['gloss'] = float(number(fields, 'gloss', out['gloss']))
+            # The game's ambient occlusion (NVIDIA HBAO+): its power and radius (1 each where unset).
+            out['ao'] = [float(number(fields, 'ambient_occlusion_power', 1)), float(number(fields, 'ambient_occlusion_radius', 1))]
+            # Past 6000 units from the eye the sun's shadow fades over 2000 to horizon_shade (0 shadowed, 1 lit;
+            # the page takes 1 where unset) and the shadow colour to horizon_shade_color (tile.cs).
+            out['horizon'] = [float(number(fields, 'horizon_shade', 1)),
+                              *(np.round(hexes(fields['horizon_shade_color'], 0), 4).tolist() if 'horizon_shade_color' in fields else [None] * 3)]
         if not name.startswith('light'):
             continue
         kind, (x, y, z) = fields.get('type', '').strip().lower(), position
@@ -762,6 +777,9 @@ def read_lights(entities, box=None):
                 out['lights'][-1] += [function, float(number(fields, 'visibility_function_min', 0)), float(number(fields, 'visibility_function_speed', 1))]
     if out['fog'] and out['vertical_fog']:  # The vertical fog takes the fog's colour (run 45).
         out['vertical_fog'][:3] = out['fog'][:3]
+    horizon = out.setdefault('horizon', [1.0, None, None, None])
+    if horizon[1] is None:
+        horizon[1:] = out['shadow_colour']
     if out['shadow_ambient'] is None:
         out['shadow_ambient'] = out['ambient']
     return out
@@ -818,6 +836,8 @@ def material_textures(packs, names, materials, output, replace=False):
                 decoded[file] = None
         return decoded[file]
 
+    normal_hash = functools.lru_cache(maxsize=None)(lambda file: hashlib.sha256(where[file].read(file)).hexdigest()[:16])
+
     def surface(flags, folder):
         """A lit material's specular map (red gloss, green strength: [r, g] when even, else a texture) and material
         id: its id map's red (the commonest value; ponytail: the game reads it per pixel) where not 0, else its
@@ -825,10 +845,21 @@ def material_textures(packs, names, materials, output, replace=False):
         most blocks' id map, textures/metal.png, is 40 too)."""
         if not flags.get('lit'):
             return {}
+        out = {}
+        # Its normal map (map 1; tangent space, D3D's green), 256 square at most; none where flat or not found.
+        file = flags.get('normal') and find(flags['normal'], folder)
+        target = file and output / 'textures' / f"{normal_hash(file)}-n.png"
+        if target and not replace and target.is_file():
+            out['normal'] = target.name
+        elif target and pixels(file) is not None and max(np.ptp(np.asarray(pixels(file))[..., c]) for c in (0, 1)) > 8:
+            image = pixels(file).copy()
+            image.thumbnail((NORMAL_SIZE, NORMAL_SIZE))
+            image.save(target, 'PNG')
+            out['normal'] = target.name
         file = flags.get('ids') and find(flags['ids'], folder)
         ids = pixels(file) if file else None
         values, counts = np.unique(np.asarray(ids)[..., 0], return_counts=True) if ids is not None else ([0], [1])
-        out = {'id': int(values[np.argmax(counts)]) or flags['id'] or 40}
+        out['id'] = int(values[np.argmax(counts)]) or flags['id'] or 40
         file = flags.get('spec') and find(flags['spec'], folder)
         image = pixels(file) if file else None
         if image is None:
@@ -876,7 +907,7 @@ def material_textures(packs, names, materials, output, replace=False):
             image.save(data, 'PNG')
             target.write_bytes(data.getvalue())
         entries[name] = (dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend', 'unlit') if flags.get(key)} |
-                         {key: flags[key] for key in ('scroll', 'mirror') if flags.get(key) is not None} |
+                         {key: flags[key] for key in ('scroll', 'mirror', 'vertex') if flags.get(key) is not None} |
                          ({'accents': flags['accents']} if any(a is not None for a in flags['accents']) else {}) |
                          ({} if '#' in name else surface(flags, folder)))
     return entries, sorted(set(missing))
@@ -963,7 +994,7 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
             raw = where[file].read(file)
             moved = not path.startswith(RAW_FBX)  # Its own name: files of earlier imports kept the nodes' transforms.
             target = output / 'models' / f'{hashlib.sha256(raw + (b"" if moved else b"raw")).hexdigest()[:16]}.bin'
-            groups = fbx_mesh(raw, moved)
+            groups = fbx_mesh(raw, moved, colours=True)
         except (KeyError, ValueError, IndexError, struct.error, zlib.error):
             missing.append(path)
             continue
@@ -971,13 +1002,15 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         parts = file.split('\\')[:-1]
         own = next((alike(path, folders[f]) for f in ('\\'.join(parts[:n]) for n in range(len(parts), 1, -1)) if f in folders), path)
         names = [next((m for m in (f'{path}_{name}'.lower(), name.lower(), path, (heads or {}).get(path)) if m in materials), own) for name in groups]
-        triangles = [np.concatenate(parts, 2) for parts in groups.values()]
+        triangles = [np.concatenate(parts[:3], 2) for parts in groups.values()]
+        tints = [parts[3] for parts in groups.values()]
         if path in (pickups or {}):
             # A pickup's shaders go by the entity's kind (hpt.shader says so): KIND_MATERIAL (after the FBX's
             # namespace:), the model's own, KIND. Groups with none (the melee weebles' arms) are left out.
             kind, (model, _, centred) = path.split('/', 1)[1], pickups[path]
             names = [next((m for m in (f"{kind}_{name.rsplit(':', 1)[-1]}".lower(), model, kind) if m in materials), None) for name in groups]
             triangles = [t for name, t in zip(names, triangles) if name]
+            tints = [t for name, t in zip(names, tints) if name]
             names = [name for name in names if name]
             if centred and triangles:
                 corners = np.concatenate([t[..., :3].reshape(-1, 3) for t in triangles])
@@ -987,6 +1020,12 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         if replace or not target.is_file():
             target.write_bytes(b''.join(t.tobytes() for t in triangles))
         entries[path] = dict(format=FORMAT, file=target.name, groups=[[name, 3 * len(t)] for name, t in zip(names, triangles)])
+        # Its vertex colours (RGBA bytes per corner, in the groups' order) where any is not white: HASH-c.bin.
+        if tints and np.concatenate([t.reshape(-1, 4) for t in tints]).min() < 1:
+            colours = target.with_name(target.stem + '-c.bin')
+            if replace or not colours.is_file():
+                colours.write_bytes(np.concatenate([np.round(np.clip(t, 0, 1) * 255).astype(np.uint8).ravel() for t in tints]).tobytes())
+            entries[path]['colours'] = colours.name
     return entries, missing
 
 

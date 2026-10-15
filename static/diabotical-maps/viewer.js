@@ -28,6 +28,34 @@ window.addEventListener('DOMContentLoaded', async () => {
         gl_FragColor = vec4(mix(low, high, t.b - b), 1.);
       }`}));
   const lutScene = new THREE.Scene().add(lutPass), lutCamera = new THREE.Camera(), drawn = new THREE.Vector2();
+  /* Ambient occlusion, as the game's HBAO+ darkens its ambient light (tile.cs): the solid scene's depth first, then per
+     pixel how much of the half space in front of its surface, out to `radius` units, the depth buffer fills (12 samples
+     in a disc), to the map's ambient_occlusion_power. The lit shaders multiply their ambient light by it. Run 24: the
+     floor by a 20-unit step darkened to about 0.6 within about 20 units. */
+  const depthTarget = new THREE.WebGLRenderTarget(1, 1, {depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType)});
+  const occlusionTarget = new THREE.WebGLRenderTarget(1, 1);
+  const depthOnly = new THREE.MeshBasicMaterial({colorWrite: false}), seeThrough = [];  // Left out of the depth pass.
+  const occlusionPass = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: {depth: {value: depthTarget.depthTexture}, inverse: {value: new THREE.Matrix4()}, projection: {value: new THREE.Matrix4()},
+      radius: {value: 24}, power: {value: 1}, aspect: {value: 1}}, depthTest: false, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+    fragmentShader: `uniform sampler2D depth; uniform mat4 inverse, projection; uniform float radius, power, aspect; varying vec2 vUv;
+      vec3 at(vec2 uv) { vec4 p = inverse * vec4(vec3(uv, texture2D(depth, uv).r) * 2. - 1., 1.); return p.xyz / p.w; }
+      void main() {
+        if (texture2D(depth, vUv).r >= 1.) { gl_FragColor = vec4(1.); return; }
+        vec3 p = at(vUv), n = normalize(cross(dFdx(p), dFdy(p)));
+        vec4 edge = projection * vec4(p.x + radius, p.yz, 1.);
+        float reach = abs(edge.x / edge.w * .5 + .5 - vUv.x), turn = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.283, hidden = 0.;
+        for (int i = 0; i < 12; i++) {
+          float a = float(i) * 2.39996 + turn, t = (float(i) + .5) / 12.;
+          vec3 q = at(vUv + vec2(cos(a), sin(a) * aspect) * reach * t) - p;
+          float d = length(q);
+          hidden += max(dot(n, q / max(d, 1e-3)) - .1, 0.) * clamp(1. - d / radius, 0., 1.);
+        }
+        gl_FragColor = vec4(vec3(pow(clamp(1. - hidden / 6., 0., 1.), power)), 1.);
+      }`}));
+  const occlusionScene = new THREE.Scene().add(occlusionPass);
+  gameUniforms.gameOcclusion.value = occlusionTarget.texture;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9fc4e0);
   // Every material is lit the game's way (lighting.js); the directional light only casts the sun's shadow.
@@ -48,7 +76,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     gameShadowAmbient: {value: new THREE.Vector3(.55, .55, .55)}, gameShadowColour: {value: new THREE.Vector3(1, 1, 1)},
     gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()},
     gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}, gameFog: {value: new THREE.Vector4()},
-    gameFogRange: {value: new THREE.Vector2(1, 0)}, gameVerticalFog: {value: new THREE.Vector4()}, gameVerticalFogRange: {value: new THREE.Vector2(0, 1)}};
+    gameFogRange: {value: new THREE.Vector2(1, 0)}, gameVerticalFog: {value: new THREE.Vector4()}, gameVerticalFogRange: {value: new THREE.Vector2(0, 1)},
+    gameHorizon: {value: new THREE.Vector4(1, 1, 1, 1)}, gameOcclusion: {value: null}, gameScreen: {value: new THREE.Vector2(1, 1)}};
   const gameTime = {value: 0};  // Seconds, for what moves.
   // A material's specular map (materials.json `spec`: a texture, or [gloss, strength] made a texel) and material id.
   const evenTexels = new Map();
@@ -101,8 +130,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   // With a colour mask (`mask`, the material's map 4), the texture is tinted by each prop's accent colours, as the
   // game's tilemask.ps does: toward accent × the texel's mean by the mask's red, green and blue for accents 1, 2, 3.
-  function material(name, entry, mask) {
-    const key = mask ? name + '#tinted' : name;
+  function material(name, entry, mask, coloured) {
+    const key = (mask ? name + '#tinted' : name) + (coloured && entry && entry.vertex ? '#vc' : '');
     if (materials.has(key)) return materials.get(key);
     const side = THREE.FrontSide;
     let made;
@@ -133,6 +162,16 @@ window.addEventListener('DOMContentLoaded', async () => {
         shader.fragmentShader = 'uniform float gameTime; uniform vec2 gameScroll;\n' + shader.fragmentShader.replace('#include <map_fragment>',
           'diffuseColor *= texture2D(map, vUv + gameScroll * gameTime);');
       };
+      // A model's vertex colours (statictrans*_col): their red as alpha, or a colour times the texel.
+      if (coloured && entry.vertex) made.vertexColors = true;
+      if (coloured && entry.vertex === 'alpha') {
+        const own = made.onBeforeCompile;
+        made.onBeforeCompile = (shader, renderer) => {
+          if (own !== THREE.Material.prototype.onBeforeCompile) own(shader, renderer);
+          shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', 'diffuseColor.a *= vColor.r;');
+        };
+        made.customProgramCacheKey = () => 'alpha' + entry.vertex + !!entry.scroll;
+      }
       materials.set(key, made);
       return made;
     }
@@ -141,6 +180,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       // Foliage and the like are cut out by their texture's alpha and seen from both sides.
       made = new THREE.MeshLambertMaterial({map: texture(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
         alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
+      withNormal(made, entry);
       if (mask) made.onBeforeCompile = shader => {
         shader.uniforms.maskMap = {value: texture(mask.texture)};
         shader.vertexShader = 'attribute vec4 accent1, accent2, accent3;\nvarying vec4 vAccent1, vAccent2, vAccent3;\n' +
@@ -156,6 +196,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       };
     }
     materials.set(key, gameLit(made, entry));
+    return made;
+  }
+  // A lit material's normal map (materials.json `normal`, map 1): tangent space with D3D's green, so y turned round.
+  function withNormal(made, entry) {
+    if (entry && entry.normal) Object.assign(made, {normalMap: texture(entry.normal), normalScale: new THREE.Vector2(1, -1)});
     return made;
   }
   const maskOf = (name, entry, entries) => entry && entry.texture && (entries[name + '#4'] || {}).texture ? entries[name + '#4'] : null;
@@ -204,12 +249,43 @@ window.addEventListener('DOMContentLoaded', async () => {
   // the colour's alpha (AARRGGBB) is the surface's opacity, and one with no colour is clear water (bioplant's pools
   // show the floor under them). The ocean shader is dark blue and mirrors the envmap.
   const mirrors = [];  // Materials that take the envmap when it has loaded.
+  // The game's water (water.ps) moves: two scrolling noise layers tilt its surface, which it shows as see-through
+  // where shallow (fully covering 120 units down) using the scene's depth behind it. The page ripples the surface's
+  // brightness and reflection by two value-noise layers (texture_scale makes them larger), fades it by the depth pass's
+  // distance to what is under it, and turns an ocean toward its shallow_color where it is shallow.
+  const LIQUID = `
+    uniform float gameTime, ripple; uniform vec2 gameScreen; uniform sampler2D sceneDepth; uniform vec3 shallow; uniform float hasShallow;
+    varying vec3 vLiquid;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float wave(vec2 p) { vec2 i = floor(p), f = fract(p), u = f * f * (3. - 2. * f);
+      return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+    float distanceOf(float d) { float z = d * 2. - 1.; return 4. * 40000. / (40002. - z * 39998.); }  // Camera near 2, far 40000.
+  `;
+  function liquidMaterial(options, ripple, shallow) {
+    const made = new THREE.MeshBasicMaterial(options);
+    made.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, {gameTime, gameScreen: gameUniforms.gameScreen, sceneDepth: {value: depthTarget.depthTexture},
+        ripple: {value: ripple || 1}, shallow: {value: new THREE.Color(shallow ?? 0)}, hasShallow: {value: shallow == null ? 0 : 1}});
+      shader.vertexShader = 'varying vec3 vLiquid;\n' + shader.vertexShader.replace('#include <project_vertex>',
+        '#include <project_vertex>\nvLiquid = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      shader.fragmentShader = LIQUID + shader.fragmentShader.replace('#include <output_fragment>', `
+        vec2 p = vLiquid.xz / (60. * ripple);
+        float n = wave(p + gameTime * vec2(.21, .13)) + wave(p * 1.7 - gameTime * vec2(.11, .17)) - 1.;
+        float thick = max(distanceOf(texture2D(sceneDepth, gl_FragCoord.xy / gameScreen).r) - distanceOf(gl_FragCoord.z), 0.);
+        outgoingLight *= 1. + .25 * n;
+        if (hasShallow > .5) outgoingLight = mix(shallow, outgoingLight, clamp(thick / 300., 0., 1.));
+        diffuseColor.a *= sqrt(clamp(thick / 120., 0., 1.));
+        #include <output_fragment>`);
+    };
+    return made;
+  }
   function addLiquids(list) {
-    for (const [x, y, z, width, height, depth, , rgb, alpha, ocean] of list) {
-      const surface = new THREE.Mesh(new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
+    for (const [x, y, z, width, height, depth, , rgb, alpha, ocean, ripple, shallow] of list) {
+      const surface = new THREE.Mesh(new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2), liquidMaterial({
         color: rgb ?? (ocean ? 0x14394d : 0x2a6f8c), transparent: true, opacity: (alpha ?? (rgb == null && !ocean ? 40 : 220)) / 255,
-        depthWrite: false, side: THREE.DoubleSide, reflectivity: .5}));
+        depthWrite: false, side: THREE.DoubleSide, reflectivity: .5}, ripple, shallow));
       surface.position.set(x, y + height / 2, -z);
+      seeThrough.push(surface);
       if (ocean) mirrors.push(Object.assign(surface.material, {envMap: gameUniforms.gameEnvmap.value}));  // Or when it loads.
       scene.add(surface);
     }
@@ -375,6 +451,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const needed = [...new Set(props.map(prop => prop.model))].filter(model => models[model]);
     const buffers = new Map(await Promise.all(needed.map(async model =>
       [model, await get(`${data}models/${models[model].file}`).then(r => r.arrayBuffer())])));
+    const colours = new Map(await Promise.all(needed.filter(model => models[model].colours).map(async model =>
+      [model, await get(`${data}models/${models[model].colours}`).then(r => r.arrayBuffer())])));
     const geometries = new Map(), matrix = new THREE.Matrix4();
     let drawn = 0, absent = 0;
     for (const prop of props) {
@@ -401,6 +479,18 @@ window.addEventListener('DOMContentLoaded', async () => {
           geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 0));
           geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(interleaved, 3, 3));
           geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(interleaved, 2, 6));
+          if (colours.has(model)) {
+            let bytes = new Uint8Array(colours.get(model), at * 4, corners * 4);
+            if (mirrored) {  // Turned round as the corners are.
+              bytes = bytes.slice();
+              for (let t = 0; t < corners; t += 3) {
+                const second = bytes.slice((t + 1) * 4, (t + 2) * 4);
+                bytes.copyWithin((t + 1) * 4, (t + 2) * 4, (t + 3) * 4);
+                bytes.set(second, (t + 2) * 4);
+              }
+            }
+            geometry.setAttribute('color', new THREE.Uint8BufferAttribute(bytes, 4, true));
+          }
           geometries.set(key, geometry);
         }
         at += corners;
@@ -409,7 +499,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (entry && entry.hidden) continue;
         const count = matrices.length / 12, mask = maskOf(name, entry, entries);
         const mesh = new THREE.InstancedMesh(mask ? withAccents(geometries.get(key), tints, entry.accents, count) : geometries.get(key),
-          material(name, entry, mask), count);
+          material(name, entry, mask, !!geometries.get(key).attributes.color), count);
         for (let i = 0; i < count; i++) {
           const m = matrices.subarray(i * 12, i * 12 + 12);
           mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
@@ -456,8 +546,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     geometry.setAttribute('dirt', new THREE.BufferAttribute(dirt, 1));
     geometry.setIndex(new THREE.BufferAttribute(index, 1));
     geometry.computeVertexNormals();
-    const name = terrain.material, ground = entries[name], made = new THREE.MeshLambertMaterial(
-      ground && ground.texture ? {map: texture(ground.texture)} : {color: flatColour(name)});
+    const name = terrain.material, ground = entries[name], made = withNormal(new THREE.MeshLambertMaterial(
+      ground && ground.texture ? {map: texture(ground.texture)} : {color: flatColour(name)}), ground);
     if (ground && ground.texture) {
       const slot = number => texture((entries[`${name}#${number}`] || ground).texture);
       made.onBeforeCompile = shader => {
@@ -584,7 +674,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         }`});
     loadCube(`skies/${fileName(cube)}.jpg`, loaded => {
       material.uniforms.sky.value = loaded;
-      scene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material), {frustumCulled: false, renderOrder: -1}));
+      const box = Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material), {frustumCulled: false, renderOrder: -1});
+      seeThrough.push(box);
+      scene.add(box);
     });
   }
 
@@ -630,7 +722,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     for (const mesh of touched) mesh.instanceMatrix.needsUpdate = true;
   }
-  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1, fog, vertical_fog: verticalFog}) {
+  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1, fog, vertical_fog: verticalFog, horizon, ao}) {
     const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
     u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
     flickering = lights.map(([, , , , , , , r, g, b, , , , , , , f, min, speed], i) => f && VISIBILITY[f] ? {at: i * 16 + 4, rgb: [r, g, b], function: f,
@@ -654,6 +746,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     u.gameSunColour.value.fromArray(sunLight ? sunLight.slice(3) : [0, 0, 0]);
     u.gameSunSpecular.value = sunLight && sunLight[6] || 0;
     u.gameGloss.value = gloss;
+    u.gameHorizon.value.fromArray(horizon || [1, ...shadowColour]);
+    Object.assign(occlusionPass.material.uniforms, {power: {value: (ao || [1])[0]}, radius: {value: 24 * (ao || [1, 1])[1]}});
     // Fog: [r, g, b, intensity, radius, margin]; vertical fog: [r, g, b, intensity, height, falloff].
     u.gameFog.value.fromArray(fog || [0, 0, 0, 0]);
     u.gameFogRange.value.fromArray(fog ? fog.slice(4) : [1, 0]);
@@ -738,7 +832,25 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const draw = () => {
     renderer.getDrawingBufferSize(drawn);
-    if (drawn.x !== target.width || drawn.y !== target.height) target.setSize(drawn.x, drawn.y);
+    if (drawn.x !== target.width || drawn.y !== target.height) {
+      for (const made of [target, depthTarget, occlusionTarget]) made.setSize(drawn.x, drawn.y);
+      gameUniforms.gameScreen.value.copy(drawn);
+    }
+    for (const thing of seeThrough) thing.visible = false;
+    const shown = layers.decals.visible;
+    layers.decals.visible = false;
+    scene.overrideMaterial = depthOnly;
+    renderer.setRenderTarget(depthTarget);
+    renderer.render(scene, camera);
+    scene.overrideMaterial = null;
+    for (const thing of seeThrough) thing.visible = true;
+    layers.decals.visible = shown;
+    const occlusion = occlusionPass.material.uniforms;
+    occlusion.inverse.value.copy(camera.projectionMatrixInverse);
+    occlusion.projection.value.copy(camera.projectionMatrix);
+    occlusion.aspect.value = drawn.x / drawn.y;
+    renderer.setRenderTarget(occlusionTarget);
+    renderer.render(occlusionScene, lutCamera);
     renderer.setRenderTarget(target);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
