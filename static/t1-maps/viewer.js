@@ -332,6 +332,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     gl_one_minus_src_color: THREE.OneMinusSrcColorFactor, gl_dst_color: THREE.DstColorFactor, gl_one_minus_dst_color: THREE.OneMinusDstColorFactor,
     gl_src_alpha: THREE.SrcAlphaFactor, gl_one_minus_src_alpha: THREE.OneMinusSrcAlphaFactor, gl_dst_alpha: THREE.DstAlphaFactor,
     gl_one_minus_dst_alpha: THREE.OneMinusDstAlphaFactor};
+  const skyFill = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);  // Black until showSky gives it the haze.
+  skyFill.needsUpdate = true;
   async function buildQ3Sky(shader, radius, group, base = '/q3-map-data/', power = 1) {
     const number = value => { const text = String(Number(value) || 0); return `(${/[.e]/.test(text) ? text : text + '.0'})`; };
     const ball = new THREE.SphereGeometry(radius, 32, 16);
@@ -343,7 +345,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       mesh.frustumCulled = false;
       group.add(mesh);
     };
-    const box = shader.sky.box && await Promise.all(shader.sky.box.map(file => loadTexture(base + 'textures/' + file)));
+    // A face the entry has no file for (null: a Tribes 2 down face that never shipped) is skyFill, a plain colour;
+    // a named face that fails to load still drops the box. Those TR2 skies' sides are blank white below the horizon
+    // (fogged in the game), so without a down face everything below the horizon takes the fill.
+    const box = shader.sky.box && await Promise.all(shader.sky.box.map(file => file ? loadTexture(base + 'textures/' + file) : skyFill));
     if (box && box.every(Boolean)) {
       const names = ['rt', 'bk', 'lf', 'ft', 'up', 'dn'];
       // As the Quake II page draws its box: no mipmaps (they seam where the face changes) and the edge texels clamped.
@@ -351,8 +356,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       // power: the source page's display ramp, pow(rgb, power) (Bloodlines draws its whole frame through 2/3).
       // A Quake II skyrotate turns the look direction about skyaxis, rotate degrees a second (quake2-maps/materials.js).
       add(new THREE.ShaderMaterial({uniforms: {...Object.fromEntries(names.map((name, index) => [name, {value: box[index]}])), power: {value: power}, upTurn: {value: !!shader.sky.upTurn},
-        uTime: skyTime, rate: {value: shader.sky.rotate || 0}, axis: {value: new THREE.Vector3(...shader.sky.axis || [0, 0, 1]).normalize()}}, vertexShader,
-        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; uniform float power, uTime, rate; uniform bool upTurn; uniform vec3 axis; varying vec3 vDir;
+        below: {value: box[5] === skyFill}, uTime: skyTime, rate: {value: shader.sky.rotate || 0}, axis: {value: new THREE.Vector3(...shader.sky.axis || [0, 0, 1]).normalize()}}, vertexShader,
+        fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; uniform float power, uTime, rate; uniform bool upTurn, below; uniform vec3 axis; varying vec3 vDir;
           vec2 top(vec2 p) { return upTurn ? vec2(-p.y, p.x) : p; }  // Tribes 2's top face is a quarter turn round.
           vec4 side(sampler2D image, vec2 p) { return texture2D(image, clamp(vec2(p.x + 1., 1. - p.y) * .5, .002, .998)); }
           void main() {
@@ -361,6 +366,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             gl_FragColor = vec4((a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
               : a.y >= a.z ? (d.y > 0. ? side(bk, vec2(d.x, d.z) / a.y) : side(ft, vec2(-d.x, d.z) / a.y))
               : (d.z > 0. ? side(up, top(vec2(-d.y, -d.x) / a.z)) : side(dn, vec2(-d.y, d.x) / a.z))).rgb, 1.);
+            if (below && d.z < 0.) gl_FragColor = texture2D(dn, vec2(.5));
             gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(power));
           }`, blending: THREE.NoBlending}), -3.5);
     }
@@ -433,6 +439,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (chosen && scene.background?.isColor && scene.background !== haze) haze.copy(scene.background);  // An untextured dome's colour.
     else if (chosen) horizonHaze();
     scene.fog?.color.copy(haze);
+    skyFill.image.data.set(haze.toArray().map(value => Math.round(value * 255)));  // The probe (0-10° up) never sees what it fills.
+    skyFill.needsUpdate = true;
   }
 
   // Toward a planet: azimuth + 90° from file x, incidence up, as the importer's sun direction.

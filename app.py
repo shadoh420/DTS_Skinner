@@ -210,7 +210,7 @@ def t1_map_data(filename):
 
 
 t1_sky_cache, t1_sky_lock = {}, threading.Lock()
-SKY_LIST_VERSION = 2  # Part of the cache stamp: bump it when the entries scene_skies or t2_mission_sky build change.
+SKY_LIST_VERSION = 3  # Part of the cache stamp: bump it when the entries scene_skies or t2_mission_sky build change.
 
 
 # Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it, its sections). 'dome' is
@@ -282,7 +282,8 @@ def t2_mission_sky(root, manifest, name, mission):
     (front, right, back, left, top, down: Quake's bk, rt, ft, lf, up, dn; the top a quarter turn round, the turn that
     joins its edges to the sides) and the next three the cloud layers, each at
     its cloudHeightPer and scrolling at its cloudSpeed (t2-mapper's misToScene: speed per 32 ms). Files under base/;
-    a mission pack's (IronSphere's) own files serve its mission only."""
+    a mission pack's (IronSphere's) own files serve its mission only. A down face no file has (the TR2 mod's
+    volcanic_starrynite_v5_DN never shipped) is null in the box, which the viewer fills with a plain colour."""
     resources = (manifest.get('resources') or {}) | (((manifest.get('missionPacks') or {}).get(name) or {}).get('resources') or {})
     found = resources.get((mission.get('resourcePath') or '').lower())
     try:
@@ -304,7 +305,7 @@ def t2_mission_sky(root, manifest, name, mission):
     def file(line):  # A name with or without its extension.
         return next((name for name in (line, *(f'{line}.{ext}' for ext in ('png', 'jpg', 'bmp'))) if f'textures/{name}' in resources and '.' in name), None)
     faces = [file(line) for line in lines[:6]] if len(lines) >= 6 else []
-    if len(faces) < 6 or not all(faces):
+    if len(faces) < 6 or not all(faces[:5]):
         return None
     front, right, back, left, top, down = faces
     stages = []
