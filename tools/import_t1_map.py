@@ -915,6 +915,12 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         return install.converted[key]
 
     sun = next((node['fields'] for node, _ in nodes if node['class'] == 'planet' and node['fields'].get('castshadows', '').lower() == 'true'), {})
+    light = next((node['fields'] for node, _ in nodes if node['class'] == 'simlight' and node['fields'].get('type') == '1'), None)
+    if not sun and light:  # No shadow-casting planet: a directional SimLight (TS::Light type 1) shining along its aim is the sun.
+        x, y, z = floats(light.get('aim', '0 0 -1'))
+        sun = {'azimuth': math.degrees(math.atan2(-y, -x)) - 90 if x or y else 0,
+               'incidence': math.degrees(math.asin(max(-1, min(1, -z / (math.hypot(x, y, z) or 1))))),
+               'intensity': light.get('color', '0.6 0.6 0.6'), 'ambient': light.get('ambient', '0.4 0.4 0.4')}
     sun = {'azimuth': float(sun.get('azimuth', 0)), 'incidence': float(sun.get('incidence', 45)),
            'intensity': floats(sun.get('intensity', '0.6 0.6 0.6')), 'ambient': floats(sun.get('ambient', '0.4 0.4 0.4'))}
     # Toward the sun in file space, as ArenaPrototype's PlanetPosition.

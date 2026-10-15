@@ -343,6 +343,10 @@ class T1MapTests(unittest.TestCase):
             self.assertEqual(import_maps(install.base, pack, [install.find('Blastside.mis', [install.base / 'missions'])])['failed'], {})
             blastside = json.loads((pack / 'maps/blastside/scene.json').read_text())
             self.assertEqual(([planet['flare'] for planet in blastside['planets']], len(blastside['flare'])), ([True], 6))
+            # Valhalla has no shadow-casting planet: its directional SimLight, aimed down a cube diagonal, is the sun.
+            self.assertEqual(import_maps(install.base, pack, [install.find('Valhalla.mis', [install.base / 'missions'])])['failed'], {})
+            sun = json.loads((pack / 'maps/valhalla/scene.json').read_text())['sun']
+            self.assertEqual((round(sun['azimuth']), round(sun['incidence'], 1), sun['intensity']), (-225, 35.3, [.5, .5, .5]))
             for stored in [blastside['planets'][0]['texture'], *blastside['flare']]:
                 with Image.open(pack / 'textures' / stored) as sprite:
                     self.assertEqual((sprite.mode, sprite.getextrema()[3][0]), ('RGBA', 0))

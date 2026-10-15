@@ -121,6 +121,10 @@ def _read(data, raw, tag, body, offset, name, tags):
         return _node('planet', name, **fields)
     if raw == b'SKSF':  # In front of the sky (u8), then three RGB star colours.
         return _node('starfield', name, **{'colors[%d]' % shade: _floats(body, HEADER + 1 + shade * 12) for shade in range(3)})
+    if raw == b'SNOW':  # Intensity, wind (its z is the fall speed), suspend rendering (u8), rain (u8): Snowfall::read.
+        suspended, rain = body[HEADER + 16:HEADER + 18]
+        return _node('snowfall', name, intensity='%g' % struct.unpack_from('<f', body, HEADER)[0], wind=_floats(body, HEADER + 4),
+                     suspendrendering='true' if suspended else 'false', rain='true' if rain else 'false')
     if raw == b'DPNT':  # A spare word, then the transform's rotation rows and position.
         rows = [struct.unpack_from('<3f', body, HEADER + 4 + 12 * row) for row in range(3)]
         return _node('droppoint', name, position=_floats(body, HEADER + 40), rotation=_euler(rows))
