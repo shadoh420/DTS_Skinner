@@ -20,6 +20,7 @@ try:
     from tools.doom3_assets import Install,Declarations,Textures,Materials,path_name
     from tools.doom3_map_materials import compile_material,tables
     from tools.doom3_map_sounds import Sounds
+    from tools.doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
     from tools.import_doom3 import load_parts,idle_animation,FORMATS
     from tools.model_data import write_model_data,load_model_data
     from tools.texture_storage import game_texture_dir
@@ -29,6 +30,7 @@ except ImportError:
     from doom3_assets import Install,Declarations,Textures,Materials,path_name
     from doom3_map_materials import compile_material,tables
     from doom3_map_sounds import Sounds
+    from doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
     from import_doom3 import load_parts,idle_animation,FORMATS
     from model_data import write_model_data,load_model_data
     from texture_storage import game_texture_dir
@@ -351,7 +353,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
     entry=entities[0].get('call','main');script='maps/'+name+'.script'
     if '::' in entry:script='script/'+entry.split('::')[0]+'.script'
     global_parms,startup_entities=startup_shader_parms(files[script].read().decode('latin1'),entry) if script in files else ([0.0]*12,{})
-    resolved=[];skipped=[];lights=[];skipped_lights=[];used_materials=set();parts_cache={}
+    resolved=[];skipped=[];lights=[];skipped_lights=[];used_materials=set();parts_cache={};emitters=[];used_particles=set()
     geometry=dict(vertices=[],normals=[],uvs=[],colors=[],indices=[]);surfaces=[];entity_records=[]
     def material(name):
         name=policy.material_name(name) if policy else path_name(name).removesuffix('.tga')
@@ -446,6 +448,31 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
             skipped.append(dict(record,reason='Editor group compiled into world PROC'));continue
         if policy and (entity.get('classname')=='func_fx' or reference.endswith(('.fx','.prt'))):
             skipped.append(dict(record,reason='BSE effect' if entity.get('classname')=='func_fx' or reference.endswith('.fx') else 'particle'));continue
+        def add_emitter(prt,origin,shader_parms,fx=None):
+            decl=material_cache['particles'][prt];radius=particle_extent(decl);axis=rotation(entity)
+            bounds=[(origin-radius).tolist(),(origin+radius).tolist()];areas=bounds_areas(bounds,proc['nodes'])
+            candidates=sorted(set().union(*(light_by_area.get(a,set()) for a in areas))) if areas else []
+            emitters.append(dict(name=label,particle=prt,origin=origin.tolist(),axis=axis.ravel().tolist(),parms=shader_parms,bounds=bounds,areas=areas,fx=fx,
+                                 lights=[i for i in candidates if light_intersects(bounds,lights[i])],entity=label,
+                                 materials=[material(stage['material'])['name'] for stage in decl['stages']]))
+            used_particles.add(prt)
+        if not policy and entity.get('classname')=='func_fx':
+            # idEntityFx: only the particle actions of untriggered start/restart effects are drawn.
+            actions=material_cache['fx'].get(path_name(entity.get('fx','')).removesuffix('.fx'),[])
+            timing=fx_timing(entity,actions)
+            missing=[a['particle'] for a in actions if a['particle'] not in material_cache['particles']]
+            if not actions or not timing or missing:
+                skipped.append(dict(record,reason='Missing particle decl: '+missing[0] if missing else 'triggered fx' if actions else 'fx without particle actions'));continue
+            for action in actions:
+                # Particle actions: origin + offset, entity axis, renderEntity parms 1,1,1,1.
+                add_emitter(action['particle'],vector(entity.get('origin'))+action['offset'],[1.0]*4+[0.0]*8,
+                            dict(timing,delay=action['delay'],length=action['duration']))
+            continue
+        prt=None if policy else particle_reference(entity,defs)
+        if prt:
+            if prt not in material_cache['particles']:skipped.append(dict(record,reason='Missing particle decl: '+prt));continue
+            if entity.get('start_off')=='1':skipped.append(dict(record,reason='start_off emitter (stays off, like start_off lights)'));continue
+            add_emitter(prt,vector(entity.get('origin')),parms(entity));continue
         if not reference:
             if entity.get('classname')=='func_fx' or any(x in entity.get('classname','') for x in ('particle','emitter')):skipped.append(dict(record,reason='particle'))
             continue
@@ -506,7 +533,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                sourceLights=len(lights)+len(skipped_lights),lights=len(lights),projectedLights=sum(l['projected'] for l in lights),ambientLights=sum(l['ambient'] for l in lights),
                startOffLights=sum(l['authoredOff'] for l in lights),skippedLights=len(skipped_lights),shadowModelsSkipped=proc['shadowModels'],
                areas=proc['areas'],portals=len(proc['portals']),surfaces=len(surfaces),vertices=len(geometry['vertices'])//3,triangles=len(geometry['indices'])//3,
-               lightInteractions=sum(len(s['lights']) for s in surfaces),maxSurfaceLights=max((len(s['lights']) for s in surfaces),default=0),
+               emitters=len(emitters),lightInteractions=sum(len(s['lights']) for s in surfaces),maxSurfaceLights=max((len(s['lights']) for s in surfaces),default=0),
                approximations=dict(approximations),seconds=round(time.monotonic()-started,2))
     if policy:
         stats['excluded']=dict(Counter(s['reason'] for s in skipped))
@@ -519,12 +546,13 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
     scene=dict(game=policy.game if policy else 'doom3',sourceArchive=files['maps/'+name+'.proc'].origin,colorSize=4 if policy else 3,areaSky=proc['areaSky'],name=name,campaign=campaign,coordinateSystem='Doom native XYZ, Z up',lightScale=2,
                globalShaderParms=global_parms,startupShaderEntities=startup_entities,
                surfaces=surfaces,materials=shader_records,lights=lights,nodes=proc['nodes'],portals=proc['portals'],areaCount=proc['areas'],
+               emitters=emitters,particles={n:material_cache['particles'][n] for n in sorted(used_particles)},
                viewpoints=viewpoints,entities=entity_records,skippedEntities=skipped,skippedLights=skipped_lights,stats=stats,
                notes=['No shadows or fog/blend lights. Doors/movers stay at authored start transforms; scripts and binds are not simulated.',
                       'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
                       'Sound-reactive stages use the sample envelope without audio playback. Sample phase starts at map load; triggered sounds, random choices, leadins and multiple channels are not simulated.',
                       'All renderable monsters/items are shown, including hidden/triggered entities. Start-off lights stay off.',
-                      'Sky cubemaps and the authored portal-sky camera are rendered. Flare, sprite, tube, turbulent, expand and move deforms are rebuilt per view. Reflection cubemaps, heat haze, GUIs, video, eyeball deforms and particles remain skipped/approximated; see per-material and per-entity details.',
+                      'Sky cubemaps and the authored portal-sky camera are rendered. Flare, sprite, tube, turbulent, expand and move deforms are rebuilt per view. Doom 3 .prt particles (func_emitter, func_smoke, start/restart func_fx) run the engine particle model. Reflection cubemaps, heat haze, GUIs, video, eyeball and particle deforms remain skipped/approximated; see per-material and per-entity details.',
                       'r_lightScale 2 is applied once to interactions. No display gamma or second overbright multiplier.',
                       'Analytic light normalization/specular lookup approximates the original quantized lookup textures. Portal culling is conservative; door portal blocking is not simulated.'])
     # rvCameraPortalSky::GetViewParms / RoE idPlayerView::SingleView replace only the
@@ -566,7 +594,8 @@ def import_maps(install,data_root=LOCAL_DATA,*,maps=None,models_root=None,replac
             if not selected:continue
             files=archive.files[campaign];defs=Declarations(files,policy)
             textures=Textures(files,game_texture_dir(Path(models_root or root) if policy else root,game_id),policy)
-            materials=Materials(defs,textures);context=dict(materials=materials,textures=textures,records={},sounds=Sounds(files,output/'sounds',policy))
+            materials=Materials(defs,textures);context=dict(materials=materials,textures=textures,records={},sounds=Sounds(files,output/'sounds',policy),
+                                                            particles={} if policy else particle_decls(files),fx={} if policy else fx_decls(files))
             table_data=tables(files)
             for key,n in selected:
                 ident=re.sub('[^a-z0-9_-]','_',key);name=n[5:-5];directory=output/'maps'/ident
