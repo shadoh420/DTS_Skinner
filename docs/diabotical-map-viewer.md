@@ -171,6 +171,27 @@ left (`static/diabotical-maps/blocks.js`).
   shows looking along +x, and the page matches the game from the same cameras.
   `sky_texture` (7 maps; `tileskyuv.ps` on `models/skydome`) changes nothing
   in the game: a map with only `sky_texture blue_sky_2` drew the default sky.
+- **Fog.** The first `light` of type `fog` fogs everything the lighting
+  shader draws, as `tile.cs` does: toward its colour by intensity × how far
+  the point is into its range, from margin × radius to radius from the eye
+  (intensity 1, radius 8000, margin 0 where unset). A `vertical_fog` then
+  fogs by its intensity × how far the point is below its `height`, over
+  `radius` units, in the fog's colour (run 45: a floor at y 400 under height
+  700 and radius 600 came out half fogged, in the fog light's red, not the
+  vertical fog's blue; the height is a world y, not counted from the entity).
+  The sky turns toward the fog colour near the horizon by (angle from
+  straight up / 90°)⁴ × intensity / 10 (`tilesky.ps`). Liquids, billboards
+  and particles are not fogged (forward shaded, as in the game).
+- **Light beams.** `volumetric` entities are panels in the entity's unit
+  box (`read_volumetrics`): a grid (the default) of `segments` panels across
+  x by `segments_y` along z, facing z, or `segments` panels fanned about the
+  vertical (`radial`), each less its `gap`, the top narrowed by `taper`;
+  brightest at the top and fading down, soft at the sides, the colour times
+  its alpha (AARRGGBB) and the `texture` where there is one, added to the
+  picture (`alpha` blends them instead), turning by `rotation_speed`
+  (radians a second, not measured). Runs 45 and 46 showed grids of three
+  panels and fans of 8 and 16 so. Lights of type `volume` drew nothing in
+  the game in either run (with and without fog), so the page draws none.
 - **Lights.** Lit as the game's lighting shader (`tile.cs`) does, with the
   numbers measured in it: the picture is the texture's bytes times the light,
   then the game's last pass, which looks the colour up in a 16-step LUT (the

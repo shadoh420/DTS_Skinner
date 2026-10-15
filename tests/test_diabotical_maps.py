@@ -451,6 +451,20 @@ class DiaboticalMapsTest(unittest.TestCase):
             with Image.open(root / 'skies/a_b.jpg') as sky, Image.open(root / 'envmaps/a_b.png') as envmap:
                 self.assertEqual((sky.size, envmap.size), ((48, 8), (24, 4)))
 
+    def test_volumetrics_are_read_as_beams(self):
+        from tools.import_diabotical_map import read_volumetrics
+        beams = read_volumetrics([
+            ('volumetric_1', (10, 20, 30), (0, 0, 0), (300, 200, 20), {'color': '80ffcf3d', 'segments': '3', 'gap': '.5', 'taper': '0.1', 'type': 'grid'}),
+            ('volumetric_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'color': 'ffffff', 'type': 'radial', 'texture': 'Textures\\Decals\\Blob', 'alpha': '1',
+                                                                'rotation_speed': '.2'}),
+            ('volumetric_3', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'no_show': 'true'})])
+        # Page matrix (z mirrored, scaled), kind, segments, segments_y, gap, gap_y, taper, colour, strength (alpha), texture,
+        # alpha blended, rotation speed.
+        self.assertEqual(beams[0][:12], [300, 0, 0, 10, 0, 200, 0, 20, 0, 0, 20, -30])
+        self.assertEqual(beams[0][12:], [0, 3, 1, .5, 0, .1, 0xffcf3d, round(0x80 / 255, 3), '', 0, 0])
+        self.assertEqual(beams[1][12:], [1, 1, 1, 0, 0, 0, 0xffffff, 1, 'textures/decals/blob', 1, .2])
+        self.assertEqual(len(beams), 2)
+
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds
         cell = dict(offset_left=2, offset_right=0, offset_bottom=4, size_x=3)

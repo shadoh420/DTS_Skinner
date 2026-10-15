@@ -221,6 +221,56 @@ window.addEventListener('DOMContentLoaded', async () => {
       layers.decals.add(mesh);
     }
   }
+  /* Light beams (volumetric entities; read_volumetrics in the importer): panels in the entity's unit box, a grid of
+     `segments` across x by `segments_y` along z facing z, or `segments` fanned about the vertical (radial), each
+     cell less its gap, the top narrowed by `taper`; brightest at the top and fading down, soft at the sides, times
+     the colour, its strength and the texture where there is one; added to the picture (alpha blended with `alpha`),
+     turning about the vertical by `rotation_speed` (radians a second, not measured). */
+  const beams = [];
+  function addVolumetrics(list, entries) {
+    for (const beam of list) {
+      const [kind, columns, rows, gap, gapY, taper, rgb, strength, name, blended, spin] = beam.slice(12);
+      const positions = [], uvs = [], quad = (corners) => {
+        const [a, b, c, d] = corners;
+        positions.push(...a, ...b, ...c, ...a, ...c, ...d);
+        uvs.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);
+      };
+      const top = 1 - taper;
+      if (kind === 1) {
+        for (let k = 0; k < columns; k++) {
+          const t = 2 * Math.PI * k / columns, x = Math.cos(t) / 2, z = Math.sin(t) / 2, r = Math.min(gap, .95);
+          quad([[x * r, -.5, z * r], [x, -.5, z], [x * top, .5, z * top], [x * r * top, .5, z * r * top]]);
+        }
+      } else {
+        for (let i = 0; i < columns; i++) for (let j = 0; j < rows; j++) {
+          const cx = (i + .5) / columns - .5, cz = (j + .5) / rows - .5, w = (1 - gap) / columns / 2;
+          quad([[cx - w, -.5, cz], [cx + w, -.5, cz], [cx + w * top, .5, cz], [cx - w * top, .5, cz]]);
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      const entry = entries[name], map = entry && entry.texture ? texture(entry.texture) : null;
+      const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
+        uniforms: {colour: {value: new THREE.Color(rgb).multiplyScalar(strength)}, map: {value: map}, textured: {value: map ? 1 : 0}},
+        transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: blended ? THREE.NormalBlending : THREE.AdditiveBlending,
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+        fragmentShader: `uniform vec3 colour; uniform sampler2D map; uniform float textured; varying vec2 vUv;
+          void main() {
+            float fade = smoothstep(0., 1., vUv.y) * (1. - smoothstep(.9, 1., vUv.y)) * sin(3.14159 * vUv.x);
+            vec4 texel = textured > .5 ? texture2D(map, vUv) : vec4(1.);
+            gl_FragColor = vec4(colour * texel.rgb * fade, fade * texel.a);
+          }`}));
+      mesh.matrixAutoUpdate = false;
+      mesh.matrix.set(...beam.slice(0, 12), 0, 0, 0, 1);
+      layers.decals.add(mesh);
+      if (spin) beams.push({mesh, base: mesh.matrix.clone(), spin});
+    }
+  }
+  const spun = new THREE.Matrix4();
+  function spinBeams(seconds) {
+    for (const {mesh, base, spin} of beams) mesh.matrix.copy(base).multiply(spun.makeRotationY(spin * seconds));
+  }
   // Particles (pfx entities; particle_systems in the importer): each emitter spawns camera-facing sprites in its
   // entity's frame every `period` seconds up to `max`, from a random point of its `position` box, moving by `velocity`
   // (a random vector between two) or along `angles` (random Euler angles, degrees, turning straight up) at `speed`,
@@ -640,6 +690,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
     gameTime.value += delta;
+    spinBeams(gameTime.value);
     updateParticles(delta);
     draw();
   });
@@ -716,7 +767,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights, billboards, pfx, sky} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       if (sky) addSky(sky);
       addMarkers(markers);
@@ -725,6 +776,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       showStatus('Placing decals…');
       map.decals = addDecals(decals, entries);
       addBillboards(billboards, entries);
+      addVolumetrics(volumetrics, entries);
       await addParticles(pfx);
     }
     renderer.shadowMap.needsUpdate = true;

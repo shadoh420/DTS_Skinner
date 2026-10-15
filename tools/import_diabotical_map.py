@@ -514,6 +514,32 @@ def placements(entities, assets, known=(), pickups=None):
     return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids, decals
 
 
+def read_volumetrics(entities):
+    """A map's light beams (`volumetric` entities, drawn by panel_volumetric on a mesh the game builds): [12 page-matrix
+    floats (the entity's place, turn and scale: the beam fills the unit box around it), kind (0 grid, the default: a
+    row of `segments` panels across x, `segments_y` rows along z, facing z; 1 radial: `segments` panels fanned about
+    the vertical), segments, segments_y, gap (the share of each cell left empty), gap_y, taper (top narrowed by it),
+    colour 0xRRGGBB, strength (the colour's alpha, AARRGGBB; 1 for RRGGBB), texture ('' for none), blended (`alpha`:
+    alpha blending, else additive), rotation_speed]. Runs 45 and 46: grids of 3 panels and radial fans of 8 and 16,
+    each panel brightest at the top and fading downward, added to the picture."""
+    palette = next((fields for name, *_, fields in entities if name == 'global'), {})
+    number = lambda fields, key, default: float(next(iter(re.findall(r'-?\d*\.?\d+', fields.get(key, ''))), default))
+    out = []
+    for name, position, rotation, scale, fields in entities:
+        if not name.startswith('volumetric') or fields.get('no_show') in ('1', 'true'):
+            continue
+        matrix = MIRROR @ game_matrix(position, rotation, scale) @ MIRROR
+        word = (fields.get('color') or '').strip().lstrip('#').lower()
+        strength = int(word[:2], 16) / 255 if re.fullmatch(r'[0-9a-f]{8}', word) else 1.0
+        out.append([*np.round(matrix[:3].ravel(), 4).tolist(), int(fields.get('type', '').strip().lower() == 'radial'),
+                    max(1, int(number(fields, 'segments', 1))), max(1, int(number(fields, 'segments_y', 1))),
+                    number(fields, 'gap', 0), number(fields, 'gap_y', 0), number(fields, 'taper', 0),
+                    colour(fields.get('color'), palette) if colour(fields.get('color'), palette) is not None else 0xffffff, round(strength, 3),
+                    (fields.get('texture') or '').strip().lower().replace('\\', '/'), int(fields.get('alpha') in ('1', 'true')),
+                    number(fields, 'rotation_speed', 0)])
+    return out
+
+
 def read_billboards(entities):
     """A map's billboards (flat panes: glass, light glows, signs): [12 page-matrix floats of a unit square in local
     x, y (the entity's scale x by y, placed as a prop), colour 0xRRGGBB or None, texture (a decal asset or a texture
@@ -1006,7 +1032,8 @@ def import_maps(game, output, replace=False, extra=None):
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
                                decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky,
-                               billboards=read_billboards(parsed['entities']), pfx=read_pfx(parsed['entities'], assets, pickups)),
+                               billboards=read_billboards(parsed['entities']), volumetrics=read_volumetrics(parsed['entities']),
+                               pfx=read_pfx(parsed['entities'], assets, pickups)),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
         placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +
@@ -1040,6 +1067,7 @@ def import_maps(game, output, replace=False, extra=None):
             head = json.loads(file.read(length))
             keys |= {entry[0] for entry in head['props']}
             decal_materials |= {entry[0] for entry in head['decals']} | {entry[13] for entry in head.get('billboards', []) if entry[13]}
+            decal_materials |= {entry[20] for entry in head.get('volumetrics', []) if entry[20]}
             envmaps.add(head['lights']['envmap'])
             systems |= {entry[12] for entry in head.get('pfx', [])}
             skies.add(head['sky']['cube'])
