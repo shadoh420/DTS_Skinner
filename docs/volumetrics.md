@@ -79,3 +79,6 @@ saving comes from moving the air (8 steps per pixel) into the sky texture.
 - In this checkout, the page is the only user. The T1 Maps pages still draw the merged sky, and Unity still has
   `Skinner/Sky` only. The HLSL side compiles offline with fxc (ps_5_0, Unity 6000.3.11f1 CGIncludes, `/Gec`): the
   sky-texture pass, the screen sky and the fog. It has not run in Unity yet.
+  The HLSL wrapper needs three macros beyond `Skinner/Sky`'s: `vec4`, `atan(y, x)` as `atan2`, and `SAMPLE_LOD` as
+  `tex2Dlod` with the v flip. The march loop must sample with an explicit level.
+- Evidence: `C:	mp\skinner-evidenceolumetrics` holds the bench table, the screenshots and the fxc wrapper.
