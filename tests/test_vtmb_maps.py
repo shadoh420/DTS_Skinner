@@ -309,6 +309,8 @@ class SourceExtrasTests(unittest.TestCase):
         self.assertIsNone(maps.fog_params({'fogcolor': '1 1 1'}))
         np.testing.assert_allclose(maps.fog_params({'fogenable': '1', 'use_angles': '1', 'angles': '0 90 0'})['dir'], [-1, 0, 0], atol=1e-9)
         self.assertEqual(maps.water_fog({'$fogcolor': '{255 0 0}', '$fogstart': '0', '$fogend': '64'})['fog']['color'], [1, 0, 0])
+        # Keyvalues read as atof: E.Y.E.'s '1.00`' $fogend, a name in Bloodlines' renderamt.
+        self.assertEqual((maps.atof('1.00`'), maps.atof('inigo_montoya'), maps.atof(' -2.5e1x')), (1.0, 0.0, -25.0))
         self.assertIsNone(maps.water_fog({'$fogcolor': '[.5 .5 .5]'}))
         lumps = [b''] * 64
         lumps[5] = struct.pack('<3i20x', 0, -1, -2)  # z >= 0: dry area 1; below: water, area 2
