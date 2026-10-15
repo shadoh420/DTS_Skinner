@@ -7,6 +7,22 @@ dome and the Quake III box, and `static/t1-maps/skies.js` holds the others. The 
 (default)", restores the map's sky. A choice is saved only in the page's local settings, and nothing is written to any
 pack. Entry ids are the game plus a hash of the sky, so a saved choice survives re-imports.
 
+A swapped sky brings its own haze: once it is built, the viewer renders it alone (or its Unreal-engine pass) into a
+96x8 target four times, looking round the band from the horizon to 10° above, and the average of those pixels becomes
+the fog and background colour (`horizonHaze` in viewer.js). An untextured sky (a Tribes 2 solid colour) gives its
+colour. Choosing the mission's own sky again restores the mission's haze. A sky with scrolling clouds is measured once,
+when it is chosen.
+
+Quake II, Anachronox and SiN skies that turn (`skyrotate`, `skyaxis`) carry `rotate` and `axis` in their entry's box,
+and the box shader turns the look direction about the axis as `quake2-maps/materials.js` does. Only a turning sky gets
+the two keys, so every still sky keeps its id.
+
+The list is built by `t1_sky_list` in app.py. A full library takes about 15 s to scan (15.5 s on the user's library,
+934 entries), so the result is kept in the data folder as `t1-map-skies.json`, stamped with `SKY_LIST_VERSION`, the
+data folder and the mtime of every pack's index (or Tribes 2 manifest). A later start reads it in 0.01 s. The app also
+starts the scan in a background thread as it starts, and a request made during that scan waits for it. Bump
+`SKY_LIST_VERSION` whenever the entries change.
+
 | Game | What the pack holds | How the T1 page draws it |
 |---|---|---|
 | Tribes, Starsiege, Earthsiege, Earthsiege 2 | a 16-panel dome (`scene.sky`) | the dome |
@@ -27,13 +43,17 @@ error along every cube edge (probes in the evidence folder). Tribes 2 needed its
 Whiteout from 31.6 to 8.9 and Underhill from 13.7 to 1.5. Screenshots are in `C:\tmp\skinner-evidence\more-skies`.
 
 **Limits.**
-- Fog under a swapped sky keeps the T1 mission's haze colour.
 - An Unreal-engine sky loads that whole level, which takes a few seconds and the memory of the level.
 - Vengeance's zone fog applies inside its own sky pass.
-- Quake II-family rotating skies (`skyrotate`) stand still.
 - Tribes 2 fog bands are not drawn. Its bottom face's turn could not be measured, since the faces are uniform.
-- 4 Tribes 2 missions name faces that the extracted data lacks, and 1 mission file is missing; those are not offered.
+- 5 Tribes 2 missions are not offered, and no re-import would bring them in (checked against `C:\Dynamix\Tribes2`,
+  2026-10-15). SolsDescent, SkinnyDip, FrozenFury and GodsRift use the TR2 mod's `SOM_TR2_Armageddon`, `StonedBlue`
+  and `WinterBlue` lists (`TR2final105-client.vl2`), whose down face `lava/skies/volcanic_starrynite_v5_DN` is in no
+  archive or loose folder of the install (only `volcanic_starrynite_emap` and the stock `starrynite_v5_dn` are). They
+  could be listed by allowing a missing down face, which is mostly below the horizon. T2RPG_WorldMap's mission file
+  was extracted (into the manifest's `missionPacks`, which the list now reads for that mission only), but its
+  `RPG_50.dml` is in neither the install nor `ironsphere.vl2` and its loose folder.
 - E.Y.E.'s flat placeholder skies (40 of 60 maps) are left out.
 - Not offered: Tribes: Ascend (excluded for now), Doom 3 (no sky drawn), Quake 4 (camera cubemaps and portal skies,
   not ported), Azrael's Tear (no sky).
-- The first scan of a full library takes about 15 s; after that the list is cached until a pack's index changes.
+- A pack whose maps change without its index changing keeps the kept list until another index changes.
