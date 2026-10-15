@@ -193,8 +193,12 @@ class InstallTest(unittest.TestCase):
     def test_training_and_campaign_missions(self):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory)
-            report = import_maps(os.environ['ES2_INSTALL'], out, 'es2', ['TRAIN1', 'C1_01'])
-            self.assertEqual((sorted(report['imported']), report['failed']), (['C1_01', 'TRAIN1'], {}))
+            report = import_maps(os.environ['ES2_INSTALL'], out, 'es2', ['TRAIN1', 'C1_01', 'C1_07'])
+            self.assertEqual((sorted(report['imported']), report['failed']), (['C1_01', 'C1_07', 'TRAIN1'], {}))
+            # C1_07's header sets the time-of-day bit: the urban theatre's night world (WORLD1), darker than the day's.
+            day, night = (json.loads((out / f'maps/{stem}/scene.json').read_text()) for stem in ('c1_01', 'c1_07'))
+            self.assertEqual((day['sky']['textures'][0][:6], night['sky']['textures'][0][:6]), ('es2w0-', 'es2w1-'))
+            self.assertLess(sum(night['haze']), sum(day['haze']))
             scene = json.loads((out / 'maps/c1_01/scene.json').read_text())
             self.assertEqual((scene['zone'], scene['theatre'], scene['terrain']['squares']), (123, 'urban', 255))
             self.assertGreater(len(scene['objects']), 40)

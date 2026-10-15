@@ -160,7 +160,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
         // Models without flags (older packs, most catalog models): a texture with alpha is blended by it, as the game draws its leaves.
         const transparent = flags === null && Boolean(texture && texture.userData.alpha);
-        return new THREE.MeshLambertMaterial({map: texture, color, side, transparent, depthWrite: !transparent, alphaTest: transparent ? .02 : 0});
+        const look = {map: texture, color, side, transparent, depthWrite: !transparent, alphaTest: transparent ? .02 : 0};
+        return map.sun.ramp ? withRampShade(new THREE.MeshBasicMaterial(look)) : new THREE.MeshLambertMaterial(look);
       }));
       return {geometry, materials};
     })());
@@ -270,6 +271,30 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ponytail: every light is summed for every terrain and building pixel; cull by distance if a map with many stutters.
   let pointLights = [], dynamicLights = [];
   const lightUniforms = {t1LightPos: {value: []}, t1LightColor: {value: []}, t1LightRange: {value: []}};
+  // Earthsiege 2 shapes (a scene with sun.ramp): each face takes the sun as DBSIM's Light_ComputeShadeForFace does,
+  // shade = min(255, 512 cos) with no ambient, through the .RMP row shade * 31 >> 8 (the ramp: row, light). The face
+  // normal is the one facing the eye, as DBSIM lights a back face with its normal negated.
+  const rampUniforms = {t1Toward: {value: new THREE.Vector3()}, t1Ramp: {value: []}};
+  function withRampShade(material) {
+    material.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, rampUniforms);
+      shader.vertexShader = 'varying vec3 t1Shaded;\n' + shader.vertexShader.replace('#include <project_vertex>',
+        '#include <project_vertex>\n\tt1Shaded = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      shader.fragmentShader = `varying vec3 t1Shaded;
+        uniform vec3 t1Toward;
+        uniform vec2 t1Ramp[${map.sun.ramp.length}];
+        float t1Shade() {
+          vec3 n = normalize(cross(dFdx(t1Shaded), dFdy(t1Shaded)));
+          if (dot(n, cameraPosition - t1Shaded) < 0.) n = -n;
+          float row = floor(min(255., 512. * max(dot(n, t1Toward), 0.)) * 31. / 256.), light = t1Ramp[0].y;
+          for (int i = 1; i < ${map.sun.ramp.length}; i++) if (row > t1Ramp[i - 1].x)
+            light = mix(t1Ramp[i - 1].y, t1Ramp[i].y, clamp((row - t1Ramp[i - 1].x) / (t1Ramp[i].x - t1Ramp[i - 1].x), 0., 1.));
+          return light;
+        }\n` + shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n\tdiffuseColor.rgb *= t1Shade();');
+    };
+    return material;
+  }
+
   function withPointLights(material) {
     if (!dynamicLights.length) return material;
     material.onBeforeCompile = shader => {
@@ -895,6 +920,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (saved) { $('sky').value = settings.sky; return showSky(settings.sky); }
     }).catch(() => { $('sky').disabled = true; });
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
+    if (map.sun.ramp) {
+      rampUniforms.t1Toward.value.copy(toward(map.sun.azimuth, map.sun.incidence));
+      rampUniforms.t1Ramp.value = map.sun.ramp.map(([row, light]) => new THREE.Vector2(row, light));
+    }
     pointLights = (map.lights || []).map(light => {  // Packs imported before point lights have none.
       const shape = new THREE.PointLight(new THREE.Color(...light.color), 1, light.range, 1);
       shape.position.fromArray(light.position);

@@ -54,7 +54,7 @@ from tools.local_data import LOCAL_DATA  # noqa: E402
 # Rows 3-16 by number: record words (None: a waypoint list, 5 words and a word per entry; 'skip': 64 bytes unread).
 ES2_ROWS = {3: 4, 4: 72, 5: 'skip', 6: 11, 7: 5, 8: None, 9: 6, 10: 41, 11: 15, 12: 72, 13: 51, 14: 31, 15: 11, 16: 82}
 KEPT = (6, 7, 8, 12, 13, 14, 15, 16)  # The rows a map reads; the rest are only walked past.
-THEATRES = ('urban', 'bsnow', 'volcan', 'ice', 'moon')  # wld\world<2 theatre + variant>.wld, day variants.
+THEATRES = ('urban', 'bsnow', 'volcan', 'ice', 'moon')  # wld\world<2 theatre + variant>.wld, low bit the time of day.
 ANIMATED = {5, 6, 0x1d, 0x1e, 8, 0x0b, 0x20, 0x23}  # Radar and armed structures draw from BASES_AN.DTS.
 UNBUILT = {0x0a, 0x35, 0x36, 0x3e, 0x3f, 0x40}  # Structure types no constructor case builds.
 STRUCTURE_BANKS = ('basetex', 'vehtex')  # BASES.DAT +0x32.
@@ -468,7 +468,7 @@ def es2_scene(pack, stem, stage, number):
     mission = read_mission(files[f'MSN/{stem}.MSN'], flags)
     header = mission['header']
     theatre = stage - 1 if stage else 1  # Practice and instant-action missions fly theatre 1 (script-dat.md).
-    world = theatre * 2  # Day variant.
+    world = theatre * 2 + (header[9] & 1)  # Low bit: the time of day (script-dat.md offset 18), night in C1_07.
     wld = files[f'WLD/WORLD{world}.WLD']
     hzline = struct.unpack_from('<8h', wld)
     bank_name = wld.rstrip(b'\0').split(b'\0')[-2].decode('latin1').lower()
@@ -675,8 +675,10 @@ def es2_scene(pack, stem, stage, number):
         id=stem.lower(), mission=stem, type='', theatre=bank_name, zone=header[1],
         terrain=dict(squares=squares, unit=cell * SCALE, columns=1, rows=1, position=[0, 0, 0], lightWidth=size,
                      textures=textures, pieces=divisions, visibleDistance=visible, hazeDistance=visible / 2, splitBit=True),
+        # Shapes take the sun as the terrain does (Light_ComputeShadeForFace: min(255, 512 cos), no ambient, the .RMP
+        # row shade * 31 >> 8): the viewer shades each face with this ramp, scaled as the terrain's light is.
         sun=dict(ambient=[.45, .45, .45], intensity=[.75, .75, .75], azimuth=azimuth,
-                 incidence=math.degrees(math.asin(-sun[2]))),
+                 incidence=math.degrees(math.asin(-sun[2])), ramp=[[row, level / RAMP[-1][1]] for row, level in RAMP]),
         haze=list(colours[horizon]),
         sky=sky_dome(pack, f'{pack.game}w{world}', colours, hzline, visible),
         planets=[], stars=None, flare=None, weather=None, objects=objects_out, viewpoints=viewpoints, warnings=warnings)
