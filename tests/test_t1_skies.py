@@ -99,6 +99,28 @@ class SkyListTest(unittest.TestCase):
                                                   'tcMods': [['scroll', 0.001, 0.0]]}])  # Layer 1 only: c1 has no file.
         self.assertEqual((solid['renderer'], solid['sky']), ('dome', {'name': 'solid colour', 'color': [128, 255, 0]}))
 
+    def test_tribes_2_sky_missing_only_its_down_face(self):
+        def build(root):
+            base = root / 't2-maps' / 'base'
+            texts = {'missions/sols.mis': 'new Sky(Sky) {\n\tmaterialList = "lava.dml";\n};',
+                     'missions/topless.mis': 'new Sky(Sky) {\n\tmaterialList = "open.dml";\n};',
+                     'missions/full.mis': 'new Sky(Sky) {\n\tmaterialList = "full.dml";\n};',
+                     'textures/lava.dml': 'v/f\nv/r\nv/b\nv/l\nv/t\nv/dn\n', 'textures/open.dml': 'v/f\nv/r\nv/b\nv/l\nv/up\nv/d\n',
+                     'textures/full.dml': 'v/f\nv/r\nv/b\nv/l\nv/t\nv/d\n'}
+            for name, text in texts.items():
+                (base / name).parent.mkdir(parents=True, exist_ok=True)
+                (base / name).write_text(text)
+            files = [*texts, *(f'textures/v/{face}.png' for face in 'frbltd')]  # No v/dn or v/up.
+            (root / 't2-maps' / 'manifest.json').write_text(json.dumps({
+                'resources': {name: [name, ['']] for name in files},
+                'missions': {name: {'resourcePath': f'missions/{name.lower()}.mis'} for name in ('Sols', 'Topless', 'Full')}}))
+        entries = {entry['maps'][0]: entry for entry in self.skies(build)['_all'] if entry['game'] == 't2'}
+        self.assertEqual(sorted(entries), ['Full', 'Sols'])  # A missing top face still leaves the sky out.
+        self.assertEqual(entries['Sols']['sky']['sky']['box'], ['v/r.png', 'v/f.png', 'v/l.png', 'v/b.png', 'v/t.png', None])
+        full = {'name': 'full.dml', 'stages': [], 'sky': {'box': ['v/r.png', 'v/f.png', 'v/l.png', 'v/b.png', 'v/t.png', 'v/d.png'],
+                                                          'cloudHeight': 512, 'upTurn': 1}}
+        self.assertEqual(entries['Full']['sky'], full)  # A whole sky's entry, and so its saved id, is as it was.
+
     def test_quake_2_rotation_only_where_the_sky_turns(self):
         def build(root):
             pack(root, 'quake2-maps', {'base1': ({}, {'skybox': skybox('unit1_')}),

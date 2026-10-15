@@ -46,13 +46,16 @@ Whiteout from 31.6 to 8.9 and Underhill from 13.7 to 1.5. Screenshots are in `C:
 - An Unreal-engine sky loads that whole level, which takes a few seconds and the memory of the level.
 - Vengeance's zone fog applies inside its own sky pass.
 - Tribes 2 fog bands are not drawn. Its bottom face's turn could not be measured, since the faces are uniform.
-- 5 Tribes 2 missions are not offered, and no re-import would bring them in (checked against `C:\Dynamix\Tribes2`,
+- 4 Tribes 2 skies are drawn without their down face, which never shipped (checked against `C:\Dynamix\Tribes2`,
   2026-10-15). SolsDescent, SkinnyDip, FrozenFury and GodsRift use the TR2 mod's `SOM_TR2_Armageddon`, `StonedBlue`
   and `WinterBlue` lists (`TR2final105-client.vl2`), whose down face `lava/skies/volcanic_starrynite_v5_DN` is in no
-  archive or loose folder of the install (only `volcanic_starrynite_emap` and the stock `starrynite_v5_dn` are). They
-  could be listed by allowing a missing down face, which is mostly below the horizon. T2RPG_WorldMap's mission file
-  was extracted (into the manifest's `missionPacks`, which the list now reads for that mission only), but its
-  `RPG_50.dml` is in neither the install nor `ironsphere.vl2` and its loose folder.
+  archive or loose folder of the install (only `volcanic_starrynite_emap` and the stock `starrynite_v5_dn` are). Their
+  entries hold `null` for that face, and the viewer fills it with the sky's horizon haze. Their side faces are blank
+  white from a few rows off the horizon down (fogged in the game), so for a sky without a down face everything below
+  the horizon takes that fill. Only a missing down face is allowed: a sky missing any other face is still left out.
+- T2RPG_WorldMap is not offered, and no re-import would bring it in. Its mission file was extracted (into the
+  manifest's `missionPacks`, which the list reads for that mission only), but its `RPG_50.dml` is in neither the
+  install nor `ironsphere.vl2` and its loose folder.
 - E.Y.E.'s flat placeholder skies (40 of 60 maps) are left out.
 - Not offered: Tribes: Ascend (excluded for now), Doom 3 (no sky drawn), Quake 4 (camera cubemaps and portal skies,
   not ported), Azrael's Tear (no sky).
