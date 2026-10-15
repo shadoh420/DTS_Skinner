@@ -65,6 +65,8 @@ def parse_deform(tokens,policy=None):
     kind,args=lower[at],[t for t in tokens[at+1:end]]
     if kind=='turbulent':return dict(kind=kind,table=args[0].lower(),values=expressions(args[1:],3,policy))
     if kind in DEFORM_ARGS:return dict(kind=kind,values=expressions(args,DEFORM_ARGS[kind],policy))
+    # R_ParticleDeform: the surface emits a .prt system (particle: per triangle, particle2: by area).
+    if kind in ('particle','particle2') and args and not policy:return dict(kind=kind,particle=args[0].lower().rsplit('/',1)[-1].removesuffix('.prt'),values=[])
     return None
 
 

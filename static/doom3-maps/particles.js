@@ -45,6 +45,8 @@
       else if(s.customPath==='drip'){o[2]=-g.age*p[0];}
       for(let i=0;i<3;i++)o[i]+=s.offset[i];
     }
+    // R_ParticleDeform particles: origin *= g.axis (rows S, T, normal), then += g.origin.
+    if(g.axis){const a=g.axis,q=o.slice();for(let i=0;i<3;i++)o[i]=q[0]*a[0][i]+q[1]*a[1][i]+q[2]*a[2][i]+g.origin[i];}
     // Emitter-local gravity, or world -Z expressed in emitter space (view.down).
     if(s.worldGravity)for(let i=0;i<3;i++)o[i]+=g.down[i]*s.gravity*g.age*g.age;else o[2]-=s.gravity*g.age*g.age;
     return o;
@@ -98,26 +100,54 @@
     }
     return out.count-start;
   }
-  function stageCapacity(s){return s.count*quadsPerParticle(s)*4;}
-  function simulate(s,ms,parms,view,out,table) {
-    // One stage of idRenderModelPrt::InstantiateDynamicModel at renderView.time = ms.
+  function surfaceTriangles(position,normal,tangent,bitangent,index) {
+    // Per triangle: corner positions, tangent frames and the running area for R_ParticleDeform's area pick.
+    const tris=[];let total=0;
+    for(let i=0;i<index.length;i+=3) {
+      const v=[0,1,2].map(k=>index[i+k]),p=v.map(j=>[position[j*3],position[j*3+1],position[j*3+2]]);
+      const e1=p[1].map((x,k)=>x-p[0][k]),e2=p[2].map((x,k)=>x-p[0][k]);
+      const c=[e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]];
+      const at=a=>v.map(j=>[a[j*3],a[j*3+1],a[j*3+2]]);
+      tris.push({p,s:at(tangent),t:at(bitangent),n:at(normal),start:total});total+=Math.hypot(...c)/2;
+    }
+    return {tris,total};
+  }
+  function deformCount(s,surface,useArea){return useArea?Math.trunc(s.count*surface.total/4096):s.count;}
+  function stageCapacity(s,surface=null,useArea=false) {
+    const count=surface?deformCount(s,surface,useArea)*(useArea?1:surface.tris.length):s.count;
+    return count*quadsPerParticle(s)*4;
+  }
+  function simulate(s,ms,parms,view,out,table,surface=null,useArea=false) {
+    // One stage of idRenderModelPrt::InstantiateDynamicModel at renderView.time = ms; with a surface,
+    // R_ParticleDeform: each triangle (deform particle) or the whole area (particle2) emits the stage.
     out.count=0;if(!s.cycleMsec)return 0;
     const stageAge=Math.trunc(ms+(parms[4]||0)*1000-s.timeOffset*1000),stageCycle=Math.trunc(stageAge/s.cycleMsec);
     const diversity=Math.trunc((parms[5]||0)*MAX_RAND),stop=parms[8]||0;
+    const total=surface?deformCount(s,surface,useArea):s.count;
+    for(let tri=0;tri<(surface&&!useArea?surface.tris.length:1);tri++) {
     const stepping=new Random(((stageCycle<<10)&MAX_RAND)^diversity),stepping2=new Random((((stageCycle-1)<<10)&MAX_RAND)^diversity);
-    for(let index=0;index<s.count;index++) {
+    for(let index=0;index<total;index++) {
       stepping.int();stepping2.int();
-      const particleAge=stageAge-Math.trunc(s.time*1000*s.bunching*index/s.count),cycle=Math.trunc(particleAge/s.cycleMsec);
+      const particleAge=stageAge-Math.trunc(s.time*1000*s.bunching*index/total),cycle=Math.trunc(particleAge/s.cycleMsec);
       if(particleAge<0||cycle<0||(s.cycles&&cycle>=s.cycles))continue;
       const inCycle=particleAge-cycle*s.cycleMsec;
       if(stop&&ms-inCycle>=stop*1000)continue;
       const frac=inCycle/(s.time*1000);if(frac<0||frac>1)continue;
-      const random=(cycle===stageCycle?stepping:stepping2).copy();
-      emit(s,{index,random,originalRandom:random.copy(),frac,age:frac*s.time,down:view.down||[0,0,-1]},view,out,table,parms);
+      const random=(cycle===stageCycle?stepping:stepping2).copy(),g={index,random,frac,age:frac*s.time,down:view.down||[0,0,-1]};
+      if(surface) {
+        let pick=tri;
+        if(useArea){const want=random.float()*surface.total;pick=0;for(let k=0;k<surface.tris.length;k++)if(surface.tris[k].start<=want)pick=k;}
+        const T=surface.tris[pick];let f=[random.float(),random.float(),random.float()];const ft=1/(f[0]+f[1]+f[2]+.0001);f=f.map(x=>x*ft);
+        const mix=c=>[0,1,2].map(i=>c[0][i]*f[0]+c[1][i]*f[1]+c[2][i]*f[2]);
+        g.origin=mix(T.p);g.axis=[mix(T.s),mix(T.t),mix(T.n)];
+      }
+      g.originalRandom=random.copy();
+      emit(s,g,view,out,table,parms);
+    }
     }
     return out.count;
   }
   function quadIndex(vertices){const index=[];for(let i=0;i<vertices;i+=4)index.push(i,i+2,i+3,i,i+3,i+1);return index;}
-  const api={Random,simulate,stageCapacity,quadIndex,quadsPerParticle};
+  const api={Random,simulate,stageCapacity,quadIndex,quadsPerParticle,surfaceTriangles};
   if(typeof module!=='undefined')module.exports=api;else root.doom3Particles=api;
 })(typeof window!=='undefined'?window:globalThis);
