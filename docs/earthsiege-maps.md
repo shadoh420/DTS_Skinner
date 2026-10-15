@@ -20,13 +20,13 @@ importer's docstring. Checked against Herculan's own engine screenshot of TRAIN1
 | Part | Rule |
 |---|---|
 | Missions | `.MSN` rows read as VSHELL's generator does: condition gates, variants, repeated GUIDs (rows 3/6-9 replace, 10-16 overlay set fields). Campaign flags 1-2 = the mission's stage and number; every random draw is 0, so a mission shows its first authored alternative (stated in each map's notes). |
-| Theatre | Campaign `Cn` → theatre n-1 (urban, bsnow, volcan, ice, moon); practice and instant-action missions fly theatre 1. Day variant. |
+| Theatre | Campaign `Cn` → theatre n-1 (urban, bsnow, volcan, ice, moon); practice and instant-action missions fly theatre 1. The header's time-of-day bit (script.dat offset 18) picks the theatre's night world, `WORLD<2·theatre+1>` (darker palette and sky): C1_07 is the one retail mission that sets it. The practice screen's own Day/Night choice is not offered. |
 | Terrain | Zone from the header patch: `dat\zoneN` (cell shift, height scale) and `dba\zoneN` (8-bit heights, image row 0 north). Per-cell diagonal selector from corner heights. |
 | Ground texture | `mat0` frames 0/1 tiled (v falls with y), material 1 on the retail sparse 30% roll of DBSIM's random stream; base groups that paint ground cover their tile with the formation's pad frame. Pad bays line up with the structures placed on them (checked on C1_01). |
 | Levelling | Structure footprints (shape radius) and pad layout maps flood-filled to their average, forced east/north/north-east; structures re-settle afterwards. |
 | Placement | Group point, else first order's route's first waypoint; heading from the group, else the route's first leg (atan2 − ¼ turn); MFORMS/BFORMS/FFORMS offsets rotated by the group heading, BFORMS per-slot turns, pad anchor snap. Machines and structures stand on the ground at the group point / their own spot; flyers at the spawn height (5000 when none). |
 | Shapes | HERCs with their roster weapon fit (hardpoint placeholders dropped), SKIMMER, `BASES.DGS` / `BASES_AN.DTS` structures in BASETEX / VEHTEX, all exported into the pack under the theatre palette. |
-| Look | Light = the mission sun's terrain curve min(255, 512 cos) as the ramp row's multiplier; sky = hzline palette bands up to the horizon colour; fog from half to all of the 14-cell detail range in the horizon colour. |
+| Look | Light = the mission sun's terrain curve min(255, 512 cos) as the ramp row's multiplier, on terrain and, per face, on shapes too (`Light_ComputeShadeForFace`: no ambient, a face turned away at row 0, the face normal toward the eye as DBSIM negates a back face's); sky = hzline palette bands up to the horizon colour; fog from half to all of the 14-cell detail range in the horizon colour. |
 
 Not shown, and said so in each map's notes: groups that arrive later (deployment action), the player's own HERCs (viewpoint
 1 stands at the squad's point), weapons' guidance/ammo, animation (radar dishes, turrets), damage states, the
@@ -97,7 +97,8 @@ retail missions); units stand at their point's height, and whether DBSIM then se
 not checked. Every random draw is 0 and every campaign flag 0 (first play; most flag tests are "flag > 0" for earlier
 outcomes), so a mission shows its first authored alternative, and a simulator mission its first location rather than
 the shell's random one. Ground texture tiling (one repeat per 32768 units) and the draw/fog distance are estimates.
-GO.EXE may override the theatre or time of day (not checked). B0_C1_20 and B0_C1_30 end inside their header rows and
+GO.EXE may override the theatre or time of day (not checked). Shapes keep the page's generic sun and ambient: ES1's
+shape light is not checked against DBSIM (ES2's ramp shading is not applied). B0_C1_20 and B0_C1_30 end inside their header rows and
 are reported as failed.
 
 ## T1 sky list

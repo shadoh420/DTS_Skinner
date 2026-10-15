@@ -65,7 +65,7 @@ const harness = {data: {}, batches, npcs: {enabled: false}, camera, scene: {}, c
   matrix: {elements: [], multiplyMatrices() {}}, frustum: {setFromProjectionMatrix() {}, intersectsBox: b => !b.outside},
   M: {visibleAreas: () => new Set([0]), portalSkyOrigin: () => [1, 2, 3], soundAmplitude: () => 0},
   skyCamera: {...camera, copy() {}, position: {fromArray() {}, toArray: () => [1, 2, 3]}},
-  colorTarget: {width: 1, height: 1}, soundAmplitudeOverride: null, lastMetrics: {}, updatePass() {},
+  colorTarget: {width: 1, height: 1}, soundAmplitudeOverride: null, lastMetrics: {}, updatePass() {}, moveAll() {}, hazeMeshes: [],
   renderer: {domElement: {width: 1, height: 1}, info: {render: {calls: 1, triangles: 1}},
     setRenderTarget() {}, clearDepth() {}, render(scene) {
       if (scene === harness.scene) renders.push(batches.map(b => b.group.visible));
