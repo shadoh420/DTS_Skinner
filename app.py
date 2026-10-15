@@ -215,7 +215,8 @@ t1_sky_cache = {}
 # Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it, its sections). 'dome' is
 # the T1 viewer's sixteen-panel dome (scene.sky), 'q3' a Quake III sky shader (scene.shaders[].sky), 'q2' a Quake II
 # six-face skybox (scene.skybox.faces), drawn as a Q3 box: both use the rt/bk/lf/ft/up/dn faces the same way (gl_warp.c,
-# tr_sky.c). Sections are pack sub-folders with their own index.json, maps/ and textures/ ('' the pack itself).
+# tr_sky.c). Sections are pack sub-folders with their own index.json, maps/ and textures/ ('' the pack itself); a fourth
+# element names the pack folder and data route when they are not the game's own (UT lives in the Unreal pack).
 SKY_PACKS = {'t1': ('Tribes', 'dome', ('',)), 'q3': ('Quake III Arena', 'q3', ('',)), 'ss': ('Starsiege', 'dome', ('',)),
              'es1': ('Earthsiege', 'dome', ('',)), 'es2': ('Earthsiege 2', 'dome', ('',)),
              'rtcw': ('Return to Castle Wolfenstein', 'q3', ('',)), 'et': ('Wolfenstein: Enemy Territory', 'q3', ('',)),
@@ -223,11 +224,13 @@ SKY_PACKS = {'t1': ('Tribes', 'dome', ('',)), 'q3': ('Quake III Arena', 'q3', ('
              'daikatana': ('Daikatana', 'q2', ('',)), 'anachronox': ('Anachronox', 'q2', ('',)),
              'sin': ('SiN', 'q2', ('sin', '2015', 'ctf')), 'vtmb': ('Vampire: The Masquerade – Bloodlines', 'q2', ('',)),
              'eye': ('E.Y.E.: Divine Cybermancy', 'q2', ('',)), 'quake': ('Quake (1996)', 'quake1', ('', 'hipnotic', 'rogue')),
-             'nos': ('Nosgoth', 'ue3dome', ('',))}
+             'nos': ('Nosgoth', 'ue3dome', ('',)), 'unreal': ('Unreal', 'ue1', ('unreal',)),
+             'ut': ('Unreal Tournament', 'ue1', ('ut',), 'unreal'), 'dx': ('Deus Ex', 'ue1', ('',))}
+UE1_POWER = {'unreal': 1 / (2.5 * .5), 'ut': .67, 'dx': 1 / (2.5 * .6)}  # unreal-maps/viewer.js POWER: each game's display gamma.
 PLACEHOLDER_SKIES = {'eye_sky_plain.png'}  # E.Y.E.'s stand-in for its HDR skies: one flat colour (import_eye_map.py).
 
 
-def scene_skies(kind, scene, row):
+def scene_skies(kind, scene, row, game=None):
     """The skies a map's scene holds for one SKY_PACKS kind, as (sky, extra entry fields)."""
     if kind == 'dome':
         return [(scene['sky'], {})] if (scene.get('sky') or {}).get('textures') else []
@@ -237,6 +240,13 @@ def scene_skies(kind, scene, row):
         if not (scene.get('skybox') or {}).get('faces'):
             return [(dict(name=group['name'], texture=group['texture']), {'renderer': 'quake1'})
                     for group in {g.get('texture'): g for g in scene.get('groups') or [] if g.get('kind') == 'sky' and g.get('texture')}.values()]
+    if kind == 'ue1':  # The sky zone of the level itself (skies.js unreal): which map, and its SkyZoneInfo.
+        sky = scene.get('sky')
+        if not (sky and sky.get('origin') and len(sky.get('rotation') or ()) == 9):
+            return []
+        power = (scene.get('display') or {}).get('power') if game == 'dx' else None
+        return [(dict(name=row.get('title') or row.get('name') or row['id'], map=row['id'], **{k: sky[k] for k in ('origin', 'rotation', 'rotator', 'rate') if k in sky}),
+                 {'renderer': 'unreal', 'power': power if isinstance(power, (int, float)) and power > 0 else UE1_POWER[game]})]
     if kind == 'ue3dome':  # Dome meshes the importer flags sky (skies.js meshes), centred on the first one's pivot.
         library = scene.get('model_library') or {}
         placed = [(library[i['look']], i['matrix']) for i in scene.get('instances') or []
@@ -261,12 +271,12 @@ def scene_skies(kind, scene, row):
 def t1_map_skies():
     """Skies the T1 Maps page can swap in, each listed once: every pack in SKY_PACKS that is imported. Entry ids are
     the game and a hash of the sky, so a saved choice survives re-imports (and T1/Q3 ids are unchanged)."""
-    roots = [(game, section, local_data_dir / f'{game}-maps' / section) for game, (_, _, sections) in SKY_PACKS.items() for section in sections]
+    roots = [(game, section, local_data_dir / f'{(entry[3:] or (game,))[0]}-maps' / section) for game, entry in SKY_PACKS.items() for section in entry[2]]
     stamp = (str(local_data_dir), *((root / 'index.json').stat().st_mtime_ns if (root / 'index.json').is_file() else 0 for *_, root in roots))
     if t1_sky_cache.get('stamp') != stamp:
         skies = {}
         for game, section, root in roots:
-            group, kind, _ = SKY_PACKS[game]
+            group, kind, _, *pack = SKY_PACKS[game]
             try:
                 index = json.loads((root / 'index.json').read_text(encoding='utf-8'))
             except (OSError, ValueError):
@@ -276,7 +286,7 @@ def t1_map_skies():
                     scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
                 except (OSError, ValueError, KeyError, TypeError):
                     continue
-                for sky, extra in scene_skies(kind, scene, row):
+                for sky, extra in scene_skies(kind, scene, row, game):
                     key = game + json.dumps(sky, sort_keys=True)
                     if key not in skies:
                         skies[key] = dict(id=game + '-' + hashlib.sha1(key.encode()).hexdigest()[:12], game=game, maps=[],
@@ -284,7 +294,7 @@ def t1_map_skies():
                                           section=row.get('group') if row.get('group') not in (None, group) else None,
                                           name=sky['name'].removeprefix('textures/') if kind != 'dome' else None, sky=sky,
                                           renderer='dome' if kind == 'dome' else 'q3',
-                                          base=f'/{game}-map-data/' + (section + '/' if section else ''),
+                                          base=f'/{(pack or [game])[0]}-map-data/' + (section + '/' if section else ''),
                                           visible=(scene.get('terrain') or {}).get('visibleDistance'))  # A dome's shape follows its mission's.
                         skies[key].update(extra)
                     elif skies[key]['section'] != row.get('group'):  # Noted only while every map with it shares it.

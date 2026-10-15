@@ -69,6 +69,82 @@ window.t1Skies = {
     group.add(holder);
   },
 
+  // Unreal, Unreal Tournament, Deus Ex: the sky zone is the source level itself, seen from its SkyZoneInfo and turned
+  // with the view and by the zone's rotation (and rate), as unreal-maps/viewer.js draw() does; its fake backdrops
+  // draw nothing. Its own pass behind the T1 world, through the game's display power. Returns {render, dispose}.
+  async unreal({entry, loadTexture}) {
+    const source = entry.sky, scene = new THREE.Scene(), get = async url => { const r = await fetch(url); if (!r.ok) throw Error(url); return r; };
+    const map = await (await get(`${entry.base}maps/${source.map}/scene.json`)).json();
+    const buffer = await (await get(`${entry.base}maps/${source.map}/geometry.bin`)).arrayBuffer(), n = map.vertices;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buffer, 0, n * 3), 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(buffer, n * 12, n * 2), 2));
+    let lightMap = null;
+    if (map.lightmap) {
+      geometry.setAttribute('uv2', new THREE.BufferAttribute(new Float32Array(buffer, n * 20, n * 2), 2));
+      lightMap = await new Promise(resolve => new THREE.TextureLoader().load(`${entry.base}maps/${source.map}/lightmap.png`, resolve, undefined, () => resolve(null)));
+      if (lightMap) Object.assign(lightMap, {flipY: false, generateMipmaps: false, minFilter: THREE.LinearFilter});
+    }
+    if (map.colors) geometry.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buffer, n * 28, n * 4), 4, true));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(buffer, n * (map.colors ? 32 : map.lightmap ? 28 : 20), map.indices), 1));
+    // Poly flags as unreal-maps/viewer.js surfaceMaterial: masked 0x2, translucent 0x4, modulated 0x40, fake backdrop
+    // 0x80, two-sided 0x100; panning surfaces move their own copy of the texture.
+    const panning = [], materials = await Promise.all(map.groups.map(async (group, index) => {
+      geometry.addGroup(group.start, group.count, index);
+      const side = group.flags & 0x100 ? THREE.DoubleSide : THREE.FrontSide;
+      if (group.flags & 0x80) return new THREE.MeshBasicMaterial({colorWrite: false, side});
+      let texture = group.texture && await loadTexture(entry.base + 'textures/' + group.texture, true);
+      if (texture && group.pan) { texture = texture.clone(); texture.needsUpdate = true; panning.push({texture, pan: group.pan}); }
+      const common = {map: texture, color: texture ? 0xffffff : 0x808080, side, vertexColors: !!map.colors, fog: false, ...(lightMap ? {lightMap, lightMapIntensity: 2} : {})};
+      if (group.flags & 0x44) {
+        const add = group.flags & 0x4;
+        return new THREE.MeshBasicMaterial({...common, transparent: true, depthWrite: false, blending: THREE.CustomBlending,
+          blendSrc: add ? THREE.OneFactor : THREE.DstColorFactor, blendDst: add ? THREE.OneMinusSrcColorFactor : THREE.SrcColorFactor});
+      }
+      return new THREE.MeshBasicMaterial({...common, alphaTest: group.flags & 0x2 ? .5 : 0});
+    }));
+    scene.add(new THREE.Mesh(geometry, materials));
+    const turn = rotator => {  // unreal-maps/viewer.js unrealTurn: Unreal's x, y, z are the page's z, -x, y.
+      const [p, y, r] = rotator.map(a => a * Math.PI / 32768);
+      const [cp, sp, cy, sy, cr, sr] = [Math.cos(p), Math.sin(p), Math.cos(y), Math.sin(y), Math.cos(r), Math.sin(r)];
+      const columns = [[cp * cy, cp * sy, sp], [sr * sp * cy - cr * sy, sr * sp * sy + cr * cy, -sr * cp], [-(cr * sp * cy + sr * sy), cy * sr - cr * sp * sy, cr * cp]];
+      const axis = [[1, -1], [2, 1], [0, 1]];
+      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...axis.flatMap(([i, si]) => axis.map(([j, sj]) => columns[j][i] * si * sj)))));
+    };
+    const skyTurn = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().setFromMatrix3(new THREE.Matrix3().set(...source.rotation)));
+    const skyCamera = new THREE.PerspectiveCamera(), target = new THREE.WebGLRenderTarget(1, 1);
+    const ramp = new THREE.Scene(), flat = new THREE.Camera();
+    ramp.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({uniforms: {frame: {value: target.texture}, power: {value: entry.power || 1}},
+      depthTest: false, depthWrite: false, vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+      fragmentShader: 'uniform sampler2D frame; uniform float power; varying vec2 at; void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(power)), 1.); }'})));
+    const size = new THREE.Vector2();
+    return {
+      render(renderer, camera, seconds) {
+        for (const {texture, pan} of panning) texture.offset.set(pan[0] * seconds % 1, pan[1] * seconds % 1);
+        if (source.rate) skyTurn.copy(turn(source.rotator.map((a, i) => a + source.rate[i] * seconds)));
+        renderer.getDrawingBufferSize(size);
+        if (target.width !== size.x || target.height !== size.y) target.setSize(size.x, size.y);
+        skyCamera.position.fromArray(source.origin);
+        skyCamera.projectionMatrix.copy(camera.projectionMatrix);
+        skyCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
+        skyCamera.quaternion.copy(skyTurn).multiply(camera.quaternion);
+        const current = renderer.getRenderTarget();
+        renderer.setRenderTarget(target);
+        renderer.clear();
+        renderer.render(scene, skyCamera);
+        renderer.setRenderTarget(current);
+        renderer.render(ramp, flat);
+      },
+      dispose() {
+        geometry.dispose();
+        for (const material of materials) material.dispose();
+        for (const {texture} of panning) texture.dispose();
+        lightMap?.dispose();
+        target.dispose();
+      },
+    };
+  },
+
   // Quake: the sky texture's halves as two layers, front over back (index 0 clear), scrolling at 16 and 8 texels a
   // second, coloured through colormap row 32: the Quake Maps page's sky (quake-maps/materials.js kind 1), the ray's
   // height tripled to flatten the dome as R_DrawSkyChain does.
