@@ -723,7 +723,7 @@ ES1_ROSTERS = {0: (8, 35, 36, 7), 1: (9, 24, 25, 3), 2: (10, 5, 6, 7)}
 
 def es1_heading(mission, guid):
     """DBSIM keeps a heading word as (value << 14) & 0xffff (0x203ba): its low two bits as quarter turns, so the
-    missions' 90 reads as a half turn. Replicated, not corrected."""
+    missions' 90 reads as a half turn. Replicated, not corrected; checked in game for 135 and 270 (docs)."""
     record = mission.get(4, {}).get(guid)
     return (record[4] << 14) & 0xffff if record else None
 

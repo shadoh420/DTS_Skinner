@@ -79,7 +79,14 @@ otherwise, in `BASETEX`.
 
 **Heading quirk, replicated:** DBSIM stores a heading word as `(value << 14) & 0xffff` (0x203ba), so only its low two
 bits count. The missions' headings are degrees (0, 45, 90 …), so 90 and 270 read as a half turn and 0/180 as none.
-This is read from the binary, not checked in the running game.
+The B0_C3_*/B0_C6_* missions store 182 × degrees in 22.5° steps (4004, 8190 … 32760, −4202 …), and the same shift
+collapses those too. Checked in DOSBox-X (2026-10-15): the shell writes the .MSN degrees into `data\script.dat`
+unconverted (S2_SCT02: 0, 90, 180, 270, 0, 45 … 315), and a crafted script giving the player's group heading 135 or
+270 spawned the HERC at compass 90 and 180, as the shift predicts (plain degrees would give 225 and 90; the compass
+runs clockwise from +y, bam anticlockwise). **Open:** a word of 0 (headings 0 and 180) did not face the player north:
+both read compass 320, the bearing to the first enemy group's start, so DBSIM seems to treat 0 as "no heading" for the
+player at least. The importer still draws 0 as no turn; 11 player groups and about 118 unit headings in the retail
+missions are 0 words.
 
 All 112 readable missions import with their units (1,310 HERCs, 467 flyers, 1,056 structures, every one drawable;
 SM_ESC50 has only the player's group). Some missions start several one-craft flyer groups on the same route, so their
