@@ -48,3 +48,20 @@ const viewer = fs.readFileSync('static/unreal-maps/viewer.js', 'utf8');
 assert.match(viewer.split('\n').find(line => line.includes('document.title =')), /sin \? 'SiN' :/);
 assert.match(viewer, /new THREE.Vector4\(0, 0, 0, 0\)/); // Other pages keep zero blend.
 console.log('SiN material contracts OK (no WebGL/render acceptance claimed)');
+// TRANSLATE scrolls at trans_mag texture units a second along trans_angle; light styles step at 10 Hz.
+const scrolling = context.window.sinMaps.material({...group, settings: {flowing: true, trans: [16, 90]}}, surface, {});
+assert.ok(Math.abs(scrolling.uniforms.scroll.value.values[1] - 2) < 1e-9);
+assert.match(scrolling.vertexShader, /texUV = uv - scroll \* seconds;/);
+const styled = context.window.sinMaps.material({...group, settings: {}}, surface, {});
+styled.userData = {quake2Lit: true};
+context.window.quake2Maps.patchMaterial(styled, {styles: [4]}, {light_styles: {offset: .25, scale: 1 / 12, patterns: {4: 'mamamamamama'}}});
+assert.equal('STYLED' in styled.defines, true);
+context.window.quake2Maps.update(.15);  // Step 1 of 'mamamamamama' is 'a'.
+assert.equal(styled.uniforms.styleA.value, 0);
+context.window.quake2Maps.update(.25);
+assert.equal(styled.uniforms.styleA.value, 1);
+for (const shader of [styled.fragmentShader, styled.vertexShader]) {
+  assert.equal((shader.match(/#ifdef/g) || []).length, (shader.match(/#endif/g) || []).length);
+  assert.equal((shader.match(/\{/g) || []).length, (shader.match(/\}/g) || []).length);
+}
+console.log('SiN translation and light style contracts OK');

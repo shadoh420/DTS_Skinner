@@ -348,6 +348,7 @@ class DaikatanaMapsTest(unittest.TestCase):
         self.assertFalse(sky['missing'])
         self.assertEqual([l['tile'] for l in sky['clouds']['layers']], [8, 2])
         self.assertEqual(sky['clouds']['layers'][1]['alpha'], .4)
+        self.assertEqual(([l['speed'] for l in sky['clouds']['layers']], sky['clouds']['dir']), ([1, 4], [1, .8]))  # gl_cloud* defaults.
         fog = maps.fog_settings(dict(fog_value='1', fog_start='200', fog_end='9600', _color='.1 .2 .3'))
         self.assertEqual((fog['mode'], fog['color'], fog['end']), ('linear', [.1, .2, .3], 9600))
         self.assertEqual(maps.fog_settings(dict(_color='.1 .2 .3', fog_color='255 0 0'))['color'], [1, 0, 0])

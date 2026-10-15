@@ -145,6 +145,31 @@ class QuakeMapsTest(unittest.TestCase):
         self.assertEqual(face_data(read_bsp(bsp(names=('+1foo', '+0foo'))), 0)['texture']['name'], '+0foo')
         self.assertEqual(face_data(read_bsp(bsp(names=('+bfoo', '+afoo'))), 0)['texture']['name'], '+afoo')
 
+    def test_animation_light_styles_fog_and_water_regions(self):
+        data = read_bsp(bsp(names=('+0foo', '+1foo', '+2foo'), styles=(0, 3, 255, 255), values=(64, 32)))
+        out = geometry(data, instances(data)[0])
+        group = out['groups'][0]
+        self.assertEqual((len(group['anim']['frames']), group['anim']['fps']), (3, 5))
+        self.assertTrue(all(png in out['textures'] for png in group['anim']['frames']))
+        self.assertEqual(group['styles'], [3])  # Style 3 leaves the base tile for a raw sample below it.
+        atlas = np.asarray(out['atlas']).astype(int)
+        self.assertGreater(out['style_offset'], 0)
+        scene = build_map(bsp(styles=(0, 3, 255, 255), values=(64, 32)), 't')[0]
+        self.assertEqual(scene['light_styles']['patterns'], {'3': 'mmmmmaaaaammmmmaaaaaabcdefgabcdefg'})
+        self.assertEqual(atlas.shape[0], 2 * 5)  # No still block; animated base, then its raw sample, each 3+2 tall.
+        self.assertEqual(atlas[2, 2, 0] * 256 + atlas[2, 2, 1], (65280 - 64 * 264) >> 2)
+        self.assertEqual(atlas[5 + 2, 2, 0], 32)
+        data['entities'][0].update({'_fog': '0.05 0.2 0.3 0.4', '_skyfog ': '0.25'})
+        fog = __import__('tools.import_quake_map', fromlist=['fog_settings']).fog_settings(data, viewpoints(data)[0])
+        self.assertEqual((fog['density'], fog['color'], fog['sky'], fog['exp2']), (.05, [.2, .3, .4], .25, .05 / 64 * 32))
+        data['entities'] += [dict(classname='info_fog', targetname='f', fog_color='255 0 0', fog_density='0.02')]
+        data['entities'][0]['fog_info_entity'] = 'f'
+        self.assertEqual(__import__('tools.import_quake_map', fromlist=['fog_settings']).fog_settings(data, viewpoints(data)[0])['color'], [1, 0, 0])
+        from tools.import_quake_map import CONTENT_BLENDS, content_regions
+        regions, tree = content_regions([(0., 0., 1., 64., 2)], [(0, -2, -3)], 0, lambda leaf: [-1, -1, -3][leaf], CONTENT_BLENDS)
+        self.assertEqual(regions[0]['contents'], -3)
+        self.assertEqual(tree['nodes'], [[0., 1., 0., 2., -1 - 3, -1]])  # Above z=64 dry, below water; page axes and units.
+
     def test_player_lands_on_the_hull_floor(self):
         # Hull 1's only node: solid below z = 100 (a clip floor with no faces), empty above.
         data = dict(models=[[0.] * 9 + [0, 0, 0, 0, 0, 0, 0]], planes=[(0., 0., 1., 100., 2)], clipnodes=[(0, -1, -2)])

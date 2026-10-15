@@ -3,6 +3,33 @@
 window.quake2Maps = {
   time: {value: 0},
   sky: {},
+  styled: [],  // {uniform, pattern, scale}: animated light styles of this page's materials.
+  // A face's animated style is a raw sample `styleOffset` below its tile; gl_rsurf.c R_BuildLightMap adds sample * value,
+  // then scales all channels by 255 / max when one exceeds 255.
+  lightGLSL: `uniform float styleA, styleOffset;
+    vec3 lightAt() {
+      vec3 c = texture2D(lights,lightUV).rgb;
+    #ifdef STYLED
+      c += texture2D(lights, lightUV + vec2(0., styleOffset)).rgb * styleA;
+      c /= max(1., max(c.r, max(c.g, c.b)));
+    #endif
+      return c;
+    }`,
+  // Patterns step at 10 Hz (cl_fx.c CL_RunLightStyles: cl.time / 100); value = (char - 'a') * the pack's scale.
+  update(seconds) {
+    const step = Math.floor(seconds * 10);
+    for (const s of this.styled) s.uniform.value = (s.pattern.charCodeAt(step % s.pattern.length) - 97) * s.scale;
+  },
+  addStyles(material, names, styles) {
+    const lights = styles && styles.patterns;
+    if (!lights || !names.length) return;
+    material.defines = {...material.defines, STYLED: ''};
+    material.uniforms.styleOffset.value = styles.offset;
+    names.forEach((style, i) => lights[style] && this.styled.push({uniform: material.uniforms[i ? 'styleB' : 'styleA'], pattern: lights[style], scale: styles.scale}));
+  },
+  patchMaterial(material, group, map) {
+    if (material.userData && material.userData.quake2Lit && group.styles) this.addStyles(material, group.styles, map.light_styles);
+  },
   async loadSky(sky, loadTexture) {
     this.sky = {rate: {value: sky.rotate}, axis: {value: new THREE.Vector3(...sky.axis).normalize()}};
     for (const suffix of ['rt', 'lf', 'bk', 'ft', 'up', 'dn']) {
@@ -51,8 +78,8 @@ window.quake2Maps = {
     });
     if (!texture) return new THREE.MeshBasicMaterial({color: 0xff00ff});
     return new THREE.ShaderMaterial({
-      transparent: group.alpha < 1, depthWrite: group.alpha === 1,
-      uniforms: {surface: {value: texture}, lights: {value: lightMap}, seconds: this.time,
+      transparent: group.alpha < 1, depthWrite: group.alpha === 1, userData: {quake2Lit: true},
+      uniforms: {surface: {value: texture}, lights: {value: lightMap}, seconds: this.time, styleA: {value: 0}, styleOffset: {value: 0},
         size: {value: new THREE.Vector2(...group.size)}, warp: {value: group.kind === 'turbulent'},
         flowing: {value: !!(group.flags & 64)}, unlit: {value: group.unlit}, alpha: {value: group.alpha}},
       vertexShader: `
@@ -78,9 +105,10 @@ window.quake2Maps = {
       fragmentShader: `
         uniform sampler2D surface, lights; uniform bool unlit; uniform float alpha;
         varying vec2 texUV, lightUV;
+        ${this.lightGLSL}
         void main() {
           // Unlit alpha/warp polys use glColor(inverse_intensity); ordinary surfaces multiply RGB lightmaps once.
-          vec3 illumination = unlit ? vec3(.5) : texture2D(lights,lightUV).rgb;
+          vec3 illumination = unlit ? vec3(.5) : lightAt();
           gl_FragColor = vec4(texture2D(surface,texUV).rgb * illumination,alpha);
         }`
     });
