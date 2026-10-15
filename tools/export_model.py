@@ -425,6 +425,9 @@ def main(dts_file_path_str, output_json_dir_str):
         "material_textures": dts_material_textures,
         "groups": material_groups
     }
+    if getattr(shape, 'material_list', None):
+        # TS::Material flags per slot (ts_material.h): 0x100 ShadingNone, 0x1000 TextureTransparent, 0x2000 TextureTranslucent.
+        json_data["material_flags"] = [material.flags & 0xffffffff for material in shape.material_list]
 
     with open(output_json_path, "w") as fp:
         json.dump(json_data, fp)

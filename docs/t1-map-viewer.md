@@ -153,6 +153,15 @@ asks the app for none of them (Raindance: ready in 0.37 seconds instead of
   `castShadows`; a mission without one (BloodRunsCold, Slipstream, Valhalla) is lit
   by its directional `SimLight` (type 1) shining along `aim`, with its `color` and
   `ambient`.
+- Shape materials follow their TS flags (`ts_matRender.cpp`), which the shape exporter
+  writes as `material_flags`: unshaded (0x100: station displays, pad lights),
+  transparent (0x1000: colour key) and translucent (0x2000: blended, no depth write,
+  no haze) slots are drawn unlit; a translucent slot whose bitmap is additive (PBMP
+  attribute 16; the importer and `tools/t1_material_flags.py` add bit 0x10000) adds
+  itself to the scene. The shipped catalog got its flags from TRIBES11 with that tool.
+  A 1.40 PNG install cannot mark additive bitmaps, so its own custom shapes blend those
+  by alpha instead. Models without flags (older packs) keep blending any texture with
+  alpha.
 - `Snowfall` objects with rendering enabled draw rain or snow around the camera
   (Starsiege's binary `SNOW` blocks too: 8 missions, 2 of them rain).
   Buildings keep it out as in the game (`Snowfall::processQuery` and

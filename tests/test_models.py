@@ -43,6 +43,8 @@ class ModelTests(unittest.TestCase):
             export_model(str(model_json_dir.parents[1] / 'tools/dts_files/larmor.dts'), directory)
             generated = json.loads((pathlib.Path(directory) / 'larmor.json').read_text())
         committed = json.loads((model_json_dir / 'larmor.json').read_text())
+        # The catalog carries material flags only for shapes with unshaded or see-through slots (tools/t1_material_flags.py).
+        self.assertEqual(generated.pop('material_flags'), [0x403, 0x203])
         self.assertEqual(committed, generated)
         self.assertEqual(set(committed['material_textures']), {'base.larmor.png'})
         self.assertTrue((textures_dir / 'base.larmor.png').is_file())

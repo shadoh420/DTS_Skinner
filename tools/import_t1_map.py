@@ -300,6 +300,21 @@ SHARED_PALETTES = {struct.unpack_from('<I', data, at)[0]: (list(data[at + 4:at +
                    for data in [(Path(__file__).parent / 't1_shared_palettes.bin').read_bytes()] for at in range(0, len(data), 772)}
 
 
+def pbmp_chunks(data):
+    """A DarkStar PBMP's chunks by tag (head, data, PiDX, ...)."""
+    chunks, offset = {}, 8
+    while offset + 8 <= len(data):
+        size = struct.unpack_from('<I', data, offset + 4)[0]
+        chunks[data[offset:offset + 4]] = data[offset + 8:offset + 8 + size]
+        offset += 8 + size
+    return chunks
+
+
+def bitmap_attributes(data):
+    """A PBMP's attribute flags (g_bitmap.h BMA_*: 1 transparent, 4 translucent, 16 additive); 0 for other formats."""
+    return int.from_bytes(pbmp_chunks(data).get(b'head', b'')[16:20], 'little') if data[:4] == b'PBMP' else 0
+
+
 def bitmap_png(data, palettes, alpha=False):
     """PNG bytes for a PNG, Windows bitmap or DarkStar PBMP; indexed PBMPs take colours from the mission palette.
 
@@ -319,11 +334,7 @@ def bitmap_png(data, palettes, alpha=False):
                 source.putpalette(palette[0])
             image = source.convert(mode)
     else:
-        chunks, offset = {}, 8
-        while offset + 8 <= len(data):
-            size = struct.unpack_from('<I', data, offset + 4)[0]
-            chunks[data[offset:offset + 4]] = data[offset + 8:offset + 8 + size]
-            offset += 8 + size
+        chunks = pbmp_chunks(data)
         _, width, height, depth = struct.unpack_from('<4i', chunks[b'head'])
         palette = palettes.get(struct.unpack('<I', chunks[b'PiDX'])[0]) if b'PiDX' in chunks else None
         palette = palette or next(iter(palettes.values()), None)
@@ -847,6 +858,13 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                 continue
         return None
 
+    def attributes(name):
+        """Attribute flags of a material bitmap the install has as a PBMP, else 0."""
+        try:
+            return bitmap_attributes(read(Path(name).stem + '.bmp'))
+        except (ValueError, KeyError, OSError, struct.error):
+            return 0
+
     def material_names(name):
         materials = interior_dml.dml()
         materials.load_binary(read(name))
@@ -901,6 +919,10 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                         model = json.loads((work / (stem + '.json')).read_text(encoding='utf-8'))
                     if not model.get('vertices'):
                         raise ValueError('Nothing to draw')  # The shape exporter writes an empty model for meshes it cannot read.
+                    # An additive bitmap (BMA_ADDITIVE) adds itself to the scene; the viewer reads that as flag 0x10000.
+                    if model.get('material_flags'):
+                        model['material_flags'] = [flags | (0x10000 if attributes(name) & 16 else 0)
+                                                   for flags, name in zip(model['material_flags'], model['material_textures'])]
                     # Names in brackets stand for slots without a texture; a texture the install lacks stays empty.
                     # Shape bitmaps keep their transparency (colour-keyed and translucent PBMPs); buildings stay as baked.
                     model['material_textures'] = [name if name.startswith('[') else texture(name, alpha=kind != 'interior') or ''
