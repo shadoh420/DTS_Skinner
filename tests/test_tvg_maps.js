@@ -57,6 +57,24 @@ async function run(){
   const camera=new THREE.PerspectiveCamera();camera.position.set(1e5,1e5,1e5);
   deco.onBeforeRender(null,null,camera);assert.equal(deco.count,0);
   camera.position.set(2,3,4);deco.onBeforeRender(null,null,camera);assert.equal(deco.count,2);
+  // Camera regions: the zone's fog, none in a fogless zone, a blend over the new zone's DistanceFogBlendTime.
+  const fog=global.skinnerUnrealFog,red={fog:{color:[1,0,0],start:1,end:2,blend_time:0}};
+  const regionMap={regions:[red,{fog:null},{fog:{color:[0,0,1],start:3,end:6,blend_time:2}}]};
+  adapter.update(0,camera,regionMap,red);assert.equal(fog.ueFogMode.value,1);assert.deepEqual(fog.ueFogColor.value.toArray(),[1,0,0]);
+  adapter.update(1,camera,regionMap,regionMap.regions[1]);assert.equal(fog.ueFogMode.value,0);
+  adapter.update(2,camera,regionMap,red);adapter.update(10,camera,regionMap,regionMap.regions[2]);adapter.update(11,camera,regionMap,regionMap.regions[2]);
+  assert.deepEqual(fog.ueFogColor.value.toArray(),[.5,0,.5]);assert.deepEqual(fog.ueFogRange.value.toArray(),[2,4]);
+  adapter.update(12,camera,regionMap,null);assert.deepEqual(fog.ueFogRange.value.toArray(),[3,6]);
+  // TexPanner/TexRotator/TexOscillator settings move a per-material texture copy; emissive textures load first.
+  const glowTexture=new THREE.Texture();
+  await adapter.load({zones:[],groups:[{settings:{emissive:{texture:'glow.dds',mode:'lerp',shared_uv:true}}}]},async file=>file==='glow.dds'?glowTexture:null);
+  const panned=adapter.material({texture:'a.dds',settings:{pan:[.25,0],spin:1,uvCenter:[.5,.5],osc:{rate:[0,.25],amplitude:[0,.1],phase:[0,0]}}},texture);
+  assert.notStrictEqual(panned.map,texture);adapter.update(1,camera,{},null);
+  assert.equal(panned.map.offset.x,.25);assert.ok(Math.abs(panned.map.offset.y-.1)<1e-9);assert.equal(panned.map.rotation,1);assert.equal(panned.map.center.x,.5);
+  const lum=adapter.material({texture:'a.dds',settings:{emissive:{texture:'glow.dds',mode:'lerp',shared_uv:true}}},texture);
+  const shader={uniforms:{},vertexShader:THREE.ShaderLib.basic.vertexShader,fragmentShader:THREE.ShaderLib.basic.fragmentShader};lum.onBeforeCompile(shader);
+  assert.strictEqual(shader.uniforms.ueGlowMap.value,glowTexture);assert.equal(shader.uniforms.ueGlowMix.value,1);assert.ok(shader.vertexShader.includes('ueUv=uv'));
+  assert.ok(ground.material.fragmentShader.includes('vec4 f=ueFog()'));
   map.instances[0]={...instance,colors:{offset:0,count:100}};
   await assert.rejects(()=>adapter.buildInstances(map,'/data/',get,async()=>texture),/Invalid vertex lighting/);
 }

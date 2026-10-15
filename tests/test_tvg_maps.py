@@ -11,6 +11,7 @@ import numpy as np
 
 from tests.test_tvg import Fixture, compact, pack, array, install_fixture
 from tools.import_tvg import import_catalog, Materials
+from tools.import_tvg_map import zone_regions, distance_fog
 from tools.import_tvg_map import (Models, import_maps, terrain, decoration_matrices,
                                   campaign_sections, section, tag_attachments, LAYER_LIMIT)
 from tools.tvg_package import Library, Package
@@ -165,6 +166,20 @@ class NativeTests(unittest.TestCase):
             try:
                 with self.assertRaisesRegex(ValueError,'revision'):p.model(1)
             finally:p.close()
+
+    def test_zone_regions_follow_the_bsp_walk(self):
+        # One node splitting at native x = 52.5: front (x >= 52.5) is zone 1 (a fog zone), back zone 0 (the LevelInfo).
+        world=dict(nodes=[dict(plane=(1,0,0,52.5),front=-1,back=-1,zones=(0,1))],zones=[0,7])
+        level=dict(bDistanceFog=True,DistanceFogColor=(0,0,255,0),DistanceFogStart=0,DistanceFogEnd=525)
+        regions,tree=zone_regions(world,{7:dict(props=dict(bDistanceFog=True,DistanceFogBlendTime=2,DistanceFogType=1))},level)
+        self.assertEqual(regions[0]['fog']['color'],[1,0,0]);self.assertAlmostEqual(regions[0]['fog']['end'],10)
+        self.assertEqual((regions[1]['fog']['start'],regions[1]['fog']['blend_time'],regions[1]['fog']['type']),(3000/52.5,2,'exponential'))
+        a,b,c,d,front,back=tree['nodes'][0]
+        self.assertEqual((front,back),(-2,-1))
+        page=np.array((0,0,2.))  # native (105, 0, 0): in front
+        self.assertGreaterEqual(np.dot((a,b,c),page)-d,0)
+        self.assertEqual(zone_regions(dict(nodes=[]),{},{}),(None,None))
+        self.assertIsNone(distance_fog({}))
 
     def test_transforms_prepivot_rotation_and_scale(self):
         props=dict(Location=(105,52.5,157.5),Rotation=(0,16384,0),DrawScale=2,DrawScale3D=(1,2,3),PrePivot=(52.5,0,0))

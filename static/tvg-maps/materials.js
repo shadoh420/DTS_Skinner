@@ -81,6 +81,86 @@
   const api={arrays,terrainArrays,decorationToggles,normalizeClampedUVs};
   if(typeof module!=='undefined')module.exports=api;
   if(!root.THREE)return;
+  // One fog for every material and the terrain shader, switched by uniforms alone (no program rebuilds). Both modes give
+  // inscattered colour in rgb and transmission in a. Mode 1, UE2 distance fog: D3D linear table fog on view depth, as the
+  // game's log reports it ("D3D Driver: Using w- pixel fog", tv_cd_dvd.log): t = (end - depth) / (end - start).
+  // Mode 2, UE3 exponential height fog: GetExponentialHeightFog of HeightFogCommon.usf (Engine/Shaders in Ascend's
+  // install), radial distance; ueFogParams = density, height falloff, cos(terminator angle), start distance (page units).
+  const fog=root.skinnerUnrealFog={ueFogMode:{value:0},ueFogColor:{value:new THREE.Color()},ueFogRange:{value:new THREE.Vector2(1e8,1e9)},
+    ueFogParams:{value:new THREE.Vector4(0,1,0,0)},ueFogHeight:{value:0},ueFogOpposite:{value:new THREE.Color()},
+    ueFogLight:{value:new THREE.Vector3(0,1,0)},ueFogMinOpacity:{value:0}};
+  const FOG=`uniform int ueFogMode;uniform vec3 ueFogColor,ueFogOpposite,ueFogLight;uniform vec2 ueFogRange;uniform vec4 ueFogParams;
+    uniform float ueFogHeight,ueFogMinOpacity;varying vec3 ueFogWorld;varying float ueFogDepth;
+    vec4 ueFog(){
+      if(ueFogMode==1){float t=clamp((ueFogRange.y-ueFogDepth)/(ueFogRange.y-ueFogRange.x),0.,1.);return vec4(ueFogColor*(1.-t),t);}
+      if(ueFogMode!=2)return vec4(0.,0.,0.,1.);
+      vec3 d=ueFogWorld-cameraPosition;
+      float line=ueFogParams.x*exp2(-ueFogParams.y*(cameraPosition.y-ueFogHeight))*max(length(d)-ueFogParams.w,0.);
+      float z=abs(d.y)>.00019?d.y:.00019;  // FLT_EPSILON2: 0.01 units
+      line*=(1.-exp2(-ueFogParams.y*z))/(ueFogParams.y*z);
+      float c=dot(ueFogLight,normalize(d));vec3 mid=(ueFogOpposite+ueFogColor)*.5;float a=clamp((c-ueFogParams.z)/(1.-ueFogParams.z),0.,1.);
+      vec3 color=c<ueFogParams.z?mix(ueFogOpposite,mid,clamp((c+1.)/(ueFogParams.z+1.),0.,1.)):mix(mid,ueFogColor,a*a);
+      float t=max(clamp(exp2(-line),0.,1.),ueFogMinOpacity);return vec4(color*(1.-t),t);}\n`;
+  const FOG_VERTEX=`{vec4 ueW=vec4(transformed,1.);
+#ifdef USE_INSTANCING
+ueW=instanceMatrix*ueW;
+#endif
+ueW=modelMatrix*ueW;ueFogWorld=ueW.xyz;ueFogDepth=-(viewMatrix*ueW).z;}\n`;
+  // Fog and emissive go into Three's own materials by replacing the fog chunks. Additive surfaces only lose light to
+  // the fog and modulated ones are left alone (UE3 BasePassPixelShader.usf: Color * VertexFog.a for additive;
+  // modulate is not in NEEDS_BASEPASS_FOGGING). Hypothesis: UE2's fixed-function passes do the same.
+  // Emissive: added to the lit result, or with mode 'lerp' (a SelfIlluminationMask) replacing it by the glow's alpha.
+  function shade(material,s,glow,glowMatrix) {
+    const blend=s.blend||[],additive=blend[1]==='gl_one'||blend[1]==='gl_one_minus_src_color',modulate=blend[0]==='gl_dst_color';
+    const uniforms=glow?{ueGlowMap:{value:glow},ueGlowColor:{value:new THREE.Color(...(s.emissive.color||[1,1,1]))},
+      ueGlowMatrix:{value:glowMatrix},ueGlowMix:{value:s.emissive.mode==='lerp'?1:0}}:{};
+    const prior=material.onBeforeCompile,key=material.customProgramCacheKey===THREE.Material.prototype.customProgramCacheKey?'':material.customProgramCacheKey();
+    material.onBeforeCompile=function(shader,renderer){
+      prior.call(this,shader,renderer);Object.assign(shader.uniforms,fog,uniforms);
+      shader.vertexShader=shader.vertexShader.replace('#include <fog_pars_vertex>','varying vec3 ueFogWorld;varying float ueFogDepth;'+(glow?'varying vec2 ueUv;':''))
+        .replace('#include <fog_vertex>',FOG_VERTEX+(glow?'ueUv=uv;':''));
+      let f=shader.fragmentShader.replace('#include <fog_pars_fragment>',FOG+(glow?'uniform sampler2D ueGlowMap;uniform vec3 ueGlowColor;uniform mat3 ueGlowMatrix;uniform float ueGlowMix;varying vec2 ueUv;':''))
+        .replace('#include <fog_fragment>',modulate?'':`{vec4 ueF=ueFog();gl_FragColor.rgb=gl_FragColor.rgb*ueF.a${additive?'':'+ueF.rgb'};}`);
+      if(glow)f=f.replace('#include <color_fragment>','#include <color_fragment>\nvec4 ueE=texture2D(ueGlowMap,(ueGlowMatrix*vec3(ueUv,1.)).xy);'+
+        'diffuseColor.rgb*=1.-ueE.a*ueGlowMix;vec3 ueGlow=ueE.rgb*ueGlowColor*mix(1.,ueE.a,ueGlowMix);')
+        .replace('#include <output_fragment>','outgoingLight+=ueGlow;\n#include <output_fragment>');
+      shader.fragmentShader=f;
+    };
+    material.customProgramCacheKey=()=>key+'unreal-fog-v1'+(glow?'e':'')+(additive?'a':modulate?'m':'');
+    return material;
+  }
+  // UV modifiers belong to the material, so cloned sampler state shares the image. Moving ones are animated in update().
+  const moving=[],glows=new Map(),white=new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1);white.needsUpdate=true;
+  function uvTexture(texture,s,custom=false) {
+    if(!texture||!(s.clamp||s.uvScale||s.uvOffset||s.uvRotation||s.uvCenter||s.pan||s.spin||s.osc))return texture;
+    texture=texture.clone();texture.needsUpdate=true;
+    if(s.clamp)texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;
+    if(s.uvScale)texture.repeat.fromArray(s.uvScale);
+    if(s.uvOffset)texture.offset.fromArray(s.uvOffset);
+    if(s.uvCenter)texture.center.fromArray(s.uvCenter);
+    texture.rotation=s.uvRotation||0;texture.updateMatrix();
+    if(s.pan||s.spin||s.osc)moving.push({texture,s,custom,offset:texture.offset.toArray(),rotation:texture.rotation});
+    return texture;
+  }
+  // Region fog (UE2 zones and fog volumes): the camera's region sets the linear fog, blended over the new region's
+  // DistanceFogBlendTime. Hypothesis: the blend is linear in time (UE2's native PlayerController code is not on disk).
+  const fade={region:undefined,from:null,to:null,start:0,time:0};
+  function linearFog(f) {
+    fog.ueFogMode.value=f?1:0;
+    if(f){fog.ueFogColor.value.fromArray(f.color);fog.ueFogRange.value.set(f.start,f.end);}
+  }
+  function regionFog(seconds,region) {
+    if(region&&region!==fade.region) {
+      const was=fog.ueFogMode.value===1?{color:fog.ueFogColor.value.toArray(),start:fog.ueFogRange.value.x,end:fog.ueFogRange.value.y}:null;
+      fade.region=region;fade.from=was;fade.to=region.fog||null;fade.start=seconds;fade.time=region.fog?.blend_time||0;
+    }
+    if(!fade.region)return;
+    const k=fade.time>0?Math.min(1,(seconds-fade.start)/fade.time):1,{from,to}=fade;
+    if(k>=1||!from&&!to)return linearFog(to);
+    const a=from||{...to,start:1e8,end:1e9},b=to||{...from,start:1e8,end:1e9};
+    fog.ueFogMode.value=1;fog.ueFogColor.value.setRGB(...a.color.map((v,i)=>v+(b.color[i]-v)*k));
+    fog.ueFogRange.value.set(a.start+(b.start-a.start)*k,a.end+(b.end-a.end)*k);
+  }
   const config=root.skinnerMapViewerConfig={
     label:'Tribes: Vengeance',storageKey:'skinner.tvgmaps',debugName:'skinnerTvgMaps',
     games:[['tvg','C:\\Program Files (x86)\\VUGames\\Tribes Vengeance']],
@@ -90,47 +170,68 @@
       if(map.game!=='tvg')return;
       normalizeClampedUVs(geometry.attributes.uv.array,geometry.index.array,map.groups);geometry.attributes.uv.needsUpdate=true;
     },
-    async load(map) {
+    // Shared by the three pages: emissive textures load before materials are made; prepare() is each game's fog.
+    async load(map,loadTexture) {
+      moving.length=0;glows.clear();fade.region=undefined;fog.ueFogMode.value=0;
+      const files=new Set([...(map.groups||[]),...Object.values(map.model_library||{}).flatMap(m=>m.groups||[])].map(g=>g.settings?.emissive?.texture).filter(Boolean));
+      if(loadTexture)await Promise.all([...files].map(async file=>glows.set(file,await loadTexture(file))));
+      await config.prepare(map);
+    },
+    prepare(map) {
       const {scene,renderer}=root[config.debugName];
-      scene.background=null;renderer.setClearColor(0x28313c);
+      scene.background=null;scene.fog=null;renderer.setClearColor(0x28313c);
+      // Before the camera's region is known (and in packs without regions): the first fog zone.
       const zone=map.zones.find(z=>z.bDistanceFog&&z.DistanceFogEnd>z.DistanceFogStart);
       if(zone) {
         const c=zone.DistanceFogColor||[80,90,110,255];
-        scene.fog=new THREE.Fog(new THREE.Color(c[2]/255,c[1]/255,c[0]/255),zone.DistanceFogStart/52.5,zone.DistanceFogEnd/52.5);
-        renderer.setClearColor(scene.fog.color);
+        linearFog({color:[c[2]/255,c[1]/255,c[0]/255],start:zone.DistanceFogStart/52.5,end:zone.DistanceFogEnd/52.5});
+        renderer.setClearColor(fog.ueFogColor.value);
       }
+    },
+    update(seconds,camera,map,region) {
+      for(const m of moving) {
+        const {texture,s}=m;
+        if(s.pan)texture.offset.set(m.offset[0]+s.pan[0]*seconds%1,m.offset[1]+s.pan[1]*seconds%1);
+        else texture.offset.fromArray(m.offset);
+        if(s.osc)for(let i=0;i<2;i++)texture.offset.setComponent(i,texture.offset.getComponent(i)+s.osc.amplitude[i]*Math.sin(2*Math.PI*(s.osc.rate[i]*seconds+s.osc.phase[i])));
+        if(s.spin)texture.rotation=m.rotation+s.spin*seconds%(2*Math.PI);
+        if(m.custom)texture.updateMatrix();  // Three updates only its own maps' matrices.
+      }
+      if(map.regions)regionFog(seconds,region);
     },
     material(group,texture,baked=false) {
       const s=group.settings||{},blend=s.blend||[];
-      if(group.kind==='sky'&&config.skyMaterial)return config.skyMaterial(group,texture);
-      if(group.kind==='sky')return new THREE.MeshBasicMaterial({colorWrite:false,side:THREE.DoubleSide});
-      const custom=config.groupMaterial?.(group,texture);if(custom)return custom;
-      // UV modifiers belong to the material, so cloned sampler state shares the image.
-      if(texture&&(s.clamp||s.uvScale||s.uvOffset||s.uvRotation)) {
-        texture=texture.clone();texture.needsUpdate=true;
-        if(s.clamp)texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;
-        if(s.uvScale)texture.repeat.fromArray(s.uvScale);
-        if(s.uvOffset)texture.offset.fromArray(s.uvOffset);
-        texture.rotation=s.uvRotation||0;
+      let material=group.kind==='sky'?config.skyMaterial?.(group,texture)||new THREE.MeshBasicMaterial({colorWrite:false,side:THREE.DoubleSide}):config.groupMaterial?.(group,texture);
+      let glow=null,glowMatrix=null;
+      if(!material) {
+        texture=uvTexture(texture,s);
+        const Material=baked||s.unlit?THREE.MeshBasicMaterial:THREE.MeshLambertMaterial;
+        const factors={gl_zero:THREE.ZeroFactor,gl_one:THREE.OneFactor,gl_src_alpha:THREE.SrcAlphaFactor,
+          gl_one_minus_src_alpha:THREE.OneMinusSrcAlphaFactor,gl_src_color:THREE.SrcColorFactor,
+          gl_one_minus_src_color:THREE.OneMinusSrcColorFactor,gl_dst_color:THREE.DstColorFactor};
+        material=new Material({map:texture,color:texture?0xffffff:0x999999,vertexColors:baked&&!s.unlit,
+          side:s.cull==='none'?THREE.DoubleSide:THREE.FrontSide,alphaTest:s.alphaTest||0,
+          transparent:!!blend.length,depthWrite:s.depthWrite??!blend.length,opacity:s.opacity??1,
+          ...(blend.length?{blending:THREE.CustomBlending,blendSrc:factors[blend[0]]??THREE.SrcAlphaFactor,
+            blendDst:factors[blend[1]]??THREE.OneMinusSrcAlphaFactor}:{})});
+        const e=s.emissive;
+        glow=e&&(e.texture?glows.get(e.texture):white);
+        if(glow) {
+          const own=e.texture&&(e.uvScale||e.uvOffset||e.uvRotation||e.uvCenter||e.pan||e.spin||e.osc);
+          if(own)glow=uvTexture(glow,e,true);
+          // A self-illumination layer without its own modifier follows the diffuse coordinates (a modifier around a UE2
+          // shader moves every layer); otherwise the mesh's own coordinates.
+          glowMatrix=own?glow.matrix:e.shared_uv&&texture?texture.matrix:new THREE.Matrix3();
+        }
       }
-      const Material=baked||s.unlit?THREE.MeshBasicMaterial:THREE.MeshLambertMaterial;
-      const factors={gl_zero:THREE.ZeroFactor,gl_one:THREE.OneFactor,gl_src_alpha:THREE.SrcAlphaFactor,
-        gl_one_minus_src_alpha:THREE.OneMinusSrcAlphaFactor,gl_src_color:THREE.SrcColorFactor,
-        gl_one_minus_src_color:THREE.OneMinusSrcColorFactor,gl_dst_color:THREE.DstColorFactor};
-      return new Material({map:texture,color:texture?0xffffff:0x999999,vertexColors:baked&&!s.unlit,
-        side:s.cull==='none'?THREE.DoubleSide:THREE.FrontSide,alphaTest:s.alphaTest||0,
-        transparent:!!blend.length,depthWrite:s.depthWrite??!blend.length,opacity:s.opacity??1,
-        ...(blend.length?{blending:THREE.CustomBlending,blendSrc:factors[blend[0]]??THREE.SrcAlphaFactor,
-          blendDst:factors[blend[1]]??THREE.OneMinusSrcAlphaFactor}:{})});
+      return shade(material,s,glow,glowMatrix);
     },
     async terrainMaterial(t,loadTexture) {
-      const uniforms={},layers=t.layers.slice(0,5);
+      const uniforms={...fog},layers=t.layers.slice(0,5);
       const tex=async file=>file?loadTexture(file):null;
       const macro=await tex(t.textures.RenderMacroTexture||t.textures.FinalisedMacroTexture||t.textures.MacroTexture);
       const light=await tex(t.textures.LightmapTexture||t.vertex_light);
       uniforms.macro={value:macro};uniforms.hasMacro={value:!!macro};uniforms.light={value:light};uniforms.hasLight={value:!!light};
-      const fog=root[config.debugName].scene.fog;
-      uniforms.fogColor={value:fog?.color||new THREE.Color(0)};uniforms.fogRange={value:new THREE.Vector2(fog?.near||1e8,fog?.far||1e9)};
       let declarations='',blend='vec3 rgb=hasMacro?texture2D(macro,gridUV).rgb:vec3(.45);';
       for(let i=0;i<layers.length;i++) {
         const l=layers[i];uniforms['layer'+i]={value:await tex(l.texture)};uniforms['alpha'+i]={value:await tex(l.alpha)};
@@ -144,13 +245,13 @@
         blend+=`rgb=mix(rgb,texture2D(layer${i},(matrix${i}*vec4(nativePosition,1.)).xy).rgb,${l.alpha?`texture2D(alpha${i},gridUV).r`:'1.'});`;
       }
       return new THREE.ShaderMaterial({uniforms,side:t.inverted?THREE.DoubleSide:THREE.FrontSide,
-        vertexShader:`varying vec2 gridUV; varying vec3 nativePosition; varying float distanceToCamera;
+        vertexShader:`varying vec2 gridUV; varying vec3 nativePosition; varying vec3 ueFogWorld; varying float ueFogDepth;
           void main(){gridUV=uv;nativePosition=vec3(position.z,-position.x,position.y)*52.5;
-            vec4 p=modelViewMatrix*vec4(position,1.);distanceToCamera=-p.z;gl_Position=projectionMatrix*p;}`,
-        fragmentShader:`uniform sampler2D macro,light;uniform bool hasMacro,hasLight;uniform vec3 fogColor;uniform vec2 fogRange;
-          varying vec2 gridUV; varying vec3 nativePosition; varying float distanceToCamera;${declarations}
+            vec4 w=modelMatrix*vec4(position,1.),p=viewMatrix*w;ueFogWorld=w.xyz;ueFogDepth=-p.z;gl_Position=projectionMatrix*p;}`,
+        fragmentShader:`uniform sampler2D macro,light;uniform bool hasMacro,hasLight;
+          varying vec2 gridUV; varying vec3 nativePosition;${FOG}${declarations}
           void main(){${blend} if(hasLight)rgb*=texture2D(light,gridUV).rgb*1.5;
-            gl_FragColor=vec4(mix(rgb,fogColor,smoothstep(fogRange.x,fogRange.y,distanceToCamera)),1.);}`});
+            vec4 f=ueFog();gl_FragColor=vec4(rgb*f.a+f.rgb,1.);}`});
     },
     async buildInstances(map,data,get,loadTexture) {
       const buffers=new Map(),models=new Map(),objects=[];
