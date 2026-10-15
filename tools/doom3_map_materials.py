@@ -9,7 +9,8 @@ except ImportError:
 
 def expression(source,policy=None):
     if policy:source=re.sub(r"\b(?:glslPrograms|fragmentPrograms|vertexPrograms)\b","0",source,flags=re.I)
-    tokens=re.findall(r'\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+|[a-zA-Z_]\w*|==|!=|<=|>=|&&|\|\||[-+*/%<>()\[\]!]',source)
+    # idLexer number suffixes: "1.0f" is the number 1.0.
+    tokens=re.findall(r'(?:\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+)[fFlL]?|[a-zA-Z_]\w*|==|!=|<=|>=|&&|\|\||[-+*/%<>()\[\]!]',source)
     if ''.join(tokens)!=re.sub(r'\s+','',source): raise ValueError('Unsupported expression: '+source)
     at=0
     precedence={'||':1,'&&':2,'==':3,'!=':3,'<':4,'>':4,'<=':4,'>=':4,'+':5,'-':5,'*':6,'/':6,'%':6}
@@ -22,8 +23,10 @@ def expression(source,policy=None):
             left=parse()
             if at>=len(tokens) or tokens[at]!=')': raise ValueError('Unclosed expression')
             at+=1
-        elif re.fullmatch(r'(?:\d|\.).*',token): left=float(token)
+        elif re.fullmatch(r'(?:\d|\.).*',token): left=float(token.rstrip('fl'))
         elif token in ('time','sound') or re.fullmatch(r'(?:parm|global)\d+',token): left=token
+        # Raven registers: map decals are fresh (DecalLife 0); IsMultiplayer comes from the map; VertexRandomizer is held at 0.
+        elif policy and token in RAVEN_REGISTERS and (at>=len(tokens) or tokens[at]!='['): left=token
         elif at<len(tokens) and tokens[at]=='[':
             at+=1;arg=parse()
             if at>=len(tokens) or tokens[at]!=']':raise ValueError('Unclosed table expression')
@@ -78,7 +81,9 @@ COMMANDS=set(('name map clampmap diffusemap bumpmap specularmap blend if alphate
               'vertexcolor inversevertexcolor scroll translate scale centerscale rotate texgen cubemap cameracubemap '
               'program vertexprogram fragmentprogram fragmentmap vertexparm videomap soundmap maskcolor maskalpha maskdepth '
               'forcehighquality highquality uncompressed zeroclamp alphazeroclamp clamp nearest linear nopicmip '
-              'polygonoffset privatepolygonoffset ignorealphatest').split())
+              'polygonoffset privatepolygonoffset ignorealphatest shear mirrorrendermap remoterendermap xrayrendermap '
+              'screen screen2 glasswarp maskred maskgreen maskblue ignoredepth megatexture noclamp').split())
+RAVEN_REGISTERS=('decallife','ismultiplayer','vertexrandomizer')
 RAVEN_COMMANDS=set('shaderparm shadertexture glslprogram fp20program nomips shear mirrorrendermap remoterendermap noclamp'.split())
 BLENDS={'add':['gl_one','gl_one'],'filter':['gl_dst_color','gl_zero'],'modulate':['gl_dst_color','gl_zero'],
         'blend':['gl_src_alpha','gl_one_minus_src_alpha'],'none':['gl_zero','gl_one']}
@@ -125,7 +130,8 @@ def compile_stage(tokens,textures):
             continue
         start=i;depth=0
         while i<len(t):
-            if depth==0 and t[i].lower() in commands:break
+            # A keyword followed by [ is a table lookup ("rgb linear [Parm6 - time]"), not the next command.
+            if depth==0 and t[i].lower() in commands and not (i+1<len(t) and t[i+1].startswith('[')):break
             depth+=t[i].count('(')+t[i].count('[')-t[i].count(')')-t[i].count(']');i+=1
         args=t[start:i]
         try:
@@ -142,10 +148,11 @@ def compile_stage(tokens,textures):
             elif key=='colored':stage['color']=['parm0','parm1','parm2','parm3']
             elif key=='if':stage['condition']=expr(' '.join(args))
             elif key=='alphatest':stage['alphaTest']=expr(' '.join(args))
-            elif key in ('scroll','translate','scale','centerscale','rotate'):
+            elif key in ('scroll','translate','scale','centerscale','rotate','shear'):
                 stage['uv'].append([key,*[expr(x) for x in split_args(args)]])
             elif key in ('vertexcolor','inversevertexcolor'):stage['vertexColor']=1 if key=='vertexcolor' else -1
             elif key in ('maskcolor','maskalpha'):stage[key]=True
+            elif key in ('screen','screen2','glasswarp'):stage['texgen']=key
             elif key in ('clamp','zeroclamp','alphazeroclamp'):stage['clamp']=True
             elif key in ('name','forcehighquality','highquality','uncompressed','nearest','linear','nopicmip','nomips','noclamp'):pass
             elif key in ('privatepolygonoffset','polygonoffset'):stage['polygonOffset']=True
@@ -227,6 +234,7 @@ def compile_material(name,defs,materials,textures):
         try:deform=parse_deform(global_tokens,defs.policy)
         except (ValueError,IndexError) as exc:notes.append('deform: '+str(exc))
         if not deform:notes.append('deform '+lower[lower.index('deform')+1])
+    if any('vertexrandomizer' in x.lower() for x in body):notes.append('VertexRandomizer held at 0')
     for feature in ('guisurf','foglight','blendlight'):
         if feature in lower:notes.append(feature)
     for s in parsed:
@@ -235,6 +243,7 @@ def compile_material(name,defs,materials,textures):
                 notes.append('missing image: '+image['expression'])
         if any(x in lower for x in ('clamp','zeroclamp','alphazeroclamp')):s['clamp']=True
         if 'polygonoffset' in lower or decal:s['polygonOffset']=True
+        if s.get('texgen') in ('screen','screen2','glasswarp') and not portal_sky:notes.append('texgen '+s['texgen'])
     def sound_reactive(value):
         return value=='sound' if isinstance(value,str) else any(sound_reactive(x) for x in value) if isinstance(value,list) else False
     return dict(name=record['name'],visible=record['visible'],twoSided=record['twoSided'],translucent=translucent,

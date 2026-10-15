@@ -3,7 +3,7 @@
   'use strict';
   function evaluate(node, time, parms, tables, globals=[], sound=0) {
     if (typeof node === 'number') return node;
-    if (typeof node === 'string') return node === 'sound' ? sound : node === 'time' ? time : node.startsWith('parm') ? (parms[+node.slice(4)] || 0) : node.startsWith('global') ? (globals[+node.slice(6)] || 0) : 0;
+    if (typeof node === 'string') return node === 'sound' ? sound : node === 'time' ? time : node.startsWith('parm') ? (parms[+node.slice(4)] || 0) : node.startsWith('global') ? (globals[+node.slice(6)] || 0) : node === 'ismultiplayer' ? (globals.isMultiplayer || 0) : 0;
     if (!node) return 0;
     const [op,a,b]=node, x=evaluate(a,time,parms,tables,globals,sound);
     if (op==='table') {
@@ -29,6 +29,7 @@
       if(op==='scroll'||op==='translate') n=[1,0,x,0,1,y];
       else if(op==='scale') n=[x,0,0,0,y,0];
       else if(op==='centerscale') n=[x,0,.5-.5*x,0,y,.5-.5*y];
+      else if(op==='shear') n=[1,x,-.5*x,y,1,-.5*y]; // Material.cpp: about the texture centre
       else {const c=tables.costable?evaluate(['table','costable',x],time,parms,tables,globals,sound):Math.cos(x*2*Math.PI),s=tables.sintable?evaluate(['table','sintable',x],time,parms,tables,globals,sound):Math.sin(x*2*Math.PI);n=[c,-s,.5-.5*c+.5*s,s,c,.5-.5*s-.5*c];}
       m=[m[0]*n[0]+m[1]*n[3],m[0]*n[1]+m[1]*n[4],m[0]*n[2]+m[1]*n[5]+m[2],
          m[3]*n[0]+m[4]*n[3],m[3]*n[1]+m[4]*n[4],m[3]*n[2]+m[4]*n[5]+m[5]];
@@ -86,6 +87,14 @@
     const x=p.map(v=>v[0]/Math.max(v[3],1e-8)),y=p.map(v=>v[1]/Math.max(v[3],1e-8));
     return [Math.min(...x),Math.min(...y),Math.max(...x),Math.max(...y)];
   }
+  function portalFade(portal,origin) {
+    // Quake 4 PROC portal fade ("_black" near far): black over the portal from near to far viewer distance
+    // (to its centre); at far it is closed and nothing behind it is drawn.
+    if(!portal.fade)return 0;
+    const n=portal.points.length,c=[0,1,2].map(k=>portal.points.reduce((s,p)=>s+p[k],0)/n),[,near,far]=portal.fade;
+    const d=Math.hypot(origin[0]-c[0],origin[1]-c[1],origin[2]-c[2]);
+    return far>near?Math.max(0,Math.min(1,(d-near)/(far-near))):+(d>=far);
+  }
   function visibleAreas(origin,data,matrix) {
     const start=areaAt(origin,data.nodes);
     if(start<0)return new Set(Array.from({length:data.areaCount},(_,i)=>i));
@@ -96,6 +105,7 @@
       const a=queue[next],from=rects.get(a);
       for(const index of adjacency[a] || []) {
         const portal=data.portals[index],b=portal.areas[0]===a?portal.areas[1]:portal.areas[0];
+        if(portalFade(portal,origin)>=1)continue;
         if(!projected.has(index))projected.set(index,portalRect(portal.points,matrix));
         const p=projected.get(index);if(!p)continue;
         const r=[Math.max(from[0],p[0]),Math.max(from[1],p[1]),Math.min(from[2],p[2]),Math.min(from[3],p[3])];
@@ -145,6 +155,27 @@
   function ambientOrder(sort,sequence) {
     // RB_STD_DrawShaderPasses: after all interactions, by material sort; stage chains keep import order.
     return 100+((sort??0)+3)*1e6+sequence;
+  }
+  function anglesAxis([pitch,yaw,roll]) {
+    // idAngles::ToMat3 rows as columns (importer convention: world = axis * local). Row-major 3x3.
+    const r=Math.PI/180,sp=Math.sin(pitch*r),cp=Math.cos(pitch*r),sy=Math.sin(yaw*r),cy=Math.cos(yaw*r),sr=Math.sin(roll*r),cr=Math.cos(roll*r);
+    const rows=[[cp*cy,cp*sy,-sp],[sr*sp*cy-cr*sy,sr*sp*sy+cr*cy,sr*cp],[cr*sp*cy+sr*sy,cr*sp*sy-sr*cy,cr*cp]];
+    return [0,1,2].map(i=>[0,1,2].map(j=>rows[j][i]));
+  }
+  function moverMatrix(movers,i,ms) {
+    // Row-major 4x4 world transform of mover i at game time ms (idRotater linear, idBobber/idPendulum
+    // EXTRAPOLATION_DECELSINE|NOSTOP), composed with its parents. Identity when i is null.
+    const I=[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],mul=(a,b)=>a.map(row=>b[0].map((_,j)=>row.reduce((s,v,k)=>s+v*b[k][j],0)));
+    if(i===null||i===undefined||!movers[i])return I;
+    const m=movers[i],o=m.origin;let local;
+    const swing=()=>Math.sin((ms-m.start)/m.duration*Math.PI/2)*m.duration*.001*Math.SQRT1_2;
+    if(m.kind==='bob'){const s=swing();local=I.map((row,r)=>r<3?row.map((v,c)=>c===3?m.delta[r]*s:v):row);}
+    else {
+      const s=m.kind==='rotate'?ms/1000:swing(),A=anglesAxis(m.angles.map((v,k)=>v+m.delta[k]*s)),A0=anglesAxis(m.angles);
+      const R=A.map(row=>[0,1,2].map(j=>row.reduce((t,v,k)=>t+v*A0[j][k],0)));   // A * A0^T
+      local=[...R.map((row,r)=>[...row,o[r]-row.reduce((t,v,k)=>t+v*o[k],0)]),[0,0,0,1]];
+    }
+    return m.parent!==null&&m.parent!==undefined?mul(moverMatrix(movers,m.parent,ms),local):local;
   }
   function fogPlane(light) {
     // R_SetLightFrustum frustum[5] = vLight->fogPlane: the falloff f=1 plane, positive outside (above) the fog.
@@ -253,6 +284,6 @@
     else if(kind==='move') {for(let i=0;i<n;i++)out.position[i*3]+=values[0];}
     return true;
   }
-  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,ambientOrder,fogPlane,portalSkyOrigin,skyMatrix,DEFORMS,deformLayout,deform};
+  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,ambientOrder,fogPlane,portalFade,anglesAxis,moverMatrix,portalSkyOrigin,skyMatrix,DEFORMS,deformLayout,deform};
   if(typeof module!=='undefined')module.exports=api;else root.doom3Materials=api;
 })(typeof window!=='undefined'?window:globalThis);
