@@ -161,6 +161,32 @@ window.t1Skies = {
     return this.unreal(args, window.skinnerMapViewerConfig);
   },
 
+  // Skinner Sky (static/skinner-sky, docs/skinner-sky.md): a preset of plain numbers drawn by SkinnerSky.cginc, the
+  // file Unity's SkinnerSky.shader includes too. Air: single scattering in 8 steps; then stars, Milky Way, moon, sun,
+  // aurora, cirrus and lit clouds over it; one noise texture. Uniforms are the preset's keys, missing ones these
+  // (the same defaults as the Unity shader's properties); out through exposure, ACES and the display's 2.2.
+  skinnerDefaults: {sunAzimuth: 200, sunElevation: 35, sunColor: [1, .98, .95], sunIntensity: 20, sunSize: 1.2,
+    moonAzimuth: 20, moonElevation: -30, moonColor: [.9, .92, 1], moonIntensity: 0, moonSize: 3.5,
+    rayleigh: [1, 1, 1], ozone: 1, mie: 1, mieG: .8, groundColor: [.25, .24, .22], nightColor: [.0004, .0007, .0014], exposure: 1.5,
+    starIntensity: 0, starDensity: 250, milkyWay: 0, cloudCoverage: .5, cloudSoftness: .15, cloudScale: 20, cloudHeight: 2,
+    cloudSpeed: [.02, .005, 0], cloudColor: [1, 1, 1], cloudDarkness: 1, cloudOpacity: 1, cirrusCoverage: .3, cirrusScale: 150,
+    cirrusSpeed: [.04, .01, 0], auroraIntensity: 0, auroraColor: [.1, 1, .4], auroraColor2: [.6, .2, 1]},
+  async skinner({entry, radius, group, loadTexture, time}) {
+    const [noise, core] = await Promise.all([loadTexture(entry.base + 'SkinnerSkyNoise.png', true),
+      fetch(entry.base + 'SkinnerSky.cginc').then(response => response.ok ? response.text() : null, () => null)]);
+    if (!noise || !core) return;
+    const uniforms = {skyNoise: {value: noise}, uTime: time}, declared = [];
+    for (const [key, fallback] of Object.entries(this.skinnerDefaults)) {
+      const value = entry.sky[key] ?? fallback;
+      uniforms[key] = {value: Array.isArray(value) ? new THREE.Vector3(...value) : value};
+      declared.push(`uniform ${Array.isArray(value) ? 'vec3' : 'float'} ${key};`);
+    }
+    const fragmentShader = `uniform sampler2D skyNoise; uniform float uTime; ${declared.join(' ')} varying vec3 vDir;\n#define UNROLL\n${core}
+      void main() { gl_FragColor = vec4(pow(aces(skinnerSky(normalize(vDir)) * exposure), vec3(1. / 2.2)) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.); }`;
+    this.ball(new THREE.ShaderMaterial({uniforms, vertexShader: this.vertexShader, fragmentShader,
+      extensions: {derivatives: true}, blending: THREE.NoBlending}), radius, group);
+  },
+
   // Quake: the sky texture's halves as two layers, front over back (index 0 clear), scrolling at 16 and 8 texels a
   // second, coloured through colormap row 32: the Quake Maps page's sky (quake-maps/materials.js kind 1), the ray's
   // height tripled to flatten the dome as R_DrawSkyChain does.
