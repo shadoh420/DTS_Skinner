@@ -120,6 +120,25 @@ same archives, and a material names them by bare name: `dev_grey128` has
 name wherever it lies, and the import does the same
 (`tools/reflex_textures.py`).
 
+Normal maps: a material whose shader reads one (`…TEXTURENORMALS`: the dev
+materials' `dev_grid16_normals` and `dev_nogrid_normals`, faint grooves along
+the grid and scratches) keeps it as its bytes are (`normals` in
+materials.json, a PNG beside the textures). The page reads it as the game's
+compiled shader does: x is red times alpha, y green, z blue, each × 2 − 1, and
+the normal is x along the texture's u, −y along its v and z out of the face.
+On brush faces u and v come from the screen derivatives of the face's position
+and texture coordinates. Model materials with normal maps are not drawn with
+them: no stock map places one (only the blood materials have them). The same
+shaders take a surface's roughness from the meta texture's red (at least
+0.05); the import keeps its mean where the material gives none (0.65 for
+`dev_grid16`, 0.73 for `dev_nogrid`; the page took 0.8). A page texture unit
+for the meta itself is not left: the brush shader already samples 16 textures,
+WebGL's least (the reflection-probe index now rides in the unused fourth half
+of the probes' `cC` plane). Checked in the game with a test map (a point light
+12 above the dev floor of a closed room, October 2026): the grid's grooves
+catch the light in a cross through the bright spot on the page as in the game;
+the game's bright spot is a little sharper.
+
 A `.textureset` (little-endian): `20 00 0f d0`, its name (128 bytes), the
 image count, a zero, then a table of 16 entries of 156 bytes from offset 140:
 the image's name (128 bytes), the offsets of up to three copies of it
@@ -503,16 +522,45 @@ thing's own axes (seen in the game: Ruin's pads at 180 90 0 lie flat as at
   materials' own blue and cyan, within 3 %; a sign_carnage given water and no
   albedo is water blue; the page had them white × 13.8). 983 placed parts
   in the maps take this path, 550 of them in SkyTemples. A part given a clip material is not drawn (Furnace hides most of a
-  tree that way). God rays and light beams are left out (the game fades them
-  with the view), and so is the resist powerup's shader (`powerup_resist`, no
+  tree that way). The resist powerup's shader is left out (`powerup_resist`, no
   colour to read: Ashur's Reflex logos behind its teleporters, barely there in
   the game; left out, Ashur's spawn view comes within .0287 of the game's
   frame, drawn white .0333).
+- God rays (`godrays_TEXTUREDIFFUSE`; ironguard's 49, in its
+  `HIperf_light_long` prefab) are drawn as their compiled shader draws them:
+  sat(sat(n · v)^pow × mul) with the normal turned to the viewer, times their
+  texture's red twice (at (uv + time × scroll) / 2 and at uv + time × scroll:
+  `scrollSpeedXY`, which the import keeps with the texture), times
+  `intensityMul`, their colour (`material0Albedo` there) and the mesh's vertex
+  colour, each to 2.2; added, from both sides. Their vertex colours are dark
+  (0 to 22 of 255), so they are faint: from ironguard's spawn at 1120 192
+  1248 they add at most 2 levels a channel on the page, and the game's frame
+  from there (a one-spawn copy, October 2026) shows no shaft either.
+- Ribbons and spawners (effect records 6 and 7) are only in weapon and
+  teleporter effects no map places. A cloth record (10: its mesh by name, 129
+  bytes; the 29 `ancient_japan_flag_tri` banners) is read past; the game
+  draws the banner still, as its mesh has it (a test map's banner over 4.5 s
+  of shots 150 ms apart did not change a pixel), and so does the page.
 - Pickups stand on their pads (health, armour, powerups, weapons) and float
-  30 units above them (measured on a Furnace health; taken for the others too;
-  the game bobs and turns them). Holograms and glows are drawn as their
-  shaders shade them (The frame, above). A
-  skinned mesh (the teleporter's portal) is posed by its bones. A Teleporter
+  30 units above them (measured on a Furnace health; taken for the others too)
+  and turn and bob there as the game's do: a turn about their upright every 4
+  seconds and 4.4 units up and down every 2 seconds, all in step (measured in
+  the game from a burst of shots 100 ms apart of an armour and a rocket
+  launcher on their pads, October 2026: the armour's outline repeats every
+  2.0 s, half a turn, the launcher's every 3.8 s; their tops rise and fall 28
+  and 45 pixels every 2.0 s at 160 and 170 units). Holograms and glows are
+  drawn as their shaders shade them (The frame, above). A
+  skinned mesh (the teleporter's portal) is posed by its bones. Meshes whose
+  animation loops play it: after a mesh's bone poses comes, per bone, its
+  record at rest, then each animation (frames, frames a second, whether it
+  loops, its name, then per bone its frames of position, rotation quaternion
+  and scale in its parent's frame); the import keeps the first that loops and
+  moves a bone, with the vertices it moves before posing and their weights
+  (`tools/reflex_models.py`, `static/reflex-maps/motion.js`). In the stock
+  maps: 43 fans, two wheel generators, the teleporter portals, the quad's ring
+  and the crow flocks. A rocket launcher's or bolt rifle's animations do not
+  loop and are not played. The moving parts are drawn from their own geometry,
+  written again each frame. A Teleporter
   shows nothing of its own (seen in the game); the stock maps place their
   portals as Effects.
 - Shootable and Turret entities (the training maps, 68 and 6) show their
@@ -564,14 +612,14 @@ Their materials come with their texture, flags, `albedoIntensity`, flipbook
 rows, columns, speed and first frame, and `particleDiffuseProperties`,
 `fadeRoughness` and `intensityMultiplier`.
 
-The page draws each emitter as it stands at one moment once running: its
-particles born `interval` apart (taken in the middle of each gap), as many as
-live, no more than it keeps (which spreads them over their life); each at its
-velocity × age plus half its acceleration × age², with a fixed random stray
-per particle, its size and colour taken between birth and death by its age,
-the colour clamped to 0–1 (the game writes it as bytes). An emitter that fills
-up at once is drawn at half its life (a moment picked: the game shows them in
-step at every age). Each particle is a quad facing the camera, twice its half
+The page runs each emitter with its clock, in its shader: its particles born
+`interval` apart, as many as live, no more than it keeps (which spreads them
+over their life), each dying at its life and born again a period later; each
+at its velocity × age plus half its acceleration × age², with a fixed random
+stray per slot (the game draws a new one at each birth), its size and colour
+taken between birth and death by its age, the colour clamped to 0–1 (the game
+writes it as bytes). An emitter that fills up at once births them all
+together again each life. Each particle is a quad facing the camera, twice its half
 sizes, hung from its point (flames 0.5, 0.75: a quarter of it below the bone,
 the way up the brazier shots show), turned by its rotation, and shaded as its
 material's shader:
@@ -597,7 +645,7 @@ test map (build/reflex-sweep/game-run-effectscale) seen from above within
 10 % (means over each brazier) with tongues of the same size; from the side
 the page's flames reach higher above the rim than in the game's frame (2 to 4
 times the light above it); wall torches (Ruin), the shards' smoke and the
-steam (SkyTemples, Ashur) look as in the game's shots. Not drawn: their motion, the soft edge where a soft
+steam (SkyTemples, Ashur) look as in the game's shots. Not drawn: the soft edge where a soft
 particle meets a surface (`…_PARTICLESOFT`), the red's scroll, colour ramps,
 sparks stretched along their velocity (they are squares), collisions;
 `instanceColours[0]` is taken as white. A flipbook whose frame does not run by
@@ -1025,15 +1073,20 @@ random convex brushes.
 
 ## Limits and what comes next
 
-- **Textures**: normal maps and the game's special shaders (refraction, the
-  holograms' noise and scan lines) are not drawn. The texture mapping was
+- **Textures**: the game's special shaders (refraction, the holograms' noise
+  and scan lines) are not drawn, nor normal maps on models. The texture mapping was
   measured in the game; on slopes the direction of v is taken from u × v = n,
   as on the axis faces, not measured by itself. Library textures show in
   Skinner only.
 - **Light**: the sun has two shadow maps where the game has
-  four cascades, and alpha-cut leaves shadow as solid; reflection probes are
+  four cascades (1024² each, to 92, 256, 512 and 4096 units from the viewer:
+  sharper than the page's 2048-unit map within about 100 units, and no sun
+  shadow beyond 4096, where the page keeps the whole map's; left so, as the
+  shadows' places and softness match within the parity bar on the views
+  checked), and alpha-cut leaves shadow as solid; reflection probes are
   taken from the point's cell only, where the game blends the eight around
-  it; SSAO is not drawn.
+  it. SSAO (HBAO+, `r_hbao`) is off by default in the game: `r_hbao` prints
+  0 on a stock install (October 2026), so the page draws none.
 - **Open from the 2026-10-03 comparison** (14 spawn views of AbandonedShelter,
   Ruin, SkyTemples, ironguard, TheCatalyst, Hieratic and Ashur, game against
   page):
@@ -1122,7 +1175,7 @@ random convex brushes.
   - Ashur's Reflex logo behind its teleporters (`powerup_resist`) is barely
     there in the game (8 % over the sheet in red, 2 to 3 % in green and
     blue); the page leaves it out (Models). Its shader is not read.
-  - Fire, sparks, smoke and steam are drawn at one moment (Particles): from
+  - Fire, sparks, smoke and steam (Particles): from
     the side the page's brazier flames reach higher above the rim than in
     the game's frame (2 to 4 times the light above it) while from above they
     are within 10 %; not known why (their physics are the game's; the game's
@@ -1130,9 +1183,10 @@ random convex brushes.
   - The rotation order (roll, pitch, yaw about the thing's own axes) was
     checked on pitched props (Ruin's pads, AbandonedShelter's floor lights);
     a prop with all three angles was not checked on its own.
-- **Models**: animations are not played (fans, items' bob and turn); a skinned
-  mesh shows its rest pose. Particles are drawn at one moment and do not move
-  (see Particles). Entities the game's editor has no model for (a camera
+- **Models**: animations that do not loop (weapons) are not played, and the
+  lights and particles an animated bone carries stay at rest (a brazier's
+  light, the portal's emitters); moving parts cast their shadow at rest.
+  Particle strays are drawn once per slot. Entities the game's editor has no model for (a camera
   path) show as coloured markers while editing.
 - **Sky**: packs imported before the cloud dome and the star texture were
   imported have neither until imported again; packs imported before material

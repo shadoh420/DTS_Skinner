@@ -17,7 +17,8 @@ b_light2 …, which lights hang from), then every bone's pose as a 4 x 4 matrix 
 of three lists of records (the same effect for r_effect_quality 0, 1 and 2; the second is read, the game's default
 1: the first often leaves out the lights and particles, as the pads' smoke and light). A record's first byte
 is its type and fixes its length: 1 mesh (2141 bytes), 2 particle emitter (525), 3 point light (169), 4 spot light
-(185); 0 and 5 to 9 are ribbons and the like. A particle emitter (as reflex.exe's EffectParticleEmitter reads it:
+(185); 0 and 5 to 9 are ribbons and the like, 10 cloth (129: its mesh by name; the game draws the flag still,
+as it is in its mesh). A particle emitter (as reflex.exe's EffectParticleEmitter reads it:
 0x1400eb820, 0x1400eaae0, 0x1400eba60): its material at +1 (128 bytes), how many it keeps at most (i32) at +257, the
 seconds between births at +261 (0: it fills up at once, and they die together), each one's life at +265, how long
 it emits at +269 (0: for ever), a velocity at +273 (along the bone's axes) and how far each of its three may stray
@@ -43,7 +44,7 @@ MESH_MAGIC = b'\x23\x00\x0a\xd0'
 EFFECT_MAGIC = b'\x33\x00\x0c\xd0'
 STRIDE = {0x1d: 52, 0x3d: 72, 0x15: 44, 0x20: 32, 0: 12}
 SHADOW_PART = 255  # The material slot the page's binary gives a mesh's shadow mesh.
-RECORD = {0: 361, 1: 2141, 2: 525, 3: 169, 4: 185, 5: 285, 6: 321, 7: 433, 8: 165, 9: 2}
+RECORD = {0: 361, 1: 2141, 2: 525, 3: 169, 4: 185, 5: 285, 6: 321, 7: 433, 8: 165, 9: 2, 10: 129}
 
 # The effect each pickup type draws (pickupType: the numbers the page names them by).
 def pickup_pad(effect):
@@ -155,8 +156,12 @@ def read_mesh(raw):
     for k, pose in enumerate(poses):
         world.append(times(pose, world[parents[k]]) if 0 <= parents[k] < k else list(pose))
     skins = [times(bind, placed) for bind, placed in zip(binds, world)]
+    animation = _animation(raw, at + 64 * bones, bones, parents, binds)
     for part in parts:
-        for v, (*weights, b0, b1, b2, b3) in enumerate(part.pop('skin', [])):
+        skin = part.pop('skin', [])
+        if animation and skin and part['material'] != SHADOW_PART:  # what the page moves: the vertices before posing
+            part['animated'] = dict(skin=skin, positions=list(part['positions']), normals=list(part['normals']))
+        for v, (*weights, b0, b1, b2, b3) in enumerate(skin):
             p, n = part['positions'][v * 3:v * 3 + 3], part['normals'][v * 3:v * 3 + 3]
             moved, turned = [0, 0, 0], [0, 0, 0]
             for weight, bone in zip(weights, (b0, b1, b2, b3)):
@@ -170,7 +175,32 @@ def read_mesh(raw):
                 length = sum(c * c for c in turned) ** .5 or 1
                 part['positions'][v * 3:v * 3 + 3] = moved
                 part['normals'][v * 3:v * 3 + 3] = [c / length for c in turned]
-    return dict(materials=materials, parts=parts, bones=named)
+    mesh = dict(materials=materials, parts=parts, bones=named)
+    if animation and any('animated' in part for part in parts):
+        mesh['animation'] = animation
+    return mesh
+
+
+def _animation(raw, at, bones, parents, binds):
+    """The looping animation after a mesh's poses, if one moves a bone: {frames, fps, parents, binds, records (per
+    bone, per frame: position, rotation quaternion x y z w, scale; the bone's place in its parent's)}. The tail: per
+    bone its record at rest, then each animation (u32 frames, f32 frames a second, u32 1 when it loops, u32, its
+    name ended by a zero byte, then frames records per bone, bone by bone), then a float. Every placed mesh has one
+    (60 frames of rest when nothing moves); fans, wheels, the teleporter's portal and the quad's ring loop."""
+    at += 40 * bones
+    while bones and at + 17 <= len(raw):
+        frames, fps, loops, _ = struct.unpack_from('<IfII', raw, at)
+        end = raw.find(b'\0', at + 16)
+        if end < 0 or end + 1 + 40 * frames * bones > len(raw):
+            return None
+        at = end + 1
+        block = raw[at:at + 40 * frames * bones]
+        at += len(block)
+        moving = any(len({block[(k * frames + f) * 40:(k * frames + f + 1) * 40] for f in range(frames)}) > 1 for k in range(bones))
+        if loops == 1 and moving and frames > 1:
+            return dict(frames=frames, fps=fps, parents=list(parents), binds=[list(b) for b in binds],
+                        records=list(struct.unpack(f'<{10 * frames * bones}f', block)))
+    return None
 
 
 def read_effect(raw):
@@ -184,7 +214,7 @@ def read_effect(raw):
     for _ in range(count):
         kind = raw[at]
         if kind not in RECORD or at + RECORD[kind] > len(raw):
-            break  # A record type not known here (10: cloth); what came before it is kept.
+            break  # A record type not known here; what came before it is kept.
         record = raw[at:at + RECORD[kind]]
         if kind == 1:
             colour = lambda at: (lambda c: c if c[3] > 0 else None)(list(struct.unpack_from('<4f', record, at)))
@@ -219,7 +249,11 @@ def mesh_file(name):
 def write_mesh(mesh, path):
     """The page's binary of a mesh: u32 part count, then per part u32 material slot, vertex count, index count and
     its float32 positions, float32 normals, float32 texture coordinates, BGRA bytes and u32 indices. The shadow mesh
-    is the part of slot 255 (no normals, texture coordinates or colours to speak of; empty where it casts none)."""
+    is the part of slot 255 (no normals, texture coordinates or colours to speak of; empty where it casts none).
+    A mesh that loops an animation then has 'ANIM', u32 bones, u32 frames, f32 frames a second, i32 parents, 16 floats
+    of bind per bone, the records (10 floats each, per bone its frames) and u32 the count of moving parts, each u32 its
+    part number, then per vertex four float weights and four bone bytes, then its float32 positions and normals
+    before posing."""
     out = bytearray(struct.pack('<I', len(mesh['parts'])))
     for part in mesh['parts']:
         vertices = len(part['positions']) // 3
@@ -229,6 +263,18 @@ def write_mesh(mesh, path):
         out += struct.pack(f'<{vertices * 2}f', *part['uvs'])
         out += part['colours']
         out += struct.pack(f'<{len(part["indices"])}I', *part['indices'])
+    animation = mesh.get('animation')
+    if animation:
+        bones, frames = len(animation['parents']), animation['frames']
+        out += b'ANIM' + struct.pack(f'<2If{bones}i', bones, frames, animation['fps'], *animation['parents'])
+        out += struct.pack(f'<{16 * bones}f', *(v for bind in animation['binds'] for v in bind))
+        out += struct.pack(f'<{10 * frames * bones}f', *animation['records'])
+        moving = [(k, part['animated']) for k, part in enumerate(mesh['parts']) if 'animated' in part]
+        out += struct.pack('<I', len(moving))
+        for k, animated in moving:
+            out += struct.pack('<I', k) + b''.join(struct.pack('<4f4B', *vertex) for vertex in animated['skin'])
+            out += struct.pack(f'<{len(animated["positions"])}f', *animated['positions'])
+            out += struct.pack(f'<{len(animated["normals"])}f', *animated['normals'])
     path.write_bytes(bytes(out))
 
 

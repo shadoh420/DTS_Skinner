@@ -665,3 +665,53 @@ test('flatten gives each entity the transform of the prefab placement it is in',
   assert.deepEqual(M.apply(effect.transform, [8, 0, 0]).map(v => Math.round(v)), [0, 64, -8]);
   assert.equal(M.flatten(map).entities[0].transform, null);
 });
+
+test('whole numbers go into half-float bits and come back exactly (probe indices ride in a half-float texture)', () => {
+  for (const n of [0, 1, 2, 3, 49, 128, 255, 2048]) assert.equal(L.half(L.toHalf(n)), n);
+});
+
+const {ReflexMotion: Motion} = require(path.join(__dirname, '../static/reflex-maps/motion.js'));
+
+test('a looping animation poses its bones between frames, through their parents and binds, and wraps to the first frame', () => {
+  // Two bones, the second a child of the first and 10 along its x; two frames 1 s apart (fps 1): the root turns a
+  // quarter about y (+x toward −z, row vectors) between them; binds are identity.
+  const rest = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1], turned = [0, 0, 0, 0, Math.SQRT1_2, 0, Math.SQRT1_2, 1, 1, 1], child = [10, 0, 0, 0, 0, 0, 1, 1, 1, 1];
+  const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const animation = {bones: 2, frames: 2, fps: 1, parents: [-1, 0], binds: [...identity, ...identity], records: [...rest, ...turned, ...child, ...child]};
+  const place = (m, p) => [0, 1, 2].map(c => p[0] * m[c] + p[1] * m[4 + c] + p[2] * m[8 + c] + m[12 + c]);
+  const round = v => v.map(c => Math.round(c * 1000) / 1000 + 0);
+  // At rest the child's origin is 10 along x; a quarter turned, it is at z −10; half way, an eighth.
+  assert.deepEqual(round(place(Motion.skinMatrices(animation, 0)[1], [0, 0, 0])), [10, 0, 0]);
+  assert.deepEqual(round(place(Motion.skinMatrices(animation, 1)[1], [0, 0, 0])), [0, 0, -10]);
+  assert.deepEqual(round(place(Motion.skinMatrices(animation, .5)[1], [0, 0, 0])), round([10 * Math.SQRT1_2, 0, -10 * Math.SQRT1_2]));
+  // After the last frame comes the first again: 1.5 s is half way back.
+  assert.deepEqual(round(place(Motion.skinMatrices(animation, 1.5)[0], [1, 0, 0])), round([Math.SQRT1_2, 0, -Math.SQRT1_2]));
+  // A bind moves the vertex into the bone's frame first.
+  const bound = {...animation, binds: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -10, 0, 0, 1, ...identity]};
+  assert.deepEqual(round(place(Motion.skinMatrices(bound, 0)[0], [10, 0, 0])), [0, 0, 0]);
+});
+
+test('a particle lives its life from its slot offset round its emitter period, and is gone until the period ends', () => {
+  assert.equal(Motion.particleAge(0, .5, 2, 1.5), .5);
+  assert.equal(Motion.particleAge(1.2, .5, 2, 1.5), null);  // age 1.7: past its life
+  assert.equal(Math.round(Motion.particleAge(2.25, .5, 2, 1.5) * 100) / 100, .75);  // round again
+});
+
+test("a model's animation block gives each part it moves its weights, bones and vertices before posing", () => {
+  // As tools/reflex_models.py write_mesh writes it: 'ANIM', one bone, two frames at 30 a second, parent -1, an identity
+  // bind, two records, then two moving parts (numbers 2 and 0) of one and two vertices.
+  const floats = values => Buffer.from(new Float32Array(values).buffer), ints = values => Buffer.from(new Int32Array(values).buffer);
+  const vertex = bone => Buffer.concat([floats([1, 0, 0, 0]), Buffer.from([bone, 0, 0, 0])]), place = xs => floats(xs.flatMap(x => [x, 0, 0]));
+  const buffer = Buffer.concat([Buffer.from('ANIM'), ints([1, 2]), floats([30]), ints([-1]), floats([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
+    floats([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 5, 0, 0, 0, 0, 0, 1, 1, 1, 1]), ints([2, 2]), vertex(0), place([7]), place([0]),
+    ints([0]), vertex(0), vertex(0), place([3, 4]), place([0, 1])]);
+  const array = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.length);
+  const parts = [{positions: new Float32Array(6)}, {positions: new Float32Array(3)}, {positions: new Float32Array(3)}];
+  const animation = Motion.readAnimation(array, 0, parts);
+  assert.deepEqual([animation.bones, animation.frames, animation.fps, animation.records[10]], [1, 2, 30, 5]);
+  assert.deepEqual([...parts[2].moving.positions], [7, 0, 0]);
+  assert.deepEqual([...parts[0].moving.positions], [3, 0, 0, 4, 0, 0]);
+  assert.deepEqual([...parts[0].moving.weights.slice(0, 4)], [1, 0, 0, 0]);
+  assert.equal(parts[1].moving, undefined);
+  assert.equal(Motion.readAnimation(new ArrayBuffer(8), 0, parts), null);
+});

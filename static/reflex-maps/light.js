@@ -21,6 +21,12 @@
     if (exponent === 31) return fraction ? NaN : sign * Infinity;
     return sign * (1 + fraction / 1024) * 2 ** (exponent - 15);
   }
+  // A whole number from 0 to 2048 as half-float bits (exact; the page keeps probe indices in a half-float texture).
+  function toHalf(value) {
+    if (!value) return 0;
+    const exponent = Math.floor(Math.log2(value));
+    return (exponent + 15) << 10 | Math.round((value / 2 ** exponent - 1) * 1024);
+  }
 
   function parse(buffer) {
     const bytes = new Uint8Array(buffer.buffer || buffer, buffer.byteOffset || 0, buffer.byteLength);
@@ -132,5 +138,5 @@
     return {data, count: lights.length, origin, size, cell, cells, list: Float32Array.from(list.length ? list : [0])};
   }
 
-  exports.ReflexLight = {parse, half, irradiance, decodeBC1, lightGrid};
+  exports.ReflexLight = {parse, half, toHalf, irradiance, decodeBC1, lightGrid};
 })(typeof module !== 'undefined' ? module.exports : window);

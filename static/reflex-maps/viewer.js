@@ -25,7 +25,7 @@
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
-  const B = window.ReflexBrush, M = window.ReflexMap, L = window.ReflexLight;
+  const B = window.ReflexBrush, M = window.ReflexMap, L = window.ReflexLight, Motion = window.ReflexMotion;
   const storageKey = 'skinner.reflexmaps';
   // The game's me_snapdistance is 16; its me_snapangle default is not known, and 45 is the step most stock angles are on.
   const settings = {fov: 110, invertX: false, invertY: false, grid: 16, angle: 45};
@@ -135,7 +135,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   emptyArray.needsUpdate = true;
   const uniforms = {uGrid: {value: 0}, uLit: {value: 0}, uEye: {value: new THREE.Vector3()}, uAmbient: {value: new THREE.Vector3(.1196, .1406, .1794)},
     uProbeScale: {value: new THREE.Vector3()}, uProbeOffset: {value: new THREE.Vector3()}, uGain: {value: 2}, uCubes: {value: 0}, uCubeMips: {value: 5},
-    uProbeIndex: {value: empty3D}, uCube: {value: emptyArray},
+    uCube: {value: emptyArray},
     uLightCount: {value: 0}, uLightCell: {value: 128}, uLightOrigin: {value: new THREE.Vector3()}, uLightSize: {value: [1, 1, 1]},
     uLights: {value: null}, uLightList: {value: null}, uLightCells: {value: empty3D},
     uSun: {value: new THREE.Vector3(0, 1, 0)}, uSunColour: {value: new THREE.Vector3()}, uSunMatrix: {value: new THREE.Matrix4()}, uSunDepth: {value: null}, uSunTexel: {value: 0},
@@ -155,7 +155,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const SPOT_ATLAS = 4096, SPOT_NEAR = 4;
   const LIGHTING = `precision highp sampler3D; precision highp sampler2DArray;
     uniform float uLit, uGain, uCubes, uCubeMips; uniform vec3 uEye, uAmbient, uProbeScale, uProbeOffset;
-    uniform sampler3D uSH0, uSH1, uSH2, uSH3, uSH4, uSH5, uSH6, uProbeIndex; uniform sampler2DArray uCube;
+    uniform sampler3D uSH0, uSH1, uSH2, uSH3, uSH4, uSH5, uSH6; uniform sampler2DArray uCube;
     uniform float uLightCount, uLightCell; uniform vec3 uLightOrigin; uniform ivec3 uLightSize;
     uniform sampler2D uLights, uLightList; uniform sampler3D uLightCells;
     uniform vec3 uSun, uSunColour; uniform mat4 uSunMatrix, uNearMatrix; uniform sampler2D uSunDepth, uNearDepth; uniform float uSunTexel, uSunBias, uNearBias;
@@ -240,12 +240,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       return (c + texture(uSH6, uvw).rgb * (n.x * n.x - n.y * n.y)) * uGain;
     }
     // The reflection probe of the point's grid cell (counted from 1; ponytail: nearest cell only, where the game blends
-    // the eight around the point when they differ), looked up as a cube map: +x, -x, +y, -y, +z, -z, rows top down.
+    // the eight around the point when they differ; kept in uSH6's unused alpha, read unfiltered, so the page stays
+    // within WebGL's 16 texture units), looked up as a cube map: +x, -x, +y, -y, +z, -z, rows top down.
     // Its texels are decoded with the sRGB curve: reflex.exe makes the cube array BC1_UNORM_SRGB.
     ${CUBE_COORD}
     vec3 reflected(vec3 p, vec3 r, float rough) {
       if (uCubes < .5) return unbaked(r);
-      float index = floor(texture(uProbeIndex, p * uProbeScale + uProbeOffset).r * 255. + .5);
+      vec3 cells = vec3(textureSize(uSH6, 0));
+      float index = texelFetch(uSH6, ivec3(clamp(floor((p * uProbeScale + uProbeOffset) * cells), vec3(0.), cells - 1.)), 0).a;
       vec3 at = cubeCoord(r);
       vec3 c = textureLod(uCube, vec3(at.xy, clamp(index - 1., 0., uCubes - 1.) * 6. + at.z), min(rough * uCubeMips, uCubeMips - 1.)).rgb;
       return mix(c / 12.92, pow((c + .055) / 1.055, vec3(2.4)), step(.04045, c));
@@ -300,6 +302,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       #ifdef USE_MAP
       uniform sampler2D uMap; uniform vec2 uRepeat;
       #endif
+      #ifdef USE_NORMALS
+      uniform sampler2D uNormals;
+      #endif
       void main() {
         vec3 n = normalize(vNormal);
         vec3 albedo = vColor;
@@ -307,6 +312,18 @@ window.addEventListener('DOMContentLoaded', async () => {
         vec4 texel = texture2D(uMap, vTex / uRepeat);
         if (texel.a < .5) discard;  // Alpha-keyed, as the game's ALPHAKEYED shaders are.
         albedo *= mix(texel.rgb / 12.92, pow((texel.rgb + .055) / 1.055, vec3(2.4)), step(.04045, texel.rgb));  // the sRGB curve: its DDS are BC1/BC7 sRGB
+        #endif
+        #ifdef USE_NORMALS
+        // The normal map as the game's …TEXTURENORMALS shaders read it: (r × a, g, b) × 2 − 1, then x along the
+        // texture's u, −y along its v, z out of the face (n = x T − y B + z N, B = (N × T) × the tangent's sign). The
+        // face's u and v directions come from the screen derivatives of its position and texture coordinates.
+        vec4 bump = texture2D(uNormals, vTex / uRepeat);
+        vec3 tn = vec3(bump.r * bump.a, bump.g, bump.b) * 2. - 1.;
+        vec3 dp1 = dFdx(vPos), dp2 = dFdy(vPos); vec2 duv1 = dFdx(vTex), duv2 = dFdy(vTex);
+        vec3 across2 = cross(dp2, n), across1 = cross(n, dp1);
+        vec3 tu = across2 * duv1.x + across1 * duv2.x, tv = across2 * duv1.y + across1 * duv2.y;
+        float scale = inversesqrt(max(max(dot(tu, tu), dot(tv, tv)), 1e-20));
+        n = normalize(tn.x * tu * scale - tn.y * tv * scale + tn.z * n);
         #endif
         vec3 c = vEmit > .5 ? albedo : shade(albedo, vSpecular, vRough, vPos, n, max(-vEmit, 0.) * vColor.r);
         if (uGrid > 0.) {
@@ -419,18 +436,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     const name = face.material || '', library = LIBRARY.exec(name);
     if (library) return {key: name.toLowerCase(), url: `/texture/${encodeURIComponent(library[2] + '.png')}?game=${library[1]}`, repeat: null};
     const read = packColours[name];
-    return read && read.texture ? {key: 'reflex:' + read.texture, url: `${data}textures/${encodeURIComponent(read.texture)}`, repeat: 128} : null;
+    return read && read.texture ? {key: 'reflex:' + read.texture + (read.normals ? ':' + read.normals : ''), url: `${data}textures/${encodeURIComponent(read.texture)}`, repeat: 128,
+      normals: read.normals && `${data}textures/${encodeURIComponent(read.normals)}`} : null;
   }
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   white.needsUpdate = true;
   const black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);  // glass adds nothing until its lit sphere loads
   black.needsUpdate = true;
+  const flatNormal = new THREE.DataTexture(new Uint8Array([255, 128, 255, 128]), 1, 1);  // x = r × a, y = g, z = b: straight out
+  flatNormal.needsUpdate = true;
   const texturedMaterials = new Map(), textureFailures = new Set();
   function texturedMaterial(source) {
     if (texturedMaterials.has(source.key)) return texturedMaterials.get(source.key);
     const material = new THREE.ShaderMaterial({
-      uniforms: {...uniforms, uMap: {value: white}, uRepeat: {value: new THREE.Vector2(source.repeat || 128, source.repeat || 128)}},
-      defines: {USE_MAP: ''}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
+      uniforms: {...uniforms, uMap: {value: white}, uRepeat: {value: new THREE.Vector2(source.repeat || 128, source.repeat || 128)}, uNormals: {value: flatNormal}},
+      defines: source.normals ? {USE_MAP: '', USE_NORMALS: ''} : {USE_MAP: ''}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
+    });
+    if (source.normals) new THREE.TextureLoader().load(source.normals, texture => {
+      Object.assign(texture, {wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, flipY: false, anisotropy: renderer.capabilities.getMaxAnisotropy(), needsUpdate: true});
+      material.uniforms.uNormals.value = texture;
     });
     if (source.shine) Object.assign(material, ADDED, source.both ? {side: THREE.DoubleSide} : {});
     texturedMaterials.set(source.key, material);
@@ -624,6 +648,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     return brushFresnel.get(key);
   };
+  // God rays (godrays_TEXTUREDIFFUSE, read from its compiled shader): sat(sat(n · v)^pow × mul), n turned to the
+  // viewer, times their texture's red twice, at (uv + time × scroll) / 2 and at uv + time × scroll, times
+  // intensityMul and their colour (albedo^2.2 × the mesh's vertex colour^2.2); added, both sides (their flags), so
+  // they fade where seen edge on. The texture decoded with the sRGB curve, as the particles' (not checked).
+  const godrayMaterials = new Map();
+  function godrayMaterial(name, read) {
+    if (godrayMaterials.has(name)) return godrayMaterials.get(name);
+    const [mul, pow, intensity] = read.fresnel || [1, 1, 8], material = forwardShade(`vec2 uv = vTex + uTime * uScroll;
+      float f = clamp(pow(abs(dot(n, normalize(uEye - vPos))), ${pow.toFixed(4)}) * ${mul.toFixed(4)}, 0., 1.);
+      gl_FragColor = vec4(f * (texture2D(uMap, uv * .5).r + texture2D(uMap, uv).r) * ${intensity.toFixed(4)} * vColor, 1.);`);
+    material.uniforms = Object.assign({uMap: {value: black}, uTime: skyUniforms.uTime, uScroll: {value: new THREE.Vector2(...(read.scroll || [0, 0]))}}, uniforms);
+    material.fragmentShader = 'uniform sampler2D uMap; uniform float uTime; uniform vec2 uScroll; ' + material.fragmentShader;
+    material.side = THREE.DoubleSide;
+    if (read.texture) new THREE.TextureLoader().load(`${data}textures/${encodeURIComponent(read.texture)}`, map => {
+      Object.assign(map, {flipY: false, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, internalFormat: 'SRGB8_ALPHA8', needsUpdate: true});
+      material.uniforms.uMap.value = map;
+    });
+    godrayMaterials.set(name, material);
+    return material;
+  }
   const models = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), modelShine = new THREE.Mesh(new THREE.BufferGeometry(), [shineMaterial]);
   // What the game shows in its editor only (a reflection probe's sphere).
   const editorModels = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]);
@@ -632,7 +676,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   // material slot 255.
   const SHADOW_PART = 255, modelShadow = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial());
   modelShadow.layers.set(1);
-  root.add(models, modelShine, editorModels, modelShadow);
+  // What moves: parts a looping animation poses (fans, wheels, the teleporter's portal, the quad's ring, crows) and
+  // pickups that turn and bob above their pads; their own small geometry, written again each frame (animateModels).
+  const movingModels = new THREE.Mesh(new THREE.BufferGeometry(), [brushMaterial]), movingShine = new THREE.Mesh(new THREE.BufferGeometry(), [shineMaterial]);
+  movingShine.renderOrder = 1;
+  let movers = [];  // {mesh, start (its first vertex there), plan}
+  root.add(models, modelShine, editorModels, modelShadow, movingModels, movingShine);
   let modelBuild = 0;
   function readModel(buffer) {
     const view = new DataView(buffer), parts = [];
@@ -646,6 +695,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       const colours = new Uint8Array(buffer, at, vertices * 4); at += vertices * 4;
       parts.push({material, positions, normals, uvs, colours, indices: new Uint32Array(buffer, at, indices)}); at += indices * 4;
     }
+    // A looping animation after the parts (motion.js readAnimation).
+    Motion.readAnimation(buffer, at, parts);
     return parts;
   }
   const hexColour = value => { const hex = String(value).replace(/^0x/, '').padStart(8, '0'); return [1, 3, 5, 7].map(i => parseInt(hex.slice(i - 1, i + 1), 16) / 255); };
@@ -668,7 +719,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       // and turns it); ammunition lies on the floor.
       const pad = entity.type === 'Pickup' && packEffects.effects[name.replace(/_pickup$/, '') + '_pad'];
       if (pad) placed.push({effect: pad, matrix: at(), entity, editorOnly: false});
-      placed.push({effect, matrix: at(pad ? 30 : 0), entity, editorOnly: EDITOR_ONLY.test(name) || entity.type === 'ReflectionProbe'});
+      placed.push({effect, matrix: at(pad ? 30 : 0), entity, editorOnly: EDITOR_ONLY.test(name) || entity.type === 'ReflectionProbe', spin: Boolean(pad)});
     }
     // While editing, what the game's editor shows for an entity (effects.json's editor list): a spawn, target, point
     // light, screenshot camera or nav link its model, an effect with no model of its own a red "!", and a reflection
@@ -729,9 +780,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Every placed mesh part into the geometry of where it goes: lit (per texture, untextured first), shining, or the
   // editor's; planned first (material, colour, count), then written into arrays of their final size.
   function mergeModels(placed) {
-    const lit = new Map([[null, {source: null, plans: [], count: 0}]]), shine = new Map([[null, {source: null, plans: [], count: 0}]]), editor = {source: null, plans: [], count: 0};
+    const buckets = () => new Map([[null, {source: null, plans: [], count: 0}]]);
+    const lit = buckets(), shine = buckets(), litMoving = buckets(), shineMoving = buckets(), editor = {source: null, plans: [], count: 0};
     const shadowPlans = [];
-    for (const {effect, matrix, entity, editorOnly} of placed) {
+    for (const {effect, matrix, entity, editorOnly, spin} of placed) {
       for (const record of effect.meshes) {
         const parts = meshes.get(record.file);
         if (!parts) continue;
@@ -745,10 +797,10 @@ window.addEventListener('DOMContentLoaded', async () => {
           // (materialNAlbedo), else the effect's, else the material's, raised to 2.2 as the game does. Parts given a
           // clip material are not drawn, as the game draws no clip faces.
           const slot = part.material, name = M.property(entity, `material${slot}Name`) || record.materials[slot] || '';
-          // God rays and light beams fade with the view in the game; they are left out. So is the resist powerup's
-          // shader (Ashur's logos behind the portals), which has no colour to read and barely shows in the game.
+          // The resist powerup's shader (Ashur's logos behind the portals) is left out: it has no colour to read and
+          // barely shows in the game.
           const read = packColours[name] || {};
-          if (isClip({material: name}) || /godrays|powerup_resist/.test(read.shader || '')) continue;
+          if (isClip({material: name}) || /powerup_resist/.test(read.shader || '')) continue;
           const own = M.property(entity, `material${slot}Albedo`), ownColour = own !== undefined && hexColour(own);
           const set = weaponTint(entity, slot) || record.colours[slot], material = materialOf(name), glow = glowOf(name);
           // The effect's slot colour goes with the effect's material: an entity that swaps the material drops it
@@ -756,14 +808,16 @@ window.addEventListener('DOMContentLoaded', async () => {
           const given = ownColour && ownColour[0] > 0 ? ownColour.slice(1) : set && !M.property(entity, `material${slot}Name`) ? set.slice(0, 3) : null;
           // Holograms, pickup glows and the see-through forward shaders (standard_…: rings, ribbons, glass) add their
           // colour to the frame; glows and solid forward shaders are solid and shine.
-          const shader = read.shader || '', kind = (/hologram|glowPickup|alphaFresnel/.exec(shader) || [])[0], fresnel = kind === 'alphaFresnel' && (read.fresnel || [.1, 4, .075]);
+          const shader = read.shader || '', kind = (/hologram|glowPickup|alphaFresnel|godrays/.exec(shader) || [])[0], fresnel = kind === 'alphaFresnel' && (read.fresnel || [.1, 4, .075]);
+          const rays = kind === 'godrays';
           const fluid = isFluid(read), shines = (!glow && Boolean(kind || isForward(read) || SEE_THROUGH.test(shader))) || addedFluid(read, name);
           let out = editorOnly ? editor : null;
+          const moves = !editorOnly && (part.moving || spin) ? {spin} : null;
           if (!out) {
             const texture = !kind && read.texture, sides = shines && bothSides(read) ? 2 : 1;
-            const key = kind || (texture ? (shines ? `shine${sides}:` : 'model:') + texture : shines && sides === 2 ? 'both' : null), into = shines ? shine : lit;
+            const key = rays ? 'godrays:' + name : kind || (texture ? (shines ? `shine${sides}:` : 'model:') + texture : shines && sides === 2 ? 'both' : null), into = moves ? (shines ? shineMoving : litMoving) : shines ? shine : lit;
             if (!into.has(key)) into.set(key, {source: kind || !texture ? null : {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines, both: sides === 2},
-              material: kind ? FORWARD_SHADES[kind] : key === 'both' ? shineBoth : null, plans: [], count: 0});
+              material: rays ? godrayMaterial(name, read) : kind ? FORWARD_SHADES[kind] : key === 'both' ? shineBoth : null, plans: [], count: 0});
             out = into.get(key);
           }
           // Holograms and glows shade their colour as it is; the standard_ shaders raise it to 2.2, and take the
@@ -771,10 +825,10 @@ window.addEventListener('DOMContentLoaded', async () => {
           // nor do the translucent (_SSS: paper) and the dev (_TINTED) deferred shaders (their vertex shaders read no
           // colour).
           const forward = shines && isForward(read), colour = given || read.colour || [1, 1, 1], plain = fluid || /_SSS|_TINTED/.test(shader);
-          const shown = fresnel ? colour.map(c => c * fresnel[2]) : kind ? colour : forward || fluid ? colour.map(linear) : shines ? colour : given ? given.map(linear) : material.albedo;
+          const shown = fresnel ? colour.map(c => c * fresnel[2]) : rays ? colour.map(linear) : kind ? colour : forward || fluid ? colour.map(linear) : shines ? colour : given ? given.map(linear) : material.albedo;
           out.plans.push({part, matrix, scale: record.scale || 1, shown, glow, metallic: glow || shines ? 0 : material.metallic,
-            emit: glow || shines ? 1 : -(material.sss || 0), roughness: material.roughness, vertexColours: Boolean(fresnel) || (!kind && !plain && !(forward && !/VERTEXCOLOUR/.test(shader))),
-            gradient: kind && !fresnel && (read.gradient || (kind === 'hologram' ? [56, .75] : [24, .025])), fresnel});
+            emit: glow || shines ? 1 : -(material.sss || 0), roughness: material.roughness, vertexColours: Boolean(fresnel) || rays || (!kind && !plain && !(forward && !/VERTEXCOLOUR/.test(shader))),
+            gradient: kind && !fresnel && !rays && (read.gradient || (kind === 'hologram' ? [56, .75] : [24, .025])), fresnel, moves});
           out.count += part.indices.length;
         }
       }
@@ -787,8 +841,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (materials) materials.length = 0;
       let at = 0;
       for (const bucket of buckets) {
-        if (materials && bucket.count) { geometry.addGroup(at, bucket.count, materials.length); materials.push(bucket.material || (bucket.source ? texturedMaterial(bucket.source) : mesh === modelShine ? shineMaterial : brushMaterial)); }
-        for (const {part, matrix: m, scale: s, shown, glow, metallic, emit: shining, roughness: rough, vertexColours, gradient, fresnel} of bucket.plans) {
+        if (materials && bucket.count) { geometry.addGroup(at, bucket.count, materials.length); materials.push(bucket.material || (bucket.source ? texturedMaterial(bucket.source) : mesh === modelShine || mesh === movingShine ? shineMaterial : brushMaterial)); }
+        for (const plan of bucket.plans) {
+          const {part, matrix: m, scale: s, shown, glow, metallic, emit: shining, roughness: rough, vertexColours, gradient, fresnel, moves} = plan;
+          if (moves) movers.push({mesh, start: at, plan});
           const {positions, normals, uvs, colours, indices} = part;
           for (const index of indices) {
             const x = positions[index * 3] * s, y = positions[index * 3 + 1] * s, z = positions[index * 3 + 2] * s;
@@ -830,6 +886,52 @@ window.addEventListener('DOMContentLoaded', async () => {
     modelShadow.geometry.setAttribute('position', new THREE.Float32BufferAttribute(shadow, 3));
     fill(modelShine, [...shine.values()], modelShine.material);
     fill(editorModels, [editor], editorModels.material);
+    movers = [];
+    fill(movingModels, [...litMoving.values()], movingModels.material);
+    fill(movingShine, [...shineMoving.values()], movingShine.material);
+    animateModels(clock.elapsedTime);
+  }
+  // A pickup above its pad turns about its upright SPIN radians a second and bobs BOB units either way every
+  // BOB_PERIOD seconds (all in step, from the page's clock).
+  const SPIN = Math.PI / 2, BOB = 4.4, BOB_PERIOD = 2;
+  // Each frame: the moving parts posed at `time` (motion.js skinMatrices) and placed again.
+  function animateModels(time) {
+    if (!movers.length) return;
+    const posed = new Map(), turned = new Set();
+    for (const {mesh, start, plan: {part, matrix: m, scale: s, moves}} of movers) {
+      let {positions, normals} = part;
+      if (part.moving) {
+        const {animation, weights, joints, positions: raw, normals: rawNormals} = part.moving;
+        if (!posed.has(animation)) posed.set(animation, Motion.skinMatrices(animation, time));
+        const skins = posed.get(animation), count = raw.length / 3;
+        part.moving.posed = part.moving.posed || {positions: new Float32Array(count * 3), normals: new Float32Array(count * 3)};
+        ({positions, normals} = part.moving.posed);
+        // Every placement of a mesh is posed alike: once a frame.
+        for (let v = part.moving.time === time ? count : 0; v < count; v++) {
+          const p = [raw[v * 3], raw[v * 3 + 1], raw[v * 3 + 2]], n = [rawNormals[v * 3], rawNormals[v * 3 + 1], rawNormals[v * 3 + 2]], P = [0, 0, 0], N = [0, 0, 0];
+          for (let j = 0; j < 4; j++) {
+            const weight = weights[v * 4 + j], q = skins[joints[v * 4 + j]];
+            if (weight <= 0 || !q) continue;
+            for (let c = 0; c < 3; c++) { P[c] += weight * (p[0] * q[c] + p[1] * q[4 + c] + p[2] * q[8 + c] + q[12 + c]); N[c] += weight * (n[0] * q[c] + n[1] * q[4 + c] + n[2] * q[8 + c]); }
+          }
+          positions.set(P, v * 3); normals.set(N, v * 3);
+        }
+        part.moving.time = time;
+      }
+      const angle = moves.spin ? time * SPIN : 0, lift = moves.spin ? BOB * Math.sin(time * 2 * Math.PI / BOB_PERIOD) : 0, cos = Math.cos(angle), sin = Math.sin(angle);
+      const position = mesh.geometry.attributes.position.array, normal = mesh.geometry.attributes.normal.array;
+      let at = start;
+      for (const index of part.indices) {
+        const px = positions[index * 3], py = positions[index * 3 + 1], pz = positions[index * 3 + 2], qx = normals[index * 3], qy = normals[index * 3 + 1], qz = normals[index * 3 + 2];
+        const x = (px * cos + pz * sin) * s, y = py * s + lift, z = (pz * cos - px * sin) * s, nx = qx * cos + qz * sin, ny = qy, nz = qz * cos - qx * sin;
+        for (let r = 0; r < 3; r++) position[at * 3 + r] = m[r][0] * x + m[r][1] * y + m[r][2] * z + m[r][3];
+        const tx = m[0][0] * nx + m[0][1] * ny + m[0][2] * nz, ty = m[1][0] * nx + m[1][1] * ny + m[1][2] * nz, tz = m[2][0] * nx + m[2][1] * ny + m[2][2] * nz, l = Math.hypot(tx, ty, tz) || 1;
+        normal[at * 3] = tx / l; normal[at * 3 + 1] = ty / l; normal[at * 3 + 2] = tz / l;
+        at++;
+      }
+      turned.add(mesh);
+    }
+    for (const mesh of turned) { mesh.geometry.attributes.position.needsUpdate = true; mesh.geometry.attributes.normal.needsUpdate = true; }
   }
   // A light's colour as the game's lighting shader gets it: (colour × intensity)² (measured: six PointLights over a
   // grey floor within 1 % of 1 once the highlight is the game's; grey 0x80 gives a quarter, intensity 2 four times).
@@ -837,12 +939,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   const lightColour = (colour, intensity) => colour.map(c => (c * intensity) ** 2);
   let lightTextures2 = [];
   // Particles, as reflex.exe's emitters keep them (EffectParticleEmitter: 0x1400eaae0 moves them, 0x1400eba60 draws
-  // them), drawn as they stand at one moment once running: an emitter's particles born `interval` apart (taken in
-  // the middle of each gap; never more than it keeps, which spreads them over their life), each thrown at its
-  // velocity along its bone's axes plus a stray (a fixed random per particle), pulled by its acceleration in the
-  // world (or along its bone, one that moves with the emitter), its size and colour (clamped to 0–1: a byte) taken
-  // between birth and death by its age. An emitter that fills up at once (interval 0: the pads' smoke) is drawn at
-  // half their life (ponytail: the game shows them in step at every age; one moment picked). Each is a quad facing
+  // them), moving with the page's clock: an emitter's particles born `interval` apart (never more than it keeps,
+  // which spreads them over their life) and dying at their life, each thrown at its velocity along its bone's axes
+  // plus a stray (a fixed random per slot; ponytail: the game draws a new one at each birth), pulled by its
+  // acceleration in the world (or along its bone, one that moves with the emitter), its size and colour (clamped to
+  // 0–1: a byte) taken between birth and death by its age. An emitter that fills up at once (interval 0: the pads'
+  // smoke) births them all together again each life. Each is a quad facing
   // the camera, twice its half sizes, hung from its point and turned by its rotation, shaded as its material's
   // shader: a flipbook (flames) its texture's frames (age × flipbookSpeed, plus flipbookOffset and the red, which the
   // record may make random), the next blended in by the fraction, × colour^2.2 × albedoIntensity; smoke and
@@ -851,7 +953,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   // × intensityMultiplier; standard_ ones (sparks) texture × diffuseColour^2.2, × colour^2.2 only where the shader
   // reads it (…_VERTEXCOLOUR). Blended by the material's flags: added (2) or over what is behind (1). Not drawn:
   // the soft edge against surfaces (…_PARTICLESOFT), streaks along the velocity (sparks are squares), colour ramps.
-  const particles = new THREE.Group();
+  const particles = new THREE.Group(), particleClock = {value: 0};
+  // Per particle: where its emitter is, its velocity and acceleration (the map's coordinates), its slot's offset, the
+  // emitter's period and the life, half sizes at birth and death, colours at birth and death (as recorded), its turn
+  // at birth and a second, a random red (or -1) and a fixed flipbook frame (or -1: by age), its tint (and whether its
+  // shader takes its colour), and the point it hangs from.
+  const PARTICLE_ATTRIBUTES = [['origin', 3], ['velocity', 3], ['accel', 3], ['timing', 4], ['size', 4], ['colourA', 4], ['colourB', 4], ['extra', 4], ['tint', 4], ['anchor', 2]];
   root.add(particles);
   function seeded(seed) {  // mulberry32: the same strays every time the page draws a map
     return () => { seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -861,17 +968,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     const mode = shader.startsWith('internal/shaders/particleFlipbook') ? 0 : shader.startsWith('internal/shaders/particle_') ? 1 : 2;
     const material = new THREE.ShaderMaterial({
       ...ADDED, ...(added ? {} : {blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor}), side: THREE.DoubleSide,
-      uniforms: {uMap: {value: white}, uGrid: {value: new THREE.Vector2(...(read.flipbook || [1, 1]).slice(0, 2))}, uCarve: {value: new THREE.Vector4(carveBlue, carveRed, fade, strength)}},
-      vertexShader: `attribute vec2 corner, anchor; attribute vec3 centre; attribute vec4 colour, shape; varying vec2 vCorner; varying float vFrame; varying vec4 vColour;
+      uniforms: {uMap: {value: white}, uGrid: {value: new THREE.Vector2(...(read.flipbook || [1, 1]).slice(0, 2))}, uCarve: {value: new THREE.Vector4(carveBlue, carveRed, fade, strength)},
+        uTime: particleClock, uFlip: {value: new THREE.Vector2((read.flipbook || [])[2] || 0, (read.flipbook || [])[3] || 0)}},
+      // Each particle's age runs with the clock from its slot's offset, round its emitter's period; past its life it
+      // is not drawn (clipped). Its place, size, colour (clamped: a byte), turn and flipbook frame follow its age.
+      vertexShader: `uniform float uTime; uniform vec2 uFlip; attribute vec2 corner, anchor; attribute vec3 origin, velocity, accel; attribute vec4 timing, size, colourA, colourB, extra, tint;
+        varying vec2 vCorner; varying float vFrame; varying vec4 vColour;
         void main() {
-          vec2 o = vec2(corner.x - 1. + anchor.x, anchor.y - corner.y) * 2. * shape.xy;
-          float c = cos(shape.z), s = sin(shape.z);
-          vec4 view = modelViewMatrix * vec4(centre, 1.);
+          float age = mod(uTime + timing.x, timing.y);
+          if (age > timing.z) { gl_Position = vec4(2., 2., 2., 1.); return; }
+          float t = age / timing.z;
+          vec4 colour = clamp(mix(colourA, colourB, t), 0., 1.);
+          if (extra.z >= 0.) colour.r = extra.z;
+          vec2 o = vec2(corner.x - 1. + anchor.x, anchor.y - corner.y) * 2. * mix(size.xy, size.zw, t);
+          float turn = extra.x + extra.y * age, c = cos(turn), s = sin(turn);
+          vec4 view = modelViewMatrix * vec4(origin + velocity * age + .5 * accel * age * age, 1.);
           view.xy += mat2(c, s, -s, c) * o;
           gl_Position = projectionMatrix * view;
           vCorner = corner;
-          vFrame = shape.w;
-          vColour = colour;
+          vFrame = extra.w >= 0. ? extra.w : (t + uFlip.y + colour.r) * uFlip.x;
+          vColour = vec4((tint.w > .5 ? pow(colour.rgb, vec3(2.2)) : vec3(1.)) * tint.rgb, colour.a);
         }`,
       fragmentShader: `uniform sampler2D uMap; uniform vec2 uGrid; uniform vec4 uCarve; varying vec2 vCorner; varying float vFrame; varying vec4 vColour;
         vec2 cell(float k) { k = mod(k, uGrid.x * uGrid.y); return (vec2(mod(k, uGrid.x), floor(k / uGrid.x)) + vCorner) / uGrid; }
@@ -901,38 +1017,39 @@ window.addEventListener('DOMContentLoaded', async () => {
       const axes = emitter.axes || [[1, 0, 0], [0, 1, 0], [0, 0, 1]], alongBone = v => [0, 1, 2].map(c => v[0] * axes[0][c] + v[1] * axes[1][c] + v[2] * axes[2][c]);
       const {interval, life, capacity} = emitter, count = interval > 0 ? Math.max(1, Math.min(capacity, Math.floor(life / interval + .5))) : capacity;
       const gap = interval > 0 ? Math.max(interval, life / capacity) : 0, [bw, bh, dw, dh] = emitter.size, [rotation, rotationStray, turn, turnStray] = emitter.rotation || [0, 0, 0, 0];
-      const [rows, columns, frameSpeed, firstFrame] = read.flipbook || [1, 1, 0, 0];
+      const [rows, columns] = read.flipbook || [1, 1];
       const tint = shader.startsWith('internal/shaders/standard_') ? (read.colour || [1, 1, 1]).map(linear) : [1, 1, 1], gain = flipbook ? read.intensity ?? 1 : 1;
       const ownColour = !shader.startsWith('internal/shaders/standard_') || /VERTEXCOLOUR/.test(shader);
-      if (!byMaterial.has(emitter.material)) byMaterial.set(emitter.material, {read, centre: [], colour: [], shape: [], anchor: []});
-      const into = byMaterial.get(emitter.material);
+      if (!byMaterial.has(emitter.material)) byMaterial.set(emitter.material, {read, ...Object.fromEntries(PARTICLE_ATTRIBUTES.map(([name]) => [name, []]))});
+      const into = byMaterial.get(emitter.material), linearPart = v => toWorld(v, 0), a = emitter.acceleration;
+      // Slots born `gap` apart round a period of count × gap (one that fills up at once: all together, each life).
+      const period = interval > 0 ? count * gap : life, origin = toWorld(emitter.position || [0, 0, 0], 1);
+      const accel = emitter.local ? linearPart(alongBone(a)) : a;
       for (let k = 0; k < count; k++) {
-        const age = interval > 0 ? (k + .5) * gap : life / 2, t = Math.min(age / life, 1);
-        const v = emitter.velocity.map((c, i) => c + (2 * random() - 1) * emitter.spread[i]), a = emitter.acceleration;
-        const local = v.map((c, i) => c * age + (emitter.local ? .5 * a[i] * age * age : 0));
-        const at = toWorld(alongBone(local).map((c, i) => c + (emitter.position || [0, 0, 0])[i]), 1);
-        if (!emitter.local) at.forEach((_, i) => { at[i] += .5 * a[i] * age * age; });
-        const colour = [0, 1, 2, 3].map(i => Math.min(Math.max(emitter.colour[i] + (emitter.colour[i + 4] - emitter.colour[i]) * t, 0), 1));
-        if (emitter.randomRed) colour[0] = random();
-        into.centre.push(...at);
-        into.colour.push(...[0, 1, 2].map(i => (ownColour ? linear(colour[i]) : 1) * tint[i] * gain), colour[3]);
+        const v = emitter.velocity.map((c, i) => c + (2 * random() - 1) * emitter.spread[i]);
+        into.origin.push(...origin);
+        into.velocity.push(...linearPart(alongBone(v)));
+        into.accel.push(...accel);
+        into.timing.push(interval > 0 ? (k + .5) * gap : 0, period, life, 0);
+        into.size.push(bw * scale, bh * scale, dw * scale, dh * scale);
+        into.colourA.push(...emitter.colour.slice(0, 4));
+        into.colourB.push(...emitter.colour.slice(4, 8));
+        const red = emitter.randomRed ? random() : -1;
         // ponytail: a flipbook not run by age takes the view's x in the game (0x1400eba60); a random frame here.
-        const frame = !flipbook ? 0 : emitter.framesByAge ? (t + firstFrame + colour[0]) * frameSpeed : Math.floor(random() * rows * columns);
-        into.shape.push((bw + (dw - bw) * t) * scale, (bh + (dh - bh) * t) * scale,
-          rotation + (2 * random() - 1) * rotationStray + (turn + (2 * random() - 1) * turnStray) * age, frame);
+        const frame = !flipbook ? 0 : emitter.framesByAge ? -1 : Math.floor(random() * rows * columns);
+        into.extra.push(rotation + (2 * random() - 1) * rotationStray, turn + (2 * random() - 1) * turnStray, red, frame);
+        into.tint.push(...tint.map(c => c * gain), ownColour ? 1 : 0);
         into.anchor.push(...emitter.anchor);
       }
     }));
-    for (const {read, centre, colour, shape, anchor} of byMaterial.values()) {
+    for (const lists of byMaterial.values()) {
       const geometry = new THREE.InstancedBufferGeometry();
       geometry.setIndex([0, 2, 1, 1, 2, 3]);
       // Each its own: disposing a geometry frees its attributes' buffers, and a shared one freed so broke the cloud dome.
       geometry.setAttribute('corner', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2));
-      geometry.setAttribute('centre', new THREE.InstancedBufferAttribute(new Float32Array(centre), 3));
-      geometry.setAttribute('colour', new THREE.InstancedBufferAttribute(new Float32Array(colour), 4));
-      geometry.setAttribute('shape', new THREE.InstancedBufferAttribute(new Float32Array(shape), 4));
-      geometry.setAttribute('anchor', new THREE.InstancedBufferAttribute(new Float32Array(anchor), 2));
-      geometry.instanceCount = centre.length / 3;
+      for (const [name, size] of PARTICLE_ATTRIBUTES) geometry.setAttribute(name, new THREE.InstancedBufferAttribute(new Float32Array(lists[name]), size));
+      geometry.instanceCount = lists.origin.length / 3;
+      const read = lists.read;
       const mesh = new THREE.Mesh(geometry, particleMaterial(read));
       mesh.frustumCulled = false;
       particles.add(mesh);
@@ -1290,7 +1407,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const texture of lightTextures.splice(0)) texture.dispose();
     uniforms.uLit.value = uniforms.uCubes.value = 0;
     for (let i = 0; i < 7; i++) uniforms['uSH' + i].value = empty3D;
-    uniforms.uProbeIndex.value = empty3D; uniforms.uCube.value = emptyArray;
+    uniforms.uCube.value = emptyArray;
     if (!light) return;
     const [nx, ny, nz] = light.size, grid = data => {
       const texture = new THREE.Data3DTexture(data, nx, ny, nz);
@@ -1298,8 +1415,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       lightTextures.push(texture);
       return texture;
     };
-    light.planes.forEach((plane, i) => { uniforms['uSH' + i].value = Object.assign(grid(plane), {type: THREE.HalfFloatType}); });
-    uniforms.uProbeIndex.value = Object.assign(grid(light.indices), {format: THREE.RedFormat, unpackAlignment: 1, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
+    // cC's fourth half is unused by the game's shader: each probe's reflection probe (a whole number) rides there.
+    const cC = Uint16Array.from(light.planes[6]);
+    light.indices.forEach((index, i) => { cC[i * 4 + 3] = L.toHalf(index); });
+    [...light.planes.slice(0, 6), cC].forEach((plane, i) => { uniforms['uSH' + i].value = Object.assign(grid(plane), {type: THREE.HalfFloatType}); });
     uniforms.uProbeScale.value.fromArray(light.scale); uniforms.uProbeOffset.value.fromArray(light.offset);
     uniforms.uLit.value = 1;
     // As many probes as the GPU's array textures hold (WebGL 2 promises 256 layers, 42 probes; Phobos has 49); a cell
@@ -2900,7 +3019,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       hdr = sceneTarget(w, h); bright = blurTarget(w, h);
       levels = BLOOM_RADII.map((_, i) => [blurTarget(w >> (i + 1), h >> (i + 1)), blurTarget(w >> (i + 1), h >> (i + 1))]);
     }
-    skyUniforms.uTime.value = clock.elapsedTime;
+    skyUniforms.uTime.value = particleClock.value = clock.elapsedTime;
+    animateModels(clock.elapsedTime);
     const shown = overlays.map(object => object.visible);
     for (const object of overlays) object.visible = false;
     renderer.setRenderTarget(hdr);
