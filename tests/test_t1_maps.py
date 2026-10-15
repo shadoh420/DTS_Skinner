@@ -59,6 +59,17 @@ class T1MapTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unbalanced'):
             parse_mission('instant SimGroup "open" {')
 
+    def test_datablocks_keep_shapes_and_item_lights(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / 'flag.cs').write_text('ItemData Flag\n{\n\tshapeFile = "flag";\n\tlightType = 2;   // Pulsing\n'
+                                                     '\tlightRadius = 4;\n\tlightColor = { 1, 0.5, 0};\n};\n'
+                                                     'ItemData Plain\n{\n\tshapeFile = "plain";\n\tlightType = 3;\n};\n')
+            install = Install(directory)
+            self.assertEqual(install.shapes(Path(directory)), {'flag': 'flag', 'plain': 'plain'})
+            self.assertEqual(install.datablocks(Path(directory))['flag']['light'],
+                             {'type': 2, 'radius': 4.0, 'time': 1.5, 'color': [1.0, 0.5, 0.0]})
+            self.assertNotIn('light', install.datablocks(Path(directory))['plain'])  # Weapon fire: not a placed item's glow.
+
     def test_placement_maps_z_up_to_viewer_space(self):
         self.assertEqual(placement((1, 2, 3), (0, 0, 0)), [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 3, -2, 1])
         # A positive DarkStar z rotation turns the file x axis toward file +y, which is viewer -z.
@@ -352,6 +363,13 @@ class T1MapTests(unittest.TestCase):
                 tree = list(struct.iter_unpack('<H2h', cover[32 + planes * 16:32 + planes * 16 + nodes * 6]))
                 self.assertTrue(all(plane < planes and -leaf - 1 < len(cover) - 32 - planes * 16 - nodes * 6 and max(front, back) < nodes
                                     for plane, front, back in tree for leaf in (front, back) if leaf < 0))
+            # The flags glow and pulse (Item::getLight); the repair pack turns.
+            self.assertEqual([(light['range'], light['pulse'], light['static']) for light in scene['lights']], [(4.0, 1.5, False)] * 2)
+            self.assertTrue(any(item.get('spin') for item in scene['objects'] if item['datablock'] == 'RepairPack'))
+            # SandStorm has five coloured point lights (SimLight type 2), none of them static.
+            self.assertEqual(import_maps(install.base, pack, [install.find('SandStorm.mis', [install.base / 'missions'])])['failed'], {})
+            lights = json.loads((pack / 'maps/sandstorm/scene.json').read_text())['lights']
+            self.assertEqual((len(lights), {light['static'] for light in lights}, lights[0]['range']), (5, {False}, 8.0))
             # Raindance's sun has no bitmap and it has no star field; Blastside's sun has one, with a lens flare.
             self.assertEqual((scene['planets'], scene['stars'], scene['flare']), ([], None, None))
             self.assertEqual(import_maps(install.base, pack, [install.find('Blastside.mis', [install.base / 'missions'])])['failed'], {})

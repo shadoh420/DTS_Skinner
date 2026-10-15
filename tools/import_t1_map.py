@@ -710,12 +710,23 @@ class Install:
 
     def shapes(self, mission_folder):
         """Datablock name -> shape file, read from every script the install and the mission folder carry."""
+        return {name: block['shape'] for name, block in self.datablocks(mission_folder).items() if 'shape' in block}
+
+    def datablocks(self, mission_folder):
+        """Datablock name -> {'shape': file stem, 'light': ItemData light (type, radius, time, colour)}, as available."""
         def scan(text, found):
             # A block may end mid-line: the RPG mod writes whole datablocks on one line (rpgstaticshape.cs).
             for block in re.finditer(r'^[ \t]*\w+Data[ \t]+(\w+)\s*\{(.*?)\};', text, re.S | re.M):
                 shape = re.search(r'shapeFile\s*=\s*"([^"]+)"', block[2])
                 if shape:
-                    found[block[1].lower()] = Path(shape[1]).stem
+                    found.setdefault(block[1].lower(), {})['shape'] = Path(shape[1]).stem
+                # Item::getLight: 1 constant, 2 pulsing (radius 3, period 1.5 s and white unless set).
+                kind = re.search(r'lightType\s*=\s*(\d+)', block[2])
+                if kind and kind[1] in ('1', '2'):
+                    value = lambda key, default: (re.search(key + r'\s*=\s*\{?([^;}]+)', block[2]) or [None, default])[1]  # noqa: E731
+                    found.setdefault(block[1].lower(), {})['light'] = {
+                        'type': int(kind[1]), 'radius': float(value('lightRadius', '3')), 'time': float(value('lightTime', '1.5')),
+                        'color': [float(part) for part in re.split(r'[\s,]+', value('lightColor', '1 1 1').strip())][:3]}
 
         if self.base not in self._scripts:
             found = {}
@@ -938,6 +949,9 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
 
     sun = next((node['fields'] for node, _ in nodes if node['class'] == 'planet' and node['fields'].get('castshadows', '').lower() == 'true'), {})
     light = next((node['fields'] for node, _ in nodes if node['class'] == 'simlight' and node['fields'].get('type') == '1'), None)
+    # SimLightSet::getSceneLighting adds every light's ambient to the scene's (a point light's is nearly always 0).
+    ambient = [floats(node['fields'].get('ambient', '0 0 0')) for node, _ in nodes
+               if node['class'] == 'simlight' and (sun or node['fields'] is not light)]
     if not sun and light:  # No shadow-casting planet: a directional SimLight (TS::Light type 1) shining along its aim is the sun.
         x, y, z = floats(light.get('aim', '0 0 -1'))
         sun = {'azimuth': math.degrees(math.atan2(-y, -x)) - 90 if x or y else 0,
@@ -945,6 +959,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                'intensity': light.get('color', '0.6 0.6 0.6'), 'ambient': light.get('ambient', '0.4 0.4 0.4')}
     sun = {'azimuth': float(sun.get('azimuth', 0)), 'incidence': float(sun.get('incidence', 45)),
            'intensity': floats(sun.get('intensity', '0.6 0.6 0.6')), 'ambient': floats(sun.get('ambient', '0.4 0.4 0.4'))}
+    sun['ambient'] = [sum(channel) for channel in zip(sun['ambient'], *ambient)]
     # Toward the sun in file space, as ArenaPrototype's PlanetPosition.
     turn, climb = math.radians(sun['azimuth'] + 90), math.radians(max(-89, min(89, sun['incidence'])))
     sun_direction = (math.cos(climb) * math.cos(turn), math.cos(climb) * math.sin(turn), math.sin(climb))
@@ -1004,14 +1019,20 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
     # exporting their own mounted version (and vertex order for lightmap UVs).
     custom_buildings = t1_building_names(model_dir)
     models = {path.stem.lower(): path.stem for path in model_dir.glob('*.json') if path.stem not in custom_buildings}
-    shapes = install.shapes(mission_path.parent)
-    objects, viewpoints, missing, unlit = [], [], set(), set()
+    datablocks = install.datablocks(mission_path.parent)
+    shapes = {name: block['shape'] for name, block in datablocks.items() if 'shape' in block}
+    objects, viewpoints, missing, unlit, lights = [], [], set(), set(), []
     zones, bots = rpg_places(nodes)
     for entity, (node, groups) in enumerate(nodes + bots):
         fields = node['fields']
         if 'position' not in fields or node['class'] == 'simterrain':
             continue
         matrix = placement(floats(fields['position']), floats(fields.get('rotation', '0 0 0')))
+        if node['class'] == 'simlight':  # A point light (TS::Light type 2); static ones are already in the baked lightmaps.
+            if fields.get('type') == '2' and float(fields.get('range', 0)) > 0:
+                lights.append({'position': matrix[12:15], 'range': float(fields['range']), 'color': floats(fields.get('color', '1 1 1')),
+                               'static': fields.get('isstatic', '').lower() == 'true'})
+            continue
         if node['class'] == 'marker':
             if 'observerdroppoints' in groups:
                 viewpoints.append(matrix)
@@ -1034,6 +1055,13 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
         objects.append({'name': fields.get('name') or node['name'] or shape, 'model': model, 'source': source, 'matrix': matrix,
                         'entity': entity, 'classname': node['class'], 'datablock': fields.get('datablock', ''),
                         'npc': node.get('npc', False) or node['class'] in ('player', 'aiplayer')})
+        if node['class'] == 'item':
+            if fields.get('rotates', '').lower() == 'true':
+                objects[-1]['spin'] = True  # Item::clientProcess turns it 3 rad/s about z.
+            glow = datablocks.get(fields.get('datablock', '').lower(), {}).get('light')
+            if glow:
+                lights.append({'position': matrix[12:15], 'range': glow['radius'], 'color': glow['color'], 'static': False,
+                               **({'pulse': glow['time']} if glow['type'] == 2 else {})})
         if model and kind == 'interior':
             light = lightmap(fields['filename'], shape, floats(fields.get('rotation', '0 0 0')),
                              root / 'models' / model if source == 'pack' else model_dir / (model + '.json'))
@@ -1113,7 +1141,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     'hazeDistance': float(terrain_node.get('hazedistance', 250)),
                     # The viewer draws haze the way DarkStar does (see applySettings); other games' packs leave this out.
                     'hazeModel': 'darkstar'},
-        'sun': sun,
+        'sun': sun, 'lights': lights,
         'haze': haze, 'sky': dome, 'planets': planets, 'stars': stars, 'flare': flare, 'weather': weather, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings,
         **({'zones': zones} if zones else {})}
 
