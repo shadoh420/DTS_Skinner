@@ -142,6 +142,10 @@
     }
     return result;
   }
+  function ambientOrder(sort,sequence) {
+    // RB_STD_DrawShaderPasses: after all interactions, by material sort; stage chains keep import order.
+    return 100+((sort??0)+3)*1e6+sequence;
+  }
   function portalSkyOrigin(data,areas) {
     return data.portalSky&&[...areas].some(a=>data.areaSky?.['_area'+a])?data.portalSky.origin:null;
   }
@@ -158,6 +162,6 @@
     const rows=[x.map((v,i)=>v*rc+y[i]*rs),y.map((v,i)=>v*rc-x[i]*rs),up];
     return rows.flatMap(row=>[0,1,2].map(j=>row.reduce((n,v,k)=>n+v*axis[k*3+j],0)));
   }
-  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,portalSkyOrigin,skyMatrix};
+  const api={evaluate,uvMatrix,soundEnvelope,soundAmplitude,ambientBlend,areaAt,portalRect,visibleAreas,tangents,ambientOrder,portalSkyOrigin,skyMatrix};
   if(typeof module!=='undefined')module.exports=api;else root.doom3Materials=api;
 })(typeof window!=='undefined'?window:globalThis);

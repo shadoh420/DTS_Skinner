@@ -56,6 +56,15 @@ COMMANDS=set(('name map clampmap diffusemap bumpmap specularmap blend if alphate
 RAVEN_COMMANDS=set('shaderparm shadertexture glslprogram fp20program nomips shear mirrorrendermap remoterendermap noclamp'.split())
 BLENDS={'add':['gl_one','gl_one'],'filter':['gl_dst_color','gl_zero'],'modulate':['gl_dst_color','gl_zero'],
         'blend':['gl_src_alpha','gl_one_minus_src_alpha'],'none':['gl_zero','gl_one']}
+# Material.h materialSort_t; other words go through atof like ParseSort.
+SORTS={'subview':-3,'gui':-2,'opaque':0,'portalsky':1,'decal':2,'far':3,'medium':4,'close':5,
+       'almostnearest':6,'nearest':7,'postprocess':100}
+
+
+def sort_value(token):
+    if token.lower() in SORTS:return SORTS[token.lower()]
+    try:return float(token)
+    except ValueError:return 0
 
 
 def split_args(tokens):
@@ -77,14 +86,14 @@ def compile_stage(tokens,textures):
         key=t[i].lower();i+=1
         if key=='blend' and i<len(t) and t[i].lower() in ('diffusemap','bumpmap','specularmap'):
             stage['role']=t[i].lower().removesuffix('map');i+=1;continue
-        if policy and key=='blend' and i<len(t) and t[i].lower() in BLENDS:
+        if key=='blend' and i<len(t) and t[i].lower() in BLENDS:
             stage['blend']=BLENDS[t[i].lower()];i+=1;continue
         if key in ('map','clampmap','diffusemap','bumpmap','specularmap') and i<len(t):
             value,i=image_expression(t,i,PROGRAMS | policy.programs if policy else PROGRAMS);stage['image']=textures.resolve(value)
             if key not in ('map','clampmap'):stage['role']=key.removesuffix('map')
             if key=='clampmap':stage['clamp']=True
             continue
-        if policy and key in ('cubemap','cameracubemap') and i<len(t):
+        if key in ('cubemap','cameracubemap') and i<len(t):
             name=t[i];i+=1
             stage['cube']=dict(camera=key=='cameracubemap',expression=name)
             continue
@@ -114,7 +123,7 @@ def compile_stage(tokens,textures):
             elif key in ('clamp','zeroclamp','alphazeroclamp'):stage['clamp']=True
             elif key in ('name','forcehighquality','highquality','uncompressed','nearest','linear','nopicmip','nomips','noclamp'):pass
             elif key in ('privatepolygonoffset','polygonoffset'):stage['polygonOffset']=True
-            elif policy and key=='texgen' and args:
+            elif key=='texgen' and args:
                 stage['texgen']=args[0].lower()
                 if stage['texgen']=='wobblesky':
                     values=split_args(args[1:]) if ',' in args else args[1:]
@@ -138,9 +147,10 @@ def compile_material(name,defs,materials,textures):
             while i<len(body) and depth:depth+=(body[i]=='{')-(body[i]=='}');i+=1
             stages.append(body[start:i-1])
         else:global_tokens.append(body[i]);i+=1
-    notes=[];parsed=[];shortcuts=[]
+    notes=[];parsed=[];shortcuts=[];reflection=False
     for stage in stages:
         s,n=compile_stage(stage,textures);notes.extend(n)
+        reflection|=s.get('texgen')=='reflect'
         if s.get('cube') and s.get('texgen') not in ('skybox','wobblesky'):
             notes.append('unsupported cube texgen: '+s.get('texgen','normal'))
         elif s.get('image') or s.get('cube'):parsed.append(s)
@@ -159,7 +169,8 @@ def compile_material(name,defs,materials,textures):
     if roles & {'bump','diffuse','specular'}:
         if 'bump' not in roles:
             s,_=compile_stage(['bumpmap','_flat'],textures);parsed.append(s)
-        if not roles & {'diffuse','specular'} and not any('cubemap' in n for n in notes):
+        # Material.cpp AddImplicitStages: no white diffuse when a reflection stage exists.
+        if not roles & {'diffuse','specular'} and not reflection:
             s,_=compile_stage(['diffusemap','_white'],textures);parsed.append(s)
     # Material.cpp SortInteractionStages; retain separate bump groups.
     order={'ambient':0,'bump':1,'diffuse':2,'specular':3};i=0
@@ -177,16 +188,22 @@ def compile_material(name,defs,materials,textures):
     if defs.policy and 'deform' in lower and lower[lower.index('deform')+1:lower.index('deform')+2] in (['particle'],['particle2']):
         record=dict(record,visible=False);notes.append('particle deform skipped')
     spectrum=int(t[lower.index('spectrum')+1]) if 'spectrum' in lower else 0
-    for feature in ('deform','guisurf','foglight','blendlight','mirror','portalsky'):
+    # Material.cpp: DECAL_MACRO = polygonOffset + discrete + sort decal + noShadows.
+    decal='decal_macro' in lower
+    sort=sort_value(t[lower.index('sort')+1]) if 'sort' in lower[:-1] else SORTS['decal'] if decal else None
+    if sort is None:sort=SORTS['medium'] if translucent else SORTS['opaque']
+    portal_sky='portalsky' in lower
+    for feature in ('deform','guisurf','foglight','blendlight','mirror'):
         if feature in lower:notes.append(feature)
     for s in parsed:
         for image in s['cube']['faces'] if s.get('cube') else [s['image']]:
-            if image['status']!='ready':notes.append('missing image: '+image['expression'])
+            if image['status']!='ready' and not (portal_sky and image['expression']=='_currentrender'):
+                notes.append('missing image: '+image['expression'])
         if any(x in lower for x in ('clamp','zeroclamp','alphazeroclamp')):s['clamp']=True
-        if 'polygonoffset' in lower:s['polygonOffset']=True
+        if 'polygonoffset' in lower or decal:s['polygonOffset']=True
     def sound_reactive(value):
         return value=='sound' if isinstance(value,str) else any(sound_reactive(x) for x in value) if isinstance(value,list) else False
     return dict(name=record['name'],visible=record['visible'],twoSided=record['twoSided'],translucent=translucent,
                 soundReactive=any(sound_reactive([s['color'],s['condition'],s['uv'],s['alphaTest']]) for s in parsed),
                 unsmoothedTangents='unsmoothedtangents' in lower,ambientLight='ambientlight' in lower,fogLight='foglight' in lower,blendLight='blendlight' in lower,
-                stages=parsed,falloff=falloff,spectrum=spectrum,approximations=sorted(set(notes)))
+                stages=parsed,falloff=falloff,spectrum=spectrum,sort=sort,portalSky=portal_sky,approximations=sorted(set(notes)))
