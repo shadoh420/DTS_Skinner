@@ -769,12 +769,27 @@ window.addEventListener('DOMContentLoaded', async () => {
       const more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
       const text = entry => [entry.section, entry.name, entry.maps[0] + more(entry.maps)].filter(Boolean).join(' · ');
       const groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
-      $('sky').replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...groups.map(([group, entries]) => {
-        const element = Object.assign(document.createElement('optgroup'), {label: group});
-        element.append(...entries.map(entry => [text(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
-        return element;
-      }));
-      if (skies.some(entry => entry.id === settings.sky)) { $('sky').value = settings.sky; return showSky(settings.sky); }
+      // The game first, then its skies: one list of 900+ skies is slow to open and some browsers leave it half drawn.
+      const game = $('skyGame') || $('sky').insertAdjacentElement('beforebegin', Object.assign(document.createElement('select'),
+        {id: 'skyGame', title: 'Game the sky comes from'}));
+      game.setAttribute('aria-label', 'Sky source game');
+      game.replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...groups.map(([group, entries]) => new Option(`${group} (${entries.length})`, group)));
+      const fill = group => {
+        const entries = groups.find(([name]) => name === group)?.[1] || [];
+        $('sky').replaceChildren(...entries.map(entry => [text(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
+        $('sky').hidden = !group;
+      };
+      game.addEventListener('change', () => {
+        fill(game.value);
+        settings.sky = game.value ? $('sky').value : '';  // A game's first sky, or the map's own.
+        game.blur();
+        save();
+        showSky(settings.sky);
+      });
+      const saved = skies.find(entry => entry.id === settings.sky);
+      game.value = saved ? saved.group : '';
+      fill(game.value);
+      if (saved) { $('sky').value = settings.sky; return showSky(settings.sky); }
     }).catch(() => { $('sky').disabled = true; });
     scene.add(new THREE.AmbientLight(new THREE.Color(...map.sun.ambient)));
     const sun = new THREE.DirectionalLight(new THREE.Color(...map.sun.intensity));
