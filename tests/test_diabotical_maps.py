@@ -343,6 +343,13 @@ class DiaboticalMapsTest(unittest.TestCase):
                   ('prop_g', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'skip_shadows': 'true', 'no_decals': '1'})]
         self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|s', 'props/quad|stone_floor|s',
                                                                                      'props/quad||n', 'props/quad||ns'])
+        # Props that move by themselves: their index among their key's props, kind (0 float, 1 rotate), numbers, pivot.
+        movers = {}
+        placements([('prop_g', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad'}),
+                    ('prop_h', (1, 2, 3), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'movement': 'float 5 3'}),
+                    ('prop_i', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'movement': 'rotate 1'}),
+                    ('prop_j', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'movement': 'none'})], {}, movers=movers)
+        self.assertEqual(movers, {'props/quad||s': [[1, 0, 5, 3, 1, 2, -3], [2, 1, 1, 1, 0, 0, 0]]})
         # Billboards: a unit square scaled x by y, placed as a prop (page axes), colour, texture path with / , reflection.
         panes = [('billboard_1', (10, 20, 30), (0, 0, 0), (100, 50, 1), {'color': 'accent2', 'texture': 'Textures\Decals\Glow.png', 'reflection': 'on'}),
                  ('billboard_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'no_show': 'true'})]

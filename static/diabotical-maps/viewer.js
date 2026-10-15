@@ -377,7 +377,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       [model, await get(`${data}models/${models[model].file}`).then(r => r.arrayBuffer())])));
     const geometries = new Map(), matrix = new THREE.Matrix4();
     let drawn = 0, absent = 0;
-    for (const {model, material: override, mirrored, noDecals, shadow, matrices, tints} of props) {
+    for (const prop of props) {
+      const {model, material: override, mirrored, noDecals, shadow, matrices, tints} = prop;
+      prop.meshes = [];
       if (!buffers.has(model)) { absent += matrices.length / 12; continue; }
       let at = 0;
       for (const [own, corners] of models[model].groups) {
@@ -416,6 +418,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         mesh.castShadow = shadow;  // Plain models do, dynamic assets' pieces do not (the importer's `s`).
         mesh.receiveShadow = true;
         layers.props.add(mesh);
+        prop.meshes.push(mesh);
         if (!noDecals) surfaces.props.push({floats: geometries.get(key).attributes.position.data.array, matrices});
       }
       drawn += matrices.length / 12;
@@ -603,6 +606,29 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     gameUniforms.gameLights.value.needsUpdate = true;
   }
+  /* Props that move by themselves (movers: [group, index, kind, a, b, pivot x, y, z]): `float A T` goes up and down by
+     A over a period of T seconds, `rotate S` turns about the vertical through the entity by S (FLOAT_PERIOD and SPIN
+     turn them into seconds and radians). Measured in run 46. */
+  const FLOAT_PERIOD = 1, SPIN = Math.PI / 180;
+  let moving = [];
+  const moved = new THREE.Matrix4(), turnAbout = new THREE.Matrix4(), base = new THREE.Matrix4();
+  function addMovers(list, props) {
+    moving = list.map(([group, index, kind, a, b, x, y, z]) => {
+      const m = props[group].matrices.subarray(index * 12, index * 12 + 12);
+      return {meshes: props[group].meshes, index, kind, a, b, pivot: new THREE.Vector3(x, y, z),
+        base: new THREE.Matrix4().set(...m, 0, 0, 0, 1), phase: index * .37};
+    }).filter(mover => mover.meshes.length);
+  }
+  function moveProps(seconds) {
+    const touched = new Set();
+    for (const {meshes, index, kind, a, b, pivot, base: start, phase} of moving) {
+      if (kind === 0) moved.makeTranslation(0, a * Math.sin(2 * Math.PI * (seconds + phase) / Math.max(b * FLOAT_PERIOD, .01)), 0).multiply(start);
+      else moved.makeTranslation(pivot.x, pivot.y, pivot.z).multiply(turnAbout.makeRotationY(a * SPIN * seconds))
+        .multiply(base.makeTranslation(-pivot.x, -pivot.y, -pivot.z)).multiply(start);
+      for (const mesh of meshes) { mesh.setMatrixAt(index, moved); touched.add(mesh); }
+    }
+    for (const mesh of touched) mesh.instanceMatrix.needsUpdate = true;
+  }
   function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1, fog, vertical_fog: verticalFog}) {
     const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
     u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
@@ -728,6 +754,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     gameTime.value += delta;
     spinBeams(gameTime.value);
     flicker(gameTime.value);
+    moveProps(gameTime.value);
     updateParticles(delta);
     draw();
   });
@@ -814,6 +841,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       addMarkers(markers);
       addLiquids(liquids);
       map.props = await addProps(props, models, entries);
+      addMovers(movers, props);
       showStatus('Placing decals…');
       map.decals = addDecals(decals, entries);
       addBillboards(billboards, entries);
