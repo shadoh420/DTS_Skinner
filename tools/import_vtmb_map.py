@@ -256,7 +256,7 @@ class Tree:
         material has fog. Subtrees that end in one region collapse to it. A page plane is [n1, n2, n0, d*SCALE]."""
         regions, ids = [None], {}
         for i, (_, _, texinfo) in enumerate(self.water):
-            fog = water_fog(texinfo)
+            fog = water_fog(texinfo) if texinfo >= 0 else None  # No surface texinfo (hw_warrens_2): no water material.
             if fog:
                 ids[i] = len(regions); regions.append(fog)
         nodes = []
@@ -298,12 +298,12 @@ def water_fog(params):
     (not public) sets linear range fog from them, as noclip's Material_Water reads them. None without those keys."""
     if not all(k in params for k in ('$fogcolor', '$fogstart', '$fogend')):
         return None
-    text = str(params['$fogcolor']); values = np.array([float(v) for v in text.strip('[]{} ').split()])
+    text = str(params['$fogcolor']); values = np.array([atof(v) for v in text.strip('[]{} ').split()])
     if len(values) != 3 or not np.isfinite(values).all():
         raise ValueError('Invalid water $fogcolor')
     if '{' in text:
         values = values/255
-    start, end = float(params['$fogstart']), float(params['$fogend'])
+    start, end = atof(params['$fogstart']), atof(params['$fogend'])
     if not np.isfinite([start, end]).all():
         raise ValueError('Invalid water fog range')
     return dict(fog=dict(color=np.clip(values, 0, 1).tolist(), start=start*SCALE, end=end*SCALE, max=1))
@@ -418,8 +418,14 @@ def light_pixels(bsp, face, flags, gain=2):
     return np.rint(np.clip(total * gain / 255, 0, 1)**(1/2.2)*255).astype(np.uint8).reshape(h, w, 3)
 
 
+def atof(text):
+    """C atof, as the engine reads keyvalues: the leading number, else 0 ('1.00`' is 1, a name is 0)."""
+    match = re.match(r'\s*[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?', str(text))
+    return float(match[0]) if match else 0.
+
+
 def number(entity, field, default=0):
-    value = float(entity.get(field, default))
+    value = atof(entity.get(field, default))
     if not np.isfinite(value):
         raise ValueError('Non-finite entity ' + field)
     return value
