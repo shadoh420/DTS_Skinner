@@ -23,6 +23,7 @@ try:
     from tools.doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
     from tools.doom3_gui import GuiImages,gui_texture
     from tools.doom3_movers import mover_records,swept_bounds
+    from tools.quake4_bse import effect_decls,extent as bse_extent
     from tools.import_doom3 import load_parts,idle_animation,FORMATS
     from tools.model_data import write_model_data,load_model_data
     from tools.texture_storage import game_texture_dir
@@ -35,6 +36,7 @@ except ImportError:
     from doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
     from doom3_gui import GuiImages,gui_texture
     from doom3_movers import mover_records,swept_bounds
+    from quake4_bse import effect_decls,extent as bse_extent
     from import_doom3 import load_parts,idle_animation,FORMATS
     from model_data import write_model_data,load_model_data
     from texture_storage import game_texture_dir
@@ -379,7 +381,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
     entry=entities[0].get('call','main');script='maps/'+name+'.script'
     if '::' in entry:script='script/'+entry.split('::')[0]+'.script'
     global_parms,startup_entities=startup_shader_parms(files[script].read().decode('latin1'),entry) if script in files else ([0.0]*12,{})
-    resolved=[];skipped=[];lights=[];skipped_lights=[];used_materials=set();parts_cache={};emitters=[];used_particles=set()
+    resolved=[];skipped=[];lights=[];skipped_lights=[];used_materials=set();parts_cache={};emitters=[];used_particles=set();used_effects=set()
     geometry=dict(vertices=[],normals=[],uvs=[],colors=[],indices=[]);surfaces=[];entity_records=[]
     def material(name):
         name=policy.material_name(name) if policy else path_name(name).removesuffix('.tga')
@@ -509,16 +511,26 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                 skipped.append(dict(record,reason='Static already compiled into world PROC'));continue
         if policy and entity.get('classname')=='func_group':
             skipped.append(dict(record,reason='Editor group compiled into world PROC'));continue
-        if policy and (entity.get('classname')=='func_fx' or reference.endswith(('.fx','.prt'))):
-            skipped.append(dict(record,reason='BSE effect' if entity.get('classname')=='func_fx' or reference.endswith('.fx') else 'particle'));continue
-        def add_emitter(prt,origin,shader_parms,fx=None):
-            decl=material_cache['particles'][prt];radius=particle_extent(decl);axis=rotation(entity)
-            bounds=[(origin-radius).tolist(),(origin+radius).tolist()];areas=bounds_areas(bounds,proc['nodes'])
+        def add_emitter(prt,origin,shader_parms,fx=None,effect=None):
+            if effect:radius=bse_extent(material_cache['effects'][effect]);names=[s['particle']['material'] for s in material_cache['effects'][effect]['segments']]
+            else:decl=material_cache['particles'][prt];radius=particle_extent(decl);names=[stage['material'] for stage in decl['stages']]
+            origin,axis=moved_frame(dict(entity,origin=' '.join(map(str,origin))))
+            bounds=[(origin-radius).tolist(),(origin+radius).tolist()];mover=mover_of.get(entity.get('name'))
+            reach=swept_bounds(bounds,movers,mover) if mover is not None else bounds;areas=bounds_areas(reach,proc['nodes'])
             candidates=sorted(set().union(*(light_by_area.get(a,set()) for a in areas))) if areas else []
-            emitters.append(dict(name=label,particle=prt,origin=origin.tolist(),axis=axis.ravel().tolist(),parms=shader_parms,bounds=bounds,areas=areas,fx=fx,
-                                 lights=[i for i in candidates if light_intersects(bounds,lights[i])],entity=label,
-                                 materials=[material(stage['material'])['name'] for stage in decl['stages']]))
-            used_particles.add(prt)
+            emitters.append(dict(name=label,particle=prt,effect=effect,origin=origin.tolist(),axis=axis.ravel().tolist(),parms=shader_parms,bounds=reach,areas=areas,fx=fx,
+                                 lights=[i for i in candidates if light_intersects(reach,lights[i])],entity=label,materials=[material(n)['name'] for n in names]))
+            if mover is not None:emitters[-1]['mover']=mover
+            if effect:used_effects.add(effect)
+            else:used_particles.add(prt)
+        if policy and entity.get('classname')=='func_fx':
+            # Quake 4 func_fx: start_on and not triggered plays at spawn; loop repeats it. Only drawable particle segments.
+            effect=path_name(entity.get('fx','')).removesuffix('.fx');decl=material_cache['effects'].get(effect)
+            if not decl or not decl['segments']:skipped.append(dict(record,reason='BSE effect without drawable particles' if decl else 'Missing BSE effect: '+effect));continue
+            if entity.get('start_on','0')=='0' or entity.get('triggered','0')!='0':skipped.append(dict(record,reason='BSE effect waits for a trigger'));continue
+            add_emitter(None,vector(entity.get('origin')),parms(entity),dict(loop=entity.get('loop','0')!='0'),effect);continue
+        if policy and reference.endswith(('.fx','.prt')):
+            skipped.append(dict(record,reason='BSE effect' if reference.endswith('.fx') else 'particle'));continue
         if not policy and entity.get('classname')=='func_fx':
             # idEntityFx: only the particle actions of untriggered start/restart effects are drawn.
             actions=material_cache['fx'].get(path_name(entity.get('fx','')).removesuffix('.fx'),[])
@@ -610,12 +622,13 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                globalShaderParms=global_parms,startupShaderEntities=startup_entities,
                surfaces=surfaces,materials=shader_records,lights=lights,nodes=proc['nodes'],portals=proc['portals'],areaCount=proc['areas'],
                movers=movers,emitters=emitters,particles={n:material_cache['particles'][n] for n in sorted(used_particles)},
+               effects={n:material_cache['effects'][n] for n in sorted(used_effects)},
                viewpoints=viewpoints,entities=entity_records,skippedEntities=skipped,skippedLights=skipped_lights,stats=stats,
                notes=['No shadows. Fog and blend lights draw after the shader passes (RB_FogAllLights). Doors/movers stay at authored start transforms; scripts and binds are not simulated.',
                       'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
                       'Sound-reactive stages use the sample envelope without audio playback. Sample phase starts at map load; triggered sounds, random choices, leadins and multiple channels are not simulated.',
                       'All renderable monsters/items are shown, including hidden/triggered entities. Start-off lights stay off.',
-                      'Sky cubemaps and the authored portal-sky camera are rendered. Flare, sprite, tube, turbulent, expand and move deforms are rebuilt per view. Doom 3 .prt particles (func_emitter, func_smoke, start/restart func_fx) run the engine particle model. Reflection cubemaps (texgen reflect/normal, bumpy when the material has a bump stage) and mirrors are drawn. GUI surfaces show a raster of the .gui start state (no scripts, gui:: values or animation). Remote render views, heat haze, video, eyeball and particle deforms remain skipped/approximated; see per-material and per-entity details.',
+                      'Sky cubemaps and the authored portal-sky camera are rendered. Flare, sprite, tube, turbulent, expand and move deforms are rebuilt per view. Doom 3 .prt particles (func_emitter, func_smoke, start/restart func_fx) run the engine particle model; Quake 4 BSE sprite/line/oriented segments of start_on func_fx are simulated (sound, light, decal, model, debris and electricity segments are not). Reflection cubemaps (texgen reflect/normal, bumpy when the material has a bump stage) and mirrors are drawn. GUI surfaces show a raster of the .gui start state (no scripts, gui:: values or animation). Remote render views, heat haze, video, eyeball and particle deforms remain skipped/approximated; see per-material and per-entity details.',
                       'r_lightScale 2 is applied once to interactions. No display gamma or second overbright multiplier.',
                       'Analytic light normalization/specular lookup approximates the original quantized lookup textures. Portal culling is conservative; door portal blocking is not simulated.'])
     # rvCameraPortalSky::GetViewParms / RoE idPlayerView::SingleView replace only the
@@ -659,6 +672,7 @@ def import_maps(install,data_root=LOCAL_DATA,*,maps=None,models_root=None,replac
             textures=Textures(files,game_texture_dir(Path(models_root or root) if policy else root,game_id),policy)
             materials=Materials(defs,textures);context=dict(materials=materials,textures=textures,records={},sounds=Sounds(files,output/'sounds',policy),
                                                             particles={} if policy else particle_decls(files),fx={} if policy else fx_decls(files),
+                                                            effects=effect_decls(files) if policy else {},
                                                             guis={},gui_images=GuiImages(files,defs,policy),strings=strings(files))
             table_data=tables(files)
             for key,n in selected:

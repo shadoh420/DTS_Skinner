@@ -1,7 +1,7 @@
 /* Doom 3 ARB2 interactions, without stencil shadows. No Three lighting/color transforms. */
 (async function() {
 'use strict';
-const $=id=>document.getElementById(id), M=window.doom3Materials, P=window.doom3Particles, config=window.idTech4MapConfig, base=config.data;
+const $=id=>document.getElementById(id), M=window.doom3Materials, P=window.doom3Particles, B=window.quake4BSE, config=window.idTech4MapConfig, base=config.data;
 const npcs=window.skinnerNPCToggle;
 document.title='DTS Skinner - '+config.label+' Maps';$('gameTitle').textContent=config.label+' Maps';
 $('gamePath').placeholder=config.install;$('importStatus').textContent=config.description;
@@ -219,27 +219,28 @@ function applyDeform(batch,view,seconds,sound) {
  for(const name of ['position','uv','color'])batch.geometry.attributes[name].needsUpdate=true;
  return true;
 }
-function particleGeometry({emitter,stage}) {
- const n=P.stageCapacity(stage),g=new THREE.BufferGeometry();
+function particleGeometry({emitter,stage,index}) {
+ const n=emitter.effect?B.capacity(stage):P.stageCapacity(stage),g=new THREE.BufferGeometry();
  for(const [name,size] of [['position',3],['normal',3],['uv',2],['color',3],['doomAlpha',1],['doomTangent',3],['doomBitangent',3]]) {
   const attribute=new THREE.BufferAttribute(new Float32Array(n*size),size);
   if(['position','uv','color','doomAlpha'].includes(name))attribute.setUsage(THREE.DynamicDrawUsage);g.setAttribute(name,attribute);
  }
  g.setIndex(P.quadIndex(n));g.setDrawRange(0,0);
- return {geometry:g,emitter,stage,out:{position:new Float32Array(n*3),uv:g.attributes.uv.array,color:new Float32Array(n*4),count:0}};
+ return {geometry:g,emitter,stage,index,out:{position:new Float32Array(n*3),uv:g.attributes.uv.array,color:new Float32Array(n*4),count:0}};
 }
 function applyParticles(batch,view,seconds) {
  // idRenderModelPrt in emitter space: view axes go in through the emitter axis, quads come out to world space.
- const {emitter,stage,out}=batch.particle,A=emitter.axis,o=emitter.origin,e=view.matrixWorld.elements,g=batch.geometry;
+ const {emitter,stage,index,out}=batch.particle,A=emitter.axis,o=emitter.origin,e=view.matrixWorld.elements,g=batch.geometry;
  const local=w=>[0,1,2].map(j=>A[j]*w[0]+A[3+j]*w[1]+A[6+j]*w[2]);
  const axes={left:local([-e[0],-e[1],-e[2]]),up:local([e[4],e[5],e[6]]),forward:local([-e[8],-e[9],-e[10]]),down:local([0,0,-1])};
  let t=seconds;
- if(emitter.fx) {
+ if(emitter.fx&&!emitter.effect) {
   // idEntityFx: each particle action lives [delay, delay+duration) of an effect that repeats every `period` (0: once).
   const f=emitter.fx;if(f.period>0)t%=f.period;else if(t>=f.duration)return false;
   t-=f.delay;if(t<0||t>=f.length)return false;
  }
- const n=P.simulate(stage,t*1000,emitter.parms,axes,out,(name,f)=>M.evaluate(['table',name,f],seconds,emitter.parms,tables));
+ const table=(name,f)=>M.evaluate(['table',name,f],seconds,emitter.parms,tables);
+ const n=emitter.effect?B.simulate(data.effects[emitter.effect],index,t,emitter.fx.loop,axes,out,table):P.simulate(stage,t*1000,emitter.parms,axes,out,table);
  if(!n)return false;
  const p=g.attributes.position.array,c=g.attributes.color.array,a=g.attributes.doomAlpha.array,q=out.position;
  for(let i=0;i<n;i++) {
@@ -289,8 +290,11 @@ async function buildMap(meta,binary) {
  }
  let passCount=0,ambientOrder=100;
  // Each emitter stage draws like one more surface whose quads are rebuilt per view.
- const particleSurfaces=(meta.emitters||[]).flatMap(emitter=>meta.particles[emitter.particle].stages.map((stage,k)=>({stage,k})).filter(({stage})=>stage.cycleMsec>0)
-  .map(({stage,k})=>({material:emitter.materials[k],bounds:emitter.bounds,areas:emitter.areas,lights:emitter.lights,entity:emitter.entity,parms:emitter.parms,particle:{emitter,stage}})));
+ // Doom 3 .prt stages and Quake 4 BSE segments alike.
+ const particleSurfaces=(meta.emitters||[]).flatMap(emitter=>(emitter.effect?meta.effects[emitter.effect].segments:meta.particles[emitter.particle].stages).map((stage,k)=>({stage,k}))
+  .filter(({stage})=>emitter.effect||stage.cycleMsec>0)
+  .map(({stage,k})=>({material:emitter.materials[k],bounds:emitter.bounds,areas:emitter.areas,lights:emitter.lights,entity:emitter.entity,parms:emitter.parms,
+   ...(emitter.mover!==undefined?{mover:emitter.mover}:{}),particle:{emitter,stage,index:k}})));
  for(const surface of [...meta.surfaces,...particleSurfaces]) {
   const material=meta.materials[surface.material],group=new THREE.Group(),meshes=[];
   const deformed=M.DEFORMS[material.deform?.kind]?deformGeometry(surface,material.deform):null;
