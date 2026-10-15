@@ -524,19 +524,23 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                       'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
                       'Sound-reactive stages use the sample envelope without audio playback. Sample phase starts at map load; triggered sounds, random choices, leadins and multiple channels are not simulated.',
                       'All renderable monsters/items are shown, including hidden/triggered entities. Start-off lights stay off.',
-                      'Cubemaps, heat haze, GUIs, video, deforms and particles are skipped/approximated; see per-material and per-entity details.',
+                      'Sky cubemaps and the authored portal-sky camera are rendered. Reflection cubemaps, heat haze, GUIs, video, deforms and particles remain skipped/approximated; see per-material and per-entity details.',
                       'r_lightScale 2 is applied once to interactions. No display gamma or second overbright multiplier.',
                       'Analytic light normalization/specular lookup approximates the original quantized lookup textures. Portal culling is conservative; door portal blocking is not simulated.'])
+    # rvCameraPortalSky::GetViewParms / RoE idPlayerView::SingleView replace only the
+    # eye position; the player's orientation/FOV are retained. Q4 PROC sky flags or
+    # RoE `sort portalSky` surfaces (CheckAreaForPortalSky) enable this view.
+    skies=[e for e in resolved if e.get('classname','').lower() in ('func_camera_portalsky','info_portalsky') or e.get('spawnclass') in ('rvCameraPortalSky','idPortalSky')]
+    sky=next((e for e in skies if e.get('triggered','0')=='0'),skies[0] if skies else None)
+    if sky:
+        origin=vector(sky.get('origin'))
+        if policy and sky.get('name') in transforms:origin=(transforms[sky['name']] @ np.r_[origin,1])[:3]
+        scene['portalSky']=dict(name=sky.get('name'),origin=origin.tolist())
+    if not policy:
+        for s in surfaces:
+            if shader_records[s['material']]['portalSky']:scene['areaSky'].update({'_area'+str(a):True for a in s['areas']})
     if policy:
-        # rvCameraPortalSky::GetViewParms replaces only the eye position; the
-        # player's orientation/FOV are retained. PROC sky flags enable this view.
-        sky=next((e for e in resolved if e.get('classname')=='func_camera_portalsky' or e.get('spawnclass')=='rvCameraPortalSky'),None)
-        if sky:
-            origin=vector(sky.get('origin'))
-            if sky.get('name') in transforms:origin=(transforms[sky['name']] @ np.r_[origin,1])[:3]
-            scene['portalSky']=dict(name=sky.get('name'),origin=origin.tolist())
         scene['notes'][0]='No shadows or fog/blend lights. Authored movers and static attachments are evaluated once; no physics or script VM.'
-        scene['notes'][4]='Sky cubemaps and the authored portal-sky camera are rendered. Reflection cubemaps, heat haze, GUIs, video, deforms and particles remain skipped/approximated.'
         scene['notes'] += ['Quake 4: r_lightDetailLevel 0; only detailLevel > 0 lights. falloff spawnarg is ignored (not read by SDK ParseSpawnArgsToRenderLight).',
                            'Deathmatch filters; one deterministic spawner appearance. See stats.mapRules for provenance and other layouts.',
                            'GLSL capability conditions use the non-GLSL fallback. Portal fade tuples are retained but fading is disabled.']

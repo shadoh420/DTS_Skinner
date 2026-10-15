@@ -144,6 +144,8 @@ async function buildMap(meta,binary) {
  const stages=Object.values(meta.materials).flatMap(m=>m.stages);
  await Promise.all(stages.map(async s=>s.texture=await texture(s.image,s.clamp)));
  await Promise.all(stages.filter(s=>s.cube).map(async s=>s.cubeTextures=await Promise.all(s.cube.faces.map(f=>texture(f,true)))));
+ // Faces are picked per pixel, so derivatives jump at face edges and pick tiny mips (dashed seams).
+ for(const s of stages)for(const t of s.cubeTextures||[])if(t)t.minFilter=THREE.LinearFilter;
  await Promise.all(meta.lights.map(async l=>l.falloffTexture=await texture(l.falloff,true)));
  const sources=[...meta.lights,...meta.surfaces].map(x=>x.sound).filter(s=>s?.file&&!s.waitForTrigger);
  if(sources.length) {
@@ -192,6 +194,8 @@ async function buildMap(meta,binary) {
    const mesh=new THREE.Mesh(g,sm);mesh.renderOrder=order;mesh.userData={kind,diffuse,specular,bump,light,projection,cubeAxis:surface.cubeAxis};group.add(mesh);meshes.push(mesh);passCount++;
   }
   const cut=material.stages.filter(s=>s.alphaTest!==0),opaque=material.stages.find(s=>s.role==='diffuse')||material.stages[0];
+  // RoE portal-sky surfaces show the sky view already in the color buffer (_currentRender): depth only.
+  if(material.portalSky){pass(0,null,null,null,null,null,0);meshes.at(-1).material.colorWrite=false;continue;}
   if(!material.translucent)for(const stage of cut.length?cut:[opaque])pass(0,stage,null,null,null,null,0);
   for(const interaction of interactionGroups(material.stages))for(const index of surface.lights) {
     const light=meta.lights[index];if(light.authoredOff)continue;
@@ -199,7 +203,7 @@ async function buildMap(meta,binary) {
       pass(1,interaction.diffuse,interaction.specular,interaction.bump,light,projection,10);
   }
   // Finish each surface's stage chain before another surface overwrites scratch alpha.
-  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,null,null,null,ambientOrder++));
+  material.stages.filter(s=>s.role==='ambient').forEach(s=>pass(s.cube?3:2,s,null,null,null,null,M.ambientOrder(material.sort,ambientOrder++)));
  }
  npcs.setCount(npcOwners.size);
  return passCount;

@@ -43,3 +43,8 @@ console.log('Doom expressions, UV transforms, portal visibility and tangent spac
 const normal=[0,0,1,0,0,1,0,0,1,0,0,1];
 M.tangents([0,0,0,1,0,0,0,1,0,0,0,3],[0,0,1,0,0,1,0,1],normal,[0,1,2,0,3,1],[{start:0,count:6}]);
 assert.deepEqual(normal.slice(0,3),[0,1,0], 'dominant triangle replaces averaged normals');
+// RB_STD_DrawShaderPasses: every ambient stage after the interactions, by material sort, then stage sequence.
+assert.ok(M.ambientOrder(-3,0)>10,'GUI/subview stages still follow interactions');
+assert.ok(M.ambientOrder(0,999)<M.ambientOrder(4,0),'opaque sky before translucent windows');
+assert.ok(M.ambientOrder(2,5)<M.ambientOrder(2,6));
+assert.equal(M.ambientOrder(undefined,1),M.ambientOrder(0,1),'old imports without sort');

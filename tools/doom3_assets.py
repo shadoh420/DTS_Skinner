@@ -61,8 +61,9 @@ class Install:
 
 def lex(text):
     # Preserve newlines for declaration statements; comments inside strings survive.
+    # idLexer also starts a comment mid-token: ".75//Parm0" is the number .75.
     return [m[0][1:-1] if m[0].startswith('"') else m[0]
-            for m in re.finditer(r'"[^"\r\n]*"|/\*[\s\S]*?\*/|//[^\r\n]*|\n|[^\s{}(),]+|[{}(),]',text)
+            for m in re.finditer(r'"[^"\r\n]*"|/\*[\s\S]*?\*/|//[^\r\n]*|\n|(?:[^\s{}(),/]|/(?![/*]))+|[{}(),]',text)
             if not m[0].startswith(('//','/*'))]
 
 

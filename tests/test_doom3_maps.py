@@ -221,6 +221,49 @@ class DoomMapTest(unittest.TestCase):
                 d.materials['lights/blend']=lex('blendLight { map _white }')
                 self.assertTrue(compile_material('lights/blend',d,m,t)['blendLight'])
 
+    def test_doom3_sky_decal_macro_sort_and_comments(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);fixture(root/'install')
+            with Install(root/'install') as archive:
+                d=Declarations(archive.files['base']);t=Textures(archive.files['base'],root/'textures');m=Materials(d,t)
+                d.materials['textures/skies/hellsky']=lex('''forceOpaque { blend add cameraCubeMap env/hellsky
+                    texgen skybox
+                    texgen wobblesky 1.5 .5 .2
+                    red .75//Parm0 * table[ time ] }
+                    }''')
+                sky=compile_material('textures/skies/hellsky',d,m,t)
+                self.assertFalse(sky['translucent']);self.assertEqual(sky['sort'],0)
+                stage=sky['stages'][0];self.assertEqual(stage['texgen'],'wobblesky');self.assertEqual(stage['wobble'],[1.5,.5,.2])
+                self.assertEqual([f['expression'] for f in stage['cube']['faces']][:2],['env/hellsky_forward','env/hellsky_back'])
+                self.assertEqual(stage['color'][0],.75,'// starts a comment inside a token')
+                d.materials['textures/decals/scorch']=lex('DECAL_MACRO translucent { blend filter map _white }')
+                decal=compile_material('textures/decals/scorch',d,m,t)
+                self.assertEqual(decal['sort'],2);self.assertTrue(decal['stages'][0]['polygonOffset'])
+                d.materials['textures/glass']=lex('{ blend blend map _white }')
+                self.assertEqual(compile_material('textures/glass',d,m,t)['sort'],4,'translucent defaults to SS_MEDIUM')
+                d.materials['textures/near']=lex('sort nearest { blend add map _white }')
+                self.assertEqual(compile_material('textures/near',d,m,t)['sort'],7)
+                d.materials['textures/reflect']=lex('bumpmap _flat { blend add cubeMap env/gen1 texgen reflect }')
+                self.assertEqual([s['role'] for s in compile_material('textures/reflect',d,m,t)['stages']],['bump'],
+                                 'AddImplicitStages adds no white diffuse beside a reflection stage')
+
+    def test_roe_portal_sky_entity_and_areas(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);fixture(root/'install')
+            with zipfile.ZipFile(root/'install/d3xp/pak001.pk4','w') as z:
+                z.writestr('materials/smf.mtr','textures/smf/portal_sky { forceOpaque sort portalSky { map _currentRender clamp screen } }')
+                z.writestr('def/smf.def','entityDef info_portalSky { "spawnclass" "idPortalSky" "hide" "1" }')
+                z.writestr('maps/game/test.proc',proc().replace(b'"textures/test"',b'"textures/smf/portal_sky"',1))
+                with zipfile.ZipFile(root/'install/d3xp/pak000.pk4') as original:
+                    z.writestr('maps/game/test.map',original.read('maps/game/test.map')+b'''
+                    { "classname" "info_portalSky" "name" "later" "origin" "9 9 9" "triggered" "1" }
+                    { "classname" "info_portalSky" "name" "sky" "origin" "500 0 64" }''')
+            maps.import_maps(root/'install',root/'data',maps=['d3xp:game/test'])
+            s=json.loads((root/'data/doom3-maps/maps/d3xp_game_test/scene.json').read_text())
+            self.assertEqual(s['portalSky'],dict(name='sky',origin=[500,0,64]))
+            m=s['materials']['textures/smf/portal_sky'];self.assertTrue(m['portalSky']);self.assertEqual(m['approximations'],[])
+            self.assertEqual(s['areaSky'],{'_area0':True})
+
     @unittest.skipUnless(shutil.which('node'),'Node is needed for browser math tests')
     def test_browser_math(self):
         script=Path(__file__).with_suffix('.js')
