@@ -606,10 +606,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     gameUniforms.gameLights.value.needsUpdate = true;
   }
-  /* Props that move by themselves (movers: [group, index, kind, a, b, pivot x, y, z]): `float A T` goes up and down by
-     A over a period of T seconds, `rotate S` turns about the vertical through the entity by S (FLOAT_PERIOD and SPIN
-     turn them into seconds and radians). Measured in run 46. */
-  const FLOAT_PERIOD = 1, SPIN = Math.PI / 180;
+  /* Props that move by themselves (movers: [group, index, kind, a, b, pivot x, y, z]), measured in run 46 (shots
+     6.0 s apart by the game log): `float A W` goes up and down A units from top to bottom, W radians a second (A 20 at
+     W 4 drifted smoothly from shot to shot, as a period of W seconds would not); `rotate S` turns S degrees a second
+     about the vertical through the entity, clockwise seen from above (rotate 10: 61 degrees in 6 s). */
+  const SPIN = -Math.PI / 180;
   let moving = [];
   const moved = new THREE.Matrix4(), turnAbout = new THREE.Matrix4(), base = new THREE.Matrix4();
   function addMovers(list, props) {
@@ -622,7 +623,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function moveProps(seconds) {
     const touched = new Set();
     for (const {meshes, index, kind, a, b, pivot, base: start, phase} of moving) {
-      if (kind === 0) moved.makeTranslation(0, a * Math.sin(2 * Math.PI * (seconds + phase) / Math.max(b * FLOAT_PERIOD, .01)), 0).multiply(start);
+      if (kind === 0) moved.makeTranslation(0, a / 2 * Math.sin(b * seconds + phase), 0).multiply(start);
       else moved.makeTranslation(pivot.x, pivot.y, pivot.z).multiply(turnAbout.makeRotationY(a * SPIN * seconds))
         .multiply(base.makeTranslation(-pivot.x, -pivot.y, -pivot.z)).multiply(start);
       for (const mesh of meshes) { mesh.setMatrixAt(index, moved); touched.add(mesh); }
