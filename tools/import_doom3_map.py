@@ -21,6 +21,7 @@ try:
     from tools.doom3_map_materials import compile_material,tables
     from tools.doom3_map_sounds import Sounds
     from tools.doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
+    from tools.doom3_gui import GuiImages,gui_texture
     from tools.import_doom3 import load_parts,idle_animation,FORMATS
     from tools.model_data import write_model_data,load_model_data
     from tools.texture_storage import game_texture_dir
@@ -31,6 +32,7 @@ except ImportError:
     from doom3_map_materials import compile_material,tables
     from doom3_map_sounds import Sounds
     from doom3_particles import particle_decls,fx_decls,fx_timing,particle_reference,extent as particle_extent
+    from doom3_gui import GuiImages,gui_texture
     from import_doom3 import load_parts,idle_animation,FORMATS
     from model_data import write_model_data,load_model_data
     from texture_storage import game_texture_dir
@@ -360,6 +362,23 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
         if name not in material_cache['records']:
             material_cache['records'][name]=compile_material(name,defs,material_cache['materials'],material_cache['textures'])
         used_materials.add(name);return material_cache['records'][name]
+    def gui_material(shader,entity):
+        # guiSurf entity/entity2/entity3 read the entity's gui/gui2/gui3; anything else names the .gui itself.
+        # The rasterised start state is one more fullbright stage, drawn at sort gui like R_RenderGuiSurf.
+        which=shader['guiSurf'];path=entity.get({'entity':'gui','entity2':'gui2','entity3':'gui3'}.get(which,''),which if which.endswith('.gui') else '')
+        if not path:return shader
+        name='gui:'+path_name(path)
+        if name not in material_cache['records']:
+            guis=material_cache['guis']
+            if path_name(path) not in guis:
+                guis[path_name(path)]=gui_texture(path,files,material_cache['gui_images'],material_cache['strings'],material_cache['textures'].output)
+            image=guis[path_name(path)];record=dict(shader,name=name,translucent=True,sort=-2,approximations=sorted(set(shader['approximations'])-{'guisurf'}|{'gui start state only'}))
+            if image['status']=='ready':
+                record['stages']=shader['stages']+[dict(role='ambient',color=[1,1,1,1],condition=1,uv=[],vertexColor=0,alphaTest=0,clamp=True,
+                                                         blend=['gl_one','gl_one_minus_src_alpha'],image=image)]
+            else:record['approximations']=sorted(set(record['approximations'])|{'missing gui: '+path_name(path)})
+            material_cache['records'][name]=record
+        used_materials.add(name);return material_cache['records'][name]
     for entity in entities:
         classname=path_name(entity.get('classname',''));base={}
         if classname in defs.entities:
@@ -407,6 +426,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
             delta=transforms[entity['name']];origin=(delta @ np.r_[origin,1])[:3];axis=delta[:3,:3] @ axis
         for part in parts:
             shader=material(entity.get('shader') or defs.remap(part['shader'],entity.get('skin','')))
+            if shader.get('guiSurf'):shader=gui_material(shader,entity)
             if policy and 'particle deform skipped' in shader['approximations']:
                 skipped.append(dict(name=entity.get('name','worldspawn'),material=shader['name'],reason='particle surface'))
             if not shader['visible'] or shader['name'].startswith(('textures/common/trigger','textures/common/clip','textures/common/nodraw','textures/common/collision')):continue
@@ -552,7 +572,7 @@ def import_scene(name,campaign,files,defs,material_cache,model_cache,directory,p
                       'Literal startup shader parameters are captured before waits/control flow; later scripted lighting changes are not simulated.',
                       'Sound-reactive stages use the sample envelope without audio playback. Sample phase starts at map load; triggered sounds, random choices, leadins and multiple channels are not simulated.',
                       'All renderable monsters/items are shown, including hidden/triggered entities. Start-off lights stay off.',
-                      'Sky cubemaps and the authored portal-sky camera are rendered. Flare, sprite, tube, turbulent, expand and move deforms are rebuilt per view. Doom 3 .prt particles (func_emitter, func_smoke, start/restart func_fx) run the engine particle model. Reflection cubemaps (texgen reflect/normal, bumpy when the material has a bump stage) and mirrors are drawn. Remote render views, heat haze, GUIs, video, eyeball and particle deforms remain skipped/approximated; see per-material and per-entity details.',
+                      'Sky cubemaps and the authored portal-sky camera are rendered. Flare, sprite, tube, turbulent, expand and move deforms are rebuilt per view. Doom 3 .prt particles (func_emitter, func_smoke, start/restart func_fx) run the engine particle model. Reflection cubemaps (texgen reflect/normal, bumpy when the material has a bump stage) and mirrors are drawn. GUI surfaces show a raster of the .gui start state (no scripts, gui:: values or animation). Remote render views, heat haze, video, eyeball and particle deforms remain skipped/approximated; see per-material and per-entity details.',
                       'r_lightScale 2 is applied once to interactions. No display gamma or second overbright multiplier.',
                       'Analytic light normalization/specular lookup approximates the original quantized lookup textures. Portal culling is conservative; door portal blocking is not simulated.'])
     # rvCameraPortalSky::GetViewParms / RoE idPlayerView::SingleView replace only the
@@ -595,7 +615,8 @@ def import_maps(install,data_root=LOCAL_DATA,*,maps=None,models_root=None,replac
             files=archive.files[campaign];defs=Declarations(files,policy)
             textures=Textures(files,game_texture_dir(Path(models_root or root) if policy else root,game_id),policy)
             materials=Materials(defs,textures);context=dict(materials=materials,textures=textures,records={},sounds=Sounds(files,output/'sounds',policy),
-                                                            particles={} if policy else particle_decls(files),fx={} if policy else fx_decls(files))
+                                                            particles={} if policy else particle_decls(files),fx={} if policy else fx_decls(files),
+                                                            guis={},gui_images=GuiImages(files,defs,policy),strings=strings(files))
             table_data=tables(files)
             for key,n in selected:
                 ident=re.sub('[^a-z0-9_-]','_',key);name=n[5:-5];directory=output/'maps'/ident
