@@ -49,8 +49,8 @@ left (`static/diabotical-maps/blocks.js`).
   halfway to the other face's (equally to all three at a corner), which
   matches the game's soft edge bands; edges against a neighbouring cube, half
   blocks and concave edges are not bevelled. The game's darkening on the
-  floor around a block's base is its screen-space ambient occlusion (not
-  drawn).
+  floor around a block's base is its screen-space ambient occlusion (see
+  Ambient occlusion below).
 - **Materials.** A face's material is an asset (`scripts/*.assets`) naming a
   material in a `.shader` file; its first `map` is its colour texture (BC7
   `.dds` in the packs, decoded with Pillow and stored as PNG, 512 pixels at
@@ -280,6 +280,26 @@ left (`static/diabotical-maps/blocks.js`).
   game's smoke (accent 3) and refraction are left out. `weapongl` is an ASCII
   FBX, read as the binary ones are; `weaponfg`, `weapondf`, `ammodf` and
   `weaponbfg` have no model in the game files and stay markers.
+- **Surface detail.** A lit stage's map 1 is its normal map (tangent space,
+  D3D's green; 1,023 of them in the packs, all BC7 RGB), kept at 256 pixels
+  as `HASH-n.png` and drawn on blocks, props and the terrain's ground. The
+  `statictrans*_col` materials take the model's FBX vertex colours: their red
+  as alpha for `statictranstex`, their colour for `statictranstexfog` (the
+  tile shaders read none, from the disassembly). The global `bevel` scales
+  how far the block rims' normals bend (run 46: `bevel 0` leaves a pillar's
+  edges sharp, the default shades them round).
+- **Ambient occlusion.** The game darkens its ambient light (only) by NVIDIA
+  HBAO+ (`GFSDK_SSAO_D3D11.dll`; `tile.cs` multiplies the ambient by it). The
+  page draws the scene's depth first, then per pixel how much of the half
+  space in front of the surface, out to 24 units × the global
+  `ambient_occlusion_radius`, the depth fills (12 samples), to the power
+  `ambient_occlusion_power`, and multiplies the ambient light by it. Run 24
+  measured the floor beside a 20-unit step at about 0.6 within about 20 units.
+- **Horizon shade.** Past 6000 units of depth the sun's shadow fades over
+  2000 units to the global `horizon_shade` (0 shadowed, 1 lit; the page takes
+  1 where unset) and the shadow colour to `horizon_shade_color` (`tile.cs`).
+- **Labels.** A `label` entity shows its `text` where it stands (run 46:
+  white, about `size` units tall); the page draws it facing the camera.
 - **Colour grading.** The game's last pass looks every pixel up in a 3D LUT,
   `textures/lut.png` (the identity) or the global entity's `lut` (14 stock
   maps; 256 × 16 PNGs: x is red plus 16 × blue, y green), without the
@@ -305,7 +325,11 @@ left (`static/diabotical-maps/blocks.js`).
   no colour is clear water, as bioplant's pools are in game; the ocean (`shader ocean`, `core_ocean`)
   is dark blue and mirrors the envmap. The game's own surfaces (water.ps,
   panel_water.ps) add moving noise, foam where they meet the ground and fog
-  over distance; the page leaves those out, and its liquids light nothing
+  over distance. The page ripples a liquid's brightness by two moving noise
+  layers (`texture_scale` makes them larger), fades it where shallow (the
+  game's water.ps is fully opaque 120 units down; the page uses its depth
+  pre-pass), and turns an ocean toward its `shallow_color` where it is
+  shallow (28 maps); its liquids light nothing
   around them (whether the game's do is not measured).
 
 The file formats are written out in the import's module docstring
@@ -547,13 +571,13 @@ all community `jacobs_decals` ones, mostly on a_enclosure), billboards' own shad
 materials (a flag in the material picks the team's colour over an accent),
 whether a
 terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
-0.125; only `core_ter` was measured), the terrain's normal maps and the fields
+0.125; only `core_ter` was measured), the terrain's cliff and dirt normal maps and the fields
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`when`,
 neighbour tests such as `left empty`), skinned models, the
 few prop materials still not found (flat colours: weapon models placed as props, particle
-containers, holiday lights, some ads), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
+containers, holiday lights, some ads), the liquids' foam and fog, props moved by logic (`action move`); of the lighting: the lights' specular highlights are checked only
 through bioplant's overall brightness, the reflections leave out the per-pixel
 material id (the commonest
 value of a material's id map is used), the spot lights' extra specular factor
@@ -562,13 +586,11 @@ value of a material's id map is used), the spot lights' extra specular factor
 reflection), the reflections of the envmap's two finest mips (the page keeps
 256 × 256 faces), the flat ambients of bots and pickups (ids 25, 44, 45, 48,
 49, 65, 120 to 139), decals' own specular maps (a decal dims the reflection
-under it) and the game's ambient occlusion; the ambient's fade toward the
+under it); the ambient's fade toward the
 shadow ambient on faces turned from the sun (the shader ramps it over N·L
-below 0.1), fog and vertical fog, light volumes
-(beams), flickering lights (drawn steady), colour grading (the 11 maps that
-set `lut`; the page applies the identity's step), the strong light of maps
-with no sun (measured in run 20, not drawn), the screen-space ambient
-occlusion (narrow; not drawn), the sun's light in shadow on maps like
+below 0.1), the game's own flicker curves, lights of type `volume` (none
+seen in game), the strong light of maps
+with no sun (measured in run 20, not drawn), the sun's light in shadow on maps like
 bioplant (the page lets far more through than the game), the game grid's
 half-cell shift, liquids' light on what is around them, and
 bloom, how nodes overlap and the grid's own size; the
