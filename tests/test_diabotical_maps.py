@@ -421,6 +421,13 @@ class DiaboticalMapsTest(unittest.TestCase):
         # Fog: colour, intensity (1), radius (8000) and margin (0) by default; the vertical fog's height is a world y
         # (not from its entity), over `radius` units, in the fog's colour where there is a fog (run 45).
         self.assertEqual(out['fog'], [1, 1, 1, 1, 8000, 0])
+        # A light's visibility function (its number in VISIBILITY), minimum (0) and speed (1) follow its row.
+        flick = read_lights([('light_f', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'visibility_function': 'Flicker', 'visibility_function_min': '.5'}),
+                             ('light_s', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'visibility_function': 'sin', 'visibility_function_speed': '2'})])['lights']
+        self.assertEqual([light[16:] for light in flick], [[9, .5, 1], [1, 0, 2]])
+        self.assertEqual(len(lamp), 16)  # None: no more.
+        from tools.import_diabotical_map import lut_file
+        self.assertEqual(lut_file('lut/lut_warm'), r'textures\lut\lut_warm.png')
         fogs = read_lights([('light_v', (0, 200, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog', 'color': '0000ff', 'height': '700', 'radius': '600', 'intensity': '.5'}),
                             ('light_v2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog'})])
         self.assertEqual((fogs['fog'], fogs['vertical_fog']), (None, [0, 0, 1, .5, 700, 600]))

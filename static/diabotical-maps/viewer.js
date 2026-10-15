@@ -11,13 +11,23 @@ window.addEventListener('DOMContentLoaded', async () => {
   const canvas = $('c');
   const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  // The game's last pass looks every pixel up in a 16-step colour LUT (identity unless the map sets `lut`) without
-  // the half-texel fix, which makes x into (16 x - 0.5) / 15 (runs 21 to 23).
-  const identity = 'vec3 CustomToneMapping( vec3 color ) { return color; }';
-  if (!THREE.ShaderChunk.tonemapping_pars_fragment.includes(identity)) console.warn('three changed CustomToneMapping: the LUT step is not drawn');
-  THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace(
-    identity, 'vec3 CustomToneMapping( vec3 color ) { return clamp((16. * color - .5) / 15., 0., 1.); }');
-  renderer.toneMapping = THREE.CustomToneMapping;
+  // The game's last pass looks every pixel up in a 16-step colour LUT (the map's `lut`, else the identity) without the
+  // half-texel fix, which makes x into (16 x - 0.5) / 15 on the identity (runs 21 to 23). The page draws the scene into
+  // a float target and looks it up the same way: 256 x 16 (x = red + 16 x blue, y = green), blue mixed by hand.
+  const target = new THREE.WebGLRenderTarget(1, 1, {type: THREE.HalfFloatType, samples: 4});
+  const identityLut = Object.assign(new THREE.DataTexture(Uint8Array.from({length: 256 * 16 * 4}, (_, i) =>
+    [i >> 2 & 15, i >> 10 & 15, i >> 6 & 15, 15][i & 3] * 17), 256, 16), {minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, needsUpdate: true});
+  const lutPass = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: {picture: {value: target.texture}, lut: {value: identityLut}}, depthTest: false, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+    fragmentShader: `uniform sampler2D picture, lut; varying vec2 vUv;
+      void main() {
+        vec3 t = clamp(16. * texture2D(picture, vUv).rgb - .5, 0., 15.);
+        float b = floor(t.b), y = (t.g + .5) / 16.;
+        vec3 low = texture2D(lut, vec2((t.r + .5 + 16. * b) / 256., y)).rgb, high = texture2D(lut, vec2((t.r + .5 + 16. * min(b + 1., 15.)) / 256., y)).rgb;
+        gl_FragColor = vec4(mix(low, high, t.b - b), 1.);
+      }`}));
+  const lutScene = new THREE.Scene().add(lutPass), lutCamera = new THREE.Camera(), drawn = new THREE.Vector2();
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9fc4e0);
   // Every material is lit the game's way (lighting.js); the directional light only casts the sun's shadow.
@@ -576,9 +586,28 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // A map's lights (read_lights in the importer) into the shaders' uniforms, and the sun's shadow over the blocks.
+  /* Light animation (visibility_function, the light row's entries 16 to 18: function, minimum, speed): the light's
+     colour times minimum + (1 - minimum) x the function of time x speed, a cycle a second at speed 1. The game's own
+     curves are not measured; these follow their names. */
+  const VISIBILITY = [null, p => .5 + .5 * Math.sin(2 * Math.PI * p), p => Math.abs(Math.sin(Math.PI * p)), p => 1 - Math.abs(Math.sin(Math.PI * p)),
+    p => Math.abs(Math.sin(Math.PI * p)) ** 4, p => p - Math.floor(p), p => 1 - (p - Math.floor(p)), p => p - Math.floor(p) < .5 ? 1 : 0,
+    p => noise(Math.floor(p * 8)) < .3 ? 0 : 1, p => .55 + .45 * (noise(Math.floor(p * 12)) * .6 + noise(Math.floor(p * 3)) * .4)];
+  const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
+  let flickering = [];
+  function flicker(seconds) {
+    if (!flickering.length) return;
+    const rows = gameUniforms.gameLights.value.image.data;
+    for (const {at, rgb, function: f, min, speed, phase} of flickering) {
+      const v = min + (1 - min) * VISIBILITY[f](seconds * speed + phase);
+      for (let k = 0; k < 3; k++) rows[at + k] = rgb[k] * v;
+    }
+    gameUniforms.gameLights.value.needsUpdate = true;
+  }
   function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1, fog, vertical_fog: verticalFog}) {
     const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
     u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
+    flickering = lights.map(([, , , , , , , r, g, b, , , , , , , f, min, speed], i) => f && VISIBILITY[f] ? {at: i * 16 + 4, rgb: [r, g, b], function: f,
+      min, speed, phase: noise(i)} : null).filter(Boolean);
     u.gameCells.value = float(built.cells, width, built.cells.length / 2 / width, THREE.RGFormat);
     u.gameLists.value = float(built.lists, width, built.lists.length / width, THREE.RedFormat);
     u.gameCellMin.value.fromArray(built.min);
@@ -680,7 +709,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.addEventListener('keyup', event => keys.delete(event.code));
 
-  const draw = () => renderer.render(scene, camera);
+  const draw = () => {
+    renderer.getDrawingBufferSize(drawn);
+    if (drawn.x !== target.width || drawn.y !== target.height) target.setSize(drawn.x, drawn.y);
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    renderer.render(lutScene, lutCamera);
+  };
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
@@ -691,6 +727,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
     gameTime.value += delta;
     spinBeams(gameTime.value);
+    flicker(gameTime.value);
     updateParticles(delta);
     draw();
   });
@@ -767,9 +804,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky, lut} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       if (sky) addSky(sky);
+      if (lut) new THREE.TextureLoader().load(`${data}luts/${fileName(lut)}.png`, loaded => {
+        lutPass.material.uniforms.lut.value = Object.assign(loaded, {flipY: false, minFilter: THREE.LinearFilter, generateMipmaps: false, needsUpdate: true});
+        draw();
+      });
       addMarkers(markers);
       addLiquids(liquids);
       map.props = await addProps(props, models, entries);

@@ -687,6 +687,8 @@ POINT = SUN = 1 / np.pi  # Light per unit of colour x intensity on a white surfa
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
 DEFAULT_SHADOW = [.325, .469, .519]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
 BLOCK = np.array([40, 20, 40])  # A block's size in entity units.
+# Light animations (the editor's "Vis. Function"), as the page numbers them.
+VISIBILITY = {name: n for n, name in enumerate(('none', 'sin', 'hills', 'valleys', 'peaks', 'ascending_saw', 'descending_saw', 'binary', 'binary_flicker', 'flicker'))}
 UNLIT = ('indicator', 'forcefield', 'shield', 'bubble', 'bubblesm')  # Besides statictrans*: see read_materials.
 SPECULAR = ('point', 'spot', 'capsule')  # tile.cs: diffuse lights (and no type: diffuse) add no specular light.
 
@@ -746,6 +748,10 @@ def read_lights(entities, box=None):
             out['lights'].append([LIGHT_KINDS[kind], *np.round([x, y, -z, *travel, *rgb, radius, radius * min(1, max(0, float(number(fields, 'falloff', .33)))),
                                   np.cos(angle / 2), float(number(fields, 'softness', 0)), float(number(fields, 'length', 0)),
                                   1 / POINT if kind in SPECULAR else 0], 4).tolist()])
+            # Its visibility function (flicker, sin...: VISIBILITY), its minimum (default 0) and speed (default 1).
+            function = VISIBILITY.get(fields.get('visibility_function', '').strip().lower(), 0)
+            if function:
+                out['lights'][-1] += [function, float(number(fields, 'visibility_function_min', 0)), float(number(fields, 'visibility_function_speed', 1))]
     if out['fog'] and out['vertical_fog']:  # The vertical fog takes the fog's colour (run 45).
         out['vertical_fog'][:3] = out['fog'][:3]
     if out['shadow_ambient'] is None:
@@ -903,6 +909,11 @@ def write_envmaps(pack, names, output, replace=False, folder='envmaps', face=256
     return done
 
 
+def lut_file(name):
+    """A map's `lut` (lut/lut_warm, lut) as its file in textures.dbp."""
+    return 'textures\\' + name.replace('/', '\\') + '.png'
+
+
 def read_sky(entities):
     """The global entity's sky: {cube: its `skybox` (a cube's name; lowercased, slashes forward) or None, rotation:
     `skybox_rotation` in degrees (tilesky.vs turns the cube about the vertical by it; run 45: rotation 90 looking
@@ -985,6 +996,7 @@ def import_maps(game, output, replace=False, extra=None):
     packs = [Pack(path) for path in sorted((game / 'packs').glob('*.dbp')) if not path.name.startswith('audio')]
     stock = next(pack for pack in packs if pack.path.name == 'maps.dbp')
     cubes = next((pack for pack in packs if pack.path.name == 'textures_cubemaps.dbp'), None)
+    textures_pack = next((pack for pack in packs if pack.path.name == 'textures.dbp'), type('NoPack', (), {'files': {}})())
     has_cube = lambda name: cubes is not None and name is not None and cube_file(name) in cubes.files
     # A map's reader takes the suffix of the file to read beside it: '.rbe', '-h.png'...
     sources = [(name.rsplit('\\', 1)[-1][:-4], 'Diabotical', lambda suffix, name=name[:-4]: stock.read(name + suffix))
@@ -1024,6 +1036,8 @@ def import_maps(game, output, replace=False, extra=None):
             if not has_cube(lights['envmap']):  # Not in the game's files: its default.
                 lights['envmap'] = 'default_envmap' if has_cube('default_envmap') else None
             sky = read_sky(parsed['entities'])
+            lut = (next((f for n, *_, f in parsed['entities'] if n == 'global'), {}).get('lut') or '').strip().lower().replace('\\', '/') or None
+            lut = lut if lut and lut_file(lut) in textures_pack.files else None
             if not has_cube(sky['cube']):  # No skybox, or none in the game's files: its default (run 45).
                 sky['cube'] = DEFAULT_SKY if has_cube(DEFAULT_SKY) else None
         except (OSError, ValueError, EOFError, struct.error) as exc:
@@ -1031,7 +1045,7 @@ def import_maps(game, output, replace=False, extra=None):
             index.pop(ident, None)
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
-                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky,
+                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky, lut=lut,
                                billboards=read_billboards(parsed['entities']), volumetrics=read_volumetrics(parsed['entities']),
                                pfx=read_pfx(parsed['entities'], assets, pickups)),
                           separators=(',', ':')).encode()
@@ -1060,7 +1074,7 @@ def import_maps(game, output, replace=False, extra=None):
         for old in files(index.pop(ident)):
             if old:
                 (output / 'maps' / old).unlink(missing_ok=True)
-    keys, decal_materials, envmaps, systems, skies = set(), set(), set(), set(), set()
+    keys, decal_materials, envmaps, systems, skies, luts = set(), set(), set(), set(), set(), set()
     for item in index.values():
         with open(output / 'maps' / item['entities'], 'rb') as file:
             length, = struct.unpack('<I', file.read(4))
@@ -1071,9 +1085,13 @@ def import_maps(game, output, replace=False, extra=None):
             envmaps.add(head['lights']['envmap'])
             systems |= {entry[12] for entry in head.get('pfx', [])}
             skies.add(head['sky']['cube'])
+            luts.add(head.get('lut'))
     if cubes is not None:
         write_envmaps(cubes, envmaps - {None}, output, replace)
         write_envmaps(cubes, skies - {None}, output, replace, 'skies', 512, '.jpg')
+    (output / 'luts').mkdir(parents=True, exist_ok=True)
+    for name in luts - {None}:  # As they are: 256 x 16, x = red + 16 x blue, y = green.
+        (output / 'luts' / f'{map_id(name)}.png').write_bytes(textures_pack.read(lut_file(name)))
     models_path = output / 'models.json'
     previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
     models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous, piece_shaders(assets, found),

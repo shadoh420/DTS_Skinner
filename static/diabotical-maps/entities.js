@@ -34,7 +34,7 @@
       Object.assign(decal, {extras: new Uint32Array(buffer, at, count * 3), orders: new Int32Array(buffer, at, count * 3)});
       at += count * 12;
     }
-    return {props, markers: head.markers, liquids: head.liquids, decals, lights: head.lights || null, billboards: head.billboards || [], volumetrics: head.volumetrics || [], pfx: head.pfx || [], sky: head.sky || null};
+    return {props, markers: head.markers, liquids: head.liquids, decals, lights: head.lights || null, billboards: head.billboards || [], volumetrics: head.volumetrics || [], pfx: head.pfx || [], sky: head.sky || null, lut: head.lut || null};
   }
 
   exports.DiaboticalEntities = {parseEntities};
