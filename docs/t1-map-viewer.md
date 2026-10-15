@@ -130,6 +130,12 @@ asks the app for none of them (Raindance: ready in 0.37 seconds instead of
   `size` and the terrain's visible distance as in ArenaPrototype's
   TribesUnityEnvironment. A sky without a material list is its plain `skyColor`.
   Fog is the palette haze colour, else the first sky texture's bottom-left texel.
+  It follows DarkStar (`SimTerrain::applyUserPrefs`, `GridRender::getHaze`): the band
+  starts at hazeDistance² / visibleDistance, at most 0.75 × visibleDistance (Raindance:
+  89 m, not 200), and climbs as t(2 − t) with the distance from the eye, not the view
+  depth. Packs imported before scene `terrain.hazeModel` existed keep the old band from
+  hazeDistance until re-imported; Starsiege uses the same model, Earthsiege and Red
+  Baron 3D their own.
 - Sky objects follow ArenaPrototype's TribesUnityEnvironment, TribesStarFieldRenderer
   and TribesPlanetFlare. Each `Planet` with a bitmap is drawn at its azimuth and
   incidence, as wide as its `size` over `distance`, in front of the sky and behind

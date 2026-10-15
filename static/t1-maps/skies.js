@@ -177,9 +177,10 @@ window.t1Skies = {
     if (!noise || !core) return;
     const uniforms = {skyNoise: {value: noise}, uTime: time}, declared = [];
     for (const [key, fallback] of Object.entries(this.skinnerDefaults)) {
-      const value = entry.sky[key] ?? fallback;
-      uniforms[key] = {value: Array.isArray(value) ? new THREE.Vector3(...value) : value};
-      declared.push(`uniform ${Array.isArray(value) ? 'vec3' : 'float'} ${key};`);
+      // The type is the declaration's (the default's): a preset's number for a colour fills all three, a list for a number gives its first.
+      const value = entry.sky[key] ?? fallback, vector = Array.isArray(fallback);
+      uniforms[key] = {value: vector ? new THREE.Vector3(...[].concat(value, value, value).slice(0, 3)) : [].concat(value)[0]};
+      declared.push(`uniform ${vector ? 'vec3' : 'float'} ${key};`);
     }
     const fragmentShader = `uniform sampler2D skyNoise; uniform float uTime; ${declared.join(' ')} varying vec3 vDir;\n#define UNROLL\n${core}
       void main() { gl_FragColor = vec4(pow(aces(skinnerSky(normalize(vDir)) * exposure), vec3(1. / 2.2)) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.); }`;

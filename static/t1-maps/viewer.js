@@ -623,9 +623,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Tribes field of view is horizontal; Three's is vertical.
     camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
     if (map) {
-      // Some missions set haze beyond the visible distance: no haze band, just the far limit.
-      const visible = map.terrain.visibleDistance;
-      scene.fog = settings.fog ? new THREE.Fog(haze, Math.min(map.terrain.hazeDistance, visible - 1), visible) : null;
+      // DarkStar (SimTerrain::applyUserPrefs) starts the haze at h²/v, at most 0.75 v; other packs at h, or with no haze
+      // band when a mission sets h beyond v.
+      const {visibleDistance: visible, hazeDistance: hazeAt} = map.terrain;
+      const start = map.terrain.hazeModel === 'darkstar' ? Math.min(hazeAt * hazeAt / visible, visible * .75) : Math.min(hazeAt, visible - 1);
+      scene.fog = settings.fog ? new THREE.Fog(haze, start, visible) : null;
       camera.far = settings.fog ? map.terrain.visibleDistance : (adapter ? 25000 : 9000);
     }
     camera.updateProjectionMatrix();
@@ -746,6 +748,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     map = await (await get(`${data}maps/${mapId}/scene.json`)).json();
     document.title = `${map.mission} — ${adapter ? 'Red Baron 3D Maps' : site.title}`;
     scene.background = haze.set(`rgb(${map.haze.join(',')})`);
+    if (map.terrain.hazeModel === 'darkstar') {
+      // GridRender::getHaze: by distance from the eye, not depth, along 1 - (t - 1)² = t(2 - t), with t reaching
+      // 1 at 1.02 times the band. Set before anything fogged compiles; every material on the page shares these chunks.
+      THREE.ShaderChunk.fog_vertex = '#ifdef USE_FOG\n\tvFogDepth = length(mvPosition.xyz);\n#endif';
+      THREE.ShaderChunk.fog_fragment = `#ifdef USE_FOG
+        float hazeT = clamp((vFogDepth - fogNear) / (1.02 * (fogFar - fogNear)), 0., 1.);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, hazeT * (2. - hazeT));
+      #endif`;
+    }
     if (adapter) {
       applySettings();
       showViewpoint(0);

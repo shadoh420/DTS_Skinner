@@ -902,7 +902,8 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     if not model.get('vertices'):
                         raise ValueError('Nothing to draw')  # The shape exporter writes an empty model for meshes it cannot read.
                     # Names in brackets stand for slots without a texture; a texture the install lacks stays empty.
-                    model['material_textures'] = [name if name.startswith('[') else texture(name) or ''
+                    # Shape bitmaps keep their transparency (colour-keyed and translucent PBMPs); buildings stay as baked.
+                    model['material_textures'] = [name if name.startswith('[') else texture(name, alpha=kind != 'interior') or ''
                                                   for name in model['material_textures']] or ['[No material]']
                     data = json.dumps(model).encode()
                     name = '%s-%s.json' % (map_id(stem), hashlib.sha1(data).hexdigest()[:12])
@@ -1081,7 +1082,9 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                     'position': floats(terrain_node.get('position', '0 0 0')), 'lightWidth': block['lightWidth'],
                     'textures': textures,
                     'visibleDistance': float(terrain_node.get('visibledistance', 500)),
-                    'hazeDistance': float(terrain_node.get('hazedistance', 250))},
+                    'hazeDistance': float(terrain_node.get('hazedistance', 250)),
+                    # The viewer draws haze the way DarkStar does (see applySettings); other games' packs leave this out.
+                    'hazeModel': 'darkstar'},
         'sun': sun,
         'haze': haze, 'sky': dome, 'planets': planets, 'stars': stars, 'flare': flare, 'weather': weather, 'objects': objects, 'viewpoints': viewpoints, 'warnings': warnings,
         **({'zones': zones} if zones else {})}
