@@ -35,6 +35,7 @@ starts the scan in a background thread as it starts, and a request made during t
 | Quake | the sky texture's two halves | `skies.js quake1`: two layers scrolling at 16 and 8 texels/s, colormap row 32 |
 | Nosgoth | dome meshes flagged sky | `skies.js meshes`: the model buffers, centred on the dome's pivot, lowered to the horizon |
 | Unreal, Unreal Tournament, Deus Ex | the level's sky zone (`scene.sky`: SkyZoneInfo origin, rotation, rate) | `skies.js unreal`: the level's geometry and lightmap drawn from the sky camera in a pass behind the T1 world, rotating where the zone does, through the game's display power |
+| Skinner Sky (Skinner's own, not a pack) | `static/skinner-sky/presets.json`, which the page reads beside `/t1-map-skies` | `skies.js skinner`: `SkinnerSky.cginc`, the file Unity's shader includes too ([skinner-sky.md](skinner-sky.md)) |
 | Tribes: Vengeance | the same, with models and terrain | `skies.js vengeance`: the same pass, with the level built by its own page's adapter (`tvg-maps/materials.js`) |
 
 **Checks (2026-10-15, user's library, read-only).** I compared skies side by side with their own pages: Bloodlines

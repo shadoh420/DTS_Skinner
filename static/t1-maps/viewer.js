@@ -763,8 +763,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (flared && map.flare) await buildFlare(flared, map.flare);
     scene.add(sky);
     // The list of other skies comes after the map's own: the first scan reads every imported pack /t1-map-skies lists.
-    get('/t1-map-skies').then(response => response.json()).then(list => {
-      skies = list;
+    // Skinner Sky presets (static/skinner-sky) join them as one more group.
+    const own = get('/static/skinner-sky/presets.json').then(response => response.json()).then(presets => presets.map(sky => ({id: 'skinner-' + sky.id,
+      game: 'skinner', group: 'Skinner Sky', name: sky.name, maps: ['procedural'], renderer: 'skinner', base: '/static/skinner-sky/', sky})), () => []);
+    Promise.all([get('/t1-map-skies').then(response => response.json()), own]).then(([found, presets]) => {
+      const list = skies = [...found, ...presets];
       // One group per game, games and their skies in alphabetical order.
       const more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
       const text = entry => [entry.section, entry.name, entry.maps[0] + more(entry.maps)].filter(Boolean).join(' · ');
