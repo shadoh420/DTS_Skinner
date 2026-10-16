@@ -53,7 +53,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!response.ok) throw new Error(`${url} (${response.status})`);
     return response;
   }
-  const loader = new THREE.TextureLoader(), textures = new Map();
+  // Images are decoded as the game uploads them, colour kept where alpha is 0: an <img> loses it to the browser's
+  // premultiplying, which blacks out a blend that reads the colour of a transparent texel (JA's alphasquare cloud mask).
+  const loader = new THREE.ImageBitmapLoader().setOptions({imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none'}), textures = new Map();
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   white.needsUpdate = true;
   // CNQ3's default image, drawn where a shader cannot be built: dark grey with a red line along s, a green one
@@ -75,7 +77,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   function loadTexture(file, clamp, plain) {
     if (file === '$default') return Promise.resolve(fallback);
     const key = file + (clamp ? '|clamp' : '') + (plain ? '|plain' : '');
-    if (!textures.has(key)) textures.set(key, new Promise(resolve => loader.load(data + 'textures/' + file, texture => {
+    if (!textures.has(key)) textures.set(key, new Promise(resolve => loader.load(data + 'textures/' + file, bitmap => {
+      const texture = new THREE.Texture(bitmap);
+      texture.needsUpdate = true;
       texture.flipY = false;  // The game's t runs down the image, as the rows do without the flip.
       if (plain) { texture.generateMipmaps = false; texture.minFilter = THREE.LinearFilter; } else texture.anisotropy = 8;
       if (config.configureTexture) config.configureTexture(texture, map && map.lighting, plain);

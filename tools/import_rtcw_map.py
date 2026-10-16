@@ -228,7 +228,9 @@ def upload_image(image, profile, mipmap=True, picmip=True):
     if profile['cvars']['r_roundimagesdown']:
         size = [x//2 if x>y else x for x,y in zip(size,original)]
     if picmip: size = [max(1,x>>profile['picmip']) for x in size]
-    if tuple(size)!=original: image=image.resize(tuple(size),Image.Resampling.BOX)
+    # Channel by channel: Pillow resizes RGBA premultiplied, blacking out the colour of transparent texels, which
+    # the game's ResampleTexture keeps and blends such as GL_ZERO GL_SRC_COLOR read (JA's alphasquare cloud mask).
+    if tuple(size)!=original: image=Image.merge(image.mode,[c.resize(tuple(size),Image.Resampling.BOX) for c in image.split()])
     # Upload32 bypasses LightScale for unchanged non-mipmapped images.
     if mipmap or tuple(size)!=original:
         gamma = 1 if profile['hardwareGamma'] else profile['gamma']
