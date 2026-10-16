@@ -14,7 +14,8 @@ from app import app
 from tests.test_quake import PALETTE, pak
 from tests.test_quake2 import INSTALL, pcx
 from tools.import_quake2_map import (FLOWING, NODRAW, SKY, TRANS33, TRANS66, WARP, build_map, face_data,
-    geometry, import_maps, instances, lightmap_rgb, read_bsp, read_wal, skybox, upload_texture, viewpoints, warp_polygons)
+    geometry, import_maps, instances, light_below, lightmap_rgb, read_bsp, read_wal, skybox, upload_texture, viewpoints,
+    warp_polygons)
 
 
 def wal(pixel=42):
@@ -55,6 +56,14 @@ def files():
 
 
 class Quake2MapsTest(unittest.TestCase):
+    def test_items_read_the_lightmap_below_them(self):
+        # One floor triangle whose corners sit at lightmap coordinates (0, 0), (1, 0), (0, 1): a point a quarter of the
+        # way along each edge reads (0.25, 0.25); nothing below reads nothing (the even preview light).
+        data = dict(floors=np.array([[[0, 0, 0], [64, 0, 0], [0, 64, 0]]], float),
+                    floor_uv=[np.array([[0, 0], [1, 0], [0, 1]], float)])
+        self.assertTrue(np.allclose(light_below(data, np.array([16., 16, 15])), [.25, .25]))
+        self.assertIsNone(light_below(data, np.array([100., 100, 15])))
+
     def test_pack_assets_and_routes_are_isolated(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
