@@ -26,7 +26,7 @@ def vhv_fixture(checksum=123):
 def bsp_fixture(text='',displacement=False,pak=None):
     lumps=[b'']*64
     lumps[0]=('{"classname" "worldspawn" "skyname" "test"}'+text).encode()+b'\0'
-    lumps[1]=struct.pack('<4fi',0,0,1,0,2)
+    lumps[1]=struct.pack('<4fi',0,0,1,0,2)+struct.pack('<4fi',0,0,-1,0,2)  # vbsp's plane pair
     lumps[2]=struct.pack('<3f5i',.5,.5,.5,0,16,16,16,16)
     lumps[3]=b''.join(struct.pack('<3f',*p) for p in ((0,0,0),(0,16,0),(16,16,0),(16,0,0)))
     lumps[6]=struct.pack('<16f2i',1,0,0,0,0,1,0,0,.0625,0,0,0,0,.0625,0,0,0,0)
@@ -94,7 +94,7 @@ class EyeMapTests(unittest.TestCase):
         with self.assertRaises(ValueError):bsp.read_bsp(bsp_fixture()[:1040])
 
     def test_source_face_side_and_face7_fallback(self):
-        raw=bytearray(bsp_fixture());at=struct.unpack_from('<i',raw,8+58*16)[0];raw[at+2]=1
+        raw=bytearray(bsp_fixture());at=struct.unpack_from('<i',raw,8+58*16)[0];struct.pack_into('<HB',raw,at,1,1)  # odd planenum, side 1
         raw[8+7*16:8+8*16]=raw[8+58*16:8+59*16];raw[8+58*16:8+59*16]=bytes(16)
         b=bsp.read_bsp(bytes(raw));p,uv,lm,tri,flags,name=bsp.face_geometry(b,0)
         self.assertTrue((np.cross(p[tri[:,1]]-p[tri[:,0]],p[tri[:,2]]-p[tri[:,0]])[:,2]<0).all())
