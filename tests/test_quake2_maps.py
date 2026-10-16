@@ -136,6 +136,30 @@ class Quake2MapsTest(unittest.TestCase):
         data['textures'].append(dict(texture, name='later'))
         self.assertEqual(face_data(data, 0)['texture']['name'], 'test')  # R_TextureAnimation frame 0.
 
+    def test_texinfo_chains_animated_styles_and_water_regions(self):
+        from tools.import_quake2_map import CONTENT_BLENDS, frame_rate, scene_extras
+        from tools.import_quake_map import content_regions
+        data = read_bsp(bsp(styles=(0, 6, 255, 255), samples=((64, 128, 32), (10, 20, 30))), files())
+        data['texinfo'].append(data['texinfo'][0])
+        data['textures'].append(dict(data['textures'][0], name='test2', pixels=bytes([7]) * 256))
+        data['nexttexinfo'] = [1, 0]
+        out = geometry(data, instances(data)[0])
+        group = out['groups'][0]
+        self.assertEqual((len(group['anim']['frames']), group['anim']['fps']), (2, 2))  # World: (int)(time * 2).
+        self.assertTrue(all(png in out['textures'] for png in group['anim']['frames']))
+        self.assertEqual(group['styles'], [6])
+        atlas = np.asarray(out['atlas'])
+        self.assertEqual(atlas[2, 2].tolist(), [64, 128, 32])  # Base without style 6; its raw sample below.
+        self.assertEqual(atlas[5 + 2, 2].tolist(), [10, 20, 30])
+        extra = scene_extras(dict(data, nodes=[]), out)
+        self.assertEqual((extra['light_styles']['scale'], extra['light_styles']['patterns']), (1 / 12, {'6': 'nmonqnmomnmomomno'}))
+        door = dict(model=1, entity=0, classname='func_door')
+        data['entities'][0]['spawnflags'] = '64'
+        self.assertEqual(frame_rate(data, door, 0), (10, 0))  # ANIMATED_FAST: cl.time / 100.
+        self.assertIsNone(frame_rate(data, dict(door, classname='func_plat'), 0))
+        regions, tree = content_regions([(0., 0., 1., 64., 2)], [(0, -1, -2)], 0, lambda leaf: [0, 32 | 16][leaf], CONTENT_BLENDS)
+        self.assertEqual(regions[-1 - tree['nodes'][0][5]]['blend'], [0., .1, .05, .6])  # Slime outranks water.
+
     def test_rgb_styles_normalization_and_switch_start_off(self):
         raw = bsp(styles=(0, 32, 255, 255), samples=((200, 100, 50), (200, 100, 50)))
         data = read_bsp(raw, files())

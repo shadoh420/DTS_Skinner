@@ -215,6 +215,11 @@ class ImportTests(unittest.TestCase):
             reflection=f.add('Reflection','MaterialExpressionTextureSampleParameterCube',f.payload(f.obj('Texture',cube)))
             summed=f.add('Sum','MaterialExpressionAdd',f.payload(f.input('A',product)+f.input('B',reflection)))
             f.add('Mat','Material',f.payload(f.input('DiffuseColor',summed)))
+            pan=f.add('Pan','MaterialExpressionPanner',f.payload(f.input('Coordinate',coord)+f.prop('SpeedX','FloatProperty',pack('f',.5))+f.prop('SpeedY','FloatProperty',pack('f',-.25))))
+            moving=f.add('Moving','MaterialExpressionTextureSample',f.payload(f.obj('Texture',detail)+f.input('Coordinates',pan)))
+            bright=f.add('Bright','MaterialExpressionConstant',f.payload(f.prop('R','FloatProperty',pack('f',.5))))
+            lit=f.add('Lit','MaterialExpressionMultiply',f.payload(f.input('A',moving)+f.input('B',bright)))
+            f.add('Scroll','Material',f.payload(f.input('DiffuseColor',moving)+f.input('EmissiveColor',lit)))
             sky=f.add('SkyColor','MaterialExpressionVectorParameter',f.payload(f.prop('DefaultValue','StructProperty',pack('4f',.2,.3,.4,1),'LinearColor')))
             f.add('Sky','Material',f.payload(f.input('EmissiveColor',sky)))
             f.write(root/'install/TribesGame/CookedPC/Test.upk');lib=Library(root/'install')
@@ -224,6 +229,10 @@ class ImportTests(unittest.TestCase):
                 self.assertEqual(row['diffuse_selection']['method'],'coordinate scale')
                 self.assertEqual(row['diffuse_selection']['candidates'][0]['uv_scale'],[16,16])
                 self.assertEqual(mats.material('Test.Sky')['status'],'ready')
+                scroll=mats.material('Test.Scroll')['settings']
+                self.assertEqual(scroll['pan'],[.5,-.25])
+                self.assertEqual((scroll['emissive']['texture'],scroll['emissive']['color'],scroll['emissive']['pan']),(mats.material('Test.Scroll')['texture'],[.5,.5,.5],[.5,-.25]))
+                self.assertNotIn('emissive',mats.material('Test.Sky')['settings'])
                 self.assertTrue(mats.material('Test.Sky')['settings']['unlit'])
                 samples=[dict(texture='X.A',parameter='Detail',uv_scale=[1,1]),dict(texture='X.B',parameter='Albedo',uv_scale=[1,1])]
                 self.assertEqual(mats.base_texture({'samples':samples}),('X.B','texture parameter'))

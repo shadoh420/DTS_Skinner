@@ -28,6 +28,100 @@ except ImportError:
     from local_data import LOCAL_DATA
 
 SCALE = 1 / 32
+# Light style patterns 1-11, Quake world.qc worldspawn(); the same strings are Quake II g_spawn.c SP_worldspawn's, SiN's
+# global/global0.scr's and those in Anachronox gamex86.dll and Daikatana world.dll. Engines step them at 10 Hz (Quake
+# r_light.c R_AnimateLight: cl.time*10; Quake II cl_fx.c CL_RunLightStyles: cl.time/100). Style 0 is 'm'; 32+ switch.
+LIGHT_STYLES = {1: 'mmnmmommommnonmmonqnmmo', 2: 'abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba',
+                3: 'mmmmmaaaaammmmmaaaaaabcdefgabcdefg', 4: 'mamamamamama', 5: 'jklmnopqrstuvwxyzyxwvutsrqponmlkj',
+                6: 'nmonqnmomnmomomno', 7: 'mmmaaaabcdefgmmmmaaaammmaamm', 8: 'mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa',
+                9: 'aaaaaaaazzzzzzzz', 10: 'mmamammmmammamamaaamammma', 11: 'abcdefghijklmnopqrrqponmlkjihgfedcba'}
+# Quake view.c cshift_water/slime/lava as V_CalcBlend mixes them (percent / 255); leaf contents -3, -4, -5.
+CONTENT_BLENDS = {-3: [130 / 255, 80 / 255, 50 / 255, 128 / 255], -4: [0, 25 / 255, 5 / 255, 150 / 255], -5: [1, 80 / 255, 0, 150 / 255]}
+
+
+def animated_styles(face, limit):
+    """The face's styles with a standard animated pattern, first `limit` of them; further ones stay folded at 'm'."""
+    styles = list(face['styles'][:face['styles'].index(255)] if 255 in face['styles'] else face['styles'])
+    return [s for s in styles if s in LIGHT_STYLES][:limit]
+
+
+def style_sample(face, lighting, style, channels, scale=1):
+    """One style's raw lightmap bytes (h, w, channels); styles are stored back to back after lightofs * scale."""
+    w, h = map(int, face['size'])
+    at = face['lightofs'] * scale + list(face['styles']).index(style) * w * h * channels
+    if face['lightofs'] < 0 or at + w * h * channels > len(lighting):
+        raise ValueError(f"Face {face['number']} style {style} exceeds the lighting lump")
+    return np.frombuffer(lighting, np.uint8, w * h * channels, at).reshape(h, w, channels)
+
+
+def style_atlas(tiles, extras):
+    """Pack RGB lightmap tiles. Tiles with an animated-style sample (extras[i] not None) go in a block below the rest
+    and their raw samples in a copy of that block below it, so one uv2 reaches both: the shader adds `offset`
+    (a fraction of the atlas height). Returns width, height, places, atlas, offset."""
+    still = [i for i, e in enumerate(extras) if e is None]
+    moving = [i for i, e in enumerate(extras) if e is not None]
+    w1, h1, p1 = pack([(tiles[i].shape[1], tiles[i].shape[0]) for i in still])
+    w2, h2, p2 = pack([(tiles[i].shape[1], tiles[i].shape[0]) for i in moving]) if moving else (0, 0, [])
+    width, height = max(w1, w2), h1 + 2 * h2
+    places = [None] * len(tiles)
+    for i, place in zip(still, p1):
+        places[i] = place
+    for i, (x, y) in zip(moving, p2):
+        places[i] = x, y + h1
+    atlas = np.zeros((max(height, 1), width, 3), np.uint8)
+    for i, (x, y) in enumerate(places):
+        h, w = tiles[i].shape[:2]
+        atlas[y:y + h + 2, x:x + w + 2] = np.pad(tiles[i], ((1, 1), (1, 1), (0, 0)), mode='edge')
+        if extras[i] is not None:
+            atlas[y + h2:y + h2 + h + 2, x:x + w + 2] = np.pad(extras[i], ((1, 1), (1, 1), (0, 0)), mode='edge')
+    return width, height, places, atlas, h2 / height if moving else 0
+
+
+def region_tree(planes, nodes, root, leaf_region):
+    """map.regions' tree (viewer contract), collapsed so only region boundaries stay: nodes (plane, front, back) with
+    negative children meaning leaf -1 - child; leaf_region(leaf) gives a region index or None. Planes go to page axes
+    and units: the importers store native (x, y, z) as (y, z, x) * SCALE."""
+    out, mapped, stack = [], {}, [(root, False)]
+    while stack:
+        i, ready = stack.pop()
+        if i in mapped:
+            continue
+        if i < 0 or i >= len(nodes):  # A leaf, or a node index past the lump (test maps with no tree): no region.
+            region = leaf_region(-1 - i) if i < 0 else None
+            mapped[i] = -1 - region if region is not None else None
+        elif not ready:
+            stack.extend([(i, True), (nodes[i][1], False), (nodes[i][2], False)])
+        else:
+            front, back = mapped[nodes[i][1]], mapped[nodes[i][2]]
+            if front == back:
+                mapped[i] = front
+            else:
+                a, b, c, d = planes[nodes[i][0]][:4]
+                # None (no region) becomes a leaf of a trailing null region.
+                out.append([b, c, a, d * SCALE, front, back])
+                mapped[i] = len(out) - 1
+    if mapped[root] is None:
+        return None
+    return dict(root=mapped[root], nodes=out)
+
+
+def content_regions(planes, nodes, root, contents, blends):
+    """map.regions/region_tree from leaf contents: blends maps a contents value to the view blend in priority order
+    (Quake: the leaf's value; Quake II family: bits, first match)."""
+    keys = list(blends)
+
+    def leaf_region(leaf):
+        try:
+            value = contents(leaf)
+        except IndexError:
+            return None
+        return next((n for n, key in enumerate(keys) if (value == key if key < 0 else value & key)), None)
+    tree = region_tree(planes, nodes, root, leaf_region)
+    if tree is None:
+        return None, None
+    null = len(keys)  # Leaves outside every listed contents.
+    tree['nodes'] = [[*row[:4], -1 - null if row[4] is None else row[4], -1 - null if row[5] is None else row[5]] for row in tree['nodes']]
+    return [dict(blend=blends[key], contents=key) for key in keys] + [None], tree
 
 
 def entities(data):
@@ -194,7 +288,7 @@ def face_data(bsp, number):
         # The registered e2m3 has a missing miptex on a button. Keep the face and report the engine-style fallback.
         texture = dict(name=f'__missing_miptex_{texinfo[8]}', width=16, height=16, missing=True,
                        pixels=bytes(0 if (x < 8) != (y < 8) else 255 for y in range(16) for x in range(16)))
-    # Animation chains start at +0 (normal) or +a (alternate); this preview holds that first frame.
+    # Animation chains start at +0 (normal) or +a (alternate): every face of a chain shows the same frame at a time.
     if texture['name'].startswith('+') and len(texture['name']) > 2:
         first_name = '+' + ('0' if texture['name'][1].isdigit() else 'a') + texture['name'][2:]
         texture = next((t for t in bsp['textures'] if t and t['name'] == first_name), texture)
@@ -235,6 +329,26 @@ def light_codes(face, lighting, dark=frozenset()):
                 total += np.frombuffer(lighting[offset:offset + w * h], np.uint8).astype(np.int64) * 264
             offset += w * h
     return np.maximum(64, (255 * 256 - total) >> 2).astype(np.uint16).reshape(h, w)
+
+
+def texture_chain(bsp, texture):
+    """Mod_LoadTextures' +0..+9 (or +a..+j) frames from a chain's first texture, stopping at a gap; [] if not animated.
+    R_TextureAnimation steps them by (int)(cl.time*10) % (frames * ANIM_CYCLE 2): 5 frames a second (r_surf.c,
+    gl_model.c). An entity at frame 0, as every brush is at spawn, keeps its own chain (no alternate switch)."""
+    name = texture['name']
+    if not name.startswith('+') or len(name) < 3:
+        return []
+    names = {t['name']: t for t in bsp['textures'] if t}
+    frames = []
+    for digit in '0123456789' if name[1].isdigit() else 'abcdefghij':
+        if '+' + digit + name[2:] not in names:
+            break
+        frames.append(names['+' + digit + name[2:]])
+    return frames if len(frames) > 1 else []
+
+
+def texture_png(tex):
+    return hashlib.sha256(struct.pack('<II', tex['width'], tex['height']) + tex['pixels']).hexdigest()[:24] + '.png'
 
 
 def colormap_image(data, palette):
@@ -404,7 +518,7 @@ def viewpoints(bsp, game='quake'):
 
 
 def geometry(bsp, placed, light=True):
-    faces, tiles, audit, floors = [], [], [], []
+    faces, tiles, extras, audit, floors = [], [], [], [], []
     # QuakeC's light spawn: a targeted light flagged START_OFF (1) sets its style to 'a' until triggered.
     dark = frozenset(int(float(e['style'])) for e in bsp['entities'] if e.get('classname', '').startswith('light')
                      and int(float(e.get('style') or '0')) >= 32 and int(float(e.get('spawnflags') or '0')) & 1)
@@ -421,8 +535,17 @@ def geometry(bsp, placed, light=True):
             points = face['points'] @ matrix.T + instance['offset']
             face['placed_points'] = points
             if light:
-                tiles.append(light_rgb(face, bsp['rgb_lighting'], dark) if 'rgb_lighting' in bsp
-                             else light_codes(face, bsp['lighting'], dark))
+                rgb = 'rgb_lighting' in bsp
+                lighting = bsp['rgb_lighting'] if rgb else bsp['lighting']
+                # Animated styles leave the base tile for a raw sample the shader scales each frame: classic
+                # (mono) maps carry two in R and G, RGB maps one; further ones stay folded in at 'm'.
+                face['anim_styles'] = animated_styles(face, 1 if rgb else 2) if face['kind'] == 'normal' and face['lightofs'] >= 0 and lighting else []
+                still = dark | set(face['anim_styles'])
+                tile = light_rgb(face, lighting, still) if rgb else light_codes(face, lighting, still)
+                tiles.append(tile if tile.ndim == 3 else np.stack((tile >> 8, tile & 255, np.zeros_like(tile)), axis=-1).astype(np.uint8))
+                samples = [style_sample(face, lighting, s, 3 if rgb else 1, 3 if rgb else 1) for s in face['anim_styles']]
+                extras.append(None if not samples else samples[0] if rgb else
+                              np.concatenate(samples + [np.zeros_like(samples[0])] * (3 - len(samples)), axis=2))
             faces.append(face)
             audit.append(dict(face=number, entity=instance['entity'], texture=face['texture']['name'], kind=face['kind'],
                               texturemins=face['mins'].tolist(), luxels=face['size'].tolist(), lightofs=face['lightofs'],
@@ -431,14 +554,22 @@ def geometry(bsp, placed, light=True):
                 floors.extend((points[0], points[k], points[k + 1]) for k in range(1, len(points) - 1))
     if not faces:
         raise ValueError('No visible BSP faces')
-    width, height, places = pack([(t.shape[1], t.shape[0]) for t in tiles]) if light else (1, 1, [])
-    atlas = np.zeros((height, width, 3), np.uint8)
-    positions, uvs, uv2, groups, images = [], [], [], {}, {}
+    width, height, places, atlas, offset = style_atlas(tiles, extras) if light else (1, 1, [], np.zeros((1, 1, 3), np.uint8), 0)
+    positions, uvs, uv2, groups, images, chains = [], [], [], {}, {}, {}
     for index, face in enumerate(faces):
         tex = face['texture']
-        png = hashlib.sha256(struct.pack('<II', tex['width'], tex['height']) + tex['pixels']).hexdigest()[:24] + '.png'
+        png = texture_png(tex)
         images[png] = tex
-        group = groups.setdefault((png, face['kind']), dict(texture=png, name=tex['name'], kind=face['kind'], size=[tex['width'], tex['height']], flags=0, indices=[]))
+        if tex['name'] not in chains:
+            chains[tex['name']] = texture_chain(bsp, tex)
+        frames = [texture_png(t) for t in chains[tex['name']]]
+        images.update({texture_png(t): t for t in chains[tex['name']]})
+        styles = face.get('anim_styles', [])
+        group = groups.setdefault((png, face['kind'], tuple(styles)), dict(texture=png, name=tex['name'], kind=face['kind'], size=[tex['width'], tex['height']], flags=0, indices=[]))
+        if frames:
+            group['anim'] = dict(frames=frames, fps=5)
+        if styles:
+            group['styles'] = styles
         base = len(positions)
         positions.extend(face['placed_points'])
         uvs.extend(face['st'] / [tex['width'], tex['height']])
@@ -446,10 +577,7 @@ def geometry(bsp, placed, light=True):
             group['indices'].extend((base, base + k, base + k + 1))
         if light:
             x, y = places[index]
-            tile = tiles[index]
-            rgb = tile if tile.ndim == 3 else np.stack((tile >> 8, tile & 255, np.zeros_like(tile)), axis=-1).astype(np.uint8)
-            h, w = tile.shape[:2]
-            atlas[y:y + h + 2, x:x + w + 2] = np.pad(rgb, ((1, 1), (1, 1), (0, 0)), mode='edge')
+            h, w = tiles[index].shape[:2]
             coords = (face['st'] - face['mins']) / 16 if (w, h) != (1, 1) else np.zeros_like(face['st'])
             uv2.extend((coords + [x + 1.5, y + 1.5]) / [width, height])
     indices, table = [], []
@@ -458,7 +586,7 @@ def geometry(bsp, placed, light=True):
         table.append(dict(group, start=len(indices), count=len(part)))
         indices.extend(part)
     return dict(points=np.array(positions), uvs=np.array(uvs), uv2=np.array(uv2), indices=indices, groups=table,
-                textures=images, atlas=Image.fromarray(atlas), audit=audit, floors=np.array(floors))
+                textures=images, atlas=Image.fromarray(atlas), audit=audit, floors=np.array(floors), style_offset=offset)
 
 
 def build_item(raw, palette, name):
@@ -573,6 +701,42 @@ def append_monsters(data, bsp, files, game):
     return records
 
 
+def fog_settings(bsp, view):
+    """map.fog, or None. Rerelease quakec_mg1/mg3 fog.qc (dopa maps carry the same entities): at spawn the spot's,
+    else worldspawn's, fog_info_entity names an info_fog (density 0.05 when unset; colour / 255 when a channel
+    exceeds 1), pushed as `fog density r g b`. Otherwise the worldspawn `fog` key. Keys as Quakespasm reads them
+    (gl_fog.c Fog_ParseWorldspawn, gl_sky.c Sky_NewMap): a leading underscore and trailing spaces dropped. Quakespasm
+    draws GL_EXP2 at density / 64 per unit (Fog_SetupFrame) and lays the fog colour over the sky at `skyfog` (r_skyfog
+    0.5 by default). The rerelease's KEX renderer is closed source; its fog may differ."""
+    keys = lambda e: {k.lstrip('_').strip(): v for k, v in e.items()}
+    # atof/sscanf read leading numbers and stop: mg1 horde5 puts a whole fog string in _skyfog.
+    numbers = lambda text: [float(m) for m in re.findall(r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?', text or '')]
+    info = keys(next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {}))
+    spot = next((e for e in bsp['entities'] if e.get('classname') == view['classname']), {})
+    density, color, source = 0., [.3, .3, .3], ''
+    for holder in (spot, info):
+        target = next((e for e in bsp['entities'] if holder.get('fog_info_entity') and e.get('targetname') == holder['fog_info_entity']
+                       and e.get('classname') == 'info_fog'), None)
+        if target is None:
+            continue
+        density, color = (numbers(target.get('fog_density')) or [0.])[0], (numbers(target.get('fog_color')) + [0.] * 3)[:3]
+        if not density:
+            density = .05
+        elif max(color) > 1:
+            color = [c / 255 for c in color]
+        if density or any(color) or int(float(target.get('spawnflags') or 0)) & 1:  # FogPushSettingsFrom
+            source = 'info_fog ' + target['targetname']
+            break
+    if not source and 'fog' in info:
+        values = numbers(info['fog'])[:4] or [0.]
+        density, color, source = values[0], (values[1:4] + color[len(values) - 1:])[:3], 'worldspawn fog'
+    if density <= 0:
+        return None
+    sky = (numbers(info.get('skyfog')) or [.5])[0]
+    return dict(source=source, density=density, color=[min(1., max(0., c)) for c in color], sky=min(1., max(0., sky)),
+                exp2=density / 64 / SCALE, mode='GL_EXP2, density / 64 per native unit; exp2 per page unit')
+
+
 def build_map(raw, name, game='quake', lit=None, files=None):
     bsp = read_bsp(raw)
     bsp['rerelease'] = game in RERELEASE
@@ -606,7 +770,18 @@ def build_map(raw, name, game='quake', lit=None, files=None):
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(),
                      data['uv2'].astype('<f4').tobytes(), np.array(data['indices'], '<u4').tobytes()))
     info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})
-    scene = dict(name=name, game=game, title=info.get('message', ''), format=bsp['format'], vertices=len(points), indices=len(data['indices']),
+    regions, tree = content_regions(bsp['planes'], bsp['nodes'], bsp['models'][0][9], lambda leaf: bsp['leaves'][leaf][0], CONTENT_BLENDS)
+    used = sorted({s for g in data['groups'] for s in g.get('styles', [])})
+    extra = {}
+    if used:
+        # d_lightstylevalue = (char - 'a') * 22 (R_AnimateLight); 8.8 blocklights += sample * value (R_BuildLightMap).
+        extra['light_styles'] = dict(offset=data['style_offset'], scale=22, patterns={str(s): LIGHT_STYLES[s] for s in used})
+    if regions:
+        extra.update(regions=regions, region_tree=tree)
+    fog = fog_settings(bsp, views[0])
+    if fog:
+        extra['fog'] = fog
+    scene = dict(name=name, game=game, title=info.get('message', ''), format=bsp['format'], vertices=len(points), indices=len(data['indices']), **extra,
                  lighting='rgb' if 'rgb_lighting' in bsp else 'colormap', lighting_source=lighting,
                  bspx=[dict(name=n, bytes=len(d), handled=n == 'RGBLIGHTING' and lighting == 'BSPX RGBLIGHTING',
                             reason='external .lit takes precedence' if n == 'RGBLIGHTING' and lit is not None else
@@ -614,8 +789,9 @@ def build_map(raw, name, game='quake', lit=None, files=None):
                  lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views, bounds=bounds.tolist(),
                  instances=placed, models=models, model_failures=[r for r in models if r['status'] in ('failed', 'partial')],
                  skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
-                 assumptions=['CTF deathmatch filtering; first authored team 1 start' if game == 'qctf' else 'normal skill, single player, no runes', 'light styles held at m (264), switchable lights that start off at a (0)',
-                              'brushes at spawn; trains initialized at first corner, before travel', 'animated textures held at +0/+a',
+                 assumptions=['CTF deathmatch filtering; first authored team 1 start' if game == 'qctf' else 'normal skill, single player, no runes',
+                              'light styles 1-11 animate at 10 Hz (two per face on colormap maps, one on RGB maps; further ones held at m); switchable lights at m (264), those that start off at a (0)',
+                              'brushes at spawn; trains initialized at first corner, before travel', 'animated textures run their +0/+a chain at 5 frames a second',
                               'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; no AI or runtime summons'])
     return scene, blob, data['textures'], data['atlas']
 

@@ -6,32 +6,47 @@ window.quakeMaps = {
     if (group.kind === 'sky' && skybox) return window.quake2Maps.material(group, texture, lightMap);
     if (!texture || !colormap) return new THREE.MeshBasicMaterial({color: 0xff00ff});
     return new THREE.ShaderMaterial({
+      userData: {quakeIndexed: true},
       uniforms: {indices: {value: texture}, lights: {value: lightMap}, colors: {value: colormap},
         seconds: this.time, size: {value: new THREE.Vector2(...group.size)},
-        rgbLighting: {value: !!rgbLighting},
+        rgbLighting: {value: !!rgbLighting}, styleA: {value: 0}, styleB: {value: 0}, styleOffset: {value: 0},
+        fogColor: {value: new THREE.Vector3()}, fogExp2: {value: 0}, skyFog: {value: 0},
         kind: {value: group.kind === 'sky' ? 1 : group.kind === 'turbulent' ? 2 : group.kind === 'model' ? 3 : 0}},
       vertexShader: `
         attribute vec2 uv2;
         varying vec2 texUV, lightUV;
         varying vec3 world;
+        varying float fogDepth;
         void main() {
           texUV = uv; lightUV = uv2;
           vec4 p = modelMatrix * vec4(position, 1.);
           world = p.xyz;
-          gl_Position = projectionMatrix * viewMatrix * p;
+          vec4 eye = viewMatrix * p;
+          fogDepth = -eye.z;
+          gl_Position = projectionMatrix * eye;
         }`,
       fragmentShader: `
         uniform sampler2D indices, lights, colors;
-        uniform float seconds;
+        uniform float seconds, styleA, styleB, styleOffset, fogExp2, skyFog;
         uniform vec2 size;
+        uniform vec3 fogColor;
         uniform int kind;
         uniform bool rgbLighting;
         varying vec2 texUV, lightUV;
         varying vec3 world;
+        varying float fogDepth;
         // Manual repeat keeps NPOT index images intact on WebGL1: automatic resizing would invent indices.
         float pixel(vec2 uv) { return floor(texture2D(indices, fract(uv)).r * 255. + .5); }
         vec4 color(float index, float row) {
           return texture2D(colors, vec2((index + .5) / 256., (index >= 224. ? 32.5 : row + .5) / 64.));
+        }
+        // Animated light styles: raw samples styleOffset below the tile (classic maps: two styles in R and G).
+        vec3 styleSample() {
+        #ifdef STYLED
+          return texture2D(lights, lightUV + vec2(0., styleOffset)).rgb;
+        #else
+          return vec3(0.);
+        #endif
         }
         void main() {
           if (kind == 1) {
@@ -53,15 +68,42 @@ window.quakeMaps = {
           } else if (rgbLighting) {
             float index = pixel(texUV);
             vec3 base = color(index, 32.).rgb;
-            vec3 illumination = texture2D(lights, lightUV).rgb * (255. / 128.);
+            // light = min(255, (static + sample * value) >> 8); value = (char - 'a') * 22 (R_AnimateLight).
+            vec3 light = min(texture2D(lights, lightUV).rgb + styleSample() * styleA / 256., vec3(1.));
+            vec3 illumination = light * (255. / 128.);
             gl_FragColor = vec4(index >= 224. ? base : min(base * illumination, vec3(1.)), 1.);
           } else {
             // RG stores a 16-bit fixed-point colormap coordinate. Bilinear sampling interpolates luxels
             // before the high byte selects a row, just as software Quake interpolates blocklights.
             float code = dot(texture2D(lights, lightUV).rg, vec2(65280., 255.));
+            // R_BuildLightMap: blocklights += sample * value, code = max(64, (65280 - blocklights) >> 2).
+            vec3 moving = styleSample();
+            code = max(64., code - (moving.r * styleA + moving.g * styleB) * 255. / 4.);
             gl_FragColor = color(pixel(texUV), clamp(floor(code / 256.), 0., 63.));
           }
+        #ifdef FOG
+          // Quakespasm gl_fog.c: GL_EXP2; gl_sky.c lays the fog colour over the sky at skyfog.
+          gl_FragColor.rgb = kind == 1 ? mix(gl_FragColor.rgb, fogColor, skyFog)
+            : mix(fogColor, gl_FragColor.rgb, exp(-fogExp2 * fogExp2 * fogDepth * fogDepth));
+        #endif
         }`
     });
+  },
+  patchMaterial(material, group, map) {
+    const fog = map.fog;
+    if (material.userData && material.userData.quakeIndexed) {
+      if (group.styles) window.quake2Maps.addStyles(material, group.styles, map.light_styles);
+      if (fog) {
+        material.defines = {...material.defines, FOG: ''};
+        material.uniforms.fogColor.value.set(...fog.color);
+        material.uniforms.fogExp2.value = fog.exp2;
+        material.uniforms.skyFog.value = fog.sky;
+      }
+    } else if (fog && group.kind === 'sky' && material.isShaderMaterial) {  // The rerelease skybox (quake2Maps' sky).
+      material.uniforms.fogColor = {value: new THREE.Vector3(...fog.color)};
+      material.uniforms.skyFog = {value: fog.sky};
+      material.fragmentShader = 'uniform vec3 fogColor; uniform float skyFog;\n' +
+        material.fragmentShader.replace('gl_FragColor = vec4(color.rgb,1.);', 'gl_FragColor = vec4(mix(color.rgb, fogColor, skyFog),1.);');
+    }
   }
 };

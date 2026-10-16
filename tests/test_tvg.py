@@ -323,6 +323,12 @@ class TextureTests(unittest.TestCase):
             material('Combine', 'Combiner', f.prop('Material1', 5, compact(diffuse))+
                      f.prop('Material2', 5, compact(mask))+f.prop('Mask', 5, compact(mask)))
             material('Lum', 'Shader', f.prop('SelfIllumination', 5, compact(diffuse)))
+            material('Glow', 'Shader', f.prop('Diffuse', 5, compact(diffuse))+f.prop('SelfIllumination', 5, compact(diffuse))+
+                     f.prop('SelfIlluminationMask', 5, compact(mask)))
+            material('Pan', 'TexPanner', f.prop('Material', 5, compact(diffuse))+f.prop('PanDirection', 10, pack('3i', 0, 16384, 0), 'Rotator'))
+            material('Spin', 'TexRotator', f.prop('Material', 5, compact(diffuse))+f.prop('TexRotationType', 1, bytes([1]))+
+                     f.prop('Rotation', 10, pack('3i', 0, 8192, 0), 'Rotator')+f.prop('UOffset', 4, pack('f', .5)))
+            material('Wave', 'TexOscillator', f.prop('Material', 5, compact(diffuse))+f.prop('VOscillationType', 1, bytes([1])))
             a = material('CycleA', 'FinalBlend', b'')
             b = material('CycleB', 'FinalBlend', f.prop('Material', 5, compact(a)))
             old = f.exports[a-1]
@@ -352,6 +358,13 @@ class TextureTests(unittest.TestCase):
                 self.assertIn('DXT5N', recorded['normal_encoding'])
                 self.assertEqual((directory/recorded['texture']).read_bytes()[128:], bytes(range(16)))
                 self.assertTrue(mats.material('Materials.Lum')['settings']['unlit'])
+                glow = mats.material('Materials.Glow')['settings']['emissive']
+                self.assertEqual((glow['mode'], glow['shared_uv']), ('lerp', True))
+                self.assertEqual(mats.image(dict(texture=glow['texture'])).getpixel((0, 0)), (48, 32, 16, 64))
+                np.testing.assert_allclose(mats.material('Materials.Pan')['settings']['pan'], [0, .1], atol=1e-7)
+                spin = mats.material('Materials.Spin')['settings']
+                self.assertAlmostEqual(spin['spin'], -np.pi/4); self.assertEqual(spin['uvCenter'], [.5, 0])
+                self.assertEqual(mats.material('Materials.Wave')['settings']['osc']['amplitude'], [.1, 0])
                 self.assertEqual(mats.material('Materials.CycleA')['status'], 'unresolved')
             finally:
                 lib.close()

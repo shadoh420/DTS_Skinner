@@ -20,7 +20,7 @@ from tools.local_data import LOCAL_DATA
 from tools.texture_storage import game_texture_dir, write_texture
 from tools.texture_workshop import write_json_atomic
 from tools.tvg_package import Library, rotation_matrix
-from tools.tvg_map import MapPackage, BASIS, viewer, transform, viewpoint, is_npc
+from tools.tvg_map import MapPackage, BASIS, SCALE, viewer, transform, viewpoint, is_npc
 
 LAYER_LIMIT = 4
 # Program/Bin/Default.ini [Gameplay.MapList], also present in TV_CD_DVD.ini.
@@ -77,7 +77,9 @@ class Models:
             data = json.loads((self.root/'model_json'/(look+'.json')).read_text(encoding='utf-8'))
             self.cache[look] = data
         data = self.cache[look]
-        materials = list(data['metadata']['materials'])
+        # Re-resolved here, as Ascend's map import does: a map import picks up material settings (emissive, panners)
+        # without re-importing the model library.
+        materials = [self.materials.material(m['source']) if m.get('source') else m for m in data['metadata']['materials']]
         for slot, source in enumerate(skins):
             if source and slot < len(materials):
                 materials[slot] = self.materials.material(source)
@@ -231,6 +233,57 @@ def decoration_matrices(package, layer, terrain_row, heights, materials, visibil
     return matrices.transpose(0, 2, 1).reshape(count, 16)
 
 
+def distance_fog(props):
+    """A ZoneInfo's or PhysicsVolume's distance fog in page units, or None. Colours are FColor B, G, R, A."""
+    if not props.get('bDistanceFog') or props.get('DistanceFogEnd', 8000) <= props.get('DistanceFogStart', 3000):
+        return None
+    c = props.get('DistanceFogColor', (128, 128, 128, 0))
+    fog = dict(color=[c[2]/255, c[1]/255, c[0]/255], start=props.get('DistanceFogStart', 3000)*SCALE,
+               end=props.get('DistanceFogEnd', 8000)*SCALE, blend_time=props.get('DistanceFogBlendTime', 0))
+    if props.get('DistanceFogType'):  # FG_Exponential (Vengeance's IG_FOG): drawn linear; native SetExpDistanceFog not read.
+        fog.update(type='exponential', exp_bias=props.get('DistanceFogExpBias', 1))
+    return fog
+
+
+def zone_regions(world, actors, level_info):
+    """Camera fog regions from the BSP: map.regions per zone number, map.region_tree from the nodes.
+
+    The walk is UModel::FindRegion's (SurrealEngine UModel.cpp): front where plane.dot(p) - W >= 0; a missing child
+    ends in iZone[1] (front) or iZone[0] (back). Zone numbers index the model's zone table of ZoneInfo actors; an
+    empty slot is the LevelInfo (itself a ZoneInfo).
+    """
+    if not world['nodes'] or not world.get('zones'):
+        return None, None
+    zone_props = [actors.get(ref, {}).get('props', level_info) if ref else level_info for ref in world['zones']]
+    regions = [dict(fog=distance_fog(z)) for z in zone_props]
+    leaf = lambda zone: -1 - min(zone, len(regions)-1)
+    nodes = []
+    for n in world['nodes']:
+        normal = BASIS @ np.asarray(n['plane'][:3])
+        nodes.append([*np.round(normal, 6).tolist(), round(n['plane'][3]*SCALE, 4), n['front'] if n['front'] >= 0 else leaf(n['zones'][1]),
+                      n['back'] if n['back'] >= 0 else leaf(n['zones'][0])])
+    return regions, dict(root=0, nodes=nodes)
+
+
+def volume_brush(p, props):
+    """Page-space planes [a, b, c, d] (inside a.x <= d) of a convex volume brush, or None when not convex."""
+    brush = p.model(props['Brush'])
+    m = np.asarray(transform(props)).reshape(4, 4).T
+    planes, corners = [], []
+    for poly in p.polys(brush['polys']):
+        points = viewer(poly['points']) @ m[:3, :3].T + m[:3, 3]
+        normal = np.linalg.inv(m[:3, :3]).T @ viewer(poly['normal'])
+        normal /= np.linalg.norm(normal) or 1
+        planes.append([*np.round(normal, 6).tolist(), round(float(normal @ points[0]), 4)]); corners.extend(points)
+    if len(planes) < 4:
+        return None
+    a = np.asarray(planes)
+    # Every corner on or inside every plane: convex, normals outward (the editor's volume brushes are).
+    if np.any(np.asarray(corners) @ a[:, :3].T - a[:, 3] > 1e-3):
+        return None
+    return planes
+
+
 def build_map(path, library, models, materials):
     p = MapPackage(path)
     try:
@@ -312,7 +365,7 @@ def build_map(path, library, models, materials):
             if 'engine.playerstart' in ancestry:
                 views.append(viewpoint(props))
             if 'engine.zoneinfo' in ancestry:
-                zones.append(dict(record, **{k:v for k,v in props.items() if k in ('AmbientHue','AmbientSaturation','AmbientBrightness','bDistanceFog','DistanceFogColor','DistanceFogStart','DistanceFogEnd')}))
+                zones.append(dict(record, **{k:v for k,v in props.items() if k in ('AmbientHue','AmbientSaturation','AmbientBrightness','bDistanceFog','DistanceFogColor','DistanceFogStart','DistanceFogEnd','DistanceFogBlendTime','DistanceFogType','DistanceFogExpBias')}))
             if 'engine.skyzoneinfo' in ancestry:
                 rot = props.get('Rotation', (0,0,0))
                 sky = dict(origin=viewer(props.get('Location', (0,0,0))).tolist(), rotation=(BASIS@rotation_matrix(*rot)@BASIS.T).reshape(-1).tolist(), rotator=rot)
@@ -365,6 +418,21 @@ def build_map(path, library, models, materials):
             else:
                 omitted.append(dict(record, reason='Compiled BSP brush (already in UModel)' if props.get('Brush') else 'No drawable mesh (control, light, trigger or runtime spawn)'))
         tag_attachments(instances, actors, p.path.stem)
+        level_info = next((a['props'] for a in actors.values() if 'engine.levelinfo' in a['ancestry']), {})
+        regions, region_tree = zone_regions(world, actors, level_info)
+        regions, region_brushes, volume_skips = regions or [], [], Counter()
+        # PhysicsVolume distance fog overrides the zone's while the camera is inside (the water tint: negative starts).
+        for ref, actor in actors.items():
+            fog = distance_fog(actor['props']) if 'engine.physicsvolume' in actor['ancestry'] else None
+            if not fog or not actor['props'].get('Brush'):
+                continue
+            try:
+                planes = volume_brush(p, actor['props'])
+            except (ValueError, IndexError) as exc:
+                volume_skips['unreadable brush: '+str(exc)] += 1; continue
+            if planes is None:
+                volume_skips['non-convex brush'] += 1; continue
+            region_brushes.append(dict(planes=planes, region=len(regions), entity=ref)); regions.append(dict(fog=fog, volume=ref))
         for row, heights, layers in terrains:
             for number, layer in enumerate(layers):
                 source = p.qualified(layer.get('StaticMesh', 0))
@@ -396,11 +464,11 @@ def build_map(path, library, models, materials):
         if not views:
             origin = vertices.mean(axis=0).tolist() if len(vertices) else (instances[0]['matrix'][12:15] if instances else [0,5,0])
             views = [dict(origin=origin, yaw=0, pitch=0)]
-        level_info = next((a['props'] for a in actors.values() if 'engine.levelinfo' in a['ancestry']), {})
         scene = dict(game='tvg', name=path.stem, title=level_info.get('Title', ''), format='vengeance-130/27',
                      vertices=len(vertices), indices=len(indices), groups=groups, model_library=model_library,
                      instances=instances, decorations=decorations, terrain=[r for r,_,_ in terrains], viewpoints=views,
-                     sky=sky, zones=zones, actors=len(actors), actor_slots=len(level['actors']), npcs=len({r['entity'] for r in instances if r['npc']}),
+                     sky=sky, zones=zones, regions=regions, region_tree=region_tree, region_brushes=region_brushes,
+                     region_skips=dict(volume_skips), actors=len(actors), actor_slots=len(level['actors']), npcs=len({r['entity'] for r in instances if r['npc']}),
                      model_failures=failures, missing=sorted({r.get('source',r.get('classname','unknown')) for r in failures}),
                      omitted=omitted, surface_omissions=dict(surface_omissions),
                      lighting=dict(display_power=1, source='Stored placement vertex colors; terrain light texture; fixed ambient + sun for BSP/unbaked props'),
@@ -408,7 +476,7 @@ def build_map(path, library, models, materials):
                            'Terrain blends at most four authored layers; remaining layers are listed; macro texture is the base fallback',
                            'Decoration density/scale/seed maps create a deterministic approximation; native RNG, animation and distance fading are not simulated',
                            'Actors use inherited serialized start state and model-library reference poses; no scripts, Mojo, spawners, particles or projectors',
-                           'Sky zone and first fog zone approximate visibility; no BSP zone/PVS clipping'])
+                           'Distance fog follows the camera BSP zone and fog volumes; exponential zone fog is drawn linear; no BSP zone/PVS clipping'])
         return scene, dict(geometry=blob, terrain=b''.join(terrain_chunks), lighting=b''.join(lighting), decorations=b''.join(deco_chunks))
     finally:
         p.close()

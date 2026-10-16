@@ -61,3 +61,15 @@ test('clouds use the sky upload filter without mipmaps', async () => {
   assert.equal(cloud.minFilter, context.THREE.LinearFilter);
   assert.equal(cloud.magFilter, context.THREE.LinearFilter);
 });
+
+test('cloud layers drift by dir * cloud1tile * speed * fract(time * .002); old packs hold still', () => {
+  dk.clouds = [{tile: 8, alpha: 1, speed: 2}, {tile: 2, alpha: .7, speed: 4}];
+  dk.cloudDir = [1, .5];
+  const sky = material({kind: 'sky'});
+  assert.deepEqual(sky.uniforms.cloudSpeed.value.values, [2, 4]);
+  assert.deepEqual(sky.uniforms.cloudDir.value.values, [1, .5]);
+  assert(sky.fragmentShader.includes('fract(seconds * .002)'));
+  dk.clouds = [{tile: 8, alpha: 1}, {tile: 2, alpha: .7}];
+  assert.deepEqual(material({kind: 'sky'}).uniforms.cloudSpeed.value.values, [0, 0]);
+  dk.clouds = [];
+});

@@ -109,7 +109,7 @@ class MapPackage(Package):
             self.take(32)  # render bounds and native visibility metadata
             zone0, zone1, count = self.unpack('3B')
             self.take(21)  # leaves, native visibility metadata, terminal byte
-            nodes.append(dict(pool=pool, surface=surface, count=count, plane=plane, zones=(zone0, zone1)))
+            nodes.append(dict(pool=pool, surface=surface, count=count, plane=plane, zones=(zone0, zone1), back=back, front=front))
         surfaces = []
         for _ in range(self.count()):
             if self.header(25) != (1, 1):
