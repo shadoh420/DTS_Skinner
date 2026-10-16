@@ -990,8 +990,8 @@ def export_mission(mis_path, companions, regions, assets, formation_data):
     result = scene_base(mis_path.stem, assets)
     result['lighting'] = native_lighting(world, start_time)
     result['lighting']['terrainScale'] = regions[region].get('terrainScale', 11)
-    # Dusk and night: the live palette's sky and fog entries follow the light (00409CF0); MISSIONE at sun -12 degrees
-    # measured 53,61,63 against 42,46,47 from this (summer), within parity.
+    # Dusk and night: the live palette's sky and fog entries follow the light (00409CF0). Night is approximate: MISSIONE
+    # at sun -12 degrees measured 53,61,63 against 42,46,47 from this; the 00409A67 palette branch is not decoded.
     result['haze'], result['skyColour'] = ([round(c * result['lighting']['intensity']) for c in colour]
                                            for colour in (assets.haze, assets.sky_colour))
     result.update(region=region, regions=[dict(id=region, name=REGIONS[region])], world=world, flights=mission['flights'])
