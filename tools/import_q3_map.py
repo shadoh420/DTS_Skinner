@@ -713,8 +713,9 @@ def import_map(game, name, ident, raw, source, output, textures):
                               suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1), **barrel(game, kind, paths[0], textures, output, item_models)))
     if dropped: notes.append(f'{dropped} pickups the game does not spawn in {GAMETYPE_NAMES[gametype]}')
     file = 'bsp/' + hashlib.sha256(raw).hexdigest()[:20] + '.bsp'
-    if not (output / file).exists():
-        write_bsp(output / file, lumps)
+    # Always written: the name follows the source map, not KEPT_LUMPS, so a file from an older import (before the light
+    # grid was kept) would otherwise survive --replace (game check 2026-10-16: no real library had lump 15).
+    write_bsp(output / file, lumps)
     folder = output / 'maps' / ident
     folder.mkdir(parents=True, exist_ok=True)
     scene = dict(name=name, longname=game.arenas.get(name.lower(), ''), source=source, bsp=file, shaders=shaders, viewpoints=viewpoints,

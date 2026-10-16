@@ -835,7 +835,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     fogs=qmap.fog_volumes(lumps,game.shaders);wolf_fog,far=map_fog(game,shaders)
     if getattr(rules,'GLOBAL_FOG_CLIPS',False):far+=[f['depth'] for f in fogs if f and f.get('global')]
     digest=hashlib.sha256(b''.join(draw)).hexdigest()[:24];file='bsp/'+digest+'.bsp'
-    if not (output/file).exists():qmap.write_bsp(output/file,draw,version=47)
+    qmap.write_bsp(output/file,draw,version=47)  # Always: an older file kept fewer lumps (qmap.import_map).
     scene=dict(name=name,longname=things[0].get('message','') if things else '',source=source,section=game.section,bsp=file,bspVersion=47,
                shaders=shaders,viewpoints=views,models=[],items=[],placed=placed,itemModels=item_models,lighting=game.lighting,bspCull=qmap.read_visibility(lumps),
                fogs=fogs,**({'mapFog':wolf_fog} if wolf_fog else {}),**({'farClip':max(64,min(far))} if far else {}),
