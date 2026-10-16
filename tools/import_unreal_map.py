@@ -734,7 +734,7 @@ def build_map(library, level, default, game='unreal', files=None):
 
     spawn_events = set() if game == 'dx' else events_at_spawn()
     meshes, counts = {}, dict(meshes=0, movers=0, unread=0, failed=[])
-    coronas, movers = {}, []
+    coronas, movers, sprite_batches = {}, [], {}
     if game == 'dx':
         counts.update(excluded_players=0, excluded_other=0, npcs=0, carcasses=0, pickups=0, decorations=0)
     def placed_order():
@@ -772,6 +772,24 @@ def build_map(library, level, default, game='unreal', files=None):
             continue
 
         name = level.exports[ref - 1]['name']
+        # Sprite actors (DT_Sprite) drawn translucent, masked or modulated: flares and scaled sprites. SurrealEngine
+        # VisibleSprite: Texture (its AnimNext frames) DrawScale x its size wide, facing the view, coloured ScaleGlow.
+        # ponytail: STY_Normal sprites are left out (logic actors' editor icons: ExplodingWall, ExplosionChain), and so are
+        # 227's particle emitters and the smoke and bubble generators (effects they spawn while the game runs).
+        if props.get('DrawType') == 1 and props.get('Style', 1) in (2, 3, 4) and not any('Emitter' in n or 'Generator' in n for n in names):
+            pick = obj('Texture')
+            if pick and pick[0].path.stem.lower() != 'engine':
+                png = texture_of(*pick)[0]
+                if png != 'missing.png' and images.get(png) is not None:
+                    width, height = images[png].size if hasattr(images[png], 'size') else texture_of(*pick)[1:3]
+                    batch = sprite_batches.setdefault((png, props.get('Style')), dict(
+                        texture=png, blend={2: 'alpha', 3: 'translucent', 4: 'modulate'}[props.get('Style')], aspect=round(height / width, 4), items=[],
+                        **({'frames': chains[png]['frames'], 'fps': chains[png]['fps']} if chains.get(png) else {})))
+                    glow = min(max(props.get('ScaleGlow', 1.0), 0), 1)
+                    batch['items'].append([*(round(float(c), 3) for c in viewer([vector(props, 'Location')])[0]),
+                                           round(width * props.get('DrawScale', 1.0) * SCALE, 4), glow, glow, glow, 1])
+                    counts['sprites'] = counts.get('sprites', 0) + 1
+            continue
         try:
             if 'Mover' in names and isinstance(props.get('Brush'), int) and props['Brush'] > 0:
                 add_mover(ref, props)
@@ -904,8 +922,8 @@ def build_map(library, level, default, game='unreal', files=None):
                  vertices=len(positions), indices=len(indices), lightmap=[atlas_width, atlas_height], colors=True,
                  actors=counts, groups=table, viewpoints=views, sky=sky,
                  polygons=polygons, flipped=flipped, missing=sorted(missing))
-    if coronas:
-        scene['sprites'] = list(coronas.values())
+    if coronas or sprite_batches:
+        scene['sprites'] = list(coronas.values()) + list(sprite_batches.values())
     if movers:
         scene['movers'] = movers
     if changing:  # [LightType, LightPeriod, LightPhase, r, g, b at full brightness x 2] of each changing light
