@@ -137,6 +137,28 @@ class EmittersTest(unittest.TestCase):
         self.assertEqual(culled[0], [])
         self.assertEqual(culled[1]['env_particle: rain around the player in a map without rain leaves (the engine culls it)'], 1)
 
+    def test_rain_box_on_while_the_player_touches_its_trigger(self):
+        # sm_pier_1: an inactive func_particle that a trigger_multiple turns on (start touch) and off (end touch).
+        box = dict(classname='func_particle', particle_definition='Fire', model='*1', active='0', ramp_scale='0.15',
+                   targetname='Rain_Emitter_Volume_1')
+        self.assertEqual(self.run_emitters(box)[1]['func_particle: starts inactive (waits for a trigger)'], 1)
+        found, counts = self.run_emitters(box, touch={'rain_emitter_volume_1': [[0, 0, 0], [10, 20, 30]]})
+        self.assertEqual(counts["func_particle: on while the player touches its trigger (drawn while the page's feet are in it)"], 1)
+        flame = found[0][1]
+        self.assertEqual(flame['trigger'], [[-16., -16., -72.], [26., 36., 30.]])  # the feet: the hull overlaps the trigger
+        self.assertEqual(flame['box'], [[-50., -25., -10.], [50., 25., 10.]])
+        self.assertEqual(flame['tracks'][16], [[0., 0., 6., 6.]])  # rate 40 x ramp_scale 0.15: no box-volume weight
+        self.assertNotIn('trigger', self.run_emitters(dict(box, active='1'))[0][0][1])
+
+    def test_touch_triggers_pair_start_and_end_touch(self):
+        from tools.import_vtmb_map import touch_triggers
+        lump = (b'{\n"model" "*3"\n"classname" "trigger_multiple"\n"OnStartTouch" "rain_volume_2,TurnOn,,0,-1,,"\n'
+                b'"OnEndTouch" "rain_volume_2,TurnOff,,0,-1,,"\n"OnStartTouch" "sparks,TurnOn,,0,-1,,"\n}\n'
+                b'{\n"model" "*4"\n"classname" "trigger_multiple"\n"StartDisabled" "1"\n"OnStartTouch" "other,TurnOn,,0,-1,,"\n'
+                b'"OnEndTouch" "other,TurnOff,,0,-1,,"\n}\n')
+        bounds = lambda e: ([1, 2, 3], [4, 5, 6]) if e['model'] == '*3' else None
+        self.assertEqual(touch_triggers(lump, bounds), {'rain_volume_2': [[1., 2., 3.], [4., 5., 6.]]})
+
     def test_rate_scales_from_enabled_timers(self):
         from tools.import_vtmb_map import rate_scales
         lump = (b'{\n"classname" "logic_timer"\n"StartDisabled" "0"\n"OnTimer" "rain_emitter,SetRateScale,1,0,-1,,"\n'

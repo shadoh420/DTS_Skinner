@@ -204,8 +204,18 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
 
   Drawn: emitters that start active, unparented, at a world place (`attach_type` 0, 1 or −1). Also timers' looping
   child emitters (WaterDrops_Timer). Also bursts of particles that loop or outlive the visit (stars, city lights).
-  `func_particle` spreads its children over the brush's box (inferred from C_EnvParticle's box callback). Emitters
-  in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
+  `func_particle` spreads its children over the brush's box: client.dll's attach-9 callback (near 0x100b1fd0) puts
+  each child at a uniform point of the box, in 1% steps per axis, and passes the rate scale on. Its density is the
+  spawn's rate × `ramp_scale` (vampire.dll's datadesc maps `ramp_scale` to m_fRateScaleTarget, the rate multiplier);
+  the box weights client.dll sums near 0x100b0f04 only pick among a model's bone segments (attach types 1, 3 and 4),
+  so a rain box's size does not scale its rain (sm_beachhouse_1's boxes: 40 × 0.05 = 2 drops a second each).
+  Emitters in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
+
+  Touch-triggered emitters: an inactive emitter that a `trigger_multiple` (not StartDisabled) turns on at
+  OnStartTouch and off at OnEndTouch draws while the page's feet (64 below the eye) are where the player's hull
+  (32 × 32 × 72, Source's standing hull, inferred) would touch the trigger's box. Only sm_pier_1's ten
+  `Rain_Box_emitter` brushes (nine names; two share `rain_emitter_volume_6`) use it; its player start is in
+  `rain_emitter_trigger_1`.
 
   Rain around the player (`attach_type` 11, `rain_follow_emitter`) follows the page's eye. client.dll's player-box
   callback spawns its drops in a box of ± `spawnbounds` (default 512; `bounds` is not a key) about the player's feet,
@@ -217,8 +227,7 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
   the others stay at ramp_scale 0. The rain's 500-unit haze (`rainfog`) is not drawn.
 
   Not drawn, with counts in each scene's `effects.troika_outcomes`:
-  - triggered or parented emitters, among them sm_pier_1's rain boxes, which its `trigger_multiple` volumes turn on
-    while the player stands in them;
+  - other triggered emitters (scripts, relays, one-way triggers) and parented ones;
   - effects that play once at map start;
   - moving child emitters (moths, airplanes);
   - children of sprite particles;

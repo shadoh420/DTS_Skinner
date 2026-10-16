@@ -125,19 +125,21 @@
   // value drawn per particle. Tracks: 0-8 red green blue color mask width height size rotation, 9-15 radius theta phi
   // x y z elevation speeds (integrated), 16 the spawn rate over the parent's life (kept particles: rate / max rate).
   // `follow`: the emitter is at the page's feet (EYE_HEIGHT below the eye), its box about them, its floor theirs (rain
-  // around the player); `outdoors`: drawn only while the eye is in the import's rain leaves (options.outdoors).
-  const EYE_HEIGHT = 64, TROIKA_TRACKS = 17, TROIKA_HEADER = 13 + Math.ceil(TROIKA_TRACKS / 2), STREAM_WIDTH = 1024;
+  // around the player); `outdoors`: drawn only while the eye is in the import's rain leaves (options.outdoors);
+  // `trigger` [mins, maxs]: drawn only while the page's feet are in the box (a touch trigger turns it on).
+  const EYE_HEIGHT = 64, TROIKA_TRACKS = 17, TRIGGER = 13 + Math.ceil(TROIKA_TRACKS / 2), TROIKA_HEADER = TRIGGER + 2, STREAM_WIDTH = 1024;
   function packTroika(t) {
     const header = new Float32Array(TROIKA_HEADER * 4), keys = [], set = (n, ...v) => header.set(v, n * 4), s = t.spawn || {};
     const r = (name, d) => pair(s[name] ?? d);
     set(0, ...pair(t.lifeRate), ...r('timescale', 1));
-    set(1, (t.loop ? 1 : 0) + (t.movealign ? 2 : 0) + (t.flat ? 4 : 0) + (t.collide ? 8 : 0) + (t.box ? 16 : 0) + (t.follow ? 32 : 0) + (t.outdoors ? 64 : 0), t.depthOffset || 0, ...(t.aspect || [.5, .5]));
+    set(1, (t.loop ? 1 : 0) + (t.movealign ? 2 : 0) + (t.flat ? 4 : 0) + (t.collide ? 8 : 0) + (t.box ? 16 : 0) + (t.follow ? 32 : 0) + (t.outdoors ? 64 : 0) + (t.trigger ? 128 : 0), t.depthOffset || 0, ...(t.aspect || [.5, .5]));
     set(2, ...r('radius', 0), ...r('theta', 0)); set(3, ...r('phi', 0), ...r('elevation', 0));
     set(4, ...r('x', 0), ...r('y', 0)); set(5, ...r('z', 0), ...r('rotation', 0));
     set(6, ...r('red', 255), ...r('green', 255)); set(7, ...r('blue', 255), ...r('color', 255));
     set(8, ...r('mask', 255), ...r('size', 1)); set(9, ...r('width', 1), ...r('height', 1));
     set(10, t.parentLife || 1, t.rateMax || 0, pair(t.delay)[0], t.gain || 1);
     set(11, ...(t.box ? t.box[0] : [0, 0, 0]), 0); set(12, ...(t.box ? t.box[1] : [0, 0, 0]), 0);
+    if (t.trigger) { set(TRIGGER, ...t.trigger[0], 0); set(TRIGGER + 1, ...t.trigger[1], 0); }
     for (let k = 0; k < TROIKA_TRACKS; k++) {
       const list = (t.tracks || [])[k] || [];
       header[(13 + (k >> 1)) * 4 + (k & 1) * 2] = TROIKA_HEADER + keys.length / 4;
@@ -196,6 +198,10 @@
       vec3 origin = (flags & 32) != 0 ? uEye - uUp * ${EYE_HEIGHT}. : iOrigin.xyz, toEye = origin - uEye;
       if (age < 0. || (flags & 1) == 0 && p >= 1. || iTime.z >= uDensity || dot(toEye, toEye) > uDistance * uDistance
         || (flags & 64) != 0 && uOutdoors < .5) { hide(); return; }
+      if ((flags & 128) != 0) {  // a touch trigger's box: the page's feet in it
+        vec3 feet = uEye - uUp * ${EYE_HEIGHT}.;
+        if (any(lessThan(feet, K(${TRIGGER}).xyz)) || any(greaterThan(feet, K(${TRIGGER + 1}).xyz))) { hide(); return; }
+      }
       if (h10.y > 0.) {  // a spawn rate that changes over the parent's life: keep rate / max of the particles
         float born = uTime + iTime.x - age, parent = floor(born / h10.x);
         uint parentSeed = hash(floatBitsToUint(iOrigin.x) ^ floatBitsToUint(iOrigin.y) * 3266489917u ^ floatBitsToUint(iOrigin.z) * 668265263u ^ uint(int(parent) + 65536));

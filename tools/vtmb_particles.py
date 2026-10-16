@@ -227,6 +227,9 @@ PLAYER_BOX = ('10', '11')
 # engine.dll kills a precipitation definition's particles in BSP leaves whose contents lack 0x800 (near 0x200d3f10;
 # the cvar particles_disable_cull turns that off): the rain leaves Troika's compiler marks.
 RAIN_CONTENTS = 0x800
+# A trigger touches the player while their hull (Source's standing hull, 32 x 32 x 72 from the feet: inferred, not read)
+# overlaps the trigger's box: the feet are within these margins of it (mins side, maxs side).
+HULL = ([16., 16., 72.], [16., 16., 0.])
 FOREVER = 600.  # seconds: a particle living longer than this (city lights: 5000 frames at 1 fps) stays for the visit
 # Fill cap (units^2): a spawn whose particles alive x their largest sprite area exceeds it is thinned to it, each kept
 # particle brighter (rgb x gain) and more covering (1 - (1 - alpha)^gain) by the same factor. It mostly takes the
@@ -292,7 +295,7 @@ def _template(parent, spawn, aspect, scale, box=None, burst=None):
     return t
 
 
-def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rain_leaves=True):
+def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rain_leaves=True, touch=None):
     """[(sprite, template, emitter)] for static/particles.js (troika model; map units and axes) and counts by outcome.
     read(asset) -> bytes | None; bounds(entity) -> brush (mins, maxs) | None; floor(origin) -> the world's height below
     or None; sprite_aspect(sprite) -> [half width, half height] (longer side 0.5) or None when the TGA is missing.
@@ -306,6 +309,11 @@ def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rai
     thin below 1% (rainfog: 500-unit haze sprites) are skipped: brightened 100x and more, they would be a blob at the eye.
     rate_scales: targetname -> the SetRateScale an enabled logic_timer sends, for an emitter whose ramp_scale is 0
     (sm_hub_1's rain comes on after 3-5 minutes; drawn as if it had).
+    touch: targetname -> the box (mins, maxs) of the trigger_multiple that turns an inactive emitter on while the player
+    touches it (sm_pier_1's rain boxes): drawn with a `trigger` box the page's feet must be in.
+    Density: a func_particle's children spawn at rate x ramp_scale, each at a uniform point of its box (client.dll's
+    attach-9 callback near 0x100b1fd0: three 1% steps; the rate scale m_fRateScaleTarget is ramp_scale, vampire.dll's
+    datadesc). The box weights summed near 0x100b0f04 only pick among a model's bone segments (attach types 1, 3, 4).
     Axes: the entity's forward, left and up (inferred). A looping definition spawns its children at its rate (x
     ramp_scale, vampire.dll's rate scale) or its multi-key bursts every life. A definition that plays once (timers) only
     keeps what outlives it: looping children that do not move and themselves spawn (WaterDrops_Timer ->
@@ -321,9 +329,14 @@ def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rai
         cls = e.get('classname', '').lower()
         if cls not in ('env_particle', 'func_particle'):
             continue
-        if e.get('active', '1').strip() == '0' or e.get('starthidden', '0').strip() == '1':
+        inactive = e.get('active', '1').strip() == '0'
+        gate = (touch or {}).get(e.get('targetname', '').lower()) if inactive else None
+        if e.get('starthidden', '0').strip() == '1' or inactive and gate is None:
             count(f'{cls}: starts inactive (waits for a trigger)')
             continue
+        if gate is not None:
+            count(f'{cls}: on while the player touches its trigger (drawn while the page\'s feet are in it)')
+            gate = [[lo - m for lo, m in zip(gate[0], HULL[0])], [hi + m for hi, m in zip(gate[1], HULL[1])]]
         if e.get('parentname'):
             count(f'{cls}: follows a parent entity')
             continue
@@ -409,11 +422,13 @@ def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rai
                     else:
                         count('bursts every life of a particle that stays (accumulates; skipped)')
                 for burst_key in made:
-                    ident = (parent['name'], n, ramp, burst_key, None if box is None else id(e))
+                    ident = (parent['name'], n, ramp, burst_key, None if box is None and gate is None else id(e))
                     if ident not in templates:
                         templates[ident] = _template(parent, s, aspect, ramp, box, burst_key)
                         if follow:
                             templates[ident].update(follow=True, outdoors=root['precipitation'])
+                        if gate is not None:
+                            templates[ident]['trigger'] = gate
                     template = templates[ident]
                     if follow and template.get('thin', 1) < .01:
                         count('haze around the player that the fill cap would thin below 1% (deferred)')

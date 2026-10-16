@@ -553,6 +553,22 @@ def rate_scales(lump):
     return found
 
 
+def touch_triggers(lump, bounds):
+    """targetname -> the box (game axes) of a trigger_multiple (StartDisabled not 1) that sends it TurnOn on start touch
+    and TurnOff on end touch: on while the player stands in it (sm_pier_1's rain boxes). From the lump's text, as
+    rate_scales; bounds(entity) -> (mins, maxs) | None."""
+    found = {}
+    for block in re.findall(r'\{[^{}]*\}', lump.decode('latin1')):
+        if not re.search(r'"classname"\s+"trigger_multiple"', block, re.I) or re.search(r'"startdisabled"\s+"1"', block, re.I):
+            continue
+        on = {t.lower() for t in re.findall(r'"OnStartTouch"\s+"([^,"]+),TurnOn\b', block, re.I)}
+        off = {t.lower() for t in re.findall(r'"OnEndTouch"\s+"([^,"]+),TurnOff\b', block, re.I)}
+        box = bounds({k.lower(): v for k, v in re.findall(r'"([^"]*)"\s+"([^"]*)"', block)})
+        for target in sorted(on & off) if box is not None else ():
+            found.setdefault(target, [[float(v) for v in box[0]], [float(v) for v in box[1]]])  # ponytail: one trigger a target (sm_pier_1's)
+    return found
+
+
 def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, files, lighting, in_sky, tree):
     """Ropes, infodecals and sprites (tools/source_effects.py) into the map's geometry and sprite batches."""
     counts, batches = dict(ropes=0, decals=0, decal_pieces=0, sprites=0), {}
@@ -636,7 +652,8 @@ def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, 
     read = lambda name: files[name].read() if name in files else None
     rain = lambda leaf: 1 if leaf[0] & vtmb_particles.RAIN_CONTENTS else 0
     troika, outcomes = vtmb_particles.emitters(ents, read, bounds, floor, lambda name: (sprite(name) or {}).get('aspect'),
-                                               rate_scales(bsp['lumps'][0]), tree.ok and any(map(rain, tree.leaves)))
+                                               rate_scales(bsp['lumps'][0]), tree.ok and any(map(rain, tree.leaves)),
+                                               touch_triggers(bsp['lumps'][0], bounds))
     # Emitters in the 3D sky area draw in the viewer's sky pass (batches of their own, flagged sky3d); rain around the
     # player never does.
     troika = [(name + '#sky' if not template.get('follow') and in_sky(np.array(emitter['origin'])) else name, template, emitter)
