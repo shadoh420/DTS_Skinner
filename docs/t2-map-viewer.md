@@ -118,7 +118,8 @@ public `tribes2/engine` repository (read as a behaviour reference only):
   `dropHeight` within `dropRadius` of the camera along `dropDir` at
   `startVelocity` and bursts on what it hits with its explosion's particles.
   The explosion's sub-explosion shapes are not drawn.
-- **ParticleEmissionDummy** (18 objects on 8 missions): the named emitter
+- **ParticleEmissionDummy** (18 objects on 8 stock missions, 94 on the IronSphere
+  map): the named emitter
   runs at the object, pointing along its rotated up axis, at the datablock's
   `timeMultiple`. Particles use upstream's own particle system; mission
   datablocks are read with V12's script defaults.
