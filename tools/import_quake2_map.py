@@ -444,10 +444,11 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
                               nexttexinfo=face['nexttexinfo'], missing=face['texture'].get('missing', False)))
             if face['kind'] == 'normal' and (matrix @ face['normal'])[2] > .7:
                 floors.extend((points[0], points[k], points[k + 1]) for k in range(1, len(points) - 1))
+                faces[-1]['floor'] = True
     if not faces:
         raise ValueError('No visible BSP38 faces')
     width, height, places, atlas, offset = style_atlas(tiles, extras)
-    positions, uvs, uv2, groups, textures = [], [], [], {}, {}
+    positions, uvs, uv2, groups, textures, floor_uv = [], [], [], {}, {}, []
     png_of = lambda tex: hashlib.sha256(struct.pack('<II', tex['width'], tex['height']) + tex['pixels']).hexdigest()[:24] + '.png'
     for index, face in enumerate(faces):
         tex = face['texture']
@@ -472,14 +473,37 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
         x, y = places[index]
         h, w = tiles[index].shape[:2]
         coords = (face.get('light_st', face['st']) - face['mins']) / 16 if not face['unlit'] else np.zeros_like(face['st'])
-        uv2.extend((coords + [x + 1.5, y + 1.5]) / [width, height])
+        uv2.extend(at := (coords + [x + 1.5, y + 1.5]) / [width, height])
+        if face.get('floor'):  # in the order of `floors`: where a model standing on it reads the light below it
+            floor_uv.extend(at[[0, k, k + 1]] for k in range(1, len(face['points']) - 1))
     indices, table = [], []
     for group in groups.values():
         part = group.pop('indices')
         table.append(dict(group, start=len(indices), count=len(part)))
         indices.extend(part)
     return dict(points=np.array(positions), uvs=np.array(uvs), uv2=np.array(uv2), indices=indices, groups=table,
-                textures=textures, atlas=Image.fromarray(atlas), audit=audit, floors=np.array(floors), dark=sorted(dark), style_offset=offset)
+                textures=textures, atlas=Image.fromarray(atlas), audit=audit, floors=np.array(floors), floor_uv=floor_uv,
+                dark=sorted(dark), style_offset=offset)
+
+
+# The mean of ref_gl's r_avertexnormal_dots (anormtab.h) over the 162 vertex normals, every yaw row: what a lit alias
+# model's vertex colour (shade dot x shadelight) averages. ponytail: per-vertex dots if a model's shading needs it.
+SHADE_DOTS = 1.175
+
+
+def light_below(data, origin):
+    """The lightmap coordinate (uv2) of the floor straight below `origin` (R_LightPoint, gl_light.c: the light of the
+    surface the line down meets), or None: a model drawn there reads the world's own lightmap, styles included."""
+    found = floor_below(data['floors'], origin[0], origin[1], origin[2] + 1, which=True) if len(data['floors']) else None
+    if found is None or found[1] >= len(data.get('floor_uv', ())):
+        return None
+    a, b, c = data['floors'][found[1]][:, :2]
+    try:
+        u, v = np.linalg.solve(np.column_stack([b - a, c - a]), np.asarray(origin[:2], float) - a)
+    except np.linalg.LinAlgError:
+        return None
+    p, q, r = data['floor_uv'][found[1]]
+    return p + u * (q - p) + v * (r - p)
 
 
 def scene_extras(bsp, data, blends=CONTENT_BLENDS, scale=1 / 12):
@@ -732,11 +756,17 @@ def append_items(data, bsp, files, game, first_mover=0):
                 floor = floor_below(data['floors'], origin[0], origin[1], origin[2] + 1) if len(data['floors']) else None
                 if floor is not None and origin[2] - rest - floor <= (128 if rest else 256):
                     origin = np.array([origin[0], origin[1], floor + rest])
-            group = dict(texture=png, kind='model', flags=0, size=list(images[png].size), unlit=True, alpha=1, entity=entity, classname=cls)
+            # Lit by the light below it (R_LightPoint; Yamagi gl1: jail1's explobox and fact1's ammo in dim rooms showed
+            # 1.6-2.8x darker than an even light), else the even preview light.
+            below = light_below(data, origin)
+            group = dict(texture=png, kind='model', flags=0, size=list(images[png].size), unlit=below is None, alpha=1, entity=entity, classname=cls,
+                         **({} if below is None else dict(shade=SHADE_DOTS, glow=cls in ITEM_MODELS)))
             if turning:
                 group['mover'] = first_mover + len(movers)
                 movers.append(dict(pivot=[round(float(c), 4) for c in origin[[1, 2, 0]] * SCALE], spin=[0, 1, 0, round(math.radians(100), 6)]))
             append_alias(data, model, origin, np.zeros(3) if turning else angles(e), group)
+            if below is not None:
+                data['uv2'][len(data['uv2']) - len(np.asarray(model['vertices']).reshape(-1, 3)):] = below
             row.update(status='drawn', model=path, frame=pick, origin=origin.tolist(), turning=bool(turning))
         except (ValueError, IndexError, struct.error) as exc:
             row.update(status='failed', reason=str(exc))
@@ -780,7 +810,7 @@ def build_map(raw, name, files, palette, game='quake2'):
                               'initial brush states, trains at first corner before travel',
                               'texture chains: world at 2 frames a second, brush entities by their ANIMATED spawnflags, others first frame',
                               'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; triggered previews included; no runtime summons',
-                              'items, weapons, keys and misc models in their first (or spawn-set) frame, even lighting, dropped to the face floors below; EF_ROTATE items turn at 100 degrees a second'])
+                              'items, weapons, keys and misc models in their first (or spawn-set) frame, lit by the light below them, dropped to the face floors below; EF_ROTATE items turn at 100 degrees a second'])
     return scene, blob, images, data['atlas']
 
 

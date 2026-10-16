@@ -26,14 +26,16 @@ class SourceEffectsTest(unittest.TestCase):
         self.assertTrue(np.allclose(points[:, :2], 0) and (np.diff(points[:, 2]) > 0).all())
         self.assertTrue(np.isfinite(fx.rope_mesh(points, width, scale)[0]).all())
 
-    def test_decal_on_a_wall_and_both_sides_of_a_thin_wall(self):
-        # A wall facing +x at x = 0 and its back 4 units behind; a 32 x 16 decal at the wall.
+    def test_decal_on_a_wall_not_on_the_far_side_of_a_thin_wall(self):
+        # A wall facing +x at x = 0, its back 6 units behind (ch_zhaos_1's sign wall), a plane 2 units behind (within
+        # DECAL_DISTANCE) and a far wall; a 32 x 16 decal 1 unit off the wall.
         wall = np.array([[0, -64, -64], [0, 64, -64], [0, 64, 64], [0, -64, 64]], float)
-        back = wall[::-1] - [4, 0, 0]
+        back = wall[::-1] - [6, 0, 0]
+        near = wall[::-1] - [2, 0, 0]
         far = wall + [100, 0, 0]
         pieces = fx.decal_pieces([(1, wall, np.array([1., 0, 0])), (2, back, np.array([-1., 0, 0])),
-                                  (3, far, np.array([1., 0, 0]))], np.array([1., 8, 0]), 32, 16)
-        self.assertEqual([face for face, _, _ in pieces], [1, 2])
+                                  (3, far, np.array([1., 0, 0])), (4, near, np.array([-1., 0, 0]))], np.array([1., 8, 0]), 32, 16)
+        self.assertEqual([face for face, _, _ in pieces], [1, 4])
         _, piece, st = pieces[0]
         self.assertTrue(np.allclose(np.ptp(piece, axis=0), [0, 32, 16]))
         self.assertTrue(np.allclose(st.min(0), 0) and np.allclose(st.max(0), 1))
@@ -62,6 +64,11 @@ class SourceEffectsTest(unittest.TestCase):
         self.assertEqual((material, width, scale, blend, glow), ('sprites/glow01', None, .5, 'add', True))
         self.assertTrue(np.allclose(rgba, [1, 128 / 255, 0, 1]))
         self.assertEqual(found[1][2:4], (40, .5))
+        # Glow colour x renderamt, and x renderamt again with renderfx 14 (StandardGlowBlend); additive ones unscaled.
+        glows = fx.sprites([dict(classname='env_sprite', model='sprites/glowa.vmt', rendermode=mode, renderfx=fxv, renderamt='51')
+                            for mode, fxv in (('3', '14'), ('3', '0'), ('5', '14'))])
+        self.assertTrue(np.allclose([g[4][0] for g in glows], [.04, .2, 1]))
+        self.assertTrue(np.allclose([g[4][3] for g in glows], .2))
         yaw = fx.rotating(dict(classname='func_rotating', spawnflags='1', maxspeed='90'))
         self.assertTrue(np.allclose(yaw, [0, 0, 1, math.pi / 2]))
         self.assertTrue(np.allclose(fx.rotating(dict(classname='func_rotating', spawnflags='3', maxspeed='90')), [0, 0, -1, math.pi / 2]))

@@ -565,7 +565,7 @@ def viewpoints(bsp, game='quake'):
 
 
 def geometry(bsp, placed, light=True):
-    faces, tiles, extras, audit, floors = [], [], [], [], []
+    faces, tiles, extras, audit, floors, floor_light = [], [], [], [], [], []
     # QuakeC's light spawn: a targeted light flagged START_OFF (1) sets its style to 'a' until triggered.
     dark = frozenset(int(float(e['style'])) for e in bsp['entities'] if e.get('classname', '').startswith('light')
                      and int(float(e.get('style') or '0')) >= 32 and int(float(e.get('spawnflags') or '0')) & 1)
@@ -600,6 +600,8 @@ def geometry(bsp, placed, light=True):
                               styles=face['styles'], missing=face['texture'].get('missing', False)))
             if face['kind'] == 'normal' and (matrix @ face['normal'])[2] > 0:
                 floors.extend((points[0], points[k], points[k + 1]) for k in range(1, len(points) - 1))
+                floor_light.extend((face['st'][[0, k, k + 1]], face['mins'], face['size'], face['lightofs'], face['styles'])
+                                   for k in range(1, len(points) - 1))
     if not faces:
         raise ValueError('No visible BSP faces')
     width, height, places, atlas, offset = style_atlas(tiles, extras) if light else (1, 1, [], np.zeros((1, 1, 3), np.uint8), 0)
@@ -635,7 +637,54 @@ def geometry(bsp, placed, light=True):
         table.append(dict(group, start=len(indices), count=len(part)))
         indices.extend(part)
     return dict(points=np.array(positions), uvs=np.array(uvs), uv2=np.array(uv2), indices=indices, groups=table,
-                textures=images, atlas=Image.fromarray(atlas), audit=audit, floors=np.array(floors), style_offset=offset)
+                textures=images, atlas=Image.fromarray(atlas), audit=audit, floors=np.array(floors), floor_light=floor_light,
+                style_offset=offset)
+
+
+def face_level(lighting, lightofs, styles, size):
+    """A face's mean light (0-255) as R_BuildLightMap sums it: each present style's samples at 'm' (264), >> 8."""
+    w, h = map(int, size)
+    total, at = np.zeros(w * h), lightofs
+    for style in styles:
+        if style == 255 or at < 0 or at + w * h > len(lighting):
+            break
+        total += np.frombuffer(lighting, np.uint8, w * h, at) * 264.
+        at += w * h
+    return float(np.minimum(total / 256, 255).mean())
+
+
+def light_point(data, lighting, origin):
+    """R_LightPoint (r_light.c): the light (0-255) of the face straight below `origin` where the line down meets it, its
+    luxel's samples at 'm' (264) summed over present styles and >> 8; 0 with no face below, 255 for an unlit map."""
+    if not lighting:
+        return 255
+    found = floor_below(data['floors'], origin[0], origin[1], origin[2] + 1, which=True)
+    if found is None:
+        return 0
+    st, mins, size, lightofs, styles = data['floor_light'][found[1]]
+    a, b, c = data['floors'][found[1]][:, :2]
+    try:
+        u, v = np.linalg.solve(np.column_stack([b - a, c - a]), np.asarray(origin[:2], float) - a)
+    except np.linalg.LinAlgError:
+        u = v = 0.
+    s, t = st[0] + u * (st[1] - st[0]) + v * (st[2] - st[0])
+    w, h = map(int, size)
+    ds, dt = min(max(int(s - mins[0]) >> 4, 0), w - 1), min(max(int(t - mins[1]) >> 4, 0), h - 1)
+    total, at = 0, lightofs
+    for style in styles:
+        if style == 255 or at < 0 or at + w * h > len(lighting):
+            break
+        total += lighting[at + dt * w + ds] * 264
+        at += w * h
+    return min(total >> 8, 255)
+
+
+def alias_level(light):
+    """The level (0-255) an alias model lit `light` by R_LightPoint shows: R_DrawEntitiesOnList clamps ambient to 128
+    and ambient + shade to 192, and R_AliasSetupLighting adds shade x the vertex's facing to the light.
+    ponytail: one level a model, the facing averaged over a sphere (0.25); per-vertex shading if a check needs it."""
+    ambient = min(light, 128)
+    return ambient + .25 * min(light, 192 - ambient)
 
 
 def build_item(raw, palette, name):
@@ -844,8 +893,12 @@ def append_items(data, bsp, files, game, first_mover=0):
                     for group in found['groups']:
                         triangles = found['indices'][group['start']:group['start'] + group['count']]
                         used, remap = np.unique(triangles, return_inverse=True)
+                        # A box is a brush model: lit by its own lightmaps (R_DrawBrushModel), not by the map's light
+                        # where it stands (WinQuake: health boxes show 27.7 on dm1 and e2m3, rooms 11.7 and 7.9).
+                        lit = [a for a in found['audit'] if a['texture'] == group['name']]
+                        level = np.mean([face_level(box['lighting'], a['lightofs'], a['styles'], a['luxels']) for a in lit]) if box['lighting'] and lit else 255
                         parts.append((dict(vertices=found['points'][used][:, [1, 2, 0]].ravel(), uvs=found['uvs'][used].ravel(),
-                                           indices=remap.tolist()), group['texture'], group['size']))
+                                           indices=remap.tolist()), group['texture'], group['size'], round(float(level), 1)))
                     cache[path] = parts, 0
                 else:
                     meshes = {}
@@ -870,8 +923,10 @@ def append_items(data, bsp, files, game, first_mover=0):
             if turning:
                 group['mover'] = first_mover + len(movers)
                 movers.append(dict(pivot=[round(float(c), 4) for c in origin[[1, 2, 0]] * SCALE], spin=[0, 1, 0, round(math.radians(100), 6)]))
-            for model, png, size in parts:
-                append_alias(data, model, origin, angles, dict(group, texture=png, size=size))
+            # Alias models take the light below them (R_LightPoint; WinQuake's dm6 grenade launcher in a dark corner).
+            here = None if path.endswith('.bsp') else round(alias_level(light_point(data, bsp['lighting'], origin)), 1)
+            for model, png, size, *own in parts:
+                append_alias(data, model, origin, angles, dict(group, texture=png, size=size, light=own[0] if own else here))
             row.update(status='drawn', model=path, origin=origin.tolist(), turning=turning)
         except (ValueError, IndexError, struct.error) as exc:
             row.update(status='failed', reason=str(exc))
@@ -981,7 +1036,7 @@ def build_map(raw, name, game='quake', lit=None, files=None):
                               'light styles 1-11 animate at 10 Hz (two per face on colormap maps, one on RGB maps; further ones held at m); switchable lights at m (264), those that start off at a (0)',
                               'brushes at spawn; trains initialized at first corner, before travel', 'animated textures run their +0/+a chain at 5 frames a second',
                               'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; no AI or runtime summons',
-                              'items, weapons, torches and barrels in their first frame, even lighting, dropped to the face floors below; EF_ROTATE models turn at 100 degrees a second'])
+                              'items, weapons, torches and barrels in their first frame (boxes lit by their own lightmaps, models by the light below them), dropped to the face floors below; EF_ROTATE models turn at 100 degrees a second'])
     return scene, blob, data['textures'], data['atlas']
 
 

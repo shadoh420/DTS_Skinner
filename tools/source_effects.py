@@ -12,6 +12,9 @@ except ImportError:  # Run as a script from tools/.
     from import_quake_map import rotation
 
 SURF_SKY2D, SURF_SKY, SURF_NODRAW, SURF_NODECALS = 0x2, 0x4, 0x80, 0x2000
+# How near a node's plane must be to a decal for its faces to take it (GoldSrc lineage: Xash3D gl_decals.c R_DecalNode
+# applies a decal to a node's surfaces only while -4 < dist < 4).
+DECAL_DISTANCE = 4
 
 
 def _number(entity, key, default=0.):
@@ -118,13 +121,14 @@ def decal_basis(normal):
 
 def decal_pieces(faces, origin, width, height):
     """An infodecal stamped as the engine stamps static decals (R_DecalShoot / R_DecalNode / R_DecalSurface): on every
-    face within max(width, height) / 2 of its plane, the face cut to a width x height square centred on the decal's
-    projection, its texture s along the decal basis. `faces`: [(face id, corners (n, 3), normal)] (world faces that take
-    decals). Returns [(face id, points (m, 3), st (m, 2))]. Thin walls take it on both sides, as in the game."""
+    face whose plane lies within DECAL_DISTANCE of the decal, the face cut to a width x height square centred on the
+    decal's projection, its texture s along the decal basis. `faces`: [(face id, corners (n, 3), normal)] (world faces
+    that take decals). Returns [(face id, points (m, 3), st (m, 2))]. The far side of a thin wall takes none: Bloodlines'
+    ch_zhaos_1 shows its street sign only outside (the inner face, 6 units off, stays bare; game run 2026-10-16)."""
     reach, found = max(width, height) / 2, []
     for face, corners, normal in faces:
         distance = (origin - corners[0]) @ normal
-        if abs(distance) > reach:
+        if abs(distance) >= DECAL_DISTANCE:
             continue
         centre = origin - normal * distance
         if (corners.min(0) > centre + reach + 1).any() or (corners.max(0) < centre - reach - 1).any():
@@ -203,9 +207,15 @@ def sprites(entities):
         if cls == 'env_sprite' and not hidden and e.get('model', '').lower().endswith(('.vmt', '.spr')):
             if e.get('targetname') and not int(_number(e, 'spawnflags')) & 1:
                 continue  # Waits for a TurnOn.
-            mode = int(_number(e, 'rendermode'))
+            mode, amount = int(_number(e, 'rendermode')), _number(e, 'renderamt', 255) / 255
             material = e['model'][:-4]
-            found.append((material, _vector(e), None, _number(e, 'scale', 1) or 1, colour + [_number(e, 'renderamt', 255) / 255],
+            if mode in GLOW_MODES:
+                # C_SpriteRenderer::DrawSprite scales a glow's colour by the blend (renderamt) x GlowBlend, which is
+                # renderamt again for kRenderFxNoDissipation (14), else the distance fade (1 within 1200 units)
+                # (SDK 2013 c_sprite.cpp StandardGlowBlend). Bloodlines' sm_pier_1 fire glow (40, fx 14) leaves the arch
+                # beside it unlit in the game. ponytail: no fade beyond 1200 and no fixed screen size (scale x dist / 200).
+                colour = [c * amount * (amount if int(_number(e, 'renderfx')) == 14 else 1) for c in colour]
+            found.append((material, _vector(e), None, _number(e, 'scale', 1) or 1, colour + [amount],
                           'add' if mode in ADDITIVE_MODES else 'alpha', mode in GLOW_MODES, _number(e, 'framerate', 10)))
         elif cls == 'env_lightglow' and not hidden:
             width, height = _number(e, 'horizontalglowsize', 30), _number(e, 'verticalglowsize', 30)

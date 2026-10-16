@@ -81,7 +81,8 @@ window.quake2Maps = {
       transparent: group.alpha < 1, depthWrite: group.alpha === 1, userData: {quake2Lit: true},
       uniforms: {surface: {value: texture}, lights: {value: lightMap}, seconds: this.time, styleA: {value: 0}, styleOffset: {value: 0},
         size: {value: new THREE.Vector2(...group.size)}, warp: {value: group.kind === 'turbulent'},
-        flowing: {value: !!(group.flags & 64)}, unlit: {value: group.unlit}, alpha: {value: group.alpha}},
+        flowing: {value: !!(group.flags & 64)}, unlit: {value: group.unlit}, alpha: {value: group.alpha},
+        shade: {value: group.shade ?? 1}, glow: {value: !!group.glow}},
       vertexShader: `
         attribute vec2 uv2; uniform vec2 size; uniform float seconds; uniform bool warp, flowing;
         varying vec2 texUV, lightUV;
@@ -103,12 +104,16 @@ window.quake2Maps = {
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.);
         }`,
       fragmentShader: `
-        uniform sampler2D surface, lights; uniform bool unlit; uniform float alpha;
+        uniform sampler2D surface, lights; uniform bool unlit, glow; uniform float alpha, shade, seconds;
         varying vec2 texUV, lightUV;
         ${this.lightGLSL}
         void main() {
           // Unlit alpha/warp polys use glColor(inverse_intensity); ordinary surfaces multiply RGB lightmaps once.
           vec3 illumination = unlit ? vec3(.5) : lightAt();
+          // Placed models read the light below them; items (RF_GLOW) pulse by 0.1 at 7 rad/s, never under 0.8 of it,
+          // and the shade dots scale it per vertex (gl_mesh.c R_DrawAliasModel; shade is their mean).
+          if (glow) illumination = max(illumination + .1 * sin(seconds * 7.), illumination * .8);
+          illumination *= shade;  // (its own line: the Daikatana adapter replaces the next one)
           gl_FragColor = vec4(texture2D(surface,texUV).rgb * illumination,alpha);
         }`
     });

@@ -13,7 +13,8 @@ window.quakeMaps = {
         seconds: this.time, size: {value: new THREE.Vector2(...group.size)},
         rgbLighting: {value: !!rgbLighting}, styleA: {value: 0}, styleB: {value: 0}, styleOffset: {value: 0},
         fogColor: {value: new THREE.Vector3()}, fogExp2: {value: 0}, skyFog: {value: 0},
-        kind: {value: group.kind === 'sky' ? 1 : group.kind === 'turbulent' ? 2 : group.kind === 'model' ? 3 : 0}},
+        kind: {value: group.kind === 'sky' ? 1 : group.kind === 'turbulent' ? 2 : group.kind === 'model' ? 3 : 0},
+        level: {value: group.light ?? -1}},
       vertexShader: `
         attribute vec2 uv2;
         varying vec2 texUV, lightUV;
@@ -29,7 +30,7 @@ window.quakeMaps = {
         }`,
       fragmentShader: `
         uniform sampler2D indices, lights, colors;
-        uniform float seconds, styleA, styleB, styleOffset, fogExp2, skyFog;
+        uniform float seconds, styleA, styleB, styleOffset, fogExp2, skyFog, level;
         uniform vec2 size;
         uniform vec3 fogColor;
         uniform int kind;
@@ -68,8 +69,9 @@ window.quakeMaps = {
             vec2 warp = sin(st.yx * .125 + seconds) * 8.;
             gl_FragColor = color(pixel((st + warp) / size), 32.);
           } else if (kind == 3) {
-            // Placed MDLs use even preview lighting, independent of the brush atlas.
-            gl_FragColor = color(pixel(texUV), 32.);
+            // Placed models: their light level (0-255; items: their own lightmap or the light below them), as the
+            // software renderer's colormap row (255 - light) / 4; monsters keep even preview lighting (row 32).
+            gl_FragColor = color(pixel(texUV), level < 0. ? 32. : clamp(floor((255. - level) / 4.), 0., 63.));
           } else if (rgbLighting) {
             float index = pixel(texUV);
             vec3 base = color(index, 32.).rgb;

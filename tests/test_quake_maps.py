@@ -10,8 +10,9 @@ import numpy as np
 
 from app import app
 from tools.import_quake import import_catalog
-from tools.import_quake_map import (brightness_curve, build_item, build_map, colormap_image, face_data, import_maps,
-                                   geometry, hull_landing, instances, light_codes, read_bsp, surface_kind, viewpoints)
+from tools.import_quake_map import (alias_level, brightness_curve, build_item, build_map, colormap_image, face_data, face_level,
+                                   import_maps, geometry, hull_landing, instances, light_codes, light_point, read_bsp,
+                                   surface_kind, viewpoints)
 from tests.test_quake import INSTALL, PALETTE, pak
 
 
@@ -40,6 +41,18 @@ def bsp(names=('stone',), styles=(0, 255, 255, 255), values=(64,), side=0):
 
 
 class QuakeMapsTest(unittest.TestCase):
+    def test_placed_models_take_the_light_below_them(self):
+        # One floor triangle over a 4 x 2 luxel face (texturemins 0 0, s = x, t = y), style 0 only.
+        lighting = bytes(range(10, 90, 10))  # rows [10 20 30 40], [50 60 70 80]
+        data = dict(floors=np.array([[[0, 0, 0], [64, 0, 0], [0, 32, 0]]], float),
+                    floor_light=[(np.array([[0, 0], [64, 0], [0, 32]], float), np.array([0, 0]), np.array([4, 2]), 0, [0, 255, 255, 255])])
+        self.assertEqual(light_point(data, lighting, np.array([20., 18, 6])), 60 * 264 >> 8)  # luxel (1, 1)
+        self.assertEqual(light_point(data, lighting, np.array([200., 200, 6])), 0)  # nothing below
+        self.assertEqual(light_point(data, b'', np.array([20., 18, 6])), 255)  # unlit map
+        self.assertAlmostEqual(face_level(lighting, 0, [0, 255, 255, 255], [4, 2]), 45 * 264 / 256)
+        # R_DrawEntitiesOnList clamps: ambient <= 128, ambient + shade <= 192.
+        self.assertEqual(alias_level(40), 40 + 10)
+        self.assertEqual(alias_level(200), 128 + 16)
     def test_pack_map_overrides_palette_fallback_and_routes(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
