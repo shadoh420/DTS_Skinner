@@ -200,6 +200,12 @@ class AssetTests(unittest.TestCase):
                 self.assertEqual(len([r for r in rows if r['name']=='weapon_test']),3)
                 self.assertEqual(len([r for r in rows if r['id']=='d3xp:monster_child']),1)
                 self.assertEqual(idle_animation({'anim':'attack'},{'anims':{'attack':'bad'}}),None)
+                # idAnimated spawns at frame 1 of start_anim / anim / anim1 (admin's impdoorbreak doors).
+                doors={'anims':{'doors':'doors.md5anim','loop':'loop.md5anim','a1':'a1.md5anim','idle':'idle.md5anim'}}
+                self.assertEqual(idle_animation({'spawnclass':'idAnimated','anim':'doors'},doors),'doors.md5anim')
+                self.assertEqual(idle_animation({'spawnclass':'idAnimated','anim':'doors','start_anim':'loop'},doors),'loop.md5anim')
+                self.assertEqual(idle_animation({'spawnclass':'idAnimated','num_anims':'2','anim1':'a1'},doors),'a1.md5anim')
+                self.assertEqual(idle_animation({'spawnclass':'idAnimated','anim':'missing'},doors),'idle.md5anim')
 
     def test_dds_bytes_shared_names_and_tga_fallback(self):
         with tempfile.TemporaryDirectory() as temp:
