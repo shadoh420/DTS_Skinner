@@ -182,8 +182,14 @@ def add_effects(b,entities,material,face_tile,tiles,shared,points,uvs,lmuv,color
             batches[sig]=dict(texture=mat['texture'],blend=blend,aspect=round(aspect,4),items=[],**({'depth':False,'occlude':True} if glow else {}),
                               **({'frames':frames,'fps':rate} if len(frames)>1 else {}))
         batches[sig]['items'].append([*(round(float(c),4) for c in np.asarray(origin)[[1,2,0]]*SCALE),round(full*SCALE,4),*(round(float(c),4) for c in rgba)]);counts['sprites']+=1
+    def bounds(e):
+        model=e.get('model','')
+        if not model.startswith('*') or not model[1:].isdigit() or int(model[1:])>=len(b['models']):return None
+        return np.array(b['models'][int(model[1:])][:6],float).reshape(2,3)+vector(e)
+    found=source_effects.particles(entities,bounds)  # ponytail: white steam (no world light sample on E.Y.E.).
+    counts['particles']=len(found);particles=source_effects.particle_data(found,material,'missing_eye.png',SCALE)
     for m in (g for g in groups if 'vmt' in g):m.pop('vmt')
-    return dict(counts=counts,sprites=list(batches.values()))
+    return dict(counts=counts,sprites=list(batches.values()),particles=particles)
 
 
 def build_map(raw,name,loose,library,definitions,exposure=1):
@@ -364,7 +370,7 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
               'NPCs use model-library pose/default bodygroups; FGD editor defaults when entity has no model; armor choices, attachments and scripts not simulated',
               'Spawners/makers create no preview; all omissions/missing models are listed', 'HDR fixed exposure; no game parity, automatic tonemapping, bump lighting or visibility/PVS culling'],
         sky_cameras=[e for e in entities if e.get('classname')=='sky_camera'],effects=effects['counts'],
-        **({'sprites':effects['sprites']} if effects['sprites'] else {}),**({'movers':movers} if movers else {}))
+        **({'sprites':effects['sprites']} if effects['sprites'] else {}),**({'particles':effects['particles']} if effects['particles'] else {}),**({'movers':movers} if movers else {}))
     return scene,blob,images,Image.fromarray(atlas),b''.join(light_chunks)
 
 

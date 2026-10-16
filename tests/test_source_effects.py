@@ -74,6 +74,35 @@ class SourceEffectsTest(unittest.TestCase):
         self.assertTrue(np.allclose(fx.rotating(dict(classname='func_rotating', spawnflags='3', maxspeed='90')), [0, 0, -1, math.pi / 2]))
         self.assertIsNone(fx.rotating(dict(classname='func_rotating', spawnflags='0')))
 
+    def test_particles(self):
+        ents = [dict(classname='func_dustmotes', model='*1', spawnrate='10', lifetimemin='3', lifetimemax='5', sizemin='7', sizemax='12',
+                     alpha='51', color='255 0 0', distmax='512', spritename='particle/motes'),
+                dict(classname='func_dustmotes', model='*1', startdisabled='1'),
+                dict(classname='func_dustmotes', model='*1', spawnrate='4', frozen='1'),
+                dict(classname='env_steam', origin='1 2 3', angles='-90 0 0', initialstate='1', speed='30', jetlength='120',
+                     startsize='10', endsize='12', rate='20', renderamt='100', rendercolor='255 255 255'),
+                dict(classname='env_steam', initialstate='0'), dict(classname='env_steam', initialstate='1', type='1')]
+        found = fx.particles(ents, lambda e: (np.array([0, 0, 0]), np.array([10, 20, 30])), lambda p: np.array([.5, .5, .5]))
+        self.assertEqual([f[0] for f in found], ['particle/motes', 'particle/sparkles', 'particle/particle_smokegrenade'])
+        (_, dust, de), (_, frozen, fe), (_, steam, se) = found
+        self.assertEqual(de['origin'], [5, 10, 15])
+        self.assertEqual(dust['origin'], [[-5, -10, -15], [5, 10, 15]])
+        self.assertEqual(dust['size']['start'], [7e-4, 12e-4], 'a share of the depth (DUSTFLAGS_SCALEMOTES)')
+        self.assertEqual(dust['alpha']['curve'], dict(kind='sine', parm=2))
+        self.assertAlmostEqual(dust['alpha']['end'][0], .2)
+        self.assertEqual((dust['fade'], de['period']), (512, .1))
+        self.assertEqual((frozen['count'], frozen['life'][0], frozen['alpha']), ([4, 4], 1e6, dict(start=[1, 1])))
+        self.assertEqual(steam['life'], [4, 4], 'JetLength / Speed')
+        self.assertEqual(steam['size']['end'], [18, 18], 'grows by (end - start) a second, FLerp by seconds')
+        self.assertTrue(np.allclose(se['forward'], [0, 0, 1]), 'pitch -90 points up')
+        self.assertEqual(steam['velocity'], [[30, -15, -15], [30, 15, 15]])
+        self.assertEqual(steam['rgb']['start'][0], [.5, .5, .5], 'rendercolor x the world light')
+        material = lambda name: dict(texture='missing.png' if name == 'particle/motes' else name + '.png', settings={})
+        data = fx.particle_data(found, material, 'missing.png', .5)
+        self.assertEqual(sorted(data['batches']), ['particle/particle_smokegrenade', 'particle/sparkles'])
+        self.assertEqual([e['template'] for e in data['emitters']], [0, 1])
+        self.assertEqual(data['toWorld'], [0, 0, .5, .5, 0, 0, 0, .5, 0], 'page = map [y, z, x] x scale')
+
 
 if __name__ == '__main__':
     unittest.main()

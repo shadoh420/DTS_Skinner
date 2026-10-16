@@ -11,14 +11,17 @@
      gravity (along `up`), rotation (degrees), spin (degrees a second), cullRange (0: none),
      size / alpha {start, end, curve}, rgb {start [min3, max3], end [min3, max3], curve}, rgbTogether (one random
      number for all three channels), alphaFadesRgb (alpha scales rgb and the drawn alpha is 1), frames [columns, rows]
-     (flipbook over the life). A curve is {linear, kind: 'nonlinear' | 'wave' | 'clamp' | null, parm, random}: Raven
-     FX's element biasing (FxPrimitives.cpp), which a plain start-to-end fade is {linear: true}.
+     (flipbook over the life), fade (alpha falls to 0 at this distance from the eye), screenSize (sizes are shares of
+     the view depth). A curve is {linear, kind:
+     'nonlinear' | 'wave' | 'clamp' | 'sine' | null, parm, random}: Raven FX's element biasing (FxPrimitives.cpp), which
+     a plain start-to-end fade is {linear: true}; 'sine' runs start -> end -> start as sin(pi x life)^parm.
+   Game axes map to the page by `toWorld` (sizes scale with it); `up` is the game's up for gravity.
    Quality tiers thin the slots and shorten the draw distance; the slot cap bounds the vertex work of any scene. */
 (function(root) {
   'use strict';
   const TIERS = {high: {density: 1, distance: 1e9}, medium: {density: .5, distance: 4096}, low: {density: .25, distance: 2048}, off: {density: 0, distance: 0}};
   const ROW = 16, MAX_SLOTS = 65536;  // texels per template; instanced quads per scene.
-  const KIND = {nonlinear: 2, wave: 4, clamp: 8};
+  const KIND = {nonlinear: 2, wave: 4, clamp: 8, sine: 32};
   const curveCode = c => !c ? [0, 0] : [(c.linear ? 1 : 0) + (KIND[c.kind] || 0) + (c.random ? 16 : 0), c.parm || 0];
   const pair = v => Array.isArray(v) ? [v[0], v.length > 1 ? v[1] : v[0]] : [v || 0, v || 0];
   const box = v => v ? [v[0], v[1] || v[0]] : [[0, 0, 0], [0, 0, 0]];
@@ -37,13 +40,13 @@
     set(8, ...pair(size.start ?? 1), ...pair(size.end ?? size.start ?? 1));
     set(9, ...pair(alpha.start ?? 1), ...pair(alpha.end ?? alpha.start ?? 1));
     set(10, ...rs0, t.rgbTogether ? 1 : 0); set(11, ...rs1, t.alphaFadesRgb ? 1 : 0);
-    set(12, ...re0, (t.worldOrigin ? 1 : 0) + (t.worldVelocity ? 2 : 0) + (t.worldAcceleration ? 4 : 0)); set(13, ...re1, 0);
+    set(12, ...re0, (t.worldOrigin ? 1 : 0) + (t.worldVelocity ? 2 : 0) + (t.worldAcceleration ? 4 : 0) + (t.screenSize ? 8 : 0)); set(13, ...re1, t.fade || 0);
     set(14, ...curveCode(size.curve), ...curveCode(alpha.curve)); set(15, ...curveCode(t.rgb?.curve), frames[0], frames[1]);
     return out;
   }
 
   const VERTEX = `precision highp float; precision highp int;
-    uniform sampler2D uTemplates; uniform float uTime, uDensity, uDistance, uColorScale, uRgb, uAlpha;
+    uniform sampler2D uTemplates; uniform float uTime, uDensity, uDistance, uColorScale, uRgb, uAlpha, uSizeScale;
     uniform mat3 uToWorld; uniform vec3 uUp, uEye;
     attribute vec2 corner; attribute vec4 iOrigin, iForward, iRight, iTime;
     varying vec2 vSt; varying vec4 vColor;
@@ -60,6 +63,7 @@
       if ((mode & 2) != 0) { if (age > at) p2 = 1. - (age - at) / max(life - at, 1e-4); p1 = (mode & 1) != 0 ? .5 * (p1 + p2) : p2; }
       else if ((mode & 4) != 0) p1 *= cos(age * code.y * 3.14159265);
       else if ((mode & 8) != 0) { p2 = age < at ? (at - age) / max(at, 1e-4) : 0.; p1 = (mode & 1) != 0 ? .5 * (p1 + p2) : p2; }
+      else if ((mode & 32) != 0) p1 = 1. - pow(sin(3.14159265 * clamp(age / life, 0., 1.)), code.y);
       if ((mode & 16) != 0) { uint keep = state; state ^= uint(uTime * 60.) * 2654435761u; p1 *= rnd(); state = keep; }
       return p1;
     }
@@ -96,12 +100,15 @@
       float radius = size0 * ps + size1 * (1. - ps);
       float alpha = clamp(alpha0 * pa + alpha1 * (1. - pa), 0., 1.);
       vec3 rgb = clamp(rgb0 * pc + rgb1 * (1. - pc), 0., 1.);
+      if (re1.w > 0.) alpha *= clamp(1. - sqrt(far) / re1.w, 0., 1.);
       if (rs1.w > .5) { rgb *= alpha; alpha = 1.; }
       vColor = vec4(mix(vec3(1.), rgb, uRgb) * uColorScale, mix(1., alpha, uAlpha));
       vec3 P = uToWorld * p;
       vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]), up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
       float angle = radians(rotation), c = cos(angle), n = sin(angle);
       vec3 L = c * right + n * up, W = c * up - n * right;  // RB_SurfaceSprite turns the sprite's left and up by its rotation.
+      // screenSize: the size is a share of the view depth (constant on screen), as Source's DUSTFLAGS_SCALEMOTES.
+      radius *= (world & 8) != 0 ? -(viewMatrix * vec4(P, 1.)).z : uSizeScale;
       P += (L * corner.x + W * corner.y) * radius;
       vec2 frames = c1.zw, st = corner * vec2(.5, -.5) + .5;
       if (frames.x * frames.y > 1.) { float f = min(floor(age / life * frames.x * frames.y), frames.x * frames.y - 1.); st = (st + vec2(mod(f, frames.x), floor(f / frames.x))) / frames; }
@@ -141,7 +148,9 @@
     }
     const meshes = [], uniforms = {uTemplates: {value: table}, uTime: {value: 0}, uDensity: {value: 1}, uDistance: {value: 1e9},
       uEye: {value: new THREE.Vector3()}, uUp: {value: new THREE.Vector3(...(options.up || [0, 0, 1]))},
-      uToWorld: {value: new THREE.Matrix3().fromArray(options.toWorld || [1, 0, 0, 0, 1, 0, 0, 0, 1])}};
+      uToWorld: {value: new THREE.Matrix3().fromArray(options.toWorld || [1, 0, 0, 0, 1, 0, 0, 0, 1])}, uSizeScale: {value: 1}};
+    uniforms.uSizeScale.value = Math.cbrt(Math.abs(uniforms.uToWorld.value.determinant())) || 1;
+    const toGame = uniforms.uToWorld.value.clone().invert(), eye = new THREE.Vector3();
     const base = new THREE.InstancedBufferGeometry();
     base.setAttribute('corner', new THREE.Float32BufferAttribute([1, 1, -1, 1, -1, -1, 1, -1], 2));
     base.setIndex([0, 1, 2, 0, 2, 3]);
@@ -170,8 +179,12 @@
         uniforms.uDistance.value = tier.distance;
         for (const mesh of meshes) mesh.visible = tier.density > 0;
       },
-      // eye: the camera in game axes.
-      update(seconds, eye) { uniforms.uTime.value = seconds; uniforms.uEye.value.set(...eye); },
+      // eye: the camera in game axes, or in the page's when `world`.
+      update(seconds, at, world = false) {
+        uniforms.uTime.value = seconds;
+        eye.set(...at);
+        uniforms.uEye.value.copy(world ? eye.applyMatrix3(toGame) : eye);
+      },
       dispose() { for (const mesh of meshes) { mesh.geometry.dispose(); mesh.material.dispose(); } table.dispose(); }};
     system.setQuality(options.quality || 'high');
     return system;
@@ -199,6 +212,30 @@
     return {get quality() { return quality; }, setCount(n) { label.title = `${n} particle emitters on this map`; }};
   }
 
-  const api = {create, control, pack, TIERS};
+  // A page's map.particles ({templates, batches, emitters}) with its control. A batch is a shader stage as the
+  // imports write them: {map | frames, blend [src, dst] GL names, rgbGen, alphaGen, alphaFunc}; the particle's colour
+  // and alpha are used where rgbGen / alphaGen take the vertex's, scaled by `identity` for rgbGen vertex.
+  // options: {loadTexture(stage) -> Promise<Texture>, add(mesh), identity, toWorld, up}.
+  const FACTOR = {gl_one: 'OneFactor', gl_zero: 'ZeroFactor', gl_src_color: 'SrcColorFactor', gl_one_minus_src_color: 'OneMinusSrcColorFactor',
+    gl_dst_color: 'DstColorFactor', gl_one_minus_dst_color: 'OneMinusDstColorFactor', gl_src_alpha: 'SrcAlphaFactor',
+    gl_one_minus_src_alpha: 'OneMinusSrcAlphaFactor', gl_dst_alpha: 'DstAlphaFactor', gl_one_minus_dst_alpha: 'OneMinusDstAlphaFactor'};
+  async function mount(THREE, {templates, batches, emitters}, options) {
+    const identity = options.identity ?? 1, made = {};
+    let system = null;
+    const ui = control(quality => system?.setQuality(quality));
+    await Promise.all(Object.entries(batches).map(async ([name, stage]) => {
+      const [src, dst] = (stage.blend || ['gl_one', 'gl_zero']).map(f => THREE[FACTOR[String(f).toLowerCase()]]);
+      const rgb = (stage.rgbGen || ['vertex'])[0], alpha = (stage.alphaGen || ['identity'])[0];
+      made[name] = {texture: await options.loadTexture(stage), blendSrc: src ?? THREE.OneFactor, blendDst: dst ?? THREE.ZeroFactor,
+        rgb: rgb === 'vertex' || rgb === 'exactvertex', alpha: alpha === 'vertex', colorScale: rgb === 'vertex' || rgb === 'identitylighting' ? identity : 1,
+        alphaTest: {gt0: 1 / 255, ge128: .5}[String(stage.alphaFunc || '').toLowerCase()] || 0};
+    }));
+    system = create(THREE, templates, emitters, made, {toWorld: options.toWorld, up: options.up, quality: ui.quality});
+    for (const mesh of system.meshes) options.add(mesh);
+    ui.setCount(emitters.length);
+    return system;
+  }
+
+  const api = {create, control, mount, pack, TIERS};
   if (typeof module !== 'undefined') module.exports = api; else root.skinnerParticles = api;
 })(typeof window !== 'undefined' ? window : globalThis);

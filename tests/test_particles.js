@@ -46,4 +46,14 @@ system.update(3, [4, 5, 6]);
 assert.equal(system.meshes[0].material.uniforms.uTime.value, 3);
 assert.deepEqual(system.meshes[0].material.uniforms.uEye.value.toArray(), [4, 5, 6]);
 assert.equal(P.create(THREE, [t], [emitter], {a: {texture: null}}).meshes.length, 0, 'a batch without a texture draws nothing');
+// Source extras: the sine curve (kind 32, parm the power), a distance fade and screen-sized motes (bit 8).
+const dust = P.pack({alpha: {start: 0, end: .2, curve: {kind: 'sine', parm: 2}}, fade: 512, screenSize: true, worldOrigin: true});
+assert.deepEqual([...dust.slice(14 * 4 + 2, 14 * 4 + 4)], [32, 2]);
+assert.equal(dust[13 * 4 + 3], 512);
+assert.equal(dust[12 * 4 + 3], 9);
+// Scaled page axes: sizes follow the scale, and update(..., true) turns the page eye back into game axes.
+const scaled = P.create(THREE, [t], [emitter], {a: {texture}}, {toWorld: [0, 0, .5, .5, 0, 0, 0, .5, 0]});
+assert.equal(scaled.meshes[0].material.uniforms.uSizeScale.value, .5);
+scaled.update(1, [1, 2, 3], true);
+assert.deepEqual(scaled.meshes[0].material.uniforms.uEye.value.toArray().map(v => +v.toFixed(6)), [6, 2, 4]);
 console.log('particles ok');

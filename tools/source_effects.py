@@ -225,6 +225,91 @@ def sprites(entities):
     return found
 
 
+# --- Particles -----------------------------------------------------------------------------------------------------
+def _axes(angles):
+    """AngleVectors' forward and right (Source: pitch, yaw, roll in degrees)."""
+    p, y, r = np.radians(angles)
+    forward = [math.cos(p) * math.cos(y), math.cos(p) * math.sin(y), -math.sin(p)]
+    right = [-math.sin(r) * math.sin(p) * math.cos(y) + math.cos(r) * math.sin(y),
+             -math.sin(r) * math.sin(p) * math.sin(y) - math.cos(r) * math.cos(y), -math.sin(r) * math.cos(p)]
+    return forward, right
+
+
+def particles(entities, bounds, light=None):
+    """[(material, template, emitter)] for static/particles.js, map units and axes; an emitter lacks only its template
+    index and batch. bounds(entity) gives a brush entity's world (mins, maxs) or None; light(origin) the world light
+    there as an rgb multiplier (WorldGetLightForPoint), or None for white. SDK 2013 client code as rules:
+    func_dustmotes (c_func_dust.cpp): SpawnRate motes a second anywhere in the brush's box, LifetimeMin-Max seconds,
+      fading in and out as sin^2 over the life, Color x Alpha, a constant size on screen (SizeMin-Max / 10000 of the
+      depth), fainter with distance to 0 at DistMax; Frozen ones are SpawnRate motes that stay. Their x/y speed decays
+      to the (absent) wind at 50 units/s/s within a frame or two, so only FallSpeed moves them. ponytail: the box, not
+      the brush's own solid, is where they spawn. StartDisabled ones wait for a TurnOn.
+    env_steam (c_steamjet.cpp), InitialState on, not the heat-wave type: Rate puffs a second along the forward at
+      Speed, spread SpreadSpeed either way right and up, living JetLength / Speed seconds, StartSize growing by
+      (EndSize - StartSize) a second (FLerp by the lifetime in seconds), alpha renderamt x sin(pi t), coloured
+      rendercolor x the world light (one sample at the jet, not its ramp along the jet), rolling at up to RollSpeed."""
+    found = []
+    for e in entities:
+        cls = e.get('classname', '').lower()
+        if _number(e, 'starthidden'):
+            continue
+        if cls == 'func_dustmotes' and not _number(e, 'startdisabled'):
+            box = bounds(e)
+            if box is None:
+                continue
+            mins, maxs = (np.asarray(v, float) for v in box)
+            middle = (mins + maxs) / 2
+            rate = max(int(_number(e, 'spawnrate', 40)), 0)
+            if not rate:
+                continue
+            colour = list(_vector(e, 'color') / 255) if 'color' in e else [1., 1., 1.]
+            alpha, frozen, far = _number(e, 'alpha', 255) / 255, bool(_number(e, 'frozen')), _number(e, 'distmax', 1024)
+            size = [_number(e, 'sizemin', 10) / 1e4, _number(e, 'sizemax', 20) / 1e4]
+            template = dict(count=[rate, rate] if frozen else [1, 1], origin=[(mins - middle).tolist(), (maxs - middle).tolist()],
+                            life=[1e6, 1e6] if frozen else [_number(e, 'lifetimemin', 5), _number(e, 'lifetimemax', 10)],
+                            velocity=[[0, 0, -_number(e, 'fallspeed')]] * 2, worldOrigin=True, worldVelocity=True, screenSize=True,
+                            size=dict(start=size, end=size), rgb=dict(start=[colour, colour]), cullRange=far, fade=far,
+                            alpha=dict(start=[alpha] * 2) if frozen else dict(start=[0, 0], end=[alpha] * 2, curve=dict(kind='sine', parm=2)))
+            found.append((e.get('spritename') or 'particle/sparkles', template,
+                          dict(origin=middle.tolist(), forward=[1, 0, 0], right=[0, -1, 0], period=1e6 if frozen else 1 / rate)))
+        elif cls == 'env_steam' and _number(e, 'initialstate') and not _number(e, 'type'):
+            speed, spread = _number(e, 'speed', 120) or 120, _number(e, 'spreadspeed', 15)
+            life, start, end = (_number(e, 'jetlength', 80) or 80) / speed, _number(e, 'startsize', 10), _number(e, 'endsize', 25)
+            rate, amount, roll = _number(e, 'rate', 26), _number(e, 'renderamt', 255) / 255, _number(e, 'rollspeed', 8)
+            if rate <= 0:
+                continue
+            colour = _vector(e, 'rendercolor') / 255 if 'rendercolor' in e else np.ones(3)
+            if light:
+                colour = colour * light(_vector(e))
+                colour = colour / max(1., colour.max())
+            forward, right = _axes(_vector(e, 'angles'))
+            template = dict(count=[1, 1], life=[life, life], velocity=[[speed, -spread, -spread], [speed, spread, spread]],
+                            rotation=[0, 360], spin=[-roll, roll], size=dict(start=[start] * 2, end=[start + (end - start) * life] * 2, curve=dict(linear=True)),
+                            alpha=dict(start=[0, 0], end=[amount] * 2, curve=dict(kind='sine', parm=1)), rgb=dict(start=[colour.tolist()] * 2))
+            found.append(('particle/particle_smokegrenade', template,
+                          dict(origin=_vector(e).tolist(), forward=forward, right=right, period=1 / rate)))
+    return found
+
+
+def particle_data(found, material, missing_texture, scale):
+    """map.particles from particles(): one template per emitter, one batch (a stage) per material that loads; the page
+    axes are the map's [y, z, x] x scale, as the importers place everything else."""
+    templates, batches, emitters = [], {}, []
+    for name, template, emitter in found:
+        if name not in batches:
+            mat = material(name)
+            batches[name] = None if mat['texture'] == missing_texture else dict(
+                map=mat['texture'], blend=mat['settings'].get('blend') or ['gl_src_alpha', 'gl_one_minus_src_alpha'],
+                rgbGen=['vertex'], alphaGen=['vertex'])
+        if batches[name]:
+            templates.append(template)
+            emitters.append(dict(emitter, template=len(templates) - 1, batch=name))
+    if not emitters:
+        return None
+    return dict(templates=templates, batches={k: v for k, v in batches.items() if v}, emitters=emitters,
+                toWorld=[0, 0, scale, scale, 0, 0, 0, scale, 0], up=[0, 0, 1])
+
+
 # --- Brushes that turn ---------------------------------------------------------------------------------------------
 def rotating(entity, speed_key='maxspeed'):
     """A func_rotating that starts on (SF_BRUSH_ROTATE_START_ON 1) as a spin [x, y, z, radians a second] about its origin,

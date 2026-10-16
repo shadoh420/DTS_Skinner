@@ -4,6 +4,7 @@ Independent reader; VHV storage/ordering checked against noclip's Studio.ts.
 No game execution, extraction to the install, or SDK implementation copied.
 """
 import io
+import math
 import re
 import struct
 import zipfile
@@ -148,8 +149,12 @@ def props(lumps):
             result.append(dict(entity=f'dprp:{i}',classname='prop_detail',model=indexed(names,model,'detail model'),
                 origin=list(vtmb.unpack(b,'3f',p)),angles=list(vtmb.unpack(b,'3f',p+12)),skin=0,npc=False,
                 leaf=leaf,detail_light=rgbexp(lighting).ravel().tolist(),orientation=b[p+40],scale=1,
-                authored_sprite_scale=vtmb.unpack(b,'f',p+48)[0]))
+                authored_sprite_scale=finite(vtmb.unpack(b,'f',p+48)[0])))  # Some maps store NaN here: JSON has no NaN.
     return result,omitted
+
+
+def finite(value):
+    return value if math.isfinite(value) else None
 
 
 def rgbexp(raw,divisor=255):
