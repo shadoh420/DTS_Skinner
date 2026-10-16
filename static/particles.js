@@ -11,7 +11,8 @@
      gravity (along `up`), rotation (degrees), spin (degrees a second), cullRange (0: none),
      size / alpha {start, end, curve}, rgb {start [min3, max3], end [min3, max3], curve}, rgbTogether (one random
      number for all three channels), alphaFadesRgb (alpha scales rgb and the drawn alpha is 1), frames [columns, rows]
-     (flipbook over the life), fade (alpha falls to 0 at this distance from the eye), screenSize (sizes are shares of
+     (flipbook over the life; frameCount when the grid's last row is not full), sizeTogether (one random number
+     for the start and end size), fade (alpha falls to 0 at this distance from the eye), screenSize (sizes are shares of
      the view depth). A curve is {linear, kind:
      'nonlinear' | 'wave' | 'clamp' | 'sine' | null, parm, random}: Raven FX's element biasing (FxPrimitives.cpp), which
      a plain start-to-end fade is {linear: true}; 'sine' runs start -> end -> start as sin(pi x life)^parm.
@@ -40,8 +41,8 @@
     set(8, ...pair(size.start ?? 1), ...pair(size.end ?? size.start ?? 1));
     set(9, ...pair(alpha.start ?? 1), ...pair(alpha.end ?? alpha.start ?? 1));
     set(10, ...rs0, t.rgbTogether ? 1 : 0); set(11, ...rs1, t.alphaFadesRgb ? 1 : 0);
-    set(12, ...re0, (t.worldOrigin ? 1 : 0) + (t.worldVelocity ? 2 : 0) + (t.worldAcceleration ? 4 : 0) + (t.screenSize ? 8 : 0)); set(13, ...re1, t.fade || 0);
-    set(14, ...curveCode(size.curve), ...curveCode(alpha.curve)); set(15, ...curveCode(t.rgb?.curve), frames[0], frames[1]);
+    set(12, ...re0, (t.worldOrigin ? 1 : 0) + (t.worldVelocity ? 2 : 0) + (t.worldAcceleration ? 4 : 0) + (t.screenSize ? 8 : 0) + (t.sizeTogether ? 16 : 0)); set(13, ...re1, t.fade || 0);
+    set(14, ...curveCode(size.curve), ...curveCode(alpha.curve)); set(15, ...curveCode(t.rgb?.curve), frames[0], t.frameCount || frames[0] * frames[1]);
     return out;
   }
 
@@ -92,7 +93,7 @@
       if (distance(p, uEye) < 16.) { hide(); return; }  // CParticle::Cull: not drawn this close to the eye.
       float rotation = pick(vec2(o0.w, o1.w)) + pick(vec2(v0.w, v1.w)) * age;
       vec4 s = T(8), al = T(9), rs0 = T(10), rs1 = T(11), re0 = T(12), re1 = T(13), c0 = T(14), c1 = T(15);
-      float size0 = pick(s.xy), size1 = pick(s.zw), alpha0 = pick(al.xy), alpha1 = pick(al.zw);
+      float sk = rnd(), size0 = mix(s.x, s.y, sk), size1 = mix(s.z, s.w, (world & 16) != 0 ? sk : rnd()), alpha0 = pick(al.xy), alpha1 = pick(al.zw);
       vec3 rgb0, rgb1;
       if (rs0.w > .5) { float k = rnd(); rgb0 = mix(rs0.rgb, rs1.rgb, k); rgb1 = mix(re0.rgb, re1.rgb, k); }
       else { rgb0 = pick3(rs0.rgb, rs1.rgb); rgb1 = pick3(re0.rgb, re1.rgb); }
@@ -110,8 +111,9 @@
       // screenSize: the size is a share of the view depth (constant on screen), as Source's DUSTFLAGS_SCALEMOTES.
       radius *= (world & 8) != 0 ? -(viewMatrix * vec4(P, 1.)).z : uSizeScale;
       P += (L * corner.x + W * corner.y) * radius;
-      vec2 frames = c1.zw, st = corner * vec2(.5, -.5) + .5;
-      if (frames.x * frames.y > 1.) { float f = min(floor(age / life * frames.x * frames.y), frames.x * frames.y - 1.); st = (st + vec2(mod(f, frames.x), floor(f / frames.x))) / frames; }
+      // Flipbook: c1.w frames, row-major in c1.z columns, played over the life.
+      vec2 frames = vec2(c1.z, ceil(c1.w / max(c1.z, 1.))), st = corner * vec2(.5, -.5) + .5;
+      if (c1.w > 1.) { float f = min(floor(age / life * c1.w), c1.w - 1.); st = (st + vec2(mod(f, frames.x), floor(f / frames.x))) / frames; }
       vSt = st;
       gl_Position = projectionMatrix * viewMatrix * vec4(P, 1.);
     }`;
@@ -291,7 +293,7 @@
       geometry.instanceCount = n;
       const material = new THREE.ShaderMaterial({uniforms: {...uniforms, map: {value: batch.texture}, uColorScale: {value: batch.colorScale ?? 1},
           uRgb: {value: batch.rgb === false ? 0 : 1}, uAlpha: {value: batch.alpha === false ? 0 : 1}, uAlphaTest: {value: batch.alphaTest || 0}},
-        vertexShader: troika ? TROIKA_VERTEX : VERTEX, fragmentShader: FRAGMENT, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        vertexShader: troika ? TROIKA_VERTEX : VERTEX, fragmentShader: FRAGMENT, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,  // one pass, not back then front
         blending: THREE.CustomBlending, blendSrc: batch.blendSrc ?? THREE.OneFactor, blendDst: batch.blendDst ?? THREE.OneFactor});
       const mesh = new THREE.Mesh(geometry, material);
       mesh.frustumCulled = false;
@@ -342,7 +344,7 @@
   }
 
   // A page's map.particles ({templates, batches, emitters}) with its control. A batch is a shader stage as the
-  // imports write them: {map | frames, blend [src, dst] GL names, rgbGen, alphaGen, alphaFunc}; the particle's colour
+  // imports write them: {map | frames, blend [src, dst] GL names, rgbGen, alphaGen, alphaFunc, scale}; the particle's colour
   // and alpha are used where rgbGen / alphaGen take the vertex's, scaled by `identity` for rgbGen vertex.
   // options: {loadTexture(stage) -> Promise<Texture>, add(mesh), identity, toWorld, up}.
   const FACTOR = {gl_one: 'OneFactor', gl_zero: 'ZeroFactor', gl_src_color: 'SrcColorFactor', gl_one_minus_src_color: 'OneMinusSrcColorFactor',
@@ -356,7 +358,7 @@
       const [src, dst] = (stage.blend || ['gl_one', 'gl_zero']).map(f => THREE[FACTOR[String(f).toLowerCase()]]);
       const rgb = (stage.rgbGen || ['vertex'])[0], alpha = (stage.alphaGen || ['identity'])[0];
       made[name] = {texture: await options.loadTexture(stage), blendSrc: src ?? THREE.OneFactor, blendDst: dst ?? THREE.ZeroFactor,
-        rgb: rgb === 'vertex' || rgb === 'exactvertex', alpha: alpha === 'vertex', colorScale: rgb === 'vertex' || rgb === 'identitylighting' ? identity : 1,
+        rgb: rgb === 'vertex' || rgb === 'exactvertex', alpha: alpha === 'vertex', colorScale: (stage.scale ?? 1) * (rgb === 'vertex' || rgb === 'identitylighting' ? identity : 1),
         alphaTest: {gt0: 1 / 255, ge128: .5}[String(stage.alphaFunc || '').toLowerCase()] || 0};
     }));
     system = create(THREE, templates, emitters, made, {toWorld: options.toWorld, up: options.up, quality: ui.quality});

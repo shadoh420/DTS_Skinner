@@ -16,7 +16,7 @@ from PIL import Image
 if not __package__:
     import sys
     sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from tools import source_bsp as bspreader, source_assets, source_effects, vtmb
+from tools import source_bsp as bspreader, source_assets, source_effects, source_light, source_pcf, vtmb
 from tools.import_vtmb import key
 from tools.import_vtmb_map import number, brush_transform, indexed, Tree, fog_params, water_fog, sky_camera, sky3d, proxy_gap
 from tools.import_quake_map import rotation, vector, SCALE
@@ -187,9 +187,72 @@ def add_effects(b,entities,material,face_tile,tiles,shared,points,uvs,lmuv,color
         if not model.startswith('*') or not model[1:].isdigit() or int(model[1:])>=len(b['models']):return None
         return np.array(b['models'][int(model[1:])][:6],float).reshape(2,3)+vector(e)
     found=source_effects.particles(entities,bounds)  # ponytail: white steam (no world light sample on E.Y.E.).
-    counts['particles']=len(found);particles=source_effects.particle_data(found,material,'missing_eye.png',SCALE)
+    notes=Counter();fires=source_effects.fires(entities,fire_systems(files),lambda m,q:fire_stage(m,q,material,files,images),floor_finder(b),notes)
+    counts.update(particles=len(found),fire_emitters=len(fires),fire_notes=dict(notes))
+    particles=source_effects.particle_data(found+fires,material,'missing_eye.png',SCALE)
     for m in (g for g in groups if 'vmt' in g):m.pop('vmt')
     return dict(counts=counts,sprites=list(batches.values()),particles=particles)
+
+
+FIRE_CACHE={}
+
+
+def fire_systems(files):
+    """The env_fire particle systems: every manifest file that names them, read in manifest order, a later file's
+    definition replacing an earlier one (fire_01.pcf and EYE_burner.pcf define them alike)."""
+    manifest=files.get('particles/particles_manifest.txt')
+    if manifest is None:return {}
+    text=manifest.read().decode('latin1')
+    names=[n.replace(chr(92),'/').lower() for n in re.findall(r'"file"\s+"([^"]+)"',text)]
+    if tuple(names) in FIRE_CACHE:return FIRE_CACHE[tuple(names)]
+    systems={}
+    for n in names:
+        raw=files[n].read() if n in files else b''
+        if b'env_fire' in raw:systems.update(source_pcf.systems(raw))
+    FIRE_CACHE[tuple(names)]=systems
+    return systems
+
+
+def fire_stage(name,sequence,material,files,images,cell=128):
+    """(batch key, stage, columns, frames) for one sequence of a SpriteCard material's sprite sheet: its frames cut out
+    and laid row-major in a grid (at most `cell` pixels a frame), or the whole texture without a sheet. SpriteCard's
+    $addself and $additive add (by the particle's alpha), $translucent blends; $overbrightfactor scales the colour."""
+    mat=material(name)
+    if mat['texture']=='missing_eye.png':return None
+    p={k.lower():v for k,v in mat['settings'].get('parameters',{}).items()}
+    enabled=lambda k:str(p.get(k,'0')).lower() not in ('0','0.0','false','')
+    blend=['gl_src_alpha','gl_one'] if enabled('$addself') or enabled('$additive') else ['gl_src_alpha','gl_one_minus_src_alpha']
+    try:overbright=float(p.get('$overbrightfactor',1))
+    except ValueError:overbright=1.
+    stage=dict(blend=blend,rgbGen=['vertex'],alphaGen=['vertex'],scale=overbright)
+    base=str(p.get('$basetexture','')).replace(chr(92),'/').lower()
+    path='materials/'+re.sub(r'\.vtf$','',base)+'.vtf'
+    sheet=source_pcf.sheet(files[path].read()) if base and path in files else None
+    if not sheet or sequence>=len(sheet):return (name,dict(stage,map=mat['texture']),1,1)
+    filename=key(f'{path} sheet {sequence} {cell}')+'_sheet.png'
+    if filename not in images:
+        image=vtmb.read_texture(files,base)[0].convert('RGBA');w,h=image.size;rects=sheet[sequence]
+        size=[max(1,min(cell,round((rects[0][2]-rects[0][0])*w))),max(1,min(cell,round((rects[0][3]-rects[0][1])*h)))]
+        columns=max(1,int(np.ceil(np.sqrt(len(rects)))));rows=int(np.ceil(len(rects)/columns))
+        grid=Image.new('RGBA',(columns*size[0],rows*size[1]),(0,0,0,0))
+        for n,(u0,v0,u1,v1) in enumerate(rects):
+            frame=image.crop((round(u0*w),round(v0*h),round(u1*w),round(v1*h))).resize(size,Image.LANCZOS)
+            grid.paste(frame,((n%columns)*size[0],(n//columns)*size[1]))
+        images[filename]=grid
+    columns=max(1,int(np.ceil(np.sqrt(len(sheet[sequence])))))
+    return (f'{name}#{sequence}',dict(stage,map=filename),columns,len(sheet[sequence]))
+
+
+def floor_finder(b,reach=16):
+    """CFire::StartFire's drop: the first solid point below (the world's solid leaves). The game's trace also stops on
+    props and brush entities, which this one cannot see: 230 of E.Y.E.'s 269 fires would fall 16 units or more to the
+    world below a holder, so a fire only drops when the world floor is within `reach`; ponytail: the rest stay where
+    the mapper put them."""
+    sampler=source_light.Sampler(b,lambda face:None,leaf_stride=56 if b['audit'][10]['version']==0 else 32)
+    def drop(origin):
+        hit=sampler.trace(np.asarray(origin,float),np.asarray(origin,float)-[0,0,reach])
+        return list(np.asarray(origin,float)-[0,0,reach*hit[0]]) if hit and hit[1] is not None else list(origin)
+    return drop
 
 
 def build_map(raw,name,loose,library,definitions,exposure=1):

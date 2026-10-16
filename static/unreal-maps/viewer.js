@@ -106,7 +106,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const panning = [], animated = [], moving = [], sprites = [];
   // Source 3D skies: the sky area's surfaces and props, drawn first from the sky camera; the level's sky faces show it.
   const sky3dDraws = [], mainDraws = [], skyFaces = [];
-  let particles = null;
+  let particles = null, particleGroup = null;
   let skyBackdrop = null;
   let lightMap = null;  // The map's lightmaps in one atlas: the game draws texture x lightmap x 2.
   let quakeColormap = null;
@@ -416,14 +416,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     if (map.sprites?.length) await buildSprites(geometry, materials);
     // Source effects and Bloodlines' own particles of the import's map.particles in the shared particle system
-    // (particles.js), in groups of their own: the level's for the main pass, the 3D sky area's (batches flagged sky3d)
-    // for the sky pass.
+    // (particles.js): the level's in a group that the sky and mirror passes leave out (draw); the 3D sky area's
+    // (batches flagged sky3d) in one that only the sky pass draws.
     if (map.particles && window.skinnerParticles) {
-      const group = new THREE.Group(), skyGroup = new THREE.Group();
-      scene.add(group, skyGroup);
-      if (map.sky3d) { mainDraws.push(group); sky3dDraws.push(skyGroup); }
+      particleGroup = new THREE.Group();
+      const skyGroup = new THREE.Group();
+      scene.add(particleGroup, skyGroup);
+      if (map.sky3d) sky3dDraws.push(skyGroup);
       particles = await window.skinnerParticles.mount(THREE, map.particles, {loadTexture: stage => loadTexture((stage.frames || [stage.map])[0]),
-        add: mesh => (map.particles.batches[mesh.userData.batch]?.sky3d ? skyGroup : group).add(mesh), toWorld: map.particles.toWorld, up: map.particles.up});
+        add: mesh => (map.particles.batches[mesh.userData.batch]?.sky3d ? skyGroup : particleGroup).add(mesh), toWorld: map.particles.toWorld, up: map.particles.up});
     }
     if (config && config.buildInstances) {
       for (const object of await config.buildInstances(map, data, get, loadTexture)) {
@@ -547,6 +548,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   function draw(seconds, target = null) {
     time.value = seconds;
+    if (particleGroup) particleGroup.visible = false;  // Not in the mirror and sky passes: drawn once, from the eye.
     if (quake) window.quakeMaps.time.value = seconds;
     if (window.quake2Maps) window.quake2Maps.time.value = seconds;
     const region = regionAt(camera.position);
@@ -598,6 +600,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       renderer.clearDepth();
       showPass(false);
     }
+    if (particleGroup) particleGroup.visible = true;
     renderer.render(scene, camera);
     if (overlay.children.length) { sprites.halfWidth.value = target ? target.width / 2 : frame.width / 2 / renderer.getPixelRatio(); renderer.render(overlay, camera); }
     renderer.setRenderTarget(target);

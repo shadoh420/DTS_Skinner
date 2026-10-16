@@ -229,6 +229,17 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
   non-static actors already rotating with `bFixedRotationDir` turn by `RotationRate` about their location (897 UT
   and 294 Unreal pickups, 854 props). Movers stay where they start: every UE1 mover class waits for a trigger or a
   touch (RotatingMover and LoopMover too, checked in their script text).
+- **Particles** (`map.particles`, drawn by the shared `static/particles.js`; the header's Particles select picks high,
+  medium, low or off): Bloodlines and E.Y.E. `func_dustmotes` and `env_steam` (SDK 2013 c_func_dust.cpp and
+  c_steamjet.cpp rules, `tools/source_effects.particles`), and E.Y.E. `env_fire`. In this engine an env_fire's client
+  effect is a particle system, `env_fire_tiny/small/medium/large` by `floor(firesize / 36)` (`_smoke` unless
+  smokeless): `tools/source_pcf.py` reads the binary DMX particle files of the manifest and maps a fixed set of
+  operators (continuous emission, lifetime, radius and radius scale, colour and colour fade, alpha and its fades,
+  rotation and spin, sphere and offset positions, velocity noise, gravity) onto the shared templates; each sprite-sheet
+  sequence becomes a flipbook. Drag, forces, noise pre-ageing and blended frames are not reproduced, and a fire drops
+  to the world floor only when it is within 16 units (the game's trace also stops on props and brush entities). UE1
+  SmokeGenerators wait for a trigger in their own script and are not drawn; 227's emitters are native code. Measured at
+  1280×720: at most ~0.1 ms of GPU a frame (PR notes).
 
 ## Lighting
 

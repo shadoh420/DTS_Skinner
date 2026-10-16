@@ -20,7 +20,9 @@ assert.deepEqual(texel(10), [1, .78, .78, 1], 'rgbTogether in w');
 assert.deepEqual(texel(11).slice(3), [1], 'alphaFadesRgb in w');
 assert.deepEqual(texel(12), [1, .78, .78, 2], 'rgb end defaults to the start; worldVelocity is bit 2');
 assert.deepEqual(texel(14), [9, 50, 3, 50], 'size linear+clamp, alpha linear+nonlinear');
-assert.deepEqual(texel(15), [0, 0, 4, 2], 'rgb has no curve; flipbook 4 x 2');
+assert.deepEqual(texel(15), [0, 0, 4, 8], 'rgb has no curve; flipbook 4 columns, 8 frames');
+assert.equal(P.pack({frames: [5, 5], frameCount: 24})[15 * 4 + 3], 24, 'a grid whose last row is not full');
+assert.equal(P.pack({sizeTogether: true})[12 * 4 + 3], 16, 'one random number for start and end size');
 
 // Slots: one per live burst x particle; a primitive's shaders share the slots; the cap thins them evenly.
 const texture = new THREE.Texture();
