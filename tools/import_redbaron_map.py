@@ -7,6 +7,7 @@ and the preview's limits. Model/VOL/LZH/material/bitmap readers are shared with
 the model importer; this importer never changes its catalog or edited textures.
 """
 import argparse
+import datetime
 from array import array
 from collections import Counter
 import hashlib
@@ -93,6 +94,23 @@ def resource_aliases(files, data):
                 files[name] = files[other]
                 count += 1
     return count
+
+
+# 004171D0..004171FA: season 1 mounts 3dfall.vol, 2 3dwinter.vol, else 3dspring.vol (absent: the summer data), over
+# 3dpatch.vol. The season letter also names the terrain material lists (0043F39B).
+SEASONS = {'summer': ('s', None), 'fall': ('f', '3dfall.vol'), 'winter': ('w', '3dwinter.vol')}
+
+
+def date_season(day):
+    """004EFB60: a mission's season from its date (a Julian day number): 20 September to 20 December is fall, 21
+    December to 19 March winter, the rest summer."""
+    date = datetime.date.fromordinal(day - 1721425)
+    month, mday = date.month, date.day
+    if month < 3 or (month == 3 and mday < 20) or (month == 12 and mday >= 21):
+        return 'winter'
+    if month > 9 or (month == 9 and mday >= 20):
+        return 'fall'
+    return 'summer'
 
 
 def terrain_material(name, season='s'):
@@ -509,7 +527,11 @@ class Assets:
         # 00444BB7/004ED33D: fog palette index from 005830A4, all five banks 47.
         fog_palette = palette(files['rb3dgnd.spl']()) if 'rb3dgnd.spl' in files else self.colours
         self.haze = fog_palette[47 * 3:48 * 3]
+        # The Glide sky clear colour: index 39 of the same bank, measured in game (TUTOR3 noon 197,213,221 against
+        # 199,215,223; ACE5 fall 177,191,198 against 170,186,188).
+        self.sky_colour = fog_palette[39 * 3:40 * 3]
         self.pngs, self.models, self.dmls = {}, {}, {}
+        self.season = 's'
 
     def texture(self, name, alpha=False):
         key = (name, alpha)
@@ -541,6 +563,31 @@ class Assets:
             self.report['missingTextures'].add(f'{name}: {exc}')
             self.pngs[key] = None
         return self.pngs[key]
+
+    def alpha_texture(self, stem):
+        """<stem>.bmp (the 3D patch's sky bitmaps carry their own cloud palette) with <stem>.aph as alpha; None if missing."""
+        bmp, aph = self.files.get(stem + '.bmp'), self.files.get(stem + '.aph')
+        if not bmp or not aph:
+            return None
+        with Image.open(io.BytesIO(bmp())) as colour, Image.open(io.BytesIO(aph())) as alpha:
+            image = colour.convert('RGBA')
+            image.putalpha(alpha.convert('L'))
+        out = io.BytesIO()
+        image.save(out, format='PNG')
+        target = hashlib.sha256(out.getvalue()).hexdigest()[:24] + '.png'
+        (self.output / 'textures').mkdir(parents=True, exist_ok=True)
+        (self.output / 'textures' / target).write_bytes(out.getvalue())
+        return target
+
+    def sky(self):
+        """The Glide sky's textures by weather: `ring` hz-cld<n> (004B41E0 falls back to hz-cld0) and `clouds` csheet<n>
+        (004BD86A; none for weather 0); the 3D patch ships 0-5 and 1-5. `sun`: Sun.bmp (004D05EE), summer palette, index 0 clear."""
+        if not hasattr(self, '_sky'):
+            ring = [self.alpha_texture(f'hz-cld{number}') for number in range(6)]
+            self._sky = dict(ring=[name or ring[0] for name in ring],
+                             clouds=[None] + [self.alpha_texture(f'csheet{number}') for number in range(1, 6)],
+                             sun=self.texture('sun.bmp', alpha=True))
+        return self._sky
 
     def solid(self, rgb):
         name = 'rgb_' + ''.join(f'{c:02x}' for c in rgb) + '.png'
@@ -770,7 +817,8 @@ def terrain_chunk(leaves, assets, path, height_at=None, spacing=None):
     groups = {}
     flags_seen = Counter()
     for x, y, step, heights, dml, index, texture_square, flags in leaves:
-        mats = assets.material(dml)
+        seasonal = terrain_material(dml, assets.season)  # The summer list where a season has none (BARON4's bank).
+        mats = assets.material(seasonal if seasonal in assets.files else dml)
         if index >= len(mats):
             raise ValueError(f'{dml}: square material {index} outside {len(mats)} slots')
         mat = mats[index]
@@ -805,7 +853,7 @@ def terrain_chunk(leaves, assets, path, height_at=None, spacing=None):
 
 
 PREVIEW_LIMITS = [
-    'Summer only: fall and winter replace ground palettes and shading tables as well as bitmaps',
+    'Seasons: Western Front in summer, fall and winter; each mission in the season of its date',
     'Native sunlight and distance haze use the default maximum visibility; animated sky and weather effects are not reproduced',
     'Terrain lighting uses the exported finest height field; native distance-dependent mesh LOD still needs comparison',
     'Landmark layouts are placed; procedural ground clutter and date-dependent front-line objects are not yet reproduced',
@@ -870,10 +918,10 @@ def native_lighting(world, start_time=None):
 
 
 def scene_base(name, assets):
-    return dict(mission=name, haze=assets.haze,
+    return dict(mission=name, haze=assets.haze, skyColour=assets.sky_colour,
                 terrain=dict(visibleDistance=147456*SCALE, hazeDistance=103219*SCALE),
                 sun=dict(ambient=[1, 1, 1], intensity=[0, 0, 0], azimuth=0, incidence=0),
-                viewpoints=[], objects=[], warnings=list(PREVIEW_LIMITS), season='summer',
+                viewpoints=[], objects=[], warnings=list(PREVIEW_LIMITS), season={v[0]: k for k, v in SEASONS.items()}[assets.season], sky=assets.sky(),
                 lighting=native_lighting(dict(day=2421745, time=43200000, region=0, weather=1)))
 
 
@@ -942,6 +990,10 @@ def export_mission(mis_path, companions, regions, assets, formation_data):
     result = scene_base(mis_path.stem, assets)
     result['lighting'] = native_lighting(world, start_time)
     result['lighting']['terrainScale'] = regions[region].get('terrainScale', 11)
+    # Dusk and night: the live palette's sky and fog entries follow the light (00409CF0). Night is approximate: MISSIONE
+    # at sun -12 degrees measured 53,61,63 against 42,46,47 from this; the 00409A67 palette branch is not decoded.
+    result['haze'], result['skyColour'] = ([round(c * result['lighting']['intensity']) for c in colour]
+                                           for colour in (assets.haze, assets.sky_colour))
     result.update(region=region, regions=[dict(id=region, name=REGIONS[region])], world=world, flights=mission['flights'])
     result['missionSource'] = {k: v for k, v in mission.items() if k not in ('flights', 'player', 'playerSlot')}
     result['warnings'].extend([
@@ -989,7 +1041,7 @@ def export_mission(mis_path, companions, regions, assets, formation_data):
     return result
 
 
-def import_maps(install, output=None, replace=False):
+def import_maps(install, output=None, replace=False, seasons=tuple(SEASONS)):
     """Publish a new, versioned pack only after writing its report and manifests.
 
     A failed refresh cannot overwrite files used by the currently visible pack.
@@ -1013,44 +1065,72 @@ def import_maps(install, output=None, replace=False):
     pack = output / generation
     report = dict(teds={}, missions={}, missingShapes=set(), missingTextures=set(), warnings=set(),
                   campaign='Skipped: campaign missions are generated at runtime',
-                  seasons='Summer only; fall/winter also replace rb3dgnd.pal and rb3dgnd.spl',
+                  seasons='Season volumes over 3dpatch.vol (bitmaps, rb3dgnd.pal/.spl); seasonal material lists',
                   limitations=PREVIEW_LIMITS, complete=False)
     teds = {f'baron{i}.ted' for i in range(5)} | {n for n in sources if n.endswith('.ted')}
-    regions, failed = {}, {}
+    volumes = {p.name.lower(): p for p in source_data.rglob('*.vol') if p.is_file()}
+    failed, index, imported, packs = {}, [], [], {}
     startup_error = None
     try:
-        files = read_volumes(install)
-        if 'summer.pal' not in files:
+        base_files = read_volumes(install)
+        if 'summer.pal' not in base_files:
             raise ValueError('Missing summer.pal in the model volume mount order')
-        report['resourceAliases'] = resource_aliases(files, sources['except.dat'].read_bytes()) if 'except.dat' in sources else 0
-        assets = Assets(files, pack, report)
+        report['resourceAliases'] = resource_aliases(base_files, sources['except.dat'].read_bytes()) if 'except.dat' in sources else 0
     except (ValueError, OSError, struct.error, IndexError, KeyError) as exc:
         startup_error = 'Shared asset setup failed: ' + str(exc)
-    for name in sorted(teds):
+    # One pack per season, each the whole Western Front: the season volume replaces the terrain bitmaps and the ground
+    # palette and shading bank (haze colour), and the terrain takes the season's material lists.
+    for season in seasons:
+        letter, volume = SEASONS[season]
+        folder = generation if season == 'summer' else f'{generation}-{season}'
+        pack, regions, assets = output / folder, {}, None
+        suffix = '' if season == 'summer' else f' ({season})'
+        if volume and (startup_error or volume not in volumes):  # Without the 3D patch's seasons: summer only.
+            if not startup_error:
+                report['warnings'].add(f'No Data/3dpatch/{volume}: {season} not imported')
+            continue
         try:
-            if name not in sources:
-                raise ValueError('File absent')
             if startup_error:
                 raise ValueError(startup_error)
-            match = re.fullmatch(r'baron([0-4])\.ted', name)
-            if not match:
-                raise ValueError('Unknown TED region; no measured geographic origin')
-            region = int(match[1])
-            region_assets = Assets(multiplayer_files(install, files), pack, report) if region == 4 else assets
-            data = export_region(sources[name], region, region_assets)
-            regions[region] = data
-            report['teds'][name] = dict(status='imported', region=REGIONS[region], **data['counts'])
+            files = dict(base_files)
+            if volume:
+                files.update(read_volume(volumes[volume]))
+            assets = Assets(files, pack, report)
+            assets.season = letter
         except (ValueError, OSError, struct.error, IndexError, KeyError) as exc:
-            failed[name] = str(exc)
-            report['teds'][name] = dict(status='failed', reason=str(exc))
-    index, imported = [], []
-    if regions:
-        scene = scene_base('Western Front', assets)
-        scene.update(regions=[dict(id=i, name=r['name']) for i, r in regions.items()], region=next(iter(regions)))
-        scene['viewpoints'] = [regions[scene['region']]['viewpoint']]
-        write_json(pack / 'maps/western_front/scene.json', scene)
-        index.append(dict(id='western_front', name='Western Front', type='summer preview', pack=generation))
-        imported.append('western_front')
+            error = str(exc)
+        else:
+            error = None
+        for name in sorted(teds):
+            try:
+                if name not in sources:
+                    raise ValueError('File absent')
+                if error:
+                    raise ValueError(error)
+                match = re.fullmatch(r'baron([0-4])\.ted', name)
+                if not match:
+                    raise ValueError('Unknown TED region; no measured geographic origin')
+                region = int(match[1])
+                region_assets = assets
+                if region == 4:
+                    region_assets = Assets(multiplayer_files(install, files), pack, report)
+                    region_assets.season = letter
+                data = export_region(sources[name], region, region_assets)
+                regions[region] = data
+                report['teds'][name + suffix] = dict(status='imported', region=REGIONS[region], season=season, **data['counts'])
+            except (ValueError, OSError, struct.error, IndexError, KeyError) as exc:
+                failed[name + suffix] = str(exc)
+                report['teds'][name + suffix] = dict(status='failed', season=season, reason=str(exc))
+        packs[season] = (folder, pack, regions, assets)
+        if regions:
+            ident = 'western_front' if season == 'summer' else f'western_front_{season}'
+            scene = scene_base('Western Front', assets)
+            scene.update(regions=[dict(id=i, name=r['name']) for i, r in regions.items()], region=next(iter(regions)))
+            scene['viewpoints'] = [regions[scene['region']]['viewpoint']]
+            write_json(pack / f'maps/{ident}/scene.json', scene)
+            index.append(dict(id=ident, name='Western Front', type=f'{season} preview', pack=folder))
+            imported.append(ident)
+    generation, pack, regions, assets = packs.get('summer', next(iter(packs.values()), (generation, output / generation, {}, None)))
     for name, path in sorted(companions.items()):
         if not name.endswith('.mis'):
             continue
@@ -1060,9 +1140,14 @@ def import_maps(install, output=None, replace=False):
                 raise ValueError(startup_error)
             if 'formatns.dat' not in sources:
                 raise ValueError('Missing Data/FORMATNS.DAT')
-            scene = export_mission(path, companions, regions, assets, sources['formatns.dat'].read_bytes())
-            write_json(pack / f'maps/{ident}/scene.json', scene)
-            index.append(dict(id=ident, name=path.stem, type='mission preview', pack=generation))
+            dat = companions.get(path.stem.lower() + '.dat')
+            season = date_season(parse_dat(dat.read_bytes())['day']) if dat else 'summer'
+            folder, season_pack, season_regions, season_assets = packs.get(season) or packs.get('summer') or (generation, pack, regions, assets)
+            if not season_regions:  # That season was not imported or failed: the summer pack instead.
+                folder, season_pack, season_regions, season_assets = generation, pack, regions, assets
+            scene = export_mission(path, companions, season_regions, season_assets, sources['formatns.dat'].read_bytes())
+            write_json(season_pack / f'maps/{ident}/scene.json', scene)
+            index.append(dict(id=ident, name=path.stem, type='mission preview', pack=folder))
             imported.append(ident)
             report['missions'][name] = dict(status='imported', fidelity='incomplete', region=scene['region'],
                                            flights=len(scene['flights']), aircraft=sum('flight' in o for o in scene['objects']),
@@ -1079,7 +1164,8 @@ def import_maps(install, output=None, replace=False):
         report['warnings'].add('Single folder absent; no missions found')
     for key in ('warnings', 'missingShapes', 'missingTextures'):
         report[key] = sorted(report[key])
-    write_json(pack / 'report.json', report)
+    for folder, season_pack, _, _ in packs.values():
+        write_json(season_pack / 'report.json', report)
     write_json(output / 'report.json', dict(report, pack=generation))
     if imported:
         write_json(output / 'index.new.json', index)
@@ -1092,9 +1178,10 @@ def main():
     parser.add_argument('--install', type=Path, default=INSTALL)
     parser.add_argument('--output', type=Path, default=LOCAL_DATA / 'rb3d-maps')
     parser.add_argument('--replace', action='store_true', help='Publish a new generation; keep the old pack intact')
+    parser.add_argument('--season', action='append', choices=tuple(SEASONS), help='seasons to import (default: all three)')
     args = parser.parse_args()
     try:
-        result = import_maps(args.install, args.output, args.replace)
+        result = import_maps(args.install, args.output, args.replace, tuple(args.season or SEASONS))
     except (OSError, ValueError) as exc:
         parser.exit(1, str(exc) + '\n')
     print(json.dumps(result, indent=2))

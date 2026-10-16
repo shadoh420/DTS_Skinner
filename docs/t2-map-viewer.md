@@ -94,6 +94,53 @@ mission whose scripts have not reported ready after 90 seconds.
 - As before: audio off, settings and skins kept local, mouse-look inversion,
   no live-server, demo or relay interfaces. CSP blocks external requests.
 
+### Mission environment (added 2026-10-16)
+
+Upstream's mission bridge draws none of these; `map-client/environment.tsx`
+and `map-client/interiorLights.ts` add them, following the V12 code in the
+public `tribes2/engine` repository (read as a behaviour reference only):
+
+- **Precipitation** (17 missions): rain and snow drops from the datablock's
+  4x4 atlas (`precipitation/raindrops`, `snowflakes`) in a box of `maxRadius`
+  around the camera, `maxNumDrops * percentage` drops, the mission's
+  `color1..3`, falling `minVelocity..maxVelocity` per frame, drifting with
+  the sky's wind when `windEffectPrecipitation` is set; drops starting at the
+  top fade in as they fall (`precipitation.cc`, observer branch). V12 moves a
+  drop once per rendered frame; the page assumes 30 frames a second
+  (`FRAME_RATE`, unchecked against the game).
+- **Lightning** (7 missions): `strikesPerMinute` strikes at random points of
+  the object's box, three forking bolts each from `boltStartRadius` at the
+  top down to what a ray hits, drawn additively with the datablock's strike
+  texture, `color` for 0.2 s then fading through `fadeColor`
+  (`lightning.cc`). No sky flash: V12 has none.
+- **FireballAtmosphere** (3 missions): every `60 / dropsPerMinute` seconds a
+  fireball (the `fireball` debris, its trail emitter) falls from
+  `dropHeight` within `dropRadius` of the camera along `dropDir` at
+  `startVelocity` and bursts on what it hits with its explosion's particles.
+  The explosion's sub-explosion shapes are not drawn.
+- **ParticleEmissionDummy** (18 objects on 8 stock missions, 94 on the IronSphere
+  map): the named emitter
+  runs at the object, pointing along its rotated up axis, at the datablock's
+  `timeMultiple`. Particles use upstream's own particle system; mission
+  datablocks are read with V12's script defaults.
+- **Animated interior lights** (24 of 325 interiors): the lights upstream's
+  reader skipped are kept (build-time patch to `dif.ts`); in the normal state
+  every non-alarm light loops between its states and the affected lightmap
+  texels are the original plus intensity * colour, as
+  `InteriorInstance::updateLightMap` does. Alarm-only lights stay off.
+- **Lava overlay**: inside a lava block, the two `submergeTexture` layers
+  ripple over the screen at half opacity (`underLava.cc`). Water blocks keep
+  upstream's tint; V12 never shows a water block's submerge textures.
+- **Mission-placed vehicles** (4: Alcatraz, Training1, Training3): drawn from
+  their datablock's shape like static shapes (build-time patch to the
+  mission bridge).
+
+Not changed, with the reason: `renderBottomTexture` (it only decides
+whether the Sky draws its box's bottom face, and upstream's sky already
+returns full fog for every direction below the horizon, so the face cannot
+show either way; one mission, Acid Rain, sets it); the terrain's `hazeDistance` (not a V12 TerrainBlock field, so the
+game ignores it too); audio (off by design).
+
 ## Coverage
 
 Checked on 2026-10-02 against the install at `C:\Dynamix\Tribes2\GameData`:

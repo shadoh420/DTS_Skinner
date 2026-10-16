@@ -31,7 +31,7 @@ qmap,rtcw=base.qmap,jk2.base
 number,vector=base.number,base.vector
 STRIDES=(1,72,16,36,48,4,4,40,12,12,80,4,72,148,49152,30,1,2)
 SECTIONS={'sp':'Single player','mp':'Multiplayer'}
-NOT_DRAWN=['fog (by choice)', 'NPCs: one authored idle preview; no AI, script populations or held weapons', 'ICARUS scripts and later mover actions',
+NOT_DRAWN=['NPCs: one authored idle preview; no AI, script populations or held weapons', 'ICARUS scripts and later mover actions',
            'surfaceSprites/ss foliage, particles, weather, flares, glow bloom and audio',
            'portal cameras, mirrors and portal skies', 'dynamic lights on props; light grid sampled at spawn',
            'runtime lightstyle animation (first sample shown)']
@@ -317,7 +317,7 @@ def describe(game,name,textures):
         kept.append([['rgbgen','lightingdiffuse'] if r[:2]==['rgbgen','lightingdiffuseentity'] else r for r in stage])
         if any(r[0]=='glow' for r in stage):notes.append('glow bloom not drawn')
     if name in game.shaders:game.shaders[name]=(body,kept)  # Script-less names keep the implicit image + lightmap.
-    result,missing,limits=base.describe(game,name,textures,draw_fog_stages=True)
+    result,missing,limits=base.describe(game,name,textures,draw_fog_stages=True,inner_box=False)
     sky=next((r for r in body if r[0]=='skyparms' and len(r)>1 and r[1]!='-'),None)
     if sky and 'sky' in result:
         previous='$default';sides=[]
@@ -656,6 +656,16 @@ def map_paths(game):
 
 def configure_map(game,name):
     game.default_gametype='single player' if game.section=='sp' else 'FFA'
+
+
+def scene_metadata(game,raw):
+    """SP maps that set worldspawn distanceCull end the view at SetFarClip's ceiling, distanceCull * 1.732, as in
+    JA (OpenJK's JK2 mode shares it); JK2 MP (JK2MV) has no distanceCull, and the SP default is left unclipped."""
+    things=qmap.entities(read_lumps(raw)[0].decode('latin1'))
+    value=things[0].get('distancecull') if things and game.section=='sp' else None
+    try:distance=float(value) if value is not None else 0
+    except ValueError:distance=0
+    return dict(distanceCull=distance,farClip=max(2048,distance*1.732),distanceCullSource='worldspawn') if math.isfinite(distance) and distance>0 else {}
 
 
 def map_viewpoints(game,things,collision):

@@ -105,7 +105,11 @@ Summer mounts `rb.vol`, then `3dpatch.vol`, exactly as the model importer does. 
 | 3dfall.vol | 489 (486 BMP) | BAT, `rb3dgnd.pal`, `rb3dgnd.spl` |
 | 3dwinter.vol | 487 (484 BMP) | BAT, `rb3dgnd.pal`, `rb3dgnd.spl` |
 
-They change palette/shading data too, so there is no season switch in this version. BAT members are never executed.
+BAT members are never executed.
+
+**Seasons.** `004EFB60` takes a mission's season from its DAT date: 20 September to 20 December is fall, 21 December to 19 March winter, the rest summer. The importer writes one pack per season, each a whole Western Front (`western_front`, `western_front_fall`, `western_front_winter`), and exports each mission into the pack of its date's season. A season pack mounts its volume over `rb.vol` + `3dpatch.vol`, which replaces the terrain bitmaps and the ground palette and SPL bank (so its haze and sky colours), and the terrain takes that season's DML lists (`fbaron.dml`, `wbaron.dml`) where they exist; BARON4's multiplayer bank has only summer lists and keeps them. An install without a season volume imports summer only and records a warning. `--season` limits the import to the named seasons.
+
+The library import of 2026-10-15 (Steam install, 30 entries, none failed) wrote `packs/937448e634e5489c9f821942d7d13d43` (summer, 848 MB), `…-fall` (839 MB) and `…-winter` (838 MB). The previous summer-only generation `packs/baafe955ee5749d0955407fca4650b23` (851 MB) remains, as `--replace` never deletes.
 
 Fog colour is palette index **47** for all five banks (`005830A4`, installed by `00444BB7`; consumed at `004ED33D`; Glide fog colour call `004EEE6F`). The sampled summer/ground palette yields RGB **159,183,195**. The preview reads this colour from the mounted ground SPL, rather than hardcoding it.
 
@@ -131,7 +135,30 @@ end = trunc(weatherEnd * view)
 
 Weather codes 3/4/5 use start/end multipliers `.75/.9`, `.5/.75`, `.25/.5`; other codes use `1/1`. Distances are converted with SCALE. The adapter uses the binary's default maximum visibility (`00580858 = 100`, `00411B30`) and updates the range as the camera climbs. At sea level on the shipped exponent-11 terrain, nominal start/end are **3932.644/5618.074 m**, with full Glide haze at about **4772 m**. These replace the 12–18 km preview. The haze checkbox still works. The import does not read the user's graphics preferences, so a changed native visibility slider must be accounted for when comparing.
 
-Shapes retain their own DML mode: unlit parts stay unlit; flat parts use their authored face normals, and smooth parts use authored vertex normals (`0051D112`–`0051D153`, `0051D170`–`0051D23F`). The shared model reader gains an optional smooth-normal callback; existing model-catalog callers and output are unchanged. Only the maps importer opts in. Both shape and terrain materials use the same scene sun and haze shader. Animated clouds, palette recolouring at dusk/night, transient global haze overlays (`004447A0`) and moving cloud shadows remain outside this implementation; the accepted solid sky colour remains.
+Shapes retain their own DML mode: unlit parts stay unlit; flat parts use their authored face normals, and smooth parts use authored vertex normals (`0051D112`–`0051D153`, `0051D170`–`0051D23F`). The shared model reader gains an optional smooth-normal callback; existing model-catalog callers and output are unchanged. Only the maps importer opts in. Both shape and terrain materials use the same scene sun and haze shader. Palette recolouring at dusk/night, transient global haze overlays (`004447A0`) and moving cloud shadows remain outside this implementation; the sky's cloud band and sheets are below.
+
+### Sky (Glide)
+
+`[0x58a434]` is the render mode; 4 is Glide (`00522039` opens `glide2x.dll`), the path the 3D patch and nGlide use. The sky manager (`004B5270`) keeps the cloud type in `+0x18`, set from the weather (`004B4C61` → `004A6880`). In Glide it draws:
+
+- **The horizon cloud band** (`004B40F0`, `004B41E0`, `004B4440`). Sixteen upright panels sit π/8 apart on a ring of radius 2500 × 8 = 20000 native units (762 m) round the eye.
+  - Size and height: each panel is centred 2500 units above the eye (`0x451c4000`). It is one chord plus 2% wide (`sin(π/16) · R · 1.02 · 8` in the sprite's 1/8 units, centred by `00527510`). It is 2500 units tall, or 5000 in weathers 3–5.
+  - Texture: panel *n* shows tile *n* mod 8 of `hz-cld<weather>` (`004B4380`): tiles 0.25 × 0.5, four across and two down, from v 0.01. The 3D patch's `hz-cld0-5.bmp` carry their own cloud palette and `.aph` alpha. A missing number falls back to `hz-cld0`.
+  - Placement: the game draws the five panels round the view heading. The page draws all sixteen, which looks the same. The ring moves with the eye and never turns.
+- **Cloud sheets** (`004BDA46` by weather, `004BD710` per layer, `004BDFD0`).
+  - Size and texture: flat `csheet<weather>` squares 80000 units (3 km) across, with a random yaw.
+  - Layers by weather: weather 1 has one layer at 160000 units (6.1 km); weather 2 has 120000 and 64000; weathers 3–5 have 120000, 80000 and 56000. Weather 0 has none.
+  - Grid: a 4 × 4 grid of 131072-unit cells, starting three cells below the eye's cell.
+  - Each cell runs its own `004BD5A0` stream. That is three congruential sequences (×179 mod 32771, ×183 mod 32779, ×182 mod 32783) summed mod 65536. The cell is empty when the first number is at most 0.25 (weathers below 3). Otherwise it has one, two or three sheets (next number below 0.75, below 0.95, else). The first sheet sits at the cell corner; each further one moves ±65536 across and ±20000 up from the last.
+  - **Approximation:** the game seeds each cell from a field sampled at the cell (`0043FD10`, not decoded). The page seeds from the cell and layer, so the layout has the same density and sizes but is not the game's copy.
+  - The sheets take the scene's haze. At low altitude a 6 km layer lies past the haze's end, as in the game.
+- The software renderer's tiled high deck (`tl-cld<n>`, 200000 units up, `004B30F0`) is not created in Glide (`004B46EE`), and the page does not draw it.
+
+- **The sun** (`004D05B0`, drawn by `004AB700`): `Sun.bmp` with its alpha, 32 pixels of the game's 480-line screen at the sun's projected point, behind everything, while its elevation + 3 is above −2 degrees.
+- **Sky colour.** The clear colour behind the band is index **39** of the mounted ground SPL bank, measured in game rather than traced (the Glide clear call `004ED4B0` takes a palette index through the driver table). TUTOR3 at noon reads 197,213,221 against the summer 199,215,223; ACE5 in fall reads 177,191,198 against the fall bank's 170,186,188. Fog keeps index 47.
+- **Dusk and night.** Missions scale both the sky and fog colours by the scene light intensity (`00409CF0`, above), as the live palette does (`004099A0`–`00409BE0` rewrites palette ranges by light). ACE5 at sun 6.8 degrees keeps full intensity through the moon term, and matches. **Night is approximated:** MISSIONE at sun −12 degrees (intensity 0.21) reads 53,61,63 in game, 27% of index 39, where this gives 42,46,47 (21%). The game's other palette branch (`00409A67`, chosen by `[0x5924a0]`: it blends entries `0xf2`–`0xf5` by `(x − 0.5) · 2` and passes −1 to the haze factor `00444CB0`) is not decoded. The horizon band and cloud sheets take the same scale (MISSIONE's band reads 67,71,72 in game). Night terrain keeps the Glide ambient of 0.5, so MISSIONE's grass reads about 60,73,39 on the page against 39,42,30 in game: about 1.6 times too bright, from the same undecoded branch.
+
+Not drawn yet: the moon sprite and stars (MISSIONE shows a few), scud layers in weathers 3–5 (`004B4CA1`), and cloud shadows on the ground (the light's 8-bit shadow map at +0xa8..+0xbc, read at `0051B6E0`; its setter is not found).
 
 Refresh the pack to obtain normals and lighting metadata. New terrain records are eight little-endian floats (`xyz, uv, normal`), identified by `stride: 8`; old five-float packs still load with their old unlit appearance. Source measurements and numeric probes establish the implemented equations, **not rendered parity**. In particular, most vertices near the TUTOR3 birth point still saturate at white under the recovered ambient/sun light; stronger shade occurs on steeper Alsace slopes. Claude must compare the new haze and lighting against the supplied banked capture rather than treating synthetic tests as visual acceptance.
 

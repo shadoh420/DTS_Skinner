@@ -4,6 +4,7 @@
   const base = typeof module === 'object' && module.exports ? require('../rtcw-maps/viewer.js') : host.skinnerMapConfig;
   const api = {...base, title: 'ET Maps', gameName: 'Enemy Territory', storageKey: 'skinner.etmaps',
     data: '/et-map-data/', importRoute: '/import_et_maps', defaultMap: 'battery', externalLightmaps: true, foliage: true,
+    fogCurve: 'linear',  // ET's fog image is linear in s·t (R_CreateFogImage), not the square root of Q3's.
     sceneFile(search = host.location.search) { return new URLSearchParams(search).get('built') === '1' ? 'scene-built.json' : 'scene.json'; },
     stagesOf(shader, lit, model) {
       if (!shader.implicitType) return null;

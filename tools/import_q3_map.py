@@ -38,11 +38,11 @@ except ImportError:  # Run as a script.
     from bsp_visibility import read_visibility
 
 LUMPS = 17
-KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14)  # Entities, shaders, models, vertices, indices, faces, lightmaps: all the viewer reads.
+KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14, 15)  # Entities, shaders, models, vertices, indices, faces, lightmaps, light grid: all the viewer reads.
 SURF_NODRAW = 0x80
 EXTRA = 'extras: '  # Starts the label of every source that is not the game's own.
 IMAGES = ('.tga', '.jpg', '.jpeg', '.png')
-SORT = dict(portal=1, sky=2, opaque=3, decal=4, seethrough=5, banner=6, underwater=8, additive=10, nearest=16)
+SORT = dict(portal=1, sky=2, opaque=3, decal=4, seethrough=5, banner=6, fog=7, underwater=8, additive=10, nearest=16)
 BLEND = dict(add=['gl_one', 'gl_one'], filter=['gl_dst_color', 'gl_zero'], blend=['gl_src_alpha', 'gl_one_minus_src_alpha'])
 SKY_SIDES = ('rt', 'bk', 'lf', 'ft', 'up', 'dn')
 # Pickups by class name: kind, then the models the game shows for it (under models/, without .md3). Health and
@@ -316,7 +316,6 @@ def build(game, name, textures, swap=None):
                 outside += [f'texture {row[1]}_{side}.tga' for side in SKY_SIDES if key_name(f'{row[1]}_{side}.tga') in game.outside]
                 if all(sides): sky['box'] = sides
                 elif any(sides): unresolved.extend(f'texture {row[1]}_{side}.tga (shader {name})' for side, file in zip(SKY_SIDES, sides) if not file)
-            if len(args) > 2 and args[2] != '-': limits.add('inner sky boxes')
             shader['sky'] = sky
         elif word == 'cull' and args:
             shader['cull'] = 'none' if args[0] in ('none', 'twosided', 'disable') else 'back' if args[0] in ('back', 'backside', 'backsided') else 'front'
@@ -334,11 +333,10 @@ def build(game, name, textures, swap=None):
                 shader.setdefault('deforms', []).append(['move'] + numbers(args[1:4], 3) + wave(args[4:]))
             elif args[0] == 'bulge':
                 shader.setdefault('deforms', []).append(['bulge'] + numbers(args[1:], 3))
+            elif args[0] in ('autosprite', 'autosprite2'):
+                shader.setdefault('deforms', []).append([args[0]])
             else:
-                limits.add({'normal': 'wobbling normals', 'autosprite': 'sprites that turn to the camera', 'autosprite2': 'sprites that turn to the camera',
-                            'projectionshadow': 'projected shadows'}.get(args[0], 'text sprites' if args[0].startswith('text') else 'vertex deformation ' + args[0]))
-        elif word == 'fogparms':
-            limits.add('fog volumes')
+                limits.add({'normal': 'wobbling normals', 'projectionshadow': 'projected shadows'}.get(args[0], 'text sprites' if args[0].startswith('text') else 'vertex deformation ' + args[0]))
     for lines in stage_lines:
         stage = dict(rgbGen=None, alphaGen=['identity'], tcMods=[], depthWrite=True)
         explicit_depth = False
@@ -370,7 +368,7 @@ def build(game, name, textures, swap=None):
                     ['portal', numbers(args[1:], 1)[0] or 256] if args[0] == 'portal' else [args[0]]
             elif word in ('tcgen', 'texgen') and args:
                 stage['tcGen'] = 'base' if args[0] == 'texture' else args[0]
-                if args[0] == 'vector': limits.add('texture coordinates from vectors')
+                if args[0] == 'vector': stage['tcGenVectors'] = numbers(args[1:], 6)  # ( s ) ( t ): st = (xyz . s, xyz . t)
             elif word == 'tcmod' and args:
                 kind = args[0]
                 if kind == 'stretch':
@@ -386,8 +384,8 @@ def build(game, name, textures, swap=None):
             stage['rgbGen'] = ['identitylighting'] if not blend or blend[0] in ('gl_one', 'gl_src_alpha') else ['identity']
         if stage['map'] == '$lightmap': stage.setdefault('tcGen', 'lightmap')
         for kind, value in (('rgbGen', stage['rgbGen'][0]), ('alphaGen', stage['alphaGen'][0])):
-            if value in ('entity', 'oneminusentity', 'lightingdiffuse'):
-                limits.add('model lighting' if value == 'lightingdiffuse' else 'entity colours')
+            if value in ('entity', 'oneminusentity'):
+                limits.add('entity colours')
         if stage['rgbGen'][0] == 'wave' and stage['rgbGen'][1] == 'noise' or stage['alphaGen'][0] == 'wave' and stage['alphaGen'][1] == 'noise':
             limits.add('noise waves')
         shader['stages'].append({key: value for key, value in stage.items() if value not in (None, False, [])
@@ -395,10 +393,10 @@ def build(game, name, textures, swap=None):
     stages = shader['stages']
     if not sort:
         blended = [stage for stage in stages if stage.get('blend')]
-        sort = SORT['sky'] if 'sky' in shader else SORT['decal'] if shader.get('polygonOffset') else (
+        # A shader without stages is drawn by its fog pass alone (FinishShader: SS_FOG).
+        sort = SORT['sky'] if 'sky' in shader else SORT['fog'] if not stages and shader.get('fog') else SORT['decal'] if shader.get('polygonOffset') else (
             SORT['opaque'] if not blended or not stages[0].get('blend') else SORT['seethrough'] if blended[0]['depthWrite'] else 9)
     shader['sort'] = sort
-    if shader.get('fog'): limits.add('fog volumes')
     shader['outside'] = outside
     return (default, unresolved, []) if default.pop('broken', False) else (shader, unresolved, sorted(limits))
 
@@ -528,6 +526,36 @@ def write_bsp(path, lumps, *, version=46):
     path.write_bytes(header + body)
 
 
+def fog_volumes(lumps, shaders):
+    """The map's fogs by the faces' fog numbers, as R_LoadFogs reads lump 12: the fog shader's fogparms colour
+    and depth for opaque, bounds from the brush's first six (axial) sides, and the plane of its visible side
+    (without one the eye always counts as inside). Brush -1, which Raven and ET compilers write for a
+    worldspawn fog, is a global fog over everything. None for a fog the viewer cannot use."""
+    planes = list(struct.iter_unpack('<4f', lumps[2]))
+    brushes = list(struct.iter_unpack('<3i', lumps[8]))
+    sides = list(struct.iter_unpack('<2i', lumps[9][:len(lumps[9]) // 8 * 8]))
+    result = []
+    for raw, brush, visible in struct.iter_unpack('<64sii', lumps[12][:len(lumps[12]) // 72 * 72]):
+        name = shader_name(raw.split(b'\0')[0].decode('latin-1'))
+        parms = next((numbers(row[1:], 4) for row in shaders.get(name, ([], []))[0] if row[0] == 'fogparms'), None)
+        fog = dict(shader=name, color=parms[:3], depth=max(parms[3], 1)) if parms else None
+        try:
+            if fog and brush == -1:
+                fog['global'] = True
+            elif fog and 0 <= brush < len(brushes) and brushes[brush][1] >= 6:
+                first = brushes[brush][0]
+                dist = [planes[sides[first + i][0]][3] for i in range(6)]
+                fog['bounds'] = [-dist[0], -dist[2], -dist[4], dist[1], dist[3], dist[5]]
+                if 0 <= visible < brushes[brush][1]:
+                    fog['plane'] = list(planes[sides[first + visible][0]])
+            else:
+                fog = None
+        except IndexError:
+            fog = None
+        result.append(fog)
+    return result
+
+
 def entities(text):
     result = []
     for block in re.findall(r'\{([^{}]*)\}', text):
@@ -586,7 +614,7 @@ def import_map(game, name, ident, raw, source, output, textures):
     folder = output / 'maps' / ident
     folder.mkdir(parents=True, exist_ok=True)
     scene = dict(name=name, longname=game.arenas.get(name.lower(), ''), source=source, bsp=file, shaders=shaders, viewpoints=viewpoints,
-                 items=items, itemModels=item_models, bspCull=read_visibility(lumps),
+                 items=items, itemModels=item_models, bspCull=read_visibility(lumps), fogs=fog_volumes(lumps, game.shaders),
                  **{kind: list(dict.fromkeys(item for shader in [*shaders, *(shader for model in item_models.values() for shader in model['shaders'])]
                                              if shader for item in shader.get(kind, []))) for kind in ('outside', 'guessed')},
                  models=[dict(model=int(thing['model'][1:]), origin=vector(thing['origin'])) for thing in things

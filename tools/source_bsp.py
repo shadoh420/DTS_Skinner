@@ -64,9 +64,8 @@ def read_bsp(raw):
                         ('models',14,'9f3i'),('dispverts',33,'5f'),('nodes',5,'3i6h2H2h')]:
         b[name]=rows(lumps[i],fmt)
         if b[name] and not np.isfinite(b[name]).all(): raise ValueError('Nonfinite BSP '+name)
-    b['source_planes']=rows(lumps[1],'4fi')
-    # The shared tessellator expects an already oriented plane (BSP17 convention).
-    b['planes']=[tuple(np.asarray(p[:3])*sign)+p[3:] for p in b['source_planes'] for sign in (1,-1)]
+    # planenum already names the oriented member of vbsp's plane pair; side is only its parity (planenum&1).
+    b['planes']=b['source_planes']=rows(lumps[1],'4fi')
     b['surfedges']=[r[0] for r in rows(lumps[13],'i')];b['disptris']=[r[0] for r in rows(lumps[48],'H')]
     b['names']=[vtmb.string(lumps[43],r[0]) for r in rows(lumps[44],'i')]
     b['faces']=[]
@@ -74,7 +73,7 @@ def read_bsp(raw):
         plane,side,node,first,count,tex,disp,fog=vtmb.unpack(r,'HBBihhhh')
         if side not in (0,1):raise ValueError('Invalid face plane side')
         light,area,u,v,w,h=vtmb.unpack(r,'if4i',20)
-        b['faces'].append(dict(plane=plane*2+side,side=side,first=first,count=count,texinfo=tex,disp=disp,
+        b['faces'].append(dict(plane=plane,side=side,first=first,count=count,texinfo=tex,disp=disp,
                                 styles=list(r[16:20]),light=light,mins=[u,v],size=[w+1,h+1]))
     b['displacements']=[]
     for (r,) in rows(lumps[26],'176s'):

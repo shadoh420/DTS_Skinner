@@ -26,6 +26,8 @@ except ImportError:
     import import_rtcw_map as base
 qmap,rtcw=base.qmap,et.rtcw
 vector,number=base.vector,base.number
+# SetFarClip ends the view at the global fog's depth for opaque.
+GLOBAL_FOG_CLIPS=True
 MAPS=('battery','fueldump','goldrush','oasis','radar','railgun')
 # Stock maps place only the objective item, whose model is supplied by its entity.
 # bg_misc.c world-model facts for the health/ammo pickups retained by ET.

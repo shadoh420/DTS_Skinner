@@ -194,7 +194,7 @@ fogparms ( 0 0 0 ) 100
             game=maps.Game(root);textures=maps.base.Textures(root/'textures',game)
             desc,missing,notes=maps.describe(game,'textures/test/slime',textures)
             self.assertFalse(missing);self.assertEqual(len(desc['stages']),2)
-            self.assertTrue(any('fog' in n for n in notes))
+            self.assertTrue(desc['fog']);self.assertFalse(any('fog' in n for n in notes))  # Fog volumes are drawn now.
             self.assertEqual(maps.describe(game,'textures/test/fog',textures)[0]['stages'],[])
             game.described.clear()
             self.assertEqual(maps.base.describe(game,'textures/test/slime',textures)[0]['stages'],[])

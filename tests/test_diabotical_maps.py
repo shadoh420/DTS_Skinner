@@ -104,6 +104,15 @@ def quad_fbx():
     return fbx([('Objects', [], [geometry, model, material]), ('Connections', [], links)])
 
 
+def bumpy_dds():
+    """A normal map that is not flat: red and green running across it."""
+    from PIL import Image
+    image, output = Image.new('RGB', (8, 8)), io.BytesIO()
+    image.putdata([(x * 32, y * 32, 255) for y in range(8) for x in range(8)])
+    image.save(output, 'DDS', pixel_format='DXT1')
+    return output.getvalue()
+
+
 def install(root, maps):
     (root / 'packs').mkdir(parents=True)
     (root / 'packs/maps.dbp').write_bytes(dbp({f'maps\\{name}.rbe': raw for name, raw in maps.items()} | {'maps\\walk-b.png': b'png'}))
@@ -142,6 +151,7 @@ def install(root, maps):
         # Its specular map (map 2: red gloss, green strength) is even, so a constant; its id map's red, the material id.
         'models\\props\\s.png.dds': dds((0, 255, 0)),
         'models\\props\\id.png.dds': dds((255, 0, 0)),
+        'models\\props\\n.png.dds': bumpy_dds(),  # Its normal map (map 1).
     }))
     (root / 'packs/audio.dbp').write_bytes(b'not a pack: audio packs are not read')
 
@@ -191,6 +201,20 @@ class DiaboticalMapsTest(unittest.TestCase):
                  b"\tpixel_shader_param accent1 0 0.5 0.4 0.15\n\tpixel_shader_param accent2 0.75 0.5  0.25 0.6\n  }\n}\n"
         self.assertEqual(read_materials([pack])['hpt1_mat_2'][0][3]['glass'], [[0, .5, .4, .15], [.75, .5, .25, .6]])
         self.assertIsNone(found['pad_mat_1'][0][3]['glass'])
+        # Forward shaders are unlit: a scrolling screen (statictranstex, float_params' first two), glass (statictrans:
+        # the envmap times 1 - the first), a lit tile material for contrast.
+        shader = b"screen\n{\n {\n  map led_d.png\n  pixel_shader statictranstex.ps.cso\n  pixel_shader_param float_params 0 -0.09\n  blendfunc blend\n }\n}\n" \
+                 b"pane\n{\n {\n  map a.png\n  pixel_shader statictrans.ps.cso\n  pixel_shader_param float_params 0.25\n }\n}\n" \
+                 b"wall\n{\n {\n  map w.png\n  pixel_shader tile.ps.cso\n }\n}\n"
+        found = {name: definitions[0][3] for name, definitions in read_materials([pack]).items()}
+        self.assertEqual([(found[n]['unlit'], found[n]['scroll'], found[n]['mirror']) for n in ('screen', 'pane', 'wall')],
+                         [(True, [0, -.09], None), (True, None, .75), (False, None, None)])
+        # A *_col vertex shader's colours: statictranstex takes their red as alpha, statictranstexfog their colour.
+        shader = b"fire\n{\n {\n  map f.png\n  vertex_shader statictrans_col.vs.cso 111 NGCT\n  pixel_shader statictranstex.ps.cso\n }\n}\n" \
+                 b"leaf\n{\n {\n  map l.png\n  vertex_shader statictrans_col.vs.cso 111 NGCT\n  pixel_shader statictranstexfog.ps.cso\n }\n}\n" \
+                 b"pipe\n{\n {\n  map p.png\n  vertex_shader tilestatic_col.vs.cso 111 NGCT\n  pixel_shader tile.ps.cso\n }\n}\n"
+        found = {name: definitions[0][3] for name, definitions in read_materials([pack]).items()}
+        self.assertEqual([found[n]['vertex'] for n in ('fire', 'leaf', 'pipe')], ['alpha', 'rgb', None])
 
     def test_import_writes_blocks_index_and_material_textures(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -235,8 +259,8 @@ class DiaboticalMapsTest(unittest.TestCase):
             raw = (root / 'pack/maps' / index[0]['entities']).read_bytes()
             length, = struct.unpack_from('<I', raw)
             head = json.loads(raw[4:4 + length])
-            self.assertEqual(head['props'], [['props/sub/quad|stone_floor|', 1, 0], ['props/sub/quad||', 1, 0], ['props/gone||', 1, 0],
-                                             ['props/sub/quad|props/tinted|', 1, 1]])
+            self.assertEqual(head['props'], [['props/sub/quad|stone_floor|s', 1, 0], ['props/sub/quad||s', 1, 0], ['props/gone||s', 1, 0],
+                                             ['props/sub/quad|props/tinted|s', 1, 1]])
             self.assertEqual(np.frombuffer(raw[-12 - 108:-108], '<u4').tolist(), [0, 0x1336699, 0])  # The tinted key's tints.
             # Then the decals: their box matrices, then colour, flags and order each.
             self.assertEqual(head['decals'], [['arrow', 1]])
@@ -246,6 +270,8 @@ class DiaboticalMapsTest(unittest.TestCase):
             self.assertEqual(materials['props/tinted']['accents'], [0xff0000, None, None])
             self.assertIn('texture', materials['props/tinted#4'])
             self.assertEqual((materials['props/tinted']['spec'], materials['props/tinted']['id']), ([0, 1], 255))
+            self.assertTrue(materials['props/tinted']['normal'].endswith('-n.png'))
+            self.assertNotIn('normal', materials['stone'])
             self.assertFalse({'spec', 'id'} & (set(materials['stone']) | set(materials['arrow']) | set(materials['props/tinted#4'])))
             self.assertIsNone(head['lights']['envmap'])  # No textures_cubemaps.dbp here.
             self.assertEqual(head['sky'], dict(cube=None, rotation=0))  # Nor its default sky.
@@ -276,6 +302,8 @@ class DiaboticalMapsTest(unittest.TestCase):
 
     def test_fbx_mesh_triangulates_and_moves_by_its_model(self):
         groups = fbx_mesh(quad_fbx())
+        # Asked for, each group's vertex colours follow: white where the mesh has none.
+        self.assertEqual({name: parts[3].min() for name, parts in fbx_mesh(quad_fbx(), colours=True).items()}, {name: 1 for name in groups})
         self.assertEqual(list(groups), ['skin'])
         positions, normals, uvs = groups['skin']
         self.assertEqual(positions.shape, (2, 3, 3))
@@ -305,7 +333,7 @@ class DiaboticalMapsTest(unittest.TestCase):
             ('prop_b', (0, 0, 0), (0, 0, 0), (3, 1, 1), {'model': 'quad_strip', 'unique': '1', 'color': '#FF8000', 'color3': 'accent2'}),
             ('prop_c', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'no_show': '1'}),
             ('spawn_2', (1, 2, 3), (0, 1, 0), (1, 1, 1), {}),
-            ('liquid_ocean', (0, -50, 0), (0, 0, 0), (1000, 100, 1000), {'material': 'core_ocean'}),
+            ('liquid_ocean', (0, -50, 0), (0, 0, 0), (1000, 100, 1000), {'material': 'core_ocean', 'texture_scale': '.5', 'shallow_color': 'ee90bb'}),
             ('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'accent2': '00ff7f'}),
             ('decal_arrow', (10, 20, 30), (0, 0, 0), (100, 50, 8), {'material': 'Arrow', 'color': '80402010', 'mirrored': 'true', 'v3': 'true', 'order': '01000'}),
             ('decal_arrow_1', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'material': 'arrow', 'color': 'accent2', 'v2': 'true', 'order': '-2'}),
@@ -317,12 +345,13 @@ class DiaboticalMapsTest(unittest.TestCase):
         assets = {'quad_prop': {'model': 'props/quad', 'material': 'stone_floor', 'rules': []},
                   'quad_strip': {'dynamic': 'true', 'rules': [(0, [], ['props/quad']), (0, ['offset_right is 0'], ['props/quad_flipx'])]}}
         props, tints, markers, liquids, decals = placements(parsed['entities'], assets)
-        self.assertEqual({key: len(value) for key, value in props.items()}, {'props/quad|stone_floor|': 1, 'props/quad||': 2, 'props/quad||m': 1})
+        # A plain model's prop casts the sun's shadow (s); a dynamic asset's pieces do not.
+        self.assertEqual({key: len(value) for key, value in props.items()}, {'props/quad|stone_floor|s': 1, 'props/quad||': 2, 'props/quad||m': 1})
         # Tints: color, color2, color3 as 0x1RRGGBB, 0 unset; accentN is the global entity's. Only tinted keys are listed.
         self.assertEqual(sorted(tints), ['props/quad||', 'props/quad||m'])
         self.assertEqual(tints['props/quad||m'].tolist(), [[0x1ff8000, 0, 0x100ff7f]])
         # Page axes: the game's z negated. A static prop keeps its scale; a dynamic one is 40-unit cells from its corner.
-        static = props['props/quad|stone_floor|'][0].reshape(3, 4)
+        static = props['props/quad|stone_floor|s'][0].reshape(3, 4)
         self.assertEqual(static[:, 3].tolist(), [40, 20, -80])
         self.assertAlmostEqual(np.linalg.det(static[:, :3]), 8, 4)
         self.assertEqual(sorted(m[3] for key in ('props/quad||', 'props/quad||m') for m in props[key]), [20, 60, 100])
@@ -330,9 +359,17 @@ class DiaboticalMapsTest(unittest.TestCase):
         # A prop's material field X is the shader MODEL_X where there is one (bioplant's door frames), else X.
         framed = [('prop_d', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'Frame_Red'}),
                   ('prop_e', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'material': 'stone_floor'}),
-                  ('prop_f', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'no_decals': '1'})]
-        self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|', 'props/quad|stone_floor|',
-                                                                                     'props/quad||n'])
+                  ('prop_f', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'no_decals': '1'}),
+                  ('prop_g', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'skip_shadows': 'true', 'no_decals': '1'})]
+        self.assertEqual(sorted(placements(framed, {}, {'props/quad_frame_red'})[0]), ['props/quad|props/quad_frame_red|s', 'props/quad|stone_floor|s',
+                                                                                     'props/quad||n', 'props/quad||ns'])
+        # Props that move by themselves: their index among their key's props, kind (0 float, 1 rotate), numbers, pivot.
+        movers = {}
+        placements([('prop_g', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad'}),
+                    ('prop_h', (1, 2, 3), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'movement': 'float 5 3'}),
+                    ('prop_i', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'movement': 'rotate 1'}),
+                    ('prop_j', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'model': 'props/quad', 'movement': 'none'})], {}, movers=movers)
+        self.assertEqual(movers, {'props/quad||s': [[1, 0, 5, 3, 1, 2, -3], [2, 1, 1, 1, 0, 0, 0]]})
         # Billboards: a unit square scaled x by y, placed as a prop (page axes), colour, texture path with / , reflection.
         panes = [('billboard_1', (10, 20, 30), (0, 0, 0), (100, 50, 1), {'color': 'accent2', 'texture': 'Textures\Decals\Glow.png', 'reflection': 'on'}),
                  ('billboard_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'no_show': 'true'})]
@@ -343,7 +380,7 @@ class DiaboticalMapsTest(unittest.TestCase):
                                    ('pfx_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {})]),
                          [[1, 0, 0, 1, 0, 1, 0, 2, 0, 0, 1, -3, 'fire', 0xff0000, 2.0]])
         self.assertEqual(markers, [['spawn', 1, 2, 3]])
-        self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean', None, None, 1]])  # Colour, alpha (AARRGGBB), ocean.
+        self.assertEqual(liquids, [[0, -50, 0, 1000, 100, 1000, 'core_ocean', None, None, 1, .5, 0xee90bb]])  # Colour, alpha (AARRGGBB), ocean, ripple size, shallow colour.
         # Decals: their boxes in page axes; colour 0xRRGGBBAA (from RRGGBB, or AARRGGBB: alpha first), flags (1 mirrored,
         # 2 v2, 4 v3), order.
         matrices, extras = decals['arrow']
@@ -408,6 +445,26 @@ class DiaboticalMapsTest(unittest.TestCase):
         # Diffuse lights (and those of no type) add no specular light; the others turn their colour back into
         # colour x intensity for it.
         self.assertEqual([lamp[15], spot[15], tube[15]], [0, 0, round(1 / POINT, 4)])
+        # Fog: colour, intensity (1), radius (8000) and margin (0) by default; the vertical fog's height is a world y
+        # (not from its entity), over `radius` units, in the fog's colour where there is a fog (run 45).
+        self.assertEqual(out['fog'], [1, 1, 1, 1, 8000, 0])
+        # Far away the shadow fades to horizon_shade (1, lit, where unset) in horizon_shade_color (the shadow colour).
+        self.assertEqual(out['horizon'], [1, .251, .251, .251])
+        far = read_lights([('global', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'horizon_shade': '0', 'horizon_shade_color': 'ff0000'})])
+        self.assertEqual(far['horizon'], [0, 1, 0, 0])
+        # A light's visibility function (its number in VISIBILITY), minimum (0) and speed (1) follow its row.
+        flick = read_lights([('light_f', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'visibility_function': 'Flicker', 'visibility_function_min': '.5'}),
+                             ('light_s', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'visibility_function': 'sin', 'visibility_function_speed': '2'})])['lights']
+        self.assertEqual([light[16:] for light in flick], [[9, .5, 1], [1, 0, 2]])
+        self.assertEqual(len(lamp), 16)  # None: no more.
+        from tools.import_diabotical_map import lut_file
+        self.assertEqual(lut_file('lut/lut_warm'), r'textures\lut\lut_warm.png')
+        fogs = read_lights([('light_v', (0, 200, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog', 'color': '0000ff', 'height': '700', 'radius': '600', 'intensity': '.5'}),
+                            ('light_v2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog'})])
+        self.assertEqual((fogs['fog'], fogs['vertical_fog']), (None, [0, 0, 1, .5, 700, 600]))
+        fogs = read_lights([('light_fog', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'fog', 'color': 'ff0000'}),
+                            ('light_v', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'type': 'vertical_fog', 'color': '0000ff'})])
+        self.assertEqual(fogs['vertical_fog'][:3], [1, 0, 0])
 
     def test_sky_is_read_and_its_cube_written(self):
         from PIL import Image
@@ -431,6 +488,27 @@ class DiaboticalMapsTest(unittest.TestCase):
             self.assertEqual(write_envmaps(pack, {'a/b'}, root, face=4), ['a/b'])
             with Image.open(root / 'skies/a_b.jpg') as sky, Image.open(root / 'envmaps/a_b.png') as envmap:
                 self.assertEqual((sky.size, envmap.size), ((48, 8), (24, 4)))
+
+    def test_labels_are_read(self):
+        from tools.import_diabotical_map import read_labels
+        labels = read_labels([('label_1', (1, 2, 3), (0, 0, 0), (1, 1, 1), {'text': 'HELLO', 'size': '4'}),
+                              ('label_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'text': 'Hi'}),
+                              ('label_3', (0, 0, 0), (0, 0, 0), (1, 1, 1), {})])
+        self.assertEqual(labels, [[1, 2, -3, 'HELLO', 4], [0, 0, 0, 'Hi', 10]])
+
+    def test_volumetrics_are_read_as_beams(self):
+        from tools.import_diabotical_map import read_volumetrics
+        beams = read_volumetrics([
+            ('volumetric_1', (10, 20, 30), (0, 0, 0), (300, 200, 20), {'color': '80ffcf3d', 'segments': '3', 'gap': '.5', 'taper': '0.1', 'type': 'grid'}),
+            ('volumetric_2', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'color': 'ffffff', 'type': 'radial', 'texture': 'Textures\\Decals\\Blob', 'alpha': '1',
+                                                                'rotation_speed': '.2'}),
+            ('volumetric_3', (0, 0, 0), (0, 0, 0), (1, 1, 1), {'no_show': 'true'})])
+        # Page matrix (z mirrored, scaled), kind, segments, segments_y, gap, gap_y, taper, colour, strength (alpha), texture,
+        # alpha blended, rotation speed.
+        self.assertEqual(beams[0][:12], [300, 0, 0, 10, 0, 200, 0, 20, 0, 0, 20, -30])
+        self.assertEqual(beams[0][12:], [0, 3, 1, .5, 0, .1, 0xffcf3d, round(0x80 / 255, 3), '', 0, 0])
+        self.assertEqual(beams[1][12:], [1, 1, 1, 0, 0, 0, 0xffffff, 1, 'textures/decals/blob', 1, .2])
+        self.assertEqual(len(beams), 2)
 
     def test_dynamic_rule_conditions(self):
         from tools.import_diabotical_map import rule_holds
