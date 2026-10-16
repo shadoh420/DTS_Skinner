@@ -850,12 +850,23 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Effects of the import's map.particles (JK2/JA fx_runners, RTCW/ET smokes) in the shared particle system
-  // (particles.js), each batch an effect shader's first stage (RB_SurfaceSprite writes the colour into the vertices).
-  let particles = null;
-  async function addParticles(data) {
-    particles = await window.skinnerParticles.mount(THREE, data, {loadTexture: stage => loadTexture((stage.frames || [stage.map])[0], stage.clamp, stage.noMipmaps),
-      add: mesh => { mesh.renderOrder = 1e9 - 20; root.add(mesh); }, identity: map.lighting ? map.lighting.identityLight : .5, toWorld: [1, 0, 0, 0, 0, -1, 0, 1, 0]});
+  // Effects of the import's map.particles (JK2/JA running fx_runners) in the shared particle system (particles.js).
+  // A batch is an effect shader's first stage: its image, blend and alpha test, the particle's colour where its
+  // rgbGen / alphaGen take the vertex colour (RB_SurfaceSprite writes the colour into the vertices).
+  let particles = null, particleControl = null;
+  async function addParticles({templates, batches, emitters}) {
+    const identity = map.lighting ? map.lighting.identityLight : .5, made = {};
+    particleControl = window.skinnerParticles.control(quality => particles?.setQuality(quality));
+    await Promise.all(Object.entries(batches).map(async ([name, stage]) => {
+      const texture = await loadTexture((stage.frames || [stage.map])[0], stage.clamp, stage.noMipmaps), [src, dst] = stage.blend || ['gl_one', 'gl_zero'];
+      const rgb = stage.rgbGen[0], alpha = (stage.alphaGen || ['identity'])[0];
+      made[name] = {texture, blendSrc: FACTORS[src] ?? THREE.OneFactor, blendDst: FACTORS[dst] ?? THREE.ZeroFactor,
+        rgb: rgb === 'vertex' || rgb === 'exactvertex', alpha: alpha === 'vertex', colorScale: rgb === 'vertex' || rgb === 'identitylighting' ? identity : 1,
+        alphaTest: {gt0: 1 / 255, ge128: .5}[stage.alphaFunc] || 0, renderOrder: 1e9 - 20};
+    }));
+    particles = window.skinnerParticles.create(THREE, templates, emitters, made, {toWorld: [1, 0, 0, 0, 0, -1, 0, 1, 0], quality: particleControl.quality});
+    for (const mesh of particles.meshes) root.add(mesh);
+    particleControl.setCount(emitters.length);
   }
 
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
