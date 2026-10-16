@@ -291,7 +291,7 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertEqual(leaves[0][6], (0, 0, 4))
             self.assertEqual(leaves[3][6], (2, 2, 2))
             from unittest.mock import Mock
-            assets = Mock()
+            assets = Mock(season='s', files={})
             assets.material.return_value = [(1, 0, 0), (1, 1, 0)]
             assets.slot.return_value = 'colour.png'
             target = Path(temp, 'chunk.bin')
@@ -408,6 +408,35 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertIn('Shared asset setup failed', report['missions']['valid.mis']['reason'])
             self.assertEqual((output / 'index.json').read_bytes(), old_index)
 
+    def test_season_from_the_mission_date_and_season_packs(self):
+        import datetime
+        day = lambda y, m, d: datetime.date(y, m, d).toordinal() + 1721425  # noqa: E731
+        # 004EFB60: 20 Sep-20 Dec fall, 21 Dec-19 Mar winter, the rest summer.
+        cases = {(1918, 5, 31): 'summer', (1918, 9, 19): 'summer', (1918, 9, 20): 'fall', (1916, 12, 20): 'fall',
+                 (1917, 12, 21): 'winter', (1918, 1, 31): 'winter', (1918, 3, 19): 'winter', (1918, 3, 20): 'summer'}
+        for date, season in cases.items():
+            self.assertEqual(rb.date_season(day(*date)), season, date)
+        self.assertEqual((rb.terrain_material('sbaron.dml', 'f'), rb.terrain_material('baron.dml', 'w')), ('fbaron.dml', 'wbaron.dml'))
+        with tempfile.TemporaryDirectory() as temp:
+            install, output = Path(temp, 'install'), Path(temp, 'maps')
+            (install / 'Data/3dpatch').mkdir(parents=True)
+            (install / 'Single').mkdir()
+            (install / 'Data/BARON0.TED').write_bytes(volume(ted_members(), True))
+            (install / 'Data/rb.vol').write_bytes(volume({'summer.pal': palette(), 'sbaron.dml': dml(), 'fbaron.dml': dml(),
+                                                         'lndmrks0.dat': table([], 63)}))
+            (install / 'Data/3dpatch/3dfall.vol').write_bytes(volume({'readme.bat': b'REM'}))
+            result = rb.import_maps(install, output)
+            # Fall has its volume, winter has none (a warning): two Western Front entries, each in its own pack.
+            self.assertEqual(result['imported'], ['western_front', 'western_front_fall'])
+            index = json.loads((output / 'index.json').read_text())
+            self.assertEqual([entry['type'] for entry in index], ['summer preview', 'fall preview'])
+            self.assertNotEqual(index[0]['pack'], index[1]['pack'])
+            fall = json.loads((output / index[1]['pack'] / 'maps/western_front_fall/scene.json').read_text())
+            self.assertEqual(fall['season'], 'fall')
+            report = json.loads((output / 'report.json').read_text())
+            self.assertIn('No Data/3dpatch/3dwinter.vol: winter not imported', report['warnings'])
+            self.assertEqual(report['teds']['baron0.ted (fall)']['status'], 'imported')
+
     def test_mission_export_uses_birth_altitude_aircraft_and_briefing(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -416,7 +445,7 @@ class RedBaronMapsTest(unittest.TestCase):
             dat.write_bytes(world())
             dsc.write_bytes(b'Protect the airfield.\0\x04\0binary tail')
             from unittest.mock import Mock
-            assets = Mock(haze=[1, 2, 3], files={}, report={'missingShapes': set()})
+            assets = Mock(haze=[1, 2, 3], files={}, report={'missingShapes': set()}, season='s')
             assets.model.return_value = '03058000.json'
             result = rb.export_mission(mis, {'test.dat': dat, 'test.dsc': dsc}, {0: {}}, assets, table([], 147))
             assets.model.assert_called_once_with('03058000.dts', 3)
