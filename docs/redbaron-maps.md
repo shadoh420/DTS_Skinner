@@ -109,6 +109,8 @@ BAT members are never executed.
 
 **Seasons.** `004EFB60` takes a mission's season from its DAT date: 20 September to 20 December is fall, 21 December to 19 March winter, the rest summer. The importer writes one pack per season, each a whole Western Front (`western_front`, `western_front_fall`, `western_front_winter`), and exports each mission into the pack of its date's season. A season pack mounts its volume over `rb.vol` + `3dpatch.vol`, which replaces the terrain bitmaps and the ground palette and SPL bank (so its haze and sky colours), and the terrain takes that season's DML lists (`fbaron.dml`, `wbaron.dml`) where they exist; BARON4's multiplayer bank has only summer lists and keeps them. An install without a season volume imports summer only and records a warning. `--season` limits the import to the named seasons.
 
+The library import of 2026-10-15 (Steam install, 30 entries, none failed) wrote `packs/937448e634e5489c9f821942d7d13d43` (summer, 848 MB), `…-fall` (839 MB) and `…-winter` (838 MB). The previous summer-only generation `packs/baafe955ee5749d0955407fca4650b23` (851 MB) remains, as `--replace` never deletes.
+
 Fog colour is palette index **47** for all five banks (`005830A4`, installed by `00444BB7`; consumed at `004ED33D`; Glide fog colour call `004EEE6F`). The sampled summer/ground palette yields RGB **159,183,195**. The preview reads this colour from the mounted ground SPL, rather than hardcoding it.
 
 ### Terrain light and haze (Follow-up 3)
