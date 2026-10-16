@@ -11,8 +11,8 @@ The page draws each level's BSP surfaces with their textures and the map's own l
 lights and shadow bits, zone ambient light, the game's default display brightness): masked, translucent, modulated
 and two-sided as the game draws them, auto-panning where the game pans them, and the sky zone seen through the sky
 surfaces, and the placed actors where the game starts them: decorations, pickups and monsters as meshes, movers
-(doors, lifts) at their first position. Not drawn: fog, sprites, coronas and particle effects, animated and wavy
-textures, mirrors. The page is plain Three.js, like the Q3 one; nothing of the game
+(doors, lifts) at their first position, with coronas, sprite actors, mirrors and detail textures (see Effects). Not
+drawn: particle effects and wavy or procedural textures. The page is plain Three.js, like the Q3 one; nothing of the game
 is compiled in.
 
 ## Importing maps
