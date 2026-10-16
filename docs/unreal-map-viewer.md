@@ -145,10 +145,10 @@ Every actor the map places, unless it is hidden (`bHidden`), is read over its cl
 
 Over the 102 maps: 9,474 meshes and 2,874 movers drawn; 9 actors not read (227's StaticMesh, on DmRiot, its movers
 among them; a format of 227's own, left unread). A mesh corner shared by triangles with the same texture is stored
-once. Not drawn: sprites, decals, the monsters' weapons, and 227's emitters (Emitter, WeatherEmitter, MeshEmitter,
-SpriteEmitter: 77) and coronas (DynamicCorona: 526 on DmRetrospective and EntryII). The sprites a
-player would see are lens-flare glows: 8 on Unreal, one each on Intro1, Intro2 and End, 2 on Endgame, 52 ScaledSprites
-on DmRetrospective. TriggerLights (436), ExplodingWalls (94) and BreakingGlass (120) are sprites their defaults leave
+once. Not drawn: decals, the monsters' weapons, and 227's emitters (Emitter, WeatherEmitter, MeshEmitter,
+SpriteEmitter: 77) and DynamicCorona actors (526 on DmRetrospective and EntryII: 227's own corona class, not the
+bCorona flag). The sprites a player would see are lens-flare glows: 8 on Unreal, one each on Intro1, Intro2 and End,
+2 on Endgame, 52 ScaledSprites on DmRetrospective (see Effects below). TriggerLights (436), ExplodingWalls (94) and BreakingGlass (120) are sprites their defaults leave
 unhidden, but the game does not draw them (a TriggerLight 87 units in front of a 227 camera on Glathriel2 shows
 nothing), and neither does the page. No actor of a Light class is drawn: Glathriel2's two TorchFlames (Lights that carry
 a 96 x 96 x 192-unit translucent flame mesh, the only two in the install) showed nothing in 227 from 275 units, where
@@ -160,6 +160,35 @@ lights that reach it; the import takes the lights the editor listed (raytraced) 
 actor, or every light in range with no floor below. Against the Glathriel2 run's shots (on screen, game / page): the
 box 0.76, the big plant 0.91, a Skaarj 0.69, a torch sconce 1.23, a hanging lantern 0.82; the level's own surfaces in
 the same views 0.75–0.97.
+
+## Effects
+
+Read from SurrealEngine (format and behaviour reference only) and not compared with the games yet:
+
+- **Coronas**: every actor with `bCorona` and a `Skin`, hidden ones (Lights) included, as VisibleCorona draws them: a
+  square `DrawScale × 0.8` of the viewport's width (Deus Ex 0.2) wherever it is, the Skin times
+  `hsbtorgb(LightHue, LightSaturation, 255)` (Deus Ex × 2.5) added translucently over the frame before the display
+  gamma. It shows only while the line from the eye to the light crosses no BSP surface (non-solid ones excepted;
+  meshes and movers do not block), tested on the page against the drawn world triangles in a grid; it fades in and
+  out over 0.1 s (a hypothesis: SurrealEngine switches at once). Deus Ex only within 2000 units. 3,586 on 79 UT maps,
+  2,517 on 67 Unreal maps.
+- **Sprite actors** drawn translucent, masked or modulated (`Style` 3, 2, 4; UTFlare, ScaledSprite): their `Texture`
+  (AnimNext frames cycling) `DrawScale ×` its width across, facing the camera, coloured `ScaleGlow`. Normal-style
+  sprites are logic actors' editor icons and stay hidden, as do the emitters and smoke/bubble generators.
+- **Mirrors** (`PF_Mirrored`: 273 surfaces on 18 Unreal maps, 14 on 4 UT maps) show the level reflected in their plane
+  and not their texture, as SurrealEngine turns them into mirror portals sealed invisible. The page renders the
+  reflection each frame into a half-size target (an oblique near plane on the mirror); no sky zone, coronas or nested
+  mirrors appear in it.
+- **Detail textures** (`DetailTexture` on 93 UT and 101 Unreal maps' BSP textures) are tiled at their own size and
+  multiply the surface by `(detail − 0.5) × 0.8 + 1`, in full to 380 units and gone at 760 (SurrealEngine's OpenGL
+  device; the 1998 devices modulated × 2).
+- **Environment maps**: mesh triangles flagged environment-mapped, and meshes with `bMeshEnviroMap`, show the actor's
+  `Texture` (else the zone's or the level's `EnvironmentMap`) at the eye ray reflected off the vertex normal in view
+  space; without one they are not drawn. BSP surfaces flagged so (62 on 3 Unreal maps) stay plain, as in SurrealEngine.
+- **Turning actors**: pickups with `bRotatingPickup` (Inventory's Pickup state sets PHYS_Rotating unless falling) and
+  non-static actors already rotating with `bFixedRotationDir` turn by `RotationRate` about their location (897 UT
+  and 294 Unreal pickups, 854 props). Movers stay where they start: every UE1 mover class waits for a trigger or a
+  touch (RotatingMover and LoopMover too, checked in their script text).
 
 ## Lighting
 
