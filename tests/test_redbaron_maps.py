@@ -445,7 +445,7 @@ class RedBaronMapsTest(unittest.TestCase):
             dat.write_bytes(world())
             dsc.write_bytes(b'Protect the airfield.\0\x04\0binary tail')
             from unittest.mock import Mock
-            assets = Mock(haze=[1, 2, 3], files={}, report={'missingShapes': set()}, season='s')
+            assets = Mock(haze=[100, 120, 140], sky_colour=[200, 210, 220], files={}, report={'missingShapes': set()}, season='s')
             assets.model.return_value = '03058000.json'
             result = rb.export_mission(mis, {'test.dat': dat, 'test.dsc': dsc}, {0: {}}, assets, table([], 147))
             assets.model.assert_called_once_with('03058000.dts', 3)
@@ -453,6 +453,10 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertEqual(result['briefing'], 'Protect the airfield.')
             self.assertEqual(result['viewpoints'][0][13], 300 * rb.SCALE)
             self.assertEqual(result['objects'][0]['matrix'][12], -100 * rb.SCALE)
+            # Sky and fog colours follow the mission's light.
+            light = result['lighting']['intensity']
+            self.assertEqual(result['skyColour'], [round(c * light) for c in (200, 210, 220)])
+            self.assertEqual(result['haze'], [round(c * light) for c in (100, 120, 140)])
 
     def test_sky_textures_carry_their_alpha_and_fall_back_to_the_clear_band(self):
         from PIL import Image

@@ -527,6 +527,9 @@ class Assets:
         # 00444BB7/004ED33D: fog palette index from 005830A4, all five banks 47.
         fog_palette = palette(files['rb3dgnd.spl']()) if 'rb3dgnd.spl' in files else self.colours
         self.haze = fog_palette[47 * 3:48 * 3]
+        # The Glide sky clear colour: index 39 of the same bank, measured in game (TUTOR3 noon 197,213,221 against
+        # 199,215,223; ACE5 fall 177,191,198 against 170,186,188).
+        self.sky_colour = fog_palette[39 * 3:40 * 3]
         self.pngs, self.models, self.dmls = {}, {}, {}
         self.season = 's'
 
@@ -915,7 +918,7 @@ def native_lighting(world, start_time=None):
 
 
 def scene_base(name, assets):
-    return dict(mission=name, haze=assets.haze,
+    return dict(mission=name, haze=assets.haze, skyColour=assets.sky_colour,
                 terrain=dict(visibleDistance=147456*SCALE, hazeDistance=103219*SCALE),
                 sun=dict(ambient=[1, 1, 1], intensity=[0, 0, 0], azimuth=0, incidence=0),
                 viewpoints=[], objects=[], warnings=list(PREVIEW_LIMITS), season={v[0]: k for k, v in SEASONS.items()}[assets.season], sky=assets.sky(),
@@ -987,6 +990,10 @@ def export_mission(mis_path, companions, regions, assets, formation_data):
     result = scene_base(mis_path.stem, assets)
     result['lighting'] = native_lighting(world, start_time)
     result['lighting']['terrainScale'] = regions[region].get('terrainScale', 11)
+    # Dusk and night: the live palette's sky and fog entries follow the light (00409CF0); MISSIONE at sun -12 degrees
+    # measured 53,61,63 against 42,46,47 from this (summer), within parity.
+    result['haze'], result['skyColour'] = ([round(c * result['lighting']['intensity']) for c in colour]
+                                           for colour in (assets.haze, assets.sky_colour))
     result.update(region=region, regions=[dict(id=region, name=REGIONS[region])], world=world, flights=mission['flights'])
     result['missionSource'] = {k: v for k, v in mission.items() if k not in ('flights', 'player', 'playerSlot')}
     result['warnings'].extend([

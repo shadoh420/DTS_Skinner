@@ -37,6 +37,8 @@ window.rb3dMaps = {
       }
     }
     environment();
+    // The Glide clear colour (ground bank index 39); the fog keeps index 47. Packs before it lack the key.
+    if (map.skyColour) scene.background = new THREE.Color(`rgb(${map.skyColour.join(',')})`);
     const textures = new Map(), models = new Map();
     async function texture(name) {
       if (!textures.has(name)) textures.set(name, {refs: 0, promise: new Promise((resolve, reject) => {
