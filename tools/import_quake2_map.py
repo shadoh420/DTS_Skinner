@@ -21,13 +21,15 @@ from PIL import Image
 try:
     from tools.import_quake2 import GAMES, available_games, asset_name, read_install, read_pcx, safe
     from tools.import_quake_map import (LIGHT_STYLES, SCALE, animated_styles, content_regions, entities, face_data as quake_face_data,
-                                        floor_below, pack, rotation, style_atlas, style_sample, vector)
+                                        floor_below, pack, rotation, style_atlas, style_sample, train_path, vector)
+    from tools.source_effects import rotating
     from tools.import_quake import palette_image
     from tools.local_data import LOCAL_DATA
 except ImportError:
     from import_quake2 import GAMES, available_games, asset_name, read_install, read_pcx, safe
     from import_quake_map import (LIGHT_STYLES, SCALE, animated_styles, content_regions, entities, face_data as quake_face_data,
-                                  floor_below, pack, rotation, style_atlas, style_sample, vector)
+                                  floor_below, pack, rotation, style_atlas, style_sample, train_path, vector)
+    from source_effects import rotating
     from import_quake import palette_image
     from local_data import LOCAL_DATA
 
@@ -229,7 +231,7 @@ def ordered_starts(bsp, game):
 def instances(bsp, game='quake2', *, open_at_start=True):
     """Initial brush states: medium SP, or deathmatch filtering for CTF; motion frozen."""
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], angles=[0., 0., 0.], state='world', guess=False)]
-    skipped = []
+    skipped, moving = [], {}
     invisible = {'func_areaportal', 'func_killbox', 'func_timer'}
     known = {'func_door', 'func_door_rotating', 'func_door_secret', 'func_plat', 'func_train', 'func_rotating',
              'func_wall', 'func_explosive', 'func_object', 'func_water', 'func_conveyor', 'func_button',
@@ -274,6 +276,9 @@ def instances(bsp, game='quake2', *, open_at_start=True):
             if targets:
                 offset = vector(targets[0]) - mins
                 state, guess = 'first path corner minus inline model mins, before travel', len(targets) > 1
+                path = train_path(bsp, entity, quake2=True)
+                if path:
+                    state, moving[index] = 'travels its path_corner loop (g_func.c train_next)', dict(path, pivot=[0, 0, 0])
             else:
                 state, guess = 'no first path corner: authored origin', True
         elif cls in ('func_door', 'func_water'):
@@ -291,6 +296,11 @@ def instances(bsp, game='quake2', *, open_at_start=True):
                 state = 'START_OPEN: distance around selected axis, REVERSE honored'
         elif cls == 'func_rotating':
             state = 'zero angle at spawn; continuous angular motion frozen'
+            spin = rotating(entity, 'speed')  # START_ON: turning from the start (SP_func_rotating)
+            if spin:
+                state = 'turns from the start at speed degrees a second (START_ON)'
+                moving[index] = dict(pivot=[round(float(c), 4) for c in offset[[1, 2, 0]] * SCALE],
+                                     spin=[*(round(float(c), 6) for c in np.array(spin[:3])[[1, 2, 0]]), round(spin[3], 6)])
         elif cls in ('turret_base', 'turret_breach'):
             turn = angles(entity)
             state = 'authored turret angles; no tracking or firing'
@@ -302,7 +312,8 @@ def instances(bsp, game='quake2', *, open_at_start=True):
         elif cls == 'func_plat2':
             state = 'authored origin; expansion plat2 activation/top state not verified'
             guess = True
-        result.append(dict(model=number, entity=index, classname=cls, offset=offset.tolist(), angles=turn.tolist(), state=state, guess=guess))
+        result.append(dict(model=number, entity=index, classname=cls, offset=offset.tolist(), angles=turn.tolist(), state=state, guess=guess,
+                           **({'motion': moving[index]} if index in moving else {})))
     if open_at_start:
         open_doors_at_start(bsp, result, game)
     return result, skipped
@@ -422,9 +433,11 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
                                       st=polygon @ vectors[:, :3].T,
                                       light_st=polygon @ vectors[:, :3].T + vectors[:, 3]))  # Warp texture ST omits offsets; lightmaps do not.
                     faces[-1]['styles_animated'] = light(face)
+                    faces[-1]['mover'] = instance.get('mover')
             else:
                 faces.append(dict(face, placed_points=points))
                 faces[-1]['styles_animated'] = light(face)
+            faces[-1]['mover'] = instance.get('mover')
             audit.append(dict(face=number, entity=instance['entity'], texture=face['texture']['name'], kind=face['kind'],
                               flags=face['flags'], unlit=face['unlit'], alpha=face['alpha'], styles=face['styles'],
                               texturemins=face['mins'].tolist(), luxels=face['size'].tolist(), lightofs=face['lightofs'],
@@ -443,8 +456,8 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
         anim = [png_of(t) for t in face['frames']] if face['fps'] else []
         textures.update({png_of(t): t for t in face['frames']} if anim else {})
         styles = face['styles_animated']
-        group = groups.setdefault((png, face['flags'], face.get('material_key'), tuple(anim), face['fps'], tuple(styles)), dict(texture=png, name=tex['name'], kind=face['kind'], flags=face['flags'],
-            size=[tex['width'], tex['height']], unlit=face['unlit'], alpha=face['alpha'], indices=[]))
+        group = groups.setdefault((png, face['flags'], face.get('material_key'), tuple(anim), face['fps'], tuple(styles), face.get('mover')), dict(texture=png, name=tex['name'], kind=face['kind'], flags=face['flags'],
+            size=[tex['width'], tex['height']], unlit=face['unlit'], alpha=face['alpha'], indices=[], **({'mover': face['mover']} if face.get('mover') is not None else {})))
         if 'settings' in face:
             group['settings'] = face['settings']
         if anim:
@@ -671,7 +684,7 @@ MISC_MODELS = {
 DEATHMATCH_GONE = {'misc_explobox', 'misc_gib_arm', 'misc_gib_leg', 'misc_gib_head'}
 
 
-def append_items(data, bsp, files, game):
+def append_items(data, bsp, files, game, first_mover=0):
     """Placed items, weapons and keys (ITEM_MODELS) and misc models (MISC_MODELS) as their spawn functions draw them:
     items drop to the floor (droptofloor: a 30-unit box traced down 128 units, so its origin rests 15 over the floor),
     barrels rest on theirs (M_droptofloor, mins z 0); EF_ROTATE items turn at 100 degrees a second whatever their angle
@@ -721,7 +734,7 @@ def append_items(data, bsp, files, game):
                     origin = np.array([origin[0], origin[1], floor + rest])
             group = dict(texture=png, kind='model', flags=0, size=list(images[png].size), unlit=True, alpha=1, entity=entity, classname=cls)
             if turning:
-                group['mover'] = len(movers)
+                group['mover'] = first_mover + len(movers)
                 movers.append(dict(pivot=[round(float(c), 4) for c in origin[[1, 2, 0]] * SCALE], spin=[0, 1, 0, round(math.radians(100), 6)]))
             append_alias(data, model, origin, np.zeros(3) if turning else angles(e), group)
             row.update(status='drawn', model=path, frame=pick, origin=origin.tolist(), turning=bool(turning))
@@ -734,9 +747,15 @@ def build_map(raw, name, files, palette, game='quake2'):
     bsp = read_bsp(raw, files)
     bsp['name'] = name
     placed, skipped = instances(bsp, game)
+    movers = []
+    for instance in placed:  # trains and rotating brushes that move on their own: their own groups, moved by the page
+        if instance.get('motion'):
+            instance['mover'] = len(movers)
+            movers.append(instance['motion'])
     data = geometry(bsp, placed, game)
     models, model_images = append_monsters(data, bsp, files, game)
-    items, item_images, movers = append_items(data, bsp, files, game)
+    items, item_images, item_movers = append_items(data, bsp, files, game, len(movers))
+    movers += item_movers
     model_images.update(item_images)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp, data['floors'], game)

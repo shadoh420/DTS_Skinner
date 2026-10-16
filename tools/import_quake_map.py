@@ -384,10 +384,52 @@ def rotation(angles):
                      [-sp, cp * sr, cp * cr]])
 
 
+def train_path(bsp, entity, quake2=False):
+    """A train that starts on its own (no targetname; Quake II also START_ON) as a page mover: keys [t, offset x, y, z,
+    0, 0, 0, 1] from its first corner, looping when its corners close on the first. plats.qc / g_func.c train_next:
+    to each path_corner at `speed` (100) units a second, then its wait (Quake: 0.1 s when unset; Quake II: none, and a
+    negative wait stops it); Quake II TELEPORT corners (1) jump. ponytail: the first 0.1 s hold is folded into the loop."""
+    if entity.get('targetname') and not (quake2 and int(float(entity.get('spawnflags') or 0)) & 1):
+        return None
+    named = {}
+    for e in bsp['entities']:
+        if e.get('targetname'):
+            named.setdefault(e['targetname'], e)
+    first = named.get(entity.get('target') or '')
+    if first is None:
+        return None
+    speed = float(entity.get('speed') or 0) or 100
+    start = position = vector(first)
+    offset = lambda p: [round(float(c), 4) for c in (p - start)[[1, 2, 0]] * SCALE]
+    keys, t, corner, period = [[0, 0, 0, 0, 0, 0, 0, 1]], 0., first, None
+    for _ in range(128):
+        corner = named.get(corner.get('target') or '')
+        if corner is None:
+            break  # the train stops at the last corner
+        if quake2 and int(float(corner.get('spawnflags') or 0)) & 1:
+            position = vector(corner)
+            keys.append([round(float(t), 4), *offset(position), 0, 0, 0, 1])
+            continue
+        t += np.linalg.norm(vector(corner) - position) / speed
+        position = vector(corner)
+        keys.append([round(float(t), 4), *offset(position), 0, 0, 0, 1])
+        wait = float(corner.get('wait') or 0)
+        if quake2 and wait < 0:
+            break
+        t += max(wait, 0) if quake2 or wait else .1
+        keys.append([round(float(t), 4), *offset(position), 0, 0, 0, 1])
+        if corner is first:
+            period = t
+            break
+    if len(keys) < 2:
+        return None
+    return dict(keys=keys, period=round(float(period), 4) if period else 1e9)  # an open path holds at its end
+
+
 def instances(bsp, game='quake'):
     """Normal-skill single player, no runes; brush spawn positions after train initialization."""
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], state='world')]
-    skipped = []
+    skipped, movers_of = [], {}
     for index, entity in enumerate(bsp['entities']):
         model = entity.get('model', '')
         if not model.startswith('*'):
@@ -435,6 +477,10 @@ def instances(bsp, game='quake'):
             offset = vector(target) - mins
             state = 'first path corner minus model mins (after initialization, before travel)'
             guess = False
+            path = train_path(bsp, entity) if classname == 'func_train' else None
+            if path:
+                state = 'travels its path_corner loop from the first corner (plats.qc train_next)'
+                movers_of[index] = path
         elif classname == 'func_door' and flags & 1:
             angle = float(entity.get('angle') or '0')
             direction = np.array([0, 0, 1 if angle == -1 else -1]) if angle in (-1, -2) else np.array([math.cos(math.radians(angle)), math.sin(math.radians(angle)), 0])
@@ -488,7 +534,8 @@ def instances(bsp, game='quake'):
                 angles = vector(entity, 'angles')
             else:
                 state = 'VISIBLE collision helper at authored origin'
-        result.append(dict(model=number, entity=index, classname=classname, offset=offset.tolist(), angles=angles.tolist(), state=state, guess=guess))
+        result.append(dict(model=number, entity=index, classname=classname, offset=offset.tolist(), angles=angles.tolist(), state=state, guess=guess,
+                           **({'path': movers_of[index]} if index in movers_of else {})))
     return result, skipped
 
 
@@ -534,6 +581,7 @@ def geometry(bsp, placed, light=True):
                 continue
             points = face['points'] @ matrix.T + instance['offset']
             face['placed_points'] = points
+            face['mover'] = instance.get('mover')
             if light:
                 rgb = 'rgb_lighting' in bsp
                 lighting = bsp['rgb_lighting'] if rgb else bsp['lighting']
@@ -565,7 +613,8 @@ def geometry(bsp, placed, light=True):
         frames = [texture_png(t) for t in chains[tex['name']]]
         images.update({texture_png(t): t for t in chains[tex['name']]})
         styles = face.get('anim_styles', [])
-        group = groups.setdefault((png, face['kind'], tuple(styles)), dict(texture=png, name=tex['name'], kind=face['kind'], size=[tex['width'], tex['height']], flags=0, indices=[]))
+        group = groups.setdefault((png, face['kind'], tuple(styles), face.get('mover')), dict(texture=png, name=tex['name'], kind=face['kind'], size=[tex['width'], tex['height']], flags=0, indices=[],
+                                                                                              **({'mover': face['mover']} if face.get('mover') is not None else {})))
         if frames:
             group['anim'] = dict(frames=frames, fps=5)
         if styles:
@@ -747,7 +796,7 @@ def read_spr(data):
     return width, height, x, y, data[56:56 + width * height]
 
 
-def append_items(data, bsp, files, game):
+def append_items(data, bsp, files, game, first_mover=0):
     """Placed items, weapons, torches and barrels as the progs spawn them (ITEM_MODELS), turning ones as movers; light
     globes as sprites. Returns (records, movers, sprites)."""
     if __package__:
@@ -819,7 +868,7 @@ def append_items(data, bsp, files, game):
             angles = np.zeros(3) if turning else vector(e, 'angles') if 'angles' in e else np.array([0., float(e.get('angle') or 0), 0.])
             group = dict(kind='model', flags=0, entity=entity, classname=cls)
             if turning:
-                group['mover'] = len(movers)
+                group['mover'] = first_mover + len(movers)
                 movers.append(dict(pivot=[round(float(c), 4) for c in origin[[1, 2, 0]] * SCALE], spin=[0, 1, 0, round(math.radians(100), 6)]))
             for model, png, size in parts:
                 append_alias(data, model, origin, angles, dict(group, texture=png, size=size))
@@ -870,9 +919,15 @@ def build_map(raw, name, game='quake', lit=None, files=None):
     bsp['rerelease'] = game in RERELEASE
     lighting = colored_lighting(bsp, lit)
     placed, skipped = instances(bsp, game)
+    movers = []
+    for instance in placed:  # trains moving on their own: their faces in groups of their own, moved by the page
+        if instance.get('path'):
+            instance['mover'] = len(movers)
+            movers.append(dict(instance['path'], pivot=[0, 0, 0]))
     data = geometry(bsp, placed)
     models = append_monsters(data, bsp, files or {}, game)
-    items, movers, sprites = append_items(data, bsp, files or {}, game)
+    items, item_movers, sprites = append_items(data, bsp, files or {}, game, len(movers))
+    movers += item_movers
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp, game)
 

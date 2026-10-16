@@ -213,14 +213,15 @@ def sprites(entities):
 
 
 # --- Brushes that turn ---------------------------------------------------------------------------------------------
-def rotating(entity):
+def rotating(entity, speed_key='maxspeed'):
     """A func_rotating that starts on (SF_BRUSH_ROTATE_START_ON 1) as a spin [x, y, z, radians a second] about its origin,
     map axes, or None. CFuncRotating::Spawn: angular velocity maxspeed (degrees a second) along roll (flag 4, 'Z axis'),
-    pitch (flag 8, 'X axis') or yaw, reversed by flag 2; Rotation = angles + velocity x seconds."""
+    pitch (flag 8, 'X axis') or yaw, reversed by flag 2; Rotation = angles + velocity x seconds. Quake II's SP_func_rotating
+    reads the same flags with `speed` (speed_key)."""
     if entity.get('classname', '').lower() != 'func_rotating':
         return None
     flags = int(_number(entity, 'spawnflags'))
-    speed = _number(entity, 'maxspeed', 100) or 100
+    speed = _number(entity, speed_key, 100) or 100
     if not flags & 1 or speed <= 0:
         return None
     rate = np.array([0., 0., 1.] if flags & 4 else [1., 0., 0.] if flags & 8 else [0., 1., 0.]) * speed * (-1 if flags & 2 else 1)

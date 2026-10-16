@@ -170,6 +170,24 @@ class QuakeMapsTest(unittest.TestCase):
         self.assertEqual(regions[0]['contents'], -3)
         self.assertEqual(tree['nodes'], [[0., 1., 0., 2., -1 - 3, -1]])  # Above z=64 dry, below water; page axes and units.
 
+    def test_trains_that_start_on_their_own_loop_their_corners(self):
+        from tools.import_quake_map import train_path
+        corners = [dict(classname='path_corner', targetname='a', target='b', origin='0 0 0'),
+                   dict(classname='path_corner', targetname='b', target='c', origin='100 0 0', wait='2'),
+                   dict(classname='path_corner', targetname='c', target='a', origin='100 0 50', wait='-1')]
+        bsp = dict(entities=corners)
+        path = train_path(bsp, dict(classname='func_train', target='a', speed='50'))
+        times = [k[0] for k in path['keys']]
+        # Quake: 2 s to b, its wait 2; 1 s to c, whose wait -1 lets the next think come at once; 2.236 s back to a, 0.1.
+        self.assertEqual(times, [0, 2, 4, 5, 5, 7.2361, 7.3361])
+        self.assertEqual(path['period'], 7.3361)
+        self.assertEqual(path['keys'][1][1:4], [0, 0, 100 / 32])  # page axes: Quake x is the page's z
+        self.assertIsNone(train_path(bsp, dict(classname='func_train', target='a', targetname='t')))  # waits for a trigger
+        # Quake II: a negative wait stops the train there (an open path holds at its end); START_ON runs a named train.
+        stopped = train_path(bsp, dict(classname='func_train', target='a', targetname='t', spawnflags='1'), quake2=True)
+        self.assertEqual([k[0] for k in stopped['keys']], [0, 1, 3, 3.5])  # speed 100 by default
+        self.assertEqual(stopped['period'], 1e9)
+
     def test_player_lands_on_the_hull_floor(self):
         # Hull 1's only node: solid below z = 100 (a clip floor with no faces), empty above.
         data = dict(models=[[0.] * 9 + [0, 0, 0, 0, 0, 0, 0]], planes=[(0., 0., 1., 100., 2)], clipnodes=[(0, -1, -2)])
