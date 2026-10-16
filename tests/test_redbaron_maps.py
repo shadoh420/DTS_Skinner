@@ -4,9 +4,12 @@ Optional bounded install checks: RB3D_INSTALL_TESTS=1, optionally RB3D_INSTALL=.
 """
 import json
 import math
+import io
 import os
 from pathlib import Path
+import shutil
 import struct
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -288,7 +291,7 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertEqual(leaves[0][6], (0, 0, 4))
             self.assertEqual(leaves[3][6], (2, 2, 2))
             from unittest.mock import Mock
-            assets = Mock()
+            assets = Mock(season='s', files={})
             assets.material.return_value = [(1, 0, 0), (1, 1, 0)]
             assets.slot.return_value = 'colour.png'
             target = Path(temp, 'chunk.bin')
@@ -405,6 +408,35 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertIn('Shared asset setup failed', report['missions']['valid.mis']['reason'])
             self.assertEqual((output / 'index.json').read_bytes(), old_index)
 
+    def test_season_from_the_mission_date_and_season_packs(self):
+        import datetime
+        day = lambda y, m, d: datetime.date(y, m, d).toordinal() + 1721425  # noqa: E731
+        # 004EFB60: 20 Sep-20 Dec fall, 21 Dec-19 Mar winter, the rest summer.
+        cases = {(1918, 5, 31): 'summer', (1918, 9, 19): 'summer', (1918, 9, 20): 'fall', (1916, 12, 20): 'fall',
+                 (1917, 12, 21): 'winter', (1918, 1, 31): 'winter', (1918, 3, 19): 'winter', (1918, 3, 20): 'summer'}
+        for date, season in cases.items():
+            self.assertEqual(rb.date_season(day(*date)), season, date)
+        self.assertEqual((rb.terrain_material('sbaron.dml', 'f'), rb.terrain_material('baron.dml', 'w')), ('fbaron.dml', 'wbaron.dml'))
+        with tempfile.TemporaryDirectory() as temp:
+            install, output = Path(temp, 'install'), Path(temp, 'maps')
+            (install / 'Data/3dpatch').mkdir(parents=True)
+            (install / 'Single').mkdir()
+            (install / 'Data/BARON0.TED').write_bytes(volume(ted_members(), True))
+            (install / 'Data/rb.vol').write_bytes(volume({'summer.pal': palette(), 'sbaron.dml': dml(), 'fbaron.dml': dml(),
+                                                         'lndmrks0.dat': table([], 63)}))
+            (install / 'Data/3dpatch/3dfall.vol').write_bytes(volume({'readme.bat': b'REM'}))
+            result = rb.import_maps(install, output)
+            # Fall has its volume, winter has none (a warning): two Western Front entries, each in its own pack.
+            self.assertEqual(result['imported'], ['western_front', 'western_front_fall'])
+            index = json.loads((output / 'index.json').read_text())
+            self.assertEqual([entry['type'] for entry in index], ['summer preview', 'fall preview'])
+            self.assertNotEqual(index[0]['pack'], index[1]['pack'])
+            fall = json.loads((output / index[1]['pack'] / 'maps/western_front_fall/scene.json').read_text())
+            self.assertEqual(fall['season'], 'fall')
+            report = json.loads((output / 'report.json').read_text())
+            self.assertIn('No Data/3dpatch/3dwinter.vol: winter not imported', report['warnings'])
+            self.assertEqual(report['teds']['baron0.ted (fall)']['status'], 'imported')
+
     def test_mission_export_uses_birth_altitude_aircraft_and_briefing(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -413,7 +445,7 @@ class RedBaronMapsTest(unittest.TestCase):
             dat.write_bytes(world())
             dsc.write_bytes(b'Protect the airfield.\0\x04\0binary tail')
             from unittest.mock import Mock
-            assets = Mock(haze=[1, 2, 3], files={}, report={'missingShapes': set()})
+            assets = Mock(haze=[100, 120, 140], sky_colour=[200, 210, 220], files={}, report={'missingShapes': set()}, season='s')
             assets.model.return_value = '03058000.json'
             result = rb.export_mission(mis, {'test.dat': dat, 'test.dsc': dsc}, {0: {}}, assets, table([], 147))
             assets.model.assert_called_once_with('03058000.dts', 3)
@@ -421,6 +453,43 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertEqual(result['briefing'], 'Protect the airfield.')
             self.assertEqual(result['viewpoints'][0][13], 300 * rb.SCALE)
             self.assertEqual(result['objects'][0]['matrix'][12], -100 * rb.SCALE)
+            # Sky and fog colours follow the mission's light.
+            light = result['lighting']['intensity']
+            self.assertEqual(result['skyColour'], [round(c * light) for c in (200, 210, 220)])
+            self.assertEqual(result['haze'], [round(c * light) for c in (100, 120, 140)])
+
+    def test_sky_textures_carry_their_alpha_and_fall_back_to_the_clear_band(self):
+        from PIL import Image
+
+        def bmp(colour, mode='P'):
+            image = Image.new(mode, (4, 2), colour)
+            if mode == 'P':
+                image.putpalette([0, 0, 0, 200, 210, 220] + [0] * 762)
+            out = io.BytesIO()
+            image.save(out, format='BMP')
+            return out.getvalue()
+
+        files = {'hz-cld0.bmp': bmp(1), 'hz-cld0.aph': bmp(128, 'L'), 'csheet1.bmp': bmp(1), 'csheet1.aph': bmp(255, 'L')}
+        with tempfile.TemporaryDirectory() as temp:
+            assets = rb.Assets.__new__(rb.Assets)
+            assets.files, assets.output = {name: lambda data=data: data for name, data in files.items()}, Path(temp)
+            assets.pngs, assets.report = {}, dict(missingTextures=set())
+            sky = assets.sky()
+            self.assertIsNone(sky['sun'])  # No Sun.bmp here: reported, not invented.
+            self.assertEqual(assets.report['missingTextures'], {'sun.bmp'})
+            # 004B41E0 falls back to hz-cld0; weather 0 has no cloud sheets (004BDA46), and missing ones are None.
+            self.assertEqual(sky['ring'], [sky['ring'][0]] * 6)
+            self.assertEqual((sky['clouds'][0], sky['clouds'][2]), (None, None))
+            with Image.open(Path(temp) / 'textures' / sky['ring'][0]) as image:
+                self.assertEqual(image.getpixel((0, 0)), (200, 210, 220, 128))
+            self.assertIs(assets.sky(), sky)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is not installed')
+    def test_page_scripts(self):
+        """static/rb3d-maps/stream.js: streaming, native light and haze, and the Glide sky."""
+        for name in ('test_redbaron_maps_stream.cjs', 'test_redbaron_maps_sky.cjs'):
+            run = subprocess.run(['node', str(Path(__file__).with_name(name))], capture_output=True, text=True, timeout=300)
+            self.assertEqual(run.returncode, 0, name + run.stdout[-2000:] + run.stderr[-2000:])
 
     def test_output_cannot_touch_install(self):
         with tempfile.TemporaryDirectory() as temp:
