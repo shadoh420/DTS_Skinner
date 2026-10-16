@@ -225,7 +225,7 @@ FOREVER = 600.  # seconds: a particle living longer than this (city lights: 5000
 # particle brighter (rgb x gain) and more covering (1 - (1 - alpha)^gain) by the same factor. It mostly takes the
 # burning mansions' firebrush (2,000 flames and 100 glows of 200-400 units a second: 6.2 ms in la_malkavian_5
 # uncapped) and the ending sequences' fire; a few mists and smokes (hw_warrens, ch_temple_2, la_plaguebearer_sewer_1)
-# are thinned up to 4.4x and still read as soft mist.
+# are thinned up to 5.5x and still read as soft mist.
 # ponytail: one cap for every view; a view-dependent budget would keep more of them from afar.
 FILL = 200000.
 

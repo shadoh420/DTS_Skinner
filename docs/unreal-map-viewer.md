@@ -218,12 +218,12 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
 
   Cost and limits:
   - Cost: GPU timer queries at 1280×720, particles alone with no world depth. A fire, candle or sky view costs
-    0.03–0.06 ms. Grout's burning mansion (la_malkavian_5) from inside a burning room costs 0.51 / 0.27 / 0.13 ms
-    on high / medium / low.
+    0.03–0.06 ms. Grout's burning mansion (la_malkavian_5) from inside a burning room costs 0.40 / 0.20 / 0.12 ms
+    on high / medium / low (la_malkavian_4's densest fires 0.16 on high).
   - The cost holds because of a fill cap (`FILL` in `tools/vtmb_particles.py`): its firebrush emitters spawn
     2,000 flames and 100 200-unit glows a second. Spawns whose particles alive × sprite area exceed the cap are
     thinned, each kept particle brighter by the same factor. The quality tiers thin the same way. The cap mostly takes
-    the burning mansions (la_malkavian_4/5) and the ending sequence; a few mists and smokes are thinned up to 4.4×.
+    the burning mansions (la_malkavian_4/5) and the ending sequence; a few mists and smokes are thinned up to 5.5×.
   - In the sky pass, medium and low cull sky emitters by their distance from the player, not from the sky camera.
 - **Turning actors**: pickups with `bRotatingPickup` (Inventory's Pickup state sets PHYS_Rotating unless falling) and
   non-static actors already rotating with `bFixedRotationDir` turn by `RotationRate` about their location (897 UT
