@@ -105,6 +105,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const panning = [], animated = [];
   // Source 3D skies: the sky area's surfaces and props, drawn first from the sky camera; the level's sky faces show it.
   const sky3dDraws = [], mainDraws = [], skyFaces = [];
+  let skyBackdrop = null;
   let lightMap = null;  // The map's lightmaps in one atlas: the game draws texture x lightmap x 2.
   let quakeColormap = null;
   function surfaceMaterial(group, texture) {
@@ -325,6 +326,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       skyCamera.projectionMatrix.copy(camera.projectionMatrix);
       skyCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
       showPass(true);
+      // The 2D sky first, all round the sky camera: Source draws its skybox in the 3D sky view (viewrender.cpp
+      // CSkyboxView::Setup adds DF_DRAWSKYBOX), so directions the sky area's own sky faces miss still show it.
+      if (!skyBackdrop && skyFaces.length) {
+        const material = skyFaces[0].clone();
+        Object.assign(material, {uniforms: skyFaces[0].uniforms, side: THREE.BackSide, depthWrite: false, depthTest: false, colorWrite: true});
+        skyBackdrop = new THREE.Scene();
+        skyBackdrop.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material), {frustumCulled: false}));
+      }
+      if (skyBackdrop) { skyBackdrop.children[0].position.copy(skyCamera.position); renderer.render(skyBackdrop, skyCamera); }
       renderer.render(scene, skyCamera);
       renderer.clearDepth();
       showPass(false);
