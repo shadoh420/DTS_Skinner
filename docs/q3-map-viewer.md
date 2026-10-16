@@ -438,8 +438,38 @@ Not done in part B, with the reason:
   lightmap at the first sample, so animating them means keeping up to four
   lightmaps and vertex colours per surface. Styles 32 and up are switched
   lights, which stay as they start.
-- **fx_runner particles** (JK2 559 on 27 maps, JA 1,184 on 31) and RTCW's
-  particle entities need an `.efx` reader and emitters.
+- **fx_runner effects, the rest** (JK2 559 runners on 27 maps, JA 1,184 on 31):
+  the running ones' Particle primitives are drawn (see Particle effects below);
+  Line, Tail, Cylinder, Electricity, Light and the other primitives, runners
+  that wait for a trigger, and RTCW's particle entities are not.
 - **Surface sprites** (`surfaceSprites` stages: 70 in JA's scripts, mostly
   vertical grass) need the stages kept at import and sprites scattered over
   each surface.
+
+## Particle effects (JK2, JA)
+
+A running `fx_runner` (neither STARTOFF nor ONESHOT) plays its `.efx` every
+`delay` + `random`/2 ms (fx_runner_think; the mean of its random wait). The
+import (`tools/raven_efx.py`, `import_jk2_map.particles`) keeps each Particle
+primitive as a template of the shared particle system (`static/particles.js`)
+and each runner and shader as an emitter: origin, the effect axes (toward the
+target, else SP's `angle` as a yaw or MP's angles, else up; MakeNormalVectors),
+period, and for a primitive with several shaders the share of its particles
+each one draws (the game picks one at random per particle). The page draws a
+shader's first stage: its image, blend and alpha test, with the particle's
+colour where rgbGen / alphaGen take the vertex colour, scaled by the identity
+light for `rgbGen vertex`. Raven's element biasing (linear, nonlinear, wave,
+clamp, random; FxPrimitives.cpp) runs in the vertex shader; without
+`useAlpha` the alpha scales the colour, as the game does for additive art.
+
+Every particle is worked out on the GPU from the time alone, so the page can
+show any moment and costs the CPU two uniforms a frame. The header's
+**Particles** select picks a quality tier: high (all), medium (half the
+particles, 4096 units), low (a quarter, 2048), off. Measured 2026-10-16 at
+1280x720 (browser pane, timer queries): at most ~0.09 ms of GPU for the
+particles at high on JA kor1 (292 runners), sp_yavin1b (size-128 smoke) and
+JK2 yavin_final, below the frame's noise.
+
+Not drawn: impacts and physics, orgOnSphere/orgOnCylinder spawn shapes,
+OrientedParticle, oneShotAnimMap explosion shaders, soft (depth-faded)
+edges; alpha-blended particles are not sorted within a draw.

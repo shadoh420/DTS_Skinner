@@ -126,7 +126,7 @@
       const span = pair(t.delay)[1] + pair(t.life)[1], bursts = Math.max(1, Math.ceil(span / period)), count = Math.ceil(pair(t.count || 1)[1]);
       slots.push({e, bursts, count, period, loop: bursts * period});
     }
-    const wanted = slots.reduce((n, s) => n + s.bursts * s.count, 0), cap = options.maxSlots || MAX_SLOTS;
+    const wanted = slots.reduce((n, s) => n + s.bursts * s.count / (s.e.share?.[1] || 1), 0), cap = options.maxSlots || MAX_SLOTS;
     const keep = Math.min(1, cap / Math.max(wanted, 1));  // ponytail: an over-full scene drops slots evenly, not by distance.
     const groups = new Map();
     for (const {e, bursts, count, period, loop} of slots) {
