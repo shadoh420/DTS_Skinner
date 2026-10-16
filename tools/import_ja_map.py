@@ -241,8 +241,11 @@ def load_placed(game,path,skin,frame):
 def prepare_entity(e,section):
     e=dict(e);cls=e.get('classname','').lower();flags=int(number(e,'spawnflags'))
     if not e.get('model') and cls in jk.PROP_MODELS:e['model']=jk.PROP_MODELS[cls]
+    # The game sets these models itself, whatever the map's model key says (g_misc_model.cpp).
     defaults={'misc_model_beacon':'models/map_objects/wedge/beacon.md3',
-              'misc_model_bomb_planted':'models/map_objects/factory/bomb_new_deact.md3'}
+              'misc_model_bomb_planted':'models/map_objects/factory/bomb_new_deact.md3',
+              'misc_model_gun_rack':'models/map_objects/kejim/weaponsrack.md3',
+              'misc_model_ammo_rack':'models/map_objects/kejim/weaponsrung.md3'}
     if cls in defaults:e['model']=defaults[cls]
     if 'modelscale' in e:
         # G_SpawnFloat uses atof; stock maps occasionally put three numbers here.

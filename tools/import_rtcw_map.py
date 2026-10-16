@@ -26,11 +26,10 @@ except ImportError:
 # qfiles.h: the seventeen on-disk records are unchanged from BSP46.
 STRIDES = (1, 72, 16, 36, 48, 4, 4, 40, 12, 8, 44, 4, 72, 104, 49152, 8, 1)
 PLAYER_MINS, PLAYER_MAXS, EYE_HEIGHT = (-18, -18, -24), (18, 18, 48), 40
-NOT_DRAWN = ['global, sky, water and volume fog (by choice)', 'AI characters',
+NOT_DRAWN = ['AI characters',
              'gameplay, audio, particles, flares and sun sprites',
              'script actions and moving/animated model poses after spawn',
-             'portals, mirrors, skyportal cameras and spotlight camera effects',
-             'light-grid lighting on placed models (lit evenly)']
+             'portals, mirrors, skyportal cameras and spotlight camera effects']
 PROP_MODELS = {
     'props_box_32':'models/mapobjects/boxes/box32.md3',
     'props_box_48':'models/mapobjects/boxes/box48.md3',
@@ -289,12 +288,12 @@ class ModelTextures(rtcw.Textures):
         return self.cache[shader]
 
 
-def describe(game,name,textures,*,draw_fog_stages=False):
+def describe(game,name,textures,*,draw_fog_stages=False,inner_box=True):
     if name in game.described: return game.described[name]
     body,stages = game.shaders.get(name,([],[]))
     words = {r[0] for r in body}
     textures.mipmap, textures.picmip = 'nomipmaps' not in words, not words.intersection(('nopicmip','nomipmaps'))
-    textures.sky_paths = {rtcw.q3.key_name(r[1]+'_'+side+'.tga') for r in body if r[0]=='skyparms' and len(r)>1 for side in qmap.SKY_SIDES}
+    textures.sky_paths = {rtcw.q3.key_name(box+'_'+side+'.tga') for r in body if r[0]=='skyparms' for box in r[1:4:2] for side in qmap.SKY_SIDES}
     implicit = next((r for r in body if r[0] in ('implicitmap','implicitmask','implicitblend')),None)
     if implicit and not stages:
         target = implicit[1] if len(implicit)>1 and implicit[1]!='-' else name
@@ -311,14 +310,35 @@ def describe(game,name,textures,*,draw_fog_stages=False):
         # RB_StageIteratorSky suppresses the box when its first image is missing.
         if sides[0]:result['sky']['box']=[s or '$default' for s in sides]
         else:result['sky'].pop('box',None)
+    inner=next((r[3] for r in body if r[0]=='skyparms' and len(r)>3 and r[3]!='-'),None)
+    if inner_box and inner and 'sky' in result:
+        # RTCW and ET draw the inner box last, alpha-blended over the clouds (RB_StageIteratorSky); Q3, JK2 and JA never do.
+        sides=[textures.resolve(game,inner+'_'+side+'.tga') for side in qmap.SKY_SIDES]
+        if sides[0]:result['sky']['inner']=[s or '$default' for s in sides]
     if not draw_fog_stages and any([w.lower() for w in r[:2]]==['surfaceparm','fog'] for r in body):
-        result=dict(name=name,stages=[],cull='none',sort=3,outside=[])
+        result=dict(name=name,stages=[],cull='none',sort=7,fog=True,outside=[])  # SS_FOG: drawn by its fog pass alone.
     if implicit: limits += ['implicit directive compatibility extension (not in supplied renderer)']
-    if words.intersection(('fogparms','skyfogvars','waterfogvars','mapfogvars','nofog')): limits += ['fog not drawn']
+    if words.intersection(('skyfogvars','waterfogvars')): limits += ['sky and underwater fog not drawn']
     if 'sunshader' in words: limits += ['sun sprite not drawn']
     # Compression directives affect storage, not an uncompressed preview's material.
     game.described[name] = result,missing,sorted(set(limits))
     return game.described[name]
+
+
+def map_fog(game,shaders):
+    """The map-wide fog of the sky shader's fogvars (R_SetFog via r_mapFogColor / FOG_MAP): GL linear fog from
+    the eye to v when v > 1, else GL exp fog of density v. Linear fog hides the sky and ends the view there
+    (R_SetFrameFog clips zFar); ET also ends it at its global fog's depth (SetFarClip). Returns (fog, far clip)."""
+    fog=None
+    for shader in shaders:
+        if not shader or 'sky' not in shader:continue
+        row=next((r for r in game.shaders.get(shader['name'],([],[]))[0] if r[0]=='fogvars'),None)
+        if row:
+            *color,value=qmap.numbers(row[1:],4)
+            fog=dict(color=color,linear=True,end=value) if value>1 else dict(color=color,linear=False,density=value) if value>0 else None
+            break
+    far=[fog['end']] if fog and fog['linear'] else []
+    return fog,far
 
 
 def filtered(entity,section):
@@ -718,7 +738,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
                         item_models[key]=desc;unresolved+=missing;limits.update(desc.get('limitations',[]))
                     placed_pos=list(pos)
                     if cls=='misc_mg42':placed_pos[2]+=24 if which==0 else -24
-                    placed.append(dict(models=[key],origin=placed_pos,angles=rot,scale=size,spin=spin,entity=serial))
+                    placed.append(dict(models=[key],origin=placed_pos,angles=rot,scale=size,spin=spin,entity=serial,**({'pickup':True} if item else {})))  # CG_Item gives pickups RF_MINLIGHT.
                 status='drawn';reason='pickup at spawn; '+floor if item else 'model decoration at authored spawn pose'
             row.update(status=status,reason=reason)
         except (ValueError,OSError,struct.error,zipfile.BadZipFile,KeyError) as exc:
@@ -733,10 +753,13 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
         if v['floor']!='brush hull floor':limits.add('start floor: '+v['floor'])
     limits.add('hull floor sweep uses brush planes and preview patch triangles; curved-floor tolerances may differ from the game')
     if game.section=='mp':limits.add('first eligible Axis initial spawn, then Allies; game randomly chooses among eligible team starts')
+    fogs=qmap.fog_volumes(lumps,game.shaders);wolf_fog,far=map_fog(game,shaders)
+    if getattr(rules,'GLOBAL_FOG_CLIPS',False):far+=[f['depth'] for f in fogs if f and f.get('global')]
     digest=hashlib.sha256(b''.join(draw)).hexdigest()[:24];file='bsp/'+digest+'.bsp'
     if not (output/file).exists():qmap.write_bsp(output/file,draw,version=47)
     scene=dict(name=name,longname=things[0].get('message','') if things else '',source=source,section=game.section,bsp=file,bspVersion=47,
                shaders=shaders,viewpoints=views,models=[],items=[],placed=placed,itemModels=item_models,lighting=game.lighting,bspCull=qmap.read_visibility(lumps),
+               fogs=fogs,**({'mapFog':wolf_fog} if wolf_fog else {}),**({'farClip':max(64,min(far))} if far else {}),
                entityResults=audit,bspNotes=bsp_notes,unresolved=sorted(set(unresolved)),outside=[],guessed=[],limits=sorted(limits))
     folder=output/'maps'/ident;folder.mkdir(parents=True,exist_ok=True);rtcw.q3.json_write(folder/'scene.json',scene)
     return scene
