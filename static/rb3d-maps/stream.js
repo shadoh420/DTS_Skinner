@@ -38,6 +38,7 @@ window.rb3dMaps = {
     }
     environment();
     // The Glide clear colour (ground bank index 39); the fog keeps index 47. Packs before it lack the key.
+    if ($('season') && map.season) $('season').textContent = map.season[0].toUpperCase() + map.season.slice(1);
     if (map.skyColour) scene.background = new THREE.Color(`rgb(${map.skyColour.join(',')})`);
     const textures = new Map(), models = new Map();
     async function texture(name) {
@@ -262,7 +263,7 @@ rbFog *= rbW;
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       geometry.setIndex(indices);
-      const mat = new THREE.MeshBasicMaterial({map: image, side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false, fog: false});
+      const mat = new THREE.MeshBasicMaterial({map: image, color: skyShade(), side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false, fog: false});
       mat.userData.texture = file;
       const mesh = new THREE.Mesh(geometry, mat);
       mesh.renderOrder = -3;
@@ -306,6 +307,11 @@ rbFog *= rbW;
         }
       }
     }
+    // The cloud palette dims with the light like the ground bank (dusk and night; MISSIONE's band reads 67,71,72).
+    function skyShade() {
+      const shade = Math.round(255 * Math.min(1, lighting?.intensity ?? 1));
+      return new THREE.Color(`rgb(${shade},${shade},${shade})`);
+    }
     // The sun (004D05B0, drawn by 004AB700): Sun.bmp blitted unscaled, 32 pixels of the game's 480-line screen, at the
     // sun's projected point, behind everything, while its elevation + 3 is above -2 degrees.
     let sun = null;
@@ -340,7 +346,7 @@ rbFog *= rbW;
       const image = await texture(file);
       if (skyWeather !== weather) { releaseTexture(file); return; }
       image.magFilter = image.minFilter = THREE.LinearFilter;
-      cloudMaterial = new THREE.MeshBasicMaterial({map: image, side: THREE.DoubleSide, transparent: true, depthWrite: false});
+      cloudMaterial = new THREE.MeshBasicMaterial({map: image, color: skyShade(), side: THREE.DoubleSide, transparent: true, depthWrite: false});
       cloudMaterial.userData.texture = file;
     }
     return delta => {
