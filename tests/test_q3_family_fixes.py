@@ -138,6 +138,7 @@ class Q3FamilyPartBTests(unittest.TestCase):
         # SP_func_pendulum starts its roll from the spawn angles (q3dm15: "angle" 90, swinging across the hall).
         [turned] = qmap.movers([{**things[0], 'angle': '90'}], models)
         self.assertEqual((turned['base']['angles'], turned['angles']), ([0, 0, 0], [0, 90, 0]))
+        self.assertEqual(qmap.movers([{**things[0], 'angles': '0 45 10'}], models)[0]['angles'], [0, 45, 10])
         [rotating] = qmap.movers([{'classname': 'func_rotating', 'model': '*1', 'angle': '90'}], models)
         self.assertEqual(rotating['angles'], [0, 0, 0])  # Other movers never take them.
 

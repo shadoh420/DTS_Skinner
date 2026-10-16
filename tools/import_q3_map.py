@@ -645,7 +645,7 @@ def movers(things, models_lump, rules='q3', placed=None):
             continue
         origin = numbers(thing.get('origin', '').split(), 3)
         turned = motion['type'] == 'swing'
-        spawn = (vector(thing['angles']) if 'angles' in thing else [0.0, numbers([thing.get('angle', '0')], 1)[0], 0.0]) if turned else [0.0, 0.0, 0.0]
+        spawn = (numbers(thing['angles'].split(), 3) if 'angles' in thing else [0.0, numbers([thing.get('angle', '0')], 1)[0], 0.0]) if turned else [0.0, 0.0, 0.0]
         base, rest = placed(index, thing) if placed else (dict(origin=origin, angles=[0.0, 0.0, 0.0]), spawn)
         if base:
             result.append(dict(model=index, base=base, origin=origin, angles=rest, **motion))
