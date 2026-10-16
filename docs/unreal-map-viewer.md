@@ -185,6 +185,45 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
 - **Environment maps**: mesh triangles flagged environment-mapped, and meshes with `bMeshEnviroMap`, show the actor's
   `Texture` (else the zone's or the level's `EnvironmentMap`) at the eye ray reflected off the vertex normal in view
   space; without one they are not drawn. BSP surfaces flagged so (62 on 3 Unreal maps) stay plain, as in SurrealEngine.
+- **Particles** (Bloodlines and E.Y.E.; `map.particles`, drawn by the shared `static/particles.js` with the page's
+  Particles quality select): Source `func_dustmotes` and `env_steam` follow the SDK 2013 client code
+  (`tools/source_effects.py`). Bloodlines' own `env_particle` and `func_particle` read the game's `particles/*.txt`
+  definitions (`tools/vtmb_particles.py`, whose docstring lists the rules). The format has no public specification;
+  its rules were read from the game's `engine.dll` and `vampire.dll` (rules only) and have not been compared with
+  the game:
+  - KeyValues as Troika reads them. A `// spawn` comment leaves its block as plain keys, so later spawns still load.
+  - Lives of `min_frames`..`max_frames` at `fps`, with every track stretched over the life. A track is keys
+    `v`, `a~b` (drawn per particle and key), `v(frame)` and `v!` (a step). Each key ramps from the value so far.
+  - Spawns: `rate` is per second (× the entity's `ramp_scale`). `burst` fires at its key's time; a single-key burst
+    fires only at the parent's birth. Spawn ranges are drawn per child.
+  - Colour is rgb × color / 255³ and alpha is mask / 255, drawn ONE, ONE_MINUS_SRC_ALPHA (render mode 8): mask
+    covers and rgb glows.
+  - Sprites are `particles/<name>.tga`. Their longer side is `size`.
+  - Motion is spherical radius/theta/phi speeds plus x/y/z speeds along the emitter's axes and elevation speed
+    up. Axes are the entity's forward, left and up (inferred).
+
+  Drawn: emitters that start active, unparented, at a world place (`attach_type` 0, 1 or −1). Also timers' looping
+  child emitters (WaterDrops_Timer). Also bursts of particles that loop or outlive the visit (stars, city lights).
+  `func_particle` spreads its children over the brush's box (inferred from C_EnvParticle's box callback). Emitters
+  in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
+
+  Not drawn, with counts in each scene's `effects.troika_outcomes`:
+  - triggered or player-following emitters (`attach_type` 11);
+  - effects that play once at map start;
+  - moving child emitters (moths, airplanes);
+  - children of sprite particles;
+  - refraction sprites (`normal`, e.g. the heat haze over barrel fires);
+  - splashes and decals on collision;
+  - `lighting`, `no_z_test` and `sortfront`.
+
+  Cost and limits:
+  - Cost: GPU timer queries at 1280×720, particles alone with no world depth. A fire, candle or sky view costs
+    0.03–0.06 ms. Grout's burning mansion (la_malkavian_5) from inside a burning room costs 0.51 / 0.27 / 0.13 ms
+    on high / medium / low.
+  - The cost holds because of a fill cap (`FILL` in `tools/vtmb_particles.py`): its firebrush emitters spawn
+    2,000 flames and 100 200-unit glows a second. Spawns whose particles alive × sprite area exceed the cap are
+    thinned, each kept particle brighter by the same factor. The quality tiers thin the same way.
+  - In the sky pass, medium and low cull sky emitters by their distance from the player, not from the sky camera.
 - **Turning actors**: pickups with `bRotatingPickup` (Inventory's Pickup state sets PHYS_Rotating unless falling) and
   non-static actors already rotating with `bFixedRotationDir` turn by `RotationRate` about their location (897 UT
   and 294 Unreal pickups, 854 props). Movers stay where they start: every UE1 mover class waits for a trigger or a
