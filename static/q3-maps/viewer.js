@@ -6,6 +6,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const config = window.skinnerMapConfig || {};
   const storageKey = config.storageKey || 'skinner.q3maps';
+  // Every engine of the family draws the sky at the far limit of depth (glDepthRange 1, 1).
+  const skyAtFarDepth = config.skyAtFarDepth ?? true;
   const settings = {fov: 90, animate: true, invertX: false, invertY: false};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
@@ -94,7 +96,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Shader time and the camera in the game's axes, shared by every stage material.
-  const uniforms = {uTime: {value: 0}, uView: {value: new THREE.Vector3()}};
+  const uniforms = {uTime: {value: 0}, uView: {value: new THREE.Vector3()}, uForward: {value: new THREE.Vector3(1, 0, 0)},
+    uViewLeft: {value: new THREE.Vector3(0, 1, 0)}, uViewUp: {value: new THREE.Vector3(0, 0, 1)}};
   const number = value => { const text = String(Number(value) || 0), float = /[.e]/.test(text) ? text : text + '.0'; return value < 0 ? `(${float})` : float; };
   const WAVES = {sin: 0, triangle: 1, square: 2, sawtooth: 3, inversesawtooth: 4};
   const waveCall = ([func, base, amplitude, phase, frequency]) => `wave(${WAVES[func] || 0}, ${[base, amplitude, phase, frequency].map(number).join(', ')})`;
@@ -149,11 +152,30 @@ window.addEventListener('DOMContentLoaded', async () => {
   // deformVertexes wave, move and bulge (RB_CalcDeformVertexes, RB_CalcMoveVertexes, RB_CalcBulgeVertexes), applied
   // as the game applies them: before the stages' texture coordinates and colours are worked out.
   const deform = shader => (shader.deforms || []).map(([kind, ...values]) => {
+    // A vertex the import gave no sprite data (w 0) is left where it is.
+    if (kind === 'autosprite') return 'if (sprite.w > 0.) { P = sprite.xyz + ((1. - 2. * uv.x) * uViewLeft + (1. - 2. * uv.y) * uViewUp) * sprite.w; N = -uForward; }';
+    if (kind === 'autosprite2') return 'if (sprite.w != 0.) P = sprite.xyz + normalize(cross(spriteAxis, uForward)) * sprite.w;';
     if (kind === 'bulge') return `P += N * sin(uv.x * ${number(values[0])} + uTime * ${number(values[2])}) * ${number(values[1])};`;
     if (kind === 'move') return `P += vec3(${values.slice(0, 3).map(number).join(', ')}) * ${waveCall(values.slice(3))};`;
     const [spread, func, base, amplitude, phase, frequency] = values;  // A wave that does not move is one height everywhere.
     return `P += N * wave(${WAVES[func] || 0}, ${number(base)}, ${number(amplitude)}, ${number(phase)}${frequency ? ` + (P.x + P.y + P.z) * ${number(spread)}` : ''}, ${number(frequency)});`;
   }).join(' ');
+  // Fog. x is the depth inside the fog over its depth for opaque, worked out per vertex as RB_CalcFogTexCoords
+  // does (s: depth along the view; t: the share of the ray past the fog's visible plane, 0 for a point outside it,
+  // which interpolates as the game's fog texture coordinates do); the curve that turns x into opacity is the
+  // engine's: the fog image's square root (R_FogFactor), CNQ3's 1 - 2^-10x, ET's linear image, and GL fog's
+  // exp2 (JA global fog, r_drawfog 2), linear and exp (RTCW and ET fogvars, which use the radial distance).
+  const FOG_CURVES = {sqrt: 'sqrt(clamp(x, 0., 1.))', cnq3: '1. - exp2(-10. * x)', linear: 'clamp(x, 0., 1.)', exp2: '1. - exp(-5.5413 * x * x)', exp: '1. - exp(-x)'};
+  function fogVertex(fog, sky) {
+    const [nx, ny, nz, w] = (fog.plane || []).map(number);
+    // A sky is fogged where the game puts its clouds, a box zFar / 1.75 away.
+    const metric = sky ? number((map.farClip || camera.far) / 1.75) : fog.radial ? 'length(P - uView)' : 'dot(P - uView, uForward)';
+    return `vFogS = ${metric} * ${number(fog.scale)};
+      ${fog.plane ? `float eyeT = ${w} - dot(vec3(${nx}, ${ny}, ${nz}), uView), fogT = ${w} - dot(vec3(${nx}, ${ny}, ${nz}), P);
+      vFogT = eyeT < 0. ? (fogT < 1. ? 0. : fogT / (fogT - eyeT)) : (fogT < 0. ? 0. : 1.);` : 'vFogT = 1.;'}`;
+  }
+  const fogAlpha = fog => `float x = vFogS * vFogT, fogAlpha = ${FOG_CURVES[fog.curve]};`;
+  const fogColour = fog => `vec3(${fog.color.map(value => number(value * (map.lighting ? map.lighting.identityLight : .5))).join(', ')})`;
   const animated = [];
   function stageMaterial(shader, stage, texture, frames) {
     const sky = shader.sky, st = coordinates(stage, sky);
@@ -167,6 +189,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const test = {gt0: 'if (c.a <= 0.) discard;', lt128: 'if (c.a >= .5) discard;', ge128: 'if (c.a < .5) discard;'}[stage.alphaFunc] || '';
     // A model's light from the light grid, set per object by useLight; until then, or without a grid, it is lit evenly.
     const diffuse = stage.rgbGen[0] === 'lightingdiffuse', identity = map && map.lighting ? map.lighting.identityLight : .5;
+    // A fog pass (RB_FogPass) draws the fog's colour at its opacity; a stage under GL fog is fogged itself.
+    const fog = stage.fogPass || stage.glFog;
     const material = new THREE.ShaderMaterial({
       uniforms: {...uniforms, map: {value: texture}, ...(foliage ? {uFovScale: {value: settings.fov / 90}} : {}),
         ...(diffuse ? {uAmbient: {value: new THREE.Vector3().setScalar(identity)}, uDirected: {value: new THREE.Vector3()}, uLightDir: {value: new THREE.Vector3(0, 0, 1)}} : {})},
@@ -175,7 +199,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         ${foliage ? 'uniform float uFovScale; attribute vec4 foliageOrigin; varying float vFoliage;' : ''}
         ${diffuse ? `uniform vec3 uAmbient, uDirected, uLightDir;  // RB_CalcDiffuseColor
         vec3 diffuseLight(vec3 N) { return min(uAmbient + max(dot(N, uLightDir), 0.) * uDirected, 1.); }` : ''}
-        uniform vec3 uView; attribute vec2 lm; attribute vec4 tint; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
+        uniform vec3 uView, uForward; attribute vec2 lm; attribute vec4 tint; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
+        ${fog ? 'varying float vFogS, vFogT;' : ''}
+        ${(shader.deforms || []).some(([kind]) => kind.startsWith('autosprite')) ? 'attribute vec4 sprite; attribute vec3 spriteAxis; uniform vec3 uViewLeft, uViewUp;' : ''}
         float specular(vec3 P, vec3 N) {  // RB_CalcSpecularAlpha, with the game's one fixed light.
           vec3 light = normalize(vec3(-960., 1980., 96.) - P), turned = N * 2. * dot(N, light) - light;
           float level = max(dot(turned, normalize(uView - P)), 0.);
@@ -190,17 +216,21 @@ window.addEventListener('DOMContentLoaded', async () => {
           ${foliage ? 'vec4 vertexTint = tint; vFoliage = 1.;' + fade : ''}
           vColor = ${foliage ? colour(stage).replace(/\btint\b/g, 'vertexTint') : colour(stage)};
           vDir = P - uView;
+          ${fog ? fogVertex(fog, sky) : ''}
           gl_Position = projectionMatrix * viewMatrix * vec4(P.x, P.z, -P.y, 1.);
-          ${sky && config.skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''}
+          ${sky && skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''}
         }`,
       fragmentShader: `${WAVE}
         ${foliage ? 'varying float vFoliage;' : ''}
         uniform sampler2D map; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
+        ${fog ? 'varying float vFogS, vFogT;' : ''}
         void main() {
           ${sky ? 'vec3 P = vDir, N = vec3(0., 0., 1.); ' + st : 'vec2 st = vSt;'}
           ${foliage ? 'if (vFoliage < .5) discard;' : ''}
           vec4 c = texture2D(map, st) * vColor;
           ${test}
+          ${fog ? fogAlpha(fog) : ''}
+          ${stage.fogPass ? `c = vec4(${fogColour(fog)}, fogAlpha);` : stage.glFog ? `c.rgb = mix(c.rgb, ${fogColour(fog)}, fogAlpha);` : ''}
           gl_FragColor = c;
         }`,
       side: SIDES[shader.cull] || THREE.BackSide, transparent: true, depthWrite: !!stage.depthWrite,
@@ -209,16 +239,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       blendSrc: stage.blend ? FACTORS[stage.blend[0]] || THREE.OneFactor : THREE.OneFactor,
       blendDst: stage.blend ? FACTORS[stage.blend[1]] || THREE.OneFactor : THREE.ZeroFactor,
       polygonOffset: !!shader.polygonOffset, polygonOffsetFactor: -1, polygonOffsetUnits: -2});
+    material.userData.shader = shader;  // For the fog passes of models.
     if (foliage) material.onBeforeRender = () => { material.uniforms.uFovScale.value = settings.fov / 90; };
     if (frames && frames.length > 1) animated.push({material, frames, fps: stage.fps});
     return material;
   }
-  // The six sides of a sky box, placed as the game's MakeSkyVec places them.
-  function boxMaterial(sides) {
+  // The six sides of a sky box, placed as the game's MakeSkyVec places them. The inner box of RTCW and ET is
+  // blended over the clouds by its alpha (DrawSkySideInner).
+  function boxMaterial(sides, inner = false) {
     const names = ['rt', 'bk', 'lf', 'ft', 'up', 'dn'];
     return new THREE.ShaderMaterial({
       uniforms: {...uniforms, ...Object.fromEntries(names.map((name, index) => [name, {value: sides[index]}]))},
-      vertexShader: `invariant gl_Position; uniform vec3 uView; varying vec3 vDir; void main() { vDir = position - uView; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); ${config.skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''} }`,
+      vertexShader: `invariant gl_Position; uniform vec3 uView; varying vec3 vDir; void main() { vDir = position - uView; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); ${skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''} }`,
       fragmentShader: `uniform sampler2D rt, bk, lf, ft, up, dn; varying vec3 vDir;
         vec4 side(sampler2D image, vec2 p) { return texture2D(image, vec2(p.x + 1., 1. - p.y) * .5); }
         void main() {
@@ -226,9 +258,10 @@ window.addEventListener('DOMContentLoaded', async () => {
           vec4 c = a.x >= a.y && a.x >= a.z ? (d.x > 0. ? side(rt, vec2(-d.y, d.z) / a.x) : side(lf, vec2(d.y, d.z) / a.x))
             : a.y >= a.z ? (d.y > 0. ? side(bk, vec2(d.x, d.z) / a.y) : side(ft, vec2(-d.x, d.z) / a.y))
             : (d.z > 0. ? side(up, vec2(-d.y, -d.x) / a.z) : side(dn, vec2(-d.y, d.x) / a.z));
-          gl_FragColor = vec4(c.rgb * ${number(map && map.lighting ? map.lighting.identityLight : .5)}, 1.);
+          gl_FragColor = vec4(c.rgb * ${number(map && map.lighting ? map.lighting.identityLight : .5)}, ${inner ? 'c.a' : '1.'});
         }`,
-      side: THREE.DoubleSide, transparent: true, blending: THREE.NoBlending, depthWrite: true});
+      side: THREE.DoubleSide, transparent: true, depthWrite: !inner,
+      ...(inner ? {blending: THREE.CustomBlending, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor} : {blending: THREE.NoBlending})});
   }
 
   // Draw lumps of the map file (IBSP 46): models 7, vertices 10, indices 11, faces 13, lightmaps 14.
@@ -272,10 +305,15 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     const positions = [], normals = [], uvs = [], lms = [], tints = [], groups = new Map(), colour = [0, 0, 0];
     const foliageOrigins = [], foliageFaces = new Map((config.foliage ? map.bspNotes || [] : []).filter(n => n.action === 'foliage instances expanded').map(n => [n.surface, n]));
+    // Sprites (deformVertexes autosprite and autosprite2) keep, per vertex, what the deform needs: the quad's middle
+    // and radius, or the middle of the vertex's short edge, its signed half length and the quad's long axis.
+    const spriteOf = shader => shader && (shader.deforms || []).find(([kind]) => kind === 'autosprite' || kind === 'autosprite2')?.[0];
+    const sprites = map.shaders.some(spriteOf) ? [] : null, spriteAxes = [];
     // One vertex: position, texture st, lightmap st, normal, colour. Lightmap st is kept half a texel inside its
     // cell, which is what clamping did when each lightmap was a texture of its own.
-    function emit(values, origin, lightmap, foliage = [0, 0, 0, 0]) {
+    function emit(values, origin, lightmap, foliage = [0, 0, 0, 0], sprite = [0, 0, 0, 0], axis = [0, 0, 0]) {
       if (config.foliage) foliageOrigins.push(...foliage);
+      if (sprites) { sprites.push(...sprite); spriteAxes.push(...axis); }
       positions.push(values[0] + origin[0], values[1] + origin[1], values[2] + origin[2]);
       uvs.push(values[3], values[4]);
       if (lightmap < 0) lms.push(values[5], values[6]);
@@ -301,8 +339,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!map.shaders[shader] || type < 1 || type > 3 || first < 0 || first + count > vertices.count) continue;
       const lightmap = (external ? external.valid.includes(int(at + 28)) : int(at + 28) >= 0 && int(at + 28) < lightmaps.count) ? int(at + 28) : -1, origin = moved.get(face) || none;
       const vertexLit = config.vertexLightmaps && int(at + 28) === -3;
-      const key = shader + (lightmap < 0 ? config.vertexLightmaps && !vertexLit ? '|unlit' : '|vertex' : '|lit');
-      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, indices: [], ...(map.bspCull ? {ranges: []} : {})});
+      const fog = map.fogs && map.fogs[int(at + 4)] ? int(at + 4) : -1;
+      const key = shader + (lightmap < 0 ? config.vertexLightmaps && !vertexLit ? '|unlit' : '|vertex' : '|lit') + '|' + fog;
+      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, fog, indices: [], ...(map.bspCull ? {ranges: []} : {})});
       const indices = groups.get(key).indices, base = positions.length / 3;
       const rangeStart = indices.length;
       if (type === 2) {
@@ -328,6 +367,47 @@ window.addEventListener('DOMContentLoaded', async () => {
       } else {
         const firstIndex = int(at + 20), indexCount = int(at + 24);
         if (firstIndex < 0 || firstIndex + indexCount > indexes.count) continue;
+        const sprite = spriteOf(map.shaders[shader]);
+        if (sprite && count % 4 === 0 && indexCount === count / 4 * 6) {
+          // Independent quads, as the deforms expect (AutospriteDeform, Autosprite2Deform).
+          const offsets = Array.from({length: indexCount}, (_, n) => int(indexes.at + (firstIndex + n) * 4));
+          for (let quad = 0; quad < count / 4; quad++) {
+            const corners = [0, 1, 2, 3].map(k => read(first + quad * 4 + k)), point = k => [0, 1, 2].map(axis => corners[k][axis] + origin[axis]);
+            if (sprite === 'autosprite') {
+              // RB_AddQuadStamp: corners at middle ± left ± up, texture and lightmap st at the quad's corners, the
+              // first vertex's colour throughout.
+              const mid = [0, 1, 2].map(axis => [0, 1, 2, 3].reduce((sum, k) => sum + point(k)[axis], 0) / 4);
+              const radius = Math.hypot(...point(0).map((value, axis) => value - mid[axis])) * .707;
+              corners.forEach((values, k) => {
+                const stamped = [...values.slice(0, 3), +(k === 1 || k === 2), +(k >= 2), +(k === 1 || k === 2), +(k >= 2), ...values.slice(7, 10), ...corners[0].slice(10)];
+                emit(stamped, origin, lightmap, undefined, [...mid, radius]);
+              });
+              indices.push(...[0, 1, 3, 3, 1, 2].map(n => base + quad * 4 + n));
+            } else {
+              // The two shortest edges, their middles, and the long axis between them; each edge turns about its
+              // middle across the axis and the view, the way round its winding in the indexes says.
+              const edges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]], nums = [0, 0], lengths = [999999, 999999];
+              edges.forEach(([a, b], j) => {
+                const length = point(a).reduce((sum, value, axis) => sum + (value - point(b)[axis]) ** 2, 0);
+                if (length < lengths[0]) { nums[1] = nums[0]; lengths[1] = lengths[0]; nums[0] = j; lengths[0] = length; }
+                else if (length < lengths[1]) { nums[1] = j; lengths[1] = length; }
+              });
+              const mids = nums.map(j => point(edges[j][0]).map((value, axis) => (value + point(edges[j][1])[axis]) / 2));
+              const major = mids[1].map((value, axis) => value - mids[0][axis]), placed = [];
+              nums.forEach((j, e) => {
+                const [a, b] = edges[j], half = .5 * Math.sqrt(lengths[e]);
+                let k = 0;
+                while (k < 5 && !(offsets[quad * 6 + k] === quad * 4 + a && offsets[quad * 6 + k + 1] === quad * 4 + b)) k++;
+                placed[a] = [...mids[e], k === 5 ? half : -half];
+                placed[b] = [...mids[e], k === 5 ? -half : half];
+              });
+              corners.forEach((values, k) => emit(values, origin, lightmap, undefined, placed[k], major));
+              for (const offset of offsets.slice(quad * 6, quad * 6 + 6)) indices.push(base + (offset >= 0 && offset < count ? offset : 0));
+            }
+          }
+          if (map.bspCull) groups.get(key).ranges.push([face, rangeStart, indices.length - rangeStart]);
+          continue;
+        }
         for (let n = 0; n < count; n++) {
           const foliage = foliageFaces.get(face), instance = foliage ? Math.floor(n / foliage.vertices) : 0;
           emit(read(first + n), origin, lightmap, foliage ? [...read(foliage.sourceVertex + instance).slice(0, 3), instance & 1 ? (instance & 2 ? 1.5625 : 1.25) : 1] : undefined);
@@ -342,6 +422,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const attributes = {position: new THREE.Float32BufferAttribute(positions, 3), normal: new THREE.Float32BufferAttribute(normals, 3),
       uv: new THREE.Float32BufferAttribute(uvs, 2), lm: new THREE.Float32BufferAttribute(lms, 2), tint: new THREE.Float32BufferAttribute(tints, 4)};
     if (config.foliage) attributes.foliageOrigin = new THREE.Float32BufferAttribute(foliageOrigins, 4);
+    if (sprites) Object.assign(attributes, {sprite: new THREE.Float32BufferAttribute(sprites, 4), spriteAxis: new THREE.Float32BufferAttribute(spriteAxes, 3)});
     return {atlas, attributes, groups: [...groups.values()], lightGrid};
   }
 
@@ -416,10 +497,51 @@ window.addEventListener('DOMContentLoaded', async () => {
     }));
     return stages.map((stage, index) => ready[index][0] && stageMaterial(shader, stage, ready[index][0], ready[index].filter(Boolean)));
   }
+
+  // The fog passes of a surface under fog `fogNum` (-1 for none) and the map's own fog (RTCW and ET fogvars).
+  // FinishShader gives an opaque shader (JA: up to see-through) a pass that matches its depth and a fog shader one
+  // over what lies behind it; other shaders get none. The map's fog is GL fog: the pass stands in for it on opaque
+  // shaders, the game's single multitextured pass, and blended stages are fogged themselves (mapFogged).
+  const fogStyle = fog => fog.global && config.glGlobalFog ? {color: fog.color, scale: 1 / fog.depth, curve: 'exp2'}
+    : {color: fog.color, scale: 1 / fog.depth, plane: fog.global ? null : fog.plane, curve: config.fogCurve || 'cnq3'};
+  const mapFogStyle = fog => fog.linear ? {color: fog.color, scale: 1 / fog.end, radial: true, curve: 'linear'}
+    : {color: fog.color, scale: fog.density, radial: true, curve: 'exp'};
+  function fogPasses(shader, fogNum) {
+    const opaque = shader.sort <= (config.fogEqualSort ?? 3), volume = map.fogs && map.fogs[fogNum];
+    const styles = [(opaque || shader.fog) && volume && !(shader.sky && !(shader.stages || []).length) && fogStyle(volume),
+      opaque && !shader.sky && map.mapFog && mapFogStyle(map.mapFog)];
+    return styles.filter(Boolean).map(fogPass => ({map: '$whiteimage', rgbGen: ['identity'], fogPass, blend: ['gl_src_alpha', 'gl_one_minus_src_alpha'],
+      depthWrite: false, ...(opaque ? {depthFunc: 'equal'} : {})}));
+  }
+  const mapFogged = (shader, stages) => map.mapFog && !shader.sky && shader.sort > (config.fogEqualSort ?? 3)
+    ? stages.map(stage => ({...stage, glFog: mapFogStyle(map.mapFog)})) : stages;
+  // A model takes the first fog around its origin (R_ComputeFogNum tests its bounds against each fog's) and is
+  // given that fog's passes, which are shared by all models of one shader under one fog.
+  const fogMaterials = new Map();
+  function addFog(holder, origin) {
+    const fogNum = (map.fogs || []).findIndex(fog => fog && (fog.global || fog.bounds.every((value, i) => i < 3 ? origin[i] >= value : origin[i - 3] <= value)));
+    if (fogNum < 0 && !map.mapFog) return;
+    const done = new Set(), meshes = [];
+    holder.traverse(mesh => { if (mesh.isMesh && mesh.material.userData.shader) meshes.push(mesh); });
+    for (const mesh of meshes) {
+      const shader = mesh.material.userData.shader;
+      if (done.has(mesh.geometry.uuid + '|' + shader.name)) continue;
+      done.add(mesh.geometry.uuid + '|' + shader.name);
+      fogPasses(shader, fogNum).forEach((pass, n) => {
+        const key = `${shader.name}|${fogNum}|${n}|${shader.sort}`;
+        if (!fogMaterials.has(key)) fogMaterials.set(key, stageMaterial(shader, pass, white));
+        const fogged = new THREE.Mesh(mesh.geometry, fogMaterials.get(key));
+        fogged.renderOrder = shader.sort * 100000 + 99060 + n;
+        fogged.position.copy(mesh.position); fogged.quaternion.copy(mesh.quaternion); fogged.scale.copy(mesh.scale);
+        mesh.parent.add(fogged);
+      });
+    }
+  }
   // One mesh of each opaque surface, for dropping pickups to the floor. They are in no scene, so a ray meets them
   // in the game's own axes.
   const floors = [], floorMaterial = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
-  async function addGroup({shader, lit, vertexLit, indices, ranges}, {atlas, attributes}, serial) {
+  async function addGroup({shader, lit, vertexLit, fog, indices, ranges}, {atlas, attributes}, serial) {
+    if (shader.sky && map.mapFog && map.mapFog.linear) return;  // Linear map fog hides the sky (RB_StageIteratorSky).
     const geometry = new THREE.BufferGeometry();
     Object.entries(attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
     geometry.setIndex(indices);
@@ -432,7 +554,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     root.add(placeholder);
     const add = (material, stage) => {
       const mesh = new THREE.Mesh(geometry, material);
-      if (shader.sky && config.skyAtFarDepth) mesh.frustumCulled = false;
+      if (shader.sky && skyAtFarDepth) mesh.frustumCulled = false;
       mesh.renderOrder = shader.sort * 100000 + serial * 16 + stage;  // By sort, then shader by shader, stage after stage.
       mesh.name = shader.name;
       root.add(mesh);
@@ -440,7 +562,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     {
       if (shader.sky && shader.sky.box) add(boxMaterial(await Promise.all(shader.sky.box.map(file => loadTexture(file, true, !config.skyMipmaps)))), 0);
       // ponytail: one draw per stage, as the game without multitexture; fold lightmap × texture into one pass if maps get heavy.
-      (await stageMaterials(shader, stagesOf(shader, lit, false, vertexLit) || [], lit && atlas)).forEach((material, index) => { if (material) add(material, index + 1); });
+      const materials = await stageMaterials(shader, mapFogged(shader, stagesOf(shader, lit, false, vertexLit) || []), lit && atlas);
+      materials.forEach((material, index) => { if (material) add(material, index + 1); });
+      if (shader.sky && shader.sky.inner) add(boxMaterial(await Promise.all(shader.sky.inner.map(file => loadTexture(file, true, !config.skyMipmaps))), true), materials.length + 1);
+      fogPasses(shader, fog).forEach((pass, n) => add(stageMaterial(shader, pass, white), materials.length + 2 + n));
     }
     root.remove(placeholder);
     if (shader.sort === 3 && !shader.sky) {
@@ -509,6 +634,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       useLight(part, lightAt([x, y, height + 4]), weapon ? 1.5 : 1);  // Lit where it bobs about.
     });
     root.add(holder);
+    addFog(holder, [x, y, height + 4]);
     pickups.push({holder, height, fast: item.kind === 'health', rate: 5 + serial * .01});
   }
 
@@ -591,10 +717,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       ? 'uniform sampler2D frame; uniform float displayScale, displayGamma; varying vec2 at; void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(1. / displayGamma)) * displayScale, 1.); }'
       : 'uniform sampler2D frame; varying vec2 at; void main() { gl_FragColor = vec4(texture2D(frame, at).rgb * 2., 1.); }'})));
   shown.children[0].frustumCulled = false;
-  const cullDirection = new THREE.Vector3();
+  const cullDirection = new THREE.Vector3(), forwardOfView = new THREE.Vector3();
   function draw(seconds) {
     uniforms.uTime.value = seconds;
     uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
+    const ahead = camera.getWorldDirection(forwardOfView);
+    uniforms.uForward.value.set(ahead.x, -ahead.z, ahead.y);
+    const axes = camera.matrixWorld.elements;  // Columns: right, up.
+    uniforms.uViewLeft.value.set(-axes[0], axes[2], -axes[1]);
+    uniforms.uViewUp.value.set(axes[4], -axes[6], axes[5]);
     for (const {material, frames, fps} of animated) material.uniforms.map.value = frames[Math.floor(seconds * fps) % frames.length];
     for (const tick of placedTicks) tick(seconds);
     for (const {holder, height, fast, rate} of pickups) {
@@ -667,6 +798,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     map = await (await get(`${data}maps/${mapId}/${config.sceneFile ? config.sceneFile() : 'scene.json'}`)).json();
     visibility = window.skinnerVisibility.create(map.bspCull);
     if (config.configureCamera) config.configureCamera(camera, map);
+    else if (map.farClip) { camera.far = map.farClip; camera.updateProjectionMatrix(); }  // The view ends at the fog (RTCW, ET) or distanceCull (JK2).
+    // A global fog, or linear map fog, clears the frame to its colour (RB_DrawBuffer, RB_BeginDrawingView).
+    const clearFog = (map.fogs || []).find(fog => fog && fog.global) || (map.mapFog && map.mapFog.linear && map.mapFog);
+    if (clearFog) renderer.setClearColor(new THREE.Color(...clearFog.color.map(value => value * (map.lighting ? map.lighting.identityLight : .5))));
     document.title = `${map.name} — ${config.title || 'Q3 Maps'}`;
     if (map.lighting) {
       settings.fov = map.lighting.fov;
@@ -688,7 +823,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
     if (config.addPlaced) await Promise.all((map.placed || []).map(async item => {
-      const holder = await config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map, lightAt, useLight});
+      const holder = await config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map, lightAt, useLight, addFog});
       trackNPC(item, holder);
     }));
     showNotes();

@@ -142,7 +142,7 @@ textures/test/sky
             game=maps.Game(root);textures=maps.Textures(root/'textures_out',game)
             self.assertEqual((game.lighting['overbrightBits'],game.lighting['identityLight'],game.lighting['lightScale'],game.lighting['displayScale']),(0,1,4,1))
             shader,missing,limits=maps.describe(game,'textures/test/masked',textures)
-            self.assertFalse(missing);self.assertEqual(shader['stages'][0]['alphaFunc'],'ge128');self.assertIn('fog not drawn',limits)
+            self.assertFalse(missing);self.assertEqual(shader['stages'][0]['alphaFunc'],'ge128');self.assertIn('sky and underwater fog not drawn',limits)
             filename=textures.resolve(game,r'textures\test\wall.psd')
             with Image.open(textures.output/filename) as image:
                 self.assertEqual(image.size,(1,1));self.assertGreater(image.getpixel((0,0))[0],20);self.assertEqual(image.getpixel((0,0))[3],255)
