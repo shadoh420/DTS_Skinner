@@ -363,7 +363,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         fragmentShader: `uniform vec3 colour; uniform float strength; uniform sampler2D map; uniform float textured; varying vec2 vUv; varying vec3 vFacing, vView;
           void main() {
             float fade = smoothstep(0., 1., vUv.y) * (1. - smoothstep(.9, 1., vUv.y)) * sin(3.14159 * vUv.x);
-            fade *= abs(dot(normalize(vFacing), normalize(vView)));  // A panel seen edge on fades out.
+            float facing = abs(dot(normalize(vFacing), normalize(vView))); fade *= facing * facing;  // A panel seen edge on fades out.
             vec4 texel = textured > .5 ? texture2D(map, vUv) : vec4(1.);
             gl_FragColor = vec4(colour * texel.rgb, fade * strength * texel.a);
           }`}));

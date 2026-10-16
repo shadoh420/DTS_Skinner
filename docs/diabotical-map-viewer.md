@@ -189,7 +189,7 @@ left (`static/diabotical-maps/blocks.js`).
   brightest at the top and fading down, soft at the sides, the colour times
   its alpha (AARRGGBB) and the `texture` where there is one, blended over
   the picture (run 46: a red beam over the blue sky is saturated red, which
-  added light could not be), fading where seen edge on (run 47:
+  added light could not be), fading where seen edge on (squared; run 47:
   bioplant's map-sized one is invisible from above), turning by `rotation_speed`
   (radians a second, not measured). Runs 45 and 46 showed grids of three
   panels and fans of 8 and 16 so. Lights of type `volume` drew nothing in
