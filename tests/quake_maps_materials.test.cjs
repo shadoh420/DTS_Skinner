@@ -31,3 +31,11 @@ test('the rerelease skybox takes skyfog; maps without fog or styles stay as they
   quake.patchMaterial(plain, {kind: 'normal'}, {});
   assert.equal(plain.defines, undefined);
 });
+
+test("'{' fence textures discard palette index 255, as Quakespasm's TEXPREF_ALPHA does", () => {
+  const fence = quake.material({kind: 'normal', name: '{vines2', size: [64, 64]}, {}, {}, {}, true, null);
+  quake.patchMaterial(fence, {kind: 'normal', styles: [1]}, map);
+  assert.equal('FENCE' in fence.defines && 'STYLED' in fence.defines, true);
+  assert.match(fence.fragmentShader, /#ifdef FENCE\s+if \(pixel\(texUV\) == 255\.\) discard;/);
+  assert.equal(quake.material({kind: 'normal', name: 'city4_6', size: [64, 64]}, {}, {}, {}, false, null).defines, undefined);
+});
