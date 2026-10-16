@@ -304,6 +304,27 @@ rbFog *= rbW;
         }
       }
     }
+    // The sun (004D05B0, drawn by 004AB700): Sun.bmp blitted unscaled, 32 pixels of the game's 480-line screen, at the
+    // sun's projected point, behind everything, while its elevation + 3 is above -2 degrees.
+    let sun = null;
+    if (map.sky?.sun) texture(map.sky.sun).then(image => {
+      image.magFilter = image.minFilter = THREE.LinearFilter;
+      const material = new THREE.SpriteMaterial({map: image, sizeAttenuation: false, depthTest: false, depthWrite: false, fog: false, transparent: true});
+      material.userData.texture = map.sky.sun;
+      sun = new THREE.Sprite(material);
+      sun.renderOrder = -4;
+      sun.frustumCulled = false;
+      scene.add(sun);
+    }, () => {});
+    function placeSun() {
+      if (!sun) return;
+      const elevation = lighting?.sunElevation ?? -90, azimuth = THREE.MathUtils.degToRad(lighting?.sunAzimuth ?? 0);
+      sun.visible = elevation + 3 > -2;
+      const climb = THREE.MathUtils.degToRad(elevation);
+      sun.position.set(-Math.sin(azimuth) * Math.cos(climb), Math.sin(climb), Math.cos(azimuth) * Math.cos(climb))
+        .multiplyScalar(1000).add(camera.position);
+      sun.scale.setScalar(64 / 480 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+    }
     async function buildSky(weather) {
       skyWeather = weather;
       if (!map.sky) return;  // Packs imported before the sky.
@@ -325,6 +346,7 @@ rbFog *= rbW;
       const weather = lighting?.weather ?? 0;
       if (weather !== skyWeather) buildSky(weather);
       ring.position.copy(camera.position);
+      placeSun();
       // The cloud grid follows the eye's cell: rebuilt when it changes or the sheets' texture has arrived.
       const x = -camera.position.x / native, y = camera.position.z / native;
       const cell = `${Math.trunc(x) >> 17},${Math.trunc(y) >> 17},${Boolean(cloudMaterial)}`;

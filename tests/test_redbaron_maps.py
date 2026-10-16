@@ -440,7 +440,10 @@ class RedBaronMapsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             assets = rb.Assets.__new__(rb.Assets)
             assets.files, assets.output = {name: lambda data=data: data for name, data in files.items()}, Path(temp)
+            assets.pngs, assets.report = {}, dict(missingTextures=set())
             sky = assets.sky()
+            self.assertIsNone(sky['sun'])  # No Sun.bmp here: reported, not invented.
+            self.assertEqual(assets.report['missingTextures'], {'sun.bmp'})
             # 004B41E0 falls back to hz-cld0; weather 0 has no cloud sheets (004BDA46), and missing ones are None.
             self.assertEqual(sky['ring'], [sky['ring'][0]] * 6)
             self.assertEqual((sky['clouds'][0], sky['clouds'][2]), (None, None))

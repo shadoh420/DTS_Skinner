@@ -559,11 +559,12 @@ class Assets:
 
     def sky(self):
         """The Glide sky's textures by weather: `ring` hz-cld<n> (004B41E0 falls back to hz-cld0) and `clouds` csheet<n>
-        (004BD86A; none for weather 0). The 3D patch ships 0-5 and 1-5."""
+        (004BD86A; none for weather 0); the 3D patch ships 0-5 and 1-5. `sun`: Sun.bmp (004D05EE), summer palette, index 0 clear."""
         if not hasattr(self, '_sky'):
             ring = [self.alpha_texture(f'hz-cld{number}') for number in range(6)]
             self._sky = dict(ring=[name or ring[0] for name in ring],
-                             clouds=[None] + [self.alpha_texture(f'csheet{number}') for number in range(1, 6)])
+                             clouds=[None] + [self.alpha_texture(f'csheet{number}') for number in range(1, 6)],
+                             sun=self.texture('sun.bmp', alpha=True))
         return self._sky
 
     def solid(self, rgb):
