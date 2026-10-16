@@ -229,9 +229,11 @@ function ParticleObjects({dummies, fireballs, datablocks}: {dummies: Obj[]; fire
 }
 
 // ---- Precipitation (game/precipitation.cc, renderPrecip for an observer camera) ----
-// ponytail: V12 moves each drop by its speed once per rendered frame; this assumes the game drew 30 frames a
-// second. Change FRAME_RATE if a game check shows rain or snow falling at a different pace.
-const FRAME_RATE = 30;
+// V12 moves each drop by its speed once per rendered frame, so the game's rain and snow fall faster the faster
+// it draws. Measured 2026-10-16 on the reference PC (vsync off, 280 Hz screen): 282-295 fps, and Katabatic's
+// snow then moved 176 flake widths a second (median), against 179 on the page at 285 and 79 at 30.
+// ponytail: one fixed rate; another PC's game runs at its own.
+const FRAME_RATE = 290;
 const precipVertex = `attribute vec4 dropColor; varying vec4 vColor; varying vec2 vUv;
   void main() { vColor = dropColor; vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const precipFragment = `uniform sampler2D map; varying vec4 vColor; varying vec2 vUv;
@@ -468,8 +470,32 @@ function Lightning({object, datablocks}: {object: Obj; datablocks: any}) {
   return <primitive object={mesh}/>;
 }
 
-// ---- Lava overlay (game/underLava.cc, drawn when the camera is inside a lava block) ----
-function LavaFilter({textures}: {textures: string[]}) {
+// V12 counts the camera as in a liquid only where its fluid exists (fluid::IsFluidAtXY): the fluid is split into
+// blocks of 8 terrain squares (4 when it covers under a quarter of the terrain), and fluid::RebuildMasks keeps a
+// block when any terrain point in it lies below the surface plus half the wave height. Under the terrain, or
+// where the ground rises above the surface, there is no fluid and so no overlay.
+// ponytail: removeWetEdges' flood fill is not applied; it only trims fluid along the surface's dry edges.
+function fluidAt(block: Obj, x: number, y: number): boolean {
+  const [px, py, pz] = vec(block.position, [0, 0, 0]), [sx, sy, sz] = vec(block.scale, [1, 1, 1]);
+  const x0 = Math.min(2040, Math.max(0, Math.floor((px + 1024) / 8 + 0.5)));
+  const y0 = Math.min(2040, Math.max(0, Math.floor((py + 1024) / 8 + 0.5)));
+  let nx = Math.floor(sx / 8 + 0.5), ny = Math.floor(sy / 8 + 0.5);
+  const high = nx <= 128 && ny <= 128, per = high ? 4 : 8;
+  nx = Math.min(256, Math.max(per, (nx + per - 1) & ~(per - 1)));
+  ny = Math.min(256, Math.max(per, (ny + per - 1) & ~(per - 1)));
+  const bx = ((Math.floor(x + 1024) - x0 * 8) & 2047) >> (high ? 5 : 6);
+  const by = ((Math.floor(y + 1024) - y0 * 8) & 2047) >> (high ? 5 : 6);
+  if (bx >= nx / per || by >= ny / per) return false;
+  const level = pz + sz + num(block, 'waveMagnitude', 1) / 2;
+  for (let j = 0; j <= per; j++) for (let i = 0; i <= per; i++) {
+    const h = terrainHeightAt((x0 + bx * per + i) * 8 - 1024, (y0 + by * per + j) * 8 - 1024);
+    if (h === null || h < level) return true;
+  }
+  return false;
+}
+
+// ---- Lava overlay (game/underLava.cc, drawn when the camera is in a lava block's fluid) ----
+function LavaFilter({textures, blocks}: {textures: string[]; blocks: Obj[]}) {
   const mesh = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
@@ -503,7 +529,8 @@ function LavaFilter({textures}: {textures: string[]}) {
   useFrame(({camera, size, clock}) => {
     const pos = camera.position;
     const info = submergedWaterAt(pos.z, pos.x, pos.y);
-    mesh.visible = !!textures[0] && info !== null && info.liquidType >= 4 && info.liquidType <= 6;
+    mesh.visible = !!textures[0] && info !== null && info.liquidType >= 4 && info.liquidType <= 6
+      && blocks.some(block => fluidAt(block, pos.z, pos.x));
     const u = (mesh.material as ShaderMaterial).uniforms;
     u.time.value = clock.elapsedTime;
     u.frequency.value = Math.floor(size.width / Math.max(1, size.height));  // V12 divides the integer viewport sizes
@@ -528,13 +555,13 @@ export function MapEnvironment() {
     const water = of('WaterBlock');
     // WaterBlock::onAdd sets the one global pair of submerge textures; a later block with a name replaces it.
     // The overlay only shows inside lava, so a map without lava loads nothing for it.
-    const hasLava = water.some(block => {
+    const lavaBlocks = water.filter(block => {
       const type = LIQUID_TYPES[String(prop(block, 'liquidType') ?? '').toLowerCase()] ?? 0;
       return type >= 4 && type <= 6;
     });
-    const lava = hasLava ? [0, 1].map(i => water.reduce((name, block) => prop(block, 'submergeTexture' + i) || name, '')) : ['', ''];
+    const lava = lavaBlocks.length ? [0, 1].map(i => water.reduce((name, block) => prop(block, 'submergeTexture' + i) || name, '')) : ['', ''];
     return {precipitation: of('Precipitation'), lightning: of('Lightning'), fireballs: of('FireballAtmosphere'),
-      dummies: of('ParticleEmissionDummy'), sky: of('Sky')[0], lava};
+      dummies: of('ParticleEmissionDummy'), sky: of('Sky')[0], lava, lavaBlocks};
   }, [objects]);
   if (!objects || !runtime) return null;
   const datablocks = runtime.state.datablocks;
@@ -542,6 +569,6 @@ export function MapEnvironment() {
     {found.precipitation.map(object => <Precipitation key={object._id} object={object} datablocks={datablocks} sky={found.sky}/>)}
     {found.lightning.map(object => <Lightning key={object._id} object={object} datablocks={datablocks}/>)}
     {(found.dummies.length > 0 || found.fireballs.length > 0) && <ParticleObjects dummies={found.dummies} fireballs={found.fireballs} datablocks={datablocks}/>}
-    {found.lava[0] && <LavaFilter textures={found.lava}/>}
+    {found.lava[0] && <LavaFilter textures={found.lava} blocks={found.lavaBlocks}/>}
   </>;
 }
