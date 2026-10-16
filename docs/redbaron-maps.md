@@ -105,7 +105,9 @@ Summer mounts `rb.vol`, then `3dpatch.vol`, exactly as the model importer does. 
 | 3dfall.vol | 489 (486 BMP) | BAT, `rb3dgnd.pal`, `rb3dgnd.spl` |
 | 3dwinter.vol | 487 (484 BMP) | BAT, `rb3dgnd.pal`, `rb3dgnd.spl` |
 
-They change palette/shading data too, so there is no season switch in this version. BAT members are never executed.
+BAT members are never executed.
+
+**Seasons.** `004EFB60` takes a mission's season from its DAT date: 20 September to 20 December is fall, 21 December to 19 March winter, the rest summer. The importer writes one pack per season, each a whole Western Front (`western_front`, `western_front_fall`, `western_front_winter`), and exports each mission into the pack of its date's season. A season pack mounts its volume over `rb.vol` + `3dpatch.vol`, which replaces the terrain bitmaps and the ground palette and SPL bank (so its haze and sky colours), and the terrain takes that season's DML lists (`fbaron.dml`, `wbaron.dml`) where they exist; BARON4's multiplayer bank has only summer lists and keeps them. An install without a season volume imports summer only and records a warning. `--season` limits the import to the named seasons.
 
 Fog colour is palette index **47** for all five banks (`005830A4`, installed by `00444BB7`; consumed at `004ED33D`; Glide fog colour call `004EEE6F`). The sampled summer/ground palette yields RGB **159,183,195**. The preview reads this colour from the mounted ground SPL, rather than hardcoding it.
 
@@ -150,7 +152,11 @@ Shapes retain their own DML mode: unlit parts stay unlit; flat parts use their a
   - The sheets take the scene's haze. At low altitude a 6 km layer lies past the haze's end, as in the game.
 - The software renderer's tiled high deck (`tl-cld<n>`, 200000 units up, `004B30F0`) is not created in Glide (`004B46EE`), and the page does not draw it.
 
-Not drawn yet: the sun and moon sprites (`Sun`, `Moon` classes), scud layers in weathers 3–5 (`004B4CA1`), cloud shadows on the ground, and dusk/night palette changes. The sky behind the band keeps the accepted solid colour; the Glide clear colour (`004ED4B0`, a palette index) is reached through the driver table and is not traced.
+- **The sun** (`004D05B0`, drawn by `004AB700`): `Sun.bmp` with its alpha, 32 pixels of the game's 480-line screen at the sun's projected point, behind everything, while its elevation + 3 is above −2 degrees.
+- **Sky colour.** The clear colour behind the band is index **39** of the mounted ground SPL bank, measured in game rather than traced (the Glide clear call `004ED4B0` takes a palette index through the driver table). TUTOR3 at noon reads 197,213,221 against the summer 199,215,223; ACE5 in fall reads 177,191,198 against the fall bank's 170,186,188. Fog keeps index 47.
+- **Dusk and night.** Missions scale both the sky and fog colours by the scene light intensity (`00409CF0`, above), as the live palette does (`004099A0`–`00409BE0` rewrites palette ranges by light). MISSIONE at sun −12 degrees (intensity 0.21) reads 53,61,63 in game against 42,46,47 here: within parity in absolute terms, a little dark. ACE5 at sun 6.8 degrees keeps full intensity through the moon term.
+
+Not drawn yet: the moon sprite and stars (MISSIONE shows a few), scud layers in weathers 3–5 (`004B4CA1`), and cloud shadows on the ground (the light's 8-bit shadow map at +0xa8..+0xbc, read at `0051B6E0`; its setter is not found).
 
 Refresh the pack to obtain normals and lighting metadata. New terrain records are eight little-endian floats (`xyz, uv, normal`), identified by `stride: 8`; old five-float packs still load with their old unlit appearance. Source measurements and numeric probes establish the implemented equations, **not rendered parity**. In particular, most vertices near the TUTOR3 birth point still saturate at white under the recovered ambient/sun light; stronger shade occurs on steeper Alsace slopes. Claude must compare the new haze and lighting against the supplied banked capture rather than treating synthetic tests as visual acceptance.
 
