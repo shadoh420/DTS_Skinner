@@ -850,6 +850,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Effects of the import's map.particles (JK2/JA running fx_runners) in the shared particle system (particles.js).
+  // A batch is an effect shader's first stage: its image, blend and alpha test, the particle's colour where its
+  // rgbGen / alphaGen take the vertex colour (RB_SurfaceSprite writes the colour into the vertices).
+  let particles = null, particleControl = null;
+  async function addParticles({templates, batches, emitters}) {
+    const identity = map.lighting ? map.lighting.identityLight : .5, made = {};
+    particleControl = window.skinnerParticles.control(quality => particles?.setQuality(quality));
+    await Promise.all(Object.entries(batches).map(async ([name, stage]) => {
+      const texture = await loadTexture((stage.frames || [stage.map])[0], stage.clamp, stage.noMipmaps), [src, dst] = stage.blend || ['gl_one', 'gl_zero'];
+      const rgb = stage.rgbGen[0], alpha = (stage.alphaGen || ['identity'])[0];
+      made[name] = {texture, blendSrc: FACTORS[src] ?? THREE.OneFactor, blendDst: FACTORS[dst] ?? THREE.ZeroFactor,
+        rgb: rgb === 'vertex' || rgb === 'exactvertex', alpha: alpha === 'vertex', colorScale: rgb === 'vertex' || rgb === 'identitylighting' ? identity : 1,
+        alphaTest: {gt0: 1 / 255, ge128: .5}[stage.alphaFunc] || 0, renderOrder: 1e9 - 20};
+    }));
+    particles = window.skinnerParticles.create(THREE, templates, emitters, made, {toWorld: [1, 0, 0, 0, 0, -1, 0, 1, 0], quality: particleControl.quality});
+    for (const mesh of particles.meshes) root.add(mesh);
+    particleControl.setCount(emitters.length);
+  }
+
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
   // fast), bobbing 4 ± 4 units, weapons half as large again and turning about their middle, and the second model
   // of a health item or powerup turning the other way, a powerup's 12 units up.
@@ -1003,6 +1022,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const mesh of sun) mesh.position.copy(uniforms.uView.value);
     for (const fall of falls) fall(Math.min(Math.max(seconds - lastFall, 0), .1));
     lastFall = seconds;
+    particles?.update(seconds, uniforms.uView.value.toArray());
     for (const {holder, height, fast, rate} of pickups) {
       holder.position.z = height + 4 + Math.cos((seconds + 1) * rate) * 4;
       holder.rotation.z = seconds % 2.048 / 2.048 * 2 * Math.PI * (fast ? 2 : 1);
@@ -1040,7 +1060,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (settings.animate) shaderTime += delta;
     draw(shaderTime);
   });
-  window.skinnerQ3Maps = {renderer, scene, camera, draw, movers, get skyPortal() { return skyPortal; }, set skyPortal(value) { skyPortal = value; }};  // For checks in a hidden page, where no frame is drawn.
+  window.skinnerQ3Maps = {renderer, scene, camera, draw, movers, get particles() { return particles; }, get skyPortal() { return skyPortal; }, set skyPortal(value) { skyPortal = value; }};  // For checks in a hidden page, where no frame is drawn.
 
   const select = id => { location.search = '?map=' + encodeURIComponent(id); };
   $('map').addEventListener('change', event => select(event.target.value));
@@ -1111,6 +1131,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));
     await Promise.all([addFlares(world.flares), addSun()]);
     if ((map.weather || []).length) addWeather(map.weather, world.bounds);
+    if (map.particles && window.skinnerParticles) await addParticles(map.particles);
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));

@@ -17,13 +17,14 @@ import zipfile
 import numpy as np
 
 try:
-    from tools import import_jk2 as jk2, import_ja as ja, import_rtcw_map as base
+    from tools import import_jk2 as jk2, import_ja as ja, import_rtcw_map as base, raven_efx
     from tools.jk2_map_items import MP_ITEMS
     from tools.model_data import read_geometry_buffers
 except ImportError:
     import import_jk2 as jk2
     import import_ja as ja
     import import_rtcw_map as base
+    import raven_efx
     from jk2_map_items import MP_ITEMS
     from model_data import read_geometry_buffers
 
@@ -32,7 +33,7 @@ number,vector=base.number,base.vector
 STRIDES=(1,72,16,36,48,4,4,40,12,12,80,4,72,148,49152,30,1,2)
 SECTIONS={'sp':'Single player','mp':'Multiplayer'}
 NOT_DRAWN=['NPCs: one authored idle preview; no AI, script populations or held weapons', 'ICARUS scripts and later mover actions',
-           'surfaceSprites/ss foliage, fx_runner particles, weather zones, wind and lightning, and audio',
+           'surfaceSprites/ss foliage, weather zones, wind and lightning, and audio',
            'portal cameras and mirrors; sky portal fog', 'dynamic lights on props; light grid sampled at spawn',
            'runtime lightstyle animation (first sample shown)']
 
@@ -71,7 +72,7 @@ class Game(jk2.Game):
         self.definitions=rtcw.shader_definitions(self)
         self.shaders={n:(b,s) for n,(b,s,_) in self.definitions.items()}
         self.shader_label={n:self.assets[p]['source'] for n,(_,_,p) in self.definitions.items()}
-        self.outside,self.images,self.described,self.models=set(),{},{},{}
+        self.outside,self.images,self.described,self.models,self.effects=set(),{},{},{},{}
         self.lighting=self.profile(install,section,self)
         self.skill=min(2,max(0,int(self.lighting['cvars']['g_spskill'])))
         self.items=sp_items(self.read('ext_data/items.dat')) if section=='sp' and 'ext_data/items.dat' in self.assets else {
@@ -615,6 +616,91 @@ def place_entities(game,things,states,collision,output,textures,model_textures,*
     return placed,models,audit,missing,limits
 
 
+def efx_curve(group):
+    """FxPrimitives.cpp Update*: linear, then exactly one of nonlinear/wave/clamp (a mask compare: two set is none), random."""
+    flags=set(group['flags']);kinds=[k for k in ('nonlinear','wave','clamp') if k in flags]
+    return dict(linear='linear' in flags,kind=kinds[0] if len(kinds)==1 else None,parm=group['parm'],random='random' in flags)
+
+
+def efx_template(p):
+    """A Particle primitive as a shared particles.js template (seconds; Raven's rotationDelta is 1/100 degree a ms)."""
+    spawn,flags=set(p['spawnFlags']),set(p['flags'])
+    return dict(count=p['count'],life=[v/1000 for v in p['life']],delay=[v/1000 for v in p['delay']],even='evendistribution' in spawn,
+        origin=p['origin'],velocity=p['velocity'],acceleration=p['acceleration'],gravity=p['gravity'],
+        rotation=p['rotation'],spin=[v*10 for v in p['rotationDelta']],cullRange=p['cullRange'],
+        size=dict(start=p['size']['start'],end=p['size']['end'],curve=efx_curve(p['size'])),
+        alpha=dict(start=p['alpha']['start'],end=p['alpha']['end'],curve=efx_curve(p['alpha'])),
+        rgb=dict(start=p['rgb']['start'],end=p['rgb']['end'],curve=efx_curve(p['rgb'])),
+        rgbTogether='rgbcomponentinterpolation' in spawn,alphaFadesRgb='usealpha' not in flags,
+        worldOrigin='cheaporgcalc' in spawn,worldVelocity='absolutevel' in spawn,worldAcceleration='absoluteaccel' in spawn)
+
+
+def runner_axes(e,things,section):
+    """fx_runner's effect axes: toward its target, else SP's `angle` yaw (G_SpawnAngleHack) or MP's angles, else up
+    (-90 0 0); right and up by MakeNormalVectors, as CFxScheduler::PlayEffect builds them from the forward."""
+    target=next((t for t in things if e.get('target') and t.get('targetname')==e['target']),None)
+    if target:
+        d=[b-a for a,b in zip(vector(e.get('origin')),vector(target.get('origin')))];length=math.hypot(*d) or 1;forward=[v/length for v in d]
+    else:
+        if section=='sp':a=[0,number(e,'angle'),0] if 'angle' in e else [-90,0,0]
+        else:
+            a=base.angles(e)
+            if a==[0,0,0]:a=[-90,0,0]
+        pitch,yaw=math.radians(a[0]),math.radians(a[1])
+        forward=[math.cos(pitch)*math.cos(yaw),math.cos(pitch)*math.sin(yaw),-math.sin(pitch)]
+    right=[forward[2],-forward[0],forward[1]];d=sum(r*f for r,f in zip(right,forward))
+    right=[r-d*f for r,f in zip(right,forward)];length=math.hypot(*right) or 1
+    return forward,[v/length for v in right]
+
+
+def efx_stage(game,name,textures):
+    """The first stage of an efx shader, or None. A name without a script is RegisterShader's implicit 2D image:
+    alpha blended, vertex colour (R_FindShader); stages without a map (oneShotAnimMap) are not drawn."""
+    if name in game.shaders:
+        stages=describe(game,name,textures)[0].get('stages') or []
+        return (stages[0] if stages and stages[0].get('map') else None),[]
+    image=textures.resolve(game,name)
+    if not image:return None,[name]
+    return dict(map=image,blend=['gl_src_alpha','gl_one_minus_src_alpha'],rgbGen=['vertex'],alphaGen=['vertex']),[]
+
+
+def particles(game,things,audit,textures):
+    """Running fx_runners (neither STARTOFF nor ONESHOT) re-fire their .efx every delay + random/2 ms
+    (fx_runner_think; ponytail: the mean of its random wait). Each Particle primitive and shader is one emitter of
+    the shared particle system. Returns (map.particles or None, unresolved, limits)."""
+    templates,keys,batches,emitters,missing,skipped=[],{},{},[],[],Counter()
+    rows={r['entity']:r for r in audit if r['classname']=='fx_runner' and r['status']=='omitted' and r['reason'].startswith('world/control')}
+    for serial,row in rows.items():
+        e={k.lower():v for k,v in things[serial].items()}
+        if int(number(e,'spawnflags'))&3:row['reason']='fx_runner STARTOFF/ONESHOT: plays only when used';continue
+        path=raven_efx.effect_path(e.get('fxfile',''))
+        if path not in game.assets:row['reason']=f'fx_runner effect {path} not in the game files';missing.append(path);continue
+        if path not in game.effects:game.effects[path]=raven_efx.parse(game.read(path).decode('latin1'))
+        effect=game.effects[path];skipped.update(effect['skipped'])
+        forward,right=runner_axes(e,things,game.section);origin=vector(e.get('origin'))
+        period=(number(e,'delay',200)+number(e,'random')/2)/1000;drawn=0
+        for i,p in enumerate(effect['primitives']):
+            if p['type']!='particle':skipped['orientedparticle']+=1;continue
+            shaders=[]
+            for name in p['shaders']:
+                name=re.sub(r'\.(tga|jpg|png)$','',name.lower())
+                if name not in batches:
+                    batches[name],unresolved=efx_stage(game,name,textures);missing+=unresolved
+                if batches[name]:shaders.append(name)
+            if not shaders:skipped['unsupported shader']+=1;continue
+            if (path,i) not in keys:keys[(path,i)]=len(templates);templates.append(efx_template(p))
+            for k,name in enumerate(shaders):
+                emitters.append(dict(entity=serial,origin=origin,forward=forward,right=right,template=keys[(path,i)],period=period,
+                                     batch=name,**({'share':[k,len(shaders)]} if len(shaders)>1 else {})))
+            drawn+=1
+        row.update(status='drawn' if drawn else 'omitted',reason=f'fx_runner: {drawn} particle primitive(s) of {path}' if drawn else f'fx_runner: no drawable primitive in {path}')
+    limits=[]
+    if rows:limits.append('fx_runner effects: Particle primitives only'+(' (not drawn: '+', '.join(f'{k} {n}' for k,n in sorted(skipped.items()))+')' if skipped else '')+
+                          '; triggered runners, impacts and physics, orgOnSphere/orgOnCylinder spawn shapes and oneShotAnimMap explosions not reconstructed')
+    if not emitters:return None,missing,limits
+    return dict(templates=templates,batches={k:v for k,v in batches.items() if v},emitters=emitters),missing,limits
+
+
 def sweep(output, texture_directory=None, *, texture_stores=()):
     """Audit references; optional stores retire only their own unused new files."""
     output=Path(output);missing=[];defaults=[];scenes=0;used=set()
@@ -630,7 +716,7 @@ def sweep(output, texture_directory=None, *, texture_stores=()):
         for item in scene.get('placed',[]):
             for key in item['models']:
                 if key not in scene['itemModels']:missing.append(dict(scene=path.parent.name,model=key))
-        shaders=[s for s in scene['shaders'] if s]
+        shaders=[s for s in scene['shaders'] if s]+[dict(stages=[stage]) for stage in scene.get('particles',{}).get('batches',{}).values()]
         for model in scene['itemModels'].values():
             check(model['file']);shaders+=model['shaders']
             target=output/model['file']
@@ -701,6 +787,9 @@ def import_maps(install,output,replace=False,*,rules=None):
                     metadata=config.scene_metadata(game,raw) if hasattr(config,'scene_metadata') else {}
                     game.light_grid=config.LightGrid(read_lumps(raw),game.lighting,section)
                     scene=base.import_map(game,name,ident,raw,source,output,textures,mt,rules=rules)
+                    fx,unresolved,notes=particles(game,qmap.entities(read_lumps(raw)[0].decode('latin1')),scene['entityResults'],textures)
+                    if fx:scene['particles']=fx
+                    scene['unresolved']+=unresolved;scene['limits']+=notes
                     if game.light_grid.reason:scene['limits'].append(game.light_grid.reason)
                     scene.update(game=game.game_id,sourceFormat='RBSP 1',defaultGametype=game.default_gametype)
                     scene.update(metadata)
