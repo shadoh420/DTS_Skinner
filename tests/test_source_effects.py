@@ -20,6 +20,11 @@ class SourceEffectsTest(unittest.TestCase):
         self.assertEqual(len(positions), 4 * len(points))  # two ribbons, two edges each
         self.assertLess(triangles.max(), len(positions))
         self.assertTrue(np.allclose(np.linalg.norm(positions[0] - positions[1]), 4))
+        # A vertical rope hangs straight (la_ventruetower_1b): no sag folding it back, finite mesh.
+        ents = [dict(classname='move_rope', targetname='a', nextkey='b', origin='0 0 0'), dict(classname='keyframe_rope', targetname='b', origin='0 0 150')]
+        (_, points, width, scale), = fx.ropes(ents)
+        self.assertTrue(np.allclose(points[:, :2], 0) and (np.diff(points[:, 2]) > 0).all())
+        self.assertTrue(np.isfinite(fx.rope_mesh(points, width, scale)[0]).all())
 
     def test_decal_on_a_wall_and_both_sides_of_a_thin_wall(self):
         # A wall facing +x at x = 0 and its back 4 units behind; a 32 x 16 decal at the wall.

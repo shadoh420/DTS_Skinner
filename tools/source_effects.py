@@ -34,7 +34,7 @@ def _vector(entity, key='origin'):
 def ropes(entities, segments=16):
     """[(material, points (n, 3), width, texture scale)] of the rope segments: each move_rope/keyframe_rope with a NextKey
     hangs a rope to that key (c_rope.cpp). The game simulates it settling; here it hangs as a parabola whose length is the
-    span plus Slack (sag sqrt(3 x span x slack / 8)). Defaults as the FGD's: Slack 25, Width 2, TextureScale 1,
+    span plus Slack (sag sqrt(3 x span x slack / 8), times the span's horizontal share). Defaults as the FGD's: Slack 25, Width 2, TextureScale 1,
     RopeMaterial cable/cable.vmt."""
     named = {}
     for e in entities:
@@ -51,7 +51,8 @@ def ropes(entities, segments=16):
         span = np.linalg.norm(b - a)
         if span < 1:
             continue
-        sag = math.sqrt(3 * span * max(_number(e, 'slack', 25), 0) / 8)
+        # A steep rope sags less: by the span's horizontal share (a vertical one hangs straight, not folded on itself).
+        sag = math.sqrt(3 * span * max(_number(e, 'slack', 25), 0) / 8) * np.linalg.norm((b - a)[:2]) / span
         t = np.linspace(0, 1, segments + 1)[:, None]
         points = a + (b - a) * t - np.array([0, 0, 1.]) * sag * 4 * t * (1 - t)
         material = str(e.get('ropematerial') or 'cable/cable.vmt')
@@ -65,6 +66,8 @@ def rope_mesh(points, width, scale, aspect=1.):
     (positions (m, 3), uvs (m, 2), triangles (k, 3)). The texture runs along the rope, one repeat every
     width x aspect / scale units (aspect: the texture's height over its width)."""
     direction = np.gradient(points, axis=0)
+    still = np.linalg.norm(direction, axis=1) < 1e-9
+    direction[still] = points[-1] - points[0]  # a turning point: the chord's direction
     direction /= np.maximum(np.linalg.norm(direction, axis=1, keepdims=True), 1e-9)
     side = np.cross(direction, [0, 0, 1.])
     flat = np.linalg.norm(side, axis=1) < 1e-6
