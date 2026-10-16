@@ -10,7 +10,40 @@ export default defineConfig({
     if(id.endsWith('/GameView.tsx')) {
       const before = '<EntityScene />';
       if(!source.includes(before)) throw new Error('Upstream GameView changed: ' + before);
-      return 'import {MapNPCs} from "../../skinner/npcs";\n' + source.replace(before, before + '\n<MapNPCs />');
+      return 'import {MapNPCs} from "../../skinner/npcs";\nimport {MapEnvironment} from "../../skinner/environment";\n' + source.replace(before, before + '\n<MapNPCs />\n<MapEnvironment />');
+    }
+  }}, {name:'mission-environment',enforce:'pre',transform(source,id){
+    const patch = (replacements: string[][], what: string) => {
+      source = source.replace(/\r\n/g, '\n');  // The checkout may have Windows line endings.
+      for (const [before, after] of replacements) {
+        if(source.split(before).length !== 2) throw new Error(`Upstream ${what} changed: ${before}`);
+        source = source.replace(before, after);
+      }
+      return source;
+    };
+    if(id.endsWith('/stream/missionEntityBridge.ts')) {
+      // Mission-placed vehicles are ShapeBase objects drawn from their datablock's shape, as static shapes are;
+      // the mission type hides them the same way. Upstream leaves them out.
+      return patch([
+        ['  "waypoint",\n]);', '  "waypoint",\n  "flyingvehicle",\n  "hovervehicle",\n  "wheeledvehicle",\n]);'],
+        ['    case "StaticShape":\n    case "Item":', '    case "FlyingVehicle":\n    case "HoverVehicle":\n    case "WheeledVehicle":\n    case "StaticShape":\n    case "Item":'],
+      ], 'mission entity bridge');
+    }
+    if(id.endsWith('/dif/dif.ts')) {
+      // Keep the animated lights upstream skips, for skinner/interiorLights (Interior v0 layout, as Interior::read).
+      return patch([
+        ['  r.skipArray("animated lights", 16);\n  r.skipArray("light states", 13);\n  r.skipArray("light state data", 10);\n  const stateBufferSize = r.count("light state buffer", 1);\n  r.u32(); // flags\n  r.skip(stateBufferSize);',
+         '  const animatedLights = r.array("animated lights", 16, () => ({nameIndex: r.u32(), stateIndex: r.u32(), stateCount: r.u16(), flags: r.u16(), duration: r.u32()}));\n' +
+         '  const lightStates = r.array("light states", 13, () => ({red: r.u8(), green: r.u8(), blue: r.u8(), activeTime: r.u32(), dataIndex: r.u32(), dataCount: r.u16()}));\n' +
+         '  const lightStateData = r.array("light state data", 10, () => ({surfaceIndex: r.u32(), mapIndex: r.u32(), lightStateIndex: r.u16()}));\n' +
+         '  const stateBufferSize = r.count("light state buffer", 1);\n  r.u32(); // flags\n  const stateDataBuffer = r.bytes.slice(r.offset, r.offset + stateBufferSize);\n  r.skip(stateBufferSize);'],
+        ['    coordBins,\n    coordBinIndices,\n  };', '    coordBins,\n    coordBinIndices,\n    animatedLights,\n    lightStates,\n    lightStateData,\n    stateDataBuffer,\n  };'],
+      ], 'interior reader');
+    }
+    if(id.endsWith('/dif/difLoader.ts')) {
+      return 'import {animateInteriorLights} from "../../skinner/interiorLights";\n' + patch([
+        ['      throw failure.reason;\n    }\n    return model;', '      throw failure.reason;\n    }\n    animateInteriorLights(model);\n    return model;'],
+      ], 'interior loader');
     }
   }}, {name:'offline-settings',transform(source,id){
     if(id.endsWith('/SettingsProvider.tsx')) return source.replace('const [audioEnabled, setAudioEnabled] = useState(true);','const [audioEnabled, setAudioEnabled] = useState(false);').replaceAll('localStorage.getItem("settings")','localStorage.getItem("skinner.t2maps.settings")').replaceAll('localStorage.setItem("settings",','localStorage.setItem("skinner.t2maps.settings",');
