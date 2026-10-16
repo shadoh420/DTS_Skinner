@@ -334,6 +334,7 @@ class Quake2MapsInstallTest(unittest.TestCase):
                 scene = json.loads((root / game / 'maps' / name / 'scene.json').read_text())
                 self.assertFalse(scene['missing'], (game, name, scene['missing']))
                 self.assertEqual(scene['game'], game)
+                self.assertFalse([r for r in scene['items'] if r['status'] == 'failed'], (game, name))
                 for view in scene['viewpoints']:
                     if view['classname'] == 'info_player_intermission':
                         self.assertEqual(view['native_origin'], view['authored_origin'])
@@ -369,7 +370,7 @@ class Quake2MapsInstallTest(unittest.TestCase):
             report = import_maps(INSTALL, root)
             self.assertCountEqual([(r['pak'], r['source']) for r in report['results']], expected)
             self.assertEqual((len(report['imported']), len(report['skipped']), report['failed']), (47, 0, {}))
-            count = 0
+            count = drawn = 0
             for name in report['imported']:
                 scene = json.loads((root / 'maps' / name / 'scene.json').read_text())
                 self.assertFalse(scene['missing'], name)
@@ -377,6 +378,10 @@ class Quake2MapsInstallTest(unittest.TestCase):
                                  scene['vertices'] * 28 + scene['indices'] * 4)
                 self.assertTrue(all((root / 'textures' / g['texture']).is_file() for g in scene['groups']))
                 self.assertTrue(all((root / 'textures' / f['texture']).is_file() for f in scene['skybox']['faces'].values()))
+                # Items, keys and misc models: drawn or skipped on purpose; EF_ROTATE items are movers that turn.
+                self.assertFalse([r for r in scene['items'] if r['status'] == 'failed'], name)
+                drawn += sum(r['status'] == 'drawn' for r in scene['items'])
+                self.assertEqual(len(scene.get('movers', [])), sum(bool(r.get('turning')) for r in scene['items']), name)
                 for view in scene['viewpoints']:
                     if view['classname'] == 'info_player_intermission':
                         self.assertEqual(view['native_origin'], view['authored_origin'])
@@ -391,6 +396,7 @@ class Quake2MapsInstallTest(unittest.TestCase):
                 if name in ('mine1', 'city2'):
                     self.assertEqual(scene['viewpoints'][0]['targetname'], {'mine1': 'mintro', 'city2': 'city2NL'}[name])
             self.assertEqual(count, 628)
+            self.assertGreater(drawn, 2000)
 
 
 if __name__ == '__main__':

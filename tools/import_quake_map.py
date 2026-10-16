@@ -701,6 +701,134 @@ def append_monsters(data, bsp, files, game):
     return records
 
 
+# id-Software/quake-rerelease-qc items.qc and misc.qc (the 1.06 spawn functions): what each placed item, weapon, torch and
+# barrel draws. A value is a model path, or a function of (spawnflags, worldtype) giving one; (path, skin, frame).
+def _by_flag(flag, big, small):
+    return lambda flags, world: big if flags & flag else small
+
+
+ITEM_MODELS = {
+    'item_health': lambda flags, world: 'maps/b_bh10.bsp' if flags & 1 else 'maps/b_bh100.bsp' if flags & 2 else 'maps/b_bh25.bsp',
+    'item_armor1': ('progs/armor.mdl', 0, 0), 'item_armor2': ('progs/armor.mdl', 1, 0), 'item_armorInv': ('progs/armor.mdl', 2, 0),
+    'weapon_supershotgun': 'progs/g_shot.mdl', 'weapon_nailgun': 'progs/g_nail.mdl', 'weapon_supernailgun': 'progs/g_nail2.mdl',
+    'weapon_grenadelauncher': 'progs/g_rock.mdl', 'weapon_rocketlauncher': 'progs/g_rock2.mdl', 'weapon_lightning': 'progs/g_light.mdl',
+    'item_shells': _by_flag(1, 'maps/b_shell1.bsp', 'maps/b_shell0.bsp'), 'item_spikes': _by_flag(1, 'maps/b_nail1.bsp', 'maps/b_nail0.bsp'),
+    'item_rockets': _by_flag(1, 'maps/b_rock1.bsp', 'maps/b_rock0.bsp'), 'item_cells': _by_flag(1, 'maps/b_batt1.bsp', 'maps/b_batt0.bsp'),
+    'item_weapon': lambda flags, world: (('maps/b_shell1.bsp' if flags & 8 else 'maps/b_shell0.bsp') if flags & 1 else
+                                         ('maps/b_nail1.bsp' if flags & 8 else 'maps/b_nail0.bsp') if flags & 4 else
+                                         ('maps/b_rock1.bsp' if flags & 8 else 'maps/b_rock0.bsp') if flags & 2 else None),
+    # worldtype 0 medieval, 1 metal, 2 base (the QC's ifs; an unset worldtype is 0).
+    'item_key1': lambda flags, world: {0: 'progs/w_s_key.mdl', 1: 'progs/m_s_key.mdl', 2: 'progs/b_s_key.mdl'}.get(world),
+    'item_key2': lambda flags, world: {0: 'progs/w_g_key.mdl', 1: 'progs/m_g_key.mdl', 2: 'progs/b_g_key.mdl'}.get(world),
+    'item_sigil': lambda flags, world: next((f'progs/end{n}.mdl' for n, bit in ((1, 1), (2, 2), (3, 4), (4, 8)) if flags & bit), None),
+    'item_artifact_invulnerability': 'progs/invulner.mdl', 'item_artifact_envirosuit': 'progs/suit.mdl',
+    'item_artifact_invisibility': 'progs/invisibl.mdl', 'item_artifact_super_damage': 'progs/quaddama.mdl',
+    'light_torch_small_walltorch': 'progs/flame.mdl', 'light_flame_large_yellow': ('progs/flame2.mdl', 0, 1),
+    'light_flame_small_yellow': 'progs/flame2.mdl', 'light_flame_small_white': 'progs/flame2.mdl',
+    'misc_explobox': 'maps/b_explob.bsp', 'misc_explobox2': 'maps/b_exbox2.bsp',
+}
+# Items and barrels fall to the floor when they start (PlaceItem: origin + 6, droptofloor; misc_explobox: + 2), torches
+# stay where they are (makestatic). Models with EF_ROTATE (MDL flag 8) turn at 100 degrees a second whatever their
+# angle (CL_RelinkEntities: angles[1] = anglemod(100 * cl.time)).
+EF_ROTATE = 8
+SPRITES = {'light_globe': 'progs/s_light.spr'}
+
+
+def read_spr(data):
+    """First frame of an IDSP v1 sprite: (width, height, origin x, origin y, palette pixels)."""
+    if data[:8] != b'IDSP\x01\x00\x00\x00' or len(data) < 56:
+        raise ValueError('Expected IDSP version 1')
+    frames, kind = struct.unpack_from('<i', data, 24)[0], struct.unpack_from('<i', data, 36)[0]
+    if frames <= 0 or kind != 0:
+        raise ValueError('Sprite without a single first frame')
+    x, y, width, height = struct.unpack_from('<4i', data, 40)
+    if width <= 0 or height <= 0 or 56 + width * height > len(data):
+        raise ValueError('Truncated sprite frame')
+    return width, height, x, y, data[56:56 + width * height]
+
+
+def append_items(data, bsp, files, game):
+    """Placed items, weapons, torches and barrels as the progs spawn them (ITEM_MODELS), turning ones as movers; light
+    globes as sprites. Returns (records, movers, sprites)."""
+    if __package__:
+        from .import_quake import read_mdl, build_model
+    else:
+        from import_quake import read_mdl, build_model
+    records, movers, sprites, cache = [], [], {}, {}
+    world = int(float(next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {}).get('worldtype') or 0))
+    for entity, e in enumerate(bsp['entities']):
+        cls, flags = e.get('classname', ''), int(float(e.get('spawnflags') or 0))
+        if cls not in ITEM_MODELS and cls not in SPRITES:
+            continue
+        row = dict(entity=entity, classname=cls)
+        records.append(row)
+        if flags & (2048 if game == 'qctf' else 512):
+            row.update(status='omitted', reason='excluded in deathmatch' if game == 'qctf' else 'excluded on normal skill')
+            continue
+        origin = vector(e)
+        try:
+            if cls in SPRITES:
+                path = SPRITES[cls]
+                if path not in files:
+                    raise ValueError('Missing sprite ' + path)
+                width, height, x, y, pixels = read_spr(files[path][0])
+                png = 'spr_' + hashlib.sha256(pixels + struct.pack('<II', width, height)).hexdigest()[:24] + '.png'
+                data['textures'][png] = dict(width=width, height=height, pixels=pixels, sprite=True)
+                # ponytail: centred on the entity, not at the frame's origin offset (s_light's is its centre).
+                batch = sprites.setdefault(png, dict(texture=png, blend='alpha', aspect=round(height / width, 4), items=[]))
+                batch['items'].append([*(round(float(c), 4) for c in origin[[1, 2, 0]] * SCALE), round(width * SCALE, 4), 1, 1, 1, 1])
+                row.update(status='drawn', sprite=path)
+                continue
+            found = ITEM_MODELS[cls]
+            found = found(flags, world) if callable(found) else found
+            path, skin, frame = found if isinstance(found, tuple) else (found, 0, 0)
+            if not path:
+                raise ValueError('No model for these spawnflags/worldtype')
+            if path not in files:
+                raise ValueError('Missing model ' + path)
+            if path not in cache:
+                if path.endswith('.bsp'):
+                    box = read_bsp(files[path][0])
+                    found = geometry(box, [dict(model=0, entity=0, offset=[0, 0, 0])], light=False)
+                    data['textures'].update(found['textures'])
+                    parts = []
+                    for group in found['groups']:
+                        triangles = found['indices'][group['start']:group['start'] + group['count']]
+                        used, remap = np.unique(triangles, return_inverse=True)
+                        parts.append((dict(vertices=found['points'][used][:, [1, 2, 0]].ravel(), uvs=found['uvs'][used].ravel(),
+                                           indices=remap.tolist()), group['texture'], group['size']))
+                    cache[path] = parts, 0
+                else:
+                    meshes = {}
+                    for number in {skin}:
+                        mesh = read_mdl(files[path][0], number, frame=frame)
+                        png = 'mdl_' + hashlib.sha256(mesh['skin'] + struct.pack('<II', mesh['width'], mesh['height'])).hexdigest()[:24] + '.png'
+                        data['textures'][png] = dict(width=mesh['width'], height=mesh['height'], pixels=mesh['skin'])
+                        meshes[number] = [(build_model(mesh, png), png, [mesh['width'], mesh['height']])]
+                    cache[path] = meshes[skin], mesh['flags']
+            parts, model_flags = cache[path]
+            if cls in ITEM_MODELS and not cls.startswith('light_'):
+                lift = 2 if cls.startswith('misc_explobox') else 6
+                # Boxes stand on their corner (mins 0 0 0, 32 wide), the rest on their centre; both drop until their
+                # bottom (mins z 0) meets a floor, within 256 units (droptofloor), else stay (the QC removes them).
+                centre = origin + ((16, 16, 0) if path.endswith('.bsp') else (0, 0, 0))
+                floor = floor_below(data['floors'], centre[0], centre[1], origin[2] + lift) if len(data['floors']) else None
+                if floor is not None and origin[2] + lift - floor <= 256:
+                    origin = np.array([origin[0], origin[1], floor])
+            turning = bool(model_flags & EF_ROTATE)
+            angles = np.zeros(3) if turning else vector(e, 'angles') if 'angles' in e else np.array([0., float(e.get('angle') or 0), 0.])
+            group = dict(kind='model', flags=0, entity=entity, classname=cls)
+            if turning:
+                group['mover'] = len(movers)
+                movers.append(dict(pivot=[round(float(c), 4) for c in origin[[1, 2, 0]] * SCALE], spin=[0, 1, 0, round(math.radians(100), 6)]))
+            for model, png, size in parts:
+                append_alias(data, model, origin, angles, dict(group, texture=png, size=size))
+            row.update(status='drawn', model=path, origin=origin.tolist(), turning=turning)
+        except (ValueError, IndexError, struct.error) as exc:
+            row.update(status='failed', reason=str(exc))
+    return records, movers, list(sprites.values())
+
+
 def fog_settings(bsp, view):
     """map.fog, or None. Rerelease quakec_mg1/mg3 fog.qc (dopa maps carry the same entities): at spawn the spot's,
     else worldspawn's, fog_info_entity names an info_fog (density 0.05 when unset; colour / 255 when a channel
@@ -744,6 +872,7 @@ def build_map(raw, name, game='quake', lit=None, files=None):
     placed, skipped = instances(bsp, game)
     data = geometry(bsp, placed)
     models = append_monsters(data, bsp, files or {}, game)
+    items, movers, sprites = append_items(data, bsp, files or {}, game)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp, game)
 
@@ -781,18 +910,23 @@ def build_map(raw, name, game='quake', lit=None, files=None):
     fog = fog_settings(bsp, views[0])
     if fog:
         extra['fog'] = fog
+    if movers:
+        extra['movers'] = movers
+    if sprites:
+        extra['sprites'] = sprites
     scene = dict(name=name, game=game, title=info.get('message', ''), format=bsp['format'], vertices=len(points), indices=len(data['indices']), **extra,
                  lighting='rgb' if 'rgb_lighting' in bsp else 'colormap', lighting_source=lighting,
                  bspx=[dict(name=n, bytes=len(d), handled=n == 'RGBLIGHTING' and lighting == 'BSPX RGBLIGHTING',
                             reason='external .lit takes precedence' if n == 'RGBLIGHTING' and lit is not None else
                             'RGB lighting' if n == 'RGBLIGHTING' else 'not handled') for n, d in bsp['bspx'].items()],
                  lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views, bounds=bounds.tolist(),
-                 instances=placed, models=models, model_failures=[r for r in models if r['status'] in ('failed', 'partial')],
-                 skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
+                 instances=placed, models=models, model_failures=[r for r in models + items if r['status'] in ('failed', 'partial')],
+                 items=items, skipped_entities=skipped, faces=data['audit'], viewpoint_checks=checks, missing=sorted({f['texture'] for f in data['audit'] if f['missing']}),
                  assumptions=['CTF deathmatch filtering; first authored team 1 start' if game == 'qctf' else 'normal skill, single player, no runes',
                               'light styles 1-11 animate at 10 Hz (two per face on colormap maps, one on RGB maps; further ones held at m); switchable lights at m (264), those that start off at a (0)',
                               'brushes at spawn; trains initialized at first corner, before travel', 'animated textures run their +0/+a chain at 5 frames a second',
-                              'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; no AI or runtime summons'])
+                              'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; no AI or runtime summons',
+                              'items, weapons, torches and barrels in their first frame, even lighting, dropped to the face floors below; EF_ROTATE models turn at 100 degrees a second'])
     return scene, blob, data['textures'], data['atlas']
 
 
@@ -872,7 +1006,12 @@ def import_maps(install, output, replace=False, game='quake'):
                         image.save(output / 'textures' / png)
                 for png, tex in textures.items():
                     target = output / 'textures' / png
-                    if not target.is_file() or replace:
+                    if (not target.is_file() or replace) and tex.get('sprite'):
+                        # Sprites are drawn as they are (fullbright), index 255 see-through.
+                        image = palette_image(tex['pixels'], (tex['width'], tex['height']), palette).convert('RGBA')
+                        image.putalpha(Image.frombytes('L', image.size, bytes(0 if i == 255 else 255 for i in tex['pixels'])))
+                        image.save(target)
+                    elif not target.is_file() or replace:
                         # Store the palette index, not RGB: the fragment shader looks up the original colormap.
                         Image.frombytes('L', (tex['width'], tex['height']), tex['pixels']).save(target)
                 folder.mkdir(parents=True, exist_ok=True)

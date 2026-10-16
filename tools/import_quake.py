@@ -109,8 +109,8 @@ def item_box(name):
     return name.startswith('maps/b_') and name.endswith('.bsp')
 
 
-def read_mdl(data, skin_number=0, *, standing=False):
-    """Decode IDPO v6. Select a skin and optional standing pose; validate every group."""
+def read_mdl(data, skin_number=0, *, standing=False, frame=0):
+    """Decode IDPO v6. Select a skin and a standing pose (`standing`) or frame `frame` (its first pose); validate every group."""
     at = 0
 
     def take(size):
@@ -172,7 +172,7 @@ def read_mdl(data, skin_number=0, *, standing=False):
             name = take(16).split(b'\0', 1)[0].decode('ascii', errors='replace')
             packed = take(verts * 4)
             waiting = name.lower().startswith(('stand', 'idle'))
-            if points is None or (standing and waiting and not preferred):
+            if points is None or (standing and waiting and not preferred) or (not standing and frame and frame_index == frame and frame_number != frame):
                 points = [tuple(p[k] * scale[k] + origin[k] for k in range(3))
                           for p in struct.iter_unpack('<4B', packed)]
                 pose, frame_number, preferred = name, frame_index, waiting

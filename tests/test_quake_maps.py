@@ -296,6 +296,7 @@ class QuakeMapsInstallTest(unittest.TestCase):
             self.assertEqual(result['failed'], {})
             self.assertEqual((len(result['imported']), len(result['skipped'])), (38, 13))
             self.assertCountEqual([(r['pak'], r['source']) for r in result['results']], expected)
+            drawn = turning = 0
             for ident in result['imported']:
                 scene = json.loads((root / 'maps' / ident / 'scene.json').read_text())
                 blob = (root / 'maps' / ident / 'geometry.bin').read_bytes()
@@ -306,6 +307,13 @@ class QuakeMapsInstallTest(unittest.TestCase):
                 self.assertTrue(0 < scene['viewpoint_checks'][0]['eye_above_floor'] <= 46, ident)  # Dropped to the floor as in the game.
                 self.assertEqual(scene['missing'], ['__missing_miptex_46'] if ident == 'e2m3' else [], ident)
                 self.assertTrue(all((root / 'textures' / g['texture']).is_file() for g in scene['groups']), ident)
+                # Items, weapons, torches and barrels: every one drawn or skipped on purpose; EF_ROTATE ones turn.
+                self.assertFalse([r for r in scene['items'] if r['status'] == 'failed'], ident)
+                drawn += sum(r['status'] == 'drawn' for r in scene['items'])
+                turning += len(scene.get('movers', []))
+                self.assertTrue(all(0 <= g['mover'] < len(scene['movers']) for g in scene['groups'] if 'mover' in g), ident)
+            self.assertGreater(drawn, 1500)
+            self.assertGreater(turning, 200)
 
 
 if __name__ == '__main__':
