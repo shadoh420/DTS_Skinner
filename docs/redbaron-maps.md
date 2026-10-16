@@ -131,7 +131,26 @@ end = trunc(weatherEnd * view)
 
 Weather codes 3/4/5 use start/end multipliers `.75/.9`, `.5/.75`, `.25/.5`; other codes use `1/1`. Distances are converted with SCALE. The adapter uses the binary's default maximum visibility (`00580858 = 100`, `00411B30`) and updates the range as the camera climbs. At sea level on the shipped exponent-11 terrain, nominal start/end are **3932.644/5618.074 m**, with full Glide haze at about **4772 m**. These replace the 12–18 km preview. The haze checkbox still works. The import does not read the user's graphics preferences, so a changed native visibility slider must be accounted for when comparing.
 
-Shapes retain their own DML mode: unlit parts stay unlit; flat parts use their authored face normals, and smooth parts use authored vertex normals (`0051D112`–`0051D153`, `0051D170`–`0051D23F`). The shared model reader gains an optional smooth-normal callback; existing model-catalog callers and output are unchanged. Only the maps importer opts in. Both shape and terrain materials use the same scene sun and haze shader. Animated clouds, palette recolouring at dusk/night, transient global haze overlays (`004447A0`) and moving cloud shadows remain outside this implementation; the accepted solid sky colour remains.
+Shapes retain their own DML mode: unlit parts stay unlit; flat parts use their authored face normals, and smooth parts use authored vertex normals (`0051D112`–`0051D153`, `0051D170`–`0051D23F`). The shared model reader gains an optional smooth-normal callback; existing model-catalog callers and output are unchanged. Only the maps importer opts in. Both shape and terrain materials use the same scene sun and haze shader. Palette recolouring at dusk/night, transient global haze overlays (`004447A0`) and moving cloud shadows remain outside this implementation; the sky's cloud band and sheets are below.
+
+### Sky (Glide)
+
+`[0x58a434]` is the render mode; 4 is Glide (`00522039` opens `glide2x.dll`), the path the 3D patch and nGlide use. The sky manager (`004B5270`) keeps the cloud type in `+0x18`, set from the weather (`004B4C61` → `004A6880`). In Glide it draws:
+
+- **The horizon cloud band** (`004B40F0`, `004B41E0`, `004B4440`). Sixteen upright panels sit π/8 apart on a ring of radius 2500 × 8 = 20000 native units (762 m) round the eye.
+  - Size and height: each panel is centred 2500 units above the eye (`0x451c4000`). It is one chord plus 2% wide (`sin(π/16) · R · 1.02 · 8` in the sprite's 1/8 units, centred by `00527510`). It is 2500 units tall, or 5000 in weathers 3–5.
+  - Texture: panel *n* shows tile *n* mod 8 of `hz-cld<weather>` (`004B4380`): tiles 0.25 × 0.5, four across and two down, from v 0.01. The 3D patch's `hz-cld0-5.bmp` carry their own cloud palette and `.aph` alpha. A missing number falls back to `hz-cld0`.
+  - Placement: the game draws the five panels round the view heading. The page draws all sixteen, which looks the same. The ring moves with the eye and never turns.
+- **Cloud sheets** (`004BDA46` by weather, `004BD710` per layer, `004BDFD0`).
+  - Size and texture: flat `csheet<weather>` squares 80000 units (3 km) across, with a random yaw.
+  - Layers by weather: weather 1 has one layer at 160000 units (6.1 km); weather 2 has 120000 and 64000; weathers 3–5 have 120000, 80000 and 56000. Weather 0 has none.
+  - Grid: a 4 × 4 grid of 131072-unit cells, starting three cells below the eye's cell.
+  - Each cell runs its own `004BD5A0` stream. That is three congruential sequences (×179 mod 32771, ×183 mod 32779, ×182 mod 32783) summed mod 65536. The cell is empty when the first number is at most 0.25 (weathers below 3). Otherwise it has one, two or three sheets (next number below 0.75, below 0.95, else). The first sheet sits at the cell corner; each further one moves ±65536 across and ±20000 up from the last.
+  - **Approximation:** the game seeds each cell from a field sampled at the cell (`0043FD10`, not decoded). The page seeds from the cell and layer, so the layout has the same density and sizes but is not the game's copy.
+  - The sheets take the scene's haze. At low altitude a 6 km layer lies past the haze's end, as in the game.
+- The software renderer's tiled high deck (`tl-cld<n>`, 200000 units up, `004B30F0`) is not created in Glide (`004B46EE`), and the page does not draw it.
+
+Not drawn yet: the sun and moon sprites (`Sun`, `Moon` classes), scud layers in weathers 3–5 (`004B4CA1`), cloud shadows on the ground, and dusk/night palette changes. The sky behind the band keeps the accepted solid colour; the Glide clear colour (`004ED4B0`, a palette index) is reached through the driver table and is not traced.
 
 Refresh the pack to obtain normals and lighting metadata. New terrain records are eight little-endian floats (`xyz, uv, normal`), identified by `stride: 8`; old five-float packs still load with their old unlit appearance. Source measurements and numeric probes establish the implemented equations, **not rendered parity**. In particular, most vertices near the TUTOR3 birth point still saturate at white under the recovered ambient/sun light; stronger shade occurs on steeper Alsace slopes. Claude must compare the new haze and lighting against the supplied banked capture rather than treating synthetic tests as visual acceptance.
 
