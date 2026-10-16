@@ -28,7 +28,7 @@
   window.skinnerMapViewerConfig = {
     label: 'Bloodlines', storageKey: 'skinner.vtmbmaps', debugName: 'skinnerVtmbMaps',
     games: [['vtmb', 'C:\\GOG Games\\VtMB']], dataRoot: '/vtmb-map-data/', importRoute: '/import_vtmb_maps',
-    brightness: 1, fog,
+    brightness: 1, fog, vertexLight: false,
     configureTexture(texture) {
       texture.anisotropy = 4;
       texture.magFilter = THREE.LinearFilter;
@@ -36,6 +36,7 @@
     },
     async load(map, loadTexture) {
       this.brightness = map.lighting.brightness;
+      this.vertexLight = !!map.colors;  // Packs with vertex colours light models at their vertices (tools/source_light.py).
       // Worldspawn fog; the 3D sky pass uses the sky_camera's (none when it has fogenable 0); in water, the water material's.
       fogs = {main: spec(map.fog), sky: spec(map.sky3d && map.sky3d.fog), regions: new Map((map.regions || []).filter(Boolean).map(r => [r, spec(r.fog)]))};
       fogs.current = fogs.main; applyFog(fogs.main);
@@ -56,21 +57,22 @@
         side: settings.cull === 'none' ? THREE.DoubleSide : THREE.FrontSide,
         blending: blend[1] === 'gl_one' ? THREE.AdditiveBlending : THREE.NormalBlending,
         uniforms: {surface: {value: texture}, lights: {value: lightMap},
-          unlit: {value: !!settings.unlit || group.kind === 'model'},
+          unlit: {value: !!settings.unlit || (group.kind === 'model' && !this.vertexLight)}, vertexLight: {value: group.kind === 'model' && this.vertexLight},
           selfillum: {value: !!settings.selfillum}, cutout: {value: !!settings.alphaFunc},
           useAlpha: {value: !!blend.length || !!settings.alphaFunc}, alpha: {value: alpha},
           tint: {value: new THREE.Vector3(...(group.tint || [1, 1, 1]))}, brightness: {value: this.brightness},
           fogColor: fog.fogColor, fogRange: fog.fogRange, fogTo: {value: fogTo}, seconds: time, pan: {value: pan(parameters)}},
-        vertexShader: `attribute vec2 uv2; uniform vec2 pan; uniform float seconds; varying vec2 texUV, lightUV; varying float fogDepth;
-        void main() { texUV = uv + fract(pan * seconds); lightUV = uv2;
+        vertexShader: `attribute vec2 uv2; ${this.vertexLight ? 'attribute vec4 color;' : ''} uniform vec2 pan; uniform float seconds;
+        varying vec2 texUV, lightUV; varying vec3 vertexColour; varying float fogDepth;
+        void main() { texUV = uv + fract(pan * seconds); lightUV = uv2; vertexColour = ${this.vertexLight ? 'color.rgb' : 'vec3(1.)'};
           vec4 view = modelViewMatrix * vec4(position, 1.); fogDepth = -view.z; gl_Position = projectionMatrix * view; }`,
         fragmentShader: `uniform sampler2D surface, lights;
-        uniform bool unlit, selfillum, cutout, useAlpha; uniform float alpha, brightness, fogTo;
-        uniform vec3 tint, fogColor, fogRange; varying vec2 texUV, lightUV; varying float fogDepth;
+        uniform bool unlit, vertexLight, selfillum, cutout, useAlpha; uniform float alpha, brightness, fogTo;
+        uniform vec3 tint, fogColor, fogRange; varying vec2 texUV, lightUV; varying vec3 vertexColour; varying float fogDepth;
         void main() {
           vec4 base = texture2D(surface, texUV);
           if (cutout && base.a < .5) discard;
-          vec3 illumination = unlit ? vec3(1.) : texture2D(lights, lightUV).rgb;
+          vec3 illumination = unlit ? vec3(1.) : vertexLight ? vertexColour : texture2D(lights, lightUV).rgb;
           if (selfillum) illumination = mix(illumination, vec3(1.), base.a);
           vec3 rgb = min(base.rgb * illumination * tint * brightness, 1.);
           // Hypothesis: Bloodlines (2004, before Source's pixel fog) uses fixed-function linear fog on view depth, blended on

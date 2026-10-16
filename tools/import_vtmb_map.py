@@ -18,7 +18,7 @@ import numpy as np
 from PIL import Image
 
 try:
-    from tools import vtmb
+    from tools import source_light, vtmb
     from tools.import_vtmb import key, resolve_material, prepare_texture
     from tools.texture_storage import game_texture_dir, write_texture
     from tools.import_quake_map import rotation, vector, SCALE
@@ -26,6 +26,7 @@ try:
     from tools.local_data import LOCAL_DATA
     from tools.texture_workshop import write_json_atomic
 except ImportError:
+    import source_light
     import vtmb
     from import_vtmb import key, resolve_material, prepare_texture
     from texture_storage import game_texture_dir, write_texture
@@ -35,12 +36,12 @@ except ImportError:
     from texture_workshop import write_json_atomic
 
 
-LUMPS = {0: 'entities', 1: 'planes', 2: 'texdata', 3: 'vertices', 5: 'nodes', 6: 'texinfo',
+LUMPS = {0: 'entities', 1: 'planes', 2: 'texdata', 3: 'vertices', 5: 'nodes', 6: 'texinfo', 15: 'worldlights',
          7: 'faces', 8: 'lighting', 10: 'leaves', 12: 'edges', 13: 'surfedges', 14: 'models', 16: 'leaffaces',
          26: 'dispinfo', 33: 'dispverts', 35: 'game', 36: 'leafwaterdata', 40: 'pakfile',
          43: 'texdata_string_data', 44: 'texdata_string_table', 48: 'disptris'}
 SKIPPED_LUMPS = {4: 'visibility', 9: 'occlusion', 11: 'faceids',
-                 15: 'worldlights', 17: 'leafbrushes', 18: 'brushes', 19: 'brushsides',
+                 17: 'leafbrushes', 18: 'brushes', 19: 'brushsides',
                  20: 'areas', 21: 'areaportals', 27: 'originalfaces', 28: 'physdisp', 29: 'physcollide',
                  30: 'vertnormals', 31: 'vertnormalindices', 32: 'displightmapalphas',
                  34: 'displightmapsamplepositions', 37: 'primitives', 38: 'primverts',
@@ -396,8 +397,23 @@ def face_geometry(bsp, number):
 
 
 def light_pixels(bsp, face, flags, gain=2):
-    if face['light'] < 0 or flags & (6 | 1024):
+    total = face_light(bsp, face, flags)
+    if total is None:
         return np.full((1, 1, 3), 255, np.uint8)
+    return encode_light(total, gain)
+
+
+def encode_light(total, gain=2):
+    """Linear light (lightmap units, 255 a full step) as the atlas stores it."""
+    # Approximate LDR upload; gamma-encoded atlas gives useful filtering and avoids
+    # interpolating the RGBExp exponent. Native overbright/display ramp awaits comparison.
+    return np.rint(np.clip(total * gain / 255, 0, 1)**(1/2.2)*255).astype(np.uint8)
+
+
+def face_light(bsp, face, flags):
+    """A face's lightmap as linear (h, w, 3) colours, its styles summed (start-off styles dark); None without one."""
+    if face['light'] < 0 or flags & (6 | 1024):
+        return None
     w, h = face['size']
     if min(w, h) <= 0 or w*h > 4_000_000:
         raise ValueError('Invalid face lightmap extent')
@@ -413,9 +429,7 @@ def light_pixels(bsp, face, flags, gain=2):
         if style not in bsp.get('dark_styles', ()):
             total += values[:, :3] * np.exp2(values[:, 3].view(np.int8).astype(float))[:, None]
         at += stride
-    # Approximate LDR upload; gamma-encoded atlas gives useful filtering and avoids
-    # interpolating the RGBExp exponent. Native overbright/display ramp awaits comparison.
-    return np.rint(np.clip(total * gain / 255, 0, 1)**(1/2.2)*255).astype(np.uint8).reshape(h, w, 3)
+    return total.reshape(h, w, 3)
 
 
 def atof(text):
@@ -528,12 +542,13 @@ def build_map(raw, name, files, lighting=None):
             record['reason'] = str(exc); missing.append(dict(source=name, reason=str(exc)))
         return record
 
-    points, uvs, lmuv, indices, groups, tiles = [], [], [], [], [], []
+    points, uvs, lmuv, colors, indices, groups, tiles = [], [], [], [], [], [], []
     faces_audit, placed, omitted, failures = [], [], [], []
 
-    def append(p, uv, lm, tri, mat, kind, tile, **extra):
+    def append(p, uv, lm, tri, mat, kind, tile, color=None, **extra):
         base = len(points); start = len(indices)
         points.extend(p); uvs.extend(uv); lmuv.extend(lm); indices.extend((np.asarray(tri).reshape(-1)+base).tolist())
+        colors.append(np.full((len(p), 3), 255, np.uint8) if color is None else color)
         groups.append(dict(start=start, count=len(indices)-start, kind=kind, flags=0, **mat, **extra))
         tiles.append((len(points)-len(p), len(points), tile))
 
@@ -609,6 +624,9 @@ def build_map(raw, name, files, lighting=None):
                    alpha=number(entity, 'renderamt', 255)/255, **({'sky3d': True} if sky else {}))
 
     model_cache = {}
+    # Models are lit at their vertices as the engine lights them (tools/source_light.py), stored as vertex colours in
+    # the lightmap atlas's encoding, so props and NPCs keep the walls' relative brightness.
+    sampler = source_light.Sampler(bsp, lambda face: face_light(bsp, face, indexed(bsp['texinfo'], face['texinfo'], 'texinfo')[16]))
     for record in models:
         try:
             model = vtmb.model_reference(record['model'])
@@ -634,6 +652,11 @@ def build_map(raw, name, files, lighting=None):
             if not np.isfinite(p).all():
                 raise ValueError('Non-finite prop position')
             uv = np.asarray(mesh['uvs']).reshape(-1, 2)
+            normals = np.asarray(mesh['normals']).reshape(-1, 3)[:, [2, 0, 1]] @ rotation(record['angles']).T
+            normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-9)
+            centre = (p.min(0) + p.max(0)) / 2
+            vertex_light = encode_light(sampler.light(centre, normals), lighting['light_gain'])
+            record['lighting_origin'] = centre.round(2).tolist()
             sky = camera is not None and (indexed(tree.leaves, record['leaves'][0], 'leaf')[1] == sky_area if record.get('leaves')
                                           else in_sky(np.array(record['origin'])))
             for g in mesh['groups']:
@@ -642,7 +665,7 @@ def build_map(raw, name, files, lighting=None):
                 # Keep only this material's referenced vertices; avoid repeating entire MDLs per group.
                 unique, remap = np.unique(tri, return_inverse=True)
                 append(p[unique], uv[unique], np.zeros((len(unique), 2)), remap, mat, 'model', np.full((1, 1, 3), 255, np.uint8),
-                       model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1), **({'sky3d': True} if sky else {}),
+                       color=vertex_light[unique], model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1), **({'sky3d': True} if sky else {}),
                        **({k: record[k] for k in ('npc', 'entity', 'classname')} if record.get('npc') else {}))
             record.update(status='drawn', pose=mesh['metadata'])
         except (ValueError, OSError, KeyError, IndexError, struct.error) as exc:
@@ -675,7 +698,9 @@ def build_map(raw, name, files, lighting=None):
         group.update(start=len(indices), count=len(triangles))
         indices.extend(triangles); groups.append(group)
     points = np.array(points).reshape(-1, 3)[:, [1, 2, 0]]*SCALE
+    colors = np.concatenate(colors) if colors else np.zeros((0, 3), np.uint8)
     blob = b''.join((points.astype('<f4').tobytes(), np.asarray(uvs, '<f4').tobytes(), lmuv.astype('<f4').tobytes(),
+                     np.column_stack([colors, np.full(len(colors), 255, np.uint8)]).astype(np.uint8).tobytes(),
                      np.array(indices, '<u4').tobytes()))
     def water(texinfo):
         name = bsp['names'][indexed(bsp['texdata'], indexed(bsp['texinfo'], texinfo, 'texinfo')[17], 'texdata')[3]]
@@ -685,12 +710,12 @@ def build_map(raw, name, files, lighting=None):
     gaps = ['No gameplay/Python, particles, decals or dynamic lights',
             'Fog is the worldspawn fog at spawn (fogenable); underwater fog only where the water material sets $fogcolor/$fogstart/$fogend',
             *([f'3D sky not drawn: {sky_reason}'] if sky_reason not in ('', 'no sky_camera') else []), *([proxies] if proxies else []),
-            'Props and NPCs use model idle/reference frame zero and default bodygroups, with even lighting; entity animation requests are recorded',
+            'Props and NPCs use model idle/reference frame zero and default bodygroups; lit at their vertices from the worldlights lump and a six-ray ambient cube of the lightmaps around them; entity animation requests are recorded',
             'Materials use their base texture; displacement texture blending, bump/detail/environment and water reflection effects are not evaluated',
             'Brightness is provisional until compared with the game; light styles are held at initial full intensity except start-off lights']
     gaps += [r['reason'] for r in game_audit if not r['used'] and r['size']]
     scene = dict(name=name, title=world.get('message', name), game='vtmb', format='bloodlines-bsp17', revision=bsp['revision'],
-                 vertices=len(points), indices=len(indices), lightmap=[width, max(1, height)], groups=groups, viewpoints=views,
+                 vertices=len(points), indices=len(indices), colors=True, lightmap=[width, max(1, height)], groups=groups, viewpoints=views,
                  bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(), instances=placed, models=models,
                  omitted_models=omitted, model_failures=failures, faces_omitted=faces_audit, skybox=sky,
                  faces_drawn=drawn_faces, displacements_drawn=drawn_displacements,
