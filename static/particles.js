@@ -118,14 +118,142 @@
   const FRAGMENT = `uniform sampler2D map; uniform float uAlphaTest; varying vec2 vSt; varying vec4 vColor;
     void main() { vec4 c = texture2D(map, vSt) * vColor; if (c.a < uAlphaTest) discard; gl_FragColor = c; }`;
 
+  // Troika (Bloodlines, tools/vtmb_particles.py): keyed tracks instead of start/end curves. A template is a run of texels
+  // in one stream (uKeys): a header, then per track its keys [start, end, low, high] over the normalised life, each key's
+  // value drawn per particle. Tracks: 0-8 red green blue color mask width height size rotation, 9-15 radius theta phi
+  // x y z elevation speeds (integrated), 16 the spawn rate over the parent's life (kept particles: rate / max rate).
+  const TROIKA_TRACKS = 17, TROIKA_HEADER = 13 + Math.ceil(TROIKA_TRACKS / 2), STREAM_WIDTH = 1024;
+  function packTroika(t) {
+    const header = new Float32Array(TROIKA_HEADER * 4), keys = [], set = (n, ...v) => header.set(v, n * 4), s = t.spawn || {};
+    const r = (name, d) => pair(s[name] ?? d);
+    set(0, ...pair(t.lifeRate), ...r('timescale', 1));
+    set(1, (t.loop ? 1 : 0) + (t.movealign ? 2 : 0) + (t.flat ? 4 : 0) + (t.collide ? 8 : 0) + (t.box ? 16 : 0), t.depthOffset || 0, ...(t.aspect || [.5, .5]));
+    set(2, ...r('radius', 0), ...r('theta', 0)); set(3, ...r('phi', 0), ...r('elevation', 0));
+    set(4, ...r('x', 0), ...r('y', 0)); set(5, ...r('z', 0), ...r('rotation', 0));
+    set(6, ...r('red', 255), ...r('green', 255)); set(7, ...r('blue', 255), ...r('color', 255));
+    set(8, ...r('mask', 255), ...r('size', 1)); set(9, ...r('width', 1), ...r('height', 1));
+    set(10, t.parentLife || 1, t.rateMax || 0, pair(t.delay)[0], t.gain || 1);
+    set(11, ...(t.box ? t.box[0] : [0, 0, 0]), 0); set(12, ...(t.box ? t.box[1] : [0, 0, 0]), 0);
+    for (let k = 0; k < TROIKA_TRACKS; k++) {
+      const list = (t.tracks || [])[k] || [];
+      header[(13 + (k >> 1)) * 4 + (k & 1) * 2] = TROIKA_HEADER + keys.length / 4;
+      header[(13 + (k >> 1)) * 4 + (k & 1) * 2 + 1] = list.length;
+      for (const key of list) keys.push(...key);
+    }
+    const out = new Float32Array(header.length + keys.length);
+    out.set(header); out.set(keys, header.length);
+    return out;
+  }
+
+  const TROIKA_VERTEX = `precision highp float; precision highp int;
+    uniform sampler2D uKeys; uniform float uTime, uDensity, uDistance, uColorScale, uRgb, uAlpha, uSizeScale;
+    uniform mat3 uToWorld; uniform vec3 uUp, uEye;
+    attribute vec2 corner; attribute vec4 iOrigin, iForward, iRight, iTime;
+    varying vec2 vSt; varying vec4 vColor;
+    int base;
+    vec4 K(int n) { n += base; return texelFetch(uKeys, ivec2(n % ${STREAM_WIDTH}, n / ${STREAM_WIDTH}), 0); }
+    uint state, seed;
+    uint hash(uint x) { x = x * 747796405u + 2891336453u; x = ((x >> ((x >> 28u) + 4u)) ^ x) * 277803737u; return (x >> 22u) ^ x; }
+    float rnd() { state = hash(state); return float(state) / 4294967295.; }
+    float pick(vec2 range) { return mix(range.x, range.y, rnd()); }
+    // A track at u (0..1 of the life): x its value, y its integral from 0. Each key ramps from the value so far to its
+    // own random target over [start, end]; start == end is a step. Rotation ramps the short way round.
+    vec2 track(int t, float u, uint keySeed) {
+      vec4 dir = K(13 + t / 2); vec2 at = (t & 1) == 0 ? dir.xy : dir.zw;
+      int first = int(at.x), n = int(at.y);
+      float v = 0., area = 0., c = 0.;
+      for (int k = 0; k < 256; k++) {
+        if (k >= n) break;
+        vec4 key = K(first + k);
+        if (u < key.x) break;
+        float target = mix(key.z, key.w, float(hash(keySeed ^ uint(t * 256 + k) * 2654435761u)) / 4294967295.);
+        area += v * (key.x - c);
+        if (key.y <= key.x) { v = target; c = key.x; continue; }
+        float d = target - v;
+        if (t == 8) d = mod(d + 180., 360.) - 180.;
+        float e = min(u, key.y), ve = v + d * (e - key.x) / (key.y - key.x);
+        area += (e - key.x) * (v + ve) * .5;
+        v = ve; c = e;
+      }
+      return vec2(v, area + v * (u - c));
+    }
+    // A speed track's travel over the age: whole lives (a looping particle) plus the part of this one.
+    float travel(int t, float u, float lives, float life) { return life * (track(t, u, seed).y + (lives > 0. ? lives * track(t, 1., seed).y : 0.)); }
+    void hide() { gl_Position = vec4(2., 2., 2., 1.); vColor = vec4(0.); vSt = vec2(0.); }
+    void main() {
+      base = int(iOrigin.w);
+      float local = uTime + iTime.x, cycle = floor(local / iTime.y);
+      local -= cycle * iTime.y;
+      state = floatBitsToUint(iForward.w) ^ (uint(int(cycle) + 65536) * 2246822519u) ^ (uint(iRight.w) * 3266489917u);
+      seed = hash(state);
+      vec4 h0 = K(0), h1 = K(1), h10 = K(10);
+      int flags = int(h1.x);
+      float lifeRate = pick(h0.xy) * pick(h0.zw), life = 1. / max(lifeRate, 1e-6), age = local - h10.z, p = age * lifeRate;
+      vec3 origin = iOrigin.xyz, toEye = origin - uEye;
+      if (age < 0. || (flags & 1) == 0 && p >= 1. || iTime.z >= uDensity || dot(toEye, toEye) > uDistance * uDistance) { hide(); return; }
+      if (h10.y > 0.) {  // a spawn rate that changes over the parent's life: keep rate / max of the particles
+        float born = uTime + iTime.x - age, parent = floor(born / h10.x);
+        uint parentSeed = hash(floatBitsToUint(origin.x) ^ floatBitsToUint(origin.y) * 3266489917u ^ floatBitsToUint(origin.z) * 668265263u ^ uint(int(parent) + 65536));
+        if (rnd() * h10.y >= track(16, fract(born / h10.x), parentSeed).x) { hide(); return; }
+      }
+      float lives = (flags & 1) != 0 ? floor(p) : 0., u = p - lives;
+      uint look = hash(seed ^ uint(lives) * 2246822519u);  // the looks draw anew each life; the motion keeps one draw
+      vec3 A = iForward.xyz, B = iRight.xyz, C = cross(A, B);
+      vec4 h2 = K(2), h3 = K(3), h4 = K(4), h5 = K(5), h6 = K(6), h7 = K(7), h8 = K(8), h9 = K(9);
+      float r = pick(h2.xy), theta = pick(h2.zw), phi = pick(h3.xy), elevation = pick(h3.zw);
+      vec3 p0 = A * pick(h4.xy) + B * pick(h4.zw) + C * pick(h5.xy) + uUp * elevation;
+      if ((flags & 16) != 0) { vec4 b0 = K(11), b1 = K(12); p0 += vec3(mix(b0.x, b1.x, rnd()), mix(b0.y, b1.y, rnd()), mix(b0.z, b1.z, rnd())); }
+      float spin = pick(h5.zw), mr = pick(h6.xy), mg = pick(h6.zw), mb = pick(h7.xy), mc = pick(h7.zw), mm = pick(h8.xy);
+      float msize = pick(h8.zw), mw = pick(h9.xy), mh = pick(h9.zw);
+      r += travel(9, u, lives, life); theta += travel(10, u, lives, life); phi += travel(11, u, lives, life);
+      vec3 pos = origin + p0 + A * travel(12, u, lives, life) + B * travel(13, u, lives, life) + C * travel(14, u, lives, life) + uUp * travel(15, u, lives, life);
+      float ct = cos(radians(theta)), st = sin(radians(theta)), cp = cos(radians(phi)), sp = sin(radians(phi));
+      vec3 D = cp * (ct * A + st * B) + sp * C;
+      pos += r * D;
+      if ((flags & 8) != 0 && dot(pos, uUp) < iTime.w) { hide(); return; }  // collide: stopped by the floor below the emitter
+      float alpha = clamp(track(4, u, look).x * mm / 255., 0., 255.) / 255.;
+      float shade = track(3, u, look).x * mc / 16581375.;
+      vec3 rgb = clamp(vec3(track(0, u, look).x * mr, track(1, u, look).x * mg, track(2, u, look).x * mb) * shade, 0., 255.) / 255.;
+      if (max(max(rgb.r, rgb.g), max(rgb.b, alpha)) <= 1. / 255.) { hide(); return; }
+      // Fewer particles drawn (the import's fill cap, the quality tier): each the brighter and the more covering.
+      float gain = h10.w / max(uDensity, .01);
+      rgb *= gain; alpha = 1. - pow(1. - alpha, gain);
+      vColor = vec4(mix(vec3(1.), rgb, uRgb) * uColorScale, mix(1., alpha, uAlpha));
+      if (h1.y != 0.) pos += normalize(uEye - pos) * h1.y;  // depth_offset: toward the eye
+      float size = track(7, u, look).x * msize;
+      vec2 ext = h1.zw * size * vec2(track(5, u, look).x * mw, track(6, u, look).x * mh) * uSizeScale;
+      vec3 P = uToWorld * pos;
+      vec3 L = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]), W = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+      float angle = radians(track(8, u, look).x + spin);
+      if ((flags & 4) != 0) { L = normalize(uToWorld * A); W = normalize(uToWorld * B); }  // flat: in the emitter's plane
+      if ((flags & 2) != 0) {  // movealign: the sprite's height along the motion
+        vec3 velocity = A * track(12, u, seed).x + B * track(13, u, seed).x + C * track(14, u, seed).x + uUp * track(15, u, seed).x
+          + track(9, u, seed).x * D + r * radians(track(10, u, seed).x) * cp * (ct * B - st * A) + r * radians(track(11, u, seed).x) * (cp * C - sp * (ct * A + st * B));
+        vec3 m = uToWorld * velocity, side = cross(normalize(cameraPosition - P), m);
+        if (dot(side, side) > 1e-8) { W = normalize(m); L = normalize(side); angle = 0.; }
+      }
+      float c = cos(angle), n = sin(angle);
+      P += ((c * L + n * W) * corner.x * ext.x + (c * W - n * L) * corner.y * ext.y);
+      vSt = corner * vec2(.5, -.5) + .5;
+      gl_Position = projectionMatrix * viewMatrix * vec4(P, 1.);
+    }`;
+
   // emitters: [{origin, forward, right, template, period, batch, share: [i, n]}] where batch is a key into `batches`:
   //   {texture, blendSrc, blendDst (Three factors), rgb, alpha (use the particle's colour / alpha), colorScale, alphaTest, renderOrder}.
   // options: {toWorld: 9 numbers (column-major, game -> page), up: game up, quality, maxSlots}.
   function create(THREE, templates, emitters, batches, options = {}) {
     const texels = new Float32Array(Math.max(1, templates.length) * ROW * 4);
-    templates.forEach((t, i) => texels.set(pack(t), i * ROW * 4));
+    templates.forEach((t, i) => t.model !== 'troika' && texels.set(pack(t), i * ROW * 4));
     const table = new THREE.DataTexture(texels, ROW, Math.max(1, templates.length), THREE.RGBAFormat, THREE.FloatType);
     table.needsUpdate = true;
+    // Troika templates: one stream of texels, each template starting at its own offset.
+    const runs = templates.map(t => t.model === 'troika' ? packTroika(t) : null), starts = [];
+    let used = 0;
+    for (const run of runs) { starts.push(used); used += run ? run.length / 4 : 0; }
+    const streamRows = Math.max(1, Math.ceil(used / STREAM_WIDTH)), stream = new Float32Array(STREAM_WIDTH * streamRows * 4);
+    runs.forEach((run, i) => run && stream.set(run, starts[i] * 4));
+    const keys = new THREE.DataTexture(stream, STREAM_WIDTH, streamRows, THREE.RGBAFormat, THREE.FloatType);
+    keys.needsUpdate = true;
     // Slots: per emitter, one per (burst still alive) x (particle in a burst).
     const slots = [];
     for (const e of emitters) {
@@ -142,11 +270,11 @@
         // A primitive with several shaders: each of its emitters (one a shader) takes every shares-th slot.
         if ((b * count + k) % shares !== share || ((b * count + k) * 0.6180339887 + seed) % 1 >= keep) continue;
         // iTime.z: the slot's place in the quality tiers' thinning (kept while below the tier's density).
-        list.push(e.origin[0], e.origin[1], e.origin[2], e.template, ...e.forward, Math.random() * 1e6, ...e.right, k,
-          -b * period - (e.offset || 0), loop, ((b * 7 + k) * 0.7548776662 + seed) % 1, 0);
+        list.push(e.origin[0], e.origin[1], e.origin[2], runs[e.template] ? starts[e.template] : e.template, ...e.forward, Math.random() * 1e6, ...e.right, k,
+          -b * period - (e.offset || 0), loop, ((b * 7 + k) * 0.7548776662 + seed) % 1, e.floor ?? -1e30);
       }
     }
-    const meshes = [], uniforms = {uTemplates: {value: table}, uTime: {value: 0}, uDensity: {value: 1}, uDistance: {value: 1e9},
+    const meshes = [], uniforms = {uTemplates: {value: table}, uKeys: {value: keys}, uTime: {value: 0}, uDensity: {value: 1}, uDistance: {value: 1e9},
       uEye: {value: new THREE.Vector3()}, uUp: {value: new THREE.Vector3(...(options.up || [0, 0, 1]))},
       uToWorld: {value: new THREE.Matrix3().fromArray(options.toWorld || [1, 0, 0, 0, 1, 0, 0, 0, 1])}, uSizeScale: {value: 1}};
     uniforms.uSizeScale.value = Math.cbrt(Math.abs(uniforms.uToWorld.value.determinant())) || 1;
@@ -156,17 +284,18 @@
     base.setIndex([0, 1, 2, 0, 2, 3]);
     let instances = 0;
     for (const [key, data] of groups) {
-      const batch = batches[key], n = data.length / 16;
+      const batch = batches[key], n = data.length / 16, troika = runs[emitters.find(e => e.batch === key).template];
       if (!n || !batch || !batch.texture) continue;
       const geometry = base.clone(), buffer = new THREE.InstancedInterleavedBuffer(new Float32Array(data), 16);
       ['iOrigin', 'iForward', 'iRight', 'iTime'].forEach((name, i) => geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(buffer, 4, i * 4)));
       geometry.instanceCount = n;
       const material = new THREE.ShaderMaterial({uniforms: {...uniforms, map: {value: batch.texture}, uColorScale: {value: batch.colorScale ?? 1},
           uRgb: {value: batch.rgb === false ? 0 : 1}, uAlpha: {value: batch.alpha === false ? 0 : 1}, uAlphaTest: {value: batch.alphaTest || 0}},
-        vertexShader: VERTEX, fragmentShader: FRAGMENT, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        vertexShader: troika ? TROIKA_VERTEX : VERTEX, fragmentShader: FRAGMENT, transparent: true, depthWrite: false, side: THREE.DoubleSide,
         blending: THREE.CustomBlending, blendSrc: batch.blendSrc ?? THREE.OneFactor, blendDst: batch.blendDst ?? THREE.OneFactor});
       const mesh = new THREE.Mesh(geometry, material);
       mesh.frustumCulled = false;
+      mesh.userData.batch = key;
       mesh.renderOrder = batch.renderOrder ?? 1e9 - 20;
       meshes.push(mesh);
       instances += n;
@@ -185,7 +314,7 @@
         eye.set(...at);
         uniforms.uEye.value.copy(world ? eye.applyMatrix3(toGame) : eye);
       },
-      dispose() { for (const mesh of meshes) { mesh.geometry.dispose(); mesh.material.dispose(); } table.dispose(); }};
+      dispose() { for (const mesh of meshes) { mesh.geometry.dispose(); mesh.material.dispose(); } table.dispose(); keys.dispose(); }};
     system.setQuality(options.quality || 'high');
     return system;
   }
@@ -236,6 +365,6 @@
     return system;
   }
 
-  const api = {create, control, mount, pack, TIERS};
+  const api = {create, control, mount, pack, packTroika, TIERS};
   if (typeof module !== 'undefined') module.exports = api; else root.skinnerParticles = api;
 })(typeof window !== 'undefined' ? window : globalThis);

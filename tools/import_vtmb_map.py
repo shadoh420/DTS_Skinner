@@ -18,7 +18,7 @@ import numpy as np
 from PIL import Image
 
 try:
-    from tools import source_effects, source_light, vtmb
+    from tools import source_effects, source_light, vtmb, vtmb_particles
     from tools.import_vtmb import key, resolve_material, prepare_texture
     from tools.texture_storage import game_texture_dir, write_texture
     from tools.import_quake_map import rotation, vector, SCALE
@@ -29,6 +29,7 @@ except ImportError:
     import source_effects
     import source_light
     import vtmb
+    import vtmb_particles
     from import_vtmb import key, resolve_material, prepare_texture
     from texture_storage import game_texture_dir, write_texture
     from import_quake_map import rotation, vector, SCALE
@@ -594,7 +595,40 @@ def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, 
     light = lambda p: encode_light(sampler.light(p + [0, 0, 1], source_light.AXES).mean(0), gain) / 255
     found = source_effects.particles(ents, bounds, light)
     counts['particles'] = len(found)
-    return dict(counts=counts, sprites=list(batches.values()), particles=source_effects.particle_data(found, material, 'missing_vtmb.png', SCALE))
+    # Bloodlines' own particles (tools/vtmb_particles.py): sprites are particles/<name>.tga, drawn ONE, ONE_MINUS_SRC_ALPHA.
+    sprites = {}
+
+    def sprite(name):
+        if name not in sprites:
+            path = vtmb.asset_name(f'particles/{name}.tga')
+            sprites[name] = None
+            if path in files:
+                try:
+                    image = Image.open(io.BytesIO(files[path].read())).convert('RGBA')
+                except (OSError, ValueError):
+                    return None
+                png = key(f'particles/{name}') + '.png'
+                images[png] = image
+                w, h = image.size
+                sprites[name] = dict(texture=png, settings=dict(blend=['gl_one', 'gl_one_minus_src_alpha']),
+                                     aspect=[.5, .5 * h / w] if w >= h else [.5 * w / h, .5])
+        return sprites[name]
+
+    def floor(origin):
+        hit = sampler.trace(np.array(origin, float) + [0, 0, 1], np.array(origin, float) - [0, 0, 4096])
+        return None if hit is None else origin[2] + 1 - 4097 * hit[0]
+    read = lambda name: files[name].read() if name in files else None
+    troika, outcomes = vtmb_particles.emitters(ents, read, bounds, floor, lambda name: (sprite(name) or {}).get('aspect'))
+    # Emitters in the 3D sky area draw in the viewer's sky pass (batches of their own, flagged sky3d).
+    troika = [(name + '#sky' if in_sky(np.array(emitter['origin'])) else name, template, emitter) for name, template, emitter in troika]
+    counts.update(troika_particles=len(troika), troika_outcomes=outcomes, troika_in_sky3d=sum(name.endswith('#sky') for name, _, _ in troika))
+
+    def lookup(name):
+        if not name.startswith('particles/'):
+            return material(name)
+        found = sprites[name[len('particles/'):].removesuffix('#sky')]
+        return dict(found, sky3d=True) if name.endswith('#sky') else found
+    return dict(counts=counts, sprites=list(batches.values()), particles=source_effects.particle_data(found + troika, lookup, 'missing_vtmb.png', SCALE))
 
 
 def build_map(raw, name, files, lighting=None):
@@ -808,7 +842,8 @@ def build_map(raw, name, files, lighting=None):
         return water_fog(material(name)['settings'].get('parameters', {}))
     regions, region_tree = tree.regions(water)
     proxies = proxy_gap(materials.values())
-    gaps = ['No gameplay/Python, particles (env_particle), beams or dynamic lights; ropes hang still as parabolas; decals skip displacements',
+    gaps = ['No gameplay/Python, beams or dynamic lights; ropes hang still as parabolas; decals skip displacements',
+            'Particles: env_particle/func_particle from the particles/*.txt rules read in engine.dll (not game-checked): no collisions beyond a floor below each dripping emitter, no refraction sprites, no moving or triggered emitters; see effects.troika_outcomes',
             'Fog is the worldspawn fog at spawn (fogenable); underwater fog only where the water material sets $fogcolor/$fogstart/$fogend',
             *([f'3D sky not drawn: {sky_reason}'] if sky_reason not in ('', 'no sky_camera') else []), *([proxies] if proxies else []),
             'Props and NPCs use model idle/reference frame zero and default bodygroups; lit at their vertices from the worldlights lump and a six-ray ambient cube of the lightmaps around them; entity animation requests are recorded',

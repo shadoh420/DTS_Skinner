@@ -292,18 +292,20 @@ def particles(entities, bounds, light=None):
 
 
 def particle_data(found, material, missing_texture, scale):
-    """map.particles from particles(): one template per emitter, one batch (a stage) per material that loads; the page
-    axes are the map's [y, z, x] x scale, as the importers place everything else."""
-    templates, batches, emitters = [], {}, []
+    """map.particles from particles(): one template per template object (emitters may share one), one batch (a stage)
+    per material that loads; the page axes are the map's [y, z, x] x scale, as the importers place everything else."""
+    templates, batches, emitters, index = [], {}, [], {}
     for name, template, emitter in found:
         if name not in batches:
             mat = material(name)
             batches[name] = None if mat['texture'] == missing_texture else dict(
                 map=mat['texture'], blend=mat['settings'].get('blend') or ['gl_src_alpha', 'gl_one_minus_src_alpha'],
-                rgbGen=['vertex'], alphaGen=['vertex'])
+                rgbGen=['vertex'], alphaGen=['vertex'], **({'sky3d': True} if mat.get('sky3d') else {}))
         if batches[name]:
-            templates.append(template)
-            emitters.append(dict(emitter, template=len(templates) - 1, batch=name))
+            if id(template) not in index:
+                index[id(template)] = len(templates)
+                templates.append(template)
+            emitters.append(dict(emitter, template=index[id(template)], batch=name))
     if not emitters:
         return None
     return dict(templates=templates, batches={k: v for k, v in batches.items() if v}, emitters=emitters,
