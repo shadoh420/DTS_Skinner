@@ -404,6 +404,17 @@ def build_map(library, level, default, game='unreal', files=None):
             out.add(owner['lights'][k])
             k += 1
         return frozenset(out)
+
+    # Volumetric lights (fog_light) and, per surface, which of them its fog takes: bit i for fog_lights[i].
+    # Hypothesis: UE1 fogs a surface only with the volumetric lights of its own light list (the lights that light it).
+    # Measured on 227's NaliC2 start: Mover8 (LightRadius 0, VolumeRadius 8, the eye inside its sphere, in a fog zone)
+    # shows none of its green fog in the game; it lights almost nothing, so no surface lists it.
+    fog_refs = [ref for ref in sorted({r for r in model['lights'] if r > 0}) if fog_light(actor(ref), vector(actor(ref), 'Location'))]
+    fog_bit = {ref: 1 << i for i, ref in enumerate(fog_refs[:31])}  # ponytail: 31 a map (the install's most is 20)
+
+    def fog_mask(refs, flags):
+        """The fog_lights bits of light references `refs`; none where the page draws no fog (ue1-extras.js NO_FOG)."""
+        return 0 if flags & (TRANSLUCENT | MODULATED | FAKE_BACKDROP | UNLIT) else sum(fog_bit.get(r, 0) for r in set(refs or ()))
     for node in model['nodes']:
         if node['count'] < 3 or not 0 <= node['surf'] < len(model['surfs']):
             continue
@@ -450,7 +461,8 @@ def build_map(library, level, default, game='unreal', files=None):
             placed, uv, st = placed[::-1], uv[::-1], st[::-1]
             flipped += 1
         polygons += 1
-        groups.setdefault((png, flags & DRAWN_FLAGS, pan, None), []).append((placed, uv, st, tile, None))
+        mask = fog_mask(listed(model, model['lightmaps'][surf['lightmap']]) if 0 <= surf['lightmap'] < len(model['lightmaps']) else (), flags)
+        groups.setdefault((png, flags & DRAWN_FLAGS, pan, None, mask), []).append((placed, uv, st, tile, None))
 
     def ambient_of(number):
         found = zone(number)
@@ -552,7 +564,8 @@ def build_map(library, level, default, game='unreal', files=None):
             placed = viewer(world)
             if np.cross(placed, np.roll(placed, -1, 0)).sum(0) @ viewer([facing])[0] < 0:
                 placed, uv, st = placed[::-1], uv[::-1], st[::-1]
-            groups.setdefault((png, flags & DRAWN_FLAGS, pan, None), []).append((placed, uv, st, tile, None))
+            mask = fog_mask(listed(brush, brush['lightmaps'][poly['brush_poly']]) if 0 <= poly['brush_poly'] < len(brush['lightmaps']) else (), flags)
+            groups.setdefault((png, flags & DRAWN_FLAGS, pan, None, mask), []).append((placed, uv, st, tile, None))
 
     def add_mesh(props, obj, owners=None, mesh_property='Mesh', npc_owner=None):
         """An actor drawn as a mesh, at Location + PrePivot + Rotation x DrawScale x the mesh's points (its
@@ -617,6 +630,7 @@ def build_map(library, level, default, game='unreal', files=None):
         # Unlit (bUnlit, unlit faces, outside every zone): half the texture at ScaleGlow 1, plus the glow (SpireVillage's
         # Plant14 in 227: 0.58 of the page's full texture on screen, 0.5 before the display's gamma).
         unlit = min(props.get('ScaleGlow', 1.0) / 2 + glow, 1) / 2
+        lit_by = ()  # The lights that light it, for its fog.
         if props.get('bUnlit') or number == 0:  # The game draws an actor outside every zone unlit.
             light = np.full((len(world), 3), unlit)
         else:
@@ -626,8 +640,9 @@ def build_map(library, level, default, game='unreal', files=None):
             # with no floor below, every light in range. Per-vertex visibility would need line checks.
             below = floor_below(floor_array, *middle, which=True)
             reaching = floor_lights[below[1]] if below else None
-            near = [found for ref, found in static_lights.items() if (reaching is None or ref in reaching)
-                    and np.linalg.norm(found['location'] - middle) < found['radius'] + reach]
+            lit_by = [ref for ref, found in static_lights.items() if (reaching is None or ref in reaching)
+                      and np.linalg.norm(found['location'] - middle) < found['radius'] + reach]
+            near = [static_lights[ref] for ref in lit_by]
             light = vertex_light(world, normals, two_sided, ambient_of(number) + glow, near, props.get('ScaleGlow', 1.0))
         batches = {}
         for a, b, c, png, flags in faces:
@@ -641,7 +656,7 @@ def build_map(library, level, default, game='unreal', files=None):
             color = np.where(np.array([key[3] for key in keys])[:, None], unlit, light[ids])
             uv = np.array([(key[1] / 255, key[2] / 255) for key in keys])
             # Keep each Pawn's material batches separate from scenery and other Pawns.
-            groups.setdefault((*group, npc_owner), []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
+            groups.setdefault((*group, npc_owner, fog_mask(lit_by, group[1])), []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
         return True
 
     def events_at_spawn():
@@ -742,7 +757,7 @@ def build_map(library, level, default, game='unreal', files=None):
 
     positions, uvs, uv2s, colors, indices, table = [], [], [], [], [], []
     count = 0
-    for (png, flags, pan, npc_owner), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2])):
+    for (png, flags, pan, npc_owner, mask), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2], item[0][4])):
         start = len(indices)
         for placed, uv, st, tile, color, *triangles in polys:
             n = len(placed)
@@ -759,6 +774,7 @@ def build_map(library, level, default, game='unreal', files=None):
             count += n
         table.append(dict(texture=png, flags=flags, start=start, count=len(indices) - start, **({'pan': pan} if any(pan) else {}),
                           **({'anim': chains[png]} if chains.get(png) else {}),
+                          **({'fog_mask': mask} if mask else {}),
                           **({'light_anim': True} if any(moving.get(record[3]) for record in polys if record[3] not in (None, 'white')) else {})))
         if npc_owner:
             table[-1].update(npc=True, entity=npc_owner[0], classname=npc_owner[1])
@@ -816,8 +832,9 @@ def build_map(library, level, default, game='unreal', files=None):
         scene['light_anim'] = dict(lights=[[*found[ref]['anim'], *(round(float(c), 4) for c in np.minimum(found[ref]['full'] * 2, 1))] for ref in found])
     # Volumetric fog: every light the level lists with a VolumeRadius (SurrealEngine LightSystem::OnMapLoaded's
     # FogBalls), drawn while the eye is in a bFogZone zone (VisibleNode.cpp: GetLevelFogmap is asked with the
-    # camera's zone, GetFogmap draws nothing unless it is a fog zone).
-    fog_lights = [found for ref in sorted({r for r in model['lights'] if r > 0}) for found in [fog_light(actor(ref), vector(actor(ref), 'Location'))] if found]
+    # camera's zone, GetFogmap draws nothing unless it is a fog zone), each surface only with those of its group's
+    # fog_mask (fog_bit above: the hypothesis measured on NaliC2).
+    fog_lights = [fog_light(actor(ref), vector(actor(ref), 'Location')) for ref in fog_refs[:31]]
     # The eye's zone tints the view: PlayerPawn.ViewFlash (Engine.u script: UT and Deus Ex read HeadRegion.Zone, 227
     # CameraRegion.Zone) aims FlashScale at 1 + ViewFlash.X (1 above 0.981) and FlashFog at ViewFog (each part under
     # 0.003 in UT, 0.019 in 227 and Deus Ex, dropped); the device draws the frame x FlashScale + FlashFog

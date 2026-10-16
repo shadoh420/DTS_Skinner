@@ -60,6 +60,9 @@ class UnrealMapInstallTest(unittest.TestCase):
                 # the screens' AnimNext chain at its MaxFrameRate.
                 self.assertEqual(len(scene['fog_lights']), 11)
                 self.assertEqual(scene['regions'], [None, {'fog': True}])
+                # Each surface fogs with the volumetric lights of its own light list only: bits of fog_lights.
+                masks = [group.get('fog_mask', 0) for group in groups]
+                self.assertTrue(any(masks) and max(masks) < 1 << 11)
                 self.assertLess(scene['region_tree']['root'], len(scene['region_tree']['nodes']))
                 self.assertEqual(len(scene['light_anim']['lights']), 45)
                 self.assertEqual(set(files), {'lightanim.png', 'lightanim-ids.png'})
