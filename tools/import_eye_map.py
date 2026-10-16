@@ -16,7 +16,7 @@ from PIL import Image
 if not __package__:
     import sys
     sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from tools import source_bsp as bspreader, source_assets, vtmb
+from tools import source_bsp as bspreader, source_assets, source_effects, vtmb
 from tools.import_vtmb import key
 from tools.import_vtmb_map import number, brush_transform, indexed, Tree, fog_params, water_fog, sky_camera, sky3d, proxy_gap
 from tools.import_quake_map import rotation, vector, SCALE
@@ -114,6 +114,78 @@ def instance_light(record,model,library,files,ambient):
     return light,note
 
 
+DRAWN_EFFECTS={'move_rope','keyframe_rope','infodecal','info_overlay','env_sprite','env_lightglow','point_spotlight'}
+OVERLAY=struct.Struct('<ihH64i2f2f12f3f3f')  # doverlay_t, 352 bytes
+
+
+def overlays(raw):
+    """The overlays lump: [{material texinfo, faces, u, v, uv_points, origin, normal}] (bspfile.h doverlay_t)."""
+    if len(raw)%OVERLAY.size:raise ValueError('Incomplete overlays lump')
+    found=[]
+    for at in range(0,len(raw),OVERLAY.size):
+        v=OVERLAY.unpack_from(raw,at);count=v[2]&0x3FFF
+        if count>64:raise ValueError('Overlay with too many faces')
+        found.append(dict(texinfo=v[1],faces=list(v[3:3+count]),u=v[67:69],v=v[69:71],uv_points=np.array(v[71:83]).reshape(4,3),origin=v[83:86],normal=v[86:89]))
+    return found
+
+
+def add_effects(b,entities,material,face_tile,tiles,shared,points,uvs,lmuv,colors,indices,groups,images,files,exposure,in_sky):
+    """Ropes, infodecals, overlays and sprites (tools/source_effects.py) into E.Y.E.'s geometry (page axes, RGBA colours,
+    lightmap tiles) and sprite batches."""
+    counts,batches=dict(ropes=0,decals=0,overlays=0,pieces=0,sprites=0),{}
+    def add(p,uv,lm,tri,mat,tile=None,share=None,**extra):
+        base=len(points);start=len(indices);points.extend(np.asarray(p)[:,[1,2,0]]*SCALE);uvs.extend(uv);lmuv.extend(lm)
+        colors.extend(np.column_stack([np.full((len(p),3),255),np.zeros(len(p))]));indices.extend((np.asarray(tri).reshape(-1)+base).tolist())
+        groups.append(dict(mat,start=start,count=len(indices)-start,kind='surface',entity=0,npc=False,classname='worldspawn',alpha=1,tint=[1,1,1],**extra))
+        if share is None:tiles.append((base,len(points),tile))
+        else:shared.append((base,len(points),share))
+    ambient=bspreader.Ambient(b)
+    for name,rope,width,scale in source_effects.ropes(entities):
+        mat=material(name);size=mat.get('size') or [1,1]
+        positions,uv,tri=source_effects.rope_mesh(rope,width,scale,size[1]/max(size[0],1))
+        # Lit with the light at the rope (C_RopeKeyframe::CalcLightValues): its middle's ambient cube, averaged.
+        try:cube=ambient.cube(rope[len(rope)//2])[0]
+        except (ValueError,IndexError):cube=np.full((6,3),.25)
+        tile=np.rint(np.clip(cube.mean(0)/255*exposure,0,1)**(1/2.2)*255).astype(np.uint8).reshape(1,1,3)
+        add(positions,uv,np.zeros((len(positions),2)),tri,mat,tile,**({'sky3d':True} if in_sky(rope[len(rope)//2]) else {}));counts['ropes']+=1
+    def piece(n,points3,st,mat,**extra):
+        index,sky,_=face_tile[n];info=b['texinfo'][b['faces'][n]['texinfo']]
+        lm=points3@np.array(info[8:16]).reshape(2,4)[:,:3].T+np.array(info[8:16]).reshape(2,4)[:,3]-b['faces'][n]['mins']
+        if tiles[index][2].shape[:2]==(1,1):lm[:]=0
+        add(points3,st,lm,[(0,k,k+1) for k in range(1,len(points3)-1)],mat,share=index,decal=True,**({'sky3d':True} if sky else {}),**extra);counts['pieces']+=1
+    def takes_decals(n):
+        face=b['faces'][n];return face['disp']<0 and not b['texinfo'][face['texinfo']][16]&(2|4|128|256|512|source_effects.SURF_NODECALS)
+    candidates=[(n,p3,np.array(b['planes'][b['faces'][n]['plane']][:3],float)) for n,(_,_,p3) in face_tile.items() if takes_decals(n)]
+    for e in entities:
+        if e.get('classname')!='infodecal' or number(e,'starthidden') or not e.get('texture'):continue
+        mat=material(e['texture'])
+        if not mat.get('size') or mat['texture']=='missing_eye.png':continue
+        scale=number(dict(s=mat['settings'].get('parameters',{}).get('$decalscale',1)),'s',1) or 1
+        for n,p3,st in source_effects.decal_pieces(candidates,vector(e),mat['size'][0]*scale,mat['size'][1]*scale):piece(n,p3,st,mat)
+        counts['decals']+=1
+    faces={n:(p3,np.array(b['planes'][b['faces'][n]['plane']][:3],float)) for n,(_,_,p3) in face_tile.items()}
+    for overlay in overlays(b['lumps'][45]):
+        info=bspreader.indexed(b['texinfo'],overlay['texinfo'],'texinfo');mat=material(b['names'][bspreader.indexed(b['texdata'],info[17],'texdata')[3]])
+        if mat['texture']=='missing_eye.png':continue
+        for n,p3,st in source_effects.overlay_pieces(overlay,faces):piece(n,p3,st,mat)
+        counts['overlays']+=1
+    for name,origin,width,scale_or_aspect,rgba,blend,glow,rate in source_effects.sprites(entities):
+        mat=material(name)
+        if mat['texture']=='missing_eye.png' or not mat.get('size'):continue
+        w,h=mat['size'];full,aspect=(width,scale_or_aspect) if width is not None else (w*scale_or_aspect,h/max(w,1))
+        sig=(mat['texture'],blend,glow)
+        if sig not in batches:
+            frames=[mat['texture']]
+            if width is None and rate>0 and mat.get('frames',1)>1:
+                stem,ext=mat['texture'].rsplit('.',1)
+                for k in range(1,mat['frames']):images[f'{stem}_f{k}.{ext}']=vtmb.material_texture(files,mat['vmt'],compressed=True,frame=k)[0];frames.append(f'{stem}_f{k}.{ext}')
+            batches[sig]=dict(texture=mat['texture'],blend=blend,aspect=round(aspect,4),items=[],**({'depth':False,'occlude':True} if glow else {}),
+                              **({'frames':frames,'fps':rate} if len(frames)>1 else {}))
+        batches[sig]['items'].append([*(round(float(c),4) for c in np.asarray(origin)[[1,2,0]]*SCALE),round(full*SCALE,4),*(round(float(c),4) for c in rgba)]);counts['sprites']+=1
+    for m in (g for g in groups if 'vmt' in g):m.pop('vmt')
+    return dict(counts=counts,sprites=list(batches.values()))
+
+
 def build_map(raw,name,loose,library,definitions,exposure=1):
     b=bspreader.read_bsp(raw);files,pak=bspreader.pak_files(b,loose);gamelumps,gameaudit=bspreader.game_lumps(b)
     entities=[{k.lower():v for k,v in pairs} for pairs in b['entities']];world=next((e for e in entities if e.get('classname')=='worldspawn'),{})
@@ -156,6 +228,7 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
                 return out
             def texture(vm):
                 filename,payload,info=source_assets.prepare_texture(files,vm,path)
+                if vm is vmt:out.update(size=[info['width'],info['height']] if 'width' in info else None,frames=info.get('frames',1),vmt=vm)
                 if any(s['origin']=='BSP pakfile' for s in info.get('sources',[])) or (not vm['params'].get('$basetexture') and files[path].origin=='BSP pakfile'):
                     filename=key(name_map)+'_'+filename
                 images[filename]=payload
@@ -172,7 +245,7 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
             out['reason']=str(exc);missing.append(dict(source=name,reason=str(exc)))
         return out
     name_map=name
-    placements,omitted=bspreader.props(gamelumps);failures=[];brushes=[(0,{},np.eye(3),np.zeros(3),0)]
+    placements,omitted=bspreader.props(gamelumps);failures=[];brushes=[(0,{},np.eye(3),np.zeros(3),0)];movers=[];mover_of={}
     for i,e in enumerate(entities):
         cls=e.get('classname','').lower();model=e.get('model','');npc,skip=classify(e,definitions)
         audit=dict(entity=i,classname=cls,model=model,npc=npc)
@@ -183,6 +256,8 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
             if number(e,'startdisabled') or number(e,'renderamt',255)==0:
                 omitted.append(dict(audit,reason='Brush disabled/invisible at start'));continue
             m=int(model[1:]);turn,offset=brush_transform(e,bspreader.indexed(b['models'],m,'brush model'))
+            spin=source_effects.rotating(e)  # func_rotating that starts on: a page mover turning about its origin
+            if spin:mover_of[i]=len(movers);movers.append(dict(pivot=(vector(e)[[1,2,0]]*SCALE).round(4).tolist(),spin=[*np.round(np.array(spin[:3])[[1,2,0]],6),round(spin[3],6)]))
             brushes.append((m,e,turn,offset,i));continue
         if not model and (npc or cls.startswith(('item_','weapon_','prop_'))):
             definition=definitions.get(cls,{})
@@ -196,7 +271,7 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
                 authored_state={k:e[k] for k in ('armorchoice','body','defaultanim','parentname','additionalequipment','startdisabled') if k in e}))
         elif npc or cls.startswith(('item_','weapon_','prop_')):
             failures.append(dict(audit,reason='No placed model or FGD model default'))
-        elif i:omitted.append(dict(audit,reason='Logic/effects/decals/lights; not geometry'))
+        elif i:omitted.append(dict(audit,reason='Drawn as a rope, decal or sprite' if cls in DRAWN_EFFECTS else 'Logic/particles/lights; not geometry'))
 
     views=[]
     for e in entities:
@@ -211,7 +286,7 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
     camera,sky_area,sky_reason=sky_camera(tree,entities,views[0]['origin'])
     face_area=tree.face_areas() if camera else {}
     in_sky=lambda point:camera is not None and tree.leaf(point)[1]==sky_area
-    points=[];uvs=[];lmuv=[];colors=[];indices=[];groups=[];tiles=[];face_skips=[];faces=disps=0
+    points=[];uvs=[];lmuv=[];colors=[];indices=[];groups=[];tiles=[];face_skips=[];faces=disps=0;shared=[];face_tile={}
     for model,e,turn,origin,entity in brushes:
         row=b['models'][model];first,count=row[10:12]
         if first<0 or count<0 or first+count>len(b['faces']):raise ValueError('Invalid brush face range')
@@ -231,13 +306,17 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
             colors.extend(np.column_stack([np.full((len(p),3),255),np.clip(blend,0,255)]));indices.extend((tri.ravel()+base).tolist());faces+=1
             groups.append(dict(mat,start=start,count=len(indices)-start,kind='sky' if flags&6 else 'surface',entity=entity,npc=False,
                 classname=e.get('classname','worldspawn'),alpha=number(e,'renderamt',255)/255,tint=(vector(e,'rendercolor')/255).tolist() if 'rendercolor' in e else [1,1,1],
-                **({'sky3d':True} if sky else {})))
+                **({'sky3d':True} if sky else {}),**({'mover':mover_of[entity]} if entity in mover_of else {})))
             tiles.append((base,len(points),tile))
+            if not model:face_tile[n]=(len(tiles)-1,sky,p)
+    effects=add_effects(b,entities,material,face_tile,tiles,shared,points,uvs,lmuv,colors,indices,groups,images,files,exposure,in_sky)
+    for m in materials.values():m.pop('vmt',None)  # kept only for sprite frames
     width,height,places=pack([(t.shape[1],t.shape[0]) for _,_,t in tiles]);height=max(height,1)
     atlas=np.full((height,width,3),255,np.uint8);lmuv=np.array(lmuv).reshape(-1,2)
     for (a,z,t),(x,y) in zip(tiles,places):
         h,w=t.shape[:2];atlas[y:y+h+2,x:x+w+2]=np.pad(t,((1,1),(1,1),(0,0)),mode='edge')
         lmuv[a:z]=(lmuv[a:z]+[x+1.5,y+1.5])/[width,height]
+    for a,z,k in shared:x,y=places[k];lmuv[a:z]=(lmuv[a:z]+[x+1.5,y+1.5])/[width,height]  # decals and overlays read their face's tile
     # Batch world/brush surfaces by full draw state; entity/NPC identity remains intact.
     batches={}
     for g in groups:
@@ -280,11 +359,12 @@ def build_map(raw,name,loose,library,definitions,exposure=1):
         fog=fog_params(master) if master else None,sky3d=sky3d(camera) if camera else None,regions=regions,region_tree=region_tree,
         gaps=[*([f'3D sky not drawn: {sky_reason}'] if sky_reason not in ('','no sky_camera') else []),
               'Fog is the master env_fog_controller at spawn; fog inputs, lerps and trigger_fog are not run; underwater fog only where the water material sets $fogcolor/$fogstart/$fogend',
-              *([proxies] if proxies else []), 'Water is a base texture/tint; overlays, decals, sprites, particles and dynamic lights omitted',
+              *([proxies] if proxies else []), 'Water is a base texture/tint; particles (info_particle_system), spotlight beams and dynamic lights omitted; ropes hang still; decals skip displacements',
               'Terrain blends two base textures using displacement alpha; blend masks, detail textures and bump lighting are not evaluated',
               'NPCs use model-library pose/default bodygroups; FGD editor defaults when entity has no model; armor choices, attachments and scripts not simulated',
               'Spawners/makers create no preview; all omissions/missing models are listed', 'HDR fixed exposure; no game parity, automatic tonemapping, bump lighting or visibility/PVS culling'],
-        sky_cameras=[e for e in entities if e.get('classname')=='sky_camera'])
+        sky_cameras=[e for e in entities if e.get('classname')=='sky_camera'],effects=effects['counts'],
+        **({'sprites':effects['sprites']} if effects['sprites'] else {}),**({'movers':movers} if movers else {}))
     return scene,blob,images,Image.fromarray(atlas),b''.join(light_chunks)
 
 

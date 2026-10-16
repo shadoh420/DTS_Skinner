@@ -21,13 +21,15 @@ from PIL import Image
 try:
     from tools.import_quake2 import GAMES, available_games, asset_name, read_install, read_pcx, safe
     from tools.import_quake_map import (LIGHT_STYLES, SCALE, animated_styles, content_regions, entities, face_data as quake_face_data,
-                                        floor_below, pack, rotation, style_atlas, style_sample, vector)
+                                        floor_below, pack, rotation, style_atlas, style_sample, train_path, vector)
+    from tools.source_effects import rotating
     from tools.import_quake import palette_image
     from tools.local_data import LOCAL_DATA
 except ImportError:
     from import_quake2 import GAMES, available_games, asset_name, read_install, read_pcx, safe
     from import_quake_map import (LIGHT_STYLES, SCALE, animated_styles, content_regions, entities, face_data as quake_face_data,
-                                  floor_below, pack, rotation, style_atlas, style_sample, vector)
+                                  floor_below, pack, rotation, style_atlas, style_sample, train_path, vector)
+    from source_effects import rotating
     from import_quake import palette_image
     from local_data import LOCAL_DATA
 
@@ -229,7 +231,7 @@ def ordered_starts(bsp, game):
 def instances(bsp, game='quake2', *, open_at_start=True):
     """Initial brush states: medium SP, or deathmatch filtering for CTF; motion frozen."""
     result = [dict(model=0, entity=0, classname='worldspawn', offset=[0., 0., 0.], angles=[0., 0., 0.], state='world', guess=False)]
-    skipped = []
+    skipped, moving = [], {}
     invisible = {'func_areaportal', 'func_killbox', 'func_timer'}
     known = {'func_door', 'func_door_rotating', 'func_door_secret', 'func_plat', 'func_train', 'func_rotating',
              'func_wall', 'func_explosive', 'func_object', 'func_water', 'func_conveyor', 'func_button',
@@ -274,6 +276,9 @@ def instances(bsp, game='quake2', *, open_at_start=True):
             if targets:
                 offset = vector(targets[0]) - mins
                 state, guess = 'first path corner minus inline model mins, before travel', len(targets) > 1
+                path = train_path(bsp, entity, quake2=True)
+                if path:
+                    state, moving[index] = 'travels its path_corner loop (g_func.c train_next)', dict(path, pivot=[0, 0, 0])
             else:
                 state, guess = 'no first path corner: authored origin', True
         elif cls in ('func_door', 'func_water'):
@@ -291,6 +296,11 @@ def instances(bsp, game='quake2', *, open_at_start=True):
                 state = 'START_OPEN: distance around selected axis, REVERSE honored'
         elif cls == 'func_rotating':
             state = 'zero angle at spawn; continuous angular motion frozen'
+            spin = rotating(entity, 'speed')  # START_ON: turning from the start (SP_func_rotating)
+            if spin:
+                state = 'turns from the start at speed degrees a second (START_ON)'
+                moving[index] = dict(pivot=[round(float(c), 4) for c in offset[[1, 2, 0]] * SCALE],
+                                     spin=[*(round(float(c), 6) for c in np.array(spin[:3])[[1, 2, 0]]), round(spin[3], 6)])
         elif cls in ('turret_base', 'turret_breach'):
             turn = angles(entity)
             state = 'authored turret angles; no tracking or firing'
@@ -302,7 +312,8 @@ def instances(bsp, game='quake2', *, open_at_start=True):
         elif cls == 'func_plat2':
             state = 'authored origin; expansion plat2 activation/top state not verified'
             guess = True
-        result.append(dict(model=number, entity=index, classname=cls, offset=offset.tolist(), angles=turn.tolist(), state=state, guess=guess))
+        result.append(dict(model=number, entity=index, classname=cls, offset=offset.tolist(), angles=turn.tolist(), state=state, guess=guess,
+                           **({'motion': moving[index]} if index in moving else {})))
     if open_at_start:
         open_doors_at_start(bsp, result, game)
     return result, skipped
@@ -422,9 +433,11 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
                                       st=polygon @ vectors[:, :3].T,
                                       light_st=polygon @ vectors[:, :3].T + vectors[:, 3]))  # Warp texture ST omits offsets; lightmaps do not.
                     faces[-1]['styles_animated'] = light(face)
+                    faces[-1]['mover'] = instance.get('mover')
             else:
                 faces.append(dict(face, placed_points=points))
                 faces[-1]['styles_animated'] = light(face)
+            faces[-1]['mover'] = instance.get('mover')
             audit.append(dict(face=number, entity=instance['entity'], texture=face['texture']['name'], kind=face['kind'],
                               flags=face['flags'], unlit=face['unlit'], alpha=face['alpha'], styles=face['styles'],
                               texturemins=face['mins'].tolist(), luxels=face['size'].tolist(), lightofs=face['lightofs'],
@@ -443,8 +456,8 @@ def geometry(bsp, placed, game='quake2', *, face_reader=face_data, dark_styles=N
         anim = [png_of(t) for t in face['frames']] if face['fps'] else []
         textures.update({png_of(t): t for t in face['frames']} if anim else {})
         styles = face['styles_animated']
-        group = groups.setdefault((png, face['flags'], face.get('material_key'), tuple(anim), face['fps'], tuple(styles)), dict(texture=png, name=tex['name'], kind=face['kind'], flags=face['flags'],
-            size=[tex['width'], tex['height']], unlit=face['unlit'], alpha=face['alpha'], indices=[]))
+        group = groups.setdefault((png, face['flags'], face.get('material_key'), tuple(anim), face['fps'], tuple(styles), face.get('mover')), dict(texture=png, name=tex['name'], kind=face['kind'], flags=face['flags'],
+            size=[tex['width'], tex['height']], unlit=face['unlit'], alpha=face['alpha'], indices=[], **({'mover': face['mover']} if face.get('mover') is not None else {})))
         if 'settings' in face:
             group['settings'] = face['settings']
         if anim:
@@ -599,12 +612,151 @@ def append_monsters(data, bsp, files, game):
     return records, images
 
 
+# id-Software/quake2-rerelease-dll original/{baseq2,xatrix,rogue}/g_items.c itemlist: each item's world model, and 1
+# where its world_model_flags hold EF_ROTATE (SP_item_health* set their models themselves, none turning).
+ITEM_MODELS = {
+    'item_armor_body': ('models/items/armor/body/tris.md2', 1),
+    'item_armor_combat': ('models/items/armor/combat/tris.md2', 1),
+    'item_armor_jacket': ('models/items/armor/jacket/tris.md2', 1),
+    'item_armor_shard': ('models/items/armor/shard/tris.md2', 1),
+    'item_power_screen': ('models/items/armor/screen/tris.md2', 1),
+    'item_power_shield': ('models/items/armor/shield/tris.md2', 1),
+    'weapon_shotgun': ('models/weapons/g_shotg/tris.md2', 1),
+    'weapon_supershotgun': ('models/weapons/g_shotg2/tris.md2', 1),
+    'weapon_machinegun': ('models/weapons/g_machn/tris.md2', 1),
+    'weapon_chaingun': ('models/weapons/g_chain/tris.md2', 1),
+    'ammo_grenades': ('models/items/ammo/grenades/medium/tris.md2', 0),
+    'weapon_grenadelauncher': ('models/weapons/g_launch/tris.md2', 1),
+    'weapon_rocketlauncher': ('models/weapons/g_rocket/tris.md2', 1),
+    'weapon_hyperblaster': ('models/weapons/g_hyperb/tris.md2', 1),
+    'weapon_railgun': ('models/weapons/g_rail/tris.md2', 1), 'weapon_bfg': ('models/weapons/g_bfg/tris.md2', 1),
+    'ammo_shells': ('models/items/ammo/shells/medium/tris.md2', 0),
+    'ammo_bullets': ('models/items/ammo/bullets/medium/tris.md2', 0),
+    'ammo_cells': ('models/items/ammo/cells/medium/tris.md2', 0),
+    'ammo_rockets': ('models/items/ammo/rockets/medium/tris.md2', 0),
+    'ammo_slugs': ('models/items/ammo/slugs/medium/tris.md2', 0), 'item_quad': ('models/items/quaddama/tris.md2', 1),
+    'item_invulnerability': ('models/items/invulner/tris.md2', 1),
+    'item_silencer': ('models/items/silencer/tris.md2', 1), 'item_breather': ('models/items/breather/tris.md2', 1),
+    'item_enviro': ('models/items/enviro/tris.md2', 1), 'item_ancient_head': ('models/items/c_head/tris.md2', 1),
+    'item_adrenaline': ('models/items/adrenal/tris.md2', 1), 'item_bandolier': ('models/items/band/tris.md2', 1),
+    'item_pack': ('models/items/pack/tris.md2', 1), 'key_data_cd': ('models/items/keys/data_cd/tris.md2', 1),
+    'key_power_cube': ('models/items/keys/power/tris.md2', 1),
+    'key_pyramid': ('models/items/keys/pyramid/tris.md2', 1),
+    'key_data_spinner': ('models/items/keys/spinner/tris.md2', 1),
+    'key_pass': ('models/items/keys/pass/tris.md2', 1), 'key_blue_key': ('models/items/keys/key/tris.md2', 1),
+    'key_red_key': ('models/items/keys/red_key/tris.md2', 1),
+    'key_commander_head': ('models/monsters/commandr/head/tris.md2', 0),
+    'key_airstrike_target': ('models/items/keys/target/tris.md2', 1),
+    'item_health': ('models/items/healing/medium/tris.md2', 0),
+    'item_health_small': ('models/items/healing/stimpack/tris.md2', 0),
+    'item_health_large': ('models/items/healing/large/tris.md2', 0),
+    'item_health_mega': ('models/items/mega_h/tris.md2', 0), 'ammo_trap': ('models/weapons/g_trap/tris.md2', 1),
+    'weapon_boomer': ('models/weapons/g_boom/tris.md2', 1), 'weapon_phalanx': ('models/weapons/g_shotx/tris.md2', 1),
+    'ammo_magslug': ('models/objects/ammo/tris.md2', 0), 'item_quadfire': ('models/items/quadfire/tris.md2', 1),
+    'key_green_key': ('models/items/keys/green_key/tris.md2', 1),
+    'weapon_etf_rifle': ('models/weapons/g_etf_rifle/tris.md2', 1),
+    'weapon_proxlauncher': ('models/weapons/g_plaunch/tris.md2', 1),
+    'weapon_plasmabeam': ('models/weapons/g_beamer/tris.md2', 1),
+    'weapon_chainfist': ('models/weapons/g_chainf/tris.md2', 1),
+    'weapon_disintegrator': ('models/weapons/g_dist/tris.md2', 1),
+    'ammo_flechettes': ('models/ammo/am_flechette/tris.md2', 0), 'ammo_prox': ('models/ammo/am_prox/tris.md2', 0),
+    'ammo_tesla': ('models/weapons/g_tesla/tris.md2', 0), 'ammo_nuke': ('models/weapons/g_nuke/tris.md2', 1),
+    'ammo_disruptor': ('models/ammo/am_disr/tris.md2', 0), 'item_ir_goggles': ('models/items/goggles/tris.md2', 1),
+    'item_double': ('models/items/ddamage/tris.md2', 1), 'item_torch': ('models/objects/fire/tris.md2', 1),
+    'item_compass': ('models/objects/fire/tris.md2', 1),
+    'item_sphere_vengeance': ('models/items/vengnce/tris.md2', 1),
+    'item_sphere_hunter': ('models/items/hunter/tris.md2', 1),
+    'item_sphere_defender': ('models/items/defender/tris.md2', 1),
+}
+# g_misc.c spawn functions that draw a model of their own: (model, frame); misc_explobox and the gibs leave deathmatch,
+# misc_deadsoldier's frame follows its spawnflags (2, 4, 8, 16, 32: frames 1-5). misc_banner animates (first frame here);
+# misc_viper and misc_strogg_ship stay hidden until triggered, so they are left out.
+MISC_MODELS = {
+    'misc_explobox': ('models/objects/barrels/tris.md2', 0), 'misc_banner': ('models/objects/banner/tris.md2', 0),
+    'misc_satellite_dish': ('models/objects/satellite/tris.md2', 0), 'light_mine1': ('models/objects/minelite/light1/tris.md2', 0),
+    'light_mine2': ('models/objects/minelite/light2/tris.md2', 0), 'misc_bigviper': ('models/ships/bigviper/tris.md2', 0),
+    'misc_blackhole': ('models/objects/black/tris.md2', 0), 'misc_deadsoldier': ('models/deadbods/dude/tris.md2', 0),
+    'misc_gib_arm': ('models/objects/gibs/arm/tris.md2', 0), 'misc_gib_leg': ('models/objects/gibs/leg/tris.md2', 0),
+    'misc_gib_head': ('models/objects/gibs/head/tris.md2', 0), 'misc_teleporter_dest': ('models/objects/dmspot/tris.md2', 0),
+    'misc_eastertank': ('models/monsters/tank/tris.md2', 254), 'misc_easterchick': ('models/monsters/bitch/tris.md2', 208),
+    'misc_easterchick2': ('models/monsters/bitch/tris.md2', 248),
+}
+DEATHMATCH_GONE = {'misc_explobox', 'misc_gib_arm', 'misc_gib_leg', 'misc_gib_head'}
+
+
+def append_items(data, bsp, files, game, first_mover=0):
+    """Placed items, weapons and keys (ITEM_MODELS) and misc models (MISC_MODELS) as their spawn functions draw them:
+    items drop to the floor (droptofloor: a 30-unit box traced down 128 units, so its origin rests 15 over the floor),
+    barrels rest on theirs (M_droptofloor, mins z 0); EF_ROTATE items turn at 100 degrees a second whatever their angle
+    (CL_AddPacketEntities: autorotate = anglemod(cl.time / 10)). Returns (records, images, movers)."""
+    if __package__:
+        from .import_quake2 import read_md2, build_model, choose_skin
+        from .import_quake_map import append_alias
+    else:
+        from import_quake2 import read_md2, build_model, choose_skin
+        from import_quake_map import append_alias
+    records, images, movers, cache = [], {}, [], {}
+    for entity, e in enumerate(bsp['entities']):
+        cls = e.get('classname', '')
+        if cls not in ITEM_MODELS and cls not in MISC_MODELS:
+            continue
+        row = dict(entity=entity, classname=cls)
+        records.append(row)
+        flags = int(float(e.get('spawnflags') or 0))
+        reason = ('Excluded on medium skill' if excluded(e, game) else
+                  'Removed in deathmatch' if game == 'ctf' and (cls in DEATHMATCH_GONE or cls.startswith('key_')) else '')
+        if reason:
+            row.update(status='omitted', reason=reason)
+            continue
+        try:
+            path, turning = ITEM_MODELS[cls] if cls in ITEM_MODELS else (MISC_MODELS[cls][0], 0)
+            pick = MISC_MODELS[cls][1] if cls in MISC_MODELS else 0
+            if cls == 'misc_deadsoldier':
+                pick = next((n for n, bit in enumerate((2, 4, 8, 16, 32), 1) if flags & bit), 0)
+            key = path, pick
+            if key not in cache:
+                if path not in files:
+                    raise ValueError('Missing model ' + path)
+                mesh = read_md2(files[path][0], pick=pick)
+                skin_path, fallback = choose_skin(path, mesh, files, 0)
+                if not skin_path:
+                    raise ValueError(fallback)
+                image = read_pcx(files[skin_path][0]).point([min(255, i * INTENSITY) for i in range(256)] * 3)
+                png = 'md2_' + hashlib.sha256(image.tobytes() + struct.pack('<II', *image.size)).hexdigest()[:24] + '.png'
+                images[png] = image
+                cache[key] = build_model(mesh, png), png
+            model, png = cache[key]
+            origin = vector(e)
+            rest = 15 if cls in ITEM_MODELS else 0 if cls == 'misc_explobox' else None
+            if rest is not None:
+                floor = floor_below(data['floors'], origin[0], origin[1], origin[2] + 1) if len(data['floors']) else None
+                if floor is not None and origin[2] - rest - floor <= (128 if rest else 256):
+                    origin = np.array([origin[0], origin[1], floor + rest])
+            group = dict(texture=png, kind='model', flags=0, size=list(images[png].size), unlit=True, alpha=1, entity=entity, classname=cls)
+            if turning:
+                group['mover'] = first_mover + len(movers)
+                movers.append(dict(pivot=[round(float(c), 4) for c in origin[[1, 2, 0]] * SCALE], spin=[0, 1, 0, round(math.radians(100), 6)]))
+            append_alias(data, model, origin, np.zeros(3) if turning else angles(e), group)
+            row.update(status='drawn', model=path, frame=pick, origin=origin.tolist(), turning=bool(turning))
+        except (ValueError, IndexError, struct.error) as exc:
+            row.update(status='failed', reason=str(exc))
+    return records, images, movers
+
+
 def build_map(raw, name, files, palette, game='quake2'):
     bsp = read_bsp(raw, files)
     bsp['name'] = name
     placed, skipped = instances(bsp, game)
+    movers = []
+    for instance in placed:  # trains and rotating brushes that move on their own: their own groups, moved by the page
+        if instance.get('motion'):
+            instance['mover'] = len(movers)
+            movers.append(instance['motion'])
     data = geometry(bsp, placed, game)
     models, model_images = append_monsters(data, bsp, files, game)
+    items, item_images, item_movers = append_items(data, bsp, files, game, len(movers))
+    movers += item_movers
+    model_images.update(item_images)
     points = data['points'][:, [1, 2, 0]] * SCALE
     views = viewpoints(bsp, data['floors'], game)
     info = next((e for e in bsp['entities'] if e.get('classname') == 'worldspawn'), {})
@@ -617,8 +769,8 @@ def build_map(raw, name, files, palette, game='quake2'):
     scene = dict(name=name, title=info.get('message', ''), game=game, format='quake2-bsp38', **scene_extras(bsp, data),
                  vertices=len(points), indices=len(data['indices']), lightmap=list(data['atlas'].size),
                  groups=data['groups'], viewpoints=views, bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(),
-                 instances=placed, models=models, model_failures=[r for r in models if r['status'] in ('failed', 'partial')],
-                 skipped_entities=skipped, faces=data['audit'], skybox=sky,
+                 instances=placed, models=models, model_failures=[r for r in models + items if r['status'] in ('failed', 'partial')],
+                 items=items, **({'movers': movers} if movers else {}), skipped_entities=skipped, faces=data['audit'], skybox=sky,
                  entity_classes=dict(Counter(e.get('classname', '') for e in bsp['entities'])), dark_styles=data['dark'],
                  missing=sorted({f['texture'] for f in data['audit'] if f['missing'] and f['kind'] != 'sky'} | set(sky['missing'])),
                  lighting=dict(renderer='ref_gl 3.20', intensity=2, gl_modulate=1, vid_gamma=1, normal_style=1),
@@ -627,7 +779,8 @@ def build_map(raw, name, files, palette, game='quake2'):
                                'styles 1-11 animate at 10 Hz (one per face, others at m); switchable styles m except START_OFF styles a'),
                               'initial brush states, trains at first corner before travel',
                               'texture chains: world at 2 frames a second, brush entities by their ANIMATED spawnflags, others first frame',
-                              'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; triggered previews included; no runtime summons'])
+                              'placed monster standing/idle frame (first pose fallback), even lighting, authored origin; triggered previews included; no runtime summons',
+                              'items, weapons, keys and misc models in their first (or spawn-set) frame, even lighting, dropped to the face floors below; EF_ROTATE items turn at 100 degrees a second'])
     return scene, blob, images, data['atlas']
 
 

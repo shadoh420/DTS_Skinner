@@ -92,7 +92,7 @@ def read_install(install, maps=False, game='quake2', base=None):
     return files, [r for r in records if r['source'].endswith('.bsp' if maps else ('.md2', '.sp2'))], counts
 
 
-def read_md2(data, *, standing=False):
+def read_md2(data, *, standing=False, pick=0):
     if len(data) < 68:
         raise ValueError('Truncated MD2 header')
     magic, version, width, height, frame_size, skins, verts, sts, tris, commands, frames, skin_at, st_at, tri_at, frame_at, cmd_at, end = struct.unpack_from('<17i', data)
@@ -122,7 +122,7 @@ def read_md2(data, *, standing=False):
             raise ValueError('Invalid MD2 frame scale/translate')
         name = data[at + 24:at + 40].split(b'\0')[0].decode('ascii', errors='replace')
         waiting = name.lower().startswith(('stand', 'idle', 'wait', 'ambient', 'flphor', 'search', 'blackwidow3'))
-        if frame == 0 or (standing and waiting and not preferred):
+        if frame == 0 or (standing and waiting and not preferred) or (pick and frame == pick):
             pose, selected, preferred = name, frame, waiting
             points = [tuple(p[k] * values[k] + values[k + 3] for k in range(3))
                       for p in struct.iter_unpack('<4B', data[at + 40:at + 40 + verts * 4])]

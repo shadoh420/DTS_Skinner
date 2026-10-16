@@ -18,7 +18,7 @@ import numpy as np
 from PIL import Image
 
 try:
-    from tools import vtmb
+    from tools import source_effects, source_light, vtmb
     from tools.import_vtmb import key, resolve_material, prepare_texture
     from tools.texture_storage import game_texture_dir, write_texture
     from tools.import_quake_map import rotation, vector, SCALE
@@ -26,6 +26,8 @@ try:
     from tools.local_data import LOCAL_DATA
     from tools.texture_workshop import write_json_atomic
 except ImportError:
+    import source_effects
+    import source_light
     import vtmb
     from import_vtmb import key, resolve_material, prepare_texture
     from texture_storage import game_texture_dir, write_texture
@@ -35,12 +37,12 @@ except ImportError:
     from texture_workshop import write_json_atomic
 
 
-LUMPS = {0: 'entities', 1: 'planes', 2: 'texdata', 3: 'vertices', 5: 'nodes', 6: 'texinfo',
+LUMPS = {0: 'entities', 1: 'planes', 2: 'texdata', 3: 'vertices', 5: 'nodes', 6: 'texinfo', 15: 'worldlights',
          7: 'faces', 8: 'lighting', 10: 'leaves', 12: 'edges', 13: 'surfedges', 14: 'models', 16: 'leaffaces',
          26: 'dispinfo', 33: 'dispverts', 35: 'game', 36: 'leafwaterdata', 40: 'pakfile',
          43: 'texdata_string_data', 44: 'texdata_string_table', 48: 'disptris'}
 SKIPPED_LUMPS = {4: 'visibility', 9: 'occlusion', 11: 'faceids',
-                 15: 'worldlights', 17: 'leafbrushes', 18: 'brushes', 19: 'brushsides',
+                 17: 'leafbrushes', 18: 'brushes', 19: 'brushsides',
                  20: 'areas', 21: 'areaportals', 27: 'originalfaces', 28: 'physdisp', 29: 'physcollide',
                  30: 'vertnormals', 31: 'vertnormalindices', 32: 'displightmapalphas',
                  34: 'displightmapsamplepositions', 37: 'primitives', 38: 'primverts',
@@ -396,8 +398,23 @@ def face_geometry(bsp, number):
 
 
 def light_pixels(bsp, face, flags, gain=2):
-    if face['light'] < 0 or flags & (6 | 1024):
+    total = face_light(bsp, face, flags)
+    if total is None:
         return np.full((1, 1, 3), 255, np.uint8)
+    return encode_light(total, gain)
+
+
+def encode_light(total, gain=2):
+    """Linear light (lightmap units, 255 a full step) as the atlas stores it."""
+    # Approximate LDR upload; gamma-encoded atlas gives useful filtering and avoids
+    # interpolating the RGBExp exponent. Native overbright/display ramp awaits comparison.
+    return np.rint(np.clip(total * gain / 255, 0, 1)**(1/2.2)*255).astype(np.uint8)
+
+
+def face_light(bsp, face, flags):
+    """A face's lightmap as linear (h, w, 3) colours, its styles summed (start-off styles dark); None without one."""
+    if face['light'] < 0 or flags & (6 | 1024):
+        return None
     w, h = face['size']
     if min(w, h) <= 0 or w*h > 4_000_000:
         raise ValueError('Invalid face lightmap extent')
@@ -413,9 +430,7 @@ def light_pixels(bsp, face, flags, gain=2):
         if style not in bsp.get('dark_styles', ()):
             total += values[:, :3] * np.exp2(values[:, 3].view(np.int8).astype(float))[:, None]
         at += stride
-    # Approximate LDR upload; gamma-encoded atlas gives useful filtering and avoids
-    # interpolating the RGBExp exponent. Native overbright/display ramp awaits comparison.
-    return np.rint(np.clip(total * gain / 255, 0, 1)**(1/2.2)*255).astype(np.uint8).reshape(h, w, 3)
+    return total.reshape(h, w, 3)
 
 
 def atof(text):
@@ -492,6 +507,84 @@ def lighting_profile(root):
 
 
 NPC_HELPERS = {'npc_vcamera', 'npc_maker', 'npc_template_maker', 'npc_enemyfinder', 'npc_bullseye'}
+DRAWN_EFFECTS = {'move_rope', 'keyframe_rope', 'infodecal', 'env_sprite', 'env_lightglow', 'point_spotlight'}
+
+
+def decal_faces(bsp):
+    """[(face, corners, normal)] of the world faces that take decals: not sky, nodraw, hint/skip, nodecals or displacements."""
+    found = []
+    first, count = bsp['models'][0][10:12]
+    for n in range(first, first + count):
+        face = bsp['faces'][n]
+        info = indexed(bsp['texinfo'], face['texinfo'], 'texinfo')
+        if face['disp'] >= 0 or info[16] & (2 | 4 | 128 | 256 | 512 | source_effects.SURF_NODECALS):
+            continue
+        p = face_geometry(bsp, n)[0]
+        found.append((n, p, np.array(indexed(bsp['planes'], face['plane'], 'plane')[:3], float)))
+    return found
+
+
+def sprite_frames(files, record, images):
+    """Every frame of a sprite material's texture (env_sprite animates through them at its framerate)."""
+    frames = [record['texture']]
+    if record.get('frames', 1) > 1 and record.get('source'):
+        vmt, _ = resolve_material(files, record['name'], ())
+        stem, ext = record['texture'].rsplit('.', 1)
+        for k in range(1, record['frames']):
+            images[f'{stem}_f{k}.{ext}'] = vtmb.material_texture(files, vmt, compressed=True, frame=k)[0]
+            frames.append(f'{stem}_f{k}.{ext}')
+    return frames
+
+
+def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, files, lighting, in_sky):
+    """Ropes, infodecals and sprites (tools/source_effects.py) into the map's geometry and sprite batches."""
+    counts, batches = dict(ropes=0, decals=0, decal_pieces=0, sprites=0), {}
+    gain = lighting['light_gain']
+    for name, rope, width, scale in source_effects.ropes(ents):
+        mat = material(name)
+        size = mat.get('size') or [1, 1]
+        positions, uv, tri = source_effects.rope_mesh(rope, width, scale, size[1] / max(size[0], 1))
+        # Lit as the engine lights rope segments (C_RopeKeyframe::CalcLightValues: the light at the rope), one colour
+        # from its middle, averaged over directions.
+        light = encode_light(sampler.light(rope[len(rope) // 2] + [0, 0, 1], source_light.AXES).mean(0, keepdims=True), gain)
+        append(positions, uv, np.zeros((len(positions), 2)), tri, mat, 'model', np.full((1, 1, 3), 255, np.uint8),
+               color=np.repeat(light, len(positions), 0), **({'sky3d': True} if in_sky(rope[len(rope) // 2]) else {}))
+        counts['ropes'] += 1
+    decals = [e for e in ents if e.get('classname') == 'infodecal' and not number(e, 'starthidden') and e.get('texture')]
+    faces = decal_faces(bsp) if decals else []
+    for e in decals:
+        mat = material(e['texture'])
+        if not mat.get('size') or mat['texture'] == 'missing_vtmb.png':
+            continue
+        scale = atof(mat['settings'].get('parameters', {}).get('$decalscale', 1)) or 1
+        width, height = mat['size'][0] * scale, mat['size'][1] * scale
+        for n, piece, st in source_effects.decal_pieces(faces, vector(e), width, height):
+            if n not in face_tile:
+                continue
+            index, sky = face_tile[n]
+            info = indexed(bsp['texinfo'], bsp['faces'][n]['texinfo'], 'texinfo')
+            lm = piece @ np.array(info[8:16]).reshape(2, 4)[:, :3].T + np.array(info[8:16]).reshape(2, 4)[:, 3] - bsp['faces'][n]['mins']
+            if tiles[index][2].shape[:2] == (1, 1):
+                lm[:] = 0
+            append(piece, st, lm, [(0, k, k+1) for k in range(1, len(piece)-1)], mat, 'surface', None, share=index, decal=True,
+                   **({'sky3d': True} if sky else {}))
+            counts['decal_pieces'] += 1
+        counts['decals'] += 1
+    for name, origin, width, scale_or_aspect, rgba, blend, glow, rate in source_effects.sprites(ents):
+        mat = material(name)
+        if mat['texture'] == 'missing_vtmb.png' or not mat.get('size'):
+            continue
+        w, h = mat['size']
+        full, aspect = (width, scale_or_aspect) if width is not None else (w * scale_or_aspect, h / max(w, 1))
+        key_ = (mat['texture'], blend, glow)
+        if key_ not in batches:
+            frames = sprite_frames(files, mat, images) if width is None and rate > 0 else [mat['texture']]
+            batches[key_] = dict(texture=mat['texture'], blend=blend, aspect=round(aspect, 4), items=[],
+                                 **({'depth': False, 'occlude': True} if glow else {}),
+                                 **({'frames': frames, 'fps': rate} if len(frames) > 1 else {}))
+        batches[key_]['items'].append([*(round(float(c), 4) for c in origin[[1, 2, 0]]*SCALE), round(full*SCALE, 4), *(round(float(c), 4) for c in rgba)])
+        counts['sprites'] += 1
+    return dict(counts=counts, sprites=list(batches.values()))
 
 
 def build_map(raw, name, files, lighting=None):
@@ -523,21 +616,24 @@ def build_map(raw, name, files, lighting=None):
                     images[frame] = vtmb.material_texture(files, vmt, compressed=True, frame=k)[0]
                 record['anim'] = dict(frames=frames, fps=rate)
             notes = [n for n in notes if not n.startswith('$selfillum recorded;')]
-            record.update(texture=png, settings=settings, notes=notes, source=path, origin=files[path].origin)
+            record.update(texture=png, settings=settings, notes=notes, source=path, origin=files[path].origin,
+                          frames=info.get('frames', 1), size=[info['width'], info['height']] if 'width' in info else None)
         except (ValueError, OSError, KeyError) as exc:
             record['reason'] = str(exc); missing.append(dict(source=name, reason=str(exc)))
         return record
 
-    points, uvs, lmuv, indices, groups, tiles = [], [], [], [], [], []
+    points, uvs, lmuv, colors, indices, groups, tiles = [], [], [], [], [], [], []
     faces_audit, placed, omitted, failures = [], [], [], []
 
-    def append(p, uv, lm, tri, mat, kind, tile, **extra):
+    def append(p, uv, lm, tri, mat, kind, tile, color=None, share=None, **extra):
+        """share: the index in `tiles` of a face whose lightmap tile these vertices read (decals)."""
         base = len(points); start = len(indices)
         points.extend(p); uvs.extend(uv); lmuv.extend(lm); indices.extend((np.asarray(tri).reshape(-1)+base).tolist())
+        colors.append(np.full((len(p), 3), 255, np.uint8) if color is None else color)
         groups.append(dict(start=start, count=len(indices)-start, kind=kind, flags=0, **mat, **extra))
-        tiles.append((len(points)-len(p), len(points), tile))
+        (tiles if share is None else shared).append((len(points)-len(p), len(points), tile if share is None else share))
 
-    brushes = [(0, dict(classname='worldspawn'), np.eye(3), np.zeros(3))]
+    brushes, shared, movers, face_tile = [(0, dict(classname='worldspawn'), np.eye(3), np.zeros(3), None)], [], [], {}
     models, game_audit = static_props(bsp)
     for i, e in enumerate(ents[1:], 1):
         cls = e.get('classname', '').lower(); model = e.get('model', '')
@@ -553,7 +649,10 @@ def build_map(raw, name, files, lighting=None):
             if cls in ('func_areaportal', 'func_areaportalwindow', 'func_occluder', 'func_viscluster'):
                 omitted.append(dict(**record, reason='Visibility/control brush')); continue
             turn, offset = brush_transform(e, row)
-            brushes.append((index, e, turn, offset)); placed.append(record)
+            spin = source_effects.rotating(e)  # func_rotating that starts on: a page mover turning about its origin
+            if spin:
+                movers.append(dict(pivot=(vector(e)[[1, 2, 0]]*SCALE).round(4).tolist(), spin=[*np.round(np.array(spin[:3])[[1, 2, 0]], 6), round(spin[3], 6)]))
+            brushes.append((index, e, turn, offset, len(movers)-1 if spin else None)); placed.append(record)
         elif npc or cls.startswith(('prop_', 'item_')):
             try:
                 source = 'entity model'
@@ -572,7 +671,8 @@ def build_map(raw, name, files, lighting=None):
             except (ValueError, OSError) as exc:
                 failures.append(dict(**record, reason=str(exc)))
         else:
-            omitted.append(dict(**record, reason='Non-prop/pickup entity; gameplay, decals, lights or effects'))
+            omitted.append(dict(**record, reason='Drawn as a rope, decal or sprite' if cls in DRAWN_EFFECTS else
+                                'Non-prop/pickup entity; gameplay, particles, lights or sounds'))
 
     views = []
     for e in ents:
@@ -586,7 +686,7 @@ def build_map(raw, name, files, lighting=None):
     camera, sky_area, sky_reason = sky_camera(tree, ents, views[0]['origin'])
     face_area = tree.face_areas() if camera else {}
     in_sky = lambda point: camera is not None and tree.leaf(point)[1] == sky_area
-    for model, entity, turn, origin in brushes:
+    for model, entity, turn, origin, mover in brushes:
         row = bsp['models'][model]; first, count = row[10:12]
         if first < 0 or count < 0 or first+count > len(bsp['faces']):
             raise ValueError('Invalid brush face range')
@@ -606,9 +706,14 @@ def build_map(raw, name, files, lighting=None):
             append(p @ turn.T + origin, uv, lm, tri, mat, 'sky' if flags & 6 else 'surface', tile,
                    face=n, model=model, displacement=face['disp'],
                    tint=(vector(entity, 'rendercolor')/255).tolist() if 'rendercolor' in entity else [1, 1, 1],
-                   alpha=number(entity, 'renderamt', 255)/255, **({'sky3d': True} if sky else {}))
+                   alpha=number(entity, 'renderamt', 255)/255, **({'sky3d': True} if sky else {}), **({'mover': mover} if mover is not None else {}))
+            face_tile[n] = len(tiles) - 1, sky
 
     model_cache = {}
+    # Models are lit at their vertices as the engine lights them (tools/source_light.py), stored as vertex colours in
+    # the lightmap atlas's encoding, so props and NPCs keep the walls' relative brightness.
+    sampler = source_light.Sampler(bsp, lambda face: face_light(bsp, face, indexed(bsp['texinfo'], face['texinfo'], 'texinfo')[16]))
+    effects = add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, files, lighting, in_sky)
     for record in models:
         try:
             model = vtmb.model_reference(record['model'])
@@ -634,6 +739,11 @@ def build_map(raw, name, files, lighting=None):
             if not np.isfinite(p).all():
                 raise ValueError('Non-finite prop position')
             uv = np.asarray(mesh['uvs']).reshape(-1, 2)
+            normals = np.asarray(mesh['normals']).reshape(-1, 3)[:, [2, 0, 1]] @ rotation(record['angles']).T
+            normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-9)
+            centre = (p.min(0) + p.max(0)) / 2
+            vertex_light = encode_light(sampler.light(centre, normals), lighting['light_gain'])
+            record['lighting_origin'] = centre.round(2).tolist()
             sky = camera is not None and (indexed(tree.leaves, record['leaves'][0], 'leaf')[1] == sky_area if record.get('leaves')
                                           else in_sky(np.array(record['origin'])))
             for g in mesh['groups']:
@@ -642,7 +752,7 @@ def build_map(raw, name, files, lighting=None):
                 # Keep only this material's referenced vertices; avoid repeating entire MDLs per group.
                 unique, remap = np.unique(tri, return_inverse=True)
                 append(p[unique], uv[unique], np.zeros((len(unique), 2)), remap, mat, 'model', np.full((1, 1, 3), 255, np.uint8),
-                       model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1), **({'sky3d': True} if sky else {}),
+                       color=vertex_light[unique], model=model, tint=record.get('tint', [1, 1, 1]), alpha=record.get('alpha', 1), **({'sky3d': True} if sky else {}),
                        **({k: record[k] for k in ('npc', 'entity', 'classname')} if record.get('npc') else {}))
             record.update(status='drawn', pose=mesh['metadata'])
         except (ValueError, OSError, KeyError, IndexError, struct.error) as exc:
@@ -655,6 +765,9 @@ def build_map(raw, name, files, lighting=None):
         h, w = tile.shape[:2]
         atlas[y:y+h+2, x:x+w+2] = np.pad(tile, ((1, 1), (1, 1), (0, 0)), mode='edge')
         lmuv[begin:end] = (lmuv[begin:end] + [x+1.5, y+1.5]) / [width, max(1, height)]
+    for begin, end, index in shared:  # decals read their face's tile
+        x, y = positions[index]
+        lmuv[begin:end] = (lmuv[begin:end] + [x+1.5, y+1.5]) / [width, max(1, height)]
     sky = dict(name=world.get('skyname', ''), rotate=0, axis=[0, 0, 1], faces={})
     for suffix in ('rt', 'lf', 'bk', 'ft', 'up', 'dn'):
         sky['faces'][suffix] = material('skybox/' + sky['name'] + suffix)
@@ -664,7 +777,8 @@ def build_map(raw, name, files, lighting=None):
     batches = {}
     for group in groups:
         signature = (group['texture'], group['kind'], group.get('alpha', 1), tuple(group.get('tint', [1, 1, 1])),
-                     json.dumps(group['settings'], sort_keys=True), group.get('entity') if group.get('npc') else None, group.get('sky3d', False))
+                     json.dumps(group['settings'], sort_keys=True), group.get('entity') if group.get('npc') else None, group.get('sky3d', False),
+                     group.get('mover'), group.get('decal', False))
         if signature not in batches:
             batches[signature] = (dict((k, v) for k, v in group.items() if k not in ('face', 'model', 'displacement')), [])
         batches[signature][1].extend(indices[group['start']:group['start']+group['count']])
@@ -675,22 +789,24 @@ def build_map(raw, name, files, lighting=None):
         group.update(start=len(indices), count=len(triangles))
         indices.extend(triangles); groups.append(group)
     points = np.array(points).reshape(-1, 3)[:, [1, 2, 0]]*SCALE
+    colors = np.concatenate(colors) if colors else np.zeros((0, 3), np.uint8)
     blob = b''.join((points.astype('<f4').tobytes(), np.asarray(uvs, '<f4').tobytes(), lmuv.astype('<f4').tobytes(),
+                     np.column_stack([colors, np.full(len(colors), 255, np.uint8)]).astype(np.uint8).tobytes(),
                      np.array(indices, '<u4').tobytes()))
     def water(texinfo):
         name = bsp['names'][indexed(bsp['texdata'], indexed(bsp['texinfo'], texinfo, 'texinfo')[17], 'texdata')[3]]
         return water_fog(material(name)['settings'].get('parameters', {}))
     regions, region_tree = tree.regions(water)
     proxies = proxy_gap(materials.values())
-    gaps = ['No gameplay/Python, particles, decals or dynamic lights',
+    gaps = ['No gameplay/Python, particles (env_particle), beams or dynamic lights; ropes hang still as parabolas; decals skip displacements',
             'Fog is the worldspawn fog at spawn (fogenable); underwater fog only where the water material sets $fogcolor/$fogstart/$fogend',
             *([f'3D sky not drawn: {sky_reason}'] if sky_reason not in ('', 'no sky_camera') else []), *([proxies] if proxies else []),
-            'Props and NPCs use model idle/reference frame zero and default bodygroups, with even lighting; entity animation requests are recorded',
+            'Props and NPCs use model idle/reference frame zero and default bodygroups; lit at their vertices from the worldlights lump and a six-ray ambient cube of the lightmaps around them; entity animation requests are recorded',
             'Materials use their base texture; displacement texture blending, bump/detail/environment and water reflection effects are not evaluated',
             'Brightness is provisional until compared with the game; light styles are held at initial full intensity except start-off lights']
     gaps += [r['reason'] for r in game_audit if not r['used'] and r['size']]
     scene = dict(name=name, title=world.get('message', name), game='vtmb', format='bloodlines-bsp17', revision=bsp['revision'],
-                 vertices=len(points), indices=len(indices), lightmap=[width, max(1, height)], groups=groups, viewpoints=views,
+                 vertices=len(points), indices=len(indices), colors=True, lightmap=[width, max(1, height)], groups=groups, viewpoints=views,
                  bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(), instances=placed, models=models,
                  omitted_models=omitted, model_failures=failures, faces_omitted=faces_audit, skybox=sky,
                  faces_drawn=drawn_faces, displacements_drawn=drawn_displacements,
@@ -698,7 +814,9 @@ def build_map(raw, name, files, lighting=None):
                  entity_classes=dict(Counter(e.get('classname', '') for e in ents)),
                  skipped_by_reason=dict(Counter(e['reason'] for e in omitted)),
                  materials=list(materials.values()), missing=sorted({r['source'] for r in missing}), missing_reasons=missing, gaps=gaps,
-                 fog=fog_params(world), sky3d=sky3d(camera) if camera else None, regions=regions, region_tree=region_tree)
+                 fog=fog_params(world), sky3d=sky3d(camera) if camera else None, regions=regions, region_tree=region_tree,
+                 effects=effects['counts'], **({'sprites': effects['sprites']} if effects['sprites'] else {}),
+                 **({'movers': movers} if movers else {}))
     return scene, blob, images, Image.fromarray(atlas)
 
 

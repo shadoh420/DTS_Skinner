@@ -170,6 +170,24 @@ class QuakeMapsTest(unittest.TestCase):
         self.assertEqual(regions[0]['contents'], -3)
         self.assertEqual(tree['nodes'], [[0., 1., 0., 2., -1 - 3, -1]])  # Above z=64 dry, below water; page axes and units.
 
+    def test_trains_that_start_on_their_own_loop_their_corners(self):
+        from tools.import_quake_map import train_path
+        corners = [dict(classname='path_corner', targetname='a', target='b', origin='0 0 0'),
+                   dict(classname='path_corner', targetname='b', target='c', origin='100 0 0', wait='2'),
+                   dict(classname='path_corner', targetname='c', target='a', origin='100 0 50', wait='-1')]
+        bsp = dict(entities=corners)
+        path = train_path(bsp, dict(classname='func_train', target='a', speed='50'))
+        times = [k[0] for k in path['keys']]
+        # Quake: 2 s to b, its wait 2; 1 s to c, whose wait -1 lets the next think come at once; 2.236 s back to a, 0.1.
+        self.assertEqual(times, [0, 2, 4, 5, 5, 7.2361, 7.3361])
+        self.assertEqual(path['period'], 7.3361)
+        self.assertEqual(path['keys'][1][1:4], [0, 0, 100 / 32])  # page axes: Quake x is the page's z
+        self.assertIsNone(train_path(bsp, dict(classname='func_train', target='a', targetname='t')))  # waits for a trigger
+        # Quake II: a negative wait stops the train there (an open path holds at its end); START_ON runs a named train.
+        stopped = train_path(bsp, dict(classname='func_train', target='a', targetname='t', spawnflags='1'), quake2=True)
+        self.assertEqual([k[0] for k in stopped['keys']], [0, 1, 3, 3.5])  # speed 100 by default
+        self.assertEqual(stopped['period'], 1e9)
+
     def test_player_lands_on_the_hull_floor(self):
         # Hull 1's only node: solid below z = 100 (a clip floor with no faces), empty above.
         data = dict(models=[[0.] * 9 + [0, 0, 0, 0, 0, 0, 0]], planes=[(0., 0., 1., 100., 2)], clipnodes=[(0, -1, -2)])
@@ -296,6 +314,7 @@ class QuakeMapsInstallTest(unittest.TestCase):
             self.assertEqual(result['failed'], {})
             self.assertEqual((len(result['imported']), len(result['skipped'])), (38, 13))
             self.assertCountEqual([(r['pak'], r['source']) for r in result['results']], expected)
+            drawn = turning = 0
             for ident in result['imported']:
                 scene = json.loads((root / 'maps' / ident / 'scene.json').read_text())
                 blob = (root / 'maps' / ident / 'geometry.bin').read_bytes()
@@ -306,6 +325,13 @@ class QuakeMapsInstallTest(unittest.TestCase):
                 self.assertTrue(0 < scene['viewpoint_checks'][0]['eye_above_floor'] <= 46, ident)  # Dropped to the floor as in the game.
                 self.assertEqual(scene['missing'], ['__missing_miptex_46'] if ident == 'e2m3' else [], ident)
                 self.assertTrue(all((root / 'textures' / g['texture']).is_file() for g in scene['groups']), ident)
+                # Items, weapons, torches and barrels: every one drawn or skipped on purpose; EF_ROTATE ones turn.
+                self.assertFalse([r for r in scene['items'] if r['status'] == 'failed'], ident)
+                drawn += sum(r['status'] == 'drawn' for r in scene['items'])
+                turning += len(scene.get('movers', []))
+                self.assertTrue(all(0 <= g['mover'] < len(scene['movers']) for g in scene['groups'] if 'mover' in g), ident)
+            self.assertGreater(drawn, 1500)
+            self.assertGreater(turning, 200)
 
 
 if __name__ == '__main__':

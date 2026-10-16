@@ -156,7 +156,7 @@ second" } // comment with braces {}
             self.assertEqual(prop['pose']['skin_family'], 1)
             self.assertEqual(prop['pose']['vertex_encodings'], [2])
             group = next(g for g in scene['groups'] if g['kind'] == 'model')
-            indices = np.frombuffer(blob, '<u4', offset=scene['vertices']*28)[group['start']:group['start']+group['count']]
+            indices = np.frombuffer(blob, '<u4', offset=scene['vertices']*32)[group['start']:group['start']+group['count']]
             points = np.frombuffer(blob, '<f4', count=scene['vertices']*3).reshape(-1, 3)[indices]
             # Reader pose X+2, prop yaw90/origin(32,0,0), then page axes and scale.
             self.assertTrue(any(np.allclose(p, np.array([12, 30, 12])/32) for p in points))
@@ -267,8 +267,9 @@ second" } // comment with braces {}
             self.assertTrue(all(m['pose']['skin_family'] == 1 for m in scene['models'] if m.get('status') == 'drawn' and not m.get('npc')))
             self.assertEqual(next(m for m in scene['models'] if m.get('classname') == 'item_g_test')['source'], 'vdata/items/item_g_test.txt')
             blob = (output/'maps'/maps.key('sm_tiny')/'geometry.bin').read_bytes()
-            self.assertEqual(len(blob), scene['vertices']*28 + scene['indices']*4)
-            ix = np.frombuffer(blob, '<u4', offset=scene['vertices']*28)
+            self.assertTrue(scene['colors'])  # RGBA vertex light after the lightmap coordinates
+            self.assertEqual(len(blob), scene['vertices']*32 + scene['indices']*4)
+            ix = np.frombuffer(blob, '<u4', offset=scene['vertices']*32)
             self.assertLess(ix.max(), scene['vertices'])
             self.assertFalse(scene['missing_reasons'], scene['missing_reasons'])
             self.assertEqual((folder/'sm_tiny.bsp').read_bytes(), source)
@@ -298,6 +299,24 @@ second" } // comment with braces {}
                 self.assertEqual(client.get('/vtmb-map-data/index.json').status_code, 200)
                 self.assertEqual(client.post('/import_vtmb_maps', json={'path': str(install)}, headers={'Origin': 'https://foreign'}).status_code, 403)
                 self.assertEqual(client.post('/import_vtmb_maps', json={'path': ''}).status_code, 400)
+
+
+class SourceLightTests(unittest.TestCase):
+    def test_worldlights_falloff_and_facing(self):
+        from tools import source_light
+        def light(kind, origin, intensity, normal=(0, 0, 0), attn=(0, 0, 1), stop=(0, 0), radius=0):
+            return struct.pack('<3f3f3f3i7f3i', *origin, *intensity, *normal, 0, kind, 0, *stop, 1, radius, *attn, 0, 0, 0)
+        lumps = [b''] * 64
+        lumps[15] = (light(source_light.EMIT_POINT, (100, 0, 0), (10000, 10000, 10000)) +
+                     light(source_light.EMIT_SURFACE, (0, 0, 50), (2500, 0, 0), normal=(0, 0, -1)) +
+                     light(source_light.EMIT_POINT, (0, 0, -9000), (1, 1, 1)))  # too weak to count
+        sampler = source_light.Sampler(dict(lumps=lumps, planes=[], models=[[0] * 12], faces=[]), lambda face: None)
+        self.assertEqual(len(sampler.lights), 3)
+        found = sampler.light(np.zeros(3), np.array([[1., 0, 0], [-1, 0, 0], [0, 0, 1]]))
+        # Point: 10000 / (1 x 100^2) facing it, nothing facing away; surface: 2500 / 50^2 x its own cosine (1), red.
+        self.assertTrue(np.allclose(found, [[1, 1, 1], [0, 0, 0], [1, 0, 0]]))
+        with self.assertRaises(ValueError):
+            source_light.worldlights(b'\0' * 87)
 
 
 class SourceExtrasTests(unittest.TestCase):

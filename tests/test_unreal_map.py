@@ -8,7 +8,9 @@ import numpy as np
 
 from app import app
 from tools.import_unreal import Library, Package
-from tools.import_unreal_map import actors_of, build_map, light_color, vector, viewer
+import struct
+
+from tools.import_unreal_map import actors_of, build_map, light_color, spin_of, vector, viewer
 
 INSTALL = Path('C:/Unreal')
 
@@ -70,6 +72,19 @@ class UnrealMapInstallTest(unittest.TestCase):
                 self.assertTrue([group for group in groups if group.get('light_anim')])
                 screens = [group['anim'] for group in groups if group['texture'] == 'playrshp.animated.scrn_a00.png']
                 self.assertEqual((len(screens[0]['frames']), screens[0]['fps']), (16, 15.0))
+                # Coronas: 13 lights with bCorona and a Skin, screen-sized squares of DrawScale x 0.8 tested against
+                # the BSP; its two black mirror floors; detail textures on the BSP only; four turning pickups and props.
+                coronas = [item for batch in scene['sprites'] for item in batch['items']]
+                self.assertEqual(len(coronas), 13)
+                self.assertTrue(all(batch['screen'] and batch['occlude'] and batch['blend'] == 'translucent' for batch in scene['sprites']))
+                self.assertIn(.28, [item[3] for item in coronas])
+                self.assertTrue(all(max(item[4:7]) <= CORONA_TOP + 1e-4 for item in coronas))
+                self.assertEqual(sorted(group['mirror'][3] for group in groups if 'mirror' in group), [-5.4857, 4.1143])
+                self.assertTrue([group for group in groups if group.get('detail')])
+                self.assertFalse([group for group in groups if group.get('detail') and (group.get('mesh') or group.get('npc'))])
+                self.assertEqual(len(scene['movers']), 4)
+                self.assertTrue(all(0 <= group['mover'] < 4 for group in groups if 'mover' in group))
+                self.assertIn([0, -1, 0, .479369], [mover['spin'] for mover in scene['movers']])
             else:  # Abyss shows its sky zone through its backdrops.
                 self.assertEqual(len(scene['sky']['rotation']), 9)
                 self.assertTrue([group for group in groups if group['flags'] & 0x80])
@@ -148,6 +163,26 @@ class UTMapInstallTest(unittest.TestCase):
         low = [props for props in actors_of(level, layout['actors'], {'SkyZoneInfo'}).values() if not props.get('bHighDetail')]
         self.assertTrue(np.allclose(sky['origin'], viewer([vector(low[-1], 'Location')])[0], atol=1e-3))
         self.assertEqual(sky['rate'], [37, 256, 768])
+
+
+CORONA_TOP = 6.512735 * 255 ** .5 / 255  # hsbtorgb at brightness 255
+
+
+class SpinTest(unittest.TestCase):
+    def test_turning_pickups_and_props(self):
+        rate = lambda pitch, yaw, roll: struct.pack('<3i', pitch, yaw, roll)
+        here = dict(Location=struct.pack('<3f', 52.5, 0, 0), RotationRate=rate(0, 16384, 0))
+        # A pickup turns about the page's -y at RotationRate yaw (a quarter turn a second here), about its Location.
+        spin = spin_of({**here, 'bRotatingPickup': True}, ('Health', 'Pickup', 'Inventory', 'Actor'))
+        self.assertEqual(spin['pivot'], [0, 0, 1])
+        self.assertTrue(np.allclose(spin['spin'], [0, -1, 0, np.pi / 2], atol=1e-5))
+        self.assertIsNone(spin_of({**here, 'bRotatingPickup': True, 'Physics': 2}, ('Inventory',)), 'falling pickups do not turn')
+        self.assertIsNone(spin_of({**here, 'Physics': 5}, ('Decoration',)), 'rotating toward a rotation stops there')
+        self.assertTrue(spin_of({**here, 'Physics': 5, 'bFixedRotationDir': True}, ('Decoration',)))
+        self.assertIsNone(spin_of({**here, 'Physics': 5, 'bFixedRotationDir': True, 'bStatic': True}, ('Decoration',)))
+        # A roll rate turns it about its own forward axis: Unreal's x, the page's z.
+        roll = spin_of({**here, 'RotationRate': rate(0, 0, 8192), 'Physics': 5, 'bFixedRotationDir': True}, ('Decoration',))
+        self.assertTrue(np.allclose(np.abs(roll['spin'][:3]), [0, 0, 1], atol=1e-5))
 
 
 class LightColorTest(unittest.TestCase):
