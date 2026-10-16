@@ -708,7 +708,7 @@ def import_map(game, name, ident, raw, source, output, textures):
             # Spawnflag 1 hangs the item where it is; any other is dropped to the floor (g_items.c FinishSpawningItem).
             items.append(dict(kind=kind, origin=vector(thing.get('origin', '')), models=[path for path in paths if path in item_models],
                               suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1), **barrel(game, kind, paths[0], textures, output, item_models)))
-    notes.append(f'pickups as game type {GAMETYPE_NAMES[gametype]} spawns them' + (f' ({dropped} left out)' if dropped else ''))
+    if dropped: notes.append(f'{dropped} pickups the game does not spawn in {GAMETYPE_NAMES[gametype]}')
     file = 'bsp/' + hashlib.sha256(raw).hexdigest()[:20] + '.bsp'
     if not (output / file).exists():
         write_bsp(output / file, lumps)

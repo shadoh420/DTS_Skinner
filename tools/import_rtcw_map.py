@@ -27,9 +27,9 @@ except ImportError:
 STRIDES = (1, 72, 16, 36, 48, 4, 4, 40, 12, 8, 44, 4, 72, 104, 49152, 8, 1)
 PLAYER_MINS, PLAYER_MAXS, EYE_HEIGHT = (-18, -18, -24), (18, 18, 48), 40
 NOT_DRAWN = ['AI characters',
-             'gameplay, audio, particles, flares and sun sprites',
+             'gameplay, audio and particles',
              'script actions and moving/animated model poses after spawn',
-             'portals, mirrors, skyportal cameras and spotlight camera effects']
+             'portal and mirror surfaces, sky portal fog and spotlight camera effects']
 PROP_MODELS = {
     'props_box_32':'models/mapobjects/boxes/box32.md3',
     'props_box_48':'models/mapobjects/boxes/box48.md3',

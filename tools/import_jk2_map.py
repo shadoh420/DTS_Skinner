@@ -32,8 +32,8 @@ number,vector=base.number,base.vector
 STRIDES=(1,72,16,36,48,4,4,40,12,12,80,4,72,148,49152,30,1,2)
 SECTIONS={'sp':'Single player','mp':'Multiplayer'}
 NOT_DRAWN=['NPCs: one authored idle preview; no AI, script populations or held weapons', 'ICARUS scripts and later mover actions',
-           'surfaceSprites/ss foliage, particles, weather, flares, glow bloom and audio',
-           'portal cameras, mirrors and portal skies', 'dynamic lights on props; light grid sampled at spawn',
+           'surfaceSprites/ss foliage, fx_runner particles, weather zones, wind and lightning, and audio',
+           'portal cameras and mirrors; sky portal fog', 'dynamic lights on props; light grid sampled at spawn',
            'runtime lightstyle animation (first sample shown)']
 
 
@@ -315,7 +315,6 @@ def describe(game,name,textures):
     for stage in stages:
         if any(r[0]=='surfacesprites' for r in stage):notes.append('surfaceSprites/ss foliage not drawn');continue
         kept.append([['rgbgen','lightingdiffuse'] if r[:2]==['rgbgen','lightingdiffuseentity'] else r for r in stage])
-        if any(r[0]=='glow' for r in stage):notes.append('glow bloom not drawn')
     if name in game.shaders:game.shaders[name]=(body,kept)  # Script-less names keep the implicit image + lightmap.
     result,missing,limits=base.describe(game,name,textures,draw_fog_stages=True,inner_box=False)
     sky=next((r for r in body if r[0]=='skyparms' and len(r)>1 and r[1]!='-'),None)
