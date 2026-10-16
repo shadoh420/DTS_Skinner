@@ -227,7 +227,7 @@ FOREVER = 600.  # seconds: a particle living longer than this (city lights: 5000
 # uncapped) and the ending sequences' fire; a few mists and smokes (hw_warrens, ch_temple_2, la_plaguebearer_sewer_1)
 # are thinned up to 4.4x and still read as soft mist.
 # ponytail: one cap for every view; a view-dependent budget would keep more of them from afar.
-FILL = 250000.
+FILL = 200000.
 
 
 def _span(keys):
