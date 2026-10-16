@@ -42,6 +42,7 @@ async function viewer(profile, options = {}) {
     render(scene) { rendered.push(scene); }
   };
   THREE.TextureLoader = class { load(url, success) { success(new THREE.Texture()); } };
+  THREE.ImageBitmapLoader = class { setOptions() { return this; } load(url, success) { success({width: 1, height: 1}); } };
   const elements = new Map();
   function element(id) {
     if (!elements.has(id)) elements.set(id, {id, parentElement: {clientWidth: 320, clientHeight: 240},
