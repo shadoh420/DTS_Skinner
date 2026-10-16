@@ -1,0 +1,1 @@
+import{b as e}from"./terrainCollision-Dkb5qutI.js";function t(){return e(e=>e.gl.capabilities.getMaxAnisotropy())}export{t};
