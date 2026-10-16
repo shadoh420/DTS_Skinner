@@ -250,9 +250,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Billboards (map.sprites, one batch a texture): {texture, frames?, fps?, blend: add | translucent | alpha | modulate,
-  // screen?, occlude?, depth?, range?, aspect?, items: [[x, y, z, size, r, g, b, a], ...]}. A world sprite is `size`
-  // wide (page units) and aspect x size tall, facing the camera; a screen sprite (UE1 corona) is a square `size` x the
-  // viewport's width wide whatever its distance. Occluded sprites are those the line to the eye finds a world
+  // screen?, occlude?, depth?, range?, aspect?, fx_falloff?, items: [[x, y, z, size, r, g, b, a], ...]}. A world sprite
+  // is `size` wide (page units) and aspect x size tall, facing the camera; a screen sprite (UE1 corona) is a square
+  // `size` x the viewport's width wide whatever its distance, its tint dimmed by fx_falloff (see the shader) when
+  // given. Occluded sprites are those the line to the eye finds a world
   // triangle on; they fade out (and back in) over `fade` seconds. Depth-tested unless depth is false.
   // add: Source's additive sprites (the texture's alpha scales what is added); translucent: UE1's (colour only).
   const BLEND = {add: ['SrcAlphaFactor', 'OneFactor'], translucent: ['OneFactor', 'OneMinusSrcColorFactor'],
@@ -260,7 +261,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const overlay = new THREE.Scene();  // Sprites drawn after the level without depth (coronas).
   let blocked = null;
   async function buildSprites(geometry) {
-    const quad = new THREE.PlaneGeometry(1, 1), viewAspect = sprites.viewAspect = {value: 1};
+    const quad = new THREE.PlaneGeometry(1, 1), viewAspect = sprites.viewAspect = {value: 1}, halfWidth = sprites.halfWidth = {value: 1};
     if (map.sprites.some(batch => batch.occlude)) blocked = occluderGrid(geometry);
     for (const batch of map.sprites) {
       const texture = await loadTexture(batch.texture), n = batch.items.length;
@@ -279,15 +280,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       const material = new THREE.ShaderMaterial({
         transparent: true, depthWrite: false, depthTest: batch.depth !== false && !batch.screen, side: THREE.DoubleSide,
         blending: THREE.CustomBlending, blendSrc: THREE[src], blendDst: THREE[dst],
-        uniforms: {surface: {value: texture}, screen: {value: !!batch.screen}, aspect: {value: batch.aspect || 1}, viewAspect,
+        uniforms: {surface: {value: texture}, screen: {value: !!batch.screen}, aspect: {value: batch.aspect || 1}, viewAspect, halfWidth,
+          fxFalloff: {value: batch.fx_falloff || 0},
           modulate: {value: batch.blend === 'modulate'}, additive: {value: batch.blend === 'translucent'}},
         vertexShader: `attribute vec3 center; attribute float size, shown; attribute vec4 tint; uniform bool screen, additive, modulate;
-        uniform float aspect, viewAspect; varying vec2 at; varying vec4 colour;
+        uniform float aspect, viewAspect, halfWidth, fxFalloff; varying vec2 at; varying vec4 colour;
         void main() {
           at = vec2(uv.x, 1. - uv.y);  // Rows run down the image (textures are not flipped).
           colour = additive ? vec4(tint.rgb * tint.a * shown, 1.) : modulate ? vec4(mix(vec3(.5), tint.rgb, shown), 1.) : vec4(tint.rgb, tint.a * shown);
           if (screen) {
             vec4 clip = projectionMatrix * viewMatrix * vec4(center, 1.);
+            // fx_falloff: the tint x half the frame's width in pixels x fx_falloff / the view depth (clip.w), each
+            // channel clamped to 1 as a vertex colour is.
+            if (fxFalloff > 0. && clip.w > 0.) colour.rgb = min(tint.rgb * halfWidth * fxFalloff / clip.w, 1.) * tint.a * shown;
             gl_Position = clip.w <= 0. ? vec4(2., 2., 2., 1.) : clip + vec4(position.xy * 2. * size * vec2(1., viewAspect) * clip.w, 0., 0.);
           } else {
             vec4 view = viewMatrix * vec4(center, 1.);
@@ -582,7 +587,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       showPass(false);
     }
     renderer.render(scene, camera);
-    if (overlay.children.length) renderer.render(overlay, camera);
+    if (overlay.children.length) { sprites.halfWidth.value = frame.width / 2; renderer.render(overlay, camera); }
     renderer.setRenderTarget(target);
     renderer.render(ramp, flat);
     if (target) fitFrame();

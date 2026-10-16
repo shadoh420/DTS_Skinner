@@ -78,7 +78,9 @@ class UnrealMapInstallTest(unittest.TestCase):
                 self.assertEqual(len(coronas), 13)
                 self.assertTrue(all(batch['screen'] and batch['occlude'] and batch['blend'] == 'translucent' for batch in scene['sprites']))
                 self.assertIn(.28, [item[3] for item in coronas])
-                self.assertTrue(all(max(item[4:7]) <= CORONA_TOP + 1e-4 for item in coronas))
+                # Hue and saturation at full brightness, dimmed by the view depth on the page (227, 2026-10-16).
+                self.assertTrue(all(max(item[4:7]) <= 1 + 1e-4 for item in coronas) and max(max(item[4:7]) for item in coronas) > .99)
+                self.assertTrue(all(batch['fx_falloff'] == round(1 / 52.5, 7) for batch in scene['sprites']))
                 self.assertEqual(sorted(group['mirror'][3] for group in groups if 'mirror' in group), [-5.4857, 4.1143])
                 self.assertTrue([group for group in groups if group.get('detail')])
                 self.assertFalse([group for group in groups if group.get('detail') and (group.get('mesh') or group.get('npc'))])
@@ -163,9 +165,6 @@ class UTMapInstallTest(unittest.TestCase):
         low = [props for props in actors_of(level, layout['actors'], {'SkyZoneInfo'}).values() if not props.get('bHighDetail')]
         self.assertTrue(np.allclose(sky['origin'], viewer([vector(low[-1], 'Location')])[0], atol=1e-3))
         self.assertEqual(sky['rate'], [37, 256, 768])
-
-
-CORONA_TOP = 6.512735 * 255 ** .5 / 255  # hsbtorgb at brightness 255
 
 
 class SpinTest(unittest.TestCase):
