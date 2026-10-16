@@ -391,6 +391,37 @@ def coronas(things,section,rules):
     return result
 
 
+SNOW_COLUMNS={'misc_snow32':32,'misc_snow64':64,'misc_snow128':128,'misc_snow256':256}
+
+
+def weather(things):
+    """Rain and snow, each {type, count, speed, length, wind[, column]}: ET's worldspawn atmosphere (CG_EffectParse:
+    D drops, BV wind, rain at 1.1 and snow at 0.1 of gravity 800, raindrops 150 long, flakes 3-5), Raven's fx_rain
+    and fx_snow world effects (SP_CreateRain/SP_CreateSnow presets of tr_WorldEffects: light rain 500 drops, other
+    rain and snow 1000, rain drops 80 long; no count key is read) and RTCW's misc_snow columns (snow_think: `health` flakes over the
+    square named, from the entity down to the floor). ponytail: SP presets on MP maps too; no gusts, wind zones,
+    lightning or Raven particle physics."""
+    result=[]
+    for e in things:
+        cls=e.get('classname','').lower();flags=int(number(e,'spawnflags'))
+        if cls=='worldspawn' and e.get('atmosphere'):
+            keys={k.strip().upper():v.split() for k,_,v in (part.partition('=') for part in e['atmosphere'].split(','))}
+            kind=(keys.get('T') or [''])[0].lower()
+            if kind in ('rain','snow'):
+                drops=[float(v) for v in keys.get('D',['300'])] or [300]
+                wind=([float(v) for v in keys.get('BV',[])]+[0,0])[:2]
+                result.append(dict(type=kind,count=int(max(drops)),speed=880 if kind=='rain' else 80,length=150 if kind=='rain' else 4,wind=wind))
+        elif cls=='fx_rain':
+            result.append(dict(type='rain',count=500 if flags&1 or not flags&14 else 1000,speed=1000,length=80,wind=[0,0]))
+        elif cls=='fx_snow':
+            result.append(dict(type='snow',count=1000,speed=80,length=2,wind=[0,0]))
+        elif cls in SNOW_COLUMNS:
+            size=SNOW_COLUMNS[cls];origin=vector(e.get('origin'))
+            result.append(dict(type='snow',count=int(number(e,'health',32)),speed=50,length=2,wind=[0,0],
+                               column=dict(min=[origin[0]-size,origin[1]-size],max=[origin[0]+size,origin[1]+size],top=origin[2])))
+    return result
+
+
 def sun(game,shaders,textures,rules):
     """RB_DrawSun's direction and shader, or None: drawn where a used shader names a sunshader (RTCW always draws
     'sun', ET the shader named); the direction is the last q3map_sun's (ParseShader), else tr_bsp's default."""
@@ -681,7 +712,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     for i in sorted(used):
         if names[i][1]&qmap.SURF_NODRAW:continue
         shaders[i],missing,notes=rules.describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
-    effects={}
+    effects=dict(weather=weather(things))
     if getattr(rules,'ID_FLARES',True):
         effects['coronas']=coronas(things,game.section,rules)
         if effects['coronas'] or 4 in kinds:

@@ -472,7 +472,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       uv: new THREE.Float32BufferAttribute(uvs, 2), lm: new THREE.Float32BufferAttribute(lms, 2), tint: new THREE.Float32BufferAttribute(tints, 4)};
     if (config.foliage) attributes.foliageOrigin = new THREE.Float32BufferAttribute(foliageOrigins, 4);
     if (sprites) Object.assign(attributes, {sprite: new THREE.Float32BufferAttribute(sprites, 4), spriteAxis: new THREE.Float32BufferAttribute(spriteAxes, 3)});
-    return {atlas, attributes, groups: [...groups.values()], lightGrid, flares};
+    const bounds = [0, 1, 2, 3, 4, 5].map(n => models.count ? float(models.at + n * 4) : 0);  // The world model's mins and maxs.
+    return {atlas, attributes, groups: [...groups.values()], lightGrid, flares, bounds};
   }
 
   // A model's light at a point, as R_SetupEntityLightingGrid and R_SetupEntityLighting work it out: the eight
@@ -614,6 +615,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       fogPasses(shader, fog).forEach((pass, n) => add(stageMaterial(shader, pass, white), materials.length + 2 + n));
     }
     root.remove(placeholder);
+    if (shader.sky) skyGeometries.push(geometry);
     if (shader.sort === 3 && !shader.sky) {
       let floorGeometry = geometry;
       if (map.bspCull) {
@@ -709,6 +711,90 @@ window.addEventListener('DOMContentLoaded', async () => {
     const corner = (a, b) => middle.clone().addScaledVector(left, a * .2 * distance).addScaledVector(up, b * .2 * distance).toArray();
     sun = await addQuads({...map.sun.shader, atFar: true}, quads([{middle: middle.toArray(), size: 0, colour: [1, 1, 1], normal: toward.clone().negate().toArray()}],
       [corner(1, 1), corner(-1, 1), corner(-1, -1), corner(1, -1)]), 2 * 100000 + 99990);  // After the sky (sort 2).
+  }
+
+  // Rain and snow (the import's map.weather). Where it falls comes from two height maps drawn from above once, as ET
+  // reads its trace map (CG_GenerateTracemap): the sky's height over each spot and the highest other surface there,
+  // the ground. A drop falls between the two, ET's way, within 1000 units of the eye (MAX_ATMOSPHERIC_DISTANCE), or
+  // in its own column (RTCW's misc_snow). ponytail: Raven's outside brushes and weather zones are taken to be wherever
+  // the sky is open; a drop is a line, a flake a point.
+  const skyGeometries = [], falls = [];
+  let lastFall = 0;
+  function heightMap(geometries, [minX, minY, minZ, maxX, maxY, maxZ], size) {
+    const target = new THREE.WebGLRenderTarget(size, size, {type: THREE.FloatType}), heights = new Float32Array(size * size * 4);
+    const top = new THREE.Scene(), turned = new THREE.Group(), view = new THREE.OrthographicCamera(-(maxX - minX) / 2, (maxX - minX) / 2, (maxY - minY) / 2, -(maxY - minY) / 2, 1, maxZ - minZ + 2000);
+    const material = new THREE.ShaderMaterial({side: THREE.DoubleSide,
+      vertexShader: 'varying float z; void main() { z = position.z; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+      fragmentShader: 'varying float z; void main() { gl_FragColor = vec4(z, 1., 0., 1.); }'});
+    turned.rotation.x = -Math.PI / 2;
+    top.add(turned);
+    for (const geometry of geometries) turned.add(Object.assign(new THREE.Mesh(geometry, material), {frustumCulled: false}));
+    view.position.set((minX + maxX) / 2, maxZ + 1000, -(minY + maxY) / 2);  // Above the world, looking down with game +y up.
+    view.up.set(0, 0, -1);
+    view.lookAt((minX + maxX) / 2, 0, -(minY + maxY) / 2);
+    renderer.setRenderTarget(target);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear();
+    renderer.render(top, view);
+    renderer.readRenderTargetPixels(target, 0, 0, size, size, heights);
+    renderer.setRenderTarget(null);
+    target.dispose();
+    material.dispose();
+    // The height at a spot, or null where nothing lies under it.
+    return (x, y) => {
+      const at = (Math.min(Math.max(Math.floor((y - minY) / (maxY - minY) * size), 0), size - 1) * size + Math.min(Math.max(Math.floor((x - minX) / (maxX - minX) * size), 0), size - 1)) * 4;
+      return heights[at + 1] ? heights[at] : null;
+    };
+  }
+  function addWeather(specs, bounds) {
+    const clear = renderer.getClearColor(new THREE.Color()), alpha = renderer.getClearAlpha();
+    const ground = heightMap(floors.map(mesh => mesh.geometry), bounds, 512), sky = heightMap(skyGeometries, bounds, 512);
+    renderer.setClearColor(clear, alpha);
+    const identity = map.lighting ? map.lighting.identityLight : .5;
+    for (const {type, count, speed, length, wind, column} of specs) {
+      const rain = type === 'rain', drops = new Float32Array(Math.min(count, 4000) * 3), total = drops.length / 3;
+      const geometry = new THREE.BufferGeometry(), eye = uniforms.uView.value;
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(total * (rain ? 6 : 3)), 3));
+      const particles = rain ? new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({color: new THREE.Color().setScalar(identity * .5), transparent: true, opacity: .4}))
+        : new THREE.Points(geometry, new THREE.PointsMaterial({color: new THREE.Color().setScalar(identity * 1.5), size: length, transparent: true, opacity: .8}));
+      particles.frustumCulled = false;
+      particles.renderOrder = 1e9 - 10;
+      root.add(particles);
+      const respawn = (i, anywhere) => {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          let x, y, low, high;
+          if (column) {
+            x = column.min[0] + Math.random() * (column.max[0] - column.min[0]);
+            y = column.min[1] + Math.random() * (column.max[1] - column.min[1]);
+            [low, high] = [ground(x, y) ?? -Infinity, column.top];
+          } else {
+            const angle = Math.random() * 2 * Math.PI, distance = 20 + 1000 * Math.random();
+            x = eye.x + Math.sin(angle) * distance;
+            y = eye.y + Math.cos(angle) * distance;
+            const roof = sky(x, y);
+            if (roof === null) continue;
+            [low, high] = [Math.max(ground(x, y) ?? -Infinity, eye.z - 1000), Math.min(roof, eye.z + 1000)];
+          }
+          if (!(high > low)) continue;
+          // A new drop starts at the top, once the fall is under way; the first fill spreads them through the height.
+          drops.set([x, y, anywhere || column ? low + Math.random() * (high - low) : high], i * 3);
+          return;
+        }
+        drops.set([eye.x, eye.y, -1e9], i * 3);  // Nowhere open near: parked far below, out of view.
+      };
+      for (let i = 0; i < total; i++) respawn(i, true);
+      falls.push(delta => {
+        const positions = geometry.attributes.position.array, step = [wind[0] * delta, wind[1] * delta, -speed * delta];
+        for (let i = 0; i < total; i++) {
+          for (let axis = 0; axis < 3; axis++) drops[i * 3 + axis] += step[axis];
+          const x = drops[i * 3], y = drops[i * 3 + 1], z = drops[i * 3 + 2], floor = ground(x, y);
+          if (z < -1e8 || floor !== null && z < floor || !column && Math.hypot(x - eye.x, y - eye.y) > 1020) respawn(i, false);
+          positions.set(drops.subarray(i * 3, i * 3 + 3), i * (rain ? 6 : 3));
+          if (rain) positions.set([drops[i * 3] - wind[0] / speed * length, drops[i * 3 + 1] - wind[1] / speed * length, drops[i * 3 + 2] + length], i * 6 + 3);
+        }
+        geometry.attributes.position.needsUpdate = true;
+      });
+    }
   }
 
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
@@ -860,6 +946,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const tick of placedTicks) tick(seconds);
     for (const mover of movers) placeMover(mover, seconds);
     for (const mesh of sun) mesh.position.copy(uniforms.uView.value);
+    for (const fall of falls) fall(Math.min(Math.max(seconds - lastFall, 0), .1));
+    lastFall = seconds;
     for (const {holder, height, fast, rate} of pickups) {
       holder.position.z = height + 4 + Math.cos((seconds + 1) * rate) * 4;
       holder.rotation.z = seconds % 2.048 / 2.048 * 2 * Math.PI * (fast ? 2 : 1);
@@ -958,6 +1046,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     let loaded = 0;
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));
     await Promise.all([addFlares(world.flares), addSun()]);
+    if ((map.weather || []).length) addWeather(map.weather, world.bounds);
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
