@@ -175,6 +175,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       vFogT = eyeT < 0. ? (fogT < 1. ? 0. : fogT / (fogT - eyeT)) : (fogT < 0. ? 0. : 1.);` : 'vFogT = 1.;'}`;
   }
   const fogAlpha = fog => `float x = vFogS * vFogT, fogAlpha = ${FOG_CURVES[fog.curve]};`;
+  // A stage under GL fog is fogged towards the colour that leaves its blend as fogged as one pass would be: black
+  // for an added stage, white for a multiplying one (JA's mGLFogColorOverride), else the fog's colour.
+  const glFogTarget = (stage, fog) => {
+    const blend = String(stage.blend || '');
+    return blend === 'gl_one,gl_one' ? 'vec3(0.)' : blend === 'gl_dst_color,gl_zero' || blend === 'gl_zero,gl_src_color' ? 'vec3(1.)' : fogColour(fog);
+  };
   const fogColour = fog => `vec3(${fog.color.map(value => number(value * (map.lighting ? map.lighting.identityLight : .5))).join(', ')})`;
   const animated = [];
   function stageMaterial(shader, stage, texture, frames) {
@@ -230,7 +236,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           vec4 c = texture2D(map, st) * vColor;
           ${test}
           ${fog ? fogAlpha(fog) : ''}
-          ${stage.fogPass ? `c = vec4(${fogColour(fog)}, fogAlpha);` : stage.glFog ? `c.rgb = mix(c.rgb, ${fogColour(fog)}, fogAlpha);` : ''}
+          ${stage.fogPass ? `c = vec4(${fogColour(fog)}, fogAlpha);` : stage.glFog ? `c.rgb = mix(c.rgb, ${glFogTarget(stage, fog)}, fogAlpha);` : ''}
           gl_FragColor = c;
         }`,
       side: SIDES[shader.cull] || THREE.BackSide, transparent: true, depthWrite: !!stage.depthWrite,
@@ -239,7 +245,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       blendSrc: stage.blend ? FACTORS[stage.blend[0]] || THREE.OneFactor : THREE.OneFactor,
       blendDst: stage.blend ? FACTORS[stage.blend[1]] || THREE.OneFactor : THREE.ZeroFactor,
       polygonOffset: !!shader.polygonOffset, polygonOffsetFactor: -1, polygonOffsetUnits: -2});
-    material.userData.shader = shader;  // For the fog passes of models.
+    material.userData = {shader, stage, texture, frames};  // For fogging models.
     if (foliage) material.onBeforeRender = () => { material.uniforms.uFovScale.value = settings.fov / 90; };
     if (frames && frames.length > 1) animated.push({material, frames, fps: stage.fps});
     return material;
@@ -515,27 +521,23 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const mapFogged = (shader, stages) => map.mapFog && !shader.sky && shader.sort > (config.fogEqualSort ?? 3)
     ? stages.map(stage => ({...stage, glFog: mapFogStyle(map.mapFog)})) : stages;
-  // A model takes the first fog around its origin (R_ComputeFogNum tests its bounds against each fog's) and is
-  // given that fog's passes, which are shared by all models of one shader under one fog.
+  // A model takes the first fog around its origin (R_ComputeFogNum tests its bounds against each fog's), else the
+  // map's fog. Its stages are fogged themselves, as GL fog does, and not by a pass of equal depth: once a model is
+  // turned or scaled, two programs need not round its depth alike. One stage, the usual model, comes out as the
+  // pass would; ponytail: under both a fog volume and the map's fog a model takes the volume's alone.
   const fogMaterials = new Map();
   function addFog(holder, origin) {
     const fogNum = (map.fogs || []).findIndex(fog => fog && (fog.global || fog.bounds.every((value, i) => i < 3 ? origin[i] >= value : origin[i - 3] <= value)));
-    if (fogNum < 0 && !map.mapFog) return;
-    const done = new Set(), meshes = [];
-    holder.traverse(mesh => { if (mesh.isMesh && mesh.material.userData.shader) meshes.push(mesh); });
-    for (const mesh of meshes) {
-      const shader = mesh.material.userData.shader;
-      if (done.has(mesh.geometry.uuid + '|' + shader.name)) continue;
-      done.add(mesh.geometry.uuid + '|' + shader.name);
-      fogPasses(shader, fogNum).forEach((pass, n) => {
-        const key = `${shader.name}|${fogNum}|${n}|${shader.sort}`;
-        if (!fogMaterials.has(key)) fogMaterials.set(key, stageMaterial(shader, pass, white));
-        const fogged = new THREE.Mesh(mesh.geometry, fogMaterials.get(key));
-        fogged.renderOrder = shader.sort * 100000 + 99060 + n;
-        fogged.position.copy(mesh.position); fogged.quaternion.copy(mesh.quaternion); fogged.scale.copy(mesh.scale);
-        mesh.parent.add(fogged);
-      });
-    }
+    const style = fogNum >= 0 ? fogStyle(map.fogs[fogNum]) : map.mapFog && mapFogStyle(map.mapFog);
+    if (!style) return;
+    holder.traverse(mesh => {
+      const {shader, stage, texture, frames} = mesh.isMesh && mesh.material.userData || {};
+      // Fog passes fog opaque shaders and fog shaders; GL map fog fogs every stage.
+      if (!stage || !(shader.sort <= (config.fogEqualSort ?? 3) || shader.fog || fogNum < 0)) return;
+      const key = mesh.material.uuid + '|' + fogNum;
+      if (!fogMaterials.has(key)) fogMaterials.set(key, stageMaterial(shader, {...stage, glFog: style}, texture, frames));
+      mesh.material = fogMaterials.get(key);
+    });
   }
   // One mesh of each opaque surface, for dropping pickups to the floor. They are in no scene, so a ray meets them
   // in the game's own axes.

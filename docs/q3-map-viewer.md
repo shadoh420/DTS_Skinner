@@ -168,12 +168,12 @@ their code is in the app.
   per stage whatever lightmaps its surfaces use. Coordinates are kept half a
   texel inside each lightmap, which is what clamping did when each was a
   texture of its own.
-- The sky is drawn on the map's sky surfaces where they stand; the game draws
-  it at the far limit of depth, so there geometry beyond a sky surface can
-  show in front of the sky.
-- The whole map is drawn, culled only by the view per shader; the game also
-  culls by its visibility data. Lightmap and texture are drawn as two passes,
-  as the game does without multitexture.
+- The sky is drawn on the map's sky surfaces at the far limit of depth, as
+  the game draws it, so geometry beyond a sky surface shows in front of it
+  where the visibility data lets it be drawn.
+- The world is culled by the map's cluster visibility (PVS) and by the view
+  per shader; door area portals are not simulated. Lightmap and texture are
+  drawn as two passes, as the game does without multitexture.
 - Brush models (doors, lifts) stand where the map places them and do not move.
 - The game drops an item's 30-unit box until it rests on something solid.
   Here one line from the item's centre down to the nearest opaque drawn
@@ -181,9 +181,18 @@ their code is in the app.
   `q3dm1` 17 of the 18 items come to rest within 3 units of where the map put
   them and one 9 units lower.
 - Every pickup is placed, whatever game type its entity is limited to
-  (`notfree`, `notteam`, `gametype`). Pickup models are lit evenly, not from
-  the map's light grid as in the game, and a weapon's separate barrel model is
-  not added.
+  (`notfree`, `notteam`, `gametype`). A weapon's separate barrel model is not
+  added.
+- Pickups are lit from the map's light grid as `R_SetupEntityLighting` lights
+  them (`r_ambientScale` 0.6, a minimum of 32), once at the height they bob
+  about; the light's direction follows their turning. Dynamic lights are not
+  added.
+- Fog volumes follow CNQ3, which draws each fog box over the scene with an
+  opacity of 1 − 2^(−10x), x the depth inside the fog over its depth for
+  opaque. Here a surface carries the fog of its BSP fog number and gets a fog
+  pass as the classic renderer's `RB_FogPass` builds it (view depth, and the
+  share of the ray past the fog's visible plane), with CNQ3's curve. Blended
+  surfaces inside a fog are not fogged, as in CNQ3.
 
 ## Coverage
 
@@ -320,12 +329,40 @@ install and require its stock maps to resolve completely.
 
 ## Limits
 
-Free-flight only. Not drawn: fog volumes, light flares, portal and mirror
-views (the surface is drawn plain), video textures, inner sky boxes, and
-player models. Map objects other than pickups that the game adds while it runs
-(Team Arena's obelisks and skulls, for one) are not placed. Simplified: `deformVertexes`
-autosprite, normal, text and projection shadow are left out, a `noise` wave
-is drawn as a sine, texture coordinates from vectors and entity colours are
-left at their defaults. A stage that takes lightmap coordinates for an image
+Free-flight only. Not drawn: light flares, portal and mirror views (the
+surface is drawn plain), video textures and player models. An inner sky box
+(the third `skyparms` argument) is not drawn by the game either. Map objects
+other than pickups that the game adds while it runs (Team Arena's obelisks and
+skulls, for one) are not placed. Simplified: `deformVertexes` normal, text and
+projection shadow are left out, a `noise` wave is drawn as a sine, and entity
+colours are left at their defaults. `deformVertexes autosprite` and
+`autosprite2` turn their quads to the camera as `AutospriteDeform` and
+`Autosprite2Deform` do, on map surfaces (not on pickup models). A stage that takes lightmap coordinates for an image
 of its own on a surface that also has a lightmap reads the packed lightmap's
 coordinates. Brightness is the game's default setting, not adjustable.
+
+## The other id Tech 3 pages (2026-10-16)
+
+RTCW, ET, JK2 and JA share this viewer. Since 2026-10-16:
+
+- **Light grid.** RTCW and ET light placed models from lump 15 too, with their
+  `r_ambientScale` of 0.5 and the minimum of 32 only for pickups (`RF_MINLIGHT`
+  in `CG_Item`). JK2 and JA keep their own sampled Raven grid.
+- **Fog volumes** (lump 12) are drawn on every page with the engine's curve:
+  the square root of the classic fog image for RTCW and JK2, ET's linear fog
+  image. A fog with brush −1, which Raven and ET compilers write for a
+  worldspawn `fog`/`_fog` key, is a global fog: the frame is cleared to its
+  colour, JA draws it as GL exp2 fog (`r_drawfog 2`, density
+  sqrt(−ln(1/255)) / depth) and ET ends the view at its depth.
+- **RTCW and ET map fog** comes from `fogvars` in the sky shader a map uses:
+  GL linear fog to the given distance (the sky is not drawn and the view ends
+  there, `R_SetFrameFog`) or GL exp fog of the given density (radial distance,
+  as iortcw's `GL_EYE_RADIAL_NV`). 43 of RTCW's 47 maps have it.
+- **Far clip.** `fogclip` and `_farplanedist` are compiler keys (vis); no
+  engine reads them, so they are not used. JK2 single-player maps that set
+  `distanceCull` end the view at 1.732 times it, as JA does.
+- **Sky.** Every page draws the sky at far depth. RTCW and ET draw the inner
+  sky box, blended over the clouds by its alpha (18 RTCW shaders).
+- Translucent surfaces inside a fog volume are not fogged (the game's
+  `adjustColorsForFog` is not reproduced); a model under both a fog volume and
+  the map's fog takes the volume's only.
