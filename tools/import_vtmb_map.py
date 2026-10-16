@@ -584,7 +584,17 @@ def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, 
                                  **({'frames': frames, 'fps': rate} if len(frames) > 1 else {}))
         batches[key_]['items'].append([*(round(float(c), 4) for c in origin[[1, 2, 0]]*SCALE), round(full*SCALE, 4), *(round(float(c), 4) for c in rgba)])
         counts['sprites'] += 1
-    return dict(counts=counts, sprites=list(batches.values()))
+    def bounds(e):
+        model = e.get('model', '')
+        if not model.startswith('*') or not model[1:].isdigit() or int(model[1:]) >= len(bsp['models']):
+            return None
+        box = np.array(bsp['models'][int(model[1:])][:6], float).reshape(2, 3)
+        return box + vector(e)
+    # The steam's colour: rendercolor x the light there, as the ropes' (encoded as the atlas stores light).
+    light = lambda p: encode_light(sampler.light(p + [0, 0, 1], source_light.AXES).mean(0), gain) / 255
+    found = source_effects.particles(ents, bounds, light)
+    counts['particles'] = len(found)
+    return dict(counts=counts, sprites=list(batches.values()), particles=source_effects.particle_data(found, material, 'missing_vtmb.png', SCALE))
 
 
 def build_map(raw, name, files, lighting=None):
@@ -816,6 +826,7 @@ def build_map(raw, name, files, lighting=None):
                  materials=list(materials.values()), missing=sorted({r['source'] for r in missing}), missing_reasons=missing, gaps=gaps,
                  fog=fog_params(world), sky3d=sky3d(camera) if camera else None, regions=regions, region_tree=region_tree,
                  effects=effects['counts'], **({'sprites': effects['sprites']} if effects['sprites'] else {}),
+                 **({'particles': effects['particles']} if effects['particles'] else {}),
                  **({'movers': movers} if movers else {}))
     return scene, blob, images, Image.fromarray(atlas)
 

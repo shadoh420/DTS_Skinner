@@ -106,6 +106,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const panning = [], animated = [], moving = [], sprites = [];
   // Source 3D skies: the sky area's surfaces and props, drawn first from the sky camera; the level's sky faces show it.
   const sky3dDraws = [], mainDraws = [], skyFaces = [];
+  let particles = null;
   let skyBackdrop = null;
   let lightMap = null;  // The map's lightmaps in one atlas: the game draws texture x lightmap x 2.
   let quakeColormap = null;
@@ -414,6 +415,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       moving.push(mover);
     }
     if (map.sprites?.length) await buildSprites(geometry, materials);
+    // Source effects of the import's map.particles (dust motes, steam) in the shared particle system (particles.js),
+    // in a group of their own so that the 3D sky pass leaves them out.
+    if (map.particles && window.skinnerParticles) {
+      const group = new THREE.Group();
+      scene.add(group);
+      if (map.sky3d) mainDraws.push(group);
+      particles = await window.skinnerParticles.mount(THREE, map.particles, {loadTexture: stage => loadTexture((stage.frames || [stage.map])[0]),
+        add: mesh => group.add(mesh), toWorld: map.particles.toWorld, up: map.particles.up});
+    }
     if (config && config.buildInstances) {
       for (const object of await config.buildInstances(map, data, get, loadTexture)) {
         scene.add(object); trackNPC(object, object.userData);
@@ -548,6 +558,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     camera.updateMatrixWorld();
     updateMovers(seconds);
     updateSprites(seconds);
+    particles?.update(seconds, camera.position.toArray(), true);
     for (const {material, fps, frames} of animated) {
       const texture = frames[Math.floor(seconds * fps) % frames.length];
       if (!texture) continue;
@@ -604,7 +615,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     seconds += delta;
     draw(seconds);
   });
-  window[config ? config.debugName : dx ? 'skinnerDxMaps' : azrael ? 'skinnerAzraelMaps' : sin ? 'skinnerSinMaps' : anachronox ? 'skinnerAnachronoxMaps' : daikatana ? 'skinnerDaikatanaMaps' : quake2 ? 'skinnerQuake2Maps' : quake ? 'skinnerQuakeMaps' : 'skinnerUnrealMaps'] = {renderer, scene, camera, draw, showViewpoint, unrealTurn, overlay, sprites, mirrors, moving, blocked: (a, b) => blocked?.(a, b)};  // For checks in a hidden page, where no frame is drawn.
+  window[config ? config.debugName : dx ? 'skinnerDxMaps' : azrael ? 'skinnerAzraelMaps' : sin ? 'skinnerSinMaps' : anachronox ? 'skinnerAnachronoxMaps' : daikatana ? 'skinnerDaikatanaMaps' : quake2 ? 'skinnerQuake2Maps' : quake ? 'skinnerQuakeMaps' : 'skinnerUnrealMaps'] = {renderer, scene, camera, draw, showViewpoint, unrealTurn, overlay, sprites, mirrors, moving, get particles() { return particles; }, blocked: (a, b) => blocked?.(a, b)};  // For checks in a hidden page, where no frame is drawn.
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   // Each game's folder is remembered on its own (Unreal's under the key it had before UT maps).
