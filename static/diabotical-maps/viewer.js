@@ -322,7 +322,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
   /* Light beams (volumetric entities; read_volumetrics in the importer): panels in the entity's unit box, a grid of
-     `segments` across x by `segments_y` along z facing z, or `segments` fanned about the vertical (radial), each
+     `segments` cells across x by `segments_y` along z, each an open tube of four walls (runs 45 and 46: tubes seen
+     from above, a solid band from the front), or `segments` fanned about the vertical (radial), each
      cell less its gap, the top narrowed by `taper`; brightest at the top and fading down, soft at the sides, times
      the colour, its strength and the texture where there is one, fading where seen edge on (run 47: bioplant's
      map-sized volumetric_64 is invisible from above), blended over the picture (run 46: a red beam over the blue sky
@@ -344,9 +345,12 @@ window.addEventListener('DOMContentLoaded', async () => {
           quad([[x * r, -.5, z * r], [x, -.5, z], [x * top, .5, z * top], [x * r * top, .5, z * r * top]]);
         }
       } else {
+        // Each cell an open tube: four walls around it, less the gaps, its top narrowed toward its middle by taper.
         for (let i = 0; i < columns; i++) for (let j = 0; j < rows; j++) {
-          const cx = (i + .5) / columns - .5, cz = (j + .5) / rows - .5, w = (1 - gap) / columns / 2;
-          quad([[cx - w, -.5, cz], [cx + w, -.5, cz], [cx + w * top, .5, cz], [cx - w * top, .5, cz]]);
+          const cx = (i + .5) / columns - .5, cz = (j + .5) / rows - .5, w = (1 - gap) / columns / 2, d = (1 - gapY) / rows / 2;
+          const at = (x, y, z) => [cx + x * (y > 0 ? top : 1), y, cz + z * (y > 0 ? top : 1)];
+          for (const [x0, z0, x1, z1] of [[-w, -d, w, -d], [w, -d, w, d], [w, d, -w, d], [-w, d, -w, -d]])
+            quad([at(x0, -.5, z0), at(x1, -.5, z1), at(x1, .5, z1), at(x0, .5, z0)]);
         }
       }
       const geometry = new THREE.BufferGeometry();

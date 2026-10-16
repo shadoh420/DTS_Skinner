@@ -532,9 +532,9 @@ def placements(entities, assets, known=(), pickups=None, movers=None):
 
 def read_volumetrics(entities):
     """A map's light beams (`volumetric` entities, drawn by panel_volumetric on a mesh the game builds): [12 page-matrix
-    floats (the entity's place, turn and scale: the beam fills the unit box around it), kind (0 grid, the default: a
-    row of `segments` panels across x, `segments_y` rows along z, facing z; 1 radial: `segments` panels fanned about
-    the vertical), segments, segments_y, gap (the share of each cell left empty), gap_y, taper (top narrowed by it),
+    floats (the entity's place, turn and scale: the beam fills the unit box around it), kind (0 grid, the default:
+    `segments` cells across x by `segments_y` along z, each an open tube of four walls; 1 radial: `segments` panels
+    fanned about the vertical), segments, segments_y, gap (the share of each cell left empty), gap_y, taper (top narrowed by it),
     colour 0xRRGGBB, strength (the colour's alpha, AARRGGBB; 1 for RRGGBB), texture ('' for none), blended (`alpha`:
     alpha blending, else additive), rotation_speed]. Runs 45 and 46: grids of 3 panels and radial fans of 8 and 16,
     each panel brightest at the top and fading downward, added to the picture."""

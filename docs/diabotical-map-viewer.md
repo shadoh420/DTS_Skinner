@@ -183,8 +183,9 @@ left (`static/diabotical-maps/blocks.js`).
   straight up / 90°)⁴ × intensity / 10 (`tilesky.ps`). Liquids, billboards
   and particles are not fogged (forward shaded, as in the game).
 - **Light beams.** `volumetric` entities are panels in the entity's unit
-  box (`read_volumetrics`): a grid (the default) of `segments` panels across
-  x by `segments_y` along z, facing z, or `segments` panels fanned about the
+  box (`read_volumetrics`): a grid (the default) of `segments` cells across
+  x by `segments_y` along z, each an open tube of four walls (seen from above
+  in run 45; a solid band from the front in run 46), or `segments` panels fanned about the
   vertical (`radial`), each less its `gap`, the top narrowed by `taper`;
   brightest at the top and fading down, soft at the sides, the colour times
   its alpha (AARRGGBB) and the `texture` where there is one, blended over
