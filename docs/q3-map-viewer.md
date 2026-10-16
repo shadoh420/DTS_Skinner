@@ -441,12 +441,14 @@ Not done in part B, with the reason:
 - **fx_runner effects, the rest** (JK2 559 runners on 27 maps, JA 1,184 on 31):
   the running ones' Particle primitives are drawn (see Particle effects below);
   Line, Tail, Cylinder, Electricity, Light and the other primitives, runners
-  that wait for a trigger, and RTCW's particle entities are not.
+  that wait for a trigger are not. RTCW's and ET's other particle entities
+  (props_dust, props_flamethrower, props_firecolumn: all wait for a trigger)
+  are not drawn; RTCW's props_sparks make no sparks in the game at all.
 - **Surface sprites** (`surfaceSprites` stages: 70 in JA's scripts, mostly
   vertical grass) need the stages kept at import and sprites scattered over
   each surface.
 
-## Particle effects (JK2, JA)
+## Particle effects (JK2, JA, RTCW, ET)
 
 A running `fx_runner` (neither STARTOFF nor ONESHOT) plays its `.efx` every
 `delay` + `random`/2 ms (fx_runner_think; the mean of its random wait). The
@@ -473,3 +475,12 @@ JK2 yavin_final, below the frame's noise.
 Not drawn: impacts and physics, orgOnSphere/orgOnCylinder spawn shapes,
 OrientedParticle, oneShotAnimMap explosion shaders, soft (depth-faded)
 edges; alpha-blended particles are not sorted within a draw.
+
+RTCW and ET `target_smoke` with SmokeON (4) puff through the same system
+(`import_rtcw_map.smoke_particles`, CG_ParticleSmoke): one puff every `delay`
+ms living `time` ms, fading out after `duration`, growing from `start_size`
+to `end_size`, rising at `wait` a second (falling with Gravity), drifting
+toward its target; white smoke is smokePuff at GREY75 (0.5), black smoke one
+of smokePuffblack1-5. Drawn within cg_particleDist 1024. RTCW frees them in
+multiplayer; ET's are client smokers and stay, unless the map's script hides
+them at spawn.

@@ -29,6 +29,7 @@ vector,number=base.vector,base.number
 # SetFarClip ends the view at the global fog's depth for opaque.
 GLOBAL_FOG_CLIPS=True
 NAMED_SUN=True  # tr_shader.c: ET draws the sunshader it names; RTCW always 'sun'.
+SMOKE_IN_MP=True  # ET's target_smoke is a client ET_SMOKER (CG_Smoker); RTCW frees it outside SP.
 DLIGHT_NOTE='dynamic light: STARTOFF (spawnflags 2) until a script switches it on (SP_dlight)'
 MAPS=('battery','fueldump','goldrush','oasis','radar','railgun')
 # Stock maps place only the objective item, whose model is supplied by its entity.

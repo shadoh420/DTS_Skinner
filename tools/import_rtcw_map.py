@@ -425,6 +425,53 @@ def weather(things):
     return result
 
 
+def smoke_particles(game,things,audit,textures,rules):
+    """target_smoke puffs as shared particles.js emitters (map.particles), or (None, [], []). SmokeON (4) smokes puff
+    every `delay` ms (smoke_think; ET's CG_Smoker); CG_ParticleSmoke: a puff lives `time` ms, fades out linearly after
+    `duration`, grows from start_size to end_size, rises at `wait` a second (falls with Gravity, 8) and drifts toward
+    its target by the target's offset plus up to start_size either way. White smoke (2) is smokePuff at GREY75 (about
+    0.5 near the eye), black smoke one of smokePuffblack1-5; both roll. Drawn within cg_particleDist 1024. RTCW frees
+    target_smoke outside single player. ponytail: GREY75's distance darkening and the frame-rate dependent roll
+    (8 degrees a frame at most, taken at 60 fps) are fixed."""
+    for r in audit:
+        if r.get('classname')=='props_sparks' and r.get('status')=='omitted' and not getattr(rules,'SMOKE_IN_MP',False):
+            r['reason']='props_sparks: no sparks in the game (Psparks_think is compiled out; nothing sends EV_SPARKS)'
+    rows={r['entity']:r for r in audit if r.get('classname')=='target_smoke' and r.get('status')=='omitted' and r.get('reason','').startswith('world/control')}
+    if not rows:return None,[],[]
+    templates,batches,emitters,missing=[],{},[],[]
+    for serial,row in rows.items():
+        e=things[serial];flags=int(number(e,'spawnflags'))
+        if game.section=='mp' and not getattr(rules,'SMOKE_IN_MP',False):row['reason']='target_smoke: freed outside single player (SP_target_smoke)';continue
+        if not flags&4:row['reason']='target_smoke without SmokeON: puffs only once used';continue
+        if flags&16:row['reason']='target_smoke STEAM: casing steam puff not reconstructed';continue
+        life=number(e,'time') or 5000;fade=number(e,'duration') or 2000
+        if life<fade:life=fade+100
+        start,end=number(e,'start_size') or 24,number(e,'end_size') or 96;rise=number(e,'wait') or 50
+        target=next((t for t in things if e.get('target') and t.get('targetname')==e['target']),None)
+        drift=[b-a for a,b in zip(vector(e.get('origin')),vector(target.get('origin')))] if target else [0,0,1]
+        rise=(-1 if flags&8 else 1)*rise
+        names=['smokepuff'] if flags&2 else [f'smokepuffblack{i}' for i in range(1,6)]
+        for name in names:
+            if name not in batches:
+                shader,unresolved,_=rules.describe(game,name,textures);missing+=unresolved
+                stage=next((s for s in shader.get('stages',[]) if s.get('map')),None)
+                batches[name]=stage
+        names=[n for n in names if batches[n]]
+        if not names:row['reason']='target_smoke: smoke shaders not in the game files';continue
+        grey=.5 if flags&2 else 1
+        templates.append(dict(count=[1,1],life=[life/1000]*2,origin=[[0,0,0],[0,0,0]],
+            velocity=[[drift[0]-start,drift[1]-start,rise],[drift[0]+start,drift[1]+start,rise]],worldOrigin=True,worldVelocity=True,
+            rotation=[0,0],spin=[-48,42],cullRange=1024,size=dict(start=[start,start],end=[end,end],curve=dict(linear=True)),
+            alpha=dict(start=[1,1],end=[0,0],curve=dict(kind='nonlinear',parm=100*fade/life)),rgb=dict(start=[[grey]*3]*2),
+            alphaFadesRgb=False))
+        for k,name in enumerate(names):
+            emitters.append(dict(entity=serial,origin=vector(e.get('origin')),forward=[1,0,0],right=[0,-1,0],template=len(templates)-1,
+                period=max(number(e,'delay') or 100,1)/1000,batch=name,**({'share':[k,len(names)]} if len(names)>1 else {})))
+        row.update(status='drawn',reason='target_smoke puffs (CG_ParticleSmoke)')
+    if not emitters:return None,missing,[]
+    return dict(templates=templates,batches={k:v for k,v in batches.items() if v},emitters=emitters),missing,[]
+
+
 def sun(game,shaders,textures,rules):
     """RB_DrawSun's direction and shader, or None: drawn where a used shader names a sunshader (RTCW always draws
     'sun', ET the shader named); the direction is the last q3map_sun's (ParseShader), else tr_bsp's default."""
@@ -826,6 +873,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     if hasattr(rules,'place_entities'):
         placed,item_models,audit,extra_missing,extra_limits=rules.place_entities(game,things,states,collision,output,textures,model_textures)
         unresolved+=extra_missing;limits.update(extra_limits)
+    effects['particles'],missing,notes=smoke_particles(game,things,audit,textures,rules);unresolved+=missing;limits.update(notes)
     views=rules.viewpoints(things,collision,game.section)
     if not views:limits.add('map has no player start; camera at world origin')
     for v in views:
