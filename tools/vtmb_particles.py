@@ -222,8 +222,10 @@ MOTION = ORDER[9:]
 WORLD_ATTACH = ('', '0', '1', '-1')
 FOREVER = 600.  # seconds: a particle living longer than this (city lights: 5000 frames at 1 fps) stays for the visit
 # Fill cap (units^2): a spawn whose particles alive x their largest sprite area exceeds it is thinned to it, each kept
-# particle brighter by the same factor (`gain`). Only burning-room effects reach it (firebrush 2,000 flames a second,
-# flare2 glows of 200-400 units: 6.2 ms in la_malkavian_5 uncapped).
+# particle brighter (rgb x gain) and more covering (1 - (1 - alpha)^gain) by the same factor. It mostly takes the
+# burning mansions' firebrush (2,000 flames and 100 glows of 200-400 units a second: 6.2 ms in la_malkavian_5
+# uncapped) and the ending sequences' fire; a few mists and smokes (hw_warrens, ch_temple_2, la_plaguebearer_sewer_1)
+# are thinned up to 4.4x and still read as soft mist.
 # ponytail: one cap for every view; a view-dependent budget would keep more of them from afar.
 FILL = 250000.
 
