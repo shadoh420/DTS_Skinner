@@ -78,4 +78,14 @@ assert.ok(!mixed.meshes[0].material.vertexShader.includes('uKeys') && mixed.mesh
 const troikaData = mixed.meshes[1].geometry.attributes.iOrigin.data.array;
 assert.equal(troikaData[3], 0, 'the only troika template starts the stream');
 assert.equal(troikaData[15], -64, 'the floor below a colliding emitter rides in iTime.w');
+// Rain around the player: follow and outdoors bits; the eye's rain leaf (options.outdoors, game axes) gates it.
+assert.equal(P.packTroika({...flame, follow: true, outdoors: true})[4], 2 + 8 + 32 + 64);
+const rain = P.create(THREE, [{...flame, follow: true, outdoors: true}], [{...emitter, batch: 'b'}], {b: {texture}},
+  {outdoors: {root: 0, nodes: [[0, 0, 1, 100, -2, -1]]}});  // above z 100 is a rain leaf (1), below is not (0)
+const outdoors = rain.meshes[0].material.uniforms.uOutdoors;
+rain.update(0, [0, 0, 150]);
+assert.equal(outdoors.value, 1);
+rain.update(0, [0, 0, 50]);
+assert.equal(outdoors.value, 0);
+assert.equal(system.meshes[0].material.uniforms.uOutdoors.value, 1, 'without rain leaves nothing is gated');
 console.log('particles ok');

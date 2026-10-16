@@ -220,6 +220,13 @@ ORDER = ('red', 'green', 'blue', 'color', 'mask', 'width', 'height', 'size', 'ro
          'phi_speed', 'x_speed', 'y_speed', 'z_speed', 'elevation_speed')
 MOTION = ORDER[9:]
 WORLD_ATTACH = ('', '0', '1', '-1')
+# client.dll's C_EnvParticle player-box callback (attach_type 10 and 11, near 0x100b02c0): children spawn in a box of
+# +-m_fSpawnBounds about the local player's origin (the feet), which 11 starts at the feet; spawnbounds defaults to 512
+# (vampire.dll, CEnvParticle; `bounds` is not one of its keys). static/particles.js puts the feet 64 below the page's eye.
+PLAYER_BOX = ('10', '11')
+# engine.dll kills a precipitation definition's particles in BSP leaves whose contents lack 0x800 (near 0x200d3f10;
+# the cvar particles_disable_cull turns that off): the rain leaves Troika's compiler marks.
+RAIN_CONTENTS = 0x800
 FOREVER = 600.  # seconds: a particle living longer than this (city lights: 5000 frames at 1 fps) stays for the visit
 # Fill cap (units^2): a spawn whose particles alive x their largest sprite area exceeds it is thinned to it, each kept
 # particle brighter (rgb x gain) and more covering (1 - (1 - alpha)^gain) by the same factor. It mostly takes the
@@ -285,14 +292,20 @@ def _template(parent, spawn, aspect, scale, box=None, burst=None):
     return t
 
 
-def emitters(entities, read, bounds, floor, sprite_aspect):
+def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rain_leaves=True):
     """[(sprite, template, emitter)] for static/particles.js (troika model; map units and axes) and counts by outcome.
     read(asset) -> bytes | None; bounds(entity) -> brush (mins, maxs) | None; floor(origin) -> the world's height below
     or None; sprite_aspect(sprite) -> [half width, half height] (longer side 0.5) or None when the TGA is missing.
 
     Drawn: env_particle that starts active, not parented (parentname), at a place in the world (WORLD_ATTACH: the
-    unparented attach types the maps give fires, stars and drips; 11 is rain around the player, others are bones);
-    func_particle that starts active, its children spread over the brush's box (C_EnvParticle's box callback: inferred).
+    unparented attach types the maps give fires, stars and drips; 10 and 11 are around the player, others are bones);
+    func_particle that starts active, its children spread over the brush's box (C_EnvParticle's box callback, client.dll);
+    env_particle around the player (PLAYER_BOX: Santa Monica's rain), as a template that `follow`s the page's eye and, for a
+    precipitation definition, draws only while the eye is in a rain leaf (`outdoors`; the map's import gives the leaves),
+    skipped when the map has none (rain_leaves False: the engine culls all of it). Its spawns that the fill cap would
+    thin below 1% (rainfog: 500-unit haze sprites) are skipped: brightened 100x and more, they would be a blob at the eye.
+    rate_scales: targetname -> the SetRateScale an enabled logic_timer sends, for an emitter whose ramp_scale is 0
+    (sm_hub_1's rain comes on after 3-5 minutes; drawn as if it had).
     Axes: the entity's forward, left and up (inferred). A looping definition spawns its children at its rate (x
     ramp_scale, vampire.dll's rate scale) or its multi-key bursts every life. A definition that plays once (timers) only
     keeps what outlives it: looping children that do not move and themselves spawn (WaterDrops_Timer ->
@@ -314,8 +327,10 @@ def emitters(entities, read, bounds, floor, sprite_aspect):
         if e.get('parentname'):
             count(f'{cls}: follows a parent entity')
             continue
-        if cls == 'env_particle' and e.get('attach_type', '0').strip() not in WORLD_ATTACH:
-            count(f'env_particle: attach_type {e["attach_type"]} (' + ('follows the player' if e['attach_type'].strip() == '11' else 'attached') + ')')
+        attach = e.get('attach_type', '0').strip()
+        follow = cls == 'env_particle' and attach in PLAYER_BOX
+        if cls == 'env_particle' and attach not in WORLD_ATTACH and not follow:
+            count(f'env_particle: attach_type {attach} (attached)')
             continue
         box = None
         if cls == 'func_particle':
@@ -326,6 +341,8 @@ def emitters(entities, read, bounds, floor, sprite_aspect):
             box = [[float(v) for v in b[0]], [float(v) for v in b[1]]]
         ramp = _atof(e.get('ramp_scale', '1'), 1.)
         if ramp <= 0:
+            ramp = (rate_scales or {}).get(e.get('targetname', '').lower(), 0.)
+        if ramp <= 0:
             count(f'{cls}: ramp_scale 0 (nothing spawns until an input)')
             continue
         root = load(e.get('particle_definition', ''), read, cache)
@@ -333,7 +350,13 @@ def emitters(entities, read, bounds, floor, sprite_aspect):
             count(f'{cls}: definition missing')
             continue
         origin = [float(v) for v in (e.get('origin', '0 0 0').split() + ['0', '0', '0'])[:3]]
-        if box is not None:
+        if follow:
+            if root['precipitation'] and not rain_leaves:
+                count('env_particle: rain around the player in a map without rain leaves (the engine culls it)')
+                continue
+            b = _atof(e.get('spawnbounds', '512'), 512.)
+            box = [[-b, -b, 0. if attach == '11' else -b], [b, b, b]]
+        elif box is not None:
             middle = [(lo + hi) / 2 for lo, hi in zip(*box)]
             box, origin = [[lo - m for lo, m in zip(box[0], middle)], [hi - m for hi, m in zip(box[1], middle)]], middle
         forward, right = _axes([float(v) for v in (e.get('angles', '0 0 0').split() + ['0', '0', '0'])[:3]])
@@ -389,15 +412,23 @@ def emitters(entities, read, bounds, floor, sprite_aspect):
                     ident = (parent['name'], n, ramp, burst_key, None if box is None else id(e))
                     if ident not in templates:
                         templates[ident] = _template(parent, s, aspect, ramp, box, burst_key)
+                        if follow:
+                            templates[ident].update(follow=True, outdoors=root['precipitation'])
                     template = templates[ident]
+                    if follow and template.get('thin', 1) < .01:
+                        count('haze around the player that the fill cap would thin below 1% (deferred)')
+                        continue
                     if burst_key is None:
                         period = 1 / ((template['rateMax'] or max(template['tracks'][16][0][2], 1e-6)) * template.get('thin', 1))
+                        if follow and period < .01:  # particles.js fires an emitter at most every 0.01 s: rain comes in tens
+                            template['count'] = math.ceil(.01 / period - 1e-9)
+                            period *= template['count']
                     else:
                         period = 1e6 if template['loop'] else template['parentLife']
                     emitter = dict(origin=at, forward=axes[0], right=axes[1], period=period)
                     if template['loop'] and burst_key is not None:
                         emitter['offset'] = -1000.  # there since the map started: already 1000 s old
-                    if c['collide']:
+                    if c['collide'] and not follow:  # a follower's floor is the page's feet
                         below = floor(at)
                         if below is not None:
                             emitter['floor'] = below
