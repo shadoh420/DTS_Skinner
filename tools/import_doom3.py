@@ -48,6 +48,11 @@ def category(name, variant='model'):
 
 def idle_animation(entity, model):
     anims=model.get('anims',{})
+    # idAnimated::Spawn sets the joints to frame 1 of start_anim, else anim (anim1 with num_anims):
+    # cinematic props such as admin's impdoorbreak doors are only in place at that frame, not in the bind pose.
+    if entity.get('spawnclass')=='idAnimated':
+        name=entity.get('start_anim') or entity.get('anim1' if entity.get('num_anims','0') not in ('','0') else 'anim','')
+        if name.lower() in anims: return anims[name.lower()]
     requested=entity.get('anim','idle').lower()
     # Do not turn an entity's attack/open animation into the browser's resting pose.
     if requested.startswith('idle') and requested in anims: return anims[requested]
