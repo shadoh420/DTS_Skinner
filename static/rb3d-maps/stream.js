@@ -228,28 +228,23 @@ rbFog *= rbW;
       }
     } catch (error) { dispose(mission); throw error; }
     await selectRegion(map.region, false);
-    // The Glide sky's horizon cloud band (004B40F0, 004B41E0, 004B4440): sixteen upright panels π/8 apart on a ring of
-    // radius 2500 × 8 native units round the eye, each centred 2500 units above it, one chord wide plus 2% and 2500
-    // units tall (5000 in weathers 3-5), showing tile n mod 8 of hz-cld<weather> (four across, two down, from v .01).
-    // The ring moves with the eye, never turns, and sits behind the world.
+    // The Glide sky (render mode 4; the software renderer's tiled deck is not drawn there). Native (x, y, z up) maps to
+    // the viewer as (-x, z, y), as the terrain chunks and placements do.
+    const native = .0381, at = (x, y, z) => [-x * native, z * native, y * native];
+    let skyWeather = null;
+    // The horizon cloud band (004B40F0, 004B41E0, 004B4440): sixteen upright panels π/8 apart on a ring of radius
+    // 2500 × 8 native units round the eye, each centred 2500 units above it, one chord wide plus 2% and 2500 units tall
+    // (5000 in weathers 3-5), showing tile n mod 8 of hz-cld<weather> (four across, two down, from v .01). The ring
+    // moves with the eye, never turns, and sits behind the world.
     const ring = new THREE.Group();
-    ring.renderOrder = -3;
-    scene.add(ring);
-    let ringWeather = null;
     async function buildRing(weather) {
-      ringWeather = weather;
-      const file = map.skyRing && (map.skyRing[weather] || map.skyRing[0]);
-      dispose(ring);
-      ring.clear();
-      scene.add(ring);
+      const file = map.sky?.ring?.[weather] || map.sky?.ring?.[0];
       if (!file) return;
-      const map0 = await texture(file);
-      if (ringWeather !== weather) { releaseTexture(file); return; }
-      map0.magFilter = map0.minFilter = THREE.LinearFilter;
-      const native = .0381, radius = 2500 * 8, half = Math.sin(Math.PI / 16) * radius * 1.02;
+      const image = await texture(file);
+      if (skyWeather !== weather) { releaseTexture(file); return; }
+      image.magFilter = image.minFilter = THREE.LinearFilter;
+      const radius = 2500 * 8, half = Math.sin(Math.PI / 16) * radius * 1.02;
       const height = (weather >= 3 ? 2 : 1) * 2500, centre = 2500;
-      // Native (x, y, z up) to the viewer (-x, z, y), as the terrain chunks and placements.
-      const at = (x, y, z) => [-x * native, z * native, y * native];
       const positions = [], uvs = [], indices = [];
       for (let n = 0; n < 16; n++) {
         const angle = n * Math.PI / 8, c = Math.cos(angle), s = Math.sin(angle);
@@ -265,17 +260,75 @@ rbFog *= rbW;
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       geometry.setIndex(indices);
-      const mat = new THREE.MeshBasicMaterial({map: map0, side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false, fog: false});
+      const mat = new THREE.MeshBasicMaterial({map: image, side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false, fog: false});
       mat.userData.texture = file;
       const mesh = new THREE.Mesh(geometry, mat);
       mesh.renderOrder = -3;
       mesh.frustumCulled = false;
       ring.add(mesh);
     }
+    // Cloud sheets (004BDA46 by weather, 004BD710 per layer, 004BDFD0): flat csheet<weather> squares 80000 native units
+    // across at each layer's height (weather 1: 160000; 2: 120000, 64000; 3-5: 120000, 80000, 56000), laid out over a
+    // 4 x 4 grid of 131072-unit cells from three cells below the eye's cell. Each cell draws its own random stream: no
+    // cloud when the first number is at most .25 (in weathers below 3), else one, two or three (next number below .75,
+    // below .95, else); the first at the cell corner, each further one moved up to ±65536 across and ±20000 up from the
+    // last; each turned a random yaw. ponytail: the game seeds each cell's stream from a terrain/weather field at the
+    // cell (0043FD10, not decoded); this seeds it from the cell and layer, so the layout is the game's kind, not its copy.
+    const LAYERS = {1: [160000], 2: [120000, 64000], 3: [120000, 80000, 56000], 4: [120000, 80000, 56000], 5: [120000, 80000, 56000]};
+    const clouds = new THREE.Group();
+    let cloudMaterial = null, cloudCell = '';
+    function stream(a, b, c) {  // 004BD640 seeds, 004BD5A0 draws: three congruential streams summed mod 65536.
+      let s1 = a % 0x8003, s2 = b % 0x800b, s3 = c % 0x800f;
+      return () => {
+        s1 = 179 * s1 % 0x8003; s2 = 183 * s2 % 0x800b; s3 = 182 * s3 % 0x800f;
+        return Math.abs(s1 + s2 + s3) % 65536 / 65536;
+      };
+    }
+    const sheet = new THREE.PlaneGeometry(80000 * native, 80000 * native).rotateX(-Math.PI / 2);
+    function buildClouds(weather, x, y) {
+      clouds.clear();
+      if (!cloudMaterial || !LAYERS[weather]) return;
+      const baseX = (Math.trunc(x) & ~0x1ffff) - 0x30000, baseY = (Math.trunc(y) & ~0x1ffff) - 0x30000;
+      for (const height of LAYERS[weather]) for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+        const cellX = baseX + j * 0x20000, cellY = baseY + i * 0x20000;
+        const random = stream(Math.abs(cellX >> 17) + (height >> 10) + 1, Math.abs(cellY >> 17) + 1, height + 1);
+        if (random() <= .25 && weather < 3) continue;
+        const pick = random(), count = pick < .75 ? 1 : pick < .95 ? 2 : 3;
+        let px = cellX, py = cellY, pz = height;
+        for (let n = 0; n < count; n++) {
+          if (n) { px += random() * 131072 - 65536; py += random() * 131072 - 65536; pz += random() * 40000 - 20000; }
+          const mesh = new THREE.Mesh(sheet, cloudMaterial);
+          mesh.position.fromArray(at(px, py, pz));
+          mesh.rotation.y = random() * 2 * Math.PI;
+          clouds.add(mesh);
+        }
+      }
+    }
+    async function buildSky(weather) {
+      skyWeather = weather;
+      if (!map.sky) return;  // Packs imported before the sky.
+      dispose(ring); ring.clear(); scene.add(ring);
+      clouds.clear(); scene.add(clouds);
+      if (cloudMaterial) { releaseTexture(cloudMaterial.userData.texture); cloudMaterial.dispose(); cloudMaterial = null; }
+      cloudCell = '';
+      buildRing(weather);
+      const file = map.sky?.clouds?.[weather];
+      if (!file) return;
+      const image = await texture(file);
+      if (skyWeather !== weather) { releaseTexture(file); return; }
+      image.magFilter = image.minFilter = THREE.LinearFilter;
+      cloudMaterial = new THREE.MeshBasicMaterial({map: image, side: THREE.DoubleSide, transparent: true, depthWrite: false});
+      cloudMaterial.userData.texture = file;
+    }
     return delta => {
       environment();
-      if (lighting?.weather !== ringWeather) buildRing(lighting?.weather ?? 0);
+      const weather = lighting?.weather ?? 0;
+      if (weather !== skyWeather) buildSky(weather);
       ring.position.copy(camera.position);
+      // The cloud grid follows the eye's cell: rebuilt when it changes or the sheets' texture has arrived.
+      const x = -camera.position.x / native, y = camera.position.z / native;
+      const cell = `${Math.trunc(x) >> 17},${Math.trunc(y) >> 17},${Boolean(cloudMaterial)}`;
+      if (cell !== cloudCell) { cloudCell = cell; buildClouds(weather, x, y); }
       if (playerMesh) {
         const e = playerMesh.matrix.elements;
         playerMesh.visible = Math.hypot(camera.position.x - e[12], camera.position.y - e[13], camera.position.z - e[14]) > 8;

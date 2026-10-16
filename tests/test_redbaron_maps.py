@@ -4,9 +4,12 @@ Optional bounded install checks: RB3D_INSTALL_TESTS=1, optionally RB3D_INSTALL=.
 """
 import json
 import math
+import io
 import os
 from pathlib import Path
+import shutil
 import struct
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -421,6 +424,36 @@ class RedBaronMapsTest(unittest.TestCase):
             self.assertEqual(result['briefing'], 'Protect the airfield.')
             self.assertEqual(result['viewpoints'][0][13], 300 * rb.SCALE)
             self.assertEqual(result['objects'][0]['matrix'][12], -100 * rb.SCALE)
+
+    def test_sky_textures_carry_their_alpha_and_fall_back_to_the_clear_band(self):
+        from PIL import Image
+
+        def bmp(colour, mode='P'):
+            image = Image.new(mode, (4, 2), colour)
+            if mode == 'P':
+                image.putpalette([0, 0, 0, 200, 210, 220] + [0] * 762)
+            out = io.BytesIO()
+            image.save(out, format='BMP')
+            return out.getvalue()
+
+        files = {'hz-cld0.bmp': bmp(1), 'hz-cld0.aph': bmp(128, 'L'), 'csheet1.bmp': bmp(1), 'csheet1.aph': bmp(255, 'L')}
+        with tempfile.TemporaryDirectory() as temp:
+            assets = rb.Assets.__new__(rb.Assets)
+            assets.files, assets.output = {name: lambda data=data: data for name, data in files.items()}, Path(temp)
+            sky = assets.sky()
+            # 004B41E0 falls back to hz-cld0; weather 0 has no cloud sheets (004BDA46), and missing ones are None.
+            self.assertEqual(sky['ring'], [sky['ring'][0]] * 6)
+            self.assertEqual((sky['clouds'][0], sky['clouds'][2]), (None, None))
+            with Image.open(Path(temp) / 'textures' / sky['ring'][0]) as image:
+                self.assertEqual(image.getpixel((0, 0)), (200, 210, 220, 128))
+            self.assertIs(assets.sky(), sky)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is not installed')
+    def test_page_scripts(self):
+        """static/rb3d-maps/stream.js: streaming, native light and haze, and the Glide sky."""
+        for name in ('test_redbaron_maps_stream.cjs', 'test_redbaron_maps_sky.cjs'):
+            run = subprocess.run(['node', str(Path(__file__).with_name(name))], capture_output=True, text=True, timeout=300)
+            self.assertEqual(run.returncode, 0, name + run.stdout[-2000:] + run.stderr[-2000:])
 
     def test_output_cannot_touch_install(self):
         with tempfile.TemporaryDirectory() as temp:
