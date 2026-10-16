@@ -207,7 +207,7 @@ class Q3MapTests(unittest.TestCase):
             self.assertEqual([shader and shader['name'] for shader in scene['shaders']], ['textures/test/glow', 'textures/test/absent', None, None])
             self.assertEqual(scene['viewpoints'], [{'origin': [8, 16, 50], 'pitch': 0, 'yaw': 90}])
             self.assertEqual(scene['models'], [{'model': 1, 'origin': [1, 2, 3]}])
-            self.assertEqual(scene['limits'], ['1 light flares'])
+            self.assertEqual(scene['limits'], ['1 light flares, which CNQ3 does not draw either (ParseFlare)'])
             self.assertEqual(scene['items'], [
                 {'kind': 'weapon', 'origin': [0, 0, 0], 'models': ['models/weapons2/railgun/railgun.md3'], 'suspended': False},
                 {'kind': 'health', 'origin': [4, 5, 6], 'models': ['models/powerups/health/medium_cross.md3'], 'suspended': True}])

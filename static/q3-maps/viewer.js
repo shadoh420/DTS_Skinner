@@ -53,7 +53,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!response.ok) throw new Error(`${url} (${response.status})`);
     return response;
   }
-  const loader = new THREE.TextureLoader(), textures = new Map();
+  // Images are decoded as the game uploads them, colour kept where alpha is 0: an <img> loses it to the browser's
+  // premultiplying, which blacks out a blend that reads the colour of a transparent texel (JA's alphasquare cloud mask).
+  const loader = new THREE.ImageBitmapLoader().setOptions({imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none'}), textures = new Map();
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   white.needsUpdate = true;
   // CNQ3's default image, drawn where a shader cannot be built: dark grey with a red line along s, a green one
@@ -75,7 +77,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   function loadTexture(file, clamp, plain) {
     if (file === '$default') return Promise.resolve(fallback);
     const key = file + (clamp ? '|clamp' : '') + (plain ? '|plain' : '');
-    if (!textures.has(key)) textures.set(key, new Promise(resolve => loader.load(data + 'textures/' + file, texture => {
+    if (!textures.has(key)) textures.set(key, new Promise(resolve => loader.load(data + 'textures/' + file, bitmap => {
+      const texture = new THREE.Texture(bitmap);
+      texture.needsUpdate = true;
       texture.flipY = false;  // The game's t runs down the image, as the rows do without the flip.
       if (plain) { texture.generateMipmaps = false; texture.minFilter = THREE.LinearFilter; } else texture.anisotropy = 8;
       if (config.configureTexture) config.configureTexture(texture, map && map.lighting, plain);
@@ -97,7 +101,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Shader time and the camera in the game's axes, shared by every stage material.
   const uniforms = {uTime: {value: 0}, uView: {value: new THREE.Vector3()}, uForward: {value: new THREE.Vector3(1, 0, 0)},
-    uViewLeft: {value: new THREE.Vector3(0, 1, 0)}, uViewUp: {value: new THREE.Vector3(0, 0, 1)}};
+    uViewLeft: {value: new THREE.Vector3(0, 1, 0)}, uViewUp: {value: new THREE.Vector3(0, 0, 1)}, uTanFov: {value: 1}};
   const number = value => { const text = String(Number(value) || 0), float = /[.e]/.test(text) ? text : text + '.0'; return value < 0 ? `(${float})` : float; };
   const WAVES = {sin: 0, triangle: 1, square: 2, sawtooth: 3, inversesawtooth: 4};
   const waveCall = ([func, base, amplitude, phase, frequency]) => `wave(${WAVES[func] || 0}, ${[base, amplitude, phase, frequency].map(number).join(', ')})`;
@@ -152,6 +156,26 @@ window.addEventListener('DOMContentLoaded', async () => {
   // deformVertexes wave, move and bulge (RB_CalcDeformVertexes, RB_CalcMoveVertexes, RB_CalcBulgeVertexes), applied
   // as the game applies them: before the stages' texture coordinates and colours are worked out.
   const deform = shader => (shader.deforms || []).map(([kind, ...values]) => {
+    // A light flare drawn as id's renderer draws it (RB_AddFlare, RB_RenderFlare): a square r_flareSize 40 / 640 of
+    // the view's width (times the flare's scale) plus 8 / depth across either side of its middle, dimmed as the
+    // surface turns away. It is hidden where the game's test hides it: the view's depth more than `pull` in
+    // front of it (RB_TestFlare; the frame's depth test stands in for the read back), and for coronas past
+    // cg_coronafardist or outside the view cone (CG_Corona). A zero normal (a corona) never dims.
+    if (kind === 'flare') {
+      const [pull, cone, far] = values, cosine = cone === 'fov' ? 'inversesqrt(1. + uTanFov * uTanFov)' : number(cone);
+      return `{ vec3 toEye = uView - sprite.xyz; float dist = max(length(toEye), .001); toEye /= dist;
+        float ahead = -dot(toEye, uForward), facing = dot(normal, normal) > .5 ? dot(toEye, normal) : 1.;
+        float depth = max(dist * ahead, 1.), pulled = max(depth - ${number(pull)} * ahead, 1.);
+        float spread = (40. / 640. * sprite.w + 8. / depth) * 2. * pulled * uTanFov;
+        P = facing < 0. || ahead <= ${cosine} || dist > ${number(far)} ? uView - uForward
+          : sprite.xyz + toEye * ${number(pull)} + ((1. - 2. * uv.x) * uViewLeft + (1. - 2. * uv.y) * uViewUp) * spread;
+        vertexTint.rgb *= max(facing, 0.); N = -uForward; }`;
+    }
+    // Raven's flare surface (RB_SurfaceFlare): a card of its own shader 3 units out from the surface, 30 units
+    // (or the shader's portal range) across either side, shrinking nearer than 512, as bright as it faces the view.
+    if (kind === 'flarecard') return `if (sprite.w > 0.) { vec3 dir = sprite.xyz - uView; float dist = max(length(dir), .001);
+      vertexTint = vec4(vec3(abs(dot(dir / dist, normal))), 1.);
+      P = sprite.xyz + ((1. - 2. * uv.x) * uViewLeft + (1. - 2. * uv.y) * uViewUp) * max(sprite.w * min(dist / 512., 1.), 5.); N = -uForward; }`;
     // A vertex the import gave no sprite data (w 0) is left where it is.
     if (kind === 'autosprite') return 'if (sprite.w > 0.) { P = sprite.xyz + ((1. - 2. * uv.x) * uViewLeft + (1. - 2. * uv.y) * uViewUp) * sprite.w; N = -uForward; }';
     if (kind === 'autosprite2') return 'if (sprite.w != 0.) P = sprite.xyz + normalize(cross(spriteAxis, uForward)) * sprite.w;';
@@ -207,7 +231,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         vec3 diffuseLight(vec3 N) { return min(uAmbient + max(dot(N, uLightDir), 0.) * uDirected, 1.); }` : ''}
         uniform vec3 uView, uForward; attribute vec2 lm; attribute vec4 tint; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
         ${fog ? 'varying float vFogS, vFogT;' : ''}
-        ${(shader.deforms || []).some(([kind]) => kind.startsWith('autosprite')) ? 'attribute vec4 sprite; attribute vec3 spriteAxis; uniform vec3 uViewLeft, uViewUp;' : ''}
+        ${(shader.deforms || []).some(([kind]) => kind.startsWith('autosprite') || kind.startsWith('flare')) ? 'attribute vec4 sprite; attribute vec3 spriteAxis; uniform vec3 uViewLeft, uViewUp; uniform float uTanFov;' : ''}
         float specular(vec3 P, vec3 N) {  // RB_CalcSpecularAlpha, with the game's one fixed light.
           vec3 light = normalize(vec3(-960., 1980., 96.) - P), turned = N * 2. * dot(N, light) - light;
           float level = max(dot(turned, normalize(uView - P)), 0.);
@@ -217,14 +241,15 @@ window.addEventListener('DOMContentLoaded', async () => {
           // In the game's axes wherever the mesh stands: the world as it is, a pickup turned and lifted.
           vec4 placed = modelMatrix * vec4(position, 1.);
           vec3 facing = mat3(modelMatrix) * normal, P = vec3(placed.x, -placed.z, placed.y), N = normalize(vec3(facing.x, -facing.z, facing.y));
+          vec4 vertexTint = tint;
           ${deform(shader)}
           ${sky ? '' : st + ' vSt = st;'}
-          ${foliage ? 'vec4 vertexTint = tint; vFoliage = 1.;' + fade : ''}
-          vColor = ${foliage ? colour(stage).replace(/\btint\b/g, 'vertexTint') : colour(stage)};
+          ${foliage ? 'vFoliage = 1.;' + fade : ''}
+          vColor = ${colour(stage).replace(/\btint\b/g, 'vertexTint')};
           vDir = P - uView;
           ${fog ? fogVertex(fog, sky) : ''}
           gl_Position = projectionMatrix * viewMatrix * vec4(P.x, P.z, -P.y, 1.);
-          ${sky && skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''}
+          ${(sky || shader.atFar) && skyAtFarDepth ? 'gl_Position.z = gl_Position.w;' : ''}
         }`,
       fragmentShader: `${WAVE}
         ${foliage ? 'varying float vFoliage;' : ''}
@@ -314,7 +339,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Sprites (deformVertexes autosprite and autosprite2) keep, per vertex, what the deform needs: the quad's middle
     // and radius, or the middle of the vertex's short edge, its signed half length and the quad's long axis.
     const spriteOf = shader => shader && (shader.deforms || []).find(([kind]) => kind === 'autosprite' || kind === 'autosprite2')?.[0];
-    const sprites = map.shaders.some(spriteOf) ? [] : null, spriteAxes = [];
+    // Flare surfaces (type 4): id's renderer draws its flare shader at each (RB_SurfaceFlare), Raven a card of the
+    // surface's own shader; CNQ3, the Q3 page's engine, draws none (ParseFlare).
+    const flareMode = typeof config.flareFaces === 'function' ? config.flareFaces(map) : config.flareFaces, flares = [], flareShaders = new Map();
+    const sprites = map.shaders.some(spriteOf) || flareMode === 'world' ? [] : null, spriteAxes = [];
+    // The faces of each moving brush model, drawn under that mover's own group.
+    const moverOf = new Map();
+    (map.movers || []).forEach(({model}, index) => {
+      if (model > 0 && model < models.count) for (let face = int(models.at + model * 40 + 24), last = face + int(models.at + model * 40 + 28); face < last; face++) moverOf.set(face, index);
+    });
     // One vertex: position, texture st, lightmap st, normal, colour. Lightmap st is kept half a texel inside its
     // cell, which is what clamping did when each lightmap was a texture of its own.
     function emit(values, origin, lightmap, foliage = [0, 0, 0, 0], sprite = [0, 0, 0, 0], axis = [0, 0, 0]) {
@@ -342,12 +375,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     const none = [0, 0, 0];
     for (let face = 0; face < faces.count; face++) {
       const at = faces.at + face * 104, shader = int(at), type = int(at + 8), first = int(at + 12), count = int(at + 16);
+      const fog = map.fogs && map.fogs[int(at + 4)] ? int(at + 4) : -1;
+      if (type === 4 && flareMode) {
+        // ParseFlare: the middle in lightmapOrigin, the colour in lightmapVecs[0], the normal in lightmapVecs[2].
+        const [origin, colour, normal] = [48, 60, 84].map(offset => [0, 1, 2].map(axis => float(at + offset + axis * 4)));
+        if (flareMode === 'screen') { flares.push({origin, colour, normal}); continue; }
+        if (!map.shaders[shader] || !Math.hypot(...normal)) continue;  // A zero normal leaves the card black.
+        const key = shader + '|flare|' + fog;
+        if (!flareShaders.has(shader)) flareShaders.set(shader, {...map.shaders[shader], deforms: [...map.shaders[shader].deforms || [], ['flarecard']]});
+        if (!groups.has(key)) groups.set(key, {shader: flareShaders.get(shader), lit: false, fog, indices: []});
+        const base = positions.length / 3, middle = origin.map((value, axis) => value + 3 * normal[axis]);
+        const portal = (map.shaders[shader].stages || []).find(stage => stage.alphaGen?.[0] === 'portal');
+        for (let k = 0; k < 4; k++) emit([...middle, +(k === 1 || k === 2), +(k >= 2), 0, 0, ...normal, 255, 255, 255, 255], none, -1, undefined, [...middle, portal ? portal.alphaGen[1] : 30]);
+        groups.get(key).indices.push(...[0, 1, 3, 3, 1, 2].map(n => base + n));
+        continue;
+      }
       if (!map.shaders[shader] || type < 1 || type > 3 || first < 0 || first + count > vertices.count) continue;
       const lightmap = (external ? external.valid.includes(int(at + 28)) : int(at + 28) >= 0 && int(at + 28) < lightmaps.count) ? int(at + 28) : -1, origin = moved.get(face) || none;
-      const vertexLit = config.vertexLightmaps && int(at + 28) === -3;
-      const fog = map.fogs && map.fogs[int(at + 4)] ? int(at + 4) : -1;
-      const key = shader + (lightmap < 0 ? config.vertexLightmaps && !vertexLit ? '|unlit' : '|vertex' : '|lit') + '|' + fog;
-      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, fog, indices: [], ...(map.bspCull ? {ranges: []} : {})});
+      const vertexLit = config.vertexLightmaps && int(at + 28) === -3, mover = moverOf.get(face);
+      const key = shader + (lightmap < 0 ? config.vertexLightmaps && !vertexLit ? '|unlit' : '|vertex' : '|lit') + '|' + fog + (mover === undefined ? '' : '|m' + mover);
+      if (!groups.has(key)) groups.set(key, {shader: map.shaders[shader], lit: lightmap >= 0, vertexLit, fog, mover, indices: [], ...(map.bspCull ? {ranges: []} : {})});
       const indices = groups.get(key).indices, base = positions.length / 3;
       const rangeStart = indices.length;
       if (type === 2) {
@@ -429,7 +476,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       uv: new THREE.Float32BufferAttribute(uvs, 2), lm: new THREE.Float32BufferAttribute(lms, 2), tint: new THREE.Float32BufferAttribute(tints, 4)};
     if (config.foliage) attributes.foliageOrigin = new THREE.Float32BufferAttribute(foliageOrigins, 4);
     if (sprites) Object.assign(attributes, {sprite: new THREE.Float32BufferAttribute(sprites, 4), spriteAxis: new THREE.Float32BufferAttribute(spriteAxes, 3)});
-    return {atlas, attributes, groups: [...groups.values()], lightGrid};
+    const bounds = [0, 1, 2, 3, 4, 5].map(n => models.count ? float(models.at + n * 4) : 0);  // The world model's mins and maxs.
+    return {atlas, attributes, groups: [...groups.values()], lightGrid, flares, bounds};
   }
 
   // A model's light at a point, as R_SetupEntityLightingGrid and R_SetupEntityLighting work it out: the eight
@@ -542,7 +590,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // One mesh of each opaque surface, for dropping pickups to the floor. They are in no scene, so a ray meets them
   // in the game's own axes.
   const floors = [], floorMaterial = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
-  async function addGroup({shader, lit, vertexLit, fog, indices, ranges}, {atlas, attributes}, serial) {
+  async function addGroup({shader, lit, vertexLit, fog, mover, indices, ranges}, {atlas, attributes}, serial) {
+    const parent = mover === undefined ? root : movers[mover].holder;
     if (shader.sky && map.mapFog && map.mapFog.linear) return;  // Linear map fog hides the sky (RB_StageIteratorSky).
     const geometry = new THREE.BufferGeometry();
     Object.entries(attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
@@ -552,14 +601,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const index of indices) centre.expandByPoint(point.fromBufferAttribute(attributes.position, index));
     geometry.boundingSphere = centre.getBoundingSphere(new THREE.Sphere());
     // Until its textures arrive a surface is the green wireframe the T1 terrain shows while loading.
-    const placeholder = new THREE.Mesh(geometry, loading);
+    const placeholder = new THREE.Mesh(geometry, loading), meshes = [];
     root.add(placeholder);
     const add = (material, stage) => {
       const mesh = new THREE.Mesh(geometry, material);
+      meshes.push(mesh);
       if (shader.sky && skyAtFarDepth) mesh.frustumCulled = false;
       mesh.renderOrder = shader.sort * 100000 + serial * 16 + stage;  // By sort, then shader by shader, stage after stage.
       mesh.name = shader.name;
-      root.add(mesh);
+      parent.add(mesh);
     };
     {
       if (shader.sky && shader.sky.box) add(boxMaterial(await Promise.all(shader.sky.box.map(file => loadTexture(file, true, !config.skyMipmaps)))), 0);
@@ -570,6 +620,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       fogPasses(shader, fog).forEach((pass, n) => add(stageMaterial(shader, pass, white), materials.length + 2 + n));
     }
     root.remove(placeholder);
+    if (shader.sky) skyGeometries.push(geometry);
+    worldGroups.push({indices, ranges, meshes, sky: !!shader.sky, mover});
     if (shader.sort === 3 && !shader.sky) {
       let floorGeometry = geometry;
       if (map.bspCull) {
@@ -582,8 +634,220 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       floors.push(new THREE.Mesh(floorGeometry, floorMaterial));
     }
+    // Movers and flare cards are entities, not world leaves: no world culling.
+    if (!ranges || mover !== undefined) return;
     if (visibility) visibility.bind(geometry, ranges, shader);
     else if (config.bindWorldCull) config.bindWorldCull(map, geometry, ranges, shader);
+  }
+
+  // The sky portal (props_skyportal in RTCW, misc_skyportal in JA; CG_DrawSkyBoxPortal and RDF_SKYBOXPORTAL): the
+  // scene seen from the portal's origin, with the view's angles and field of view, is drawn first, sky and all; then
+  // the view draws everything but its sky over it. What the portal shows is fixed: the surfaces of the leaves its
+  // cluster can see, and the props, pickups and movers standing in them (G_PortalifyEntities). ponytail: the
+  // portal's own fog (fogcolor, fognear, fogfar) is not drawn.
+  const worldGroups = [];
+  let skyPortal = null;
+  function setupSkyPortal() {
+    const seen = map.skyPortal && map.bspCull && window.skinnerVisibility.clusterMask(map.bspCull, map.skyPortal.origin);
+    if (!seen) return;
+    const swaps = [], skies = [];
+    for (const {indices, ranges, meshes, sky, mover} of worldGroups) {
+      if (sky) { skies.push(...meshes); continue; }
+      if (mover !== undefined || !ranges) continue;
+      const kept = ranges.flatMap(([face, start, length]) => seen.mask[face] ? indices.slice(start, start + length) : []);
+      if (!kept.length) continue;
+      const geometry = new THREE.BufferGeometry(), centre = new THREE.Box3(), point = new THREE.Vector3(), main = meshes[0].geometry;
+      Object.entries(main.attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
+      geometry.setIndex(kept);
+      for (const index of kept) centre.expandByPoint(point.fromBufferAttribute(main.attributes.position, index));
+      geometry.boundingSphere = centre.getBoundingSphere(new THREE.Sphere());
+      swaps.push(...meshes.map(mesh => ({mesh, geometry, main})));
+    }
+    const shown = new Set([...swaps.map(swap => swap.mesh), ...skies]);
+    // Placed models and pickups by where they stand, movers by their origin.
+    root.children.forEach(child => {
+      const at = child.isMesh ? null : new THREE.Vector3().setFromMatrixPosition(child.matrixAutoUpdate ? child.matrix.compose(child.position, child.quaternion, child.scale) : child.matrix);
+      if (at && (at.lengthSq() ? seen.visible(at.toArray()) : false)) shown.add(child);
+    });
+    movers.forEach(({spec, holder}) => { if (seen.visible(spec.origin)) shown.add(holder); });
+    skyPortal = {swaps, skies, shown, camera: camera.clone(), eye: new THREE.Vector3(...map.skyPortal.origin)};
+  }
+  function drawSkyPortal() {
+    const {swaps, shown, camera: view, eye} = skyPortal, changed = [];
+    view.copy(camera);
+    view.position.set(eye.x, eye.z, -eye.y);
+    view.updateMatrixWorld();
+    uniforms.uView.value.copy(eye);
+    for (const swap of swaps) swap.mesh.geometry = swap.geometry;
+    // The portal's own set, whatever the view's culling (JA's distance cull) did to it this frame.
+    for (const child of root.children) if (child.visible !== shown.has(child)) { changed.push(child); child.visible = !child.visible; }
+    renderer.render(scene, view);
+    for (const child of changed) child.visible = !child.visible;
+    for (const swap of swaps) swap.mesh.geometry = swap.main;
+    uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
+  }
+
+  // Movers (g_mover.c): a moving brush model's surfaces hang under a group whose matrix carries them from the pose
+  // their faces were written in to where its motion has them now (BG_EvaluateTrajectory).
+  const movers = [], turned = new THREE.Matrix4();
+  const axisMatrix = (angles, into) => {  // AnglesToAxis, its forward, left and up as the columns.
+    const [p, y, r] = angles.map(THREE.MathUtils.degToRad), cp = Math.cos(p), sp = Math.sin(p), cy = Math.cos(y), sy = Math.sin(y), cr = Math.cos(r), sr = Math.sin(r);
+    return into.set(cp * cy, sr * sp * cy - cr * sy, cr * sp * cy + sr * sy, 0, cp * sy, sr * sp * sy + cr * cy, cr * sp * sy - sr * cy, 0, -sp, sr * cp, cr * cp, 0, 0, 0, 0, 1);
+  };
+  function alongPath({points, legs}, seconds) {  // Reached_Train: wait at a corner, then straight on to the next.
+    const total = legs.reduce((sum, leg) => sum + leg.wait + leg.duration, 0);
+    let time = total > 0 ? seconds % total : 0;
+    for (let i = 0; i < legs.length; i++) {
+      if (time < legs[i].wait) return points[i];
+      time -= legs[i].wait;
+      const to = points[(i + 1) % points.length], share = time / legs[i].duration;
+      if (time < legs[i].duration) return points[i].map((value, axis) => value + (to[axis] - value) * share);
+      time -= legs[i].duration;
+    }
+    return points[0];
+  }
+  function placeMover({spec, holder}, seconds) {
+    const wave = spec.period > 0 ? Math.sin(2 * Math.PI * (seconds / spec.period - spec.phase)) : 0;
+    const origin = spec.type === 'sine' ? spec.origin.map((value, axis) => value + spec.delta[axis] * wave) : spec.type === 'path' ? alongPath(spec, seconds) : spec.origin;
+    const angles = spec.type === 'spin' ? spec.angles.map((value, axis) => value + spec.rate[axis] * seconds)
+      : spec.type === 'swing' ? [spec.angles[0], spec.angles[1], spec.angles[2] + spec.amplitude * wave] : spec.angles;
+    holder.matrix.makeTranslation(...spec.base.origin.map(value => -value))
+      .premultiply(axisMatrix(spec.base.angles, turned).transpose()).premultiply(axisMatrix(angles, turned))
+      .premultiply(turned.makeTranslation(...origin));
+    holder.matrixWorldNeedsUpdate = true;
+  }
+
+  // Quads that a deform places each frame (flares and coronas about their middles), or set out once (the sun).
+  function quads(list, corners = null) {
+    const geometry = new THREE.BufferGeometry(), set = (name, size, values) => geometry.setAttribute(name, new THREE.Float32BufferAttribute(values, size));
+    const each = make => list.flatMap(item => [0, 1, 2, 3].flatMap(k => make(item, k)));
+    set('position', 3, each((item, k) => corners ? corners[k] : item.middle));
+    set('sprite', 4, each(item => [...item.middle, item.size]));
+    set('normal', 3, each(item => item.normal || [0, 0, 0]));
+    set('tint', 4, each(item => [...item.colour, 1]));
+    set('uv', 2, each((item, k) => [+(k === 1 || k === 2), +(k >= 2)]));  // RB_AddQuadStamp's corners.
+    geometry.setIndex(list.flatMap((_, n) => [0, 1, 3, 3, 1, 2].map(k => n * 4 + k)));
+    return geometry;
+  }
+  async function addQuads(shader, geometry, renderOrder) {
+    return (await stageMaterials(shader, shader.stages || [])).filter(Boolean).map((material, stage) => {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = renderOrder + stage;
+      root.add(mesh);
+      return mesh;
+    });
+  }
+  // id's flares (r_flares 1 in RTCW and ET): flare surfaces, which pass the depth test up to 24 units behind what
+  // is in front of them, and coronas, which need a clear line (CG_Corona's trace), each drawn with the flare shader
+  // after everything else (RB_RenderFlares). ponytail: a flare is clipped where something covers part of it
+  // rather than shown or hidden whole, and comes and goes at once instead of over r_flareFade's fifth of a second.
+  async function addFlares(faces) {
+    if (!map.flareShader) return;
+    const identity = map.lighting ? map.lighting.identityLight : .5;
+    const scaled = colour => colour.map(value => value * identity);  // RB_RenderFlare: the colour × identity light.
+    if (faces.length) await addQuads({...map.flareShader, deforms: [['flare', 24, 0, 1e9]]},
+      quads(faces.map(({origin, colour, normal}) => ({middle: origin, size: 1, colour: scaled(colour), normal}))), 1e9);
+    if ((map.coronas || []).length) await addQuads({...map.flareShader, deforms: [['flare', 1, config.coronaCone ?? .6, 1536]]},
+      quads(map.coronas.map(({origin, colour, scale}) => ({middle: origin, size: scale, colour: scaled(colour)}))), 1e9 + 10);
+  }
+  // The sun (RB_DrawSun, r_drawSun 1): the sun shader on a square a fifth of its distance across either side, out
+  // along the sky's q3map_sun direction, at the far end of depth, so that only the sky lies behind it.
+  let sun = [];
+  async function addSun() {
+    if (!map.sun?.shader) return;
+    const toward = new THREE.Vector3(...map.sun.direction).normalize(), distance = camera.far / 1.75;
+    // PerpendicularVector: the axis least along the direction, made square to it.
+    const least = [0, 1, 2].reduce((best, axis) => Math.abs(toward.getComponent(axis)) < Math.abs(toward.getComponent(best)) ? axis : best, 0);
+    const left = new THREE.Vector3().setComponent(least, 1).addScaledVector(toward, -toward.getComponent(least)).normalize();
+    const up = new THREE.Vector3().crossVectors(toward, left), middle = toward.clone().multiplyScalar(distance);
+    const corner = (a, b) => middle.clone().addScaledVector(left, a * .2 * distance).addScaledVector(up, b * .2 * distance).toArray();
+    sun = await addQuads({...map.sun.shader, atFar: true}, quads([{middle: middle.toArray(), size: 0, colour: [1, 1, 1], normal: toward.clone().negate().toArray()}],
+      [corner(1, 1), corner(-1, 1), corner(-1, -1), corner(1, -1)]), 2 * 100000 + 99990);  // After the sky (sort 2).
+  }
+
+  // Rain and snow (the import's map.weather). Where it falls comes from two height maps drawn from above once, as ET
+  // reads its trace map (CG_GenerateTracemap): the sky's height over each spot and the highest other surface there,
+  // the ground. A drop falls between the two, ET's way, within 1000 units of the eye (MAX_ATMOSPHERIC_DISTANCE), or
+  // in its own column (RTCW's misc_snow). ponytail: Raven's outside brushes and weather zones are taken to be wherever
+  // the sky is open; a drop is a line, a flake a point.
+  const skyGeometries = [], falls = [];
+  let lastFall = 0;
+  function heightMap(geometries, [minX, minY, minZ, maxX, maxY, maxZ], size) {
+    const target = new THREE.WebGLRenderTarget(size, size, {type: THREE.FloatType}), heights = new Float32Array(size * size * 4);
+    const top = new THREE.Scene(), turned = new THREE.Group(), view = new THREE.OrthographicCamera(-(maxX - minX) / 2, (maxX - minX) / 2, (maxY - minY) / 2, -(maxY - minY) / 2, 1, maxZ - minZ + 2000);
+    const material = new THREE.ShaderMaterial({side: THREE.DoubleSide,
+      vertexShader: 'varying float z; void main() { z = position.z; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+      fragmentShader: 'varying float z; void main() { gl_FragColor = vec4(z, 1., 0., 1.); }'});
+    turned.rotation.x = -Math.PI / 2;
+    top.add(turned);
+    for (const geometry of geometries) turned.add(Object.assign(new THREE.Mesh(geometry, material), {frustumCulled: false}));
+    view.position.set((minX + maxX) / 2, maxZ + 1000, -(minY + maxY) / 2);  // Above the world, looking down with game +y up.
+    view.up.set(0, 0, -1);
+    view.lookAt((minX + maxX) / 2, 0, -(minY + maxY) / 2);
+    renderer.setRenderTarget(target);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear();
+    renderer.render(top, view);
+    renderer.readRenderTargetPixels(target, 0, 0, size, size, heights);
+    renderer.setRenderTarget(null);
+    target.dispose();
+    material.dispose();
+    // The height at a spot, or null where nothing lies under it.
+    return (x, y) => {
+      const at = (Math.min(Math.max(Math.floor((y - minY) / (maxY - minY) * size), 0), size - 1) * size + Math.min(Math.max(Math.floor((x - minX) / (maxX - minX) * size), 0), size - 1)) * 4;
+      return heights[at + 1] ? heights[at] : null;
+    };
+  }
+  function addWeather(specs, bounds) {
+    const clear = renderer.getClearColor(new THREE.Color()), alpha = renderer.getClearAlpha();
+    const ground = heightMap(floors.map(mesh => mesh.geometry), bounds, 512), sky = heightMap(skyGeometries, bounds, 512);
+    renderer.setClearColor(clear, alpha);
+    const identity = map.lighting ? map.lighting.identityLight : .5;
+    for (const {type, count, speed, length, wind, column} of specs) {
+      const rain = type === 'rain', drops = new Float32Array(Math.min(count, 4000) * 3), total = drops.length / 3;
+      const geometry = new THREE.BufferGeometry(), eye = uniforms.uView.value;
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(total * (rain ? 6 : 3)), 3));
+      const particles = rain ? new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({color: new THREE.Color().setScalar(identity * .5), transparent: true, opacity: .4}))
+        : new THREE.Points(geometry, new THREE.PointsMaterial({color: new THREE.Color().setScalar(identity * 1.5), size: length, transparent: true, opacity: .8}));
+      particles.frustumCulled = false;
+      particles.renderOrder = 1e9 - 10;
+      root.add(particles);
+      const respawn = (i, anywhere) => {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          let x, y, low, high;
+          if (column) {
+            x = column.min[0] + Math.random() * (column.max[0] - column.min[0]);
+            y = column.min[1] + Math.random() * (column.max[1] - column.min[1]);
+            [low, high] = [ground(x, y) ?? -Infinity, column.top];
+          } else {
+            const angle = Math.random() * 2 * Math.PI, distance = 20 + 1000 * Math.random();
+            x = eye.x + Math.sin(angle) * distance;
+            y = eye.y + Math.cos(angle) * distance;
+            const roof = sky(x, y);
+            if (roof === null) continue;
+            [low, high] = [Math.max(ground(x, y) ?? -Infinity, eye.z - 1000), Math.min(roof, eye.z + 1000)];
+          }
+          if (!(high > low)) continue;
+          // A new drop starts at the top, once the fall is under way; the first fill spreads them through the height.
+          drops.set([x, y, anywhere || column ? low + Math.random() * (high - low) : high], i * 3);
+          return;
+        }
+        drops.set([eye.x, eye.y, -1e9], i * 3);  // Nowhere open near: parked far below, out of view.
+      };
+      for (let i = 0; i < total; i++) respawn(i, true);
+      falls.push(delta => {
+        const positions = geometry.attributes.position.array, step = [wind[0] * delta, wind[1] * delta, -speed * delta];
+        for (let i = 0; i < total; i++) {
+          for (let axis = 0; axis < 3; axis++) drops[i * 3 + axis] += step[axis];
+          const x = drops[i * 3], y = drops[i * 3 + 1], z = drops[i * 3 + 2], floor = ground(x, y);
+          if (z < -1e8 || floor !== null && z < floor || !column && Math.hypot(x - eye.x, y - eye.y) > 1020) respawn(i, false);
+          positions.set(drops.subarray(i * 3, i * 3 + 3), i * (rain ? 6 : 3));
+          if (rain) positions.set([drops[i * 3] - wind[0] / speed * length, drops[i * 3 + 1] - wind[1] / speed * length, drops[i * 3 + 2] + length], i * 6 + 3);
+        }
+        geometry.attributes.position.needsUpdate = true;
+      });
+    }
   }
 
   // Pickups, shown as the game's cg_ents.c CG_Item shows them: turning once in 2.048 seconds (health twice as
@@ -622,12 +886,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (hit) height = hit.point.z + 15;
     }
     holder.position.set(x, y, height);
+    // Team Arena's barrel hangs at the weapon's tag_barrel, turned with it.
+    const barrel = item.barrel ? await loadItemModel(item.barrel.model) : [];
     models.forEach((surfaces, which) => {
-      const part = new THREE.Group();
-      for (const {geometry, materials, sort} of surfaces) materials.forEach((material, stage) => {
+      const part = new THREE.Group(), middle = new THREE.Vector3().fromArray(map.itemModels[item.models[which]].middle);
+      for (const [{geometry, materials, sort}, offset] of [...surfaces.map(surface => [surface, null]), ...(which ? [] : barrel.map(surface => [surface, item.barrel.origin]))]) materials.forEach((material, stage) => {
         const mesh = new THREE.Mesh(geometry, material);
         mesh.renderOrder = sort * 100000 + 99000 + stage;
-        if (weapon) mesh.position.fromArray(map.itemModels[item.models[which]].middle).negate();
+        if (weapon) mesh.position.fromArray(offset || [0, 0, 0]).sub(middle);
         part.add(mesh);
       });
       if (weapon) part.scale.setScalar(1.5);
@@ -662,7 +928,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     frame.setSize(...renderer.getDrawingBufferSize(new THREE.Vector2()).toArray());
     camera.aspect = aspect;
     // The game's field of view is horizontal; Three's is vertical.
-    camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2) / aspect));
+    uniforms.uTanFov.value = Math.tan(THREE.MathUtils.degToRad(settings.fov) / 2);
+    camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(uniforms.uTanFov.value / aspect));
     camera.updateProjectionMatrix();
   }
   function showViewpoint(index) {
@@ -730,6 +997,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     uniforms.uViewUp.value.set(axes[4], -axes[6], axes[5]);
     for (const {material, frames, fps} of animated) material.uniforms.map.value = frames[Math.floor(seconds * fps) % frames.length];
     for (const tick of placedTicks) tick(seconds);
+    for (const mover of movers) placeMover(mover, seconds);
+    for (const mesh of sun) mesh.position.copy(uniforms.uView.value);
+    for (const fall of falls) fall(Math.min(Math.max(seconds - lastFall, 0), .1));
+    lastFall = seconds;
     for (const {holder, height, fast, rate} of pickups) {
       holder.position.z = height + 4 + Math.cos((seconds + 1) * rate) * 4;
       holder.rotation.z = seconds % 2.048 / 2.048 * 2 * Math.PI * (fast ? 2 : 1);
@@ -742,7 +1013,16 @@ window.addEventListener('DOMContentLoaded', async () => {
         [direction.x, -direction.z, direction.y], config.worldCullDistance ? config.worldCullDistance(map) : null);
     }
     renderer.setRenderTarget(frame);
+    if (skyPortal) {
+      drawSkyPortal();
+      for (const mesh of skyPortal.skies) mesh.visible = false;
+      renderer.autoClearColor = false;
+    }
     renderer.render(scene, camera);
+    if (skyPortal) {
+      for (const mesh of skyPortal.skies) mesh.visible = true;
+      renderer.autoClearColor = true;
+    }
     renderer.setRenderTarget(null);
     renderer.render(shown, shownCamera);
   }
@@ -758,7 +1038,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (settings.animate) shaderTime += delta;
     draw(shaderTime);
   });
-  window.skinnerQ3Maps = {renderer, scene, camera, draw};  // For checks in a hidden page, where no frame is drawn.
+  window.skinnerQ3Maps = {renderer, scene, camera, draw, movers, get skyPortal() { return skyPortal; }, set skyPortal(value) { skyPortal = value; }};  // For checks in a hidden page, where no frame is drawn.
 
   const select = id => { location.search = '?map=' + encodeURIComponent(id); };
   $('map').addEventListener('change', event => select(event.target.value));
@@ -819,8 +1099,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     const world = buildWorld(await (await get(data + map.bsp)).arrayBuffer(), externalAtlas);
     lightGrid = world.lightGrid;
     if (!world.groups.length) failures.push('the map file holds no surfaces to draw');
+    for (const spec of map.movers || []) {
+      const holder = new THREE.Group();
+      holder.matrixAutoUpdate = false;
+      root.add(holder);
+      movers.push({spec, holder});
+    }
     let loaded = 0;
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));
+    await Promise.all([addFlares(world.flares), addSun()]);
+    if ((map.weather || []).length) addWeather(map.weather, world.bounds);
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
@@ -828,6 +1116,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const holder = await config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map, lightAt, useLight, addFog});
       trackNPC(item, holder);
     }));
+    setupSkyPortal();
     showNotes();
     ready = true;
     showReady();

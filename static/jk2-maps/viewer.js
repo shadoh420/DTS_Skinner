@@ -6,6 +6,8 @@
   Object.assign(config, {
     title: 'Jedi Outcast Maps', gameName: 'Jedi Outcast', storageKey: 'skinner.jk2maps',
     data: '/jk2-map-data/', importRoute: '/import_jk2_maps', defaultMap: 'sp_kejim_post', bspVersion: 47, vertexLightmaps: true,
+    // Flare surfaces are cards of their own shader (RB_SurfaceFlare); r_flares is 1 in jk2config.cfg, 0 in jk2mpconfig.cfg.
+    flareFaces: map => map.section === 'sp' ? 'world' : null,
   });
   // Raven FinishShader: vertex-lit BSP shaders replace their lightmap stage
   // with exact vertex colour. Placed models use the sampled light grid below.

@@ -1,4 +1,5 @@
 """Q3-family viewer fixes of 2026-10-16: light grid kept, fog volumes and map fog, sprites, tcGen vector, JA racks."""
+import math
 from pathlib import Path
 import struct
 import tempfile
@@ -6,6 +7,7 @@ import unittest
 from types import SimpleNamespace
 
 from tools import import_ja_map, import_q3_map as qmap, import_rtcw_map
+from tests.test_q3 import md3
 from tests.test_q3_maps import image, pk3
 
 SCRIPT = b'''textures/test/vector
@@ -100,6 +102,95 @@ class Q3FamilyFixTests(unittest.TestCase):
         for classname, model in (('misc_model_gun_rack', 'weaponsrack'), ('misc_model_ammo_rack', 'weaponsrung')):
             entity = import_ja_map.prepare_entity({'classname': classname, 'model': 'models/map_objects/absent.md3', 'origin': '0 0 0'}, 'sp')
             self.assertEqual(entity['model'], f'models/map_objects/kejim/{model}.md3')
+
+
+class Q3FamilyPartBTests(unittest.TestCase):
+    """Movers, game types, barrels, coronas, the sun and weather (2026-10-16, part B)."""
+
+    def test_movers_follow_g_mover(self):
+        motion = lambda thing, rules='q3', mins_z=0, things=(): qmap.mover_motion(thing, list(things) or [thing], mins_z, rules)
+        self.assertEqual(motion({'classname': 'func_bobbing', 'spawnflags': '1', 'height': '20', 'speed': '2', 'phase': '.25'}),
+                         dict(type='sine', delta=[20, 0, 0], period=2, phase=.25))
+        self.assertEqual(motion({'classname': 'func_bobbing'})['delta'], [0, 0, 32])
+        self.assertIsNone(motion({'classname': 'func_bobbing', 'spawnflags': '4'}, 'ravensp'))  # START_OFF
+        self.assertEqual(motion({'classname': 'func_rotating', 'spawnflags': '4', 'speed': '45'})['rate'], [0, 0, 45])
+        self.assertEqual(motion({'classname': 'func_rotating'})['rate'], [0, 100, 0])
+        self.assertIsNone(motion({'classname': 'func_rotating'}, 'wolf'))  # RTCW and ET turn only with START_ON.
+        self.assertEqual(motion({'classname': 'func_rotating', 'spawnflags': '9'}, 'wolf')['rate'], [100, 0, 0])
+        swing = motion({'classname': 'func_pendulum'}, mins_z=-96)
+        self.assertAlmostEqual(swing['period'], 2 * math.pi / math.sqrt(800 / 288))
+        self.assertEqual(motion({'classname': 'func_pendulum'}, mins_z=-2)['period'], motion({'classname': 'func_pendulum'}, mins_z=-8)['period'])
+        corners = [{'classname': 'path_corner', 'targetname': 'a', 'target': 'b', 'origin': '0 0 0', 'wait': '2'},
+                   {'classname': 'path_corner', 'targetname': 'b', 'target': 'a', 'origin': '300 0 0', 'speed': '50'}]
+        train = {'classname': 'func_train', 'target': 'a', 'speed': '150'}
+        self.assertEqual(motion(train, things=[train, *corners]), dict(type='path', points=[[0, 0, 0], [300, 0, 0]],
+                                                                       legs=[dict(wait=2, duration=2), dict(wait=0, duration=6)]))
+        self.assertIsNone(motion(train, things=[train, corners[0]]))  # A corner leads nowhere: the train never sets off.
+        self.assertIsNone(motion({**train, 'targetname': 't'}, 'ravensp', things=[train, *corners]))  # Waits to be used.
+
+    def test_movers_keep_the_pose_their_faces_were_written_in(self):
+        models = struct.pack('<6f4i', 0, 0, -64, 8, 8, 0, 0, 0, 0, 0) * 2
+        things = [{'classname': 'func_pendulum', 'model': '*1', 'origin': '10 20 30'}, {'classname': 'func_static', 'model': '*1'}]
+        [mover] = qmap.movers(things, models)
+        self.assertEqual((mover['model'], mover['base'], mover['origin'], mover['angles'], mover['type']),
+                         (1, dict(origin=[10, 20, 30], angles=[0, 0, 0]), [10, 20, 30], [0, 0, 0], 'swing'))
+        self.assertEqual(qmap.movers(things, models, placed=lambda index, thing: (None, None)), [])  # Hidden at spawn.
+
+    def test_pickups_follow_the_game_type(self):
+        self.assertFalse(qmap.spawns({'notfree': '1'}, 0))
+        self.assertTrue(qmap.spawns({'notfree': '1'}, 4))
+        self.assertFalse(qmap.spawns({'notteam': '1'}, 4))
+        self.assertFalse(qmap.spawns({'notsingle': '1'}, 2))
+        self.assertFalse(qmap.spawns({'notq3a': '1'}, 0))
+        self.assertTrue(qmap.spawns({'notq3a': '1'}, 0, team_arena=True))
+        self.assertFalse(qmap.spawns({'gametype': 'ctf oneflag'}, 0))
+        self.assertTrue(qmap.spawns({'gametype': 'ffa tournament'}, 1))
+
+    def test_team_arena_barrels_sit_at_tag_barrel(self):
+        game = SimpleNamespace(team_arena=False, files={})
+        self.assertEqual(import_q3_barrel(game), {})
+        game = SimpleNamespace(team_arena=True, files={'models/weapons/w.md3': ('pak', lambda: md3('tag_barrel')), 'models/weapons/w_barrel.md3': ('pak', lambda: b'')},
+                               models={'models/weapons/w_barrel.md3': (dict(file='b.json', shaders=[], middle=[0, 0, 0]), [])})
+        found = {}
+        self.assertEqual(qmap.barrel(game, 'weapon', 'models/weapons/w.md3', None, None, found), dict(barrel=dict(model='models/weapons/w_barrel.md3', origin=[0, 0, 0])))
+        self.assertIn('models/weapons/w_barrel.md3', found)
+
+    def test_coronas_follow_sp_corona(self):
+        rules = SimpleNamespace(filtered=lambda entity, section: '')
+        found = import_rtcw_map.coronas([{'classname': 'corona', 'origin': '1 2 3', 'scale': '2', '_color': '1 0 0', 'color': '0 1 0'},
+                                         {'classname': 'corona', 'origin': '0 0 0', 'spawnflags': '1'},
+                                         {'classname': 'corona', 'origin': '0 0 0', '_color': '0 0 0'}], 'sp', rules)
+        self.assertEqual(found, [dict(origin=[1, 2, 3], colour=[0, 1, 0], scale=2), dict(origin=[0, 0, 0], colour=[1, 1, 1], scale=1)])
+
+    def test_sun_comes_from_the_sky_shaders_sunshader_and_q3map_sun(self):
+        game = SimpleNamespace(shaders={'textures/skies/s': ([['sunshader', 'gfx/misc/moon'], ['q3map_sun', '1', '1', '1', '100', '90', '0']], [])})
+        rules = SimpleNamespace(describe=lambda game, name, textures: ({'name': name}, ['missing'], []))
+        sun, missing = import_rtcw_map.sun(game, [{'name': 'textures/skies/s'}], None, rules)
+        self.assertEqual((sun['shader'], missing), ({'name': 'sun'}, ['missing']))  # RTCW always draws 'sun'.
+        self.assertTrue(all(abs(a - b) < 1e-9 for a, b in zip(sun['direction'], [0, 1, 0])))
+        rules.NAMED_SUN = True
+        self.assertEqual(import_rtcw_map.sun(game, [{'name': 'textures/skies/s'}], None, rules)[0]['shader'], {'name': 'gfx/misc/moon'})
+        self.assertEqual(import_rtcw_map.sun(game, [{'name': 'textures/other'}], None, rules), (None, []))
+
+    def test_weather_reads_et_raven_and_rtcw_keys(self):
+        found = import_rtcw_map.weather([
+            {'classname': 'worldspawn', 'atmosphere': 'T=SNOW,B=5 10,BV=20 30,D=2400'},
+            {'classname': 'fx_rain'}, {'classname': 'fx_rain', 'spawnflags': '4'}, {'classname': 'fx_snow'},
+            {'classname': 'misc_snow64', 'origin': '100 0 50', 'health': '10'}])
+        self.assertEqual([(w['type'], w['count']) for w in found], [('snow', 2400), ('rain', 500), ('rain', 1000), ('snow', 1000), ('snow', 10)])
+        self.assertEqual((found[0]['wind'], found[0]['speed']), ([20, 30], 80))
+        self.assertEqual(found[4]['column'], dict(min=[36, -64], max=[164, 64], top=50))
+        self.assertEqual(import_rtcw_map.weather([{'classname': 'worldspawn', 'atmosphere': 'T=HAIL'}]), [])
+
+    def test_picmip_keeps_the_colour_of_transparent_texels(self):
+        from PIL import Image
+        image = Image.new('RGBA', (4, 4), (200, 100, 50, 0))
+        profile = dict(cvars=dict(r_roundimagesdown=0), picmip=1, hardwareGamma=True, gamma=1, intensity=1)
+        self.assertEqual(import_rtcw_map.upload_image(image, profile, mipmap=False).getpixel((0, 0)), (200, 100, 50, 0))
+
+
+def import_q3_barrel(game):
+    return qmap.barrel(game, 'weapon', 'models/weapons/w.md3', None, None, {})
 
 
 if __name__ == '__main__':

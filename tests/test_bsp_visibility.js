@@ -41,4 +41,9 @@ assert.deepEqual([...ja.update([1,0,0],[1,0,0],20)],[0,0,0,1]);
 assert.deepEqual([...ja.update([1,0,0],[-1,0,0],20)],[1,0,1,1]);
 assert.equal(ja.rebuilds,1); // Rotation changes distance cull, not the cached PVS.
 const noTree=v.create({...tree,nodes:[],leaves:[]});assert.deepEqual([...noTree.update([0,0,0],[1,0,0])],[1,1,1,1]);
-console.log('PVS selection, caching, batch gating, fallback, shared surfaces, inline and sky isolation, JA composition: OK');
+// A sky portal's fixed eye: the surfaces its cluster's leaves hold, and which points stand in a cluster it sees.
+const portal=v.clusterMask(tree,[1,0,0]);
+assert.deepEqual([...portal.mask],[1,0,1,0]);assert.equal(portal.visible([2,0,0]),true);assert.equal(portal.visible([-2,0,0]),false);
+assert.deepEqual([...v.clusterMask(tree,[-1,0,0]).mask],[1,1,1,0]);
+assert.equal(v.clusterMask(tree,[200,0,0]),null);assert.equal(v.clusterMask({...tree,pvs:undefined},[1,0,0]),null);
+console.log('PVS selection, caching, batch gating, fallback, shared surfaces, inline and sky isolation, JA composition, sky portal mask: OK');

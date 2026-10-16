@@ -21,6 +21,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import re
 import struct
@@ -102,6 +103,9 @@ ITEMS = {row.split()[0]: (kind, row.split()[1:]) for kind, rows in dict(
 # them, so a map is not short of their models where the game folder has none.
 NOT_IN_BASE = ('item_armor_jacket', 'weapon_nailgun', 'weapon_prox_launcher', 'weapon_chaingun', 'ammo_nails', 'ammo_mines', 'ammo_belt', 'holdable_kamikaze',
               'holdable_portal', 'holdable_invulnerability', 'item_scout', 'item_guard', 'item_doubler', 'item_ammoregen', 'team_ctf_neutralflag')
+# g_gametype by the .arena type names; and the names an entity's "gametype" key is matched against (g_spawn.c).
+GAMETYPES = dict(ffa=0, tourney=1, duel=1, single=2, team=3, ctf=4, cctf=4, oneflag=5, overload=6, harvester=7)
+GAMETYPE_NAMES = ('ffa', 'tournament', 'single', 'team', 'ctf', 'oneflag', 'obelisk', 'harvester', 'teamtournament')
 SPAWNS = ('info_player_deathmatch', 'info_player_start', 'team_ctf_redplayer', 'team_ctf_blueplayer', 'team_ctf_redspawn', 'team_ctf_bluespawn')
 
 
@@ -155,13 +159,15 @@ class Game:
                     if name not in self.shaders:
                         self.shaders[name], self.shader_label[name] = body, label
                         self.outside.add(name)
-        self.arenas = {}
+        self.arenas, self.arena_types = {}, {}
         for key in self.files:
             if re.fullmatch(r'scripts/([^/]+\.arena|arenas\.txt)', key):
                 for block in re.findall(r'\{([^{}]*)\}', read_text(self.files[key][1]())):
                     pairs = {(quoted or bare).lower(): value for quoted, bare, value in re.findall(r'(?:"([^"]*)"|([^\s"]+))\s+"([^"]*)"', block)}
                     if pairs.get('map'):
                         self.arenas.setdefault(pairs['map'].lower(), pairs.get('longname', ''))
+                        self.arena_types.setdefault(pairs['map'].lower(), pairs.get('type', '').lower().split())
+        self.team_arena = bool(folders) and Path(folders[0]).name.lower() == 'missionpack'  # Its own game code (MISSIONPACK).
         self.described, self.images, self.models, self.same_name = {}, {}, {}, None
 
     def close(self):
@@ -500,6 +506,23 @@ def item_model(game, path, textures, output):
     return result
 
 
+def barrel(game, kind, path, textures, output, item_models):
+    """Team Arena's CG_Item draws a weapon's <model>_barrel.md3 at its tag_barrel, turned with the weapon; the
+    base game's draws none. {} or the item's barrel key."""
+    file = path[:-4] + '_barrel.md3'
+    if kind != 'weapon' or not game.team_arena or file not in game.files:
+        return {}
+    try:
+        tag = read_md3(game.files[path][1]())['tags'].get('tag_barrel')
+    except (ValueError, struct.error):
+        tag = None
+    model, _ = item_model(game, file, textures, output)
+    if not tag or not model:
+        return {}
+    item_models[file] = model
+    return dict(barrel=dict(model=file, origin=list(tag[:3])))
+
+
 def read_bsp(raw, *, version=46):
     """Lumps of an IBSP 46 file, each checked to lie inside it."""
     if len(raw) < 8 + LUMPS * 8 or raw[:4] != b'IBSP':
@@ -556,6 +579,76 @@ def fog_volumes(lumps, shaders):
     return result
 
 
+def spawns(thing, gametype, team_arena=False):
+    """Whether G_SpawnGEntityFromSpawnVars keeps an entity in game type `gametype` (notsingle, notteam or notfree,
+    notq3a or under Team Arena's game notta, and a "gametype" list)."""
+    flag = lambda key: int(numbers([thing.get(key, '0')], 1)[0])
+    if gametype == 2 and flag('notsingle') or flag('notteam' if gametype >= 3 else 'notfree') or flag('notta' if team_arena else 'notq3a'):
+        return False
+    return 'gametype' not in thing or GAMETYPE_NAMES[gametype] in thing['gametype'].lower()
+
+
+def mover_motion(thing, things, mins_z, rules='q3', gravity=800):
+    """How g_mover.c moves a brush entity once it has spawned, relative to its spawn origin and angles; None for
+    one that keeps still. sine: origin + sin(2π(t / period - phase)) · delta (func_bobbing); spin: angles + t · rate
+    (func_rotating); swing: roll + sin(2π(t / period - phase)) · amplitude (func_pendulum); path: the corners in
+    turn, waiting at each, then moving straight on to the next (Reached_Train). `rules`: 'q3' (Q3 and Raven MP),
+    'wolf' (RTCW, ET: func_rotating turns only with START_ON) or 'ravensp' (JK2/JA SP: also func_bobbing START_OFF
+    and trains that wait to be used). ponytail: Raven SP trains turning at corners keep their heading."""
+    cls, flags = thing.get('classname', '').lower(), int(numbers([thing.get('spawnflags', '0')], 1)[0])
+    value = lambda key, default, of=thing: numbers([of.get(key, default)], 1)[0]
+    if cls == 'func_bobbing' and not (rules == 'ravensp' and flags & 4):
+        delta = [0.0, 0.0, 0.0]
+        delta[0 if flags & 1 else 1 if flags & 2 else 2] = value('height', '32')
+        return dict(type='sine', delta=delta, period=value('speed', '4'), phase=value('phase', '0'))
+    if cls == 'func_rotating' and (rules == 'q3' or flags & 1):
+        rate = [0.0, 0.0, 0.0]
+        rate[2 if flags & 4 else 0 if flags & 8 else 1] = value('speed', '0') or 100.0
+        return dict(type='spin', rate=rate)
+    if cls == 'func_pendulum':
+        frequency = math.sqrt(gravity / (3 * max(abs(mins_z), 8))) / (2 * math.pi)
+        return dict(type='swing', amplitude=value('speed', '30'), period=1 / frequency, phase=value('phase', '0'))
+    if cls == 'func_train' and not (rules == 'ravensp' and thing.get('targetname') and not flags & 1):
+        corners = {}
+        for other in things:  # G_Find: the first path_corner of a name.
+            if other.get('classname', '').lower() == 'path_corner' and other.get('targetname'):
+                corners.setdefault(other['targetname'], other)
+        chain, at = [], corners.get(thing.get('target'))
+        while at is not None and all(at is not seen for seen in chain) and len(chain) < 256:
+            chain.append(at)
+            at = corners.get(at.get('target'))
+        if len(chain) < 2 or at is not chain[0]:
+            return None  # Think_SetupTrainTargets gives up unless every corner leads on, round to the first.
+        points = [numbers(corner.get('origin', '').split(), 3) for corner in chain]
+        legs = []
+        for index, corner in enumerate(chain):
+            speed = max(value('speed', '0', corner) or value('speed', '0') or 100.0, 1.0)
+            legs.append(dict(wait=max(value('wait', '0', corner), 0.0), duration=math.dist(points[index], points[(index + 1) % len(points)]) / speed))
+        return dict(type='path', points=points, legs=legs)
+    return None
+
+
+def movers(things, models_lump, rules='q3', placed=None):
+    """The moving brush entities of a map: inline model, the pose its faces were written in (base), the spawn
+    origin and angles its motion starts from, and the motion. `placed(index, thing)` gives the base pose where
+    the import moved the model itself, with the angles its motion starts from (None for a hidden model); Q3 only
+    adds the entity's origin and never turns a brush model."""
+    models = list(struct.iter_unpack('<6f4i', models_lump[:len(models_lump) // 40 * 40]))
+    result = []
+    for thing in things:
+        if not re.fullmatch(r'\*\d+', thing.get('model', '')) or not 0 < int(thing['model'][1:]) < len(models):
+            continue
+        index = int(thing['model'][1:])
+        motion = mover_motion(thing, things, models[index][2], rules)
+        if not motion:
+            continue
+        origin = numbers(thing.get('origin', '').split(), 3)
+        base, rest = placed(index, thing) if placed else (dict(origin=origin, angles=[0.0, 0.0, 0.0]), [0.0, 0.0, 0.0])
+        if base:
+            result.append(dict(model=index, base=base, origin=origin, angles=rest, **motion))
+    return result
+
+
 def entities(text):
     result = []
     for block in re.findall(r'\{([^{}]*)\}', text):
@@ -592,11 +685,18 @@ def import_map(game, name, ident, raw, source, output, textures):
             if kind != 'info_player_intermission': view['origin'] = [origin[0], origin[1], origin[2] + 26]  # Eye height above a spawn point.
             viewpoints.append(view)
     notes = [f'{label}: {len(found)} shader{"s" if len(found) > 1 else ""} ({", ".join(found[:4])}{"…" if len(found) > 4 else ""})' for label, found in sorted(limits.items())]
-    if flares: notes.append(f'{flares} light flares')
-    items, item_models = [], {}
+    if flares: notes.append(f'{flares} light flares, which CNQ3 does not draw either (ParseFlare)')
+    # Pickups as a server spawns them in free-for-all, g_gametype's default, or in the map's first listed game type
+    # where its .arena lists no ffa.
+    listed = [GAMETYPES[kind] for kind in game.arena_types.get(name.lower(), []) if kind in GAMETYPES]
+    gametype = 0 if not listed or 0 in listed else listed[0]
+    items, item_models, dropped = [], {}, 0
     for thing in things:
         classname = thing.get('classname', '').lower()
         if classname not in ITEMS: continue
+        if not spawns(thing, gametype, game.team_arena):
+            dropped += 1
+            continue
         kind, paths = ITEMS[classname]
         paths = [f'models/{path}.md3' for path in paths]
         for path in paths:
@@ -607,7 +707,8 @@ def import_map(game, name, ident, raw, source, output, textures):
         if paths[0] in item_models:
             # Spawnflag 1 hangs the item where it is; any other is dropped to the floor (g_items.c FinishSpawningItem).
             items.append(dict(kind=kind, origin=vector(thing.get('origin', '')), models=[path for path in paths if path in item_models],
-                              suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1)))
+                              suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1), **barrel(game, kind, paths[0], textures, output, item_models)))
+    if dropped: notes.append(f'{dropped} pickups the game does not spawn in {GAMETYPE_NAMES[gametype]}')
     file = 'bsp/' + hashlib.sha256(raw).hexdigest()[:20] + '.bsp'
     if not (output / file).exists():
         write_bsp(output / file, lumps)
@@ -619,6 +720,7 @@ def import_map(game, name, ident, raw, source, output, textures):
                                              if shader for item in shader.get(kind, []))) for kind in ('outside', 'guessed')},
                  models=[dict(model=int(thing['model'][1:]), origin=vector(thing['origin'])) for thing in things
                          if re.fullmatch(r'\*\d+', thing.get('model', '')) and 'origin' in thing],
+                 movers=movers(things, lumps[7]),
                  unresolved=unresolved, limits=notes)
     (folder / 'scene.json').write_text(json.dumps(scene, separators=(',', ':')), encoding='utf-8')
     return scene

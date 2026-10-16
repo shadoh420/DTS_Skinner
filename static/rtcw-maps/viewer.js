@@ -7,6 +7,8 @@
     defaultMap: 'sp_escape1', skyMipmaps: true,
     ambientScale: .5,  // r_ambientScale 0.5 in RTCW and ET (Q3 0.6).
     fogCurve: 'sqrt',  // The classic fog image (R_FogFactor); the Q3 page follows CNQ3.
+    // r_flares 1 (wolfconfig.cfg): flare surfaces and coronas get the flare shader; CG_Corona's view cone is a dot of 0.6.
+    flareFaces: 'screen', coronaCone: .6,
     configureTexture(texture, lighting, plain) {
       if (plain || !lighting) return;
       const modes = {

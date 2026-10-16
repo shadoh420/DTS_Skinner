@@ -27,9 +27,9 @@ except ImportError:
 STRIDES = (1, 72, 16, 36, 48, 4, 4, 40, 12, 8, 44, 4, 72, 104, 49152, 8, 1)
 PLAYER_MINS, PLAYER_MAXS, EYE_HEIGHT = (-18, -18, -24), (18, 18, 48), 40
 NOT_DRAWN = ['AI characters',
-             'gameplay, audio, particles, flares and sun sprites',
+             'gameplay, audio and particles',
              'script actions and moving/animated model poses after spawn',
-             'portals, mirrors, skyportal cameras and spotlight camera effects']
+             'portal and mirror surfaces, sky portal fog and spotlight camera effects']
 PROP_MODELS = {
     'props_box_32':'models/mapobjects/boxes/box32.md3',
     'props_box_48':'models/mapobjects/boxes/box48.md3',
@@ -228,7 +228,9 @@ def upload_image(image, profile, mipmap=True, picmip=True):
     if profile['cvars']['r_roundimagesdown']:
         size = [x//2 if x>y else x for x,y in zip(size,original)]
     if picmip: size = [max(1,x>>profile['picmip']) for x in size]
-    if tuple(size)!=original: image=image.resize(tuple(size),Image.Resampling.BOX)
+    # Channel by channel: Pillow resizes RGBA premultiplied, blacking out the colour of transparent texels, which
+    # the game's ResampleTexture keeps and blends such as GL_ZERO GL_SRC_COLOR read (JA's alphasquare cloud mask).
+    if tuple(size)!=original: image=Image.merge(image.mode,[c.resize(tuple(size),Image.Resampling.BOX) for c in image.split()])
     # Upload32 bypasses LightScale for unchanged non-mipmapped images.
     if mipmap or tuple(size)!=original:
         gamma = 1 if profile['hardwareGamma'] else profile['gamma']
@@ -246,13 +248,14 @@ class Textures(qmap.Textures):
 
     def process(self, filename, mipmap=True, picmip=True):
         profile = self.game.lighting
-        signature = json.dumps([hashlib.sha256((self.output/filename).read_bytes()).hexdigest(),profile,mipmap,picmip],sort_keys=True)
-        result = hashlib.sha256(signature.encode()).hexdigest()[:24]+'.png'
-        if (self.output/result).exists(): return result
         with Image.open(self.output/filename) as source:
             image = source.convert('RGBA')
-            image = upload_image(image, profile, mipmap, picmip)
-            image.save(self.output/result)
+        # Images with see-through texels are named anew since upload_image keeps their colour (2026-10-16).
+        kept = ['colour under alpha'] if image.getchannel('A').getextrema()[0] < 255 else []
+        signature = json.dumps([hashlib.sha256((self.output/filename).read_bytes()).hexdigest(),profile,mipmap,picmip,*kept],sort_keys=True)
+        result = hashlib.sha256(signature.encode()).hexdigest()[:24]+'.png'
+        if not (self.output/result).exists():
+            upload_image(image, profile, mipmap, picmip).save(self.output/result)
         return result
 
     def resolve(self, game, path):
@@ -378,6 +381,69 @@ def brush_state(entity,model,things):
         target=next((t for t in things if t.get('targetname')==entity.get('target') and t.get('classname')=='path_corner'),None)
         if target: pos=vector(target.get('origin'))
     return dict(origin=pos,angles=rot,scale=scale(entity),hidden=hidden,model2=BRUSH_PROP_MODELS.get(cls,entity.get('model2','')))
+
+
+def coronas(things,section,rules):
+    """Corona entities as CG_Corona draws them: _color or color (whichever the entity names last; none or black is
+    white) and scale (SP_corona); START_OFF ones are never linked."""
+    result=[]
+    for e in things:
+        if e.get('classname','').lower()!='corona' or int(number(e,'spawnflags'))&1 or rules.filtered(e,section):continue
+        colour=next((vector(v) for k,v in reversed(list(e.items())) if k in ('_color','color')),[0,0,0])
+        result.append(dict(origin=vector(e.get('origin')),colour=colour if any(c>0 for c in colour) else [1,1,1],scale=number(e,'scale',1)))
+    return result
+
+
+SNOW_COLUMNS={'misc_snow32':32,'misc_snow64':64,'misc_snow128':128,'misc_snow256':256}
+
+
+def weather(things):
+    """Rain and snow, each {type, count, speed, length, wind[, column]}: ET's worldspawn atmosphere (CG_EffectParse:
+    D drops, BV wind, rain at 1.1 and snow at 0.1 of gravity 800, raindrops 150 long, flakes 3-5), Raven's fx_rain
+    and fx_snow world effects (SP_CreateRain/SP_CreateSnow presets of tr_WorldEffects: light rain 500 drops, other
+    rain and snow 1000, rain drops 80 long; no count key is read) and RTCW's misc_snow columns (snow_think: `health` flakes over the
+    square named, from the entity down to the floor). ponytail: SP presets on MP maps too; no gusts, wind zones,
+    lightning or Raven particle physics."""
+    result=[]
+    for e in things:
+        cls=e.get('classname','').lower();flags=int(number(e,'spawnflags'))
+        if cls=='worldspawn' and e.get('atmosphere'):
+            keys={k.strip().upper():v.split() for k,_,v in (part.partition('=') for part in e['atmosphere'].split(','))}
+            kind=(keys.get('T') or [''])[0].lower()
+            if kind in ('rain','snow'):
+                drops=[float(v) for v in keys.get('D',['300'])] or [300]
+                wind=([float(v) for v in keys.get('BV',[])]+[0,0])[:2]
+                result.append(dict(type=kind,count=int(max(drops)),speed=880 if kind=='rain' else 80,length=150 if kind=='rain' else 4,wind=wind))
+        elif cls=='fx_rain':
+            result.append(dict(type='rain',count=500 if flags&1 or not flags&14 else 1000,speed=1000,length=80,wind=[0,0]))
+        elif cls=='fx_snow':
+            result.append(dict(type='snow',count=1000,speed=80,length=2,wind=[0,0]))
+        elif cls in SNOW_COLUMNS:
+            size=SNOW_COLUMNS[cls];origin=vector(e.get('origin'))
+            result.append(dict(type='snow',count=int(number(e,'health',32)),speed=50,length=2,wind=[0,0],
+                               column=dict(min=[origin[0]-size,origin[1]-size],max=[origin[0]+size,origin[1]+size],top=origin[2])))
+    return result
+
+
+def sun(game,shaders,textures,rules):
+    """RB_DrawSun's direction and shader, or None: drawn where a used shader names a sunshader (RTCW always draws
+    'sun', ET the shader named); the direction is the last q3map_sun's (ParseShader), else tr_bsp's default."""
+    rows=[r for s in shaders if s for r in game.shaders.get(s['name'],([],[]))[0]]
+    named=next((r for r in rows if r[0]=='sunshader' and len(r)>1),None)
+    if not named:return None,[]
+    light=[qmap.numbers(r[5:7],2) for r in rows if r[0]=='q3map_sun' and len(r)>6]
+    a,b=(math.radians(v) for v in light[-1]) if light else (None,None)
+    direction=[math.cos(a)*math.cos(b),math.sin(a)*math.cos(b),math.sin(b)] if light else [.45,.3,.9]
+    shader,missing,_=rules.describe(game,qmap.shader_name(named[1] if getattr(rules,'NAMED_SUN',False) else 'sun'),textures)
+    return dict(direction=direction,shader=shader),missing
+
+
+def mover_pose(states,index,entity):
+    """The spawn pose brush_geometry baked a mover's faces in, and the angles its motion turns from (qmap.movers)."""
+    state=states.get(index)
+    if not state or state['hidden'] or state.get('model2'):return None,None
+    rest=[0,0,0] if entity.get('classname','').lower() in ('func_door','func_button','func_plat','func_train','func_secret') else angles(entity)
+    return dict(origin=state['origin'],angles=state['angles']),rest
 
 
 def transformed(point,state,normal=False):
@@ -639,7 +705,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
         state=rules.brush_state(e,models[idx],things);state['hidden']=rules.filtered(e,game.section) or state['hidden'];states[idx]=state
     collision=getattr(rules,'Collision',Collision)(lumps,states);draw=brush_geometry(lumps,states)
     names=[(qmap.shader_name(s.split(b'\0')[0].decode('latin1')),flags) for s,flags,_ in struct.iter_unpack('<64sii',lumps[1])]
-    used={struct.unpack_from('<i',draw[13],at)[0] for at in range(0,len(draw[13]),104) if struct.unpack_from('<i',draw[13],at+8)[0] in (1,2,3)}
+    # Raven draws a flare surface with its own shader (FLARE_CARDS); id's renderer with its flare shader.
+    kinds=[struct.unpack_from('<i',draw[13],at+8)[0] for at in range(0,len(draw[13]),104)]
+    used={struct.unpack_from('<i',draw[13],at*104)[0] for at,kind in enumerate(kinds) if kind in ((1,2,3,4) if getattr(rules,'FLARE_CARDS',False) else (1,2,3))}
     shaders=[None]*len(names);limits=set(NOT_DRAWN)
     if hasattr(rules,'NPC_DEFAULTS'):
         limits.discard('AI characters')
@@ -647,6 +715,14 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     for i in sorted(used):
         if names[i][1]&qmap.SURF_NODRAW:continue
         shaders[i],missing,notes=rules.describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
+    # The sky portal's camera (props_skyportal, JA's misc_skyportal): its origin; the view lends it angles and fov.
+    portal=next((e for e in things if e.get('classname','').lower() in ('props_skyportal','misc_skyportal')),None)
+    effects=dict(weather=weather(things),skyPortal=portal and dict(origin=vector(portal.get('origin'))))
+    if getattr(rules,'ID_FLARES',True):
+        effects['coronas']=coronas(things,game.section,rules)
+        if effects['coronas'] or 4 in kinds:
+            effects['flareShader'],missing,_=rules.describe(game,'flareshader',textures);unresolved+=missing
+        effects['sun'],missing=sun(game,shaders,textures,rules);unresolved+=missing
     placed=[];item_models={};teams=set()
     for serial,e in (enumerate(things) if not hasattr(rules,'place_entities') else []):
         cls=e.get('classname','').lower();reason=rules.filtered(e,game.section);status='omitted';paths=[]
@@ -686,7 +762,10 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
                     path,sideways=pickup_model(game,item,e.get('model',''))
                     paths=[path] if path else []
                     reason='item table has no world model' if not paths else ''
-            elif cls.startswith(('trigger_','target_','info_','light','dlight','corona','path_')) or cls in ('worldspawn','props_skyportal','misc_vis_dummy','misc_vis_dummy_multiple'):
+            elif cls=='corona':status,reason=('omitted','START_OFF corona') if flags&1 else ('drawn','corona with the flare shader (CG_Corona)')
+            elif cls=='dlight':reason=getattr(rules,'DLIGHT_NOTE','dynamic light: none drawn with r_dynamiclight 0 (wolfconfig.cfg)')
+            elif cls=='props_skyportal':reason='sky portal camera: the sky shows the scene from here (CG_DrawSkyBoxPortal)'
+            elif cls.startswith(('trigger_','target_','info_','light','path_')) or cls in ('worldspawn','misc_vis_dummy','misc_vis_dummy_multiple'):
                 reason='world/control/light entity; no standalone visual'
             elif cls in ('script_model_med','props_decoration') and flags&1:reason='START_INVIS'
             elif cls=='misc_spotlight':reason='spotlight camera/effect not reconstructed'
@@ -760,6 +839,8 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     scene=dict(name=name,longname=things[0].get('message','') if things else '',source=source,section=game.section,bsp=file,bspVersion=47,
                shaders=shaders,viewpoints=views,models=[],items=[],placed=placed,itemModels=item_models,lighting=game.lighting,bspCull=qmap.read_visibility(lumps),
                fogs=fogs,**({'mapFog':wolf_fog} if wolf_fog else {}),**({'farClip':max(64,min(far))} if far else {}),
+               movers=qmap.movers(things,lumps[7],getattr(rules,'MOVERS','wolf'),lambda index,e:mover_pose(states,index,e)),
+               **{key:value for key,value in effects.items() if value},
                entityResults=audit,bspNotes=bsp_notes,unresolved=sorted(set(unresolved)),outside=[],guessed=[],limits=sorted(limits))
     folder=output/'maps'/ident;folder.mkdir(parents=True,exist_ok=True);rtcw.q3.json_write(folder/'scene.json',scene)
     return scene

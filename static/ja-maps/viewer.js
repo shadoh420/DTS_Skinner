@@ -8,6 +8,7 @@
     data: '/ja-map-data/', importRoute: '/import_ja_maps', defaultMap: 'sp_yavin1',
     // Global fog is GL exp2 fog with r_drawfog 2; fog passes also cover decals and see-through shaders.
     skyAtFarDepth: true, glGlobalFog: true, fogEqualSort: 5,
+    flareFaces: 'world',  // r_flares 1 in jaconfig.cfg and jampconfig.cfg.
   });
   config.configureCamera = (camera, map) => {
     // Old scene files need reimport for worldspawn overrides; section defaults

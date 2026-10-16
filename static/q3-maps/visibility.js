@@ -34,6 +34,17 @@
       direction.reduce((depth,d,j) => depth + d * (p[j] - eye[j]), 0) <= distance)), model.first, model.first + model.count);
     return visible;
   };
+  // What a fixed eye sees through the PVS: the surfaces of the leaves its cluster sees, and a test for whether a
+  // point lies in one of them. Null without PVS data or outside every cluster.
+  api.clusterMask = (tree, eye) => {
+    if (!tree?.pvs) return null;
+    const {numClusters, clusterBytes, bits} = tree.pvs, bytes = Uint8Array.from(atob(bits), c => c.charCodeAt(0));
+    const cluster = api.pointCluster(tree, eye), sees = c => c >= 0 && c < numClusters && !!(bytes[cluster * clusterBytes + (c >> 3)] & 1 << (c & 7));
+    if (!bytes.length || cluster < 0 || cluster >= numClusters) return null;
+    const mask = new Uint8Array(tree.surfaceCount);
+    for (const leaf of tree.leaves) if (sees(leaf[8])) for (let j = leaf[6], end = j + leaf[7]; j < end; j++) mask[tree.surfaces[j]] = 1;
+    return {mask, visible: point => sees(api.pointCluster(tree, point))};
+  };
   api.compactBatch = (batch, visible) => {
     const {geometry, ranges, original, previous} = batch;
     let changed = false;
