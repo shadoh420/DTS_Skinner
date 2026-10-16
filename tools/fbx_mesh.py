@@ -154,9 +154,10 @@ def layer(geometry, kind, values, indices, width, corners):
     return data if mapping == 'ByPolygonVertex' else data[corners] if mapping in ('ByVertice', 'ByVertex') else None
 
 
-def fbx_mesh(data, transforms=True):
+def fbx_mesh(data, transforms=True, colours=False):
     """{material name: (positions, normals, uvs)}, each (triangles, 3, n) float32, in the FBX's own axes; without
-    `transforms`, each mesh where its geometry has it (Model nodes' translation, rotation and scaling left out)."""
+    `transforms`, each mesh where its geometry has it (Model nodes' translation, rotation and scaling left out).
+    With `colours`, each group also has its vertex colours (RGBA, white where the mesh has none)."""
     nodes = read_nodes(data)
     if child(('', [], nodes), 'Objects') is None:
         raise ValueError('no objects in the FBX')
@@ -193,6 +194,7 @@ def fbx_mesh(data, transforms=True):
         triangles = np.concatenate(fans)
         normals = layer(geometry, 'LayerElementNormal', 'Normals', 'NormalsIndex', 3, corners)
         uvs = layer(geometry, 'LayerElementUV', 'UV', 'UVIndex', 2, corners)
+        tints = layer(geometry, 'LayerElementColor', 'Colors', 'ColorIndex', 4, corners) if colours else None
         element = child(geometry, 'LayerElementMaterial')
         per_polygon = np.zeros(len(starts), int)
         if element is not None:
@@ -208,8 +210,9 @@ def fbx_mesh(data, transforms=True):
         which = per_polygon[np.repeat(np.arange(len(starts)), sizes)[triangles[:, 0]]]
         for k in np.unique(which):
             pick = triangles[which == k]
-            group = out.setdefault(materials[k] if k < len(materials) else '', ([], [], []))
+            group = out.setdefault(materials[k] if k < len(materials) else '', ([], [], [], []))
             group[0].append(position[pick, :3])
             group[1].append(np.zeros((len(pick), 3, 3)) if normals is None else normals[pick])
             group[2].append(np.zeros((len(pick), 3, 2)) if uvs is None else uvs[pick])
-    return {name: tuple(np.concatenate(parts).astype(np.float32) for parts in group) for name, group in out.items()}
+            group[3].append(np.ones((len(pick), 3, 4)) if tints is None else tints[pick])
+    return {name: tuple(np.concatenate(parts).astype(np.float32) for parts in group[:4 if colours else 3]) for name, group in out.items()}

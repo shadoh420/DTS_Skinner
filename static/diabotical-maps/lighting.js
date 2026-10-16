@@ -117,8 +117,12 @@
     uniform sampler3D gameGrid;
     uniform vec3 gameCellMin, gameCellCount, gameGridMin, gameGridMax, gameAmbient, gameShadowAmbient, gameShadowColour, gameSunColour, gameSunToward;
     uniform float gameSunSpecular;
+    uniform vec4 gameFog, gameVerticalFog, gameHorizon;
+    uniform sampler2D gameOcclusion;
+    uniform vec2 gameScreen;
+    uniform vec2 gameFogRange, gameVerticalFogRange;
     vec3 gameF0, gameSpecular, gameAmbientLight;
-    float gameRough, gameStrength, gameAmbientScale;
+    float gameRough, gameStrength, gameAmbientScale, gameFar = 0.;
     vec3 gameGGX(vec3 n, vec3 l, vec3 v, float nl) {
       float k = (gameRough + 1.) * (gameRough + 1.) / 8., a4 = pow(gameRough, 4.), nh = clamp(dot(n, normalize(l + v)), 0., 1.);
       float d = a4 / (3.14159265 * pow(nh * nh * (a4 - 1.) + 1., 2.));
@@ -128,7 +132,8 @@
     vec3 gameLight(vec3 n, vec3 p, vec3 v, float sunLit) {
       vec4 grid = texture(gameGrid, clamp((p - gameGridMin) / (gameGridMax - gameGridMin), 0., 1.));
       gameAmbientLight = mix(gameShadowAmbient, gameAmbient, sunLit) * (1. - grid.a) + grid.rgb;
-      vec3 light = gameAmbientLight * gameAmbientScale, shade = mix(gameShadowColour, vec3(1.), sunLit);
+      gameAmbientLight *= texture2D(gameOcclusion, gl_FragCoord.xy / gameScreen).r;  // Ambient occlusion: the ambient only.
+      vec3 light = gameAmbientLight * gameAmbientScale, shade = mix(mix(gameShadowColour, gameHorizon.yzw, gameFar), vec3(1.), sunLit);
       float nl = max(dot(n, gameSunToward), 0.);
       light += gameSunColour * nl * shade;
       gameSpecular = gameSunColour * gameSunSpecular * gameGGX(n, gameSunToward, v, nl) * shade;
@@ -171,6 +176,9 @@
         if (receiveShadow) sunLit = getShadow(directionalShadowMap[0], directionalLightShadows[0].shadowMapSize,
           directionalLightShadows[0].shadowBias, directionalLightShadows[0].shadowRadius, vDirectionalShadowCoord[0]);
       #endif
+      // Past 6000 units of depth the shadow fades over 2000 to horizon_shade, its colour to horizon_shade_color.
+      gameFar = clamp((-vViewPosition.z - 6000.) / 2000., 0., 1.);
+      sunLit = mix(sunLit, gameHorizon.x, gameFar);
       #ifdef USE_UV
         vec4 specularTexel = texture2D(gameSpecularMap, vUv);
       #else
@@ -193,8 +201,20 @@
       reflectedLight.directDiffuse = colour;
       reflectedLight.indirectDiffuse = vec3(0.);
     }`;
+  /* Fog, as tile.cs puts it over the lit picture: toward the fog colour by intensity x how far into the fog's
+     range the point is (from margin x radius to radius from the eye), then toward the vertical fog's colour by its
+     intensity x how far the point is below its height (over `falloff` units). An intensity above 1 overshoots, as in
+     the game. */
+  const fog = `
+    {
+      float fogDepth = clamp((length(vViewPosition) - gameFogRange.x * gameFogRange.y) / max(gameFogRange.x * (1. - gameFogRange.y), 1e-3), 0., 1.);
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, gameFog.rgb, fogDepth * gameFog.a);
+      float fogBelow = clamp((gameVerticalFogRange.x - vGameWorld.y) / max(gameVerticalFogRange.y, 1e-3), 0., 1.);
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, gameVerticalFog.rgb, fogBelow * gameVerticalFog.a);
+    }
+    #include <tonemapping_fragment>`;
   const fragmentUniforms = 'uniform sampler2D gameSpecularMap;\nuniform samplerCube gameEnvmap;\nuniform vec3 gameClass;\nuniform float gameGloss;\n';
 
   exports.DiaboticalLighting = {buildGrid, buildLights, nodeWeight, nodeShare, materialClass,
-    shader: {vertexHead, vertexBody, fragmentHead: fragmentUniforms + fragmentHead, fragmentBody}, CELL, WIDTH};
+    shader: {vertexHead, vertexBody, fragmentHead: fragmentUniforms + fragmentHead, fragmentBody, fog}, CELL, WIDTH};
 })(typeof module !== 'undefined' ? module.exports : window);

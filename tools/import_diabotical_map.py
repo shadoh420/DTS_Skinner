@@ -98,7 +98,7 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from reflex_textures import _dds, decode_dds
 
-FORMAT = 29  # Of the files written per map: maps imported with another are read again.
+FORMAT = 33  # Of the files written per map: maps imported with another are read again.
 RECORD = {21: 46, 24: 46, 25: 52, 26: 53, 27: 53}
 TURN = {21: 44, 24: 44, 25: 50, 26: 50, 27: 50}
 CUBE, HALF = 1, 3
@@ -106,6 +106,7 @@ CUBE, HALF = 1, 3
 NEIGHBOURS = ((0, 0, 1), (-1, 0, 0), (0, 0, -1), (1, 0, 0), (0, 1, 0), (0, -1, 0))
 OUT = np.dtype([('x', '<i2'), ('y', '<i2'), ('z', '<i2'), ('shape', 'u1'), ('turn', 'u1'), ('open', 'u1'), ('pad', 'u1'), ('faces', 'u1', 6)])
 TEXTURE_SIZE = 512
+NORMAL_SIZE = 256
 ASSET = re.compile(r'\basset\s+(\S+)\s*\{([^{}]*)\}')
 # A shader's own lines (`visible false`: the jump pads' ring band) may come before its stage. Some files end mid-shader.
 SHADER = re.compile(r'(?:^|\n)\s*([^\s{}]+)\s*\{([^{}]*)\{(.*?)(?:\}|\Z)', re.S)
@@ -245,11 +246,24 @@ def read_materials(packs):
                                  accents=[colour(next(iter(re.findall(rf'pixel_shader_param\s+accent{n}\s+(\S+)', stage)), None)) for n in (1, 2, 3)])
                     lit = re.search(r'pixel_shader\s+tile', stage) and 'tiledecal' not in stage
                     found = re.search(r'\bmaterial_id\s+(\d+)', stage)
-                    flags.update(lit=bool(lit), spec=maps[2] if lit and len(maps) > 2 else None, ids=maps[3] if lit and len(maps) > 3 else None,
+                    flags.update(lit=bool(lit), normal=maps[1] if lit and len(maps) > 1 else None,
+                                 spec=maps[2] if lit and len(maps) > 2 else None, ids=maps[3] if lit and len(maps) > 3 else None,
                                  id=int(found.group(1)) if found else 0)
                     # The efferv glass (health bubbles): its base and edge (fresnel) colours, linear RGBA; no texture.
                     params = dict(re.findall(r'pixel_shader_param\s+(accent[12])\s+(\S+\s+\S+\s+\S+\s+\S+)', stage))
                     flags['glass'] = [[float(v) for v in params[k].split()] for k in ('accent1', 'accent2')] if 'efferv' in stage and len(params) == 2 else None
+                    # Forward shaders (statictrans*: screens, holograms, glow panes; indicator, forcefield, shield,
+                    # bubble) write their texel to the screen as it is, unlit. statictranstex* scroll their texture by
+                    # float_params' first two, units a second; statictrans is glass: the envmap times 1 - the first.
+                    shader_name = (re.findall(r'pixel_shader\s+(\w+)', stage) or [''])[0].lower()
+                    floats = [float(v) for v in re.findall(r'-?\d*\.?\d+', next(iter(re.findall(r'float_params([^\n]*)', stage)), ''))]
+                    flags['unlit'] = shader_name.startswith('statictrans') or shader_name in UNLIT
+                    flags['scroll'] = floats[:2] if shader_name.startswith('statictranstex') and any(floats[:2]) else None
+                    flags['mirror'] = round(1 - (floats or [0])[0], 3) if shader_name == 'statictrans' else None
+                    # A *_col vertex shader passes the model's vertex colours: statictranstex(col) takes their red as
+                    # alpha, statictranstexfog multiplies its colour by them; the tile shaders read none.
+                    coloured = re.search(r'vertex_shader\s+\w+_col\.vs', stage)
+                    flags['vertex'] = ('rgb' if shader_name.startswith('statictranstexfog') else 'alpha' if shader_name.startswith('statictranstex') else None) if coloured else None
                     # A terrain's (pixel shader tileter) cliff and dirt textures are its maps 3 and 5: NAME#3, NAME#5;
                     # a tinted material's (tilemask) colour mask is its map 4: NAME#4.
                     for slot in (0, 3, 5) if 'tileter' in stage else (0, 4) if 'tilemask' in stage else (0,):
@@ -424,19 +438,26 @@ def prop_key(piece, matrix, fields, asset, assets, known=()):
     matrix = MIRROR @ matrix @ np.diag([-1.0 if f'flip{axis}' in flips else 1.0 for axis in 'xyz'] + [1.0]) @ MIRROR
     own = (fields.get('material') or '').lower()
     material = f'{model}_{own}' if own and f'{model}_{own}' in known else own or (piece_asset.get('material') or asset.get('material') or '').lower()
-    # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds).
-    flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '')
+    # Flags: m mirrored, n takes no decals (`no_decals`: b_ancient's snow mounds), s casts the sun's shadow: a prop of
+    # a plain model does unless `skip_shadows`; the pieces of a dynamic asset (trims, pillars, the generator) cast none,
+    # `force_shadows` or not (runs 32, 45 and 46: boulders and a tree canopy cast, forced or not; dynamic pillars and
+    # generators standing on the floor or floating, forced or not, cast none seen from play distance).
+    casts = asset.get('dynamic') != 'true' and fields.get('skip_shadows') not in ('1', 'true')
+    flags = ('m' if np.linalg.det(matrix[:3, :3]) < 0 else '') + ('n' if fields.get('no_decals') in ('1', 'true') else '') + ('s' if casts else '')
     return f"{model}|{material}|{flags}", matrix
 
 
-def placements(entities, assets, known=(), pickups=None):
+def placements(entities, assets, known=(), pickups=None, movers=None):
     """A map's props as {"model|material|m": float32 array of page matrices' top three rows} (material empty for the
     model's own, m when mirrored), their tints ({key: uint32 (n, 3)}, for the keys with any: each prop's color,
     color2 and color3 as 0x1RRGGBB, 0 if unset), its spawns, pickups and other markers, liquids, and decals ({material:
     (float32 (n, 24) page matrices of their boxes, projected from and cut to, uint32 (n, 3): colour 0xRRGGBBAA, flags (1 mirrored, 2 v2, 4 v3),
     order as int32)}). A prop's material field X names the shader MODEL_X where `known` (the material names) has one
     (bioplant's door frames: corridor_path_..._frame_red), else X. A dynamic prop's scale is its size in 40-unit cells, each cell a model its asset's rules pick by
-    the cell's offsets from the prop's ends. A pickup of a kind in `pickups` ({kind: scale}) is the prop pickup/KIND."""
+    the cell's offsets from the prop's ends. A pickup of a kind in `pickups` ({kind: scale}) is the prop pickup/KIND.
+    Props that move by themselves (`movement float A W`: up and down, A units at W radians a second; `rotate S`: S
+    degrees a second about the vertical; run 46) are listed in
+    `movers` ({key: [[index in the key's props, kind (0 float, 1 rotate), A or S, W, pivot x, y, z (page axes)]]})."""
     props, tints, markers, liquids, decals = {}, {}, [], [], {}
     palette = next((fields for name, *_, fields in entities if name == 'global'), {})
     for number, (name, position, rotation, scale, fields) in enumerate(entities):
@@ -455,8 +476,11 @@ def placements(entities, assets, known=(), pickups=None):
             if fields.get('no_show') not in ('1', 'true'):
                 word = (fields.get('color') or '').strip().lstrip('#').lower()
                 ocean = fields.get('shader', '').lower() == 'ocean' or fields.get('material', '').lower() == 'core_ocean'
+                # Then its texture_scale (how large its ripples are, 1 where unset) and an ocean's shallow_color.
+                ripple = next(iter(re.findall(r'-?\d*\.?\d+', fields.get('texture_scale', ''))), None)
                 liquids.append([*np.round(position, 2).tolist(), *np.round(scale, 2).tolist(), fields.get('material', ''), colour(fields.get('color'), palette),
-                                int(word[:2], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else None, int(ocean)])
+                                int(word[:2], 16) if re.fullmatch(r'[0-9a-f]{8}', word) else None, int(ocean), float(ripple) if ripple else 1.0,
+                                colour(fields.get('shallow_color'), palette)])
             continue
         # A pickup the game draws as a model (pickup_kinds: {kind: scale}): the prop pickup/KIND, as placed (the game spins it).
         kind = name.split('_')[0].lower()
@@ -492,14 +516,55 @@ def placements(entities, assets, known=(), pickups=None):
                     pieces.append((choice, base @ offset))
         else:
             pieces.append((model, game_matrix(position, rotation, scale)))
+        motion = (fields.get('movement') or '').lower().split()
+        motion = [MOVEMENT[motion[0]], *[float(w) for w in motion[1:3] if re.fullmatch(r'-?\d*\.?\d+', w)]] if motion and motion[0] in MOVEMENT else None
         for piece, matrix in pieces:
             found = prop_key(piece, matrix, fields, asset, assets, known)
             if found:
+                if motion and movers is not None and len(motion) > 1:
+                    movers.setdefault(found[0], []).append([len(props.get(found[0], [])), *(motion + [1.0] * 3)[:3], position[0], position[1], -position[2]])
                 props.setdefault(found[0], []).append(found[1][:3].ravel())
                 tints.setdefault(found[0], []).append(tint)
     tints = {key: np.array(value, np.uint32) for key, value in tints.items() if any(map(any, value))}
     decals = {key: (np.array([m for m, _ in value], np.float32), np.array([e for _, e in value], np.uint32)) for key, value in decals.items()}
     return {key: np.array(value, np.float32) for key, value in props.items()}, tints, markers, liquids, decals
+
+
+def read_volumetrics(entities):
+    """A map's light beams (`volumetric` entities, drawn by panel_volumetric on a mesh the game builds): [12 page-matrix
+    floats (the entity's place, turn and scale: the beam fills the unit box around it), kind (0 grid, the default:
+    `segments` cells across x by `segments_y` along z, each an open tube of four walls; 1 radial: `segments` panels
+    fanned about the vertical), segments, segments_y, gap (the share of each cell left empty), gap_y, taper (top narrowed by it),
+    colour 0xRRGGBB, strength (the colour's alpha, AARRGGBB; 1 for RRGGBB), texture ('' for none), blended (`alpha`:
+    alpha blending, else additive), rotation_speed]. Runs 45 and 46: grids of 3 panels and radial fans of 8 and 16,
+    each panel brightest at the top and fading downward, added to the picture."""
+    palette = next((fields for name, *_, fields in entities if name == 'global'), {})
+    number = lambda fields, key, default: float(next(iter(re.findall(r'-?\d*\.?\d+', fields.get(key, ''))), default))
+    out = []
+    for name, position, rotation, scale, fields in entities:
+        if not name.startswith('volumetric') or fields.get('no_show') in ('1', 'true'):
+            continue
+        matrix = MIRROR @ game_matrix(position, rotation, scale) @ MIRROR
+        word = (fields.get('color') or '').strip().lstrip('#').lower()
+        strength = int(word[:2], 16) / 255 if re.fullmatch(r'[0-9a-f]{8}', word) else 1.0
+        out.append([*np.round(matrix[:3].ravel(), 4).tolist(), int(fields.get('type', '').strip().lower() == 'radial'),
+                    max(1, int(number(fields, 'segments', 1))), max(1, int(number(fields, 'segments_y', 1))),
+                    number(fields, 'gap', 0), number(fields, 'gap_y', 0), number(fields, 'taper', 0),
+                    colour(fields.get('color'), palette) if colour(fields.get('color'), palette) is not None else 0xffffff, round(strength, 3),
+                    (fields.get('texture') or '').strip().lower().replace('\\', '/'), int(fields.get('alpha') in ('1', 'true')),
+                    number(fields, 'rotation_speed', 0)])
+    return out
+
+
+def read_labels(entities):
+    """A map's labels (`label` entities: text the game shows where they stand, run 46): [x, y, z (page axes), text,
+    size (10 by default: about the height of its capitals in units)]."""
+    out = []
+    for name, position, rotation, scale, fields in entities:
+        if name.startswith('label') and fields.get('text') and fields.get('no_show') not in ('1', 'true'):
+            size = next(iter(re.findall(r'\d*\.?\d+', fields.get('size', ''))), None)
+            out.append([*np.round([position[0], position[1], -position[2]], 2).tolist(), fields['text'][:200], float(size) if size else 10.0])
+    return out
 
 
 def read_billboards(entities):
@@ -649,6 +714,10 @@ POINT = SUN = 1 / np.pi  # Light per unit of colour x intensity on a white surfa
 LIGHT_KINDS = {'point': 0, 'diffuse': 0, '': 0, 'spot': 1, 'diffuse_spot': 1, 'capsule': 2}
 DEFAULT_SHADOW = [.325, .469, .519]  # Run 20: a pillar's shadow over the sunlit floor, with no shadow_color.
 BLOCK = np.array([40, 20, 40])  # A block's size in entity units.
+# Light animations (the editor's "Vis. Function"), as the page numbers them.
+VISIBILITY = {name: n for n, name in enumerate(('none', 'sin', 'hills', 'valleys', 'peaks', 'ascending_saw', 'descending_saw', 'binary', 'binary_flicker', 'flicker'))}
+MOVEMENT = {'float': 0, 'rotate': 1}  # A prop's `movement` (static, none: still).
+UNLIT = ('indicator', 'forcefield', 'shield', 'bubble', 'bubblesm')  # Besides statictrans*: see read_materials.
 SPECULAR = ('point', 'spot', 'capsule')  # tile.cs: diffuse lights (and no type: diffuse) add no specular light.
 
 
@@ -671,13 +740,20 @@ def read_lights(entities, box=None):
     hexes = lambda value, default=0xffffff: np.array([(default if colour(value) is None else colour(value)) >> s & 255 for s in (16, 8, 0)]) / 255
     number = lambda fields, key, default: next(iter(re.findall(r'-?\d*\.?\d+(?:e-?\d+)?', fields.get(key, ''))), None) or default
     ambient_level = lambda value: np.round(hexes(value, 0), 4).tolist()
-    out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=DEFAULT_SHADOW, sun=None, envmap='default_envmap', gloss=1.0)
+    out = dict(lights=[], nodes=[], ambient=[0, 0, 0], shadow_ambient=None, shadow_colour=DEFAULT_SHADOW, sun=None, envmap='default_envmap', gloss=1.0,
+               fog=None, vertical_fog=None)
     for name, position, rotation, scale, fields in entities:
         if name == 'global':
             if 'shadow_color' in fields:
                 out['shadow_colour'] = np.round(hexes(fields['shadow_color'], 0), 4).tolist()
             out['envmap'] = fields.get('envmap', '').strip().lower() or out['envmap']
             out['gloss'] = float(number(fields, 'gloss', out['gloss']))
+            # The game's ambient occlusion (NVIDIA HBAO+): its power and radius (1 each where unset).
+            out['ao'] = [float(number(fields, 'ambient_occlusion_power', 1)), float(number(fields, 'ambient_occlusion_radius', 1))]
+            # Past 6000 units from the eye the sun's shadow fades over 2000 to horizon_shade (0 shadowed, 1 lit;
+            # the page takes 1 where unset) and the shadow colour to horizon_shade_color (tile.cs).
+            out['horizon'] = [float(number(fields, 'horizon_shade', 1)),
+                              *(np.round(hexes(fields['horizon_shade_color'], 0), 4).tolist() if 'horizon_shade_color' in fields else [None] * 3)]
         if not name.startswith('light'):
             continue
         kind, (x, y, z) = fields.get('type', '').strip().lower(), position
@@ -685,6 +761,12 @@ def read_lights(entities, box=None):
             out[kind] = ambient_level(fields.get('color'))
             continue
         travel = game_matrix((0, 0, 0), rotation, (1, 1, 1))[:3, 2] * (1, 1, -1)
+        if kind in ('fog', 'vertical_fog'):  # The first of each kind (the editor makes them unique).
+            if out[kind] is None:
+                far = [float(number(fields, 'radius', 8000)), float(number(fields, 'margin', 0))] if kind == 'fog' else \
+                      [float(number(fields, 'height', 0)), float(number(fields, 'radius', 1000))]
+                out[kind] = np.round([*hexes(fields.get('color')), float(number(fields, 'intensity', 1)), *far], 4).tolist()
+            continue
         if kind == 'sun':
             if out['sun'] is None:
                 out['sun'] = np.round([*travel, *hexes(fields.get('color')) * float(number(fields, 'intensity', 4)) * SUN, 1 / SUN], 4).tolist()
@@ -700,6 +782,15 @@ def read_lights(entities, box=None):
             out['lights'].append([LIGHT_KINDS[kind], *np.round([x, y, -z, *travel, *rgb, radius, radius * min(1, max(0, float(number(fields, 'falloff', .33)))),
                                   np.cos(angle / 2), float(number(fields, 'softness', 0)), float(number(fields, 'length', 0)),
                                   1 / POINT if kind in SPECULAR else 0], 4).tolist()])
+            # Its visibility function (flicker, sin...: VISIBILITY), its minimum (default 0) and speed (default 1).
+            function = VISIBILITY.get(fields.get('visibility_function', '').strip().lower(), 0)
+            if function:
+                out['lights'][-1] += [function, float(number(fields, 'visibility_function_min', 0)), float(number(fields, 'visibility_function_speed', 1))]
+    if out['fog'] and out['vertical_fog']:  # The vertical fog takes the fog's colour (run 45).
+        out['vertical_fog'][:3] = out['fog'][:3]
+    horizon = out.setdefault('horizon', [1.0, None, None, None])
+    if horizon[1] is None:
+        horizon[1:] = out['shadow_colour']
     if out['shadow_ambient'] is None:
         out['shadow_ambient'] = out['ambient']
     return out
@@ -756,6 +847,8 @@ def material_textures(packs, names, materials, output, replace=False):
                 decoded[file] = None
         return decoded[file]
 
+    normal_hash = functools.lru_cache(maxsize=None)(lambda file: hashlib.sha256(where[file].read(file)).hexdigest()[:16])
+
     def surface(flags, folder):
         """A lit material's specular map (red gloss, green strength: [r, g] when even, else a texture) and material
         id: its id map's red (the commonest value; ponytail: the game reads it per pixel) where not 0, else its
@@ -763,10 +856,21 @@ def material_textures(packs, names, materials, output, replace=False):
         most blocks' id map, textures/metal.png, is 40 too)."""
         if not flags.get('lit'):
             return {}
+        out = {}
+        # Its normal map (map 1; tangent space, D3D's green), 256 square at most; none where flat or not found.
+        file = flags.get('normal') and find(flags['normal'], folder)
+        target = file and output / 'textures' / f"{normal_hash(file)}-n.png"
+        if target and not replace and target.is_file():
+            out['normal'] = target.name
+        elif target and pixels(file) is not None and max(np.ptp(np.asarray(pixels(file))[..., c]) for c in (0, 1)) > 8:
+            image = pixels(file).copy()
+            image.thumbnail((NORMAL_SIZE, NORMAL_SIZE))
+            image.save(target, 'PNG')
+            out['normal'] = target.name
         file = flags.get('ids') and find(flags['ids'], folder)
         ids = pixels(file) if file else None
         values, counts = np.unique(np.asarray(ids)[..., 0], return_counts=True) if ids is not None else ([0], [1])
-        out = {'id': int(values[np.argmax(counts)]) or flags['id'] or 40}
+        out['id'] = int(values[np.argmax(counts)]) or flags['id'] or 40
         file = flags.get('spec') and find(flags['spec'], folder)
         image = pixels(file) if file else None
         if image is None:
@@ -813,7 +917,8 @@ def material_textures(packs, names, materials, output, replace=False):
             data = io.BytesIO()
             image.save(data, 'PNG')
             target.write_bytes(data.getvalue())
-        entries[name] = (dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend') if flags[key]} |
+        entries[name] = (dict(texture=target.name, scale=scale) | {key: True for key in ('cutout', 'blend', 'unlit') if flags.get(key)} |
+                         {key: flags[key] for key in ('scroll', 'mirror', 'vertex') if flags.get(key) is not None} |
                          ({'accents': flags['accents']} if any(a is not None for a in flags['accents']) else {}) |
                          ({} if '#' in name else surface(flags, folder)))
     return entries, sorted(set(missing))
@@ -852,6 +957,11 @@ def write_envmaps(pack, names, output, replace=False, folder='envmaps', face=256
             strip.save(target, 'JPEG' if suffix == '.jpg' else 'PNG', **({'quality': 92} if suffix == '.jpg' else {}))
         done.append(name)
     return done
+
+
+def lut_file(name):
+    """A map's `lut` (lut/lut_warm, lut) as its file in textures.dbp."""
+    return 'textures\\' + name.replace('/', '\\') + '.png'
 
 
 def read_sky(entities):
@@ -895,7 +1005,7 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
             raw = where[file].read(file)
             moved = not path.startswith(RAW_FBX)  # Its own name: files of earlier imports kept the nodes' transforms.
             target = output / 'models' / f'{hashlib.sha256(raw + (b"" if moved else b"raw")).hexdigest()[:16]}.bin'
-            groups = fbx_mesh(raw, moved)
+            groups = fbx_mesh(raw, moved, colours=True)
         except (KeyError, ValueError, IndexError, struct.error, zlib.error):
             missing.append(path)
             continue
@@ -903,13 +1013,15 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         parts = file.split('\\')[:-1]
         own = next((alike(path, folders[f]) for f in ('\\'.join(parts[:n]) for n in range(len(parts), 1, -1)) if f in folders), path)
         names = [next((m for m in (f'{path}_{name}'.lower(), name.lower(), path, (heads or {}).get(path)) if m in materials), own) for name in groups]
-        triangles = [np.concatenate(parts, 2) for parts in groups.values()]
+        triangles = [np.concatenate(parts[:3], 2) for parts in groups.values()]
+        tints = [parts[3] for parts in groups.values()]
         if path in (pickups or {}):
             # A pickup's shaders go by the entity's kind (hpt.shader says so): KIND_MATERIAL (after the FBX's
             # namespace:), the model's own, KIND. Groups with none (the melee weebles' arms) are left out.
             kind, (model, _, centred) = path.split('/', 1)[1], pickups[path]
             names = [next((m for m in (f"{kind}_{name.rsplit(':', 1)[-1]}".lower(), model, kind) if m in materials), None) for name in groups]
             triangles = [t for name, t in zip(names, triangles) if name]
+            tints = [t for name, t in zip(names, tints) if name]
             names = [name for name in names if name]
             if centred and triangles:
                 corners = np.concatenate([t[..., :3].reshape(-1, 3) for t in triangles])
@@ -919,6 +1031,12 @@ def convert_models(packs, paths, materials, output, replace=False, previous=None
         if replace or not target.is_file():
             target.write_bytes(b''.join(t.tobytes() for t in triangles))
         entries[path] = dict(format=FORMAT, file=target.name, groups=[[name, 3 * len(t)] for name, t in zip(names, triangles)])
+        # Its vertex colours (RGBA bytes per corner, in the groups' order) where any is not white: HASH-c.bin.
+        if tints and np.concatenate([t.reshape(-1, 4) for t in tints]).min() < 1:
+            colours = target.with_name(target.stem + '-c.bin')
+            if replace or not colours.is_file():
+                colours.write_bytes(np.concatenate([np.round(np.clip(t, 0, 1) * 255).astype(np.uint8).ravel() for t in tints]).tobytes())
+            entries[path]['colours'] = colours.name
     return entries, missing
 
 
@@ -936,6 +1054,7 @@ def import_maps(game, output, replace=False, extra=None):
     packs = [Pack(path) for path in sorted((game / 'packs').glob('*.dbp')) if not path.name.startswith('audio')]
     stock = next(pack for pack in packs if pack.path.name == 'maps.dbp')
     cubes = next((pack for pack in packs if pack.path.name == 'textures_cubemaps.dbp'), None)
+    textures_pack = next((pack for pack in packs if pack.path.name == 'textures.dbp'), type('NoPack', (), {'files': {}})())
     has_cube = lambda name: cubes is not None and name is not None and cube_file(name) in cubes.files
     # A map's reader takes the suffix of the file to read beside it: '.rbe', '-h.png'...
     sources = [(name.rsplit('\\', 1)[-1][:-4], 'Diabotical', lambda suffix, name=name[:-4]: stock.read(name + suffix))
@@ -968,13 +1087,16 @@ def import_maps(game, output, replace=False, extra=None):
                 continue
             parsed = read_map(raw)
             blocks = visible_blocks(parsed['blocks'])
-            props, tints, markers, liquids, decals = placements(parsed['entities'], assets, found, {kind: scale for kind, (_, scale, _) in pickups.items()})
+            movers = {}
+            props, tints, markers, liquids, decals = placements(parsed['entities'], assets, found, {kind: scale for kind, (_, scale, _) in pickups.items()}, movers)
             heights, terrain = read_terrain(parsed['entities'], read)
             xyz = parsed['blocks']['xyz']
             lights = read_lights(parsed['entities'], (xyz.min(0) * BLOCK, (xyz.max(0) + 1) * BLOCK) if len(xyz) else None)
             if not has_cube(lights['envmap']):  # Not in the game's files: its default.
                 lights['envmap'] = 'default_envmap' if has_cube('default_envmap') else None
             sky = read_sky(parsed['entities'])
+            lut = (next((f for n, *_, f in parsed['entities'] if n == 'global'), {}).get('lut') or '').strip().lower().replace('\\', '/') or None
+            lut = lut if lut and lut_file(lut) in textures_pack.files else None
             if not has_cube(sky['cube']):  # No skybox, or none in the game's files: its default (run 45).
                 sky['cube'] = DEFAULT_SKY if has_cube(DEFAULT_SKY) else None
         except (OSError, ValueError, EOFError, struct.error) as exc:
@@ -982,8 +1104,9 @@ def import_maps(game, output, replace=False, extra=None):
             index.pop(ident, None)
             continue
         head = json.dumps(dict(props=[[key, len(value), int(key in tints)] for key, value in props.items()], markers=markers, liquids=liquids,
-                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky,
-                               billboards=read_billboards(parsed['entities']), pfx=read_pfx(parsed['entities'], assets, pickups)),
+                               decals=[[key, len(value[0])] for key, value in decals.items()], lights=lights, sky=sky, lut=lut, movers=[[list(props).index(key), *entry] for key, value in movers.items() for entry in value],
+                               billboards=read_billboards(parsed['entities']), volumetrics=read_volumetrics(parsed['entities']),
+                               labels=read_labels(parsed['entities']), pfx=read_pfx(parsed['entities'], assets, pickups)),
                           separators=(',', ':')).encode()
         head += b' ' * (-len(head) % 4)
         placed = (struct.pack('<I', len(head)) + head + b''.join(value.tobytes() for value in props.values()) +
@@ -993,7 +1116,10 @@ def import_maps(game, output, replace=False, extra=None):
         file, entities = f'{ident}-{digest}.bin', f'{ident}-{hashlib.sha256(placed).hexdigest()[:12]}.ent'
         if terrain:
             terrain['file'] = f'{ident}-{hashlib.sha256(heights).hexdigest()[:12]}.png'
-        item = dict(id=ident, format=FORMAT, name=name, group=group, file=file, entities=entities, terrain=terrain, hash=digest, version=parsed['version'],
+        # The global entity's bevel: how round the blocks' edges are shaded (1 where unset; run 46: 0 leaves them sharp).
+        bevel = next((f.get('bevel') for n, *_, f in parsed['entities'] if n == 'global'), None)
+        bevel = float(bevel) if bevel and re.fullmatch(r'\s*\d*\.?\d+\s*', bevel) else 1.0
+        item = dict(id=ident, format=FORMAT, name=name, group=group, file=file, entities=entities, terrain=terrain, hash=digest, version=parsed['version'], bevel=bevel,
                     author=parsed['author'], materials=parsed['materials'], blocks=len(blocks))
         for old in files(index.get(ident, {})):
             if old and old not in files(item):
@@ -1010,19 +1136,24 @@ def import_maps(game, output, replace=False, extra=None):
         for old in files(index.pop(ident)):
             if old:
                 (output / 'maps' / old).unlink(missing_ok=True)
-    keys, decal_materials, envmaps, systems, skies = set(), set(), set(), set(), set()
+    keys, decal_materials, envmaps, systems, skies, luts = set(), set(), set(), set(), set(), set()
     for item in index.values():
         with open(output / 'maps' / item['entities'], 'rb') as file:
             length, = struct.unpack('<I', file.read(4))
             head = json.loads(file.read(length))
             keys |= {entry[0] for entry in head['props']}
             decal_materials |= {entry[0] for entry in head['decals']} | {entry[13] for entry in head.get('billboards', []) if entry[13]}
+            decal_materials |= {entry[20] for entry in head.get('volumetrics', []) if entry[20]}
             envmaps.add(head['lights']['envmap'])
             systems |= {entry[12] for entry in head.get('pfx', [])}
             skies.add(head['sky']['cube'])
+            luts.add(head.get('lut'))
     if cubes is not None:
         write_envmaps(cubes, envmaps - {None}, output, replace)
         write_envmaps(cubes, skies - {None}, output, replace, 'skies', 512, '.jpg')
+    (output / 'luts').mkdir(parents=True, exist_ok=True)
+    for name in luts - {None}:  # As they are: 256 x 16, x = red + 16 x blue, y = green.
+        (output / 'luts' / f'{map_id(name)}.png').write_bytes(textures_pack.read(lut_file(name)))
     models_path = output / 'models.json'
     previous = json.loads(models_path.read_text(encoding='utf-8')) if models_path.is_file() else {}
     models, result['unconverted'] = convert_models(packs, {key.split('|')[0] for key in keys}, found, output, replace, previous, piece_shaders(assets, found),

@@ -33,7 +33,15 @@ left (`static/diabotical-maps/blocks.js`).
   missing corner set by the turn. Shapes 2, 4, 5 and 6 draw nothing in the
   game's own OBJ export (probably invisible blocks: clips, triggers…), so the
   page leaves them out; run 32 showed a roof of each casts no sun shadow
-  either (nor do props, with or without `__shadow`).
+  either.
+- **Prop shadows.** A prop of a plain model casts the sun's shadow unless it
+  has `skip_shadows`; the pieces of a dynamic asset (trims, pillars, pipes,
+  the generator) cast none. Runs 45 and 46 tested props on a sunlit floor:
+  boulders and a tree canopy cast a shadow with or without `force_shadows`,
+  while dynamic pillars and generators, standing on the floor or floating,
+  cast none seen from play distance, with `force_shadows`, `skip_shadows`,
+  `__shadow` or none (run 45 saw one faint blob under a forced generator
+  from 1,100 units up only). So the page does not read `force_shadows`.
 - **Bevels.** The game's export splits a cube's face into a 4-unit flat rim
   along each edge it shares with another of the cube's open faces, and the
   game shades that rim round (run 33: a gray pillar under bioplant's sun,
@@ -41,8 +49,8 @@ left (`static/diabotical-maps/blocks.js`).
   halfway to the other face's (equally to all three at a corner), which
   matches the game's soft edge bands; edges against a neighbouring cube, half
   blocks and concave edges are not bevelled. The game's darkening on the
-  floor around a block's base is its screen-space ambient occlusion (not
-  drawn).
+  floor around a block's base is its screen-space ambient occlusion (see
+  Ambient occlusion below).
 - **Materials.** A face's material is an asset (`scripts/*.assets`) naming a
   material in a `.shader` file; its first `map` is its colour texture (BC7
   `.dds` in the packs, decoded with Pillow and stored as PNG, 512 pixels at
@@ -54,6 +62,14 @@ left (`static/diabotical-maps/blocks.js`).
   `models_theme.dbp`'s scale 0.5, not `scripts.dbp`'s 1). 13 material names of
   the stock maps are not in the game files and are drawn in a flat colour of
   their own, listed in the map's Preview notes.
+- **Unlit materials.** Stages drawn by the game's forward shaders
+  (`statictrans*`: screens, holograms, glow panes, the digit displays;
+  `indicator`, `forcefield`, `shield`, `bubble`; 1,424 stages) write their
+  texel to the screen as it is, with no lighting (read from the shaders'
+  disassembly). The page draws them unlit (`unlit` in `materials.json`).
+  `statictranstex` scrolls its texture by `float_params`' first two numbers,
+  in texture units a second (`scroll`), and `statictrans` glass shows the
+  envmap times 1 − the first (`mirror`).
 - **Half blocks.** The sloped side takes the material and texture axes of the
   stored face numbered by the turn (face 0 for turn 0, …), so its texture is
   stretched across the slope by √2, as in the game.
@@ -155,6 +171,30 @@ left (`static/diabotical-maps/blocks.js`).
   shows looking along +x, and the page matches the game from the same cameras.
   `sky_texture` (7 maps; `tileskyuv.ps` on `models/skydome`) changes nothing
   in the game: a map with only `sky_texture blue_sky_2` drew the default sky.
+- **Fog.** The first `light` of type `fog` fogs everything the lighting
+  shader draws, as `tile.cs` does: toward its colour by intensity × how far
+  the point is into its range, from margin × radius to radius from the eye
+  (intensity 1, radius 8000, margin 0 where unset). A `vertical_fog` then
+  fogs by its intensity × how far the point is below its `height`, over
+  `radius` units, in the fog's colour (run 45: a floor at y 400 under height
+  700 and radius 600 came out half fogged, in the fog light's red, not the
+  vertical fog's blue; the height is a world y, not counted from the entity).
+  The sky turns toward the fog colour near the horizon by (angle from
+  straight up / 90°)⁴ × intensity / 10 (`tilesky.ps`). Liquids, billboards
+  and particles are not fogged (forward shaded, as in the game).
+- **Light beams.** `volumetric` entities are panels in the entity's unit
+  box (`read_volumetrics`): a grid (the default) of `segments` cells across
+  x by `segments_y` along z, each an open tube of four walls (seen from above
+  in run 45; a solid band from the front in run 46), or `segments` panels fanned about the
+  vertical (`radial`), each less its `gap`, the top narrowed by `taper`;
+  brightest at the top and fading down, soft at the sides, the colour times
+  its alpha (AARRGGBB) and the `texture` where there is one, blended over
+  the picture (run 46: a red beam over the blue sky is saturated red, which
+  added light could not be), fading where seen edge on (squared; run 47:
+  bioplant's map-sized one is invisible from above), turning by `rotation_speed`
+  (radians a second, not measured). Runs 45 and 46 showed grids of three
+  panels and fans of 8 and 16 so. Lights of type `volume` drew nothing in
+  the game in either run (with and without fog), so the page draws none.
 - **Lights.** Lit as the game's lighting shader (`tile.cs`) does, with the
   numbers measured in it: the picture is the texture's bytes times the light,
   then the game's last pass, which looks the colour up in a 16-step LUT (the
@@ -243,6 +283,44 @@ left (`static/diabotical-maps/blocks.js`).
   game's smoke (accent 3) and refraction are left out. `weapongl` is an ASCII
   FBX, read as the binary ones are; `weaponfg`, `weapondf`, `ammodf` and
   `weaponbfg` have no model in the game files and stay markers.
+- **Surface detail.** A lit stage's map 1 is its normal map (tangent space,
+  D3D's green; 1,023 of them in the packs, all BC7 RGB), kept at 256 pixels
+  as `HASH-n.png` and drawn on blocks, props and the terrain's ground. The
+  `statictrans*_col` materials take the model's FBX vertex colours: their red
+  as alpha for `statictranstex`, their colour for `statictranstexfog` (the
+  tile shaders read none, from the disassembly). The global `bevel` scales
+  how far the block rims' normals bend (run 46: `bevel 0` leaves a pillar's
+  edges sharp, the default shades them round).
+- **Ambient occlusion.** The game darkens its ambient light (only) by NVIDIA
+  HBAO+ (`GFSDK_SSAO_D3D11.dll`; `tile.cs` multiplies the ambient by it). The
+  page draws the scene's depth first, then per pixel how much of the half
+  space in front of the surface, out to 24 units × the global
+  `ambient_occlusion_radius`, the depth fills (12 samples), to the power
+  `ambient_occlusion_power`, and multiplies the ambient light by it. Run 24
+  measured the floor beside a 20-unit step at about 0.6 within about 20 units.
+- **Horizon shade.** Past 6000 units of depth the sun's shadow fades over
+  2000 units to the global `horizon_shade` (0 shadowed, 1 lit; the page takes
+  1 where unset) and the shadow colour to `horizon_shade_color` (`tile.cs`).
+- **Labels.** A `label` entity shows its `text` where it stands (run 46:
+  white, about `size` units tall); the page draws it facing the camera.
+- **Colour grading.** The game's last pass looks every pixel up in a 3D LUT,
+  `textures/lut.png` (the identity) or the global entity's `lut` (14 stock
+  maps; 256 × 16 PNGs: x is red plus 16 × blue, y green), without the
+  half-texel fix. The page draws the scene into a float target and looks it
+  up the same way in a last pass (`luts/NAME.png`); on the identity that is
+  the (16x − 0.5) / 15 step measured in runs 21 to 23.
+- **Flickering lights.** A light's `visibility_function` (4,487 stock lights:
+  flicker, sin, hills, peaks, valleys, binary_flicker, binary, ascending_saw,
+  descending_saw, the editor's list) scales its colour between
+  `visibility_function_min` (0) and 1, `visibility_function_speed` (1) cycles
+  a second. The curves follow their names; the game's own are not measured.
+- **Moving props.** A prop's `movement` makes it move by itself (2,493 stock
+  props), measured in run 46 from shots 6.0 s apart by the game's log:
+  `float A W` goes up and down A units from top to bottom at W radians a
+  second (A 20 at W 4 drifted smoothly from shot to shot, which a period of W
+  seconds would not); `rotate S` turns S degrees a second about the vertical
+  through the entity, clockwise seen from above (rotate 10 turned 61° in
+  6 s). Props moved by logic (`action move ...`, triggered) stay at rest.
 - **Markers and liquids.** Spawns, jump pads, teleporters and any pickup
   without a model it can read are coloured shapes. A `liquid_*` entity is a box of its scale centred on it, its top
   the surface: drawn unlit (lava and acid glow their colour, as in the game)
@@ -250,7 +328,11 @@ left (`static/diabotical-maps/blocks.js`).
   no colour is clear water, as bioplant's pools are in game; the ocean (`shader ocean`, `core_ocean`)
   is dark blue and mirrors the envmap. The game's own surfaces (water.ps,
   panel_water.ps) add moving noise, foam where they meet the ground and fog
-  over distance; the page leaves those out, and its liquids light nothing
+  over distance. The page ripples a liquid's brightness by two moving noise
+  layers (`texture_scale` makes them larger), fades it where shallow (the
+  game's water.ps is fully opaque 120 units down; the page uses its depth
+  pre-pass), and turns an ocean toward its `shallow_color` where it is
+  shallow (28 maps); its liquids light nothing
   around them (whether the game's do is not measured).
 
 The file formats are written out in the import's module docstring
@@ -492,13 +574,13 @@ all community `jacobs_decals` ones, mostly on a_enclosure), billboards' own shad
 materials (a flag in the material picks the team's colour over an accent),
 whether a
 terrain material's `uv_scale` changes its repeat (`terrain_snow_blend` has
-0.125; only `core_ter` was measured), the terrain's normal maps and the fields
+0.125; only `core_ter` was measured), the terrain's cliff and dirt normal maps and the fields
 of one map only (`tt_boost`: `offset_x`, `scale_y`, read as a shift and a
 height scale untested; `mirrored`, not read), the game's choice among a
 dynamic rule's variants and the rule conditions not understood (`when`,
 neighbour tests such as `left empty`), skinned models, the
 few prop materials still not found (flat colours: weapon models placed as props, particle
-containers, holiday lights, some ads), the liquids' moving noise, foam and fog; of the lighting: the lights' specular highlights are checked only
+containers, holiday lights, some ads), the liquids' foam and fog, props moved by logic (`action move`); of the lighting: the lights' specular highlights are checked only
 through bioplant's overall brightness, the reflections leave out the per-pixel
 material id (the commonest
 value of a material's id map is used), the spot lights' extra specular factor
@@ -507,13 +589,11 @@ value of a material's id map is used), the spot lights' extra specular factor
 reflection), the reflections of the envmap's two finest mips (the page keeps
 256 × 256 faces), the flat ambients of bots and pickups (ids 25, 44, 45, 48,
 49, 65, 120 to 139), decals' own specular maps (a decal dims the reflection
-under it) and the game's ambient occlusion; the ambient's fade toward the
+under it); the ambient's fade toward the
 shadow ambient on faces turned from the sun (the shader ramps it over N·L
-below 0.1), fog and vertical fog, light volumes
-(beams), flickering lights (drawn steady), colour grading (the 11 maps that
-set `lut`; the page applies the identity's step), the strong light of maps
-with no sun (measured in run 20, not drawn), the screen-space ambient
-occlusion (narrow; not drawn), the sun's light in shadow on maps like
+below 0.1), the game's own flicker curves, lights of type `volume` (none
+seen in game), the strong light of maps
+with no sun (measured in run 20, not drawn), the sun's light in shadow on maps like
 bioplant (the page lets far more through than the game), the game grid's
 half-cell shift, liquids' light on what is around them, and
 bloom, how nodes overlap and the grid's own size; the

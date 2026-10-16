@@ -11,13 +11,50 @@ window.addEventListener('DOMContentLoaded', async () => {
   const canvas = $('c');
   const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  // The game's last pass looks every pixel up in a 16-step colour LUT (identity unless the map sets `lut`) without
-  // the half-texel fix, which makes x into (16 x - 0.5) / 15 (runs 21 to 23).
-  const identity = 'vec3 CustomToneMapping( vec3 color ) { return color; }';
-  if (!THREE.ShaderChunk.tonemapping_pars_fragment.includes(identity)) console.warn('three changed CustomToneMapping: the LUT step is not drawn');
-  THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace(
-    identity, 'vec3 CustomToneMapping( vec3 color ) { return clamp((16. * color - .5) / 15., 0., 1.); }');
-  renderer.toneMapping = THREE.CustomToneMapping;
+  // The game's last pass looks every pixel up in a 16-step colour LUT (the map's `lut`, else the identity) without the
+  // half-texel fix, which makes x into (16 x - 0.5) / 15 on the identity (runs 21 to 23). The page draws the scene into
+  // a float target and looks it up the same way: 256 x 16 (x = red + 16 x blue, y = green), blue mixed by hand.
+  const target = new THREE.WebGLRenderTarget(1, 1, {type: THREE.HalfFloatType, samples: 4});
+  const identityLut = Object.assign(new THREE.DataTexture(Uint8Array.from({length: 256 * 16 * 4}, (_, i) =>
+    [i >> 2 & 15, i >> 10 & 15, i >> 6 & 15, 15][i & 3] * 17), 256, 16), {minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, needsUpdate: true});
+  const lutPass = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: {picture: {value: target.texture}, lut: {value: identityLut}}, depthTest: false, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+    fragmentShader: `uniform sampler2D picture, lut; varying vec2 vUv;
+      void main() {
+        vec3 t = clamp(16. * texture2D(picture, vUv).rgb - .5, 0., 15.);
+        float b = floor(t.b), y = (t.g + .5) / 16.;
+        vec3 low = texture2D(lut, vec2((t.r + .5 + 16. * b) / 256., y)).rgb, high = texture2D(lut, vec2((t.r + .5 + 16. * min(b + 1., 15.)) / 256., y)).rgb;
+        gl_FragColor = vec4(mix(low, high, t.b - b), 1.);
+      }`}));
+  const lutScene = new THREE.Scene().add(lutPass), lutCamera = new THREE.Camera(), drawn = new THREE.Vector2();
+  /* Ambient occlusion, as the game's HBAO+ darkens its ambient light (tile.cs): the solid scene's depth first, then per
+     pixel how much of the half space in front of its surface, out to `radius` units, the depth buffer fills (12 samples
+     in a disc), to the map's ambient_occlusion_power. The lit shaders multiply their ambient light by it. Run 24: the
+     floor by a 20-unit step darkened to about 0.6 within about 20 units. */
+  const depthTarget = new THREE.WebGLRenderTarget(1, 1, {depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType)});
+  const occlusionTarget = new THREE.WebGLRenderTarget(1, 1);
+  const depthOnly = new THREE.MeshBasicMaterial({colorWrite: false}), seeThrough = [];  // Left out of the depth pass.
+  const occlusionPass = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: {depth: {value: depthTarget.depthTexture}, inverse: {value: new THREE.Matrix4()}, projection: {value: new THREE.Matrix4()},
+      radius: {value: 24}, power: {value: 1}, aspect: {value: 1}}, depthTest: false, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+    fragmentShader: `uniform sampler2D depth; uniform mat4 inverse, projection; uniform float radius, power, aspect; varying vec2 vUv;
+      vec3 at(vec2 uv) { vec4 p = inverse * vec4(vec3(uv, texture2D(depth, uv).r) * 2. - 1., 1.); return p.xyz / p.w; }
+      void main() {
+        if (texture2D(depth, vUv).r >= 1.) { gl_FragColor = vec4(1.); return; }
+        vec3 p = at(vUv), n = normalize(cross(dFdx(p), dFdy(p)));
+        vec4 edge = projection * vec4(p.x + radius, p.yz, 1.);
+        float reach = abs(edge.x / edge.w * .5 + .5 - vUv.x), turn = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.283, hidden = 0.;
+        for (int i = 0; i < 12; i++) {
+          float a = float(i) * 2.39996 + turn, t = (float(i) + .5) / 12.;
+          vec3 q = at(vUv + vec2(cos(a), sin(a) * aspect) * reach * t) - p;
+          float d = length(q);
+          hidden += max(dot(n, q / max(d, 1e-3)) - .1, 0.) * clamp(1. - d / radius, 0., 1.);
+        }
+        gl_FragColor = vec4(vec3(pow(clamp(1. - hidden / 6., 0., 1.), power)), 1.);
+      }`}));
+  const occlusionScene = new THREE.Scene().add(occlusionPass);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9fc4e0);
   // Every material is lit the game's way (lighting.js); the directional light only casts the sun's shadow.
@@ -37,7 +74,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     gameGridMax: {value: new THREE.Vector3(1, 1, 1)}, gameAmbient: {value: new THREE.Vector3(.55, .55, .55)},
     gameShadowAmbient: {value: new THREE.Vector3(.55, .55, .55)}, gameShadowColour: {value: new THREE.Vector3(1, 1, 1)},
     gameSunColour: {value: new THREE.Vector3(.45, .45, .45)}, gameSunToward: {value: new THREE.Vector3(.4, 1, .25).normalize()},
-    gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}};
+    gameSunSpecular: {value: 0}, gameGloss: {value: 1}, gameEnvmap: {value: null}, gameFog: {value: new THREE.Vector4()},
+    gameFogRange: {value: new THREE.Vector2(1, 0)}, gameVerticalFog: {value: new THREE.Vector4()}, gameVerticalFogRange: {value: new THREE.Vector2(0, 1)},
+    gameHorizon: {value: new THREE.Vector4(1, 1, 1, 1)}, gameOcclusion: {value: occlusionTarget.texture}, gameScreen: {value: new THREE.Vector2(1, 1)}};
+  const gameTime = {value: 0};  // Seconds, for what moves.
   // A material's specular map (materials.json `spec`: a texture, or [gloss, strength] made a texel) and material id.
   const evenTexels = new Map();
   function evenTexel([r, g] = [0, 0]) {
@@ -53,7 +93,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (own) own(shader, renderer);
       Object.assign(shader.uniforms, gameUniforms, surface);
       shader.vertexShader = glsl.vertexHead + shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>' + glsl.vertexBody);
-      shader.fragmentShader = glsl.fragmentHead + shader.fragmentShader.replace('#include <aomap_fragment>', glsl.fragmentBody);
+      shader.fragmentShader = glsl.fragmentHead + shader.fragmentShader.replace('#include <aomap_fragment>', glsl.fragmentBody)
+        .replace('#include <tonemapping_fragment>', glsl.fog);
     };
     made.customProgramCacheKey = () => 'game' + (own ? own.toString() : '');
     return made;
@@ -88,8 +129,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   // With a colour mask (`mask`, the material's map 4), the texture is tinted by each prop's accent colours, as the
   // game's tilemask.ps does: toward accent × the texel's mean by the mask's red, green and blue for accents 1, 2, 3.
-  function material(name, entry, mask) {
-    const key = mask ? name + '#tinted' : name;
+  function material(name, entry, mask, coloured) {
+    const key = (mask ? name + '#tinted' : name) + (coloured && entry && entry.vertex ? '#vc' : '');
     if (materials.has(key)) return materials.get(key);
     const side = THREE.FrontSide;
     let made;
@@ -108,11 +149,37 @@ window.addEventListener('DOMContentLoaded', async () => {
       materials.set(key, made);
       return made;
     }
+    if (entry && entry.unlit && entry.texture) {
+      // Screens, holograms and glow panes (statictrans*): the texel as it is, unlit, scrolling by `scroll` units a
+      // second; statictrans glass is the envmap times `mirror`, see-through.
+      made = new THREE.MeshBasicMaterial(entry.mirror != null ? {color: 0, combine: THREE.AddOperation, reflectivity: entry.mirror,
+        envMap: gameUniforms.gameEnvmap.value, transparent: true, opacity: .5, depthWrite: false, side} : {map: texture(entry.texture),
+        side: entry.cutout ? THREE.DoubleSide : side, alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
+      if (entry.mirror != null) mirrors.push(made);
+      if (entry.scroll) made.onBeforeCompile = shader => {
+        Object.assign(shader.uniforms, {gameTime, gameScroll: {value: new THREE.Vector2(entry.scroll[0], -entry.scroll[1])}});
+        shader.fragmentShader = 'uniform float gameTime; uniform vec2 gameScroll;\n' + shader.fragmentShader.replace('#include <map_fragment>',
+          'diffuseColor *= texture2D(map, vUv + gameScroll * gameTime);');
+      };
+      // A model's vertex colours (statictrans*_col): their red as alpha, or a colour times the texel.
+      if (coloured && entry.vertex) made.vertexColors = true;
+      if (coloured && entry.vertex === 'alpha') {
+        const own = made.onBeforeCompile;
+        made.onBeforeCompile = (shader, renderer) => {
+          if (own !== THREE.Material.prototype.onBeforeCompile) own(shader, renderer);
+          shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', 'diffuseColor.a *= vColor.r;');
+        };
+        made.customProgramCacheKey = () => 'alpha' + entry.vertex + !!entry.scroll;
+      }
+      materials.set(key, made);
+      return made;
+    }
     if (!entry || !entry.texture) made = new THREE.MeshLambertMaterial({color: flatColour(name), side});
     else {
       // Foliage and the like are cut out by their texture's alpha and seen from both sides.
       made = new THREE.MeshLambertMaterial({map: texture(entry.texture), side: entry.cutout ? THREE.DoubleSide : side,
         alphaTest: entry.cutout ? .5 : 0, transparent: !!entry.blend, depthWrite: !entry.blend});
+      withNormal(made, entry);
       if (mask) made.onBeforeCompile = shader => {
         shader.uniforms.maskMap = {value: texture(mask.texture)};
         shader.vertexShader = 'attribute vec4 accent1, accent2, accent3;\nvarying vec4 vAccent1, vAccent2, vAccent3;\n' +
@@ -128,6 +195,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       };
     }
     materials.set(key, gameLit(made, entry));
+    return made;
+  }
+  // A lit material's normal map (materials.json `normal`, map 1): tangent space with D3D's green, so y turned round.
+  function withNormal(made, entry) {
+    if (entry && entry.normal) Object.assign(made, {normalMap: texture(entry.normal), normalScale: new THREE.Vector2(1, -1)});
     return made;
   }
   const maskOf = (name, entry, entries) => entry && entry.texture && (entries[name + '#4'] || {}).texture ? entries[name + '#4'] : null;
@@ -171,17 +243,63 @@ window.addEventListener('DOMContentLoaded', async () => {
       layers.markers.add(mesh);
     }
   }
+  // Labels: their text where they stand, white, facing the camera, about `size` units tall (run 46).
+  function addLabels(list) {
+    for (const [x, y, z, text, size] of list) {
+      const canvas = document.createElement('canvas'), context = canvas.getContext('2d'), font = 'bold 64px sans-serif';
+      context.font = font;
+      canvas.width = Math.ceil(context.measureText(text).width) + 16;
+      canvas.height = 96;
+      Object.assign(context, {font, fillStyle: '#fff', textBaseline: 'middle', shadowColor: 'rgba(0,0,0,.6)', shadowBlur: 6});
+      context.fillText(text, 8, 48);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas), depthWrite: false}));
+      sprite.scale.set(size * 1.25 * canvas.width / 64, size * 1.25 * 96 / 64, 1);
+      sprite.position.set(x, y, z);
+      layers.markers.add(sprite);
+    }
+  }
   // Liquids as see-through boxes, their size the entity's scale, centred on it (as the game's water surface is: top at y + height / 2).
   // Liquids: the top of a box of the entity's scale. Unlit, so lava and acid glow their own colour as in the game;
   // the colour's alpha (AARRGGBB) is the surface's opacity, and one with no colour is clear water (bioplant's pools
   // show the floor under them). The ocean shader is dark blue and mirrors the envmap.
   const mirrors = [];  // Materials that take the envmap when it has loaded.
+  // The game's water (water.ps) moves: two scrolling noise layers tilt its surface, which it shows as see-through
+  // where shallow (fully covering 120 units down) using the scene's depth behind it. The page ripples the surface's
+  // brightness and reflection by two value-noise layers (texture_scale makes them larger), fades it by the depth pass's
+  // distance to what is under it, and turns an ocean toward its shallow_color where it is shallow.
+  const LIQUID = `
+    uniform float gameTime, ripple; uniform vec2 gameScreen; uniform sampler2D sceneDepth; uniform vec3 shallow; uniform float hasShallow;
+    varying vec3 vLiquid;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float wave(vec2 p) { vec2 i = floor(p), f = fract(p), u = f * f * (3. - 2. * f);
+      return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+    float distanceOf(float d) { float z = d * 2. - 1.; return 4. * 40000. / (40002. - z * 39998.); }  // Camera near 2, far 40000.
+  `;
+  function liquidMaterial(options, ripple, shallow) {
+    const made = new THREE.MeshBasicMaterial(options);
+    made.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, {gameTime, gameScreen: gameUniforms.gameScreen, sceneDepth: {value: depthTarget.depthTexture},
+        ripple: {value: ripple || 1}, shallow: {value: new THREE.Color(shallow ?? 0)}, hasShallow: {value: shallow == null ? 0 : 1}});
+      shader.vertexShader = 'varying vec3 vLiquid;\n' + shader.vertexShader.replace('#include <project_vertex>',
+        '#include <project_vertex>\nvLiquid = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      shader.fragmentShader = LIQUID + shader.fragmentShader.replace('#include <output_fragment>', `
+        vec2 p = vLiquid.xz / (60. * ripple);
+        float n = wave(p + gameTime * vec2(.21, .13)) + wave(p * 1.7 - gameTime * vec2(.11, .17)) - 1.;
+        float thick = max(distanceOf(texture2D(sceneDepth, gl_FragCoord.xy / gameScreen).r) - distanceOf(gl_FragCoord.z), 0.);
+        outgoingLight *= 1. + .25 * n;
+        if (hasShallow > .5) outgoingLight = mix(shallow, outgoingLight, clamp(thick / 300., 0., 1.));
+        diffuseColor.a *= sqrt(clamp(thick / 120., 0., 1.));
+        #include <output_fragment>`);
+    };
+    return made;
+  }
   function addLiquids(list) {
-    for (const [x, y, z, width, height, depth, , rgb, alpha, ocean] of list) {
-      const surface = new THREE.Mesh(new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
+    for (const [x, y, z, width, height, depth, , rgb, alpha, ocean, ripple, shallow] of list) {
+      const surface = new THREE.Mesh(new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2), liquidMaterial({
         color: rgb ?? (ocean ? 0x14394d : 0x2a6f8c), transparent: true, opacity: (alpha ?? (rgb == null && !ocean ? 40 : 220)) / 255,
-        depthWrite: false, side: THREE.DoubleSide, reflectivity: .5}));
+        depthWrite: false, side: THREE.DoubleSide, reflectivity: .5}, ripple, shallow));
       surface.position.set(x, y + height / 2, -z);
+      seeThrough.push(surface);
       if (ocean) mirrors.push(Object.assign(surface.material, {envMap: gameUniforms.gameEnvmap.value}));  // Or when it loads.
       scene.add(surface);
     }
@@ -202,6 +320,66 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!options.map && reflects) mirrors.push(Object.assign(mesh.material, {envMap: gameUniforms.gameEnvmap.value}));
       layers.decals.add(mesh);
     }
+  }
+  /* Light beams (volumetric entities; read_volumetrics in the importer): panels in the entity's unit box, a grid of
+     `segments` cells across x by `segments_y` along z, each an open tube of four walls (runs 45 and 46: tubes seen
+     from above, a solid band from the front), or `segments` fanned about the vertical (radial), each
+     cell less its gap, the top narrowed by `taper`; brightest at the top and fading down, soft at the sides, times
+     the colour, its strength and the texture where there is one, fading where seen edge on (run 47: bioplant's
+     map-sized volumetric_64 is invisible from above), blended over the picture (run 46: a red beam over the blue sky
+     is saturated red, which added light could not be; the editor calls `alpha` the switch from additive, unseen),
+     turning about the vertical by `rotation_speed` (radians a second, not measured). */
+  const beams = [];
+  function addVolumetrics(list, entries) {
+    for (const beam of list) {
+      const [kind, columns, rows, gap, gapY, taper, rgb, strength, name, , spin] = beam.slice(12);
+      const positions = [], uvs = [], quad = (corners) => {
+        const [a, b, c, d] = corners;
+        positions.push(...a, ...b, ...c, ...a, ...c, ...d);
+        uvs.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);
+      };
+      const top = 1 - taper;
+      if (kind === 1) {
+        for (let k = 0; k < columns; k++) {
+          const t = 2 * Math.PI * k / columns, x = Math.cos(t) / 2, z = Math.sin(t) / 2, r = Math.min(gap, .95);
+          quad([[x * r, -.5, z * r], [x, -.5, z], [x * top, .5, z * top], [x * r * top, .5, z * r * top]]);
+        }
+      } else {
+        // Each cell an open tube: four walls around it, less the gaps, its top narrowed toward its middle by taper.
+        for (let i = 0; i < columns; i++) for (let j = 0; j < rows; j++) {
+          const cx = (i + .5) / columns - .5, cz = (j + .5) / rows - .5, w = (1 - gap) / columns / 2, d = (1 - gapY) / rows / 2;
+          const at = (x, y, z) => [cx + x * (y > 0 ? top : 1), y, cz + z * (y > 0 ? top : 1)];
+          for (const [x0, z0, x1, z1] of [[-w, -d, w, -d], [w, -d, w, d], [w, d, -w, d], [-w, d, -w, -d]])
+            quad([at(x0, -.5, z0), at(x1, -.5, z1), at(x1, .5, z1), at(x0, .5, z0)]);
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.computeVertexNormals();
+      const entry = entries[name], map = entry && entry.texture ? texture(entry.texture) : null;
+      const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
+        uniforms: {colour: {value: new THREE.Color(rgb)}, strength: {value: strength}, map: {value: map}, textured: {value: map ? 1 : 0}},
+        transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending,
+        vertexShader: `varying vec2 vUv; varying vec3 vFacing, vView;
+          void main() { vUv = uv; vec4 view = modelViewMatrix * vec4(position, 1.); vView = view.xyz; vFacing = normalMatrix * normal;
+            gl_Position = projectionMatrix * view; }`,
+        fragmentShader: `uniform vec3 colour; uniform float strength; uniform sampler2D map; uniform float textured; varying vec2 vUv; varying vec3 vFacing, vView;
+          void main() {
+            float fade = smoothstep(0., 1., vUv.y) * (1. - smoothstep(.9, 1., vUv.y)) * sin(3.14159 * vUv.x);
+            float facing = abs(dot(normalize(vFacing), normalize(vView))); fade *= facing * facing;  // A panel seen edge on fades out.
+            vec4 texel = textured > .5 ? texture2D(map, vUv) : vec4(1.);
+            gl_FragColor = vec4(colour * texel.rgb, fade * strength * texel.a);
+          }`}));
+      mesh.matrixAutoUpdate = false;
+      mesh.matrix.set(...beam.slice(0, 12), 0, 0, 0, 1);
+      layers.decals.add(mesh);
+      if (spin) beams.push({mesh, base: mesh.matrix.clone(), spin});
+    }
+  }
+  const spun = new THREE.Matrix4();
+  function spinBeams(seconds) {
+    for (const {mesh, base, spin} of beams) mesh.matrix.copy(base).multiply(spun.makeRotationY(spin * seconds));
   }
   // Particles (pfx entities; particle_systems in the importer): each emitter spawns camera-facing sprites in its
   // entity's frame every `period` seconds up to `max`, from a random point of its `position` box, moving by `velocity`
@@ -297,9 +475,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     const needed = [...new Set(props.map(prop => prop.model))].filter(model => models[model]);
     const buffers = new Map(await Promise.all(needed.map(async model =>
       [model, await get(`${data}models/${models[model].file}`).then(r => r.arrayBuffer())])));
+    const colours = new Map(await Promise.all(needed.filter(model => models[model].colours).map(async model =>
+      [model, await get(`${data}models/${models[model].colours}`).then(r => r.arrayBuffer())])));
     const geometries = new Map(), matrix = new THREE.Matrix4();
     let drawn = 0, absent = 0;
-    for (const {model, material: override, mirrored, noDecals, matrices, tints} of props) {
+    for (const prop of props) {
+      const {model, material: override, mirrored, noDecals, shadow, matrices, tints} = prop;
+      prop.meshes = [];
       if (!buffers.has(model)) { absent += matrices.length / 12; continue; }
       let at = 0;
       for (const [own, corners] of models[model].groups) {
@@ -321,6 +503,18 @@ window.addEventListener('DOMContentLoaded', async () => {
           geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 0));
           geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(interleaved, 3, 3));
           geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(interleaved, 2, 6));
+          if (colours.has(model)) {
+            let bytes = new Uint8Array(colours.get(model), at * 4, corners * 4);
+            if (mirrored) {  // Turned round as the corners are.
+              bytes = bytes.slice();
+              for (let t = 0; t < corners; t += 3) {
+                const second = bytes.slice((t + 1) * 4, (t + 2) * 4);
+                bytes.copyWithin((t + 1) * 4, (t + 2) * 4, (t + 3) * 4);
+                bytes.set(second, (t + 2) * 4);
+              }
+            }
+            geometry.setAttribute('color', new THREE.Uint8BufferAttribute(bytes, 4, true));
+          }
           geometries.set(key, geometry);
         }
         at += corners;
@@ -329,14 +523,16 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (entry && entry.hidden) continue;
         const count = matrices.length / 12, mask = maskOf(name, entry, entries);
         const mesh = new THREE.InstancedMesh(mask ? withAccents(geometries.get(key), tints, entry.accents, count) : geometries.get(key),
-          material(name, entry, mask), count);
+          material(name, entry, mask, !!geometries.get(key).attributes.color), count);
         for (let i = 0; i < count; i++) {
           const m = matrices.subarray(i * 12, i * 12 + 12);
           mesh.setMatrixAt(i, matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1));
         }
         mesh.frustumCulled = false;  // r149 culls an instanced mesh by its one model's bounds.
-        mesh.castShadow = mesh.receiveShadow = true;
+        mesh.castShadow = shadow;  // Plain models do, dynamic assets' pieces do not (the importer's `s`).
+        mesh.receiveShadow = true;
         layers.props.add(mesh);
+        prop.meshes.push(mesh);
         if (!noDecals) surfaces.props.push({floats: geometries.get(key).attributes.position.data.array, matrices});
       }
       drawn += matrices.length / 12;
@@ -374,8 +570,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     geometry.setAttribute('dirt', new THREE.BufferAttribute(dirt, 1));
     geometry.setIndex(new THREE.BufferAttribute(index, 1));
     geometry.computeVertexNormals();
-    const name = terrain.material, ground = entries[name], made = new THREE.MeshLambertMaterial(
-      ground && ground.texture ? {map: texture(ground.texture)} : {color: flatColour(name)});
+    const name = terrain.material, ground = entries[name], made = withNormal(new THREE.MeshLambertMaterial(
+      ground && ground.texture ? {map: texture(ground.texture)} : {color: flatColour(name)}), ground);
     if (ground && ground.texture) {
       const slot = number => texture((entries[`${name}#${number}`] || ground).texture);
       made.onBeforeCompile = shader => {
@@ -486,27 +682,75 @@ window.addEventListener('DOMContentLoaded', async () => {
   // everything), on a box around the camera at the far plane.
   function addSky({cube, rotation}) {
     if (!cube) return;
-    const material = new THREE.ShaderMaterial({uniforms: {sky: {value: null}, turn: {value: THREE.MathUtils.degToRad(rotation || 0)}},
+    const material = new THREE.ShaderMaterial({uniforms: {sky: {value: null}, turn: {value: THREE.MathUtils.degToRad(rotation || 0)}, gameFog: gameUniforms.gameFog},
       side: THREE.BackSide, depthWrite: false,
       vertexShader: `varying vec3 vDirection;
         void main() { vDirection = position; gl_Position = (projectionMatrix * vec4(mat3(viewMatrix) * position, 1.)).xyww; }`,
-      fragmentShader: `uniform samplerCube sky; uniform float turn; varying vec3 vDirection;
+      fragmentShader: `uniform samplerCube sky; uniform float turn; uniform vec4 gameFog; varying vec3 vDirection;
         void main() {
           vec3 g = normalize(vec3(vDirection.xy, -vDirection.z));
           float c = cos(turn), s = sin(turn);
           gl_FragColor = vec4(textureCube(sky, vec3(c * g.x + s * g.z, g.y, c * g.z - s * g.x)).rgb, 1.);
+          // Toward the fog colour by (angle from straight up / 90 degrees)^4 x fog intensity / 10.
+          float down = acos(clamp(g.y, -1., 1.)) / 1.5707963;
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, gameFog.rgb, min(1., pow(down, 4.) * clamp(gameFog.a * .1, 0., 1.)));
           #include <tonemapping_fragment>
         }`});
     loadCube(`skies/${fileName(cube)}.jpg`, loaded => {
       material.uniforms.sky.value = loaded;
-      scene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material), {frustumCulled: false, renderOrder: -1}));
+      const box = Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material), {frustumCulled: false, renderOrder: -1});
+      seeThrough.push(box);
+      scene.add(box);
     });
   }
 
   // A map's lights (read_lights in the importer) into the shaders' uniforms, and the sun's shadow over the blocks.
-  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1}) {
+  /* Light animation (visibility_function, the light row's entries 16 to 18: function, minimum, speed): the light's
+     colour times minimum + (1 - minimum) x the function of time x speed, a cycle a second at speed 1. The game's own
+     curves are not measured; these follow their names. */
+  const VISIBILITY = [null, p => .5 + .5 * Math.sin(2 * Math.PI * p), p => Math.abs(Math.sin(Math.PI * p)), p => 1 - Math.abs(Math.sin(Math.PI * p)),
+    p => Math.abs(Math.sin(Math.PI * p)) ** 4, p => p - Math.floor(p), p => 1 - (p - Math.floor(p)), p => p - Math.floor(p) < .5 ? 1 : 0,
+    p => noise(Math.floor(p * 8)) < .3 ? 0 : 1, p => .55 + .45 * (noise(Math.floor(p * 12)) * .6 + noise(Math.floor(p * 3)) * .4)];
+  const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
+  let flickering = [];
+  function flicker(seconds) {
+    if (!flickering.length) return;
+    const rows = gameUniforms.gameLights.value.image.data;
+    for (const {at, rgb, function: f, min, speed, phase} of flickering) {
+      const v = min + (1 - min) * VISIBILITY[f](seconds * speed + phase);
+      for (let k = 0; k < 3; k++) rows[at + k] = rgb[k] * v;
+    }
+    gameUniforms.gameLights.value.needsUpdate = true;
+  }
+  /* Props that move by themselves (movers: [group, index, kind, a, b, pivot x, y, z]), measured in run 46 (shots
+     6.0 s apart by the game log): `float A W` goes up and down A units from top to bottom, W radians a second (A 20 at
+     W 4 drifted smoothly from shot to shot, as a period of W seconds would not); `rotate S` turns S degrees a second
+     about the vertical through the entity, clockwise seen from above (rotate 10: 61 degrees in 6 s). */
+  const SPIN = -Math.PI / 180;
+  let moving = [];
+  const moved = new THREE.Matrix4(), turnAbout = new THREE.Matrix4(), base = new THREE.Matrix4();
+  function addMovers(list, props) {
+    moving = list.map(([group, index, kind, a, b, x, y, z]) => {
+      const m = props[group].matrices.subarray(index * 12, index * 12 + 12);
+      return {meshes: props[group].meshes, index, kind, a, b, pivot: new THREE.Vector3(x, y, z),
+        base: new THREE.Matrix4().set(...m, 0, 0, 0, 1), phase: index * .37};
+    }).filter(mover => mover.meshes.length);
+  }
+  function moveProps(seconds) {
+    const touched = new Set();
+    for (const {meshes, index, kind, a, b, pivot, base: start, phase} of moving) {
+      if (kind === 0) moved.makeTranslation(0, a / 2 * Math.sin(b * seconds + phase), 0).multiply(start);
+      else moved.makeTranslation(pivot.x, pivot.y, pivot.z).multiply(turnAbout.makeRotationY(a * SPIN * seconds))
+        .multiply(base.makeTranslation(-pivot.x, -pivot.y, -pivot.z)).multiply(start);
+      for (const mesh of meshes) { mesh.setMatrixAt(index, moved); touched.add(mesh); }
+    }
+    for (const mesh of touched) mesh.instanceMatrix.needsUpdate = true;
+  }
+  function useLights({lights, nodes, ambient, shadow_ambient: shadowAmbient, shadow_colour: shadowColour, sun: sunLight, envmap, gloss = 1, fog, vertical_fog: verticalFog, horizon, ao}) {
     const u = gameUniforms, built = DiaboticalLighting.buildLights(lights), width = DiaboticalLighting.WIDTH;
     u.gameLights.value = float(built.rows, 4, Math.max(1, built.count), THREE.RGBAFormat);
+    flickering = lights.map(([, , , , , , , r, g, b, , , , , , , f, min, speed], i) => f && VISIBILITY[f] ? {at: i * 16 + 4, rgb: [r, g, b], function: f,
+      min, speed, phase: noise(i)} : null).filter(Boolean);
     u.gameCells.value = float(built.cells, width, built.cells.length / 2 / width, THREE.RGFormat);
     u.gameLists.value = float(built.lists, width, built.lists.length / width, THREE.RedFormat);
     u.gameCellMin.value.fromArray(built.min);
@@ -526,6 +770,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     u.gameSunColour.value.fromArray(sunLight ? sunLight.slice(3) : [0, 0, 0]);
     u.gameSunSpecular.value = sunLight && sunLight[6] || 0;
     u.gameGloss.value = gloss;
+    u.gameHorizon.value.fromArray(horizon || [1, ...shadowColour]);
+    Object.assign(occlusionPass.material.uniforms, {power: {value: (ao || [1])[0]}, radius: {value: 24 * (ao || [1, 1])[1]}});
+    // Fog: [r, g, b, intensity, radius, margin]; vertical fog: [r, g, b, intensity, height, falloff].
+    u.gameFog.value.fromArray(fog || [0, 0, 0, 0]);
+    u.gameFogRange.value.fromArray(fog ? fog.slice(4) : [1, 0]);
+    u.gameVerticalFog.value.fromArray(verticalFog || [0, 0, 0, 0]);
+    u.gameVerticalFogRange.value.fromArray(verticalFog ? verticalFog.slice(4) : [0, 1]);
     // The envmap: its six faces side by side (envmaps/NAME.png), made a cube whose mips WebGL makes as the game does.
     u.gameEnvmap.value = null;
     if (envmap) loadCube(`envmaps/${fileName(envmap)}.png`, cube => {
@@ -603,7 +854,33 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.addEventListener('keyup', event => keys.delete(event.code));
 
-  const draw = () => renderer.render(scene, camera);
+  const draw = () => {
+    renderer.getDrawingBufferSize(drawn);
+    if (!drawn.x || !drawn.y) return;  // A hidden page has no canvas size yet.
+    if (drawn.x !== target.width || drawn.y !== target.height) {
+      for (const made of [target, depthTarget, occlusionTarget]) made.setSize(drawn.x, drawn.y);
+      gameUniforms.gameScreen.value.copy(drawn);
+    }
+    for (const thing of seeThrough) thing.visible = false;
+    const shown = layers.decals.visible;
+    layers.decals.visible = false;
+    scene.overrideMaterial = depthOnly;
+    renderer.setRenderTarget(depthTarget);
+    renderer.render(scene, camera);
+    scene.overrideMaterial = null;
+    for (const thing of seeThrough) thing.visible = true;
+    layers.decals.visible = shown;
+    const occlusion = occlusionPass.material.uniforms;
+    occlusion.inverse.value.copy(camera.projectionMatrixInverse);
+    occlusion.projection.value.copy(camera.projectionMatrix);
+    occlusion.aspect.value = drawn.x / drawn.y;
+    renderer.setRenderTarget(occlusionTarget);
+    renderer.render(occlusionScene, lutCamera);
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    renderer.render(lutScene, lutCamera);
+  };
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
@@ -612,10 +889,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     move.copy(forward).multiplyScalar(held('KeyW') - held('KeyS')).addScaledVector(right, held('KeyD') - held('KeyA'));
     move.y += held('Space') - held('ShiftLeft') - held('ShiftRight');
     if (move.lengthSq()) camera.position.addScaledVector(move.normalize(), speed * delta);
+    gameTime.value += delta;
+    spinBeams(gameTime.value);
+    flicker(gameTime.value);
+    moveProps(gameTime.value);
     updateParticles(delta);
     draw();
   });
-  window.skinnerDiaboticalMaps = {renderer, scene, camera, draw};  // For checks in a hidden page, where no frame is drawn.
+  window.skinnerDiaboticalMaps = {renderer, scene, camera, draw, gameUniforms};  // For checks in a hidden page, where no frame is drawn.
 
   $('map').addEventListener('change', event => { location.search = '?map=' + encodeURIComponent(event.target.value); });
   $('import').addEventListener('click', async () => {
@@ -660,7 +941,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // The last material of a map is unnamed and drawn as default, as the game does.
     const names = map.materials.map(name => name || 'default');
     map.untextured = [...new Set(names.filter(name => !entries[name]))];
-    const groups = DiaboticalBlocks.buildBlocks(buffer, names.map(name => (entries[name] || {}).scale ?? 1));
+    const groups = DiaboticalBlocks.buildBlocks(buffer, names.map(name => (entries[name] || {}).scale ?? 1), map.bevel ?? 1);
     const bounds = new THREE.Box3();
     for (const [index, {positions, normals, uvs}] of groups) {
       const geometry = new THREE.BufferGeometry();
@@ -688,15 +969,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (map.entities) {
       showStatus('Loading props…');
       const [found, models] = await Promise.all([get(`${data}maps/${map.entities}`).then(r => r.arrayBuffer()), get(data + 'models.json').then(r => r.json())]);
-      const {props, markers, liquids, decals, lights, billboards, pfx, sky} = DiaboticalEntities.parseEntities(found);
+      const {props, markers, liquids, decals, lights, billboards, volumetrics, pfx, sky, lut, movers, labels} = DiaboticalEntities.parseEntities(found);
       if (lights) map.lights = useLights(lights);
       if (sky) addSky(sky);
+      if (lut) new THREE.TextureLoader().load(`${data}luts/${fileName(lut)}.png`, loaded => {
+        lutPass.material.uniforms.lut.value = Object.assign(loaded, {flipY: false, minFilter: THREE.LinearFilter, generateMipmaps: false, needsUpdate: true});
+        draw();
+      });
       addMarkers(markers);
       addLiquids(liquids);
       map.props = await addProps(props, models, entries);
+      addMovers(movers, props);
       showStatus('Placing decals…');
       map.decals = addDecals(decals, entries);
       addBillboards(billboards, entries);
+      addVolumetrics(volumetrics, entries);
+      addLabels(labels);
       await addParticles(pfx);
     }
     renderer.shadowMap.needsUpdate = true;

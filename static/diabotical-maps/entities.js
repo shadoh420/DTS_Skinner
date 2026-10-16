@@ -5,7 +5,7 @@
    color3, 3 uint32 each (0x1RRGGBB, or 0 where the material's own accent stands), then each decal group's boxes
    (24 float32 each: the matrix of the box its texture is projected from, then of the box it is cut to), then per decal its colour (0xRRGGBBAA), flags (1 mirrored, 2 v2, 4 v3) and order
    (int32). Material is empty where the model's own are drawn; after it m
-   marks mirrored props, n props that take no decals. Marker and liquid positions are the game's (the page's x, y, -z). Node runs it too
+   marks mirrored props, n props that take no decals, s props that cast the sun's shadow. Marker and liquid positions are the game's (the page's x, y, -z). Node runs it too
    (tests/diabotical_maps.test.cjs). */
 (function (exports) {
   'use strict';
@@ -17,7 +17,7 @@
       const [model, material, flags = ''] = key.split('|');
       const matrices = new Float32Array(buffer, at, count * 12);
       at += count * 48;
-      return {model, material, mirrored: flags.includes('m'), noDecals: flags.includes('n'), matrices, tints: null};
+      return {model, material, mirrored: flags.includes('m'), noDecals: flags.includes('n'), shadow: flags.includes('s'), matrices, tints: null};
     });
     head.props.forEach(([, count, tinted], i) => {
       if (!tinted) return;
@@ -34,7 +34,7 @@
       Object.assign(decal, {extras: new Uint32Array(buffer, at, count * 3), orders: new Int32Array(buffer, at, count * 3)});
       at += count * 12;
     }
-    return {props, markers: head.markers, liquids: head.liquids, decals, lights: head.lights || null, billboards: head.billboards || [], pfx: head.pfx || [], sky: head.sky || null};
+    return {props, markers: head.markers, liquids: head.liquids, decals, lights: head.lights || null, billboards: head.billboards || [], volumetrics: head.volumetrics || [], labels: head.labels || [], pfx: head.pfx || [], sky: head.sky || null, lut: head.lut || null, movers: head.movers || []};
   }
 
   exports.DiaboticalEntities = {parseEntities};
