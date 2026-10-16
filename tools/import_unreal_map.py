@@ -59,10 +59,18 @@ except ImportError:  # Run as a script from tools/.
     from local_data import LOCAL_DATA
     from import_dx import actor_texture, display_settings, map_actor_kind, map_group, mesh_views, standing_pose
 
-INVISIBLE, MASKED, TRANSLUCENT, NOT_SOLID, MODULATED, FAKE_BACKDROP, TWO_SIDED = 0x1, 0x2, 0x4, 0x8, 0x40, 0x80, 0x100
+INVISIBLE, MASKED, TRANSLUCENT, NOT_SOLID, ENVIRONMENT, MODULATED, FAKE_BACKDROP, TWO_SIDED = 0x1, 0x2, 0x4, 0x8, 0x10, 0x40, 0x80, 0x100
 AUTO_U_PAN, AUTO_V_PAN, UNLIT, PORTAL, MIRRORED = 0x200, 0x400, 0x400000, 0x4000000, 0x8000000
 # What the page needs of a surface's poly flags to draw it; surfaces differing only in other flags share a group.
-DRAWN_FLAGS = MASKED | TRANSLUCENT | MODULATED | FAKE_BACKDROP | TWO_SIDED | AUTO_U_PAN | AUTO_V_PAN | UNLIT | MIRRORED
+# ENVIRONMENT only on meshes: SurrealEngine environment-maps mesh triangles (VisibleMesh.cpp) and no BSP surface.
+# NOT_SOLID: the page's line-of-sight tests pass through it, as SurrealEngine's (TraceRayModel::NodeRayIntersect).
+DRAWN_FLAGS = (MASKED | TRANSLUCENT | NOT_SOLID | ENVIRONMENT | MODULATED | FAKE_BACKDROP | TWO_SIDED | AUTO_U_PAN | AUTO_V_PAN | UNLIT
+               | MIRRORED)
+# A corona (an actor with bCorona and a Skin) as SurrealEngine's VisibleCorona draws it: a square of DrawScale x 0.8 of
+# the viewport's width (Deus Ex 0.2) wherever it is, its Skin x hsbtorgb(LightHue, LightSaturation, 255) (Deus Ex x 2.5)
+# added translucently over the frame, unless the level's BSP stands between it and the eye; Deus Ex only within 2000.
+CORONA_SIZE, CORONA_GAIN, CORONA_RANGE = {'dx': .2}, {'dx': 2.5}, {'dx': 2000}
+CORONA_V = 6.512735 * math.sqrt(255)  # hsbtorgb's brightest channel at brightness 255, of 255
 GROUPS = {'upak': 'Return to Na Pali'}
 # A player stands on the floor below its PlayerStart, its centre CollisionHeight over it and its eye BaseEyeHeight over
 # that (UnrealShare's Human: 39 and 23; the game's eye, checked on NyLeve's start, 2026-10-09).
@@ -299,6 +307,30 @@ def floor_below(floors, x, y, z, which=False):
     return (float(heights[under].max()), int(best)) if which else float(heights[under].max())
 
 
+PAGE_AXES = np.array([[0, -1, 0], [0, 0, 1], [1, 0, 0]])  # viewer(): Unreal (x, y, z) -> the page's (-y, z, x)
+
+
+def spin_of(props, names):
+    """The steady turn the game gives a placed mesh actor, as a page mover {pivot, spin: [x, y, z, radians a second]}, or
+    None: a pickup with bRotatingPickup (Inventory's Pickup state: SetPhysics(PHYS_Rotating) unless falling), or a
+    non-static actor already PHYS_Rotating (5) with bFixedRotationDir; Rotation += RotationRate x seconds. ponytail: one
+    axis, the turn's at the start (exact while only one of pitch, yaw and roll turns)."""
+    rate = np.array(vector(props, 'RotationRate', '3i'), np.float64)
+    if not rate.any() or props.get('bStatic'):
+        return None
+    if not ('Inventory' in names and props.get('bRotatingPickup') and props.get('Physics', 0) != 2) and not (
+            props.get('Physics') == 5 and props.get('bFixedRotationDir')):
+        return None
+    start, dt = np.array(vector(props, 'Rotation', '3i'), np.float64), 1e-3
+    turn = PAGE_AXES @ np.array(rotation(*(start + rate * dt))) @ np.array(rotation(*start)).T @ PAGE_AXES.T
+    w = np.array([turn[2, 1] - turn[1, 2], turn[0, 2] - turn[2, 0], turn[1, 0] - turn[0, 1]]) / 2
+    if np.linalg.norm(w) < 1e-12:
+        return None
+    pivot = viewer([np.add(vector(props, 'Location'), vector(props, 'PrePivot'))])[0]
+    return dict(pivot=[round(float(c), 4) for c in pivot],
+                spin=[*(round(float(c), 6) for c in w / np.linalg.norm(w)), round(float(np.arcsin(min(np.linalg.norm(w), 1)) / dt), 6)])
+
+
 def build_map(library, level, default, game='unreal', files=None):
     """(scene, geometry bytes, {png: image}, lightmap atlas image) of map package `level`; `files` (a dict) takes
     the map's other images by file name (the changing lights' layers)."""
@@ -339,7 +371,7 @@ def build_map(library, level, default, game='unreal', files=None):
     skies = [props for props in skies if bool(props.get('bHighDetail')) == high] or skies
     sky = skies[-1] if skies else None
 
-    textures, images, missing, chains = {}, {}, [], {}
+    textures, images, missing, chains, details = {}, {}, [], {}, {}
 
     def texture_of(package, ref, follow=True):
         """(png name, width, height, the texture's own poly flags) of texture reference `ref` in `package`; none draws
@@ -393,6 +425,14 @@ def build_map(library, level, default, game='unreal', files=None):
                 own = props.get('PolyFlags', 0) | (MASKED if props.get('bMasked') else 0)
                 width, height = image[2:] if game == 'dx' else image[1].size
                 textures[key] = (png, width * scale, height * scale, own)
+                # Its detail texture, tiled at its own size: the page's u x (size / detail size). SurrealEngine
+                # (GLRenderDevice): coordinates (u - pan) / (USize x DrawScale) of the detail texture itself.
+                detail = props.get('DetailTexture')
+                found = detail and library.resolve(package, detail)
+                if found and png not in details:
+                    dpng, dwidth, dheight, _ = texture_of(*found, False)
+                    if dpng != 'missing.png':
+                        details[png] = dict(texture=dpng, scale=[round(width * scale / dwidth, 5), round(height * scale / dheight, 5)])
         return textures[key]
 
     groups, flipped, polygons, floors, floor_lights, invisible_floors = {}, 0, 0, [], [], []
@@ -426,7 +466,7 @@ def build_map(library, level, default, game='unreal', files=None):
         if surf['flags'] & (INVISIBLE | PORTAL):
             continue
         png, width, height, own = texture_of(level, surf['texture'])
-        flags = surf['flags'] | own  # The game adds the texture's own flags to the surface's.
+        flags = (surf['flags'] | own) & ~ENVIRONMENT  # The game adds the texture's own flags to the surface's.
         if flags & INVISIBLE:
             continue
         if flags & TRANSLUCENT:
@@ -462,7 +502,13 @@ def build_map(library, level, default, game='unreal', files=None):
             flipped += 1
         polygons += 1
         mask = fog_mask(listed(model, model['lightmaps'][surf['lightmap']]) if 0 <= surf['lightmap'] < len(model['lightmaps']) else (), flags)
-        groups.setdefault((png, flags & DRAWN_FLAGS, pan, None, mask), []).append((placed, uv, st, tile, None))
+        # A mirror shows the level reflected in its plane (page axes: a, b, c, d with a*x + b*y + c*z = d), not its texture
+        # (SurrealEngine VisibleFrame: mirrored surfaces become mirror portals and are sealed invisible).
+        owner = None
+        if flags & MIRRORED:
+            normal = viewer([vectors[surf['normal']]])[0] * 52.5
+            owner = ('mirror', *(round(float(c), 4) for c in normal), round(float(vectors[surf['normal']] @ points[surf['base']] / 52.5), 4))
+        groups.setdefault((png, flags & DRAWN_FLAGS, pan, owner, mask), []).append((placed, uv, st, tile, None))
 
     def ambient_of(number):
         found = zone(number)
@@ -567,7 +613,7 @@ def build_map(library, level, default, game='unreal', files=None):
             mask = fog_mask(listed(brush, brush['lightmaps'][poly['brush_poly']]) if 0 <= poly['brush_poly'] < len(brush['lightmaps']) else (), flags)
             groups.setdefault((png, flags & DRAWN_FLAGS, pan, None, mask), []).append((placed, uv, st, tile, None))
 
-    def add_mesh(props, obj, owners=None, mesh_property='Mesh', npc_owner=None):
+    def add_mesh(props, obj, owners=None, mesh_property='Mesh', npc_owner=None, mover=None):
         """An actor drawn as a mesh, at Location + PrePivot + Rotation x DrawScale x the mesh's points (its
         AnimSequence's frame), each slot's texture as the game picks it, lit at its vertices; False when it shows nothing."""
         package, ref = obj(mesh_property)
@@ -601,11 +647,20 @@ def build_map(library, level, default, game='unreal', files=None):
             picks += [obj('MultiSkins' if j == 0 else f'MultiSkins[{j}]') for j in reversed(range(len(mesh['textures'])))]
             return next((pick for pick in picks if pick), default)
 
+        texture = obj('Texture')
+        envmap = texture if texture and texture[0].path.stem.lower() != 'engine' else None
+        for source in (zone(zone_at(vector(props, 'Location'))), info):
+            if not envmap and isinstance(source.get('EnvironmentMap'), int) and source['EnvironmentMap']:
+                envmap = library.resolve(level, source['EnvironmentMap'])
         faces = []
         for a, b, c, (face_flags, index) in mesh_faces(mesh):
             if max(a[0], b[0], c[0]) >= len(world):
                 continue
-            pick = slot(index)
+            if props.get('bMeshEnviroMap'):
+                face_flags |= ENVIRONMENT
+            pick = envmap if face_flags & ENVIRONMENT else slot(index)
+            if face_flags & ENVIRONMENT and not pick:
+                continue  # No environment map: SurrealEngine draws nothing.
             png, _, _, own = texture_of(*pick) if pick else texture_of(level, 0)
             flags = surface_flags(face_flags | style, own)
             if flags is not None:
@@ -656,7 +711,7 @@ def build_map(library, level, default, game='unreal', files=None):
             color = np.where(np.array([key[3] for key in keys])[:, None], unlit, light[ids])
             uv = np.array([(key[1] / 255, key[2] / 255) for key in keys])
             # Keep each Pawn's material batches separate from scenery and other Pawns.
-            groups.setdefault((*group, npc_owner, fog_mask(lit_by, group[1])), []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
+            groups.setdefault((*group, npc_owner or mover or 'mesh', fog_mask(lit_by, group[1])), []).append((viewer(world[ids]), uv, np.zeros((len(keys), 2)), 'white', color, triangles))
         return True
 
     def events_at_spawn():
@@ -679,6 +734,7 @@ def build_map(library, level, default, game='unreal', files=None):
 
     spawn_events = set() if game == 'dx' else events_at_spawn()
     meshes, counts = {}, dict(meshes=0, movers=0, unread=0, failed=[])
+    coronas, movers = {}, []
     if game == 'dx':
         counts.update(excluded_players=0, excluded_other=0, npcs=0, carcasses=0, pickups=0, decorations=0)
     def placed_order():
@@ -695,15 +751,25 @@ def build_map(library, level, default, game='unreal', files=None):
         if kind in ('player', 'other'):
             counts['excluded_players' if kind == 'player' else 'excluded_other'] += 1
             continue
-        # Lights are not drawn in the game though some leave bHidden off (227, Glathriel2: TriggerLight's sprite 87 units
-        # and TorchFlame's 192-unit flame mesh 275 units in front of the camera both showed nothing).
-        if props.get('bHidden') or 'Light' in names:
-            continue
-
         def obj(name):
             """(package, export) of object property `name` (the map's, or the class default's package), or None."""
             value, package = props.get(name), level if name in placed else sources.get(name)
             return library.resolve(package, value) if isinstance(value, int) and value and package else None
+
+        if props.get('bCorona') and obj('Skin'):  # Hidden actors too: SurrealEngine collects coronas before bHidden.
+            png = texture_of(*obj('Skin'))[0]
+            if png != 'missing.png':
+                color = light_color(props.get('LightHue', 0), props.get('LightSaturation', 0), 255) * 255 / 127.5 * CORONA_V / 255
+                batch = coronas.setdefault(png, dict(texture=png, blend='translucent', screen=True, occlude=True, items=[],
+                                                     **({'frames': chains[png]['frames'], 'fps': chains[png]['fps']} if chains.get(png) else {}),
+                                                     **({'range': round(CORONA_RANGE[game] * SCALE, 3)} if game in CORONA_RANGE else {})))
+                batch['items'].append([*(round(float(c), 3) for c in viewer([vector(props, 'Location')])[0]),
+                                       round(props.get('DrawScale', 1.0) * CORONA_SIZE.get(game, .8), 4),
+                                       *(round(float(c), 4) for c in color * CORONA_GAIN.get(game, 1)), 1])
+        # Lights are not drawn in the game though some leave bHidden off (227, Glathriel2: TriggerLight's sprite 87 units
+        # and TorchFlame's 192-unit flame mesh 275 units in front of the camera both showed nothing).
+        if props.get('bHidden') or 'Light' in names:
+            continue
 
         name = level.exports[ref - 1]['name']
         try:
@@ -723,7 +789,10 @@ def build_map(library, level, default, game='unreal', files=None):
                         view = 'Mesh3'
                 npc_owner = ((ref, '.'.join(level.ref_path(level.exports[ref - 1]['cls'])))
                              if kind == 'npc' or (game != 'dx' and 'Pawn' in names and not {'Vehicle', 'Carcass'}.intersection(names)) else None)
-                if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view, npc_owner):
+                spin = None if npc_owner else spin_of(props, names)
+                if spin:
+                    movers.append(spin)
+                if obj(view) and add_mesh(props, obj, {**sources, **{k: level for k in placed}}, view, npc_owner, ('mover', len(movers) - 1) if spin else None):
                     counts['meshes'] += 1
                     if game == 'dx':
                         counts[{'carcass': 'carcasses', 'pickup': 'pickups', 'decoration': 'decorations', 'npc': 'npcs'}[kind]] += 1
@@ -757,7 +826,7 @@ def build_map(library, level, default, game='unreal', files=None):
 
     positions, uvs, uv2s, colors, indices, table = [], [], [], [], [], []
     count = 0
-    for (png, flags, pan, npc_owner, mask), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2], item[0][4])):
+    for (png, flags, pan, owner, mask), polys in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], item[0][2], item[0][4])):
         start = len(indices)
         for placed, uv, st, tile, color, *triangles in polys:
             n = len(placed)
@@ -776,8 +845,16 @@ def build_map(library, level, default, game='unreal', files=None):
                           **({'anim': chains[png]} if chains.get(png) else {}),
                           **({'fog_mask': mask} if mask else {}),
                           **({'light_anim': True} if any(moving.get(record[3]) for record in polys if record[3] not in (None, 'white')) else {})))
-        if npc_owner:
-            table[-1].update(npc=True, entity=npc_owner[0], classname=npc_owner[1])
+        if owner == 'mesh':
+            table[-1]['mesh'] = True
+        elif owner and owner[0] == 'mover':
+            table[-1].update(mesh=True, mover=owner[1])
+        elif owner and owner[0] == 'mirror':
+            table[-1]['mirror'] = list(owner[1:])
+        elif owner:
+            table[-1].update(npc=True, entity=owner[0], classname=owner[1])
+        elif png in details:
+            table[-1]['detail'] = details[png]
     positions = np.concatenate(positions).astype('<f4') if positions else np.zeros((0, 3), '<f4')
     uvs = np.concatenate(uvs).astype('<f4') if uvs else np.zeros((0, 2), '<f4')
     uv2s = np.concatenate(uv2s).astype('<f4') if uv2s else np.zeros((0, 2), '<f4')
@@ -827,6 +904,10 @@ def build_map(library, level, default, game='unreal', files=None):
                  vertices=len(positions), indices=len(indices), lightmap=[atlas_width, atlas_height], colors=True,
                  actors=counts, groups=table, viewpoints=views, sky=sky,
                  polygons=polygons, flipped=flipped, missing=sorted(missing))
+    if coronas:
+        scene['sprites'] = list(coronas.values())
+    if movers:
+        scene['movers'] = movers
     if changing:  # [LightType, LightPeriod, LightPhase, r, g, b at full brightness x 2] of each changing light
         found = {ref: light_of(actor(ref), ref) for ref in list(changing)[:255]}
         scene['light_anim'] = dict(lights=[[*found[ref]['anim'], *(round(float(c), 4) for c in np.minimum(found[ref]['full'] * 2, 1))] for ref in found])

@@ -11,7 +11,11 @@
   const fogTint = {value: Array.from({length: FOGS}, () => new THREE.Vector4())};
   const fogCount = {value: 0}, fogId = {value: new Int32Array(FOGS)};  // fogId: each picked light's place in fog_lights
   const animValue = {value: null}, animId = {value: null}, animLight = {value: null};
-  let fogs = null, order = null, near = null, lights = null, bytes = null, flicker = -1;
+  let fogs = null, order = null, near = null, lights = null, bytes = null, flicker = -1, details = new Map();
+  // Detail textures (group.detail, tools/import_unreal_map.py) as SurrealEngine's OpenGL device draws them: the colour
+  // x ((detail - 0.5) x 0.8 + 1), in full to 380 units from the eye and gone at 760 (GLFileResource.cpp; hypothesis: its
+  // own strength, the 1998 devices modulated x 2). Page units are metres (52.5 units).
+  const DETAIL_FADE = 380 / 52.5;
 
   // SurrealEngine FogmapBuilder::SphereDensity (Inigo Quilez's analytic integral of a quadratically falling density
   // in a sphere) along the eye ray to the surface, and FogmapBuilder::AddLight's blend of each light; the surface then
@@ -61,6 +65,10 @@ vec3 ue1Anim(vec2 at) {
         fogs = map.fog_lights;
         order = new Int32Array(fogs.length); near = new Float32Array(fogs.length);
       }
+      details = new Map();
+      for (const group of map.groups) {
+        if (group.detail && !details.has(group.detail.texture)) details.set(group.detail.texture, await ctx.loadTexture(group.detail.texture));
+      }
       if (map.light_anim?.lights?.length && ctx.lightMap) {
         try {
           [animValue.value, animId.value] = await Promise.all([layer(ctx.loader, `${ctx.data}maps/${map.id}/lightanim.png`, false),
@@ -72,9 +80,23 @@ vec3 ue1Anim(vec2 at) {
       }
     },
     patchMaterial(material, group) {
+      if (!on()) return;
       const fog = fogs && group.fog_mask && !(group.flags & NO_FOG), anim = lights && group.light_anim && material.lightMap;
-      if (!fog && !anim) return;
+      const detail = group.detail && material.map && details.get(group.detail.texture), env = group.flags & 0x10 && material.map;
+      if (!fog && !anim && !detail && !env) return;
       material.onBeforeCompile = shader => {
+        if (detail) {
+          Object.assign(shader.uniforms, {ue1Detail: {value: detail}, ue1DetailScale: {value: new THREE.Vector2(...group.detail.scale)}});
+          shader.fragmentShader = `uniform sampler2D ue1Detail; uniform vec2 ue1DetailScale;
+` + shader.fragmentShader.replace('#include <map_fragment>',
+            `#include <map_fragment>
+            diffuseColor.rgb *= mix(vec3(1.), (texture2D(ue1Detail, vUv * ue1DetailScale).rgb - .5) * .8 + 1.,
+              clamp(2. - 1. / gl_FragCoord.w / ${DETAIL_FADE.toFixed(4)}, 0., 1.));`);
+        }
+        if (env) {  // SurrealEngine VisibleMesh: u, v = (reflected eye ray in view space + 1) / 2, rows down the image.
+          shader.vertexShader = shader.vertexShader.replace('#include <uv_vertex>', `#include <uv_vertex>
+          { vec3 r = reflect(normalize((modelViewMatrix * vec4(position, 1.)).xyz), normalize(normalMatrix * normal)); vUv = vec2(r.x + 1., 1. - r.y) * .5; }`);
+        }
         if (fog) {
           Object.assign(shader.uniforms, {ue1FogBall: fogBall, ue1FogTint: fogTint, ue1FogCount: fogCount, ue1FogId: fogId,
             ue1FogMask: {value: group.fog_mask}});
@@ -89,7 +111,7 @@ vec3 ue1Anim(vec2 at) {
             'vec4 lightMapTexel = texture2D( lightMap, vUv2 ); lightMapTexel.rgb = min(lightMapTexel.rgb + ue1Anim(vUv2), 1.);');
         }
       };
-      material.customProgramCacheKey = () => 'ue1' + (fog ? 'f' : '') + (anim ? 'a' : '');
+      material.customProgramCacheKey = () => 'ue1' + (fog ? 'f' : '') + (anim ? 'a' : '') + (detail ? 'd' : '') + (env ? 'e' : '');
     },
     update(seconds, camera, map, region) {
       if (fogs) {
