@@ -13,7 +13,7 @@ from tests.test_tvg import Fixture, compact, pack, array, install_fixture
 from tools.import_tvg import import_catalog, Materials
 from tools.import_tvg_map import zone_regions, distance_fog
 from tools.import_tvg_map import (Models, import_maps, terrain, decoration_matrices,
-                                  campaign_sections, section, tag_attachments, LAYER_LIMIT)
+                                  campaign_sections, section, tag_attachments, terrain_matrix, LAYER_LIMIT)
 from tools.tvg_package import Library, Package
 from tools.tvg_map import MapPackage, transform, viewer, viewpoint, is_npc
 
@@ -190,6 +190,14 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(viewpoint(props)['yaw'],90)  # +native Y is viewer -X.
         self.assertEqual(viewpoint(dict(Rotation=(65535,-16384,0)))['yaw'],270)
         with self.assertRaisesRegex(ValueError,'Non-finite'):transform(dict(DrawScale=float('nan')))
+
+    def test_terrain_matrix_with_nan_plane_is_null(self):
+        class Stub:
+            structure = staticmethod(lambda raw: raw)
+        planes = lambda x: {n: dict(X=x, Y=x, Z=1., W=0.) for n in ('XPlane', 'YPlane', 'ZPlane', 'WPlane')}
+        self.assertEqual(terrain_matrix(Stub, planes(2.)), [[2., 2., 1., 0.]]*4)
+        # UScale/VScale 0 stores NaN; JSON has no NaN, null sends the page to the authored-controls fallback.
+        self.assertIsNone(terrain_matrix(Stub, planes(float('nan'))))
 
     def test_terrain_g16_layers_decorations_and_visibility(self):
         with tempfile.TemporaryDirectory() as tmp:

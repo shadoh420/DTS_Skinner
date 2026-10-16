@@ -105,8 +105,11 @@ def bitmap(package, raw):
 
 def terrain_matrix(package, raw):
     planes = package.structure(raw)
-    return [[package.structure(planes[name]).get(axis, 0) for axis in ('X', 'Y', 'Z', 'W')]
-            for name in ('XPlane', 'YPlane', 'ZPlane', 'WPlane')]
+    matrix = [[package.structure(planes[name]).get(axis, 0) for axis in ('X', 'Y', 'Z', 'W')]
+              for name in ('XPlane', 'YPlane', 'ZPlane', 'WPlane')]
+    # A layer authored with UScale/VScale 0 stores NaN (mp-beml4-condemnation); JSON has no NaN,
+    # so null sends the page to its authored-controls fallback.
+    return matrix if np.isfinite(matrix).all() else None
 
 
 def package_range(package, raw, default):
