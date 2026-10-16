@@ -182,6 +182,12 @@ class Q3FamilyPartBTests(unittest.TestCase):
         self.assertEqual(found[4]['column'], dict(min=[36, -64], max=[164, 64], top=50))
         self.assertEqual(import_rtcw_map.weather([{'classname': 'worldspawn', 'atmosphere': 'T=HAIL'}]), [])
 
+    def test_picmip_keeps_the_colour_of_transparent_texels(self):
+        from PIL import Image
+        image = Image.new('RGBA', (4, 4), (200, 100, 50, 0))
+        profile = dict(cvars=dict(r_roundimagesdown=0), picmip=1, hardwareGamma=True, gamma=1, intensity=1)
+        self.assertEqual(import_rtcw_map.upload_image(image, profile, mipmap=False).getpixel((0, 0)), (200, 100, 50, 0))
+
 
 def import_q3_barrel(game):
     return qmap.barrel(game, 'weapon', 'models/weapons/w.md3', None, None, {})

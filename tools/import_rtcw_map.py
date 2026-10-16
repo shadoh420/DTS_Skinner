@@ -248,13 +248,14 @@ class Textures(qmap.Textures):
 
     def process(self, filename, mipmap=True, picmip=True):
         profile = self.game.lighting
-        signature = json.dumps([hashlib.sha256((self.output/filename).read_bytes()).hexdigest(),profile,mipmap,picmip],sort_keys=True)
-        result = hashlib.sha256(signature.encode()).hexdigest()[:24]+'.png'
-        if (self.output/result).exists(): return result
         with Image.open(self.output/filename) as source:
             image = source.convert('RGBA')
-            image = upload_image(image, profile, mipmap, picmip)
-            image.save(self.output/result)
+        # Images with see-through texels are named anew since upload_image keeps their colour (2026-10-16).
+        kept = ['colour under alpha'] if image.getchannel('A').getextrema()[0] < 255 else []
+        signature = json.dumps([hashlib.sha256((self.output/filename).read_bytes()).hexdigest(),profile,mipmap,picmip,*kept],sort_keys=True)
+        result = hashlib.sha256(signature.encode()).hexdigest()[:24]+'.png'
+        if not (self.output/result).exists():
+            upload_image(image, profile, mipmap, picmip).save(self.output/result)
         return result
 
     def resolve(self, game, path):
