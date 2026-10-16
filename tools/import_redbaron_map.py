@@ -542,6 +542,28 @@ class Assets:
             self.pngs[key] = None
         return self.pngs[key]
 
+    def sky_ring(self):
+        """The horizon cloud band per weather, hz-cld<n>.bmp (its own cloud palette) with hz-cld<n>.aph as alpha. 004B41E0
+        loads hz-cld<weather>, else hz-cld0; the 3D patch ships 0-5. None when the install has neither."""
+        if not hasattr(self, '_sky_ring'):
+            names = []
+            for number in range(6):
+                bmp, aph = self.files.get(f'hz-cld{number}.bmp'), self.files.get(f'hz-cld{number}.aph')
+                if not bmp or not aph:
+                    names.append(names[0] if names else None)
+                    continue
+                with Image.open(io.BytesIO(bmp())) as colour, Image.open(io.BytesIO(aph())) as alpha:
+                    image = colour.convert('RGBA')
+                    image.putalpha(alpha.convert('L'))
+                out = io.BytesIO()
+                image.save(out, format='PNG')
+                target = hashlib.sha256(out.getvalue()).hexdigest()[:24] + '.png'
+                (self.output / 'textures').mkdir(parents=True, exist_ok=True)
+                (self.output / 'textures' / target).write_bytes(out.getvalue())
+                names.append(target)
+            self._sky_ring = names
+        return self._sky_ring
+
     def solid(self, rgb):
         name = 'rgb_' + ''.join(f'{c:02x}' for c in rgb) + '.png'
         path = self.output / 'textures' / name
@@ -873,7 +895,7 @@ def scene_base(name, assets):
     return dict(mission=name, haze=assets.haze,
                 terrain=dict(visibleDistance=147456*SCALE, hazeDistance=103219*SCALE),
                 sun=dict(ambient=[1, 1, 1], intensity=[0, 0, 0], azimuth=0, incidence=0),
-                viewpoints=[], objects=[], warnings=list(PREVIEW_LIMITS), season='summer',
+                viewpoints=[], objects=[], warnings=list(PREVIEW_LIMITS), season='summer', skyRing=assets.sky_ring(),
                 lighting=native_lighting(dict(day=2421745, time=43200000, region=0, weather=1)))
 
 

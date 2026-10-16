@@ -228,8 +228,54 @@ rbFog *= rbW;
       }
     } catch (error) { dispose(mission); throw error; }
     await selectRegion(map.region, false);
+    // The Glide sky's horizon cloud band (004B40F0, 004B41E0, 004B4440): sixteen upright panels π/8 apart on a ring of
+    // radius 2500 × 8 native units round the eye, each centred 2500 units above it, one chord wide plus 2% and 2500
+    // units tall (5000 in weathers 3-5), showing tile n mod 8 of hz-cld<weather> (four across, two down, from v .01).
+    // The ring moves with the eye, never turns, and sits behind the world.
+    const ring = new THREE.Group();
+    ring.renderOrder = -3;
+    scene.add(ring);
+    let ringWeather = null;
+    async function buildRing(weather) {
+      ringWeather = weather;
+      const file = map.skyRing && (map.skyRing[weather] || map.skyRing[0]);
+      dispose(ring);
+      ring.clear();
+      scene.add(ring);
+      if (!file) return;
+      const map0 = await texture(file);
+      if (ringWeather !== weather) { releaseTexture(file); return; }
+      map0.magFilter = map0.minFilter = THREE.LinearFilter;
+      const native = .0381, radius = 2500 * 8, half = Math.sin(Math.PI / 16) * radius * 1.02;
+      const height = (weather >= 3 ? 2 : 1) * 2500, centre = 2500;
+      // Native (x, y, z up) to the viewer (-x, z, y), as the terrain chunks and placements.
+      const at = (x, y, z) => [-x * native, z * native, y * native];
+      const positions = [], uvs = [], indices = [];
+      for (let n = 0; n < 16; n++) {
+        const angle = n * Math.PI / 8, c = Math.cos(angle), s = Math.sin(angle);
+        const u = (n & 3) * .25, v = (n >> 2 & 1) * .5 + .01, first = positions.length / 3;
+        // Ends along the tangent, toward the previous panel then the next, whose tiles continue the image.
+        for (const [side, z] of [[-1, centre + height / 2], [1, centre + height / 2], [1, centre - height / 2], [-1, centre - height / 2]]) {
+          positions.push(...at(radius * c - side * half * s, radius * s + side * half * c, z));
+          uvs.push(u + (side + 1) / 2 * .25, v + (z < centre ? .5 : 0));
+        }
+        indices.push(first, first + 1, first + 2, first, first + 2, first + 3);
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices);
+      const mat = new THREE.MeshBasicMaterial({map: map0, side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false, fog: false});
+      mat.userData.texture = file;
+      const mesh = new THREE.Mesh(geometry, mat);
+      mesh.renderOrder = -3;
+      mesh.frustumCulled = false;
+      ring.add(mesh);
+    }
     return delta => {
       environment();
+      if (lighting?.weather !== ringWeather) buildRing(lighting?.weather ?? 0);
+      ring.position.copy(camera.position);
       if (playerMesh) {
         const e = playerMesh.matrix.elements;
         playerMesh.visible = Math.hypot(camera.position.x - e[12], camera.position.y - e[13], camera.position.z - e[14]) > 8;
