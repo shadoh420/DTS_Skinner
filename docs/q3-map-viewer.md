@@ -174,15 +174,23 @@ their code is in the app.
 - The world is culled by the map's cluster visibility (PVS) and by the view
   per shader; door area portals are not simulated. Lightmap and texture are
   drawn as two passes, as the game does without multitexture.
-- Brush models (doors, lifts) stand where the map places them and do not move.
+- Brush models move as `g_mover.c` moves them once the map has spawned:
+  `func_bobbing` (a sine of `height` over `speed` seconds along the axis its
+  spawnflags pick), `func_rotating` (`speed` degrees a second about the axis
+  its spawnflags pick), `func_pendulum` (a swing of `speed` degrees with the
+  period gravity 800 gives its length) and `func_train` (from corner to
+  `path_corner` at the corner's or the train's speed, waiting `wait` seconds).
+  Doors, plats and buttons stand where the map places them.
 - The game drops an item's 30-unit box until it rests on something solid.
   Here one line from the item's centre down to the nearest opaque drawn
   surface stands in for that, since the pack keeps no collision data. On
   `q3dm1` 17 of the 18 items come to rest within 3 units of where the map put
   them and one 9 units lower.
-- Every pickup is placed, whatever game type its entity is limited to
-  (`notfree`, `notteam`, `gametype`). A weapon's separate barrel model is not
-  added.
+- Pickups are placed as a server running free-for-all (`g_gametype`'s
+  default) spawns them, or the map's first `.arena` game type where it lists
+  no `ffa`: `notfree`, `notteam`, `notsingle`, `notq3a` (`notta` on Team
+  Arena maps) and `gametype` are honoured. Team Arena's `CG_Item` adds a
+  weapon's `_barrel` model at its `tag_barrel`; the base game's adds none.
 - Pickups are lit from the map's light grid as `R_SetupEntityLighting` lights
   them (`r_ambientScale` 0.6, a minimum of 32), once at the height they bob
   about; the light's direction follows their turning. Dynamic lights are not
@@ -329,11 +337,13 @@ install and require its stock maps to resolve completely.
 
 ## Limits
 
-Free-flight only. Not drawn: light flares, portal and mirror views (the
-surface is drawn plain), video textures and player models. An inner sky box
-(the third `skyparms` argument) is not drawn by the game either. Map objects
-other than pickups that the game adds while it runs (Team Arena's obelisks and
-skulls, for one) are not placed. Simplified: `deformVertexes` normal, text and
+Free-flight only. Not drawn: portal and mirror views (the surface is drawn
+plain), video textures and player models. Light flares (88 maps) and an inner
+sky box (the third `skyparms` argument) are not drawn by CNQ3 either
+(`ParseFlare` loads no flare; `r_flares` is 0 in the install's
+`q3config.cfg`). Map objects other than pickups that the game adds while it
+runs are not placed; Team Arena's obelisks spawn only in Overload and
+Harvester, and every Team Arena map lists CTF first. Simplified: `deformVertexes` normal, text and
 projection shadow are left out, a `noise` wave is drawn as a sine, and entity
 colours are left at their defaults. `deformVertexes autosprite` and
 `autosprite2` turn their quads to the camera as `AutospriteDeform` and
@@ -366,3 +376,67 @@ RTCW, ET, JK2 and JA share this viewer. Since 2026-10-16:
 - Translucent surfaces inside a fog volume are not fogged (the game's
   `adjustColorsForFog` is not reproduced); a model under both a fog volume and
   the map's fog takes the volume's only.
+
+Part B, also 2026-10-16. What decides each item is the game's code and the
+settings in the installs' configs, read that day (`wolfconfig.cfg`,
+`etconfig.cfg`, `jk2config.cfg`, `jk2mpconfig.cfg`, `jaconfig.cfg`,
+`jampconfig.cfg`):
+
+- **Flares and coronas.** RTCW and ET (`r_flares 1`) draw the flare shader on
+  each flare surface (`RB_SurfaceFlare`) and each `corona` entity
+  (`CG_Corona`): a square `r_flareSize` 40 / 640 of the view's width (times
+  the corona's `scale`) plus 8 / depth across either side, in the corona's
+  `_color`, dimmed as a surface turns away. A flare is hidden where the view's
+  depth lies more than 24 units in front of it; a corona needs a clear line,
+  lies within `cg_coronafardist` 1536 and within the view cone (a dot of 0.6
+  in RTCW, half the field of view in ET); START_OFF coronas are never shown.
+  The frame's depth test stands in for the game's read-back, so a flare that
+  is partly covered is clipped rather than hidden, and it comes and goes at
+  once. JK2 single player and JA (`r_flares 1`; JK2 MP has 0) draw a flare
+  surface as Raven does: a card of the surface's own shader 3 units out, 30
+  units (or its `alphaGen portal` range) across either side, shrinking nearer
+  than 512, as bright as it faces the view.
+- **Dynamic lights.** None are drawn, as in the games: RTCW's `dlight`
+  entities are not forced and the install runs `r_dynamiclight 0`; ET's nine
+  (radar's lightning) are all STARTOFF until a script switches them on.
+- **Sun.** RTCW and ET (`r_drawSun 1`) draw the sun shader where a sky shader
+  names a `sunshader` (RTCW always `sun`, ET the one named), along the last
+  `q3map_sun`, a fifth of its distance across either side, behind everything
+  but the sky (`RB_DrawSun`). In RTCW these are the night skies' moons.
+- **Movers** as above on every page; RTCW and ET turn a `func_rotating` only
+  with START_ON, and in JK2/JA single player a targeted train waits to be
+  used and a `func_bobbing` with START_OFF stays still.
+- **Sky portals.** RTCW's `props_skyportal` (24 maps) and JA's
+  `misc_skyportal` (12): the scene from the portal's origin, with the view's
+  angles and field of view, is drawn first, sky and all, and the view then
+  draws everything but its sky over it (`CG_DrawSkyBoxPortal`,
+  `RDF_SKYBOXPORTAL`). What the portal shows is fixed at load: the surfaces of
+  the leaves its cluster sees, and the props, pickups and movers standing in
+  them. The portal's own fog is not drawn.
+- **Rain and snow.** ET's worldspawn `atmosphere` (radar rain, railgun snow:
+  `D` drops, `BV` wind, rain at 880 and snow at 80 units a second), JK2/JA's
+  `fx_rain` and `fx_snow` (the light rain, rain and snow presets of
+  `tr_WorldEffects`) and RTCW's `misc_snow` columns on escape2. Drops fall
+  within 1000 units of the eye between two height maps drawn from above at
+  load, the sky's and the ground's, the way ET's trace map places them.
+  Raven's outside brushes, weather zones, wind zones and lightning are not
+  reproduced: rain falls wherever the sky is open.
+- **Glow.** JA's `r_DynamicGlow` is 0 in both configs, so the game adds no
+  bloom either and a glow stage draws as a plain stage.
+
+Not done in part B, with the reason:
+
+- **Portal and mirror surfaces** (Q3 `misc_portal_surface` on 27 maps, JK2
+  on 2): each needs its own render to texture; drawn plain.
+- **Area portals.** A closed door is opaque, so culling behind it changes no
+  pixel; not simulated.
+- **Light style animation** (JK2 default styles 1, 2, 6, 9 and 11 on a few
+  maps, JA style 1 on two): the import adds each surface's styles into one
+  lightmap at the first sample, so animating them means keeping up to four
+  lightmaps and vertex colours per surface. Styles 32 and up are switched
+  lights, which stay as they start.
+- **fx_runner particles** (JK2 559 on 27 maps, JA 1,184 on 31) and RTCW's
+  particle entities need an `.efx` reader and emitters.
+- **Surface sprites** (`surfaceSprites` stages: 70 in JA's scripts, mostly
+  vertical grass) need the stages kept at import and sprites scattered over
+  each surface.
