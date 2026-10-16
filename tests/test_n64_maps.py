@@ -1,6 +1,8 @@
 """N64 map import (tools/import_n64_map.py) and serving boundaries."""
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -50,6 +52,11 @@ class N64MapTests(unittest.TestCase):
                 self.assertEqual(client.post('/import_n64_maps', json={'folder': ''}).status_code, 400)
                 with client.post('/import_n64_maps', json={'folder': str(root / 'absent')}) as response:
                     self.assertEqual(response.status_code, 422)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is not installed')
+    def test_page_parsing(self):
+        run = subprocess.run(['node', '--test', str(Path(__file__).with_name('n64_maps.test.cjs'))], capture_output=True, text=True, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
 
 if __name__ == '__main__':

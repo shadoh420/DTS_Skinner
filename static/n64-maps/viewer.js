@@ -1,8 +1,46 @@
 /* Vanilla Three.js free-flight viewer for the maps copied by tools/import_n64_map.py: N64 level conversions made for
    Blender by L. Spiro (https://github.com/L-Spiro), as .obj pieces whose vertices carry RGBA colour after their position.
    Surfaces are drawn as L. Spiro's Blender material script draws them: unlit, texture times vertex colour, with flags
-   read from material names. Used with L. Spiro's permission; no conversion is included. */
+   read from material names; EnvMapping materials are sphere-mapped from their normals. Used with L. Spiro's permission;
+   no conversion is included. */
 'use strict';
+// newmtl name -> texture file (its base name: the import keeps the folder's files only).
+function parseMtl(text, out) {
+  let name = null;
+  for (const line of text.split('\n')) {
+    const [word, ...rest] = line.trim().split(/\s+/);
+    if (word === 'newmtl') { name = rest.join(' '); out.set(name, null); }
+    else if (word === 'map_Kd' && name !== null) out.set(name, rest.join(' ').split(/[\\/]/).pop());
+  }
+}
+
+// Triangles bucketed by material: positions, RGBA colours (white where the vertex has none), texture coordinates and
+// normals (empty when the file has no vn lines).
+function parseObj(text) {
+  const v = [], vt = [], vn = [], buckets = new Map();
+  let current = null;
+  const use = name => { if (!buckets.has(name)) buckets.set(name, {position: [], color: [], uv: [], normal: []}); current = buckets.get(name); };
+  for (const line of text.split('\n')) {
+    const fields = line.trim().split(/\s+/);
+    if (fields[0] === 'v') v.push(fields.slice(1, 8).map(Number));
+    else if (fields[0] === 'vt') vt.push([Number(fields[1]), Number(fields[2])]);
+    else if (fields[0] === 'vn') vn.push(fields.slice(1, 4).map(Number));
+    else if (fields[0] === 'usemtl') use(fields.slice(1).join(' '));
+    else if (fields[0] === 'f') {
+      if (!current) use('');
+      const corners = fields.slice(1).map(corner => corner.split('/').map(Number));
+      for (let i = 1; i + 1 < corners.length; i++) for (const [at, uvAt, normalAt] of [corners[0], corners[i], corners[i + 1]]) {
+        const [x, y, z, r = 1, g = 1, b = 1, a = 1] = v[at - 1], [s, t] = vt[uvAt - 1] || [0, 0];
+        current.position.push(x, y, z);
+        current.color.push(r, g, b, a);
+        current.uv.push(s, t);
+        if (vn.length) current.normal.push(...(vn[normalAt - 1] || [0, 1, 0]));
+      }
+    }
+  }
+  return buckets;
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
   const storageKey = 'skinner.n64maps';
@@ -43,48 +81,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     return textures.get(key);
   }
 
-  // newmtl name -> texture file (its base name: the import keeps the folder's files only).
-  function parseMtl(text, out) {
-    let name = null;
-    for (const line of text.split('\n')) {
-      const [word, ...rest] = line.trim().split(/\s+/);
-      if (word === 'newmtl') { name = rest.join(' '); out.set(name, null); }
-      else if (word === 'map_Kd' && name !== null) out.set(name, rest.join(' ').split(/[\\/]/).pop());
-    }
-  }
-
-  // Triangles bucketed by material: positions, RGBA colours (white where the vertex has none) and texture coordinates.
-  function parseObj(text) {
-    const v = [], vt = [], buckets = new Map();
-    let current = null;
-    const use = name => { if (!buckets.has(name)) buckets.set(name, {position: [], color: [], uv: []}); current = buckets.get(name); };
-    for (const line of text.split('\n')) {
-      const fields = line.trim().split(/\s+/);
-      if (fields[0] === 'v') v.push(fields.slice(1, 8).map(Number));
-      else if (fields[0] === 'vt') vt.push([Number(fields[1]), Number(fields[2])]);
-      else if (fields[0] === 'usemtl') use(fields.slice(1).join(' '));
-      else if (fields[0] === 'f') {
-        if (!current) use('');
-        const corners = fields.slice(1).map(corner => corner.split('/').map(Number));
-        for (let i = 1; i + 1 < corners.length; i++) for (const [at, uvAt] of [corners[0], corners[i], corners[i + 1]]) {
-          const [x, y, z, r = 1, g = 1, b = 1, a = 1] = v[at - 1], [s, t] = vt[uvAt - 1] || [0, 0];
-          current.position.push(x, y, z);
-          current.color.push(r, g, b, a);
-          current.uv.push(s, t);
-        }
-      }
-    }
-    return buckets;
-  }
-
   // The flags the conversion writes into material names (m12ClampSMirrorT, m3TopFlagTransparentOpacity0.4_...).
   const materials = new Map();
   function material(name, mtl) {
     if (!materials.has(name)) materials.set(name, (async () => {
       const wrap = axis => name.includes('Mirror' + axis) ? THREE.MirroredRepeatWrapping : name.includes('Clamp' + axis) ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
       const file = mtl.get(name), decal = name.includes('TopFlag'), blended = decal || /Transparent|Opacity/.test(name);
-      return new THREE.MeshBasicMaterial({
-        map: file ? await loadTexture(file, wrap('S'), wrap('T')) : null, vertexColors: true,
+      const texture = file ? await loadTexture(file, wrap('S'), wrap('T')) : null;
+      // EnvMapping surfaces (chrome, glass) have no texture coordinates: the N64 generated them from the view-space normal,
+      // spanning the whole texture (TexScale x 1024 is the texture's size in the conversions), which is a matcap.
+      // ponytail: matcap ignores texture alpha; vertex alpha still makes these see-through.
+      const env = name.includes('EnvMapping');
+      return new (env ? THREE.MeshMatcapMaterial : THREE.MeshBasicMaterial)({
+        [env ? 'matcap' : 'map']: texture, vertexColors: true,
         transparent: blended, depthWrite: !blended, alphaTest: blended ? 0 : .5,  // Opaque surfaces cut out where the texture is clear.
         side: decal || name.includes('CullBoth') ? THREE.DoubleSide : THREE.FrontSide,
         polygonOffset: decal, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
@@ -95,15 +104,18 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   async function addObj(file, mtl) {
     const buckets = [...parseObj(await (await get(`${data}maps/${map.id}/${encodeURIComponent(file)}`)).text())];
-    const geometry = new THREE.BufferGeometry(), position = [], color = [], uv = [];
+    const geometry = new THREE.BufferGeometry(), position = [], color = [], uv = [], normal = [];
     for (const [index, [, bucket]] of buckets.entries()) {
       geometry.addGroup(position.length / 3, bucket.position.length / 3, index);
-      position.push(...bucket.position); color.push(...bucket.color); uv.push(...bucket.uv);
+      position.push(...bucket.position); color.push(...bucket.color); uv.push(...bucket.uv); normal.push(...bucket.normal);
     }
     if (!position.length) return;
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(color, 4));  // Four components: vertex alpha is drawn.
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    // Environment mapping reads normals: the file's own (one per face in the conversions), else face normals.
+    if (normal.length === position.length) geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
+    else geometry.computeVertexNormals();
     const mesh = new THREE.Mesh(geometry, await Promise.all(buckets.map(([name]) => material(name, mtl))));
     if (buckets.some(([name]) => name.includes('TopFlag'))) mesh.renderOrder = 1;
     scene.add(mesh);
