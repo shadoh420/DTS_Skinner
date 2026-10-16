@@ -7,6 +7,8 @@ window.quakeMaps = {
     if (!texture || !colormap) return new THREE.MeshBasicMaterial({color: 0xff00ff});
     return new THREE.ShaderMaterial({
       userData: {quakeIndexed: true},
+      // Quakespasm TEXPREF_ALPHA: '{' fence textures cut out palette index 255.
+      ...(group.name && group.name.startsWith('{') ? {defines: {FENCE: ''}} : {}),
       uniforms: {indices: {value: texture}, lights: {value: lightMap}, colors: {value: colormap},
         seconds: this.time, size: {value: new THREE.Vector2(...group.size)},
         rgbLighting: {value: !!rgbLighting}, styleA: {value: 0}, styleB: {value: 0}, styleOffset: {value: 0},
@@ -49,6 +51,9 @@ window.quakeMaps = {
         #endif
         }
         void main() {
+        #ifdef FENCE
+          if (pixel(texUV) == 255.) discard;
+        #endif
           if (kind == 1) {
             vec3 ray = world - cameraPosition;
             ray.y *= 3.;
