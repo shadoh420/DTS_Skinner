@@ -2,14 +2,17 @@
 onto world faces, sprite and glow entities, and brushes that turn on their own. Map units and axes throughout; each
 importer turns the results into its own geometry, materials and page batches.
 """
+import json
 import math
 
 import numpy as np
 
 try:
     from tools.import_quake_map import rotation
+    from tools import source_pcf
 except ImportError:  # Run as a script from tools/.
     from import_quake_map import rotation
+    import source_pcf
 
 SURF_SKY2D, SURF_SKY, SURF_NODRAW, SURF_NODECALS = 0x2, 0x4, 0x80, 0x2000
 # How near a node's plane must be to a decal for its faces to take it (GoldSrc lineage: Xash3D gl_decals.c R_DecalNode
@@ -291,19 +294,67 @@ def particles(entities, bounds, light=None):
     return found
 
 
+FIRE_SYSTEMS = ('env_fire_tiny', 'env_fire_small', 'env_fire_medium', 'env_fire_large')
+
+
+def fires(entities, systems, stage, drop, notes):
+    """[(batch, template, emitter, stage)] for env_fire, SDK 2013 rules: a fire that starts on (SF_FIRE_START_ON 4,
+    not StartDisabled) drops to the floor below it unless SF_FIRE_DONT_DROP (16) (CFire::StartFire's trace), and its
+    client effect (C_FireSmoke::Start) is the particle system env_fire_tiny/small/medium/large by floor(firesize / 36),
+    with _smoke unless smokeless (2); its systems come from tools/source_pcf.effect. stage(material, sequence) gives
+    (batch key, stage, columns, frames) for one sprite-sheet sequence, or None; drop(origin) the floor point.
+    A system's sequence_random range splits its particles between those sequences; 'lifetime from sequence' is that
+    sequence's frames at its Frames Per Second; max_particles caps the rate."""
+    found = []
+    for e in entities:
+        if e.get('classname', '').lower() != 'env_fire':
+            continue
+        flags = int(_number(e, 'spawnflags'))
+        if not flags & 4 or _number(e, 'startdisabled') or _number(e, 'starthidden'):
+            notes['env_fire not started'] += 1
+            continue
+        root = FIRE_SYSTEMS[min(int(_number(e, 'firesize', 64) // 36), 3)] + ('' if flags & 2 else '_smoke')
+        origin = _vector(e) if flags & 16 else drop(_vector(e))
+        for fx in source_pcf.effect(systems, root, notes):
+            first, last = fx['sequences']
+            cuts = [c for c in (stage(fx['material'], q) for q in range(first, last + 1)) if c]
+            if not cuts:
+                notes['missing material ' + fx['material']] += 1
+                continue
+            for k, (key, st, columns, frames) in enumerate(cuts):
+                t = dict(fx['template'])
+                fps = t.pop('lifeFromSequence', None)
+                if fps:
+                    t['life'] = [frames / fps] * 2
+                if frames > 1:
+                    t.update(frames=[columns, 1], frameCount=frames)
+                rate = fx['rate']
+                if fx['max'] and rate * t['life'][1] > fx['max']:
+                    rate = fx['max'] / t['life'][1]
+                emitter = dict(origin=list(origin), forward=[1, 0, 0], right=[0, -1, 0], period=1 / max(rate, 1e-3) * len(cuts),
+                               fire=root)
+                found.append((key, t, emitter, st))
+    return found
+
+
 def particle_data(found, material, missing_texture, scale):
     """map.particles from particles(): one template per emitter, one batch (a stage) per material that loads; the page
     axes are the map's [y, z, x] x scale, as the importers place everything else."""
-    templates, batches, emitters = [], {}, []
-    for name, template, emitter in found:
+    templates, batches, emitters, known = [], {}, [], {}
+    for name, template, emitter, *given in found:
+        if given and name not in batches:
+            batches[name] = given[0]  # a stage the importer built (env_fire's sheet sequences)
         if name not in batches:
             mat = material(name)
             batches[name] = None if mat['texture'] == missing_texture else dict(
                 map=mat['texture'], blend=mat['settings'].get('blend') or ['gl_src_alpha', 'gl_one_minus_src_alpha'],
                 rgbGen=['vertex'], alphaGen=['vertex'])
         if batches[name]:
-            templates.append(template)
-            emitters.append(dict(emitter, template=len(templates) - 1, batch=name))
+            signature = json.dumps(template, sort_keys=True)  # many emitters share a template (one per fire system)
+            if signature not in known:
+                known[signature] = len(templates)
+                templates.append(template)
+            emitters.append(dict(emitter, template=known[signature], batch=name))
     if not emitters:
         return None
     return dict(templates=templates, batches={k: v for k, v in batches.items() if v}, emitters=emitters,
