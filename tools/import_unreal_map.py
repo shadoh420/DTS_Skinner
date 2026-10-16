@@ -69,8 +69,8 @@ DRAWN_FLAGS = (MASKED | TRANSLUCENT | NOT_SOLID | ENVIRONMENT | MODULATED | FAKE
 # A corona (an actor with bCorona and a Skin): as SurrealEngine's VisibleCorona, a square of DrawScale x 0.8 of the
 # viewport's width (Deus Ex 0.2) wherever it is, added translucently over the frame unless the level's BSP stands
 # between it and the eye. Its Skin is tinted with the light's hue and saturation at full brightness (brightest channel
-# 1, LightBrightness ignored) x FX / Z, FX half the viewport's width in pixels and Z the corona's view depth in Unreal
-# units, each channel clamped to 1 (the viewer's fx_falloff). Measured in 227 with coronas toggled live: 20 coronas on
+# 1, LightBrightness ignored) x min(1, FX / Z), FX half the viewport's width in pixels and Z the corona's view depth
+# in Unreal units (the viewer's fx_falloff). Measured in 227 with coronas toggled live: 20 coronas on
 # NaliC2, Dig, TerraLift and SkyTown, depth 290-1380 units, at 1024 and 640 wide; 19 within 15% (2026-10-16).
 # Deus Ex keeps SurrealEngine's hsbtorgb(hue, saturation, 255) x 2.5, unmeasured, and only within 2000 units.
 CORONA_SIZE, CORONA_RANGE = {'dx': .2}, {'dx': 2000}

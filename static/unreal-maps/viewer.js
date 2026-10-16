@@ -290,9 +290,9 @@ window.addEventListener('DOMContentLoaded', async () => {
           colour = additive ? vec4(tint.rgb * tint.a * shown, 1.) : modulate ? vec4(mix(vec3(.5), tint.rgb, shown), 1.) : vec4(tint.rgb, tint.a * shown);
           if (screen) {
             vec4 clip = projectionMatrix * viewMatrix * vec4(center, 1.);
-            // fx_falloff: the tint x half the frame's width in pixels x fx_falloff / the view depth (clip.w), each
-            // channel clamped to 1 as a vertex colour is.
-            if (fxFalloff > 0. && clip.w > 0.) colour.rgb = min(tint.rgb * halfWidth * fxFalloff / clip.w, 1.) * tint.a * shown;
+            // fx_falloff: the tint x min(1, half the frame's width in pixels x fx_falloff / the view depth (clip.w)), the
+            // width in CSS pixels on screen (the window the game would have), a target's own pixels when capturing.
+            if (fxFalloff > 0. && clip.w > 0.) colour.rgb = min(halfWidth * fxFalloff / clip.w, 1.) * tint.rgb * tint.a * shown;
             gl_Position = clip.w <= 0. ? vec4(2., 2., 2., 1.) : clip + vec4(position.xy * 2. * size * vec2(1., viewAspect) * clip.w, 0., 0.);
           } else {
             vec4 view = viewMatrix * vec4(center, 1.);
@@ -587,7 +587,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       showPass(false);
     }
     renderer.render(scene, camera);
-    if (overlay.children.length) { sprites.halfWidth.value = frame.width / 2; renderer.render(overlay, camera); }
+    if (overlay.children.length) { sprites.halfWidth.value = target ? target.width / 2 : frame.width / 2 / renderer.getPixelRatio(); renderer.render(overlay, camera); }
     renderer.setRenderTarget(target);
     renderer.render(ramp, flat);
     if (target) fitFrame();
