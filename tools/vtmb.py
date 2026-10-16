@@ -110,7 +110,7 @@ def read_vpk(path):
 
 def read_install(install):
     """Metadata-only index: numbered stock VPKs, stock loose, patch loose.
-    Only models/materials/maps are traversed; save/screenshots are never visited.
+    Only models/materials/maps/particles are traversed; save/screenshots are never visited.
     Returns winners and a provenance/count receipt, without reading payloads.
     """
     root = Path(install).expanduser().resolve()
@@ -135,7 +135,7 @@ def read_install(install):
             files[name] = asset
     patch_counts = {suffix: dict(added=0, replaced=0) for suffix in ('.mdl', '.vmt', '.vtf', '.tth', '.ttz', '.bsp')}
     for folder in (stock, patch):
-        for sub in ('models', 'materials', 'maps'):
+        for sub in ('models', 'materials', 'maps', 'particles'):
             for path in sorted((folder / sub).rglob('*')):
                 if not path.is_file():
                     continue

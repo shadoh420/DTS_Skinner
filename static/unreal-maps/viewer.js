@@ -415,13 +415,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       moving.push(mover);
     }
     if (map.sprites?.length) await buildSprites(geometry, materials);
-    // Source effects of the import's map.particles (dust motes, steam, fire) in the shared particle system
-    // (particles.js), in a group of their own that the sky passes leave out (draw).
+    // Source effects and Bloodlines' own particles of the import's map.particles in the shared particle system
+    // (particles.js): the level's in a group that the sky and mirror passes leave out (draw); the 3D sky area's
+    // (batches flagged sky3d) in one that only the sky pass draws.
     if (map.particles && window.skinnerParticles) {
       particleGroup = new THREE.Group();
-      scene.add(particleGroup);
+      const skyGroup = new THREE.Group();
+      scene.add(particleGroup, skyGroup);
+      if (map.sky3d) sky3dDraws.push(skyGroup);
       particles = await window.skinnerParticles.mount(THREE, map.particles, {loadTexture: stage => loadTexture((stage.frames || [stage.map])[0]),
-        add: mesh => particleGroup.add(mesh), toWorld: map.particles.toWorld, up: map.particles.up});
+        add: mesh => (map.particles.batches[mesh.userData.batch]?.sky3d ? skyGroup : particleGroup).add(mesh), toWorld: map.particles.toWorld, up: map.particles.up});
     }
     if (config && config.buildInstances) {
       for (const object of await config.buildInstances(map, data, get, loadTexture)) {

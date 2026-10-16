@@ -58,4 +58,24 @@ const scaled = P.create(THREE, [t], [emitter], {a: {texture}}, {toWorld: [0, 0, 
 assert.equal(scaled.meshes[0].material.uniforms.uSizeScale.value, .5);
 scaled.update(1, [1, 2, 3], true);
 assert.deepEqual(scaled.meshes[0].material.uniforms.uEye.value.toArray().map(v => +v.toFixed(6)), [6, 2, 4]);
+// Troika (Bloodlines) templates: a header, a track directory, then the keys, in one texel stream.
+const tracks = Array.from({length: 17}, () => []);
+tracks[3] = [[0, 0, 0, 0], [0, 1 / 3, 20, 60]]; tracks[16] = [[0, 0, 40, 40]];
+const flame = {model: 'troika', loop: false, movealign: true, collide: true, aspect: [.5, .25], lifeRate: [.9, 1], depthOffset: -2,
+  spawn: {radius: [0, 5], timescale: [1, 1]}, tracks, parentLife: 1e9, rateMax: 0, life: [1, 1.2], count: 1, delay: 0};
+const run = P.packTroika(flame), at = n => [...run.slice(n * 4, n * 4 + 4)].map(v => +v.toFixed(4));
+assert.deepEqual(at(0), [.9, 1, 1, 1]);
+assert.deepEqual(at(1), [2 + 8, -2, .5, .25], 'movealign and collide bits, depth offset, sprite half sides');
+assert.deepEqual(at(2), [0, 5, 0, 0]);
+assert.deepEqual(at(6), [255, 255, 255, 255], 'spawn colour multipliers default to 255');
+assert.deepEqual(at(10), [1e9, 0, 0, 1], 'parent life, max rate, delay, gain (default 1)');
+assert.deepEqual(at(14).slice(2), [22, 2], 'track 3 starts after the 22-texel header and has 2 keys');
+assert.deepEqual(at(21), [22 + 2, 1, 0, 0], 'track 16 (the rate) follows');
+assert.deepEqual(at(23), [0, .3333, 20, 60]);
+const mixed = P.create(THREE, [t, flame], [emitter, {...emitter, template: 1, batch: 'b', floor: -64}], {a: {texture}, b: {texture}});
+assert.equal(mixed.meshes.length, 2);
+assert.ok(!mixed.meshes[0].material.vertexShader.includes('uKeys') && mixed.meshes[1].material.vertexShader.includes('uKeys'));
+const troikaData = mixed.meshes[1].geometry.attributes.iOrigin.data.array;
+assert.equal(troikaData[3], 0, 'the only troika template starts the stream');
+assert.equal(troikaData[15], -64, 'the floor below a colliding emitter rides in iTime.w');
 console.log('particles ok');

@@ -338,7 +338,7 @@ def fires(entities, systems, stage, drop, notes):
 
 
 def particle_data(found, material, missing_texture, scale):
-    """map.particles from particles(): one template per emitter, one batch (a stage) per material that loads; the page
+    """map.particles from particles(): one template per distinct template, one batch (a stage) per material that loads; the page
     axes are the map's [y, z, x] x scale, as the importers place everything else."""
     templates, batches, emitters, known = [], {}, [], {}
     for name, template, emitter, *given in found:
@@ -348,7 +348,7 @@ def particle_data(found, material, missing_texture, scale):
             mat = material(name)
             batches[name] = None if mat['texture'] == missing_texture else dict(
                 map=mat['texture'], blend=mat['settings'].get('blend') or ['gl_src_alpha', 'gl_one_minus_src_alpha'],
-                rgbGen=['vertex'], alphaGen=['vertex'])
+                rgbGen=['vertex'], alphaGen=['vertex'], **({'sky3d': True} if mat.get('sky3d') else {}))
         if batches[name]:
             signature = json.dumps(template, sort_keys=True)  # many emitters share a template (one per fire system)
             if signature not in known:
