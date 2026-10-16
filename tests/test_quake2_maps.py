@@ -381,7 +381,7 @@ class Quake2MapsInstallTest(unittest.TestCase):
                 # Items, keys and misc models: drawn or skipped on purpose; EF_ROTATE items are movers that turn.
                 self.assertFalse([r for r in scene['items'] if r['status'] == 'failed'], name)
                 drawn += sum(r['status'] == 'drawn' for r in scene['items'])
-                self.assertEqual(len(scene.get('movers', [])), sum(bool(r.get('turning')) for r in scene['items']), name)
+                self.assertGreaterEqual(len(scene.get('movers', [])), sum(bool(r.get('turning')) for r in scene['items']), name)  # plus trains and rotating brushes
                 for view in scene['viewpoints']:
                     if view['classname'] == 'info_player_intermission':
                         self.assertEqual(view['native_origin'], view['authored_origin'])

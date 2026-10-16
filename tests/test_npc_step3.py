@@ -76,7 +76,7 @@ class NPCStep3Tests(unittest.TestCase):
             self.assertTrue(all(m['pose']['skin_family'] == 1 and 'frame' in m['pose'] for m in scene['models']))
             ordinary = {g['texture'] for g in scene['groups'] if not g.get('npc')}
             self.assertTrue(ordinary & {g['texture'] for g in scene['groups'] if g.get('npc')})
-            self.assertEqual(len(blob), scene['vertices'] * 28 + scene['indices'] * 4)
+            self.assertEqual(len(blob), scene['vertices'] * 32 + scene['indices'] * 4)  # RGBA vertex light (colors)
 
     def test_quake_skin_standing_frame_and_normal_sp_filter(self):
         raw_model = qf.mdl().replace(b'last\0', b'idle\0')
