@@ -712,7 +712,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     for i in sorted(used):
         if names[i][1]&qmap.SURF_NODRAW:continue
         shaders[i],missing,notes=rules.describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
-    effects=dict(weather=weather(things))
+    # The sky portal's camera (props_skyportal, JA's misc_skyportal): its origin; the view lends it angles and fov.
+    portal=next((e for e in things if e.get('classname','').lower() in ('props_skyportal','misc_skyportal')),None)
+    effects=dict(weather=weather(things),skyPortal=portal and dict(origin=vector(portal.get('origin'))))
     if getattr(rules,'ID_FLARES',True):
         effects['coronas']=coronas(things,game.section,rules)
         if effects['coronas'] or 4 in kinds:
@@ -759,7 +761,8 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
                     reason='item table has no world model' if not paths else ''
             elif cls=='corona':status,reason=('omitted','START_OFF corona') if flags&1 else ('drawn','corona with the flare shader (CG_Corona)')
             elif cls=='dlight':reason=getattr(rules,'DLIGHT_NOTE','dynamic light: none drawn with r_dynamiclight 0 (wolfconfig.cfg)')
-            elif cls.startswith(('trigger_','target_','info_','light','path_')) or cls in ('worldspawn','props_skyportal','misc_vis_dummy','misc_vis_dummy_multiple'):
+            elif cls=='props_skyportal':reason='sky portal camera: the sky shows the scene from here (CG_DrawSkyBoxPortal)'
+            elif cls.startswith(('trigger_','target_','info_','light','path_')) or cls in ('worldspawn','misc_vis_dummy','misc_vis_dummy_multiple'):
                 reason='world/control/light entity; no standalone visual'
             elif cls in ('script_model_med','props_decoration') and flags&1:reason='START_INVIS'
             elif cls=='misc_spotlight':reason='spotlight camera/effect not reconstructed'

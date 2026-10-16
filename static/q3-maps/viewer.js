@@ -597,10 +597,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const index of indices) centre.expandByPoint(point.fromBufferAttribute(attributes.position, index));
     geometry.boundingSphere = centre.getBoundingSphere(new THREE.Sphere());
     // Until its textures arrive a surface is the green wireframe the T1 terrain shows while loading.
-    const placeholder = new THREE.Mesh(geometry, loading);
+    const placeholder = new THREE.Mesh(geometry, loading), meshes = [];
     root.add(placeholder);
     const add = (material, stage) => {
       const mesh = new THREE.Mesh(geometry, material);
+      meshes.push(mesh);
       if (shader.sky && skyAtFarDepth) mesh.frustumCulled = false;
       mesh.renderOrder = shader.sort * 100000 + serial * 16 + stage;  // By sort, then shader by shader, stage after stage.
       mesh.name = shader.name;
@@ -616,6 +617,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     root.remove(placeholder);
     if (shader.sky) skyGeometries.push(geometry);
+    worldGroups.push({indices, ranges, meshes, sky: !!shader.sky, mover});
     if (shader.sort === 3 && !shader.sky) {
       let floorGeometry = geometry;
       if (map.bspCull) {
@@ -632,6 +634,52 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!ranges || mover !== undefined) return;
     if (visibility) visibility.bind(geometry, ranges, shader);
     else if (config.bindWorldCull) config.bindWorldCull(map, geometry, ranges, shader);
+  }
+
+  // The sky portal (props_skyportal in RTCW, misc_skyportal in JA; CG_DrawSkyBoxPortal and RDF_SKYBOXPORTAL): the
+  // scene seen from the portal's origin, with the view's angles and field of view, is drawn first, sky and all; then
+  // the view draws everything but its sky over it. What the portal shows is fixed: the surfaces of the leaves its
+  // cluster can see, and the props, pickups and movers standing in them (G_PortalifyEntities). ponytail: the
+  // portal's own fog (fogcolor, fognear, fogfar) is not drawn.
+  const worldGroups = [];
+  let skyPortal = null;
+  function setupSkyPortal() {
+    const seen = map.skyPortal && map.bspCull && window.skinnerVisibility.clusterMask(map.bspCull, map.skyPortal.origin);
+    if (!seen) return;
+    const swaps = [], skies = [];
+    for (const {indices, ranges, meshes, sky, mover} of worldGroups) {
+      if (sky) { skies.push(...meshes); continue; }
+      if (mover !== undefined || !ranges) continue;
+      const kept = ranges.flatMap(([face, start, length]) => seen.mask[face] ? indices.slice(start, start + length) : []);
+      if (!kept.length) continue;
+      const geometry = new THREE.BufferGeometry(), centre = new THREE.Box3(), point = new THREE.Vector3(), main = meshes[0].geometry;
+      Object.entries(main.attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
+      geometry.setIndex(kept);
+      for (const index of kept) centre.expandByPoint(point.fromBufferAttribute(main.attributes.position, index));
+      geometry.boundingSphere = centre.getBoundingSphere(new THREE.Sphere());
+      swaps.push(...meshes.map(mesh => ({mesh, geometry, main})));
+    }
+    const shown = new Set([...swaps.map(swap => swap.mesh), ...skies]);
+    // Placed models and pickups by where they stand, movers by their origin.
+    root.children.forEach(child => {
+      const at = child.isMesh ? null : new THREE.Vector3().setFromMatrixPosition(child.matrixAutoUpdate ? child.matrix.compose(child.position, child.quaternion, child.scale) : child.matrix);
+      if (at && (at.lengthSq() ? seen.visible(at.toArray()) : false)) shown.add(child);
+    });
+    movers.forEach(({spec, holder}) => { if (seen.visible(spec.origin)) shown.add(holder); });
+    skyPortal = {swaps, skies, shown, camera: camera.clone(), eye: new THREE.Vector3(...map.skyPortal.origin)};
+  }
+  function drawSkyPortal() {
+    const {swaps, shown, camera: view, eye} = skyPortal, hidden = [];
+    view.copy(camera);
+    view.position.set(eye.x, eye.z, -eye.y);
+    view.updateMatrixWorld();
+    uniforms.uView.value.copy(eye);
+    for (const swap of swaps) swap.mesh.geometry = swap.geometry;
+    for (const child of root.children) if (child.visible && !shown.has(child)) { child.visible = false; hidden.push(child); }
+    renderer.render(scene, view);
+    for (const child of hidden) child.visible = true;
+    for (const swap of swaps) swap.mesh.geometry = swap.main;
+    uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
   }
 
   // Movers (g_mover.c): a moving brush model's surfaces hang under a group whose matrix carries them from the pose
@@ -960,7 +1008,16 @@ window.addEventListener('DOMContentLoaded', async () => {
         [direction.x, -direction.z, direction.y], config.worldCullDistance ? config.worldCullDistance(map) : null);
     }
     renderer.setRenderTarget(frame);
+    if (skyPortal) {
+      drawSkyPortal();
+      for (const mesh of skyPortal.skies) mesh.visible = false;
+      renderer.autoClearColor = false;
+    }
     renderer.render(scene, camera);
+    if (skyPortal) {
+      for (const mesh of skyPortal.skies) mesh.visible = true;
+      renderer.autoClearColor = true;
+    }
     renderer.setRenderTarget(null);
     renderer.render(shown, shownCamera);
   }
@@ -976,7 +1033,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (settings.animate) shaderTime += delta;
     draw(shaderTime);
   });
-  window.skinnerQ3Maps = {renderer, scene, camera, draw, movers};  // For checks in a hidden page, where no frame is drawn.
+  window.skinnerQ3Maps = {renderer, scene, camera, draw, movers, get skyPortal() { return skyPortal; }, set skyPortal(value) { skyPortal = value; }};  // For checks in a hidden page, where no frame is drawn.
 
   const select = id => { location.search = '?map=' + encodeURIComponent(id); };
   $('map').addEventListener('change', event => select(event.target.value));
@@ -1054,6 +1111,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const holder = await config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map, lightAt, useLight, addFog});
       trackNPC(item, holder);
     }));
+    setupSkyPortal();
     showNotes();
     ready = true;
     showReady();
