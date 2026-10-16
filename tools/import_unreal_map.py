@@ -66,11 +66,15 @@ AUTO_U_PAN, AUTO_V_PAN, UNLIT, PORTAL, MIRRORED = 0x200, 0x400, 0x400000, 0x4000
 # NOT_SOLID: the page's line-of-sight tests pass through it, as SurrealEngine's (TraceRayModel::NodeRayIntersect).
 DRAWN_FLAGS = (MASKED | TRANSLUCENT | NOT_SOLID | ENVIRONMENT | MODULATED | FAKE_BACKDROP | TWO_SIDED | AUTO_U_PAN | AUTO_V_PAN | UNLIT
                | MIRRORED)
-# A corona (an actor with bCorona and a Skin) as SurrealEngine's VisibleCorona draws it: a square of DrawScale x 0.8 of
-# the viewport's width (Deus Ex 0.2) wherever it is, its Skin x hsbtorgb(LightHue, LightSaturation, 255) (Deus Ex x 2.5)
-# added translucently over the frame, unless the level's BSP stands between it and the eye; Deus Ex only within 2000.
-CORONA_SIZE, CORONA_GAIN, CORONA_RANGE = {'dx': .2}, {'dx': 2.5}, {'dx': 2000}
-CORONA_V = 6.512735 * math.sqrt(255)  # hsbtorgb's brightest channel at brightness 255, of 255
+# A corona (an actor with bCorona and a Skin): as SurrealEngine's VisibleCorona, a square of DrawScale x 0.8 of the
+# viewport's width (Deus Ex 0.2) wherever it is, added translucently over the frame unless the level's BSP stands
+# between it and the eye. Its Skin is tinted with the light's hue and saturation at full brightness (brightest channel
+# 1, LightBrightness ignored) x min(1, FX / Z), FX half the viewport's width in pixels and Z the corona's view depth
+# in Unreal units (the viewer's fx_falloff). Measured in 227 with coronas toggled live at the starts of NaliC2 (1024
+# and 640 wide) and Dig: 8 coronas, depth 490-1170 units, all within 8% (2026-10-16).
+# Deus Ex keeps SurrealEngine's hsbtorgb(hue, saturation, 255) x 2.5, unmeasured, and only within 2000 units.
+CORONA_SIZE, CORONA_RANGE = {'dx': .2}, {'dx': 2000}
+CORONA_DX = 2.5 * 6.512735 * math.sqrt(255) / 255  # hsbtorgb's brightest channel at brightness 255, x 2.5
 GROUPS = {'upak': 'Return to Na Pali'}
 # A player stands on the floor below its PlayerStart, its centre CollisionHeight over it and its eye BaseEyeHeight over
 # that (UnrealShare's Human: 39 and 23; the game's eye, checked on NyLeve's start, 2026-10-09).
@@ -757,13 +761,14 @@ def build_map(library, level, default, game='unreal', files=None):
         if props.get('bCorona') and obj('Skin'):  # Hidden actors too: SurrealEngine collects coronas before bHidden.
             png = texture_of(*obj('Skin'))[0]
             if png != 'missing.png':
-                color = light_color(props.get('LightHue', 0), props.get('LightSaturation', 0), 255) * 255 / 127.5 * CORONA_V / 255
+                color = light_color(props.get('LightHue', 0), props.get('LightSaturation', 0), 255) * 2 * (CORONA_DX if game == 'dx' else 1)
                 batch = coronas.setdefault(png, dict(texture=png, blend='translucent', screen=True, occlude=True, items=[],
                                                      **({'frames': chains[png]['frames'], 'fps': chains[png]['fps']} if chains.get(png) else {}),
-                                                     **({'range': round(CORONA_RANGE[game] * SCALE, 3)} if game in CORONA_RANGE else {})))
+                                                     **({'range': round(CORONA_RANGE[game] * SCALE, 3)} if game in CORONA_RANGE
+                                                        else {'fx_falloff': round(SCALE, 7)})))
                 batch['items'].append([*(round(float(c), 3) for c in viewer([vector(props, 'Location')])[0]),
                                        round(props.get('DrawScale', 1.0) * CORONA_SIZE.get(game, .8), 4),
-                                       *(round(float(c), 4) for c in color * CORONA_GAIN.get(game, 1)), 1])
+                                       *(round(float(c), 4) for c in color), 1])
         if kind in ('player', 'other'):  # Deus Ex: Lights are 'other', so their coronas are read above first
             counts['excluded_players' if kind == 'player' else 'excluded_other'] += 1
             continue
