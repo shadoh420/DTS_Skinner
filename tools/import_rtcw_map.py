@@ -29,8 +29,7 @@ PLAYER_MINS, PLAYER_MAXS, EYE_HEIGHT = (-18, -18, -24), (18, 18, 48), 40
 NOT_DRAWN = ['global, sky, water and volume fog (by choice)', 'AI characters',
              'gameplay, audio, particles, flares and sun sprites',
              'script actions and moving/animated model poses after spawn',
-             'portals, mirrors, skyportal cameras and spotlight camera effects',
-             'light-grid lighting on placed models (lit evenly)']
+             'portals, mirrors, skyportal cameras and spotlight camera effects']
 PROP_MODELS = {
     'props_box_32':'models/mapobjects/boxes/box32.md3',
     'props_box_48':'models/mapobjects/boxes/box48.md3',
@@ -718,7 +717,7 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
                         item_models[key]=desc;unresolved+=missing;limits.update(desc.get('limitations',[]))
                     placed_pos=list(pos)
                     if cls=='misc_mg42':placed_pos[2]+=24 if which==0 else -24
-                    placed.append(dict(models=[key],origin=placed_pos,angles=rot,scale=size,spin=spin,entity=serial))
+                    placed.append(dict(models=[key],origin=placed_pos,angles=rot,scale=size,spin=spin,entity=serial,**({'pickup':True} if item else {})))  # CG_Item gives pickups RF_MINLIGHT.
                 status='drawn';reason='pickup at spawn; '+floor if item else 'model decoration at authored spawn pose'
             row.update(status=status,reason=reason)
         except (ValueError,OSError,struct.error,zipfile.BadZipFile,KeyError) as exc:

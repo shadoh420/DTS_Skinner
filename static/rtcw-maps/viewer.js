@@ -4,7 +4,7 @@
   const api = {
     title: 'RTCW Maps', gameName: 'Return to Castle Wolfenstein', storageKey: 'skinner.rtcwmaps',
     data: '/rtcw-map-data/', importRoute: '/import_rtcw_maps', bspVersion: 47,
-    defaultMap: 'sp_escape1', skyMipmaps: true,
+    defaultMap: 'sp_escape1', skyMipmaps: true, ambientScale: .5,  // r_ambientScale 0.5 in RTCW and ET (Q3 0.6).
     configureTexture(texture, lighting, plain) {
       if (plain || !lighting) return;
       const modes = {
@@ -35,7 +35,7 @@
         (cr*sp*cy+sr*sy)*scale[2], (cr*sp*sy-sr*cy)*scale[2], cr*cp*scale[2], 0, ...origin, 1];
     },
     spinAngle(seconds) { return (seconds * 1000 % 4096) * 360 / 4095; },
-    async addPlaced(item, {root, loadItemModel, ticks}) {
+    async addPlaced(item, {root, loadItemModel, ticks, lightAt, useLight}) {
       const holder = new THREE.Group();
       for (const surfaces of await Promise.all(item.models.map(loadItemModel))) {
         for (const {geometry, materials, sort} of surfaces) materials.forEach((material, stage) => {
@@ -51,6 +51,8 @@
         holder.matrixWorldNeedsUpdate = true;
       };
       update(0); root.add(holder);
+      // ponytail: an unevenly scaled model takes its mean scale; the game scales the light per axis.
+      useLight?.(holder, lightAt?.(item.origin, item.pickup ? 32 : 0), item.scale.reduce((sum, value) => sum + value, 0) / 3);
       if (item.spin) ticks.push(update);
       return holder;
     },

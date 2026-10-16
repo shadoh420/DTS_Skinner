@@ -134,7 +134,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const identity = number(map && map.lighting ? map.lighting.identityLight : .5);
     const rgb = kind === 'identitylighting' ? `vec3(${identity})` : kind === 'vertex' ? `tint.rgb * ${identity}` : kind === 'exactvertex' ? 'tint.rgb'
       : kind === 'oneminusvertex' ? `(1. - tint.rgb) * ${identity}` : kind === 'wave' ? `vec3(clamp(${waveCall(values)} * ${identity}, 0., 1.))`
-      : kind === 'const' ? `vec3(${values.map(number).join(', ')})` : kind === 'lightingdiffuse' ? `vec3(${identity})` : 'vec3(1.)';  // Models are lit evenly.
+      : kind === 'const' ? `vec3(${values.map(number).join(', ')})` : kind === 'lightingdiffuse' ? 'diffuseLight(N)' : 'vec3(1.)';
     const alpha = alphaKind === 'vertex' ? 'tint.a' : alphaKind === 'oneminusvertex' ? '1. - tint.a' : alphaKind === 'wave' ? `clamp(${waveCall(alphaValues)}, 0., 1.)`
       : alphaKind === 'const' ? number(alphaValues[0]) : alphaKind === 'lightingspecular' ? 'specular(P, N)'
       : alphaKind === 'portal' ? `clamp(length(P - uView) / ${number(alphaValues[0])}, 0., 1.)` : '1.';
@@ -165,11 +165,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       vertexTint.a = clamp(alpha, 0., 1.);
     }` : '';
     const test = {gt0: 'if (c.a <= 0.) discard;', lt128: 'if (c.a >= .5) discard;', ge128: 'if (c.a < .5) discard;'}[stage.alphaFunc] || '';
+    // A model's light from the light grid, set per object by useLight; until then, or without a grid, it is lit evenly.
+    const diffuse = stage.rgbGen[0] === 'lightingdiffuse', identity = map && map.lighting ? map.lighting.identityLight : .5;
     const material = new THREE.ShaderMaterial({
-      uniforms: {...uniforms, map: {value: texture}, ...(foliage ? {uFovScale: {value: settings.fov / 90}} : {})},
+      uniforms: {...uniforms, map: {value: texture}, ...(foliage ? {uFovScale: {value: settings.fov / 90}} : {}),
+        ...(diffuse ? {uAmbient: {value: new THREE.Vector3().setScalar(identity)}, uDirected: {value: new THREE.Vector3()}, uLightDir: {value: new THREE.Vector3(0, 0, 1)}} : {})},
       vertexShader: `invariant gl_Position;
         ${WAVE}
         ${foliage ? 'uniform float uFovScale; attribute vec4 foliageOrigin; varying float vFoliage;' : ''}
+        ${diffuse ? `uniform vec3 uAmbient, uDirected, uLightDir;  // RB_CalcDiffuseColor
+        vec3 diffuseLight(vec3 N) { return min(uAmbient + max(dot(N, uLightDir), 0.) * uDirected, 1.); }` : ''}
         uniform vec3 uView; attribute vec2 lm; attribute vec4 tint; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
         float specular(vec3 P, vec3 N) {  // RB_CalcSpecularAlpha, with the game's one fixed light.
           vec3 light = normalize(vec3(-960., 1980., 96.) - P), turned = N * 2. * dot(N, light) - light;
@@ -233,6 +238,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     const lump = (index, size) => ({at: view.getInt32(8 + index * 8, true), count: Math.floor(view.getInt32(12 + index * 8, true) / size)});
     const models = lump(7, 40), vertices = lump(10, 44), indexes = lump(11, 4), faces = lump(13, 104), lightmaps = lump(14, 49152);
     const float = at => view.getFloat32(at, true), int = at => view.getInt32(at, true);
+
+    // The light grid (lump 15): 8 bytes a cell over the world model's bounds, cells gridsize apart (R_LoadLightGrid).
+    const grid = lump(15, 8), worldspawn = lump(0, 1);
+    let lightGrid = null;
+    if (grid.count && models.count) {
+      const text = new TextDecoder('latin1').decode(new Uint8Array(buffer, worldspawn.at, worldspawn.count)).split('}')[0];
+      const given = (/"gridsize"\s+"([^"]*)"/i.exec(text) || [])[1]?.trim().split(/\s+/).map(Number) || [];
+      const size = given.length === 3 && given.every(value => value > 0) ? given : [64, 64, 128];
+      const origin = size.map((step, i) => step * Math.ceil(float(models.at + i * 4) / step));
+      const bounds = size.map((step, i) => Math.round((step * Math.floor(float(models.at + 12 + i * 4) / step) - origin[i]) / step) + 1);
+      if (bounds[0] * bounds[1] * bounds[2] === grid.count) lightGrid = {origin, size, bounds, cells: new Uint8Array(buffer, grid.at, grid.count * 8)};
+    }
 
     // All lightmaps in one texture, so a shader is one draw whatever lightmaps its surfaces use.
     const external = externalAtlas && map.lightmapAtlas;
@@ -325,7 +342,59 @@ window.addEventListener('DOMContentLoaded', async () => {
     const attributes = {position: new THREE.Float32BufferAttribute(positions, 3), normal: new THREE.Float32BufferAttribute(normals, 3),
       uv: new THREE.Float32BufferAttribute(uvs, 2), lm: new THREE.Float32BufferAttribute(lms, 2), tint: new THREE.Float32BufferAttribute(tints, 4)};
     if (config.foliage) attributes.foliageOrigin = new THREE.Float32BufferAttribute(foliageOrigins, 4);
-    return {atlas, attributes, groups: [...groups.values()]};
+    return {atlas, attributes, groups: [...groups.values()], lightGrid};
+  }
+
+  // A model's light at a point, as R_SetupEntityLightingGrid and R_SetupEntityLighting work it out: the eight
+  // cells around it blended, cells in walls (all black) left out, scaled by r_ambientScale / r_directedScale,
+  // plus a minimum ambient (Q3 adds 32 to every model, RTCW and ET to RF_MINLIGHT ones), and ambient no brighter
+  // than identity light. Null without a grid.
+  let lightGrid = null;
+  function lightAt(point, minimum = 32) {
+    if (!lightGrid) return null;
+    const {origin, size, bounds, cells} = lightGrid, pos = [], frac = [];
+    for (let i = 0; i < 3; i++) {
+      const v = (point[i] - origin[i]) / size[i];
+      pos[i] = Math.min(Math.max(Math.floor(v), 0), bounds[i] - 1);
+      frac[i] = v - Math.floor(v);
+    }
+    const step = [1, bounds[0], bounds[0] * bounds[1]], ambient = [0, 0, 0], directed = [0, 0, 0], direction = [0, 0, 0], shifted = [0, 0, 0];
+    let total = 0;
+    for (let corner = 0; corner < 8; corner++) {
+      let factor = 1, cell = pos[0] + pos[1] * step[1] + pos[2] * step[2], j;
+      for (j = 0; j < 3; j++) {
+        if (!(corner & 1 << j)) { factor *= 1 - frac[j]; continue; }
+        if (pos[j] + 1 > bounds[j] - 1) break;  // ioquake3's guard; CNQ3 reads past the edge.
+        factor *= frac[j]; cell += step[j];
+      }
+      const at = cell * 8;
+      if (j < 3 || !(cells[at] + cells[at + 1] + cells[at + 2])) continue;
+      total += factor;
+      for (const [into, from] of [[ambient, at], [directed, at + 3]]) {
+        shiftLight(cells[from], cells[from + 1], cells[from + 2], shifted, 0);  // R_LoadLightGrid shifts both.
+        for (let i = 0; i < 3; i++) into[i] += factor * shifted[i];
+      }
+      const lat = cells[at + 7] * Math.PI / 128, lng = cells[at + 6] * Math.PI / 128;
+      direction[0] += factor * Math.cos(lat) * Math.sin(lng); direction[1] += factor * Math.sin(lat) * Math.sin(lng); direction[2] += factor * Math.cos(lng);
+    }
+    const scale = total > 0 && total < .99 ? 1 / total : 1, identity = map.lighting ? map.lighting.identityLight : .5;
+    const length = Math.hypot(...direction) || 1;
+    return {ambient: ambient.map(value => Math.min(value * scale * (config.ambientScale ?? .6) + identity * minimum, identity * 255) / 255),
+      directed: directed.map(value => value * scale * (config.directedScale ?? 1) / 255), direction: direction.map(value => value / length)};
+  }
+  // Light a model's meshes: their stage materials are shared, so the light is set just before each is drawn.
+  // `scale` is the model's own size, which the game's axes carry into the light's direction.
+  function useLight(object, light, scale = 1) {
+    if (!light) return;
+    object.traverse(mesh => {
+      if (!mesh.isMesh || !mesh.material.uniforms || !mesh.material.uniforms.uAmbient) return;
+      mesh.onBeforeRender = (renderer, scene, camera, geometry, material) => {
+        material.uniforms.uAmbient.value.fromArray(light.ambient);
+        material.uniforms.uDirected.value.fromArray(light.directed).multiplyScalar(scale);
+        material.uniforms.uLightDir.value.fromArray(light.direction);
+        material.uniformsNeedUpdate = true;
+      };
+    });
   }
 
   // Stages of a surface without a script, as R_FindShader builds them: the image under the lightmap, or lit by
@@ -437,6 +506,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (weapon) part.scale.setScalar(1.5);
       if (which) part.position.z = item.kind === 'powerup' ? 12 : 0;
       holder.add(part);
+      useLight(part, lightAt([x, y, height + 4]), weapon ? 1.5 : 1);  // Lit where it bobs about.
     });
     root.add(holder);
     pickups.push({holder, height, fast: item.kind === 'health', rate: 5 + serial * .01});
@@ -610,6 +680,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     showStatus('Loading map…');
     const externalAtlas = config.externalLightmaps && map.lightmapAtlas ? await loadTexture(map.lightmapAtlas.file, true, true) : null;
     const world = buildWorld(await (await get(data + map.bsp)).arrayBuffer(), externalAtlas);
+    lightGrid = world.lightGrid;
     if (!world.groups.length) failures.push('the map file holds no surfaces to draw');
     let loaded = 0;
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));
@@ -617,7 +688,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     root.updateMatrixWorld(true);
     await Promise.all((map.items || []).map(addItem));
     if (config.addPlaced) await Promise.all((map.placed || []).map(async item => {
-      const holder = await config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map});
+      const holder = await config.addPlaced(item, {root, loadItemModel, ticks: placedTicks, map, lightAt, useLight});
       trackNPC(item, holder);
     }));
     showNotes();

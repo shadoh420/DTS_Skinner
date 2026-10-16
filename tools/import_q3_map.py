@@ -38,7 +38,7 @@ except ImportError:  # Run as a script.
     from bsp_visibility import read_visibility
 
 LUMPS = 17
-KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14)  # Entities, shaders, models, vertices, indices, faces, lightmaps: all the viewer reads.
+KEPT_LUMPS = (0, 1, 7, 10, 11, 13, 14, 15)  # Entities, shaders, models, vertices, indices, faces, lightmaps, light grid: all the viewer reads.
 SURF_NODRAW = 0x80
 EXTRA = 'extras: '  # Starts the label of every source that is not the game's own.
 IMAGES = ('.tga', '.jpg', '.jpeg', '.png')
@@ -370,7 +370,7 @@ def build(game, name, textures, swap=None):
                     ['portal', numbers(args[1:], 1)[0] or 256] if args[0] == 'portal' else [args[0]]
             elif word in ('tcgen', 'texgen') and args:
                 stage['tcGen'] = 'base' if args[0] == 'texture' else args[0]
-                if args[0] == 'vector': limits.add('texture coordinates from vectors')
+                if args[0] == 'vector': stage['tcGenVectors'] = numbers(args[1:], 6)  # ( s ) ( t ): st = (xyz . s, xyz . t)
             elif word == 'tcmod' and args:
                 kind = args[0]
                 if kind == 'stretch':
@@ -386,8 +386,8 @@ def build(game, name, textures, swap=None):
             stage['rgbGen'] = ['identitylighting'] if not blend or blend[0] in ('gl_one', 'gl_src_alpha') else ['identity']
         if stage['map'] == '$lightmap': stage.setdefault('tcGen', 'lightmap')
         for kind, value in (('rgbGen', stage['rgbGen'][0]), ('alphaGen', stage['alphaGen'][0])):
-            if value in ('entity', 'oneminusentity', 'lightingdiffuse'):
-                limits.add('model lighting' if value == 'lightingdiffuse' else 'entity colours')
+            if value in ('entity', 'oneminusentity'):
+                limits.add('entity colours')
         if stage['rgbGen'][0] == 'wave' and stage['rgbGen'][1] == 'noise' or stage['alphaGen'][0] == 'wave' and stage['alphaGen'][1] == 'noise':
             limits.add('noise waves')
         shader['stages'].append({key: value for key, value in stage.items() if value not in (None, False, [])
