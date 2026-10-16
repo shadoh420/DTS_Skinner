@@ -436,7 +436,7 @@ def build_map(raw, name, files, table=None):
     placed, skipped = instances(bsp)
     dark = [int(number(e, 'style')) for e in bsp['entities'] if e.get('classname') == 'light' and
             number(e, 'style') >= 32 and int(number(e, 'spawnflags')) & 1]
-    data = q2.geometry(bsp, placed, face_reader=face_data, dark_styles=dark)
+    data = q2.geometry(bsp, placed, face_reader=face_data, dark_styles=dark, frames=q2.world_frame_rate)
     for group in data['groups']:
         group['texture_alpha'] = data['textures'][group['texture']]['texture_alpha']
     views = viewpoints(bsp, data['floors'])
@@ -452,7 +452,10 @@ def build_map(raw, name, files, table=None):
     missing += [dict(source=s['named'], reason=s['reason']) for m in models for s in m.get('skins', []) if s['missing']]
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(), data['uv2'].astype('<f4').tobytes(),
                      np.asarray(data['indices'], '<u4').tobytes()))
-    scene = dict(name=name, title=bsp['info'].get('message', name), game='anachronox', format='anachronox-bsp38',
+    # Styles 1-11 match the strings in gamex86.dll; hypothesis: the Quake II 10 Hz step. No underwater regions:
+    # gamex86.dll holds none of SV_CalcBlend's float constants (0.4, 0.6), so its view blend is not Quake II's.
+    styles = q2.scene_extras(bsp, data, blends=None)
+    scene = dict(name=name, title=bsp['info'].get('message', name), game='anachronox', format='anachronox-bsp38', **styles,
         vertices=len(points), indices=len(data['indices']), lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views,
         bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(), instances=placed, skipped_entities=skipped,
         models=models, omitted_models=omitted, model_failures=failures, faces=data['audit'], skybox=sky,
@@ -463,9 +466,11 @@ def build_map(raw, name, files, table=None):
                       vid_gamma=1, gl_gamma=1.4, display_gamma=1, normal_style=1, fog_passes=2,
                       multitexture=False, profile='Generic OpenGL without SGIS multitexture'),
         assumptions=['Direct map, no save state or APE execution', 'First MD2 frame and default MDA profile',
-                     'Initial texture animation frame; motion frozen'],
+                     'World texture chains at 2 frames a second, brush entities at their first frame; light styles 1-11 '
+                     '(one per face, others at m) at 10 Hz; flowing and sky rotation on page time (Quake II rates, hypotheses)'],
         gaps=['Scripted appearances and particles are omitted',
-              'Model shading is simplified; local fog volumes and curved surfaces are omitted'])
+              'Model shading is simplified; local fog volumes and curved surfaces are omitted',
+              'No underwater view tint: the game code holds no Quake II water blend'])
     return scene, blob, images, data['atlas']
 
 

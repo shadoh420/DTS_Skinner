@@ -303,8 +303,12 @@ def build_map(path,library,models,materials):
                     if sun is None or rank(candidate)>rank(sun):sun=candidate
                 if kind in ('HeightFogComponent','ExponentialHeightFogComponent'):
                     color=cp.get('LightInscatteringColor',cp.get('FogInscatteringColor',cp.get('LightColor',(128,128,128,255))))
-                    zones.append(dict(kind=kind,color=color,density=cp.get('FogDensity',cp.get('Density',.001)),start=cp.get('StartDistance',0),
-                                      height=cp.get('FogHeight',props.get('Location',(0,0,0))[2]),height_falloff=cp.get('FogHeightFalloff')))
+                    zone=dict(kind=kind,color=color,density=cp.get('FogDensity',cp.get('Density',.001)),start=cp.get('StartDistance',0),
+                              height=cp.get('FogHeight',props.get('Location',(0,0,0))[2]),height_falloff=cp.get('FogHeightFalloff'),enabled=cp.get('bEnabled',True))
+                    # The rest of UExponentialHeightFogComponent (TASDK Engine_classes.h); the page evaluates HeightFogCommon.usf.
+                    zone.update({k:cp[k] for k in ('FogMaxOpacity','LightTerminatorAngle','OppositeLightColor','OppositeLightBrightness',
+                                                    'LightInscatteringBrightness','ExtinctionDistance','LightBrightness') if k in cp})
+                    zones.append(zone)
                 asset=cp.get('StaticMesh') or cp.get('SkeletalMesh') or cp.get('SpeedTree')
                 if not asset:continue
                 if cp.get('HiddenGame') or cp.get('bHiddenInGame') or cp.get('bIsEditorOnly') or 'collision' in component.rsplit('.',1)[-1].lower():
@@ -378,7 +382,7 @@ def build_map(path,library,models,materials):
                gaps=['Lighting parity deferred; no baked-lightmap evaluation, dynamic effects or gameplay scripts',
                      'Up to five authored terrain layers; slope/noise submaterials are listed when approximated',
                      'SpeedTrees use labelled trunk/ellipsoid stand-ins within local bounds; foliage shape is approximate',
-                     'Light distance haze uses authored fog colour/start and map extent, not native height integration; emitters and collision volumes are omitted'])
+                     'Exponential height fog follows HeightFogCommon.usf; legacy HeightFog layers use a light distance haze; emitters, fog volumes and collision volumes are omitted'])
     blobs=dict(geometry=np.asarray(points,'<f4').tobytes()+np.asarray(uv,'<f4').tobytes()+np.asarray(indices,'<u4').tobytes(),
                terrain=b''.join(terrain_chunks),lighting=b'',decorations=b''.join(deco_chunks))
     return scene,blobs

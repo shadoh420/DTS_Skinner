@@ -81,6 +81,10 @@ class SinMapsTest(unittest.TestCase):
             self.assertEqual(translucent['alpha'], .75)
             self.assertTrue(translucent['unlit'])
             self.assertFalse(translucent['settings']['flowing'])
+            moving = maps.face_data(maps.read_bsp(bsp(maps.TRANSLATE), files), 0)
+            self.assertEqual(moving['settings']['trans'], [.5, 0])  # trans_mag, trans_angle; not friction/restitution.
+            self.assertIsNone(maps.frame_rate(world, None, 0))  # A chain without ANIMATE holds (damage frames).
+            self.assertAlmostEqual(maps.frame_rate(maps.read_bsp(bsp(maps.ANIMATE), files), None, 0)[0], 10, 5)  # 1 / animtime.
             for value, alpha, unlit in ((5., 0., True), (-2., 1., False)):
                 face = maps.face_data(maps.read_bsp(bsp(translucence=value), files), 0)
                 self.assertEqual((face['alpha'], face['unlit']), (alpha, unlit))

@@ -144,7 +144,7 @@ class Materials:
     def expression(self, source, parameters, trail=(), memo=None):
         """Collect only textures reachable from this material input, in graph order."""
         if not source:
-            return dict(textures=[], samples=[], operations=[], constant=None, masks=[], uv_scale=None)
+            return dict(textures=[], samples=[], operations=[], constant=None, masks=[], uv_scale=None, pan=None, spin=None, tint=None)
         if source.lower() in trail or len(trail) > 64:
             raise ValueError('Material expression cycle: '+source)
         if memo is None:
@@ -153,15 +153,17 @@ class Materials:
             return memo[source.lower()]
         p, ref = self.library.object(source)
         cls = p.entry(ref)['class']; props, _ = p.properties(ref)
-        empty=dict(textures=[], samples=[], operations=[cls], constant=None, masks=[], uv_scale=None)
+        empty=dict(textures=[], samples=[], operations=[cls], constant=None, masks=[], uv_scale=None, pan=None, spin=None, tint=None)
         if cls.startswith('MaterialExpressionTextureSample') or cls == 'MaterialExpressionTextureObjectParameter':
             name = str(props.get('ParameterName','')).lower()
             texture = parameters['textures'].get(name) or p.qualified(props.get('Texture',0))
             if not texture:
                 raise ValueError('Texture expression without a texture: '+source)
             coords=self.input_source(p,props.get('Coordinates'))
-            uv=self.expression(coords,parameters,trail+(source.lower(),),memo)['uv_scale'] if coords else [1.,1.]
-            return dict(empty,textures=[texture],samples=[dict(texture=texture,parameter=name,uv_scale=uv,expression=source,dimension=3 if cls.endswith('Cube') else 2)])
+            c=self.expression(coords,parameters,trail+(source.lower(),),memo) if coords else {}
+            uv=c.get('uv_scale') if coords else [1.,1.]
+            return dict(empty,textures=[texture],samples=[dict(texture=texture,parameter=name,uv_scale=uv,expression=source,dimension=3 if cls.endswith('Cube') else 2,
+                                                                pan=c.get('pan'),spin=c.get('spin'))])
         if cls=='MaterialExpressionTextureCoordinate':
             return dict(empty,uv_scale=[abs(props.get('UTiling',1)),abs(props.get('VTiling',1))])
         if cls=='MaterialExpressionConstant2Vector':
@@ -188,10 +190,18 @@ class Materials:
             result['samples'].extend(dict(c,control=c.get('control',0)+int(field in ('Alpha','Percent','Exponent'))) for c in item['samples'])
         # Only evaluate simple coordinate scaling, not arbitrary shader arithmetic.
         uv=next((v['uv_scale'] for v in children.values() if v['uv_scale'] is not None),None)
+        motion=next((v for v in children.values() if v.get('pan') or v.get('spin')),{})
         if cls in ('MaterialExpressionPanner','MaterialExpressionRotator'):
             result['uv_scale']=uv or [1.,1.]
+            # UDK Materials Compendium: Panner adds Time * (SpeedX, SpeedY) to Coordinate; Rotator turns Coordinate about
+            # (CenterX, CenterY) by Time * Speed. Time is game seconds unless wired; a constant Time scale is folded in,
+            # anything else is left static (pan/spin None).
+            time=children.get('Time')
+            scale=1. if time is None else time['constant'] if isinstance(time.get('constant'),(int,float)) else 1. if time['operations']==['MaterialExpressionTime'] else None
+            if scale is not None and cls.endswith('Panner'):result['pan']=[props.get('SpeedX',0)*scale,props.get('SpeedY',0)*scale]
+            if scale is not None and cls.endswith('Rotator'):result['spin']=dict(speed=props.get('Speed',.25)*scale,center=[props.get('CenterX',.5),props.get('CenterY',.5)])
         elif cls=='MaterialExpressionComponentMask' and children:
-            child=next(iter(children.values()));result['uv_scale']=uv;result['constant']=child['constant']
+            child=next(iter(children.values()));result['uv_scale']=uv;result['constant']=child['constant'];result.update(pan=motion.get('pan'),spin=motion.get('spin'))
             if isinstance(result['constant'],(tuple,list)):
                 result['constant']=[v for c,v in zip(('R','G','B','A'),result['constant']) if props.get(c)]
         elif cls in ('MaterialExpressionMultiply','MaterialExpressionDivide','MaterialExpressionAdd','MaterialExpressionSubtract'):
@@ -199,11 +209,17 @@ class Materials:
             b=children.get('B',{}).get('constant',props.get('ConstB'))
             if uv is not None:
                 factor=b if children.get('A',{}).get('uv_scale') is not None else a
-                if cls.endswith(('Add','Subtract')):result['uv_scale']=uv
+                if cls.endswith(('Add','Subtract')):result['uv_scale']=uv;result.update(pan=motion.get('pan'),spin=motion.get('spin'))
                 elif factor is not None:
                     factor=np.resize(np.asarray(factor,dtype=float),2)
-                    if cls.endswith('Multiply'):result['uv_scale']=(np.abs(factor)*uv).tolist()
+                    if cls.endswith('Multiply'):
+                        result['uv_scale']=(np.abs(factor)*uv).tolist()
+                        if motion.get('pan'):result['pan']=(factor*motion['pan']).tolist()
                     elif children.get('A',{}).get('uv_scale') is not None and np.all(factor):result['uv_scale']=(np.asarray(uv)/np.abs(factor)).tolist()
+            # A texture times a constant (an emissive tint): kept beside the texture list, not baked.
+            if cls=='MaterialExpressionMultiply' and uv is None and (a is None)!=(b is None):
+                side=children.get('A' if a is None else 'B',{})
+                if side.get('textures'):result['tint']=(np.asarray(side.get('tint') or 1.,dtype=float)*np.asarray(a if b is None else b,dtype=float)).tolist()
             if a is not None and b is not None:
                 try:
                     op={'MaterialExpressionMultiply':np.multiply,'MaterialExpressionDivide':np.divide,'MaterialExpressionAdd':np.add,'MaterialExpressionSubtract':np.subtract}[cls]
@@ -301,6 +317,23 @@ class Materials:
                         row['notes'].append('Complex opacity expression recorded; preview uses diffuse alpha')
             elif opacity['constant'] is not None and isinstance(opacity['constant'],(int,float)):
                 settings['opacity'] = min(1,max(0,opacity['constant']))
+            sample=next((c for c in diffuse['samples'] if c['texture']==row.get('diffuse_source') and (c.get('pan') or c.get('spin'))),None)
+            if sample:self.motion(settings,sample)
+            if not settings.get('unlit') and (emissive['textures'] or emissive['constant'] is not None):
+                # UE3 adds EmissiveColor to the lit result (BasePassPixelShader.usf); constants clamp to the page's 0..1.
+                glow={'mode':'add'}
+                value=emissive['constant'] if not emissive['textures'] else emissive.get('tint')
+                if value is not None:
+                    value=list(value) if isinstance(value,(tuple,list)) else [value]*3
+                    glow['color']=[round(min(1,max(0,v)),4) for v in (value+value[-1:]*3)[:3]]
+                if emissive['textures']:
+                    selected,_=self.base_texture(emissive)
+                    if tex[selected]['status']=='ready':
+                        glow['texture']=tex[selected]['texture']
+                        sample=next((c for c in emissive['samples'] if c['texture']==selected and (c.get('pan') or c.get('spin'))),None)
+                        if sample:self.motion(glow,sample)
+                    else:glow=None
+                if glow and (glow.get('texture') or any(glow.get('color',[0]))):settings['emissive']=glow
             if any('StaticSwitchParameter' in op for value in inputs.values() for op in value['operations']):
                 row['notes'].append('Static switch uses serialized expression default; permutation overrides deferred')
             row['notes'].append('Normal/specular and vector/scalar parameters recorded; no animated shader evaluation')
@@ -309,6 +342,14 @@ class Materials:
         except (ValueError,OSError) as exc:
             row.update(status='unresolved',reason=str(exc))
         return row
+
+    @staticmethod
+    def motion(settings, sample):
+        """Panner/Rotator on a texture's coordinates as page settings: pan u/s, v/s; spin rad/s about uvCenter."""
+        if sample.get('pan'):settings['pan']=sample['pan']
+        if sample.get('spin'):
+            # Hypothesis: uv' = R(Time * Speed)(uv - center) + center, as UE2's TexRotator matrix; Three turns the other way.
+            settings.update(spin=-sample['spin']['speed'],uvCenter=sample['spin']['center'])
 
     def preview_inputs(self, definition, inputs):
         return inputs, None

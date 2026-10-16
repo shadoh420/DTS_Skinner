@@ -175,6 +175,20 @@ class EyeMapTests(unittest.TestCase):
                     self.assertEqual(c.post('/import_eye_maps',json={'path':str(game)}).status_code,200)
                     importer.assert_called_once()
 
+    def test_master_fog_and_animated_texture_frames(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);game,models=fixture(root);files,_=read_install(game)
+            two=bytearray(vtf_fixture(pixels=struct.pack('<HHI',0xf800,0xf800,0)+struct.pack('<HHI',0x07e0,0x07e0,0)));struct.pack_into('<H',two,24,2)
+            files['materials/test/red.vtf']=bsp.EmbeddedAsset(bytes(two),'test')
+            files['materials/test/floor.vmt']=bsp.EmbeddedAsset(b'LightmappedGeneric { "$basetexture" "test/red" "Proxies" { "AnimatedTexture" '
+                b'{ "animatedtexturevar" "$basetexture" "animatedtextureframenumvar" "$frame" "animatedtextureframerate" "8" } } }','test')
+            text=('{"classname" "env_fog_controller" "fogenable" "1" "fogend" "64" "fogcolor" "255 255 255"}'
+                  '{"classname" "env_fog_controller" "spawnflags" "1" "fogenable" "1" "fogend" "320" "fogcolor" "0 0 0"}')
+            scene,_,images,_,_=maps.build_map(bsp_fixture(text),'cc_test',files,maps.ModelLibrary(models,files),{})
+            self.assertEqual((scene['fog']['end'],scene['fog']['color'],scene['sky3d'],scene['regions']),(10,[0,0,0],None,None))
+            anim=scene['groups'][0]['anim'];self.assertEqual((anim['fps'],len(anim['frames']),anim['frames'][0]),(8,2,scene['groups'][0]['texture']))
+            self.assertNotEqual(images[anim['frames'][0]],images[anim['frames'][1]])
+
     def test_out_of_range_skin_draws_skin_zero(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'model-index.json').write_text(json.dumps({'models/a.mdl':{'looks':['a_skin0','a_skin1']}}))

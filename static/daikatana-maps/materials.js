@@ -1,16 +1,16 @@
-/* Daikatana's still frame: BSP41 lightmaps, indexed cutouts and linear world fog. */
+/* Daikatana: BSP41 lightmaps, indexed cutouts, linear world fog and drifting cloud layers. */
 'use strict';
 window.daikatanaMaps = {
   async load(map, loadTexture) {
     await window.quake2Maps.loadSky(map.skybox, loadTexture);
     this.fog = map.fog;
     this.clouds = map.skybox.clouds.layers;
+    this.cloudDir = map.skybox.clouds.dir || [1, .8];
     this.cloudTexture = this.clouds.length ? await loadTexture(this.clouds[0].texture) : null;
     if (this.cloudTexture) {
       this.cloudTexture.minFilter = this.cloudTexture.magFilter = THREE.LinearFilter;
       this.cloudTexture.generateMipmaps = false; // it_sky, like the cube faces.
     }
-    window.quake2Maps.time.value = 0;
   },
   material(group, texture, lightMap) {
     const material = window.quake2Maps.material(group, texture, lightMap);
@@ -28,7 +28,10 @@ window.daikatanaMaps = {
       alias: {value: alias}, masked: {value: !!(group.flags & 0x80000) || alias},
       cloud: {value: this.cloudTexture}, cloudsOn: {value: !!this.cloudTexture},
       cloudTile: {value: new THREE.Vector2(...(this.clouds.length ? this.clouds.map(c => c.tile) : [1, 1]))},
-      cloudAlpha: {value: this.clouds.length ? this.clouds[1].alpha : 0}
+      cloudAlpha: {value: this.clouds.length ? this.clouds[1].alpha : 0},
+      // Packs from before cloud speeds hold still.
+      cloudDir: {value: new THREE.Vector2(...(this.cloudDir || [1, .8]))},
+      cloudSpeed: {value: new THREE.Vector2(...(this.clouds.length ? this.clouds.map(c => c.speed || 0) : [0, 0]))}
     });
     material.vertexShader = 'varying float fogDepth; varying vec4 aliasLight; attribute vec4 color;\n' + material.vertexShader;
     material.vertexShader = material.vertexShader.replace('void main() {', 'void main() {\n' +
@@ -48,7 +51,7 @@ window.daikatanaMaps = {
     }
     material.fragmentShader = `varying float fogDepth; varying vec4 aliasLight;
       uniform bool fogOn, alias, masked, cloudsOn; uniform vec3 fogRGB;
-      uniform float fogStart, fogEnd, cloudAlpha; uniform vec2 cloudTile; uniform sampler2D cloud;
+      uniform float fogStart, fogEnd, cloudAlpha; uniform vec2 cloudTile, cloudDir, cloudSpeed; uniform sampler2D cloud;
     ` + material.fragmentShader;
     if (sky) {
       // ref_gl 1001D680 builds a 20 x 20 arch, x/y +-8192 and
@@ -81,8 +84,10 @@ window.daikatanaMaps = {
           vec3 cloudPoint = cloudPosition(r);
           dkFogDepth = eyeProjection * length(cloudPoint) / 32.;
           vec2 cloudUV = cloudPoint.xy / 16384.;
-          vec4 first = texture2D(cloud, cloudUV * cloudTile.x);
-          vec4 second = texture2D(cloud, cloudUV * cloudTile.y);
+          // ref_gl 1001DD38: both layers move by dir * cloud1tile * speed * fract(time * .002) (1001F51B, 1001F894).
+          vec2 drift = cloudDir * cloudTile.x * fract(seconds * .002);
+          vec4 first = texture2D(cloud, cloudUV * cloudTile.x + drift * cloudSpeed.x);
+          vec4 second = texture2D(cloud, cloudUV * cloudTile.y + drift * cloudSpeed.y);
           color.rgb = first.rgb;
           color.rgb = mix(color.rgb, second.rgb, second.a * cloudAlpha);
         }

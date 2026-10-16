@@ -26,7 +26,7 @@ FORMATS = {1: '4fi', 2: '3f', 4: '3i6h2H', 5: '8fi64sifii8f32s', 6: 'Hhihh16Bii'
            8: 'ihh6h4H', 9: 'H', 10: 'H', 11: '2H', 12: 'i', 13: '9f3i',
            14: '3i', 15: 'Hhi', 17: '2i', 18: '2i', 19: 'i6f32s'}
 MASKED, SKY, WARP, NONLIT, NOFILTER, CONVEYOR, NODRAW, WAVY = 2, 4, 8, 16, 32, 64, 128, 0x400
-TRANSLATE, USECOLOR, ADD = 0x2000000, 0x8000, 0x100000
+TRANSLATE, USECOLOR, ADD, ANIMATE = 0x2000000, 0x8000, 0x100000, 0x800000  # qbsp3.exe surface-flag table: translate, usecolor, add, animate
 VIEWHEIGHT = 66  # gamex86 1009565D / 10098FB1: Player viewheight = 0x42.
 
 
@@ -180,8 +180,18 @@ def face_data(bsp, index):
                 material_key=ti, settings=dict(masked=bool(flags & MASKED and not flags & ADD), nofilter=bool(flags & NOFILTER),
                     nonlit=1 if flags & ADD else row[15] if flags & NONLIT else 1 / bsp['profile']['intensity'],
                     blend='add' if flags & ADD else '', flowing=bool(flags & TRANSLATE),
-                    translation=[row[17], row[18]], color=list(row[19:22]) if flags & ADD or flags & USECOLOR and flags & NONLIT else [1, 1, 1]))
+                    trans=[row[11], row[12]], color=list(row[19:22]) if flags & ADD or flags & USECOLOR and flags & NONLIT else [1, 1, 1]))
     return face
+
+
+def frame_rate(bsp, instance, info):
+    """Texinfo row: vecs, flags, texture, nexttexinfo, trans_mag 11, trans_angle 12, base_angle 13, animtime 14,
+    nonlit, translucence, friction, restitution, color, group (qbsp3.exe field table; animtime is 0.2 on 8166 of 8308
+    chained texinfos). Only ANIMATE chains run by themselves (SDK docs/node/surfacecom.htm `frame`: unchecking animate
+    stops it); unflagged chains are damage and script frames. Hypothesis: one frame every animtime seconds, from the
+    face's own texinfo, for world and brush entities alike."""
+    animtime = bsp['surfaces'][info][14]
+    return (1 / animtime, 0) if bsp['texinfo'][info][9] & ANIMATE and animtime > 0 else None
 
 
 def lightmap(face, lighting, dark, modulate=1):
@@ -518,7 +528,7 @@ def build_map(raw, name, files, game='sin', profile=None):
     placed, skipped = instances(bsp, dm)
     dark = [light_style(e) for e in bsp['entities'] if e.get('classname', '').lower() == 'light'
             and light_style(e) >= 32 and int(number(e, 'spawnflags')) & 1 and not excluded(e, dm)] if not dm else []
-    data = q2.geometry(bsp, placed, face_reader=face_data, dark_styles=dark,
+    data = q2.geometry(bsp, placed, face_reader=face_data, dark_styles=dark, frames=frame_rate,
                        lightmap_reader=lambda f, l, d: lightmap(f, l, d, bsp['profile']['gl_modulate']))
     views = viewpoints(bsp, data['floors'], dm)
     models, omitted = scenery(bsp, dm)
@@ -532,7 +542,10 @@ def build_map(raw, name, files, game='sin', profile=None):
     blob = b''.join((points.astype('<f4').tobytes(), data['uvs'].astype('<f4').tobytes(), data['uv2'].astype('<f4').tobytes(),
                      np.asarray(data['indices'], '<u4').tobytes()))
     palette = f'maps/{name}.pal'
-    scene = dict(name=name, title=bsp['info'].get('message', name), game=game, format='sin-rbsp1',
+    # Styles 1-11 come from global/global0.scr's `lightstyle` lines; this lightmap path multiplies by gl_modulate.
+    # Hypothesis: the Quake II 10 Hz step. Underwater tint keeps its own `water` path (sinMaps.viewBlend).
+    styles = q2.scene_extras(bsp, data, blends=None, scale=bsp['profile']['gl_modulate'] / 12)
+    scene = dict(name=name, title=bsp['info'].get('message', name), game=game, format='sin-rbsp1', **styles,
         vertices=len(points), indices=len(data['indices']), lightmap=list(data['atlas'].size), groups=data['groups'], viewpoints=views,
         bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(), instances=placed, skipped_entities=skipped,
         models=models, omitted_models=omitted, model_failures=failures, faces=data['audit'], skybox=sky, water=water_volume(bsp), script=script,
@@ -541,14 +554,16 @@ def build_map(raw, name, files, game='sin', profile=None):
         palette=dict(source=palette if palette in files else 'pics/default.pal', applied=False,
                      reason='Renderer palette tables serve indexed/shared-palette paths; true-colour SWL keeps its own RGB'),
         assumptions=['Deathmatch filtering' if dm else 'Medium single player; developer and coop off, high detail',
-                     'Texture and sky animation held at first frame', 'Startup script visibility only; no save-state or runtime scripts'],
+                     'ANIMATE texture chains at 1/animtime, TRANSLATE scrolling, sky rotation and light styles 1-11 (one per face, others at m) '
+                     'run on page time (rates and directions partly hypotheses)', 'Startup script visibility only; no save-state or runtime scripts'],
         gaps=['Particles, sprites, lens flares, dynamic lights and scripted spawns are omitted',
               'Model lighting is a uniform lightmap sample; skeletal attachments and runtime skins are omitted',
               'Startup visibility stops at waits and unresolved conditions; external scripts and computed targets are not evaluated',
               'Underwater tint uses world water contents; moving liquid brushes and underwater distortion are omitted',
               'Script movers hold authored transforms; later activator-dependent door motion is omitted',
               'Mirrors, environment maps, consoles and animated surface damage are ordinary first-frame surfaces',
-              'No world fog path found in the inspected renderer; wavy vertex displacement is approximated by static warp UVs'])
+              'No world fog path found in the inspected renderer; wavy vertex displacement is approximated by Quake II warp UVs',
+              'Script-set light styles (map .scr lightstyle commands) and styles beyond 11 stay at m'])
     return scene, blob, images, data['atlas']
 
 

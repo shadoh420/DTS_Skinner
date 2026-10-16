@@ -300,6 +300,44 @@ second" } // comment with braces {}
                 self.assertEqual(client.post('/import_vtmb_maps', json={'path': ''}).status_code, 400)
 
 
+class SourceExtrasTests(unittest.TestCase):
+    """Fog, water regions, 3D sky area and proxy helpers shared by the Bloodlines and E.Y.E. importers."""
+    def test_fog_water_regions_sky_and_frames(self):
+        fog = maps.fog_params({'fogenable': '1', 'fogcolor': '255 0 0', 'fogcolor2': '0 0 255', 'fogdir': '1 0 0', 'fogblend': '1',
+                               'fogstart': '32', 'fogend': '320'}, 16)
+        self.assertEqual((fog['color'], fog['dir'], fog['blend'], fog['end'], fog['max']), ([1, 0, 0], [0, 0, 1], True, 10/16, 1))
+        self.assertIsNone(maps.fog_params({'fogcolor': '1 1 1'}))
+        np.testing.assert_allclose(maps.fog_params({'fogenable': '1', 'use_angles': '1', 'angles': '0 90 0'})['dir'], [-1, 0, 0], atol=1e-9)
+        self.assertEqual(maps.water_fog({'$fogcolor': '{255 0 0}', '$fogstart': '0', '$fogend': '64'})['fog']['color'], [1, 0, 0])
+        # Keyvalues read as atof: E.Y.E.'s '1.00`' $fogend, a name in Bloodlines' renderamt.
+        self.assertEqual((maps.atof('1.00`'), maps.atof('inigo_montoya'), maps.atof(' -2.5e1x')), (1.0, 0.0, -25.0))
+        self.assertIsNone(maps.water_fog({'$fogcolor': '[.5 .5 .5]'}))
+        lumps = [b''] * 64
+        lumps[5] = struct.pack('<3i20x', 0, -1, -2)  # z >= 0: dry area 1; below: water, area 2
+        leaf = lambda contents, area, water: struct.pack('<ihh12x4Hh2x', contents, 0, area, 0, 0, 0, 0, water)
+        lumps[10] = leaf(0, 1, -1) + leaf(0x20, 2, 0)
+        lumps[36] = struct.pack('<2fh2x', 0, -64, 0)
+        tree = maps.Tree(lumps, [(0, 0, 1, 0, 2)], 0)
+        regions, region_tree = tree.regions(lambda texinfo: maps.water_fog({'$fogcolor': '[0 0 1]', '$fogstart': '0', '$fogend': '32'}))
+        self.assertEqual((regions[0], regions[1]['fog']['end'], region_tree), (None, 1, {'root': 0, 'nodes': [[0, 1, 0, 0, -1, -2]]}))
+        self.assertEqual(maps.Tree(lumps, [(0, 0, 1, 0, 2)], 0).regions(lambda texinfo: None), (None, None))
+        camera = {'classname': 'sky_camera', 'origin': '0 0 -10', 'scale': '16'}
+        self.assertEqual(maps.sky_camera(tree, [camera], [0, .3, 0])[1:], (2, ''))
+        self.assertEqual(maps.sky_camera(tree, [camera], [0, -.3, 0])[2], 'sky_camera shares the start area')
+        self.assertEqual(maps.sky3d(camera)['origin'], [0, -10/32, 0])
+        self.assertFalse(maps.Tree([b''] * 64, [], 0).ok)
+        anim = {'animatedtexture': {'animatedtexturevar': '$basetexture', 'animatedtextureframerate': '4'}}
+        self.assertEqual(vtmb.animated_texture_rate({'proxies': anim}), 4)
+        self.assertEqual(vtmb.animated_texture_rate({'proxies': {'animatedtexture': {'animatedtexturevar': '$basetexture'}}}), 15)
+        self.assertIsNone(vtmb.animated_texture_rate({'proxies': {'animatedtexture': {'animatedtexturevar': '$bumpmap'}}}))
+        two = vtf(pixels=b'\xff\0\0\xff\0\xff\0\xff', frames=2)
+        self.assertEqual(vtmb.read_vtf(two, frame=1)[0].getpixel((0, 0)), (0, 255, 0, 255))
+        with self.assertRaises(ValueError): vtmb.read_vtf(two, frame=2)
+        gap = maps.proxy_gap([dict(settings=dict(parameters=dict(proxies=dict(sine={}, animatedtexture={},
+                                    texturescroll={'texturescrollvar': '$BaseTextureTransform'})))), dict(anim={'fps': 4}, settings=dict(parameters=dict(proxies=anim)))])
+        self.assertEqual(gap, 'Material proxies not drawn (materials): sine 1, animatedtexture 1')
+
+
 @unittest.skipUnless(os.environ.get('VTMB_MAP_TEST_FILE'), 'Set VTMB_MAP_TEST_FILE for a single BSP read-only probe')
 class OptionalBloodlinesMapTest(unittest.TestCase):
     def test_single_bsp(self):

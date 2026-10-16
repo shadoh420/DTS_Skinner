@@ -207,14 +207,28 @@ def material_settings(vmt):
                 selfillum=enabled('$selfillum'), parameters=p), notes
 
 
-def material_texture(files, vmt, compressed=False):
+def animated_texture_rate(params):
+    """Frames per second of an AnimatedTexture proxy that drives $basetexture, else None.
+    baseanimatedtextureproxy.cpp Init: animatedtextureframerate, default 15."""
+    proxies = params.get('proxies')
+    block = proxies.get('animatedtexture') if isinstance(proxies, dict) else None
+    if not isinstance(block, dict) or str(block.get('animatedtexturevar', '')).lower() != '$basetexture':
+        return None
+    try:
+        rate = float(block.get('animatedtextureframerate', 15))
+    except ValueError:
+        return None
+    return rate if math.isfinite(rate) and rate > 0 else None
+
+
+def material_texture(files, vmt, compressed=False, frame=0):
     """Diffuse texture or an explicit preview for framebuffer-only refraction."""
     params = vmt['params']
     base = params.get('$basetexture')
     if base is not None and not isinstance(base, str):
         raise ValueError('VMT $basetexture must be a string')
     if isinstance(base, str) and base:
-        return read_texture(files, base, compressed=compressed)
+        return read_texture(files, base, compressed=compressed, frame=frame)
     if vmt['shader'].lower() not in ('refract', 'water'):
         raise ValueError('VMT has no $basetexture')
     tint = str(params.get('$refracttint', '[1 1 1]')).strip('[] ').split()
@@ -238,8 +252,9 @@ def image_size(fmt, width, height):
     return width * height * sizes[fmt]
 
 
-def read_vtf(data, compressed=False, linear=False):
-    """linear=True returns the largest mip's RGBA as floats (bytes / 255, RGBA16F as stored) instead of an image."""
+def read_vtf(data, compressed=False, linear=False, frame=0):
+    """linear=True returns the largest mip's RGBA as floats (bytes / 255, RGBA16F as stored) instead of an image.
+    frame picks an animation frame (each mip holds frames, then faces, then depth slices: public vtf.h)."""
     if data[:4] != b'VTF\0':
         raise ValueError('Expected VTF signature')
     major, minor, header = unpack(data, 'III', 4)
@@ -251,6 +266,8 @@ def read_vtf(data, compressed=False, linear=False):
     depth = unpack(data, 'H', 63)[0] if minor >= 2 else 1
     if not (0 < w <= 16384 and 0 < h <= 16384 and 0 < frames <= 4096 and 0 < mips <= 15 and depth > 0):
         raise ValueError('Invalid VTF dimensions/frames/mips')
+    if not 0 <= frame < frames:
+        raise ValueError(f'VTF frame {frame} outside {frames}')
     faces = (7 if minor < 5 and first != 65535 else 6) if flags & 0x4000 else 1
     offset = header + (image_size(lowfmt, lw, lh) if lw and lh else 0)
     if minor >= 3:
@@ -272,16 +289,17 @@ def read_vtf(data, compressed=False, linear=False):
         size = image_size(fmt, max(1, w >> mip), max(1, h >> mip))
         full_size = size * frames * faces * max(1, depth >> mip)
         span(data, offset, full_size)
-        mipmaps.append(data[offset:offset+size])
+        at = offset + frame*(full_size//frames)
+        mipmaps.append(data[at:at+size])
         offset += full_size
     info = dict(version=f'{major}.{minor}', format=fmt, width=w, height=h, frames=frames, faces=faces, depth=depth, mipmaps=mips,
-                selection='largest mip, frame 0, face 0, depth slice 0')
+                selection=f'largest mip, frame {frame}, face 0, depth slice 0')
     if compressed and fmt in (13, 14, 15, 20):
         if __package__:
             from .texture_storage import dds_bytes
         else:
             from texture_storage import dds_bytes
-        info['selection'] = 'all mips, frame 0, face 0, depth slice 0'
+        info['selection'] = f'all mips, frame {frame}, face 0, depth slice 0'
         return dds_bytes(w, h, 'DXT1' if fmt in (13, 20) else 'DXT3' if fmt == 14 else 'DXT5', mipmaps[::-1]), info
     size = image_size(fmt, w, h)
     pixels = mipmaps[-1]
@@ -329,12 +347,12 @@ def read_vtf(data, compressed=False, linear=False):
     return (np.asarray(image, dtype=float) / 255 if linear else image), info
 
 
-def read_texture(files, name, compressed=False, linear=False):
+def read_texture(files, name, compressed=False, linear=False, frame=0):
     base = asset_reference(name).removeprefix('materials/')
     base = re.sub(r'\.(vtf|tth|ttz|hdr)$', '', base)  # E.Y.E.'s noctis_hdrup names its texture noctis_hdrup.hdr.
     base = 'materials/' + base
     if base + '.vtf' in files:
-        image, info = read_vtf(files[base + '.vtf'].read(), compressed=compressed, linear=linear)
+        image, info = read_vtf(files[base + '.vtf'].read(), compressed=compressed, linear=linear, frame=frame)
         info['sources'] = [dict(path=base+'.vtf', origin=files[base+'.vtf'].origin)]
         return image, info
     if base + '.tth' not in files:
@@ -367,7 +385,7 @@ def read_texture(files, name, compressed=False, linear=False):
             raise ValueError(f'Invalid TTZ zlib data: {exc}') from exc
         if len(tail) != expected - end or not decoder.eof or decoder.unused_data:
             raise ValueError('TTZ decompressed size/stream mismatch')
-    image, info = read_vtf(head[at:] + tail, compressed=compressed, linear=linear)
+    image, info = read_vtf(head[at:] + tail, compressed=compressed, linear=linear, frame=frame)
     info['container'] = 'TTH/TTZ'
     info['sources'] = [dict(path=base+suffix, origin=files[base+suffix].origin)
                        for suffix in (('.tth', '.ttz') if resident < levels else ('.tth',))]

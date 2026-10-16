@@ -25,19 +25,35 @@ window.createUE3MapOptions=(options={})=>({
     material.customProgramCacheKey=()=> 'tas-sky-far-depth-v1';
     return material;
   },
-  async load(map) {
-    const {scene,renderer,camera}=window[options.debugName||'skinnerTasMaps'];
-    scene.background=null;scene.fog=null;renderer.setClearColor(0x7f98aa);
+  // Vengeance's shared load() reads emissive textures, then calls this.
+  prepare(map) {
+    const {scene,renderer,camera}=window[options.debugName||'skinnerTasMaps'],fog=window.skinnerUnrealFog;
+    scene.background=null;scene.fog=null;renderer.setClearColor(0x7f98aa);fog.ueFogMode.value=0;
     const span=Math.max(500,map.preview_extent||3000);
     if(camera){camera.far=Math.max(5000,span*3);camera.updateProjectionMatrix();}
-    const fog=map.zones?.[0];
-    if(fog&&fog.density>0) {
-      const c=fog.color||[128,128,128,255],bytes=c.some(v=>v>1);
-      const color=bytes?new THREE.Color(c[2]/255,c[1]/255,c[0]/255):new THREE.Color(...c.slice(0,3));
-      // ponytail: UE3 height integration is not reproduced; bound a light distance haze
-      // by the playable extent. Keep authored colour/start and preserve native data in JSON.
-      const near=Math.max((fog.start??0)/52.5,span*.35),far=Math.max(near+span*4,span*5);
-      scene.fog=new THREE.Fog(color,near,far);renderer.setClearColor(color);
+    const rgb=c=>c.some(v=>v>1)?[c[2]/255,c[1]/255,c[0]/255]:c.slice(0,3);  // FColor B, G, R, A
+    const height=map.zones?.find(z=>z.kind==='ExponentialHeightFogComponent'&&z.enabled!==false&&z.density>0);
+    if(height) {
+      // UE3 setup of HeightFogCommon.usf's parameters (its C++ is not shipped). Hypothesis, as in Flax's port of the same
+      // model (ExponentialHeightFog::GetExponentialHeightFogData): density and falloff / 1000, min opacity
+      // 1 - FogMaxOpacity, colours times their brightness; the light vector is the map's sun (the importer's dominant
+      // directional light). Data check: Phlegethon's 0.05 per unit unscaled would be opaque within 60 units.
+      const inscatter=rgb(height.color||[128,128,128,255]).map(v=>v*(height.LightInscatteringBrightness??1));
+      const opposite=height.OppositeLightColor?rgb(height.OppositeLightColor).map(v=>v*(height.OppositeLightBrightness??1)):inscatter;
+      fog.ueFogMode.value=2;fog.ueFogColor.value.fromArray(inscatter);fog.ueFogOpposite.value.fromArray(opposite);
+      fog.ueFogParams.value.set(height.density/1000*52.5,Math.max(height.height_falloff??.2,1e-4)/1000*52.5,
+        Math.cos((height.LightTerminatorAngle??0)*Math.PI/180),(height.start||0)/52.5);
+      fog.ueFogHeight.value=(height.height||0)/52.5;fog.ueFogMinOpacity.value=1-(height.FogMaxOpacity??1);
+      fog.ueFogLight.value.fromArray(map.sun?.direction||[0,1,0]).normalize();
+      renderer.setClearColor(fog.ueFogColor.value);
+      return;
+    }
+    const layer=map.zones?.[0];
+    if(layer&&layer.density>0) {
+      // ponytail: legacy HeightFog layers (7 Ascend maps) keep a light distance haze bounded by the playable extent.
+      const near=Math.max((layer.start??0)/52.5,span*.35);
+      fog.ueFogMode.value=1;fog.ueFogColor.value.fromArray(rgb(layer.color||[128,128,128,255]));fog.ueFogRange.value.set(near,Math.max(near+span*4,span*5));
+      renderer.setClearColor(fog.ueFogColor.value);
     }
   },
   ...options

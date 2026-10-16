@@ -6,7 +6,6 @@ window.anachronoxMaps = {
   async load(map, loadTexture) {
     this.fog = map.fog || {density: 0, color: [0, 0, 0]};
     this.fogPasses = (map.lighting || {}).fog_passes || 2;
-    window.quake2Maps.time.value = 0; // The preview holds texture/sky motion at spawn.
     await window.quake2Maps.loadSky(map.skybox, loadTexture);
   },
   material(group, texture, lightMap) {
@@ -41,12 +40,13 @@ window.anachronoxMaps = {
       uniform float alpha, fogDensity; uniform int alphaMode;
       uniform vec3 fogColor, modelLight;
       varying vec2 texUV, lightUV; varying float fogDepth;
+      ${window.quake2Maps.lightGLSL}
       void main() {
         vec4 texel = texture2D(surface, texUV);
         if (alphaMode == 1 && texel.a <= 0.) discard;
         if (alphaMode == 2 && texel.a >= .5) discard;
         if (alphaMode == 3 && texel.a < .5) discard;
-        vec3 light = model ? modelLight : unlit ? vec3(1.) : texture2D(lights, lightUV).rgb;
+        vec3 light = model ? modelLight : unlit ? vec3(1.) : lightAt();
         vec3 color = texel.rgb * light;
         // GL_EXP (0x800), density in native units; fog precedes the display ramp.
         float f = exp(-fogDensity * fogDepth);

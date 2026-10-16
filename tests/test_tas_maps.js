@@ -10,10 +10,28 @@ global.skinnerTasMaps={scene:new THREE.Scene(),renderer:{setClearColor(){}},came
 async function run(){
   assert.equal(adapter.dataRoot,'/tas-map-data/');
   assert.equal(adapter.storageKey,'skinner.tasmaps');
-  await adapter.load({preview_extent:2850,zones:[{kind:'ExponentialHeightFogComponent',density:.03,color:[32,64,128,255],start:3000,height_falloff:.3}]});
-  assert.ok(global.skinnerTasMaps.scene.fog.far>global.skinnerTasMaps.scene.fog.near);
-  assert.ok(global.skinnerTasMaps.scene.fog.far>=2850*5);
-  assert.ok(global.skinnerTasMaps.scene.fog.near>=2850*.35);
+  // UE3 exponential height fog: HeightFogCommon.usf parameters in page units, no Three.Fog.
+  const fog=global.skinnerUnrealFog;
+  await adapter.load({preview_extent:2850,sun:{direction:[0,.02,0]},zones:[{kind:'ExponentialHeightFogComponent',density:.03,color:[32,64,128,255],
+    start:3000,height:17600,height_falloff:.3,FogMaxOpacity:.8,LightTerminatorAngle:5,OppositeLightColor:[0,0,255,0],OppositeLightBrightness:.5}]});
+  assert.equal(fog.ueFogMode.value,2);assert.equal(global.skinnerTasMaps.scene.fog,null);
+  assert.ok(Math.abs(fog.ueFogParams.value.x-.03/1000*52.5)<1e-9);assert.ok(Math.abs(fog.ueFogParams.value.w-3000/52.5)<1e-9);
+  assert.ok(Math.abs(fog.ueFogMinOpacity.value-.2)<1e-6);assert.deepEqual(fog.ueFogOpposite.value.toArray(),[.5,0,0]);
+  assert.equal(fog.ueFogLight.value.y,1);assert.ok(Math.abs(fog.ueFogHeight.value-17600/52.5)<1e-9);
+  await adapter.load({preview_extent:2850,zones:[{kind:'HeightFogComponent',density:.03,color:[32,64,128,255],start:3000}]});
+  assert.equal(fog.ueFogMode.value,1);assert.ok(fog.ueFogRange.value.y>=2850*5);assert.ok(fog.ueFogRange.value.x>=2850*.35);
+  // The fog and emissive chunks replace Three's own; additive surfaces only lose light, modulated ones keep theirs.
+  const compiled=material=>{const shader={uniforms:{},vertexShader:THREE.ShaderLib.lambert.vertexShader,fragmentShader:THREE.ShaderLib.lambert.fragmentShader};
+    material.onBeforeCompile(shader);return shader;};
+  const lit=compiled(adapter.material({texture:'a.dds',settings:{}},new THREE.Texture()));
+  assert.ok(lit.fragmentShader.includes('gl_FragColor.rgb*ueF.a+ueF.rgb'));assert.ok(!lit.fragmentShader.includes('#include <fog_fragment>'));
+  assert.ok(lit.vertexShader.includes('instanceMatrix*ueW'));assert.strictEqual(lit.uniforms.ueFogParams,fog.ueFogParams);
+  assert.ok(!compiled(adapter.material({texture:'a.dds',settings:{blend:['gl_src_alpha','gl_one']}},new THREE.Texture())).fragmentShader.includes('+ueF.rgb'));
+  assert.ok(!compiled(adapter.material({texture:'a.dds',settings:{blend:['gl_dst_color','gl_zero']}},new THREE.Texture())).fragmentShader.includes('ueFog()'.concat(';')));
+  // EmissiveColor: a constant glow is added through a white texture.
+  const glow=compiled(adapter.material({texture:'a.dds',settings:{emissive:{color:[1,.5,0],mode:'add'}}},new THREE.Texture()));
+  assert.ok(glow.fragmentShader.includes('outgoingLight+=ueGlow'));assert.deepEqual(glow.uniforms.ueGlowColor.value.toArray(),[1,.5,0]);
+  assert.equal(glow.uniforms.ueGlowMix.value,0);
   for(const brightness of [0,.5,2.1,4,8]) {
     const levels=adapter.lightLevels({sun:{brightness}});assert.ok(levels.ambient+levels.sun<=1);
   }
@@ -31,6 +49,7 @@ async function run(){
   assert.ok(material.fragmentShader.includes('texture2D(layer4'));
   assert.ok(material.uniforms.alpha4.value);
   assert.ok(!material.fragmentShader.includes('layer5'));
+  assert.ok(material.fragmentShader.includes('vec4 f=ueFog()'));assert.strictEqual(material.uniforms.ueFogMode,fog.ueFogMode);
 
   const desc={file:'a'.repeat(64)+'.bin',arrays:{vertices:{offset:0,count:9,dtype:'<f4'},normals:{offset:36,count:9,dtype:'<f4'},uvs:{offset:72,count:6,dtype:'<f4'},indices:{offset:96,count:3,dtype:'<u4'}}};
   const buffer=new ArrayBuffer(108);new Float32Array(buffer).set([0,0,0,1,0,0,0,1,0]);new Uint32Array(buffer,96).set([0,1,2]);

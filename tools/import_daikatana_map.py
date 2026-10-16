@@ -669,9 +669,13 @@ def skybox(info, files):
             image = dk.read_texture(path, files)[0]
             png = 'cloud_' + hashlib.sha256(image.tobytes() + struct.pack('<II', *image.size)).hexdigest()[:24] + '.png'
             images[png] = image
-            for i, tile, alpha in ((1, 8, 1), (2, 2, .7)):
+            # Speeds and direction default to ref_gl's gl_cloud* cvars (Cvar_Get at 10014EE9..10014F82: xdir 1,
+            # ydir .8, cloud1speed 1, cloud2speed 4); 1001F51B/1001F894 scroll both layers by them.
+            clouds['dir'] = [number(info, 'cloudxdir', 1), number(info, 'cloudydir', .8)]
+            for i, tile, alpha, speed in ((1, 8, 1, 1), (2, 2, .7, 4)):
                 clouds['layers'].append(dict(texture=png, source=path, tile=number(info, f'cloud{i}tile', tile),
-                                             alpha=number(info, 'cloud2alpha', alpha) if i == 2 else 1))
+                                             alpha=number(info, 'cloud2alpha', alpha) if i == 2 else 1,
+                                             speed=number(info, f'cloud{i}speed', speed)))
         else:
             missing.append(candidates[0])
     return dict(name=name, rotate=0, axis=[0, 0, 1], faces=faces, clouds=clouds, missing=missing), images
@@ -680,7 +684,7 @@ def skybox(info, files):
 def build_map(raw, name, files, deco=None):
     bsp = read_bsp(raw, files)
     placed, skipped = instances(bsp)
-    data = q2.geometry(bsp, placed, face_reader=face_data, dark_styles=dark_styles(bsp))
+    data = q2.geometry(bsp, placed, face_reader=face_data, dark_styles=dark_styles(bsp), frames=q2.world_frame_rate)
     views = viewpoints(bsp, data['floors'])
     models, omitted = scenery(bsp, decoration_table(files) if deco is None else deco)
     images, failures = append_scenery(data, bsp, files, models)
@@ -696,7 +700,11 @@ def build_map(raw, name, files, deco=None):
     gaps = ['Volumetric leaf fog and reflective surfaces are not simulated.',
             'Parented scenery holds its authored pose; runtime attachment and physics settling are not simulated.',
             'Brush rows marked guess retain authored spawn placement.']
-    scene = dict(name=name, title=bsp['info'].get('mapname', name), game='daikatana', format='daikatana-bsp41',
+    # Styles 1-11 match world.dll's strings; hypothesis: the Quake II 10 Hz step. The view blend: physics.dll
+    # 1000C058..1000C07B adds (0.3, 0.3, 1, 0.6) in contents 0x800; water, slime and lava (0x38) only set the
+    # underwater flag there (1000C0B0), so they get no tint.
+    styles = q2.scene_extras(bsp, data, blends={0x800: [.3, .3, 1., .6]})
+    scene = dict(name=name, title=bsp['info'].get('mapname', name), game='daikatana', format='daikatana-bsp41', **styles,
                  vertices=len(points), indices=len(data['indices']), colors=True, lightmap=list(data['atlas'].size),
                  groups=data['groups'], viewpoints=views, bounds=np.array(bsp['models'][0][:6]).reshape(2, 3).tolist(),
                  instances=placed, skipped_entities=skipped, models=models, omitted_models=omitted,
@@ -713,7 +721,8 @@ def build_map(raw, name, files, deco=None):
                                gl_ext_gamma=1, effective_gamma=GAMMA, display_gamma=1,
                                gamma_stage='software texture upload; current.cfg overrides early +set',
                                multitexture=False, fog_passes=2, normal_style=1),
-                 assumptions=['medium single player; still spawn state', 'first animated texture frame', 'START_OFF styles dark',
+                 assumptions=['medium single player; spawn state', 'world texture chains at 2 frames a second, brush entities at their first frame (Quake II rate, hypothesis)',
+                              'light styles 1-11 at 10 Hz (one per face, others at m; Quake II rate, hypothesis); START_OFF styles dark',
                               'retail SGIS-unavailable fallback; inferred from game captures'], gaps=gaps)
     return scene, blob, images, data['atlas']
 

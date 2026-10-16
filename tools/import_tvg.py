@@ -23,7 +23,7 @@ from tools.local_data import LOCAL_DATA
 from tools.model_data import write_model_data
 from tools.texture_storage import dds_bytes, game_texture_dir, open_texture, write_texture
 from tools.texture_workshop import write_json_atomic
-from tools.tvg_package import Library
+from tools.tvg_package import Library, rotation_matrix
 
 
 FORMATS = {0: 'P8', 3: 'DXT1', 5: 'RGBA8', 7: 'DXT3', 8: 'DXT5', 10: 'G16', 12: 'CxV8U8', 13: 'DXT5N'}
@@ -163,6 +163,9 @@ class Materials:
         write_texture(self.directory, filename, image)
         return filename
 
+    def size(self, texture):
+        return next(((t['width'], t['height']) for t in self.textures.values() if t.get('texture') == texture and 'width' in t), (256, 256))
+
     def material(self, source, trail=()):
         if not source:
             return dict(source=None, texture=self.missing, settings={}, status='unresolved', reason='Empty material slot')
@@ -179,7 +182,7 @@ class Materials:
             props = p.properties(ref)
             row['class'] = cls
             refs = {n: p.qualified(props[n]) for n in ('Diffuse', 'Opacity', 'NormalMap', 'Specular', 'SpecularityMask',
-                    'SelfIllumination', 'Material', 'Material1', 'Material2', 'Mask', 'PerPixelReflection')
+                    'SelfIllumination', 'SelfIlluminationMask', 'Material', 'Material1', 'Material2', 'Mask', 'PerPixelReflection')
                     if props.get(n)}
             row['references'] = refs
             settings = row['settings']
@@ -288,7 +291,21 @@ class Materials:
                 if row['recorded_maps']:
                     row['notes'].append('Normal/specular maps recorded, not rendered')
                 if refs.get('Diffuse') and refs.get('SelfIllumination'):
-                    row['notes'].append('Separate self-illumination layer recorded, not composited')
+                    glow = self.material(refs['SelfIllumination'], trail+(k,))
+                    # Hypothesis (UE2 D3D shader stages not on disk): with a SelfIlluminationMask the glow replaces the lit
+                    # diffuse by the mask's alpha (lerp); without one it is added. Its own panner/rotator travel with it.
+                    emissive = dict(texture=glow['texture'], mode='add', shared_uv=True,
+                                    **{f: glow['settings'][f] for f in ('pan', 'spin', 'osc', 'uvScale', 'uvOffset', 'uvRotation', 'uvCenter') if f in glow['settings']})
+                    if refs.get('SelfIlluminationMask'):
+                        mask = self.material(refs['SelfIlluminationMask'], trail+(k,))
+                        emissive['mode'] = 'lerp'
+                        if mask['texture'] != glow['texture'] and mask['status'] == 'ready':
+                            image = self.image(glow)
+                            image.putalpha(self.image(mask).resize(image.size).getchannel('A'))
+                            emissive['texture'] = self.derived(source, image, 'selfillumination')
+                    if glow['status'] == 'ready':
+                        settings['emissive'] = emissive
+                        row['notes'].append('Self-illumination composited ('+emissive['mode']+')')
             if cls == 'FinalBlend':
                 mode = props.get('FrameBufferBlending', 0)
                 blends = {1: ['gl_dst_color', 'gl_src_color'], 2: ['gl_src_alpha', 'gl_one_minus_src_alpha'],
@@ -322,10 +339,36 @@ class Materials:
                     raise ValueError('Zero texture scale')
                 settings['uvScale'] = [1/us, 1/vs]
                 settings['uvOffset'] = [props.get('UOffset', 0), props.get('VOffset', 0)]
+            # UE2 texture matrices, checked against the editor-evaluated M each modifier serializes (Weapons.SPinfusordialPanner,
+            # ImperialBase.TDMSideRotate, BloodEagleBase.FluidFastPanner, Tree1textures.leavesosc): uv' = R(yaw)(uv - c) + c + pan,
+            # c = (UOffset, VOffset) in texels. Three's texture.rotation turns the other way, so it is stored negated.
             if cls == 'TexRotator':
-                settings['uvRotation'] = props.get('Rotation', (0, 0, 0))[1] * np.pi/32768
-            if cls in ('TexPanner', 'TexOscillator', 'TexRotator', 'TexEnvMap'):
-                row['notes'].append(f'{cls} evaluated at static time zero; dynamic/environment effects deferred')
+                width, height = self.size(row['texture'])
+                turn = props.get('Rotation', (0, 0, 0))[1] * np.pi/32768
+                settings['uvCenter'] = [props.get('UOffset', 0)/width, props.get('VOffset', 0)/height]
+                kind = props.get('TexRotationType', 0)
+                if kind == 1:  # TR_ConstantlyRotating. Hypothesis: Rotation is a rate per second (M is at an unknown time).
+                    settings['spin'] = -turn
+                else:
+                    settings['uvRotation'] = -turn
+                if kind == 2:
+                    settings['oscillation_raw'] = {f: props.get(f) for f in ('OscillationRate', 'OscillationAmplitude', 'OscillationPhase')}
+                    row['notes'].append('TR_OscillatingRotation recorded, drawn at its fixed rotation')
+            if cls == 'TexPanner':  # offset = t * PanRate * PanDirection's x axis (u, v); the sign is the serialized M's.
+                axis = np.asarray(rotation_matrix(*props.get('PanDirection', (0, 0, 0))))[:2, 0]
+                settings['pan'] = np.round(axis * props.get('PanRate', .1), 6).tolist()  # class default PanRate 0.1
+            if cls == 'TexOscillator':
+                # OT_Pan: offset = amplitude * sin(2 pi rate t + phase), as leavesosc's M gives for u and v at one time.
+                # Hypothesis: phase in turns. Stretch/jitter types are recorded, not animated.
+                kinds = [props.get('UOscillationType', 0), props.get('VOscillationType', 0)]
+                settings['osc'] = dict(rate=[props.get('UOscillationRate', 1), props.get('VOscillationRate', 1)],
+                                       amplitude=[props.get('UOscillationAmplitude', .1) if kinds[0] == 0 else 0,
+                                                  props.get('VOscillationAmplitude', .1) if kinds[1] == 0 else 0],
+                                       phase=[props.get('UOscillationPhase', 0), props.get('VOscillationPhase', 0)])
+                if any(kinds):
+                    row['notes'].append('TexOscillator stretch/jitter axes recorded, not animated')
+            if cls == 'TexEnvMap':
+                row['notes'].append('TexEnvMap evaluated as its plain texture; environment mapping deferred')
             return row
         except (ValueError, OSError) as exc:
             row.update(status='unresolved', reason=str(exc))
