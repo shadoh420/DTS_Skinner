@@ -165,7 +165,7 @@
       geometry.instanceCount = n;
       const material = new THREE.ShaderMaterial({uniforms: {...uniforms, map: {value: batch.texture}, uColorScale: {value: batch.colorScale ?? 1},
           uRgb: {value: batch.rgb === false ? 0 : 1}, uAlpha: {value: batch.alpha === false ? 0 : 1}, uAlphaTest: {value: batch.alphaTest || 0}},
-        vertexShader: VERTEX, fragmentShader: FRAGMENT, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        vertexShader: VERTEX, fragmentShader: FRAGMENT, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,  // one pass, not back then front
         blending: THREE.CustomBlending, blendSrc: batch.blendSrc ?? THREE.OneFactor, blendDst: batch.blendDst ?? THREE.OneFactor});
       const mesh = new THREE.Mesh(geometry, material);
       mesh.frustumCulled = false;

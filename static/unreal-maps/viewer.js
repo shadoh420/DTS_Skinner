@@ -106,7 +106,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const panning = [], animated = [], moving = [], sprites = [];
   // Source 3D skies: the sky area's surfaces and props, drawn first from the sky camera; the level's sky faces show it.
   const sky3dDraws = [], mainDraws = [], skyFaces = [];
-  let particles = null;
+  let particles = null, particleGroup = null;
   let skyBackdrop = null;
   let lightMap = null;  // The map's lightmaps in one atlas: the game draws texture x lightmap x 2.
   let quakeColormap = null;
@@ -415,14 +415,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       moving.push(mover);
     }
     if (map.sprites?.length) await buildSprites(geometry, materials);
-    // Source effects of the import's map.particles (dust motes, steam) in the shared particle system (particles.js),
-    // in a group of their own so that the 3D sky pass leaves them out.
+    // Source effects of the import's map.particles (dust motes, steam, fire) in the shared particle system
+    // (particles.js), in a group of their own that the sky passes leave out (draw).
     if (map.particles && window.skinnerParticles) {
-      const group = new THREE.Group();
-      scene.add(group);
-      if (map.sky3d) mainDraws.push(group);
+      particleGroup = new THREE.Group();
+      scene.add(particleGroup);
       particles = await window.skinnerParticles.mount(THREE, map.particles, {loadTexture: stage => loadTexture((stage.frames || [stage.map])[0]),
-        add: mesh => group.add(mesh), toWorld: map.particles.toWorld, up: map.particles.up});
+        add: mesh => particleGroup.add(mesh), toWorld: map.particles.toWorld, up: map.particles.up});
     }
     if (config && config.buildInstances) {
       for (const object of await config.buildInstances(map, data, get, loadTexture)) {
@@ -546,6 +545,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   function draw(seconds, target = null) {
     time.value = seconds;
+    if (particleGroup) particleGroup.visible = false;  // Not in the mirror and sky passes: drawn once, from the eye.
     if (quake) window.quakeMaps.time.value = seconds;
     if (window.quake2Maps) window.quake2Maps.time.value = seconds;
     const region = regionAt(camera.position);
@@ -597,6 +597,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       renderer.clearDepth();
       showPass(false);
     }
+    if (particleGroup) particleGroup.visible = true;
     renderer.render(scene, camera);
     if (overlay.children.length) { sprites.halfWidth.value = target ? target.width / 2 : frame.width / 2 / renderer.getPixelRatio(); renderer.render(overlay, camera); }
     renderer.setRenderTarget(target);
