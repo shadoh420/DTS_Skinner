@@ -209,6 +209,8 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
   spawn's rate × `ramp_scale` (vampire.dll's datadesc maps `ramp_scale` to m_fRateScaleTarget, the rate multiplier);
   the box weights client.dll sums near 0x100b0f04 only pick among a model's bone segments (attach types 1, 3 and 4),
   so a rain box's size does not scale its rain (sm_beachhouse_1's boxes: 40 × 0.05 = 2 drops a second each).
+  Open: the 2026-10-16 game shot of sm_pier_1's start shows about 15 streaks where the page draws about one, a gap
+  near 20× that these rules don't explain. A game run in one trigger should settle it before any change.
   Emitters in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
 
   Touch-triggered emitters: an inactive emitter that a `trigger_multiple` (not StartDisabled) turns on at
