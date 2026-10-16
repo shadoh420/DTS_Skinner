@@ -40,6 +40,22 @@ export default defineConfig({
         ['    coordBins,\n    coordBinIndices,\n  };', '    coordBins,\n    coordBinIndices,\n    animatedLights,\n    lightStates,\n    lightStateData,\n    stateDataBuffer,\n  };'],
       ], 'interior reader');
     }
+    if(id.endsWith('/ObserverCamera.tsx')) {
+      // The FOV setting is horizontal, as the game's $pref::Player::defaultFov (Torque sets the frustum's width);
+      // Three's camera takes a vertical one. Upstream converts it this way only for demo playback.
+      return 'import {useThree} from "@react-three/fiber";\nimport {torqueHorizontalFovToThreeVerticalFov} from "../stream/playbackUtils";\n' + patch([
+        ['  const { fov } = useSettings();', '  const { fov: horizontalFov } = useSettings();\n  const size = useThree((state) => state.size);\n  const fov = torqueHorizontalFovToThreeVerticalFov(horizontalFov, size.width / size.height);'],
+      ], 'observer camera');
+    }
+    if(id.endsWith('/WaterBlock.tsx')) {
+      // V12 draws a water surface only in its kept fluid blocks (skinner/fluid); upstream draws the whole block.
+      return 'import {useFluidMask} from "../../skinner/fluid";\n' + patch([
+        ['          envMapIntensity={envMapIntensity}\n        />', '          envMapIntensity={envMapIntensity}\n          fluid={scene}\n        />'],
+        ['  envMapIntensity,\n}: {', '  envMapIntensity,\n  fluid,\n}: {'],
+        ['  envMapIntensity: number;\n}) {', '  envMapIntensity: number;\n  fluid: Parameters<typeof useFluidMask>[1];\n}) {'],
+        ['  }, [opacity, waveMagnitude, envMapIntensity, baseTexture, envTexture]);', '  }, [opacity, waveMagnitude, envMapIntensity, baseTexture, envTexture]);\n  useFluidMask(material, fluid);'],
+      ], 'water block');
+    }
     if(id.endsWith('/dif/difLoader.ts')) {
       return 'import {animateInteriorLights} from "../../skinner/interiorLights";\n' + patch([
         ['      throw failure.reason;\n    }\n    return model;', '      throw failure.reason;\n    }\n    animateInteriorLights(model);\n    return model;'],

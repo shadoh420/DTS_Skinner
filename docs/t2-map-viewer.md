@@ -56,7 +56,7 @@ which of the mission's objects are placed. The choice is kept in the address as
 drag to look, WASD moves, Space rises, Shift descends, the wheel changes speed,
 Escape releases the mouse and keys 1–9 select the mission's observer
 viewpoints. FOV, Fog, **Invert horizontal** / **Invert vertical** and Reset view
-are above the scene; settings persist in their own browser-storage namespace.
+are above the scene; FOV is horizontal, as the game's `$pref::Player::defaultFov`; settings persist in their own browser-storage namespace.
 Every mission of the install has observer cameras; a map opens at its first.
 A mission whose display name is not its file name is listed with both
 ("Training1 · Newblood").
@@ -91,6 +91,16 @@ mission whose scripts have not reported ready after 90 seconds.
   in the table below with a water entry) had upstream's white fallback texture
   added to its water. It now adds nothing, the rule upstream's sky already
   follows for a missing environment map. Patched at build time as well.
+- The FOV setting is horizontal, as in the game: Torque builds the frustum from
+  a horizontal angle, Three's camera from a vertical one. Upstream passed the
+  setting to Three unchanged (it converts only for demo playback), so FOV 90 at
+  16:9 showed 121 degrees across where the game shows 90. The observer camera
+  now takes `2 atan(tan(h/2) / aspect)`, recomputed on resize (build-time patch
+  to `ObserverCamera.tsx`, with upstream's own `torqueHorizontalFovToThreeVerticalFov`).
+- A water block's surface is drawn only in its kept fluid blocks
+  (`map-client/fluid.ts`, the same test as the lava overlay below; build-time
+  patch to `WaterBlock.tsx`). Upstream drew the whole block, which showed as a
+  liquid ceiling from under the terrain.
 - As before: audio off, settings and skins kept local, mouse-look inversion,
   no live-server, demo or relay interfaces. CSP blocks external requests.
 
@@ -162,11 +172,13 @@ game. The page was rendered at the same poses, 1280x720, horizontal FOV 90.
 | Interior light, Caldera floor block | 60.3, flashing to 71.6 every ~1.3 s | 60.3, flashing to 71.8 every ~1.3 s | matches |
 | Lava overlay, Magmatic open lava | RGB 164 / 32 / 1 | 167 / 34 / 2 | matches |
 | Lava overlay, under Magmatic's terrain | none | was drawn | fixed: fluid blocks |
+| Field of view, Katabatic camera 1, FOV 90 | base spans x 385-885 | 392-896 (was far smaller: vertical 90) | fixed: horizontal FOV |
+| Lava surface from under Magmatic's terrain, Torque (0, 0, 40) | sky, distant terrain, a lava strip at y 260-300 | same, strip at y 264-304 (was a lava ceiling) | fixed: fluid blocks |
 | Vehicles, Alcatraz | HAPC and MPB placed | same places | matches |
 | Fireballs, Firestorm | none crossed the view in 12 s | — | not compared |
 
-The game also culls the water surface itself in blocks without fluid, which
-upstream draws whole; it only shows from under the terrain.
+The last two rows were fixed after the run and compared against its shots
+(page rendered at 1280x720 at the same poses).
 
 ## Coverage
 

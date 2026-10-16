@@ -16,6 +16,7 @@ import type {EmitterDataResolved, ParticleDataResolved, ParticleKey} from '../sr
 import {castWorldRay} from '../src/collision/worldCollision';
 import {terrainHeightAt} from '../src/collision/terrainCollision';
 import {castWaterRay, LIQUID_TYPES, submergedWaterAt} from '../src/collision/waterLevel';
+import {fluidAt, fluidGrid} from './fluid';
 import {tickInteriorLights} from './interiorLights';
 import {addNote} from './notes';
 
@@ -470,32 +471,13 @@ function Lightning({object, datablocks}: {object: Obj; datablocks: any}) {
   return <primitive object={mesh}/>;
 }
 
-// V12 counts the camera as in a liquid only where its fluid exists (fluid::IsFluidAtXY): the fluid is split into
-// blocks of 8 terrain squares (4 when it covers under a quarter of the terrain), and fluid::RebuildMasks keeps a
-// block when any terrain point in it lies below the surface plus half the wave height. Under the terrain, or
-// where the ground rises above the surface, there is no fluid and so no overlay.
-// ponytail: removeWetEdges' flood fill is not applied; it only trims fluid along the surface's dry edges.
-function fluidAt(block: Obj, x: number, y: number): boolean {
-  const [px, py, pz] = vec(block.position, [0, 0, 0]), [sx, sy, sz] = vec(block.scale, [1, 1, 1]);
-  const x0 = Math.min(2040, Math.max(0, Math.floor((px + 1024) / 8 + 0.5)));
-  const y0 = Math.min(2040, Math.max(0, Math.floor((py + 1024) / 8 + 0.5)));
-  let nx = Math.floor(sx / 8 + 0.5), ny = Math.floor(sy / 8 + 0.5);
-  const high = nx <= 128 && ny <= 128, per = high ? 4 : 8;
-  nx = Math.min(256, Math.max(per, (nx + per - 1) & ~(per - 1)));
-  ny = Math.min(256, Math.max(per, (ny + per - 1) & ~(per - 1)));
-  const bx = ((Math.floor(x + 1024) - x0 * 8) & 2047) >> (high ? 5 : 6);
-  const by = ((Math.floor(y + 1024) - y0 * 8) & 2047) >> (high ? 5 : 6);
-  if (bx >= nx / per || by >= ny / per) return false;
-  const level = pz + sz + num(block, 'waveMagnitude', 1) / 2;
-  for (let j = 0; j <= per; j++) for (let i = 0; i <= per; i++) {
-    const h = terrainHeightAt((x0 + bx * per + i) * 8 - 1024, (y0 + by * per + j) * 8 - 1024);
-    if (h === null || h < level) return true;
-  }
-  return false;
-}
-
 // ---- Lava overlay (game/underLava.cc, drawn when the camera is in a lava block's fluid) ----
 function LavaFilter({textures, blocks}: {textures: string[]; blocks: Obj[]}) {
+  // The camera is in a lava block's liquid only where its fluid exists (fluid::IsFluidAtXY).
+  const grids = useMemo(() => blocks.map(block => {
+    const [px, py, pz] = vec(block.position, [0, 0, 0]), [sx, sy, sz] = vec(block.scale, [1, 1, 1]);
+    return fluidGrid(px, py, sx, sy, pz + sz + num(block, 'waveMagnitude', 1) / 2);
+  }), [blocks]);
   const mesh = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
@@ -530,7 +512,7 @@ function LavaFilter({textures, blocks}: {textures: string[]; blocks: Obj[]}) {
     const pos = camera.position;
     const info = submergedWaterAt(pos.z, pos.x, pos.y);
     mesh.visible = !!textures[0] && info !== null && info.liquidType >= 4 && info.liquidType <= 6
-      && blocks.some(block => fluidAt(block, pos.z, pos.x));
+      && grids.some(grid => fluidAt(grid, pos.z, pos.x));
     const u = (mesh.material as ShaderMaterial).uniforms;
     u.time.value = clock.elapsedTime;
     u.frequency.value = Math.floor(size.width / Math.max(1, size.height));  // V12 divides the integer viewport sizes
