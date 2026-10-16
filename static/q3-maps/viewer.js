@@ -669,15 +669,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     skyPortal = {swaps, skies, shown, camera: camera.clone(), eye: new THREE.Vector3(...map.skyPortal.origin)};
   }
   function drawSkyPortal() {
-    const {swaps, shown, camera: view, eye} = skyPortal, hidden = [];
+    const {swaps, shown, camera: view, eye} = skyPortal, changed = [];
     view.copy(camera);
     view.position.set(eye.x, eye.z, -eye.y);
     view.updateMatrixWorld();
     uniforms.uView.value.copy(eye);
     for (const swap of swaps) swap.mesh.geometry = swap.geometry;
-    for (const child of root.children) if (child.visible && !shown.has(child)) { child.visible = false; hidden.push(child); }
+    // The portal's own set, whatever the view's culling (JA's distance cull) did to it this frame.
+    for (const child of root.children) if (child.visible !== shown.has(child)) { changed.push(child); child.visible = !child.visible; }
     renderer.render(scene, view);
-    for (const child of hidden) child.visible = true;
+    for (const child of changed) child.visible = !child.visible;
     for (const swap of swaps) swap.mesh.geometry = swap.main;
     uniforms.uView.value.set(camera.position.x, -camera.position.z, camera.position.y);
   }
