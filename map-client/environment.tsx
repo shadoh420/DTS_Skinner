@@ -292,6 +292,10 @@ function Precipitation({object, datablocks, sky}: {object: Obj; datablocks: any;
     const center = [offset[0] * radius, offset[1] * radius];
     camera.matrixWorld.extractBasis(right, up, new Vector3());
     const r = toTorque(right).map(v => v * sizeX), u = toTorque(up).map(v => v * sizeY);
+    // Quad corners around a drop: snow is a camera-facing square; a raindrop stretches 2 * sizeY along its fall.
+    const c1 = r.map((v, k) => v - u[k]), c2 = r.map((v, k) => -v - u[k]);
+    const corners = type === 1 ? [r.map((v, k) => v + u[k]), c1, c2, r.map((v, k) => -v + u[k])]
+      : [c1.map((v, k) => v + offset[k] * sizeY * 2), c1, c2, c2.map((v, k) => v + offset[k] * sizeY * 2)];
     const positions = mesh.geometry.getAttribute('position') as BufferAttribute;
     const uvs = mesh.geometry.getAttribute('uv') as BufferAttribute;
     const tints = mesh.geometry.getAttribute('dropColor') as BufferAttribute;
@@ -313,28 +317,22 @@ function Precipitation({object, datablocks, sky}: {object: Obj; datablocks: any;
         drop.tex = Math.max(0, Math.ceil(15 * (pick > 0.99995 && pick < 0.99999 ? 1.01 : pick)) - 1);
         drop.valid = true;
       }
-      const [x, y, z] = drop.pos;
-      const corner = (k: number, v: number[]) => { const o = (i * 4 + k) * 3; toThreeInto(p, o, v); };
-      const p1 = [x + r[0] - u[0], y + r[1] - u[1], z + r[2] - u[2]];
-      const p2 = [x - r[0] - u[0], y - r[1] - u[1], z - r[2] - u[2]];
-      // Snow is a camera-facing square; a raindrop stretches 2 * sizeY along its fall.
-      const p0 = type === 1 ? [x + r[0] + u[0], y + r[1] + u[1], z + r[2] + u[2]] : p1.map((v, k) => v + offset[k] * sizeY * 2);
-      const p3 = type === 1 ? [x - r[0] + u[0], y - r[1] + u[1], z - r[2] + u[2]] : p2.map((v, k) => v + offset[k] * sizeY * 2);
-      [p0, p1, p2, p3].forEach((v, k) => corner(k, v));
+      // Torque (x, y, z) is written as Three (y, z, x).
+      for (let k = 0; k < 4; k++) {
+        const o = (i * 4 + k) * 3;
+        p[o] = drop.pos[1] + corners[k][1]; p[o + 1] = drop.pos[2] + corners[k][2]; p[o + 2] = drop.pos[0] + corners[k][0];
+      }
       // GL t = 0 is the image's top row; Three's v = 1 is.
-      const cx = (drop.tex % 4) * 0.25, cy = Math.floor(drop.tex / 4) * 0.25;
-      t.set([cx, 1 - cy, cx, 1 - cy - 0.25, cx + 0.25, 1 - cy - 0.25, cx + 0.25, 1 - cy], i * 8);
+      const cx = (drop.tex % 4) * 0.25, cy = 1 - Math.floor(drop.tex / 4) * 0.25, o = i * 8;
+      t[o] = cx; t[o + 1] = cy; t[o + 2] = cx; t[o + 3] = cy - 0.25; t[o + 4] = cx + 0.25; t[o + 5] = cy - 0.25; t[o + 6] = cx + 0.25; t[o + 7] = cy;
       const color = colors[drop.color];
-      const alpha = 1 - (z - cam[2]) / drop.startDiff;
-      for (let k = 0; k < 4; k++) c.set([color[0], color[1], color[2], alpha], (i * 4 + k) * 4);
+      const alpha = 1 - (drop.pos[2] - cam[2]) / drop.startDiff;
+      for (let k = 0; k < 4; k++) { const q = (i * 4 + k) * 4; c[q] = color[0]; c[q + 1] = color[1]; c[q + 2] = color[2]; c[q + 3] = alpha; }
     });
     last.current.first = false;
     positions.needsUpdate = uvs.needsUpdate = tints.needsUpdate = true;
   });
   return <primitive object={mesh}/>;
-}
-function toThreeInto(out: Float32Array, offset: number, v: number[]) {
-  out[offset] = v[1]; out[offset + 1] = v[2]; out[offset + 2] = v[0];
 }
 
 // ---- Lightning (game/lightning.cc) ----
