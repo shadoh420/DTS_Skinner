@@ -103,6 +103,9 @@ ITEMS = {row.split()[0]: (kind, row.split()[1:]) for kind, rows in dict(
 # them, so a map is not short of their models where the game folder has none.
 NOT_IN_BASE = ('item_armor_jacket', 'weapon_nailgun', 'weapon_prox_launcher', 'weapon_chaingun', 'ammo_nails', 'ammo_mines', 'ammo_belt', 'holdable_kamikaze',
               'holdable_portal', 'holdable_invulnerability', 'item_scout', 'item_guard', 'item_doubler', 'item_ammoregen', 'team_ctf_neutralflag')
+# g_gametype by the .arena type names; and the names an entity's "gametype" key is matched against (g_spawn.c).
+GAMETYPES = dict(ffa=0, tourney=1, duel=1, single=2, team=3, ctf=4, cctf=4, oneflag=5, overload=6, harvester=7)
+GAMETYPE_NAMES = ('ffa', 'tournament', 'single', 'team', 'ctf', 'oneflag', 'obelisk', 'harvester', 'teamtournament')
 SPAWNS = ('info_player_deathmatch', 'info_player_start', 'team_ctf_redplayer', 'team_ctf_blueplayer', 'team_ctf_redspawn', 'team_ctf_bluespawn')
 
 
@@ -156,13 +159,15 @@ class Game:
                     if name not in self.shaders:
                         self.shaders[name], self.shader_label[name] = body, label
                         self.outside.add(name)
-        self.arenas = {}
+        self.arenas, self.arena_types = {}, {}
         for key in self.files:
             if re.fullmatch(r'scripts/([^/]+\.arena|arenas\.txt)', key):
                 for block in re.findall(r'\{([^{}]*)\}', read_text(self.files[key][1]())):
                     pairs = {(quoted or bare).lower(): value for quoted, bare, value in re.findall(r'(?:"([^"]*)"|([^\s"]+))\s+"([^"]*)"', block)}
                     if pairs.get('map'):
                         self.arenas.setdefault(pairs['map'].lower(), pairs.get('longname', ''))
+                        self.arena_types.setdefault(pairs['map'].lower(), pairs.get('type', '').lower().split())
+        self.team_arena = bool(folders) and Path(folders[0]).name.lower() == 'missionpack'  # Its own game code (MISSIONPACK).
         self.described, self.images, self.models, self.same_name = {}, {}, {}, None
 
     def close(self):
@@ -501,6 +506,23 @@ def item_model(game, path, textures, output):
     return result
 
 
+def barrel(game, kind, path, textures, output, item_models):
+    """Team Arena's CG_Item draws a weapon's <model>_barrel.md3 at its tag_barrel, turned with the weapon; the
+    base game's draws none. {} or the item's barrel key."""
+    file = path[:-4] + '_barrel.md3'
+    if kind != 'weapon' or not game.team_arena or file not in game.files:
+        return {}
+    try:
+        tag = read_md3(game.files[path][1]())['tags'].get('tag_barrel')
+    except (ValueError, struct.error):
+        tag = None
+    model, _ = item_model(game, file, textures, output)
+    if not tag or not model:
+        return {}
+    item_models[file] = model
+    return dict(barrel=dict(model=file, origin=list(tag[:3])))
+
+
 def read_bsp(raw, *, version=46):
     """Lumps of an IBSP 46 file, each checked to lie inside it."""
     if len(raw) < 8 + LUMPS * 8 or raw[:4] != b'IBSP':
@@ -555,6 +577,15 @@ def fog_volumes(lumps, shaders):
             fog = None
         result.append(fog)
     return result
+
+
+def spawns(thing, gametype, team_arena=False):
+    """Whether G_SpawnGEntityFromSpawnVars keeps an entity in game type `gametype` (notsingle, notteam or notfree,
+    notq3a or under Team Arena's game notta, and a "gametype" list)."""
+    flag = lambda key: int(numbers([thing.get(key, '0')], 1)[0])
+    if gametype == 2 and flag('notsingle') or flag('notteam' if gametype >= 3 else 'notfree') or flag('notta' if team_arena else 'notq3a'):
+        return False
+    return 'gametype' not in thing or GAMETYPE_NAMES[gametype] in thing['gametype'].lower()
 
 
 def mover_motion(thing, things, mins_z, rules='q3', gravity=800):
@@ -654,11 +685,18 @@ def import_map(game, name, ident, raw, source, output, textures):
             if kind != 'info_player_intermission': view['origin'] = [origin[0], origin[1], origin[2] + 26]  # Eye height above a spawn point.
             viewpoints.append(view)
     notes = [f'{label}: {len(found)} shader{"s" if len(found) > 1 else ""} ({", ".join(found[:4])}{"…" if len(found) > 4 else ""})' for label, found in sorted(limits.items())]
-    if flares: notes.append(f'{flares} light flares')
-    items, item_models = [], {}
+    if flares: notes.append(f'{flares} light flares, which CNQ3 does not draw either (ParseFlare)')
+    # Pickups as a server spawns them in free-for-all, g_gametype's default, or in the map's first listed game type
+    # where its .arena lists no ffa.
+    listed = [GAMETYPES[kind] for kind in game.arena_types.get(name.lower(), []) if kind in GAMETYPES]
+    gametype = 0 if not listed or 0 in listed else listed[0]
+    items, item_models, dropped = [], {}, 0
     for thing in things:
         classname = thing.get('classname', '').lower()
         if classname not in ITEMS: continue
+        if not spawns(thing, gametype, game.team_arena):
+            dropped += 1
+            continue
         kind, paths = ITEMS[classname]
         paths = [f'models/{path}.md3' for path in paths]
         for path in paths:
@@ -669,7 +707,8 @@ def import_map(game, name, ident, raw, source, output, textures):
         if paths[0] in item_models:
             # Spawnflag 1 hangs the item where it is; any other is dropped to the floor (g_items.c FinishSpawningItem).
             items.append(dict(kind=kind, origin=vector(thing.get('origin', '')), models=[path for path in paths if path in item_models],
-                              suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1)))
+                              suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1), **barrel(game, kind, paths[0], textures, output, item_models)))
+    notes.append(f'pickups as game type {GAMETYPE_NAMES[gametype]} spawns them' + (f' ({dropped} left out)' if dropped else ''))
     file = 'bsp/' + hashlib.sha256(raw).hexdigest()[:20] + '.bsp'
     if not (output / file).exists():
         write_bsp(output / file, lumps)

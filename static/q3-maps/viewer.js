@@ -747,12 +747,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (hit) height = hit.point.z + 15;
     }
     holder.position.set(x, y, height);
+    // Team Arena's barrel hangs at the weapon's tag_barrel, turned with it.
+    const barrel = item.barrel ? await loadItemModel(item.barrel.model) : [];
     models.forEach((surfaces, which) => {
-      const part = new THREE.Group();
-      for (const {geometry, materials, sort} of surfaces) materials.forEach((material, stage) => {
+      const part = new THREE.Group(), middle = new THREE.Vector3().fromArray(map.itemModels[item.models[which]].middle);
+      for (const [{geometry, materials, sort}, offset] of [...surfaces.map(surface => [surface, null]), ...(which ? [] : barrel.map(surface => [surface, item.barrel.origin]))]) materials.forEach((material, stage) => {
         const mesh = new THREE.Mesh(geometry, material);
         mesh.renderOrder = sort * 100000 + 99000 + stage;
-        if (weapon) mesh.position.fromArray(map.itemModels[item.models[which]].middle).negate();
+        if (weapon) mesh.position.fromArray(offset || [0, 0, 0]).sub(middle);
         part.add(mesh);
       });
       if (weapon) part.scale.setScalar(1.5);
