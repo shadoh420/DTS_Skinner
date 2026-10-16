@@ -984,7 +984,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     vertexShader: 'varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0., 1.); }',
     fragmentShader: config.bspVersion === 47
       ? 'uniform sampler2D frame; uniform float displayScale, displayGamma; varying vec2 at; void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(1. / displayGamma)) * displayScale, 1.); }'
-      : 'uniform sampler2D frame; varying vec2 at; void main() { gl_FragColor = vec4(texture2D(frame, at).rgb * 2., 1.); }'})));
+      // CNQ3's post pass (post_gamma.hlsl): pow(frame, 1 / r_gamma) * r_brightness, r_gamma 1.2 being its default and the
+      // user's CPMA setting. Game check 2026-10-16: q3dm15 page/game 0.72 without it, 0.92-1.05 with it.
+      : 'uniform sampler2D frame; varying vec2 at; void main() { gl_FragColor = vec4(pow(texture2D(frame, at).rgb, vec3(1. / 1.2)) * 2., 1.); }'})));
   shown.children[0].frustumCulled = false;
   const cullDirection = new THREE.Vector3(), forwardOfView = new THREE.Vector3();
   function draw(seconds) {

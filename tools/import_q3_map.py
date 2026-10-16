@@ -632,7 +632,8 @@ def movers(things, models_lump, rules='q3', placed=None):
     """The moving brush entities of a map: inline model, the pose its faces were written in (base), the spawn
     origin and angles its motion starts from, and the motion. `placed(index, thing)` gives the base pose where
     the import moved the model itself, with the angles its motion starts from (None for a hidden model); Q3 only
-    adds the entity's origin and never turns a brush model."""
+    adds the entity's origin, and only func_pendulum turns its model by the spawn angles (SP_func_pendulum copies
+    s.angles into apos.trBase, then swings the roll: q3dm15's pendulums have "angle" 90 and swing across the hall)."""
     models = list(struct.iter_unpack('<6f4i', models_lump[:len(models_lump) // 40 * 40]))
     result = []
     for thing in things:
@@ -643,7 +644,9 @@ def movers(things, models_lump, rules='q3', placed=None):
         if not motion:
             continue
         origin = numbers(thing.get('origin', '').split(), 3)
-        base, rest = placed(index, thing) if placed else (dict(origin=origin, angles=[0.0, 0.0, 0.0]), [0.0, 0.0, 0.0])
+        turned = motion['type'] == 'swing'
+        spawn = (numbers(thing['angles'].split(), 3) if 'angles' in thing else [0.0, numbers([thing.get('angle', '0')], 1)[0], 0.0]) if turned else [0.0, 0.0, 0.0]
+        base, rest = placed(index, thing) if placed else (dict(origin=origin, angles=[0.0, 0.0, 0.0]), spawn)
         if base:
             result.append(dict(model=index, base=base, origin=origin, angles=rest, **motion))
     return result
@@ -710,8 +713,9 @@ def import_map(game, name, ident, raw, source, output, textures):
                               suspended=bool(int(numbers([thing.get('spawnflags', '0')], 1)[0]) & 1), **barrel(game, kind, paths[0], textures, output, item_models)))
     if dropped: notes.append(f'{dropped} pickups the game does not spawn in {GAMETYPE_NAMES[gametype]}')
     file = 'bsp/' + hashlib.sha256(raw).hexdigest()[:20] + '.bsp'
-    if not (output / file).exists():
-        write_bsp(output / file, lumps)
+    # Always written: the name follows the source map, not KEPT_LUMPS, so a file from an older import (before the light
+    # grid was kept) would otherwise survive --replace (game check 2026-10-16: no real library had lump 15).
+    write_bsp(output / file, lumps)
     folder = output / 'maps' / ident
     folder.mkdir(parents=True, exist_ok=True)
     scene = dict(name=name, longname=game.arenas.get(name.lower(), ''), source=source, bsp=file, shaders=shaders, viewpoints=viewpoints,

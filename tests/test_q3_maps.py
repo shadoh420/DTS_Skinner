@@ -220,7 +220,10 @@ class Q3MapTests(unittest.TestCase):
             self.assertEqual(len(list((root / 'pack/textures').iterdir())), 1)  # Both textures hold the same image, stored once.
             again = import_maps(root, root / 'pack')
             self.assertEqual((again['imported'], sorted(again['skipped'])), ([], ['first', 'first', 'my map']))
+            stale = root / 'pack' / scene['bsp']
+            stale.write_bytes(b'IBSP')  # An older import's file under the same name (it kept fewer lumps)...
             self.assertEqual(len(import_maps(root, root / 'pack', replace=True)['imported']), 3)
+            self.assertEqual(read_bsp(stale.read_bytes())[14], read_bsp(first)[14])  # ...is written again.
             # An extras folder beside the pack fills gaps and is said to have: its image for the shader the game
             # has nothing for, and its script only for a name the game does not define.
             (root / 'q3-extra/textures/test').mkdir(parents=True)
