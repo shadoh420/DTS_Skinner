@@ -748,9 +748,7 @@ def build_map(library, level, default, game='unreal', files=None):
         placed = level.properties(ref)
         props = {**defaults, **placed}
         kind = map_actor_kind(names) if game == 'dx' else None
-        if kind in ('player', 'other'):
-            counts['excluded_players' if kind == 'player' else 'excluded_other'] += 1
-            continue
+
         def obj(name):
             """(package, export) of object property `name` (the map's, or the class default's package), or None."""
             value, package = props.get(name), level if name in placed else sources.get(name)
@@ -766,6 +764,9 @@ def build_map(library, level, default, game='unreal', files=None):
                 batch['items'].append([*(round(float(c), 3) for c in viewer([vector(props, 'Location')])[0]),
                                        round(props.get('DrawScale', 1.0) * CORONA_SIZE.get(game, .8), 4),
                                        *(round(float(c), 4) for c in color * CORONA_GAIN.get(game, 1)), 1])
+        if kind in ('player', 'other'):  # Deus Ex: Lights are 'other', so their coronas are read above first
+            counts['excluded_players' if kind == 'player' else 'excluded_other'] += 1
+            continue
         # Lights are not drawn in the game though some leave bHidden off (227, Glathriel2: TriggerLight's sprite 87 units
         # and TorchFlame's 192-unit flame mesh 275 units in front of the camera both showed nothing).
         if props.get('bHidden') or 'Light' in names:
