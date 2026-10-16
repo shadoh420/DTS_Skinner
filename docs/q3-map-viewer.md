@@ -135,7 +135,10 @@ their code is in the app.
   `r_mapOverBrightBits 2`, `r_overBrightBits 1`): lightmaps and vertex colours
   are doubled, a channel that overflows scaling the colour down to keep its
   hue (`R_ColorShiftLightingBytes`); identity lighting is one half; and the
-  finished frame is shown doubled, which is what the game's gamma table does.
+  finished frame is shown doubled, which is what the game's gamma table does,
+  after CNQ3's display gamma: `pow(frame, 1 / r_gamma) * r_brightness` with
+  `r_gamma 1.2` (CNQ3's default and the user's CPMA setting; game check
+  2026-10-16, q3dm15 page/game 0.72 without it, 0.92-1.05 with it).
 - Stages are drawn into a frame that keeps alpha, because 586 stages in this
   install blend with `GL_ONE_MINUS_DST_ALPHA`.
 - Texture coordinates, waves, vertex deformation, the specular highlight
@@ -178,7 +181,7 @@ their code is in the app.
   `func_bobbing` (a sine of `height` over `speed` seconds along the axis its
   spawnflags pick), `func_rotating` (`speed` degrees a second about the axis
   its spawnflags pick), `func_pendulum` (a swing of `speed` degrees with the
-  period gravity 800 gives its length) and `func_train` (from corner to
+  period gravity 800 gives its length, rolling about its spawn `angle`) and `func_train` (from corner to
   `path_corner` at the corner's or the train's speed, waiting `wait` seconds).
   Doors, plats and buttons stand where the map places them.
 - The game drops an item's 30-unit box until it rests on something solid.

@@ -135,6 +135,11 @@ class Q3FamilyPartBTests(unittest.TestCase):
         self.assertEqual((mover['model'], mover['base'], mover['origin'], mover['angles'], mover['type']),
                          (1, dict(origin=[10, 20, 30], angles=[0, 0, 0]), [10, 20, 30], [0, 0, 0], 'swing'))
         self.assertEqual(qmap.movers(things, models, placed=lambda index, thing: (None, None)), [])  # Hidden at spawn.
+        # SP_func_pendulum starts its roll from the spawn angles (q3dm15: "angle" 90, swinging across the hall).
+        [turned] = qmap.movers([{**things[0], 'angle': '90'}], models)
+        self.assertEqual((turned['base']['angles'], turned['angles']), ([0, 0, 0], [0, 90, 0]))
+        [rotating] = qmap.movers([{'classname': 'func_rotating', 'model': '*1', 'angle': '90'}], models)
+        self.assertEqual(rotating['angles'], [0, 0, 0])  # Other movers never take them.
 
     def test_pickups_follow_the_game_type(self):
         self.assertFalse(qmap.spawns({'notfree': '1'}, 0))
