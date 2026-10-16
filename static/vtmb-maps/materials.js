@@ -51,16 +51,19 @@
       const settings = group.settings || {}, blend = settings.blend || [], parameters = settings.parameters || {};
       const alpha = group.alpha === undefined ? 1 : group.alpha;
       // Additive surfaces fog toward black (BaseVSShader.cpp FogToBlack on additive passes); $nofog: none.
-      const fogTo = !['0', '', undefined].includes(parameters['$nofog']) ? -1 : blend[1] === 'gl_one' ? 0 : 1;
+      // Modulating decals (DecalModulate) multiply what is behind by twice their colour: they fog toward grey.
+      const modulate = blend[0] === 'gl_dst_color';
+      const fogTo = !['0', '', undefined].includes(parameters['$nofog']) ? -1 : blend[1] === 'gl_one' ? 0 : modulate ? .5 : 1;
       return new THREE.ShaderMaterial({
         transparent: !!blend.length || alpha < 1, depthWrite: !blend.length && alpha >= 1,
         side: settings.cull === 'none' ? THREE.DoubleSide : THREE.FrontSide,
-        blending: blend[1] === 'gl_one' ? THREE.AdditiveBlending : THREE.NormalBlending,
+        blending: modulate ? THREE.CustomBlending : blend[1] === 'gl_one' ? THREE.AdditiveBlending : THREE.NormalBlending,
+        blendSrc: THREE.DstColorFactor, blendDst: THREE.SrcColorFactor,
         uniforms: {surface: {value: texture}, lights: {value: lightMap},
           unlit: {value: !!settings.unlit || (group.kind === 'model' && !this.vertexLight)}, vertexLight: {value: group.kind === 'model' && this.vertexLight},
           selfillum: {value: !!settings.selfillum}, cutout: {value: !!settings.alphaFunc},
           useAlpha: {value: !!blend.length || !!settings.alphaFunc}, alpha: {value: alpha},
-          tint: {value: new THREE.Vector3(...(group.tint || [1, 1, 1]))}, brightness: {value: this.brightness},
+          tint: {value: new THREE.Vector3(...(group.tint || [1, 1, 1]))}, brightness: {value: modulate ? 1 : this.brightness},
           fogColor: fog.fogColor, fogRange: fog.fogRange, fogTo: {value: fogTo}, seconds: time, pan: {value: pan(parameters)}},
         vertexShader: `attribute vec2 uv2; ${this.vertexLight ? 'attribute vec4 color;' : ''} uniform vec2 pan; uniform float seconds;
         varying vec2 texUV, lightUV; varying vec3 vertexColour; varying float fogDepth;
@@ -78,7 +81,7 @@
           // Hypothesis: Bloodlines (2004, before Source's pixel fog) uses fixed-function linear fog on view depth, blended on
           // the gamma colour; Source's later pixel fog squares its factor to match it (common_ps_fxc.h BlendPixelFog).
           float f = min(fogRange.z, clamp((fogDepth - fogRange.x) / max(fogRange.y - fogRange.x, 1e-4), 0., 1.));
-          if (fogTo >= 0.) rgb = mix(rgb, fogColor * fogTo, f);
+          if (fogTo == .5) rgb = mix(rgb, vec3(.5), f); else if (fogTo >= 0.) rgb = mix(rgb, fogColor * fogTo, f);
           gl_FragColor = vec4(rgb, (useAlpha ? base.a : 1.) * alpha);
         }`
       });

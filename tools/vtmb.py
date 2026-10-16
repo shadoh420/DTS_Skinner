@@ -196,14 +196,16 @@ def material_settings(vmt):
     if enabled('$selfillum'):
         notes.append('$selfillum recorded; shared preview/export lighting does not reproduce its alpha mask')
     refract = vmt['shader'].lower() in ('refract', 'water') and not p.get('$basetexture')
+    if vmt['shader'].lower() == 'decalmodulate':  # DecalModulate.cpp: the surface times the texture x 2
+        blend = ['gl_dst_color', 'gl_src_color']
     if refract:
         blend = ['gl_src_alpha', 'gl_one_minus_src_alpha']
         notes.append(f'{vmt["shader"]} without a base texture: 25% opacity tint preview; framebuffer distortion, reflections and water fog are not evaluated')
-    elif vmt['shader'].lower() not in ('vertexlitgeneric', 'lightmappedgeneric', 'unlitgeneric'):
+    elif vmt['shader'].lower() not in ('vertexlitgeneric', 'lightmappedgeneric', 'unlitgeneric', 'decalmodulate'):
         notes.append(f'{vmt["shader"]}: base-texture approximation')
     return dict(alphaFunc='GE128' if enabled('$alphatest') and not refract else '', blend=blend,
                 depthWrite=not bool(blend), cull='none' if enabled('$nocull') else 'back',
-                shader=vmt['shader'], unlit=refract or vmt['shader'].lower() == 'unlitgeneric',
+                shader=vmt['shader'], unlit=refract or vmt['shader'].lower() in ('unlitgeneric', 'decalmodulate'),
                 selfillum=enabled('$selfillum'), parameters=p), notes
 
 

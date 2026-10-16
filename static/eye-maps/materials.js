@@ -65,11 +65,14 @@
       if (group.kind==='sky') return root.quake2Maps.material(group,texture,lightMap);
       const s=group.settings||{},blend=s.blend||[],alpha=group.alpha??1,model=group.kind==='model',p=s.parameters||{};
       // Additive surfaces fog toward black, as Source's additive passes do (BaseVSShader.cpp FogToBlack); $nofog: none.
-      const fogTo=!['0','',undefined].includes(p['$nofog'])?-1:blend[1]==='gl_one'?0:1;
+      // Modulating decals (DecalModulate) multiply what is behind by twice their colour, fogging toward grey.
+      const modulate=blend[0]==='gl_dst_color';
+      const fogTo=!['0','',undefined].includes(p['$nofog'])?-1:blend[1]==='gl_one'?0:modulate?.5:1;
       return new THREE.ShaderMaterial({
         transparent:!!blend.length||alpha<1,depthWrite:!blend.length&&alpha>=1,
         side:s.cull==='none'?THREE.DoubleSide:THREE.FrontSide,
-        blending:blend[1]==='gl_one'?THREE.AdditiveBlending:THREE.NormalBlending,
+        blending:modulate?THREE.CustomBlending:blend[1]==='gl_one'?THREE.AdditiveBlending:THREE.NormalBlending,
+        blendSrc:THREE.DstColorFactor,blendDst:THREE.SrcColorFactor,
         uniforms:{surface:{value:texture},second:{value:extraTextures.get(group.texture2)||texture},lights:{value:lightMap},
           transition:{value:!!group.texture2},unlit:{value:!!s.unlit},selfillum:{value:!!s.selfillum},
           cutout:{value:!!s.alphaFunc},useAlpha:{value:!!blend.length||!!s.alphaFunc},alpha:{value:alpha},
@@ -91,7 +94,7 @@
             vec3 rgb=clamp(pow(base.rgb,vec3(2.2))*lighting,0.,1.);
             // Range fog on view depth, capped at fogmaxdensity, squared, mixed in linear light (common_ps_fxc.h CalcRangeFog, BlendPixelFog).
             float f=min(fogRange.z,clamp((fogDepth-fogRange.x)/max(fogRange.y-fogRange.x,1e-4),0.,1.));
-            if(fogTo>=0.)rgb=mix(rgb,fogColor*fogTo,f*f);
+            if(fogTo==.5)rgb=mix(rgb,vec3(.2176),f*f); else if(fogTo>=0.)rgb=mix(rgb,fogColor*fogTo,f*f);  // .2176: grey .5 in linear
             rgb=pow(rgb,vec3(1./2.2));
             gl_FragColor=vec4(rgb*tint,(useAlpha?base.a:1.)*alpha);}`
       });

@@ -254,12 +254,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   // wide (page units) and aspect x size tall, facing the camera; a screen sprite (UE1 corona) is a square `size` x the
   // viewport's width wide whatever its distance. Occluded sprites are those the line to the eye finds a world
   // triangle on; they fade out (and back in) over `fade` seconds. Depth-tested unless depth is false.
-  const BLEND = {add: ['OneFactor', 'OneFactor'], translucent: ['OneFactor', 'OneMinusSrcColorFactor'],
+  // add: Source's additive sprites (the texture's alpha scales what is added); translucent: UE1's (colour only).
+  const BLEND = {add: ['SrcAlphaFactor', 'OneFactor'], translucent: ['OneFactor', 'OneMinusSrcColorFactor'],
     alpha: ['SrcAlphaFactor', 'OneMinusSrcAlphaFactor'], modulate: ['DstColorFactor', 'SrcColorFactor']};
   const overlay = new THREE.Scene();  // Sprites drawn after the level without depth (coronas).
   let blocked = null;
   async function buildSprites(geometry) {
-    const quad = new THREE.PlaneGeometry(1, 1), viewAspect = {value: 1};
+    const quad = new THREE.PlaneGeometry(1, 1), viewAspect = sprites.viewAspect = {value: 1};
     if (map.sprites.some(batch => batch.occlude)) blocked = occluderGrid(geometry);
     for (const batch of map.sprites) {
       const texture = await loadTexture(batch.texture), n = batch.items.length;
@@ -279,7 +280,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         transparent: true, depthWrite: false, depthTest: batch.depth !== false && !batch.screen, side: THREE.DoubleSide,
         blending: THREE.CustomBlending, blendSrc: THREE[src], blendDst: THREE[dst],
         uniforms: {surface: {value: texture}, screen: {value: !!batch.screen}, aspect: {value: batch.aspect || 1}, viewAspect,
-          modulate: {value: batch.blend === 'modulate'}, additive: {value: batch.blend === 'add' || batch.blend === 'translucent'}},
+          modulate: {value: batch.blend === 'modulate'}, additive: {value: batch.blend === 'translucent'}},
         vertexShader: `attribute vec3 center; attribute float size, shown; attribute vec4 tint; uniform bool screen, additive, modulate;
         uniform float aspect, viewAspect; varying vec2 at; varying vec4 colour;
         void main() {
@@ -303,7 +304,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       sprites.push({batch, material, frames, shown, attribute: shape.attributes.shown, target: new Uint8Array(n), next: 0,
         centers: batch.items.map(values => new THREE.Vector3(values[0], values[1], values[2]))});
     }
-    sprites.viewAspect = viewAspect;
   }
   const frustum = new THREE.Frustum(), viewProjection = new THREE.Matrix4();
   let lastSeconds = 0;
@@ -379,7 +379,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       mover.geometry = new THREE.BufferGeometry();
       for (const [name, attribute] of Object.entries(geometry.attributes)) mover.geometry.setAttribute(name, attribute);
       mover.geometry.setIndex(geometry.index);
-      moving.push(mover);
     }
     if (config) await config.load(map, loadTexture);
     if (quake) quakeColormap = await loadTexture('colormap.png');
@@ -393,6 +392,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       (map.movers?.[group.mover]?.geometry || geometry).addGroup(group.start, group.count, index);
       const material = surfaceMaterial(group, !config && !quake2 && !daikatana && !anachronox && !sin && group.flags & FAKE_BACKDROP ? null : await loadTexture(group.texture));
       for (const extra of extras()) extra.patchMaterial?.(material, group, map);
+      // Decals and overlays lie on their surfaces: drawn a little nearer, as the engine's decal depth bias does.
+      if (group.decal) Object.assign(material, {polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4});
       trackNPC(material, group);
       // Frame chains (Quake +0..+9, Quake II/SiN nexttexinfo, UE1 AnimNext, Source AnimatedTexture): every frame's
       // texture, swapped at the chain's rate. ponytail: world groups only; placed models keep their first frame.
@@ -402,9 +403,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       return material;
     }));
     scene.add(new THREE.Mesh(geometry, materials));
-    for (const mover of moving) {
+    for (const mover of map.movers || []) {  // moved each frame from here on
       mover.mesh = Object.assign(new THREE.Mesh(mover.geometry, materials), {frustumCulled: false, matrixAutoUpdate: false});
       scene.add(mover.mesh);
+      moving.push(mover);
     }
     if (map.sprites?.length) await buildSprites(geometry, materials);
     if (config && config.buildInstances) {

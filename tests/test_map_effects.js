@@ -47,7 +47,7 @@ const close = (a, b, message) => assert.ok(Math.abs(a - b) < 1e-5, `${message}: 
   assert.equal(context.overlay.children.length, 1, 'screen sprites draw after the level');
   assert.equal(context.sprites.length, 2);
   assert.equal(context.sprites[1].shown[0], 1, 'plain sprites show at once');
-  assert.equal(context.sprites[1].material.uniforms.additive.value, true);
+  assert.equal(context.sprites[1].material.blendSrc, THREE.SrcAlphaFactor, 'additive sprites keep their texture alpha');
   camera.position.set(0, 0, 6); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
   context.updateSprites(0); context.updateSprites(.05);
   close(context.sprites[0].shown[0], .5, 'half faded in after half the fade');
