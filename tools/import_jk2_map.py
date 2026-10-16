@@ -686,7 +686,8 @@ def import_maps(install,output,replace=False,*,rules=None):
             if hasattr(writer,'store'):texture_stores.append(writer.store)
         rules=SimpleNamespace(read_bsp=lambda raw,notes:read_bsp(raw,notes,section=section,light_scale=game.lighting['sourceLightScale']),
             brush_state=config.brush_state,filtered=lambda e,s:config.entity_filter(game,e),describe=describe,
-            viewpoints=lambda things,collision,s:config.map_viewpoints(game,things,collision),place_entities=config.place_entities,Collision=Collision)
+            viewpoints=lambda things,collision,s:config.map_viewpoints(game,things,collision),place_entities=config.place_entities,Collision=Collision,
+            MOVERS='ravensp' if section=='sp' else 'q3',ID_FLARES=False,FLARE_CARDS=True)
         classes=Counter()
         for path in config.map_paths(game):
             name=path[5:-4];chosen,why=config.section_for(name)

@@ -28,6 +28,8 @@ qmap,rtcw=base.qmap,et.rtcw
 vector,number=base.vector,base.number
 # SetFarClip ends the view at the global fog's depth for opaque.
 GLOBAL_FOG_CLIPS=True
+NAMED_SUN=True  # tr_shader.c: ET draws the sunshader it names; RTCW always 'sun'.
+DLIGHT_NOTE='dynamic light: STARTOFF (spawnflags 2) until a script switches it on (SP_dlight)'
 MAPS=('battery','fueldump','goldrush','oasis','radar','railgun')
 # Stock maps place only the objective item, whose model is supplied by its entity.
 # bg_misc.c world-model facts for the health/ammo pickups retained by ET.

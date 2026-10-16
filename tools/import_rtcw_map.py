@@ -380,6 +380,38 @@ def brush_state(entity,model,things):
     return dict(origin=pos,angles=rot,scale=scale(entity),hidden=hidden,model2=BRUSH_PROP_MODELS.get(cls,entity.get('model2','')))
 
 
+def coronas(things,section,rules):
+    """Corona entities as CG_Corona draws them: _color or color (whichever the entity names last; none or black is
+    white) and scale (SP_corona); START_OFF ones are never linked."""
+    result=[]
+    for e in things:
+        if e.get('classname','').lower()!='corona' or int(number(e,'spawnflags'))&1 or rules.filtered(e,section):continue
+        colour=next((vector(v) for k,v in reversed(list(e.items())) if k in ('_color','color')),[0,0,0])
+        result.append(dict(origin=vector(e.get('origin')),colour=colour if any(c>0 for c in colour) else [1,1,1],scale=number(e,'scale',1)))
+    return result
+
+
+def sun(game,shaders,textures,rules):
+    """RB_DrawSun's direction and shader, or None: drawn where a used shader names a sunshader (RTCW always draws
+    'sun', ET the shader named); the direction is the last q3map_sun's (ParseShader), else tr_bsp's default."""
+    rows=[r for s in shaders if s for r in game.shaders.get(s['name'],([],[]))[0]]
+    named=next((r for r in rows if r[0]=='sunshader' and len(r)>1),None)
+    if not named:return None,[]
+    light=[qmap.numbers(r[5:7],2) for r in rows if r[0]=='q3map_sun' and len(r)>6]
+    a,b=(math.radians(v) for v in light[-1]) if light else (None,None)
+    direction=[math.cos(a)*math.cos(b),math.sin(a)*math.cos(b),math.sin(b)] if light else [.45,.3,.9]
+    shader,missing,_=rules.describe(game,qmap.shader_name(named[1] if getattr(rules,'NAMED_SUN',False) else 'sun'),textures)
+    return dict(direction=direction,shader=shader),missing
+
+
+def mover_pose(states,index,entity):
+    """The spawn pose brush_geometry baked a mover's faces in, and the angles its motion turns from (qmap.movers)."""
+    state=states.get(index)
+    if not state or state['hidden'] or state.get('model2'):return None,None
+    rest=[0,0,0] if entity.get('classname','').lower() in ('func_door','func_button','func_plat','func_train','func_secret') else angles(entity)
+    return dict(origin=state['origin'],angles=state['angles']),rest
+
+
 def transformed(point,state,normal=False):
     values=[x/(s if normal else 1) if normal else x*s for x,s in zip(point,state['scale'])]
     basis=rtcw.axis([math.radians(x) for x in state['angles']])
@@ -639,7 +671,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
         state=rules.brush_state(e,models[idx],things);state['hidden']=rules.filtered(e,game.section) or state['hidden'];states[idx]=state
     collision=getattr(rules,'Collision',Collision)(lumps,states);draw=brush_geometry(lumps,states)
     names=[(qmap.shader_name(s.split(b'\0')[0].decode('latin1')),flags) for s,flags,_ in struct.iter_unpack('<64sii',lumps[1])]
-    used={struct.unpack_from('<i',draw[13],at)[0] for at in range(0,len(draw[13]),104) if struct.unpack_from('<i',draw[13],at+8)[0] in (1,2,3)}
+    # Raven draws a flare surface with its own shader (FLARE_CARDS); id's renderer with its flare shader.
+    kinds=[struct.unpack_from('<i',draw[13],at+8)[0] for at in range(0,len(draw[13]),104)]
+    used={struct.unpack_from('<i',draw[13],at*104)[0] for at,kind in enumerate(kinds) if kind in ((1,2,3,4) if getattr(rules,'FLARE_CARDS',False) else (1,2,3))}
     shaders=[None]*len(names);limits=set(NOT_DRAWN)
     if hasattr(rules,'NPC_DEFAULTS'):
         limits.discard('AI characters')
@@ -647,6 +681,12 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     for i in sorted(used):
         if names[i][1]&qmap.SURF_NODRAW:continue
         shaders[i],missing,notes=rules.describe(game,names[i][0],textures);unresolved+=missing;limits.update(notes)
+    effects={}
+    if getattr(rules,'ID_FLARES',True):
+        effects['coronas']=coronas(things,game.section,rules)
+        if effects['coronas'] or 4 in kinds:
+            effects['flareShader'],missing,_=rules.describe(game,'flareshader',textures);unresolved+=missing
+        effects['sun'],missing=sun(game,shaders,textures,rules);unresolved+=missing
     placed=[];item_models={};teams=set()
     for serial,e in (enumerate(things) if not hasattr(rules,'place_entities') else []):
         cls=e.get('classname','').lower();reason=rules.filtered(e,game.section);status='omitted';paths=[]
@@ -686,7 +726,9 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
                     path,sideways=pickup_model(game,item,e.get('model',''))
                     paths=[path] if path else []
                     reason='item table has no world model' if not paths else ''
-            elif cls.startswith(('trigger_','target_','info_','light','dlight','corona','path_')) or cls in ('worldspawn','props_skyportal','misc_vis_dummy','misc_vis_dummy_multiple'):
+            elif cls=='corona':status,reason=('omitted','START_OFF corona') if flags&1 else ('drawn','corona with the flare shader (CG_Corona)')
+            elif cls=='dlight':reason=getattr(rules,'DLIGHT_NOTE','dynamic light: none drawn with r_dynamiclight 0 (wolfconfig.cfg)')
+            elif cls.startswith(('trigger_','target_','info_','light','path_')) or cls in ('worldspawn','props_skyportal','misc_vis_dummy','misc_vis_dummy_multiple'):
                 reason='world/control/light entity; no standalone visual'
             elif cls in ('script_model_med','props_decoration') and flags&1:reason='START_INVIS'
             elif cls=='misc_spotlight':reason='spotlight camera/effect not reconstructed'
@@ -760,6 +802,8 @@ def import_map(game,name,ident,raw,source,output,textures,model_textures, *, rul
     scene=dict(name=name,longname=things[0].get('message','') if things else '',source=source,section=game.section,bsp=file,bspVersion=47,
                shaders=shaders,viewpoints=views,models=[],items=[],placed=placed,itemModels=item_models,lighting=game.lighting,bspCull=qmap.read_visibility(lumps),
                fogs=fogs,**({'mapFog':wolf_fog} if wolf_fog else {}),**({'farClip':max(64,min(far))} if far else {}),
+               movers=qmap.movers(things,lumps[7],getattr(rules,'MOVERS','wolf'),lambda index,e:mover_pose(states,index,e)),
+               **{key:value for key,value in effects.items() if value},
                entityResults=audit,bspNotes=bsp_notes,unresolved=sorted(set(unresolved)),outside=[],guessed=[],limits=sorted(limits))
     folder=output/'maps'/ident;folder.mkdir(parents=True,exist_ok=True);rtcw.q3.json_write(folder/'scene.json',scene)
     return scene

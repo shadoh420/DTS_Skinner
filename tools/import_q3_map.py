@@ -21,6 +21,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import re
 import struct
@@ -556,6 +557,67 @@ def fog_volumes(lumps, shaders):
     return result
 
 
+def mover_motion(thing, things, mins_z, rules='q3', gravity=800):
+    """How g_mover.c moves a brush entity once it has spawned, relative to its spawn origin and angles; None for
+    one that keeps still. sine: origin + sin(2π(t / period - phase)) · delta (func_bobbing); spin: angles + t · rate
+    (func_rotating); swing: roll + sin(2π(t / period - phase)) · amplitude (func_pendulum); path: the corners in
+    turn, waiting at each, then moving straight on to the next (Reached_Train). `rules`: 'q3' (Q3 and Raven MP),
+    'wolf' (RTCW, ET: func_rotating turns only with START_ON) or 'ravensp' (JK2/JA SP: also func_bobbing START_OFF
+    and trains that wait to be used). ponytail: Raven SP trains turning at corners keep their heading."""
+    cls, flags = thing.get('classname', '').lower(), int(numbers([thing.get('spawnflags', '0')], 1)[0])
+    value = lambda key, default, of=thing: numbers([of.get(key, default)], 1)[0]
+    if cls == 'func_bobbing' and not (rules == 'ravensp' and flags & 4):
+        delta = [0.0, 0.0, 0.0]
+        delta[0 if flags & 1 else 1 if flags & 2 else 2] = value('height', '32')
+        return dict(type='sine', delta=delta, period=value('speed', '4'), phase=value('phase', '0'))
+    if cls == 'func_rotating' and (rules == 'q3' or flags & 1):
+        rate = [0.0, 0.0, 0.0]
+        rate[2 if flags & 4 else 0 if flags & 8 else 1] = value('speed', '0') or 100.0
+        return dict(type='spin', rate=rate)
+    if cls == 'func_pendulum':
+        frequency = math.sqrt(gravity / (3 * max(abs(mins_z), 8))) / (2 * math.pi)
+        return dict(type='swing', amplitude=value('speed', '30'), period=1 / frequency, phase=value('phase', '0'))
+    if cls == 'func_train' and not (rules == 'ravensp' and thing.get('targetname') and not flags & 1):
+        corners = {}
+        for other in things:  # G_Find: the first path_corner of a name.
+            if other.get('classname', '').lower() == 'path_corner' and other.get('targetname'):
+                corners.setdefault(other['targetname'], other)
+        chain, at = [], corners.get(thing.get('target'))
+        while at is not None and all(at is not seen for seen in chain) and len(chain) < 256:
+            chain.append(at)
+            at = corners.get(at.get('target'))
+        if len(chain) < 2 or at is not chain[0]:
+            return None  # Think_SetupTrainTargets gives up unless every corner leads on, round to the first.
+        points = [numbers(corner.get('origin', '').split(), 3) for corner in chain]
+        legs = []
+        for index, corner in enumerate(chain):
+            speed = max(value('speed', '0', corner) or value('speed', '0') or 100.0, 1.0)
+            legs.append(dict(wait=max(value('wait', '0', corner), 0.0), duration=math.dist(points[index], points[(index + 1) % len(points)]) / speed))
+        return dict(type='path', points=points, legs=legs)
+    return None
+
+
+def movers(things, models_lump, rules='q3', placed=None):
+    """The moving brush entities of a map: inline model, the pose its faces were written in (base), the spawn
+    origin and angles its motion starts from, and the motion. `placed(index, thing)` gives the base pose where
+    the import moved the model itself, with the angles its motion starts from (None for a hidden model); Q3 only
+    adds the entity's origin and never turns a brush model."""
+    models = list(struct.iter_unpack('<6f4i', models_lump[:len(models_lump) // 40 * 40]))
+    result = []
+    for thing in things:
+        if not re.fullmatch(r'\*\d+', thing.get('model', '')) or not 0 < int(thing['model'][1:]) < len(models):
+            continue
+        index = int(thing['model'][1:])
+        motion = mover_motion(thing, things, models[index][2], rules)
+        if not motion:
+            continue
+        origin = numbers(thing.get('origin', '').split(), 3)
+        base, rest = placed(index, thing) if placed else (dict(origin=origin, angles=[0.0, 0.0, 0.0]), [0.0, 0.0, 0.0])
+        if base:
+            result.append(dict(model=index, base=base, origin=origin, angles=rest, **motion))
+    return result
+
+
 def entities(text):
     result = []
     for block in re.findall(r'\{([^{}]*)\}', text):
@@ -619,6 +681,7 @@ def import_map(game, name, ident, raw, source, output, textures):
                                              if shader for item in shader.get(kind, []))) for kind in ('outside', 'guessed')},
                  models=[dict(model=int(thing['model'][1:]), origin=vector(thing['origin'])) for thing in things
                          if re.fullmatch(r'\*\d+', thing.get('model', '')) and 'origin' in thing],
+                 movers=movers(things, lumps[7]),
                  unresolved=unresolved, limits=notes)
     (folder / 'scene.json').write_text(json.dumps(scene, separators=(',', ':')), encoding='utf-8')
     return scene
