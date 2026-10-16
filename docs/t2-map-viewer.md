@@ -106,8 +106,9 @@ public `tribes2/engine` repository (read as a behaviour reference only):
   `color1..3`, falling `minVelocity..maxVelocity` per frame, drifting with
   the sky's wind when `windEffectPrecipitation` is set; drops starting at the
   top fade in as they fall (`precipitation.cc`, observer branch). V12 moves a
-  drop once per rendered frame; the page assumes 30 frames a second
-  (`FRAME_RATE`, unchecked against the game).
+  drop once per rendered frame, so the game's rain and snow fall faster the
+  faster it draws; the page uses the rate measured in the game on the
+  reference PC, 290 frames a second (`FRAME_RATE`; see the game check below).
 - **Lightning** (7 missions): `strikesPerMinute` strikes at random points of
   the object's box, three forking bolts each from `boltStartRadius` at the
   top down to what a ray hits, drawn additively with the datablock's strike
@@ -128,9 +129,13 @@ public `tribes2/engine` repository (read as a behaviour reference only):
   every non-alarm light loops between its states and the affected lightmap
   texels are the original plus intensity * colour, as
   `InteriorInstance::updateLightMap` does. Alarm-only lights stay off.
-- **Lava overlay**: inside a lava block, the two `submergeTexture` layers
-  ripple over the screen at half opacity (`underLava.cc`). Water blocks keep
-  upstream's tint; V12 never shows a water block's submerge textures.
+- **Lava overlay**: inside a lava block's fluid, the two `submergeTexture`
+  layers ripple over the screen at half opacity (`underLava.cc`). The fluid
+  exists only in blocks (64 m, or 32 m for a block under a quarter of the
+  terrain) where some terrain point lies below the surface plus half the
+  wave height (`fluid::RebuildMasks`, `IsFluidAtXY`), so under the ground
+  there is no overlay. Water blocks keep upstream's tint; V12 never shows a
+  water block's submerge textures.
 - **Mission-placed vehicles** (4: Alcatraz, Training1, Training3): drawn from
   their datablock's shape like static shapes (build-time patch to the
   mission bridge).
@@ -140,6 +145,28 @@ whether the Sky draws its box's bottom face, and upstream's sky already
 returns full fog for every direction below the horizon, so the face cannot
 show either way; one mission, Acid Rain, sets it); the terrain's `hazeDistance` (not a V12 TerrainBlock field, so the
 game ignores it too); audio (off by design).
+
+#### Game check (2026-10-16)
+
+Tribes 2 itself (build 25034, this install, windowed 1280x720, FOV 90) was
+driven by a temporary `base/autoexec.cs` that posed the observer camera and
+called `screenShot()`, with fast window grabs where screenshots would stall the
+game. The page was rendered at the same poses, 1280x720, horizontal FOV 90.
+
+| Feature | Game | Page | Verdict |
+| --- | --- | --- | --- |
+| Snow, Katabatic camera 1: flakes in the open sky | 48-49, 3 px | 54-59, 3 px | matches |
+| Snow speed, flake widths per second (median / p75) | 176 / 381 at 282-295 fps | 79 / 147 at the old 30; 157 / 379 at 290 | fixed: `FRAME_RATE` 290 |
+| Lightning, Acid Rain storm | forking bolts top to ground, white core, yellow fringe | same geometry and look | matches |
+| Smoke, Firestorm vent | grey plume | same | matches |
+| Interior light, Caldera floor block | 60.3, flashing to 71.6 every ~1.3 s | 60.3, flashing to 71.8 every ~1.3 s | matches |
+| Lava overlay, Magmatic open lava | RGB 164 / 32 / 1 | 167 / 34 / 2 | matches |
+| Lava overlay, under Magmatic's terrain | none | was drawn | fixed: fluid blocks |
+| Vehicles, Alcatraz | HAPC and MPB placed | same places | matches |
+| Fireballs, Firestorm | none crossed the view in 12 s | — | not compared |
+
+The game also culls the water surface itself in blocks without fluid, which
+upstream draws whole; it only shows from under the terrain.
 
 ## Coverage
 
