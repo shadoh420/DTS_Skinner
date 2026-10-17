@@ -79,6 +79,38 @@ vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
   return sky;
 }
 
+// Cirrus, thin ice cirrusHeight km up, laid over sky (what lies behind it) by cover (1, or the share the clouds in front let
+// through); air is the sky's light there. Also split out, and drawn per pixel where the air comes from a texture:
+// overhead its fibres are finer than a sky texture's texels.
+vec3 skinnerCirrus(vec3 d, vec3 sky, vec3 air, float cover) {
+  float fade = smoothstep(-.01, .08, d.z);
+  if (cirrusCoverage <= 0. || fade <= 0.) return sky;
+  vec3 sun = toward(sunAzimuth, sunElevation), moon = toward(moonAzimuth, moonElevation);
+  vec3 sunLight = sunColor * sunIntensity, moonLight = moonColor * moonIntensity * (.5 - .5 * dot(sun, moon));
+  float t = distanceTo(cirrusHeight, d.z);
+  vec2 uv = d.xy * t / cirrusScale + fract(cirrusSpeed.xy * uTime / cirrusScale), p = d.xy * t + cirrusSpeed.xy * uTime;
+  // Streaks along x: where the ice is, from two reads stretched 3:1 (all a distant streak shows).
+  float streak = texture2D(skyNoise, vec2(uv.x * .5, uv.y * 1.5)).r * .6 + texture2D(skyNoise, vec2(uv.x * 1.3, uv.y * 4.)).b * .4;
+  // Their fibres: the fine noise stretched 30:1 along the wind is long parallel hairs, unevenly spaced, from a few km
+  // apart down to tens of metres. Two sizes (cirrusFibreScale km across a tile, and a sixth of it), turned a little
+  // against each other and bent together by one coarse read. Far off, mipmapping averages them to the noise's mean
+  // (.5), so distant streaks keep their brightness.
+  float bend = (texture2D(skyNoise, p * vec2(.002, .006) + .27).r - .5) * 4., fibres = 0.;
+  UNROLL for (int k = 0; k < 2; k++) {
+    float size = cirrusFibreScale / pow(6., float(k)), turn = .1 * float(k) - .05;
+    vec2 q = vec2(cos(turn) * p.x + sin(turn) * p.y, cos(turn) * p.y - sin(turn) * p.x + bend);
+    fibres += texture2D(skyNoise, vec2(q.x / (size * 30.), q.y / size) + float(k) * .37).b;
+  }
+  // Optical thickness: the fibres fray the streaks' edges, thin ice lets the sky through and strand cores hardly.
+  // Thick cirrus a step toward the sun shades what lies behind it, so streaks have a lit side and a dim one.
+  float wisp = smoothstep(1. - cirrusCoverage, 1.3 - cirrusCoverage, streak + (fibres - 1.) * .4 * cirrusFibres);
+  float alpha = 1. - exp(-wisp * max(1. + (fibres * fibres - 1.) * cirrusFibres, 0.) * .5 * cirrusOpacity);
+  float shadow = smoothstep(1. - cirrusCoverage, 1.3 - cirrusCoverage, texture2D(skyNoise, vec2(uv.x * .5, uv.y * 1.5) + sun.xy * .03).r * 1.1);
+  vec3 light = (sunLight * toLight(PLANET + cirrusHeight, sun.z) * (.06 + .5 * phaseM(dot(d, sun), .7)) * (1. - .5 * shadow)
+    + moonLight * toLight(PLANET + cirrusHeight, moon.z) * .3 + air) * cloudColor;
+  return mix(sky, mix(light, air, 1. - exp(-t / 300.)), alpha * fade * cover);
+}
+
 vec3 skinnerSky(vec3 d) {
   vec3 sun = toward(sunAzimuth, sunElevation), moon = toward(moonAzimuth, moonElevation);
   vec3 sunLight = sunColor * sunIntensity, moonLight = moonColor * moonIntensity * (.5 - .5 * dot(sun, moon));
@@ -107,15 +139,9 @@ vec3 skinnerSky(vec3 d) {
   vec3 sky = air;
   #ifndef SKINNER_SKIP_BEHIND
   if (d.z > 0.) sky += skinnerBehind(d, air, transmit);
+  sky = skinnerCirrus(d, sky, air, 1.);
   #endif
   float fade = smoothstep(-.01, .08, d.z);
-  if (cirrusCoverage > 0. && fade > 0.) {  // Thin streaks 9 km up, stretched along x.
-    float t = distanceTo(9., d.z);
-    vec2 uv = d.xy * t / cirrusScale + fract(cirrusSpeed.xy * uTime / cirrusScale);
-    float wisp = smoothstep(1. - cirrusCoverage, 1.3 - cirrusCoverage, texture2D(skyNoise, vec2(uv.x * .5, uv.y * 1.5)).r * .6 + texture2D(skyNoise, vec2(uv.x * 1.3, uv.y * 4.)).b * .4);
-    vec3 light = (sunLight * toLight(PLANET + 9., sun.z) * (.06 + .5 * phaseM(mu, .7)) + moonLight * toLight(PLANET + 9., moon.z) * .3 + air) * cloudColor;
-    sky = mix(sky, mix(light, air, 1. - exp(-t / 300.)), wisp * .45 * fade);
-  }
   if (cloudCoverage > 0. && fade > 0.) {  // A layer of heaped clouds, shaded by a second look toward the sun.
     float t = distanceTo(cloudHeight, d.z), edge = 1. - cloudCoverage;
     vec2 uv = d.xy * t / cloudScale + fract(cloudSpeed.xy * uTime / cloudScale);

@@ -39,6 +39,10 @@ Shader "Skinner/Volumetric Sky"
         cloudOpacity ("Cloud opacity", Float) = 1
         cirrusCoverage ("Cirrus coverage", Float) = 0
         cirrusScale ("Cirrus tile (km)", Float) = 150
+        cirrusHeight ("Cirrus height (km)", Float) = 9
+        cirrusFibres ("Cirrus fibres", Float) = 1
+        cirrusFibreScale ("Cirrus fibre tile (km)", Float) = 24
+        cirrusOpacity ("Cirrus opacity", Float) = 1
         cirrusSpeed ("Cirrus wind (km/s)", Vector) = (0.04, 0.01, 0, 0)
         auroraIntensity ("Aurora", Float) = 0
         auroraColor ("Aurora low colour", Vector) = (0.1, 1, 0.4, 0)
@@ -81,7 +85,8 @@ Shader "Skinner/Volumetric Sky"
             {
                 float3 d = normalize(i.dir).xzy;  // Unity is y up: the sky's z up is its y.
                 float4 c = tex2D(_SkinnerPano, panoUV(d));
-                return float4(c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : float3(0., 0., 0.)), 1.);
+                float3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : float3(0., 0., 0.));
+                return float4(skinnerCirrus(d, s, c.rgb, c.a * c.a), 1.);  // Under the clouds, per pixel, as skies.js.
             }
             ENDCG
         }
