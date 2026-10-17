@@ -109,7 +109,11 @@ vec3 skinnerSky(vec3 d) {
   if (cirrusCoverage > 0. && fade > 0.) {  // Thin streaks 9 km up, stretched along x.
     float t = distanceTo(9., d.z);
     vec2 uv = d.xy * t / cirrusScale + fract(cirrusSpeed.xy * uTime / cirrusScale);
-    float wisp = smoothstep(1. - cirrusCoverage, 1.3 - cirrusCoverage, texture2D(skyNoise, vec2(uv.x * .5, uv.y * 1.5)).r * .6 + texture2D(skyNoise, vec2(uv.x * 1.3, uv.y * 4.)).b * .4);
+    // Overhead the streaks are near and their noise is magnified into smears, so finer fibres along them cut them into
+    // strands there (eroding away from the noise's mid-level lines); they fade out with distance, where they would sparkle.
+    float close = 1. - smoothstep(12., 45., t), fibres = abs(texture2D(skyNoise, vec2(uv.x * 4., uv.y * 16.)).b - .5);
+    float wisp = smoothstep(1. - cirrusCoverage, 1.3 - cirrusCoverage, texture2D(skyNoise, vec2(uv.x * .5, uv.y * 1.5)).r * .6
+      + texture2D(skyNoise, vec2(uv.x * 1.3, uv.y * 4.)).b * .4 - fibres * .6 * close);
     vec3 light = (sunLight * toLight(PLANET + 9., sun.z) * (.06 + .5 * phaseM(mu, .7)) + moonLight * toLight(PLANET + 9., moon.z) * .3 + air) * cloudColor;
     sky = mix(sky, mix(light, air, 1. - exp(-t / 300.)), wisp * .45 * fade);
   }
