@@ -54,7 +54,7 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 | `cloudCoverage`, `cloudSoftness` | .5, .15 | Heaped clouds: how much of the sky, and how soft their edges |
 | `cloudScale`, `cloudHeight`, `cloudSpeed` | 20, 2, (.02, .005, 0) | Noise tile size (km), layer height (km), wind (km/s) |
 | `cloudColor`, `cloudDarkness`, `cloudOpacity` | (1, 1, 1), 1, 1 | Tint, how dark thick clouds get, overall opacity |
-| `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | .3, 150, (.04, .01, 0) | Thin streaks 9 km up |
+| `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | 0, 150, (.04, .01, 0) | Thin streaks 9 km up; off in every preset (flat and smeared overhead) |
 | `auroraIntensity`, `auroraColor`, `auroraColor2` | 0, (.1, 1, .4), (.6, .2, 1) | Curtains 100 to 175 km up, low colour to high colour |
 | `fogColor` | (.9, .92, .93) | Unity only: `RenderSettings.fogColor`. The page measures its own haze |
 

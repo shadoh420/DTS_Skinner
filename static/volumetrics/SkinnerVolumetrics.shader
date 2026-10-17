@@ -40,7 +40,7 @@ Shader "Hidden/Skinner Volumetrics"
         cloudColor ("Cloud colour", Vector) = (1, 1, 1, 0)
         cloudDarkness ("Cloud darkness", Float) = 1
         cloudOpacity ("Cloud opacity", Float) = 1
-        cirrusCoverage ("Cirrus coverage", Float) = 0.3
+        cirrusCoverage ("Cirrus coverage", Float) = 0
         cirrusScale ("Cirrus tile (km)", Float) = 150
         cirrusSpeed ("Cirrus wind (km/s)", Vector) = (0.04, 0.01, 0, 0)
         auroraIntensity ("Aurora", Float) = 0
