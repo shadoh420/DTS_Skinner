@@ -35,9 +35,13 @@ From the console:
    - Samples are skipped where there is no cloud, and the march stops once 98% of the light is blocked.
 3. **Screen sky.** Per pixel, the sky texture is read, then `skinnerBehind` adds the sharp parts: sun disc, stars,
    Milky Way, moon and aurora, dimmed by the air and the clouds.
-4. **Fog ring.** A 64×1 texture holds the fog colour by azimuth: the sky texture averaged over 72° of azimuth and 2–26°
-   up (21 reads). It includes the sun's glow and the clouds.
-   A sharp ring (one direction 3° up) showed through thin fog on the sky as spokes from the zenith.
+4. **Fog ring.** A 64×1 texture holds the fog colour by azimuth: the sky texture 2–26° up, averaged round under a
+   triangle weight reaching 54° to each side, read every 6° (51 reads). It includes the sun's glow and the clouds.
+   - A sharp ring (one direction 3° up) showed through thin fog on the sky as spokes from the zenith.
+   - The first ring read every 12° under equal weights over 72° (21 reads). Its reads beat against the ring's 5.6°
+     texels, and a low sun's glow stepped in and out at the window's edges: a hard-edged bright band in the fog below
+     the sun (Fogbound storm, Stormfront). Read back on Raindance (Fogbound storm), the second difference between
+     neighbouring texels under the sun was up to 0.17; the triangle brings it to 0.03, the level of a dense 0.5° average.
 5. **Height fog** (`SkinnerFog.cginc`). Exponential in height, integrated along the view ray in closed form, with no
    march. It is applied after the scene from the depth buffer, together with exposure, ACES and dither.
    - Keys: `fogDensity` (per metre at `fogBase`), `fogHeight` (metres over which it thins by e) and `fogBrightness`.
