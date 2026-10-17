@@ -259,7 +259,7 @@ window.t1Skies = {
       void main() {
         vec3 d = normalize(vDir);
         vec4 c = texture2D(pano, panoUV(d));
-        vec3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.));
+        vec3 s = c.rgb + skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a);
         // Under the clouds, per pixel (finer than the sky texture overhead). The texture keeps air and cloud light summed,
         // so laying cirrus over by alpha replaces some cloud light too; a² roughly halves that over thin cloud (exact needs
         // air and cloud light kept apart).
@@ -277,7 +277,7 @@ window.t1Skies = {
         vec4 lit = skinnerFlashFog(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb);  // The ring, and the world, during a flash.
         gl_FragColor = vec4(mix(display(lit.rgb * fogBrightness), texture2D(sceneColor, vUv).rgb * (z >= 1. ? 1. : lit.a), through), 1.);
       }`, F);
-    // The space backdrop, when the preset has one: 2048x2048 (0.04-0.09 degrees a texel), 32 MB, baked on the first update().
+    // The space backdrop, when the preset has one: 2048x2048 over the whole sphere (0.06-0.13 degrees a texel), 32 MB, baked on the first update().
     let spaceTarget = null, spaceScene = null;
     if (U.spaceIntensity.value > 0) {
       spaceTarget = new THREE.WebGLRenderTarget(2048, 2048, {...half, wrapS: THREE.ClampToEdgeWrapping});

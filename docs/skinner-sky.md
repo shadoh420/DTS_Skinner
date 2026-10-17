@@ -73,8 +73,11 @@ fractal from Shadertoy (MIT; the notice is in `SkinnerSpace.cginc`). It fades in
 as the stars do. Deep space uses it at 1, with no air (`rayleigh`, `ozone`, `mie` and `nightColor` at 0) and no fog.
 - Star Nest marches 20 steps of 17 iterations per pixel, too slow for every frame. Its eye and clock are frozen, so it
   depends only on the view direction, and it is baked once per preset into a 2048 × 2048 half-float texture (32 MB).
-  The texture covers the upper hemisphere folded onto a square (hemi-octahedral): no poles and no seam, 0.04–0.09° a
-  texel. Below the horizon the backdrop is not drawn.
+  The texture covers the whole sphere folded onto a square (octahedral): no poles, smooth across the horizon, 0.06–0.13°
+  a texel. Below the horizon the backdrop still shows (an airless sky has no haze there), so it fills any gap between
+  the world's edge and the horizon. A sky with a backdrop is taken as airless, so its other stars go on below the horizon
+  too, seen without the planet's shadow (which would draw a dark seam along it). In other skies stars fade out over the
+  last 3° above the horizon.
 - Colour: the original writes `v * .01` to the screen. The bake stores that decoded with 2.2, times 4.7, the inverse
   of ACES's slope at black, so it shows about as on Shadertoy at exposure 1 and `spaceIntensity` 1.
 - The page bakes it on the first `update()` (`skies.js` `bakeSpace`). Unity bakes it in `Hidden/Skinner Volumetrics`

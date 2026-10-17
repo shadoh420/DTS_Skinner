@@ -1,6 +1,6 @@
 // Skinner Sky's space backdrop: Star Nest's volumetric fractal, seen from one fixed point at one fixed moment, so it
 // depends only on the view direction. It is too slow to run per screen pixel (20 steps x 17 iterations), so it is
-// baked once per preset into a 2048x2048 texture over the upper hemisphere (spaceDir/spaceUV), and skinnerBehind
+// baked once per preset into a 2048x2048 texture over the whole sphere (spaceDir/spaceUV), and skinnerBehind
 // reads that texture where spaceIntensity > 0. Same GLSL/HLSL subset as SkinnerSky.cginc; include it before that file.
 // The wrapper declares the texture spaceMap and SAMPLE_PLAIN(sampler, uv), a read with no v flip (a render target's
 // rows run the same way as its pixels on every API).
@@ -18,9 +18,12 @@
 //   DEALINGS IN THE SOFTWARE.
 #define SKINNER_SPACE
 
-// The upper hemisphere folded onto a square (hemi-octahedral): no poles, no seam, texels within 2x of even in size.
-vec3 spaceDir(vec2 uv) { vec2 q = uv * 2. - 1., p = vec2(q.x + q.y, q.x - q.y) * .5; return normalize(vec3(p, 1. - abs(p.x) - abs(p.y))); }
-vec2 spaceUV(vec3 d) { vec2 p = d.xy / (abs(d.x) + abs(d.y) + max(d.z, 0.) + 1e-6); return vec2(p.x + p.y, p.x - p.y) * .5 + .5; }
+// The whole sphere folded onto a square (octahedral): the upper half is the diamond in the middle, the lower half folds
+// out to the corners. No poles, smooth across the horizon (an airless sky shows space below it wherever the world stops
+// short), texels within 2x of even in size.
+vec2 spaceFold(vec2 p) { return (1. - abs(p.yx)) * (step(0., p) * 2. - 1.); }
+vec3 spaceDir(vec2 uv) { vec2 p = uv * 2. - 1.; float z = 1. - abs(p.x) - abs(p.y); if (z < 0.) p = spaceFold(p); return normalize(vec3(p, z)); }
+vec2 spaceUV(vec3 d) { vec2 p = d.xy / (abs(d.x) + abs(d.y) + abs(d.z) + 1e-6); if (d.z < 0.) p = spaceFold(p); return p * .5 + .5; }
 
 // The original's turn with the mouse at rest: xz by .5 radians, then xy by .8. GLSL's v * mat2(c, s, -s, c), written
 // out because HLSL's float2x2 constructor is row-major. It keeps the original's view of the field.
