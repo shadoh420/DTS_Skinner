@@ -544,6 +544,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (serial !== skySerial) { pass?.dispose?.(); return drop(group); }  // A later choice is being built.
     skyPass?.dispose();
     skyPass = pass?.render || pass?.update ? pass : null;
+    skyPanel(skyPass);
     skyPass?.update?.(renderer);  // Its whole sky texture, before the haze probe reads it.
     if (skyPass?.render) scene.background = null;  // Otherwise the haze set above, or the colour an untextured dome set.
     drop(panels);
@@ -927,7 +928,83 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   let lightTime = 0;
+
+  // Skinner Sky settings: a panel over the map while a Skinner Sky preset is the sky (skies.js skinner), with the
+  // volumetrics test page's controls (static/volumetrics/index.html). Changes are live and not saved; Copy values puts
+  // the changed keys on the clipboard as presets.json writes them. While the panel is open each frame is timed on the GPU.
+  const skyQuality = {width: 1024, height: 256, steps: 24, rows: 8}, gl = renderer.getContext();
+  const TUNED = [['Cloud coverage', 'cloudCoverage', 0, 1, .01], ['Cloud thickness km', 'cloudThickness', .2, 4, .1],
+    ['Cloud darkness', 'cloudDarkness', 0, 3, .05], ['Cloud softness', 'cloudSoftness', .05, 1, .01], ['Cloud tile km', 'cloudScale', 5, 80, 1],
+    ['Cloud base km', 'cloudHeight', .5, 6, .1], ['Fog density /km', 'fogDensity', 0, 8, .05, 1000], ['Fog height m', 'fogHeight', 5, 400, 5],
+    ['Fog brightness', 'fogBrightness', .2, 2, .05], ['Exposure', 'exposure', .2, 15, .1]];
+  const timer = gl.getExtension('EXT_disjoint_timer_query_webgl2'), timings = {pending: [], ms: [], frames: 0};
+  let tune = null, tuned = {};
+  function skyPanel(pass) {
+    if (!tune) {
+      tune = Object.assign(document.createElement('details'), {id: 'skyTune'});
+      tune.append(Object.assign(document.createElement('summary'), {textContent: 'Skinner Sky settings'}));
+      const row = (text, control, shown = null) => { const label = document.createElement('label'); label.append(text, control, ...(shown ? [shown] : [])); tune.append(label); };
+      const choice = (text, options, value, apply) => {
+        const select = document.createElement('select');
+        select.append(...options.map(([name, v]) => new Option(name, v, false, v === value)));
+        select.addEventListener('change', () => { apply(+select.value); skyPass?.quality?.(skyQuality); select.blur(); });
+        row(text, select);
+      };
+      choice('Sky texture', [['512×128', 512], ['1024×256', 1024], ['2048×512', 2048]], 1024, width => Object.assign(skyQuality, {width, height: width / 4}));
+      choice('Rows per frame', [['all', 1], ['1/4', 4], ['1/8', 8], ['1/16', 16]], 8, rows => { skyQuality.rows = rows; });
+      choice('Steps', [16, 24, 32, 48].map(n => [n, n]), 24, steps => { skyQuality.steps = steps; });
+      for (const [text, key, min, max, step, scale = 1] of TUNED) {
+        const range = Object.assign(document.createElement('input'), {type: 'range', min, max, step, id: 'tune-' + key}), shown = document.createElement('output');
+        range.addEventListener('input', () => {
+          const value = +range.value / scale;
+          shown.textContent = range.value;
+          tuned[key] = value;
+          if (!skyPass?.uniforms) return;
+          skyPass.uniforms[key].value = value;
+          if (key.startsWith('cloud')) skyPass.redraw();  // The clouds live in the sky texture; fog and exposure don't.
+        });
+        range.addEventListener('change', () => range.blur());  // Back to WASD.
+        row(text, range, shown);
+      }
+      const copy = Object.assign(document.createElement('button'), {textContent: 'Copy values'}), reset = Object.assign(document.createElement('button'), {textContent: 'Reset'});
+      const note = Object.assign(document.createElement('pre'), {id: 'skyTuneTime', textContent: 'GPU time: waiting'}), values = document.createElement('pre');
+      copy.addEventListener('click', () => {  // Shown too, in case the browser refuses the clipboard.
+        values.textContent = Object.entries(tuned).map(([key, value]) => `"${key}": ${+value.toFixed(5)}`).join(', ') || '(nothing changed)';
+        navigator.clipboard?.writeText(values.textContent).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy values'; }, 1500); }, () => {});
+      });
+      reset.addEventListener('click', () => showSky(settings.sky));  // The preset's own values again.
+      const buttons = document.createElement('div');
+      buttons.append(copy, reset);
+      tune.append(buttons, values, note);
+      canvas.parentElement.append(tune);
+    }
+    tune.hidden = !pass?.quality;
+    if (!pass?.quality) return;
+    pass.quality(skyQuality);
+    tuned = {};
+    tune.querySelector('pre').textContent = '';
+    for (const [, key, , , , scale = 1] of TUNED) {
+      const range = $('tune-' + key);
+      range.value = pass.uniforms[key].value * scale;
+      range.nextSibling.textContent = range.value;
+    }
+  }
+  // GPU time of whole frames while the panel is open: one timer query a frame, the median of the last 60.
+  function readTimings() {
+    while (timings.pending.length && gl.getQueryParameter(timings.pending[0], gl.QUERY_RESULT_AVAILABLE)) {
+      const query = timings.pending.shift();
+      if (!gl.getParameter(timer.GPU_DISJOINT_EXT)) timings.ms.push(gl.getQueryParameter(query, gl.QUERY_RESULT) / 1e6);
+      gl.deleteQuery(query);
+      if (timings.ms.length > 60) timings.ms.shift();
+    }
+    if (++timings.frames % 30 || !timings.ms.length) return;
+    const sorted = [...timings.ms].sort((a, b) => a - b), size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    $('skyTuneTime').textContent = `GPU ms a frame at ${size.x}×${size.y}\n(median of ${sorted.length}): ${sorted[sorted.length >> 1].toFixed(3)}\nOnly valid with this window in view.`;
+  }
+
   function drawFrame() {
+    const query = tune?.open && !tune.hidden && timer && gl.createQuery();
+    if (query) gl.beginQuery(timer.TIME_ELAPSED_EXT, query);
     // A Skinner Sky's height fog: sky and world into its target, then through the fog onto the screen.
     skyPass?.update?.(renderer);
     const fogged = settings.fog && skyPass?.fog;
@@ -940,6 +1017,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       renderer.autoClear = true;
     } else renderer.render(scene, camera);
     if (fogged) skyPass.fog.draw(renderer, camera);
+    if (query) { gl.endQuery(timer.TIME_ELAPSED_EXT); timings.pending.push(query); }
+    if (timer && timings.pending.length) readTimings();
   }
   // For checks in a script or a hidden page, as the other Maps pages have: draw a frame and pick a sky by id.
   window.skinnerT1Maps = {renderer, scene, camera, drawFrame, showSky: id => showSky(id), skies: () => skies, skyPass: () => skyPass};
