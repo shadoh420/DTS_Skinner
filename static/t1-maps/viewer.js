@@ -14,9 +14,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const site = Object.assign({data: '/t1-map-data/', title: 'T1 Maps', storageKey: 'skinner.t1maps', importRoute: '/import_t1_maps',
     folder: 'Tribes', firstMap: 'raindance'}, window.skinnerT1MapConfig);
   const storageKey = adapter ? 'skinner.rb3dmaps' : site.storageKey;
-  const settings = {fov: 90, fog: true, weather: '', lights: true, invertX: false, invertY: false, sky: '', terrain: ''};
+  // weatherLayers: Weather list ids drawn on top of the chosen weather (the + button beside the Weather list).
+  const settings = {fov: 90, fog: true, weather: '', weatherLayers: [], lights: true, invertX: false, invertY: false, sky: '', terrain: ''};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   if (typeof settings.weather !== 'string') settings.weather = settings.weather === false ? 'none' : '';  // Saved by the old on/off box.
+  if (!Array.isArray(settings.weatherLayers)) settings.weatherLayers = [];
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
   const canvas = $('c');
@@ -1263,24 +1265,34 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // The chosen weather: '' the map's own, 'none', or a Weather list entry's id. An entry with no rain or snow of its
-  // own (wind, lightning, fireballs) brings its storm over this map's.
+  // own (wind, lightning, fireballs) brings its storm over this map's. settings.weatherLayers' entries are drawn too,
+  // each whole (its fall and its storms), so T2 lightning and JA's can run together; the first with gusts blows them all.
   function showWeather(id) {
     for (const mesh of weatherGroup.children) { mesh.geometry.dispose(); mesh.material.dispose(); }  // Textures stay cached.
     weatherGroup.clear();
     weather = null;
     scene.fog?.color.copy(haze);  // A flash may be on.
     Object.assign(tuning, {intensity: 1, wind: null, strikes: 1, drops: 1});
-    const chosen = weathers.find(entry => entry.id === id), found = chosen?.weather, steps = [], storms = [];
-    stormStrikes = Boolean(found?.storm?.lightning || found?.lightning);
-    if (chosen?.renderer === 't1') steps.push(buildBox(t1Box(found)));
-    else if (chosen?.renderer === 'q3') steps.push(...found.specs.map(spec => buildBox(q3Box(spec, found.identity))));
-    else if (chosen?.renderer === 't2' && found.object) steps.push(buildPrecipitation(found, chosen.base));
-    if (id !== 'none' && !steps.length && map.weather) steps.push(buildBox(t1Box(map.weather)));
-    const wind = found?.storm?.wind?.length ? buildWind(found.storm.wind) : null;
-    if (found?.storm?.lightning) storms.push(buildRavenLightning(found.storm.lightning, found.identity));
-    if (found?.lightning) storms.push(buildT2Lightning(found.lightning, chosen.base));
-    if (found?.fireballs) storms.push(buildFireballs(found.fireballs, chosen.base));
-    weatherPanel(steps[0]?.wind, Boolean(wind), {lightning: stormStrikes, fireballs: Boolean(found?.fireballs)});
+    const steps = [], storms = [];
+    let wind = null, fireballs = false, ownFall = false;
+    stormStrikes = false;
+    for (const each of [id, ...settings.weatherLayers.filter(layer => layer !== id)]) {
+      const chosen = weathers.find(entry => entry.id === each), found = chosen?.weather;
+      if (!found) continue;
+      const falls = steps.length;
+      if (chosen.renderer === 't1') steps.push(buildBox(t1Box(found)));
+      else if (chosen.renderer === 'q3') steps.push(...found.specs.map(spec => buildBox(q3Box(spec, found.identity))));
+      else if (chosen.renderer === 't2' && found.object) steps.push(buildPrecipitation(found, chosen.base));
+      if (each === id && steps.length > falls) ownFall = true;
+      wind ||= found.storm?.wind?.length ? buildWind(found.storm.wind) : null;
+      if (found.storm?.lightning) storms.push(buildRavenLightning(found.storm.lightning, found.identity));
+      if (found.lightning) storms.push(buildT2Lightning(found.lightning, chosen.base));
+      if (found.fireballs) storms.push(buildFireballs(found.fireballs, chosen.base));
+      stormStrikes ||= Boolean(found.storm?.lightning || found.lightning);
+      fireballs ||= Boolean(found.fireballs);
+    }
+    if (id !== 'none' && !ownFall && map.weather) steps.unshift(buildBox(t1Box(map.weather)));  // The chosen one brings no fall: this map's.
+    weatherPanel(steps[0]?.wind, Boolean(wind), {lightning: stormStrikes, fireballs});
     if (!steps.length && !storms.length) return;
     for (const building of shelterQueue) addShelter(building);
     weather = delta => {
@@ -1705,17 +1717,36 @@ window.addEventListener('DOMContentLoaded', async () => {
       showWeather(settings.weather);
     });
     $('weather').addEventListener('change', event => { settings.weather = event.target.value; event.target.blur(); save(); showWeather(settings.weather); });
+    // Layers: + puts the shown weather on the list drawn over the chosen one; each chip's × takes its layer off.
+    const layers = $('weatherLayers') || $('weather').parentElement.insertAdjacentElement('afterend', Object.assign(document.createElement('span'), {id: 'weatherLayers', className: 'layers'}));
+    const showLayers = () => {
+      const add = Object.assign(document.createElement('button'), {textContent: '+', type: 'button', title: 'Add this weather on top of the others'});
+      add.onclick = () => {
+        const id = settings.weather;
+        if (weathers.some(entry => entry.id === id) && !settings.weatherLayers.includes(id)) { settings.weatherLayers.push(id); save(); showLayers(); showWeather(settings.weather); }
+        add.blur();
+      };
+      layers.replaceChildren(add, ...settings.weatherLayers.map(id => {
+        const entry = weathers.find(item => item.id === id), chip = Object.assign(document.createElement('button'), {type: 'button', className: 'chip',
+          textContent: `${entry ? `${entry.group} · ${entry.name}` : id} ×`, title: entry ? `Take off ${listText(entry)}` : 'Take off (no longer imported)'});
+        chip.onclick = () => { settings.weatherLayers = settings.weatherLayers.filter(layer => layer !== id); save(); showLayers(); showWeather(settings.weather); };
+        return chip;
+      }));
+    };
+    showLayers();
     get('/t1-map-weather').then(response => response.json()).then(list => {
       weathers = list;
       groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
       weatherGame.append(...groups.map(([group, entries]) => new Option(`${group} (${entries.length})`, group)));
       const saved = weathers.find(entry => entry.id === settings.weather);
+      showLayers();  // Their names, now the list is here.
       if (saved) {
         weatherGame.value = saved.group;
         fill(saved.group);
         $('weather').value = saved.id;
         showWeather(saved.id);
       } else if (settings.weather !== 'none' && settings.weather) showWeather('');  // No longer imported: the map's own.
+      else if (settings.weatherLayers.length) showWeather(settings.weather);  // Own or None was shown before the layers could be.
     }).catch(() => { if (settings.weather !== 'none' && settings.weather) showWeather(''); });
     applySettings();
     showViewpoint(0);

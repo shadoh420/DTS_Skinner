@@ -19,3 +19,4 @@ details[open]#importPanel, details[open]#decorPanel {flex-basis:100%;}
 :is(#skyTune, #weatherTune) input[type=range] {width:130px;padding:0;} :is(#skyTune, #weatherTune) output {width:38px;text-align:right;}
 :is(#skyTune, #weatherTune) div {display:flex;gap:8px;margin-top:8px;} :is(#skyTune, #weatherTune) pre {margin:8px 0 0;font-size:12px;white-space:pre-wrap;}
 :is(#skyTune, #weatherTune) button[aria-pressed=true] {background:#3d6b5c;border-color:#8ce0cb;}
+.layers {display:flex;gap:4px;align-items:center;flex-wrap:wrap;} .layers button {padding:2px 7px;} .layers .chip {font-size:12px;}
