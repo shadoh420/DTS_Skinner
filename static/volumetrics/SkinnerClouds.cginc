@@ -62,3 +62,15 @@ vec4 skinnerClouds(vec3 d, vec3 air) {
   through = mix(1., through, cloudOpacity * smoothstep(.005, .06, d.z));
   return vec4(light * cloudColor * cloudOpacity * smoothstep(.005, .06, d.z), through);
 }
+
+// skinnerFlash over the sky texture's clouds, per pixel (the texture itself never holds a flash): their density a third
+// of the way up the slab gives the glow the clouds' shapes, where the texture's alpha alone is flat over a thick cloud
+// and the glow a smooth blob. Two noise reads at one level, no march, and none between flashes.
+vec3 skinnerCloudsFlash(vec3 d, float a) {
+  float shape = 1.;
+  if (lightningColor.r > 0. && d.z > .005) {
+    float t = distanceTo(cloudHeight + cloudThickness * .3, d.z);
+    shape = smoothstep(.1, 1., cloudDensity(d.xy * t / cloudScale + fract(cloudSpeed.xy * uTime / cloudScale), .3, clamp(log2(t * .006 * 512. / cloudScale), 0., 6.), false));
+  }
+  return skinnerFlash(d, a, shape);
+}

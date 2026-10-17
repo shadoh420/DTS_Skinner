@@ -153,6 +153,27 @@ frame.
   looked wrong (Stormfront: thick low fog; the night presets: thin). On maps whose own haze is short (CloakOfNight ends
   it at 250 m), that haze takes the sky's colour and whitens the valleys with any preset.
 
+## Lightning
+
+Flashes inside the clouds for presets with `lightningRate` (flashes a minute; Stormfront and Fogbound storm use 6),
+brightness `lightningIntensity` (1). Written for this sky, not taken from a Shadertoy shader.
+- **Timing, on the CPU** (`skies.js` `lightning`, `SkinnerVolumetrics.cs` `Lightning`, the same rules). A random wait
+  before each flash (on average 60 / rate seconds). Each lands somewhere round the horizon in the cloud layer, 3–25 km
+  off (more of them far), and flickers in 2 or 3 pulses over about 0.2 s, each fading by e in 33 ms. The shaders get
+  two vectors, not preset keys: `lightningDir` (toward the flash, and in w how tightly its glow gathers: a far flash
+  is small) and `lightningColor` (its light now, 0 between flashes). Unity sets them as globals, so a scene needs the
+  `SkinnerVolumetrics` component for flashes, the merged `Skinner/Sky` too.
+- **Sky** (`SkinnerSky.cginc` `skinnerFlash`, `SkinnerClouds.cginc` `skinnerCloudsFlash`). Added per pixel in the
+  screen sky pass, never into the sky texture: that is rewritten a band of rows a frame, so a flash in it would tear.
+  The glow falls off with angle from the flash, and is cloud lit from inside. Its strength follows the texture's alpha
+  (cloud along the view, the light leaving through half its depth, so thick cores glow less than their edges) and the
+  clouds' own density a third of the way up the slab, read at that pixel (two noise reads, no march). Alpha alone is
+  flat over a thick storm cloud, and the glow was a smooth blob. Between flashes the density isn't read. The merged
+  sky's layer clouds take the same glow from their own cover.
+- **Fog and world** (`SkinnerFog.cginc` `skinnerFlashFog`). The fog's light ring gains the flash's light averaged over
+  the sky, and the world's colour under the fog is scaled up by half the flash's share of the light round it. No
+  lights change. With Fog off on the Maps pages the world doesn't brighten.
+
 ## Limits
 
 - Clouds don't move with the player, and nothing can fly into them. They are kilometres up; the sky texture is drawn

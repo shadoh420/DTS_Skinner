@@ -25,6 +25,9 @@ public class SkinnerVolumetrics : MonoBehaviour
     CommandBuffer commands;
     Material drawn;
     int row;
+    float strikeAt = float.NegativeInfinity, nextStrike = float.NaN;
+    readonly List<Vector2> pulses = new List<Vector2>();  // Each pulse's delay after the strike (s) and its size.
+    static readonly int lightningDir = Shader.PropertyToID("lightningDir"), lightningColor = Shader.PropertyToID("lightningColor");
 
     void OnDisable()
     {
@@ -35,9 +38,40 @@ public class SkinnerVolumetrics : MonoBehaviour
         pano = ring = space = null;
         commands = null;
         drawn = null;
+        Shader.SetGlobalVector(lightningColor, Vector4.zero);
     }
 
-    void Update() => Draw(false);
+    void Update()
+    {
+        if (RenderSettings.skybox) Lightning(RenderSettings.skybox, Time.realtimeSinceStartup);
+        Draw(false);
+    }
+
+    // Lightning, timed as the page's (static/t1-maps/skies.js lightning): the sky material's lightningRate flashes a
+    // minute, each after a random wait, in the cloud layer 3-25 km off, flickering in 2 or 3 pulses over about 0.2 s.
+    // Globals, so the sky and the fog pass both see them (SkinnerSky.cginc skinnerFlash, SkinnerFog.cginc).
+    void Lightning(Material sky, float seconds)
+    {
+        float rate = sky.GetFloat("lightningRate") / 60f;
+        if (!(rate > 0f)) { Shader.SetGlobalVector(lightningColor, Vector4.zero); return; }
+        float Wait() => -Mathf.Log(1f - Random.value) / rate;
+        if (float.IsNaN(nextStrike) || seconds < strikeAt) nextStrike = seconds + Wait();  // First, or the clock went back.
+        if (seconds >= nextStrike)
+        {
+            float far = 3f + 22f * Mathf.Sqrt(Random.value), around = 2f * Mathf.PI * Random.value;
+            float up = Mathf.Atan2(sky.GetFloat("cloudHeight") + sky.GetFloat("cloudThickness") * .5f, far);
+            Shader.SetGlobalVector(lightningDir, new Vector4(Mathf.Sin(around) * Mathf.Cos(up), Mathf.Cos(around) * Mathf.Cos(up), Mathf.Sin(up), far * far / 8f));
+            strikeAt = nextStrike;
+            pulses.Clear();
+            pulses.Add(new Vector2(0f, 1f));
+            pulses.Add(new Vector2(.05f + .05f * Random.value, .4f + .6f * Random.value));
+            if (Random.value < .5f) pulses.Add(new Vector2(.13f + .07f * Random.value, .3f + .5f * Random.value));
+            nextStrike = strikeAt + .3f + Wait();
+        }
+        float glow = 0f;
+        foreach (var pulse in pulses) if (seconds >= strikeAt + pulse.x) glow += pulse.y * Mathf.Exp((strikeAt + pulse.x - seconds) * 30f);
+        Shader.SetGlobalVector(lightningColor, new Vector4(.8f, .85f, 1f, 0f) * (glow * 5f));
+    }
 
     // Rewrites the next band of the sky texture's rows (all of them after a change of sky or size, or when whole), then
     // the ring. The sky material's values are copied to the work material first, so the fog pass has them too.

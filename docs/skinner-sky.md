@@ -56,6 +56,7 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 | `cloudColor`, `cloudDarkness`, `cloudOpacity` | (1, 1, 1), 1, 1 | Tint, how dark thick clouds get, overall opacity |
 | `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | .3, 150, (.04, .01, 0) | Thin streaks 9 km up |
 | `auroraIntensity`, `auroraColor`, `auroraColor2` | 0, (.1, 1, .4), (.6, .2, 1) | Curtains 100 to 175 km up, low colour to high colour |
+| `lightningRate`, `lightningIntensity` | 0, 1 | Lightning flashes a minute (0 = none; both storm presets use 6), and their brightness. [volumetrics.md](volumetrics.md#lightning) |
 | `fogColor` | (.9, .92, .93) | Unity only: `RenderSettings.fogColor`. The page measures its own haze |
 
 The volumetric clouds and the height fog take five more keys (`skies.js` `volumetricDefaults`, and the properties of

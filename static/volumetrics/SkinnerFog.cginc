@@ -11,6 +11,15 @@ float fogThrough(float eyeZ, vec3 rd, float dist) {
   return exp(-fogDensity * exp(-(eyeZ - fogBase) / fogHeight) * dist * f);
 }
 
+// A lightning flash (SkinnerSky.cginc skinnerFlash) seen in the fog: the fog's light ring brightened by the flash's
+// light averaged over the sky (about a quarter of the sky is lit cloud), and in a the scale on the world's colour for
+// the flash's light on it, half the flash's share of the light round it (the world's own shading knows nothing of it).
+vec4 skinnerFlashFog(vec3 ring) {
+  float k = max(lightningDir.w, .01);
+  vec3 add = lightningColor.rgb * lightningIntensity * (1. - exp(-2. * k)) / (2. * k) * .25;
+  return vec4(ring + add, 1. + .5 * dot(add, LUMA) / max(dot(ring, LUMA), 1e-4));
+}
+
 // The scene's colour c seen through the fog, with the horizon colour ring (linear light) in the ray's azimuth.
 vec3 skinnerFog(vec3 c, float eyeZ, vec3 rd, float dist, vec3 ring) {
   float through = fogThrough(eyeZ, rd, dist);

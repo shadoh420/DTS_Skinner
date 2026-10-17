@@ -37,6 +37,18 @@ float vnoise(vec3 p) {
 float distanceTo(float altitude, float c) { float b = PLANET * c, r = PLANET + altitude; return -b + sqrt(b * b + r * r - PLANET * PLANET); }
 vec3 aces(vec3 x) { return clamp(x * (2.51 * x + .03) / (x * (2.43 * x + .59) + .14), 0., 1.); }
 
+// Lightning in the clouds. A driver times the flashes, lightningRate a minute (skies.js lightning,
+// SkinnerVolumetrics.cs), and sets two vectors that are not preset keys: lightningDir.xyz toward the flash, .w how
+// tightly its glow gathers round that direction (a far flash is small), and lightningColor.rgb its light now (0 between
+// flashes), times lightningIntensity. What it adds along d, where a is how much of what lies behind the clouds shows: cloud lit from inside, the
+// light leaving through half its depth (Beer: a thick core glows less than its edges) and scaled by shape (0-1: the
+// cloud's own structure there, where the caller has it), and faint air round it.
+// Added per pixel after the sky texture, never into it: the texture is rewritten a band of rows a frame.
+vec3 skinnerFlash(vec3 d, float a, float shape) {
+  if (lightningRate <= 0.) return vec3(0., 0., 0.);
+  return lightningColor.rgb * lightningIntensity * exp(lightningDir.w * (dot(d, lightningDir.xyz) - 1.)) * ((1. - a) * sqrt(max(a, .02)) * shape + .04);
+}
+
 // What lies behind the air, for d above the horizon: stars, the Milky Way glow, the moon, aurora and the sun's disc,
 // dimmed by the air's transmittance. air is the sky's light there: how dark it is fades stars and aurora in daylight.
 // Split out so a sky drawn from a texture (static/volumetrics) can add these sharp parts per pixel.
@@ -108,7 +120,7 @@ vec3 skinnerSky(vec3 d) {
   #ifndef SKINNER_SKIP_BEHIND
   if (d.z > 0.) sky += skinnerBehind(d, air, transmit);
   #endif
-  float fade = smoothstep(-.01, .08, d.z);
+  float fade = smoothstep(-.01, .08, d.z), cover = 0.;
   if (cirrusCoverage > 0. && fade > 0.) {  // Thin streaks 9 km up, stretched along x.
     float t = distanceTo(9., d.z);
     vec2 uv = d.xy * t / cirrusScale + fract(cirrusSpeed.xy * uTime / cirrusScale);
@@ -129,7 +141,11 @@ vec3 skinnerSky(vec3 d) {
     vec3 sunAt = sunLight * toLight(PLANET + cloudHeight, sun.z), moonAt = moonLight * toLight(PLANET + cloudHeight, moon.z);
     vec3 light = ((sunAt + moonAt * .1) * (.06 * mix(through, side, .4) + phaseM(mu, .6) * through)
       + mix(vec3(1., 1., 1.) * dot(air, LUMA), air, .6) * (.3 + 1.4 * exp(-.6 * cloudDarkness * thick))) * cloudColor;
-    sky = mix(sky, mix(light, air, 1. - exp(-t / 120.)), density * cloudOpacity * fade);
+    cover = density * cloudOpacity * fade;
+    sky = mix(sky, mix(light, air, 1. - exp(-t / 120.)), cover);
   }
+  #ifndef SKINNER_SKIP_BEHIND
+  sky += skinnerFlash(d, 1. - cover, 1.);
+  #endif
   return sky;
 }
