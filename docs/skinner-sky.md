@@ -54,7 +54,7 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 | `cloudCoverage`, `cloudSoftness` | .5, .15 | Heaped clouds: how much of the sky, and how soft their edges |
 | `cloudScale`, `cloudHeight`, `cloudSpeed` | 20, 2, (.02, .005, 0) | Noise tile size (km), layer height (km), wind (km/s) |
 | `cloudColor`, `cloudDarkness`, `cloudOpacity` | (1, 1, 1), 1, 1 | Tint, how dark thick clouds get, overall opacity |
-| `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | 0, 150, (.04, .01, 0) | Thin streaks 9 km up; off in every preset (flat and smeared overhead) |
+| `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | 0, 150, (.04, .01, 0) | Fibrous streaks 9 km up; off unless the preset sets coverage |
 | `auroraIntensity`, `auroraColor`, `auroraColor2` | 0, (.1, 1, .4), (.6, .2, 1) | Curtains 100 to 175 km up, low colour to high colour |
 | `fogColor` | (.9, .92, .93) | Unity only: `RenderSettings.fogColor`. The page measures its own haze |
 
@@ -104,9 +104,16 @@ slabs of one colour. The presets use .4 and .3 (the Crisp ones .25 and .6), and 
    the sun. Light through their thickness (Beer) makes cores dark and edges bright. A silver lining comes from the
    forward phase. Sunlight reaches them through the air at their height, so they turn orange and pink at sunset.
    Thick cloud also blocks skylight.
+   - Cirrus (`skinnerCirrus`, six reads) is streaks along x, filled with fibres: the fine noise stretched 30:1 along
+     the wind at two sizes (24 and 4 km across a tile), bent together by one coarse read. The fibres fray the streaks'
+     edges and set their optical thickness, so thin ice lets the sky through and strand cores hardly. A read of the
+     streaks a step toward the sun shades the far side. Far off, mipmapping averages the fibres away, so the low sky
+     looks as it did before the fibres (2026-10-17). Where the air comes from a sky texture (the Maps pages and
+     Unity's volumetric sky), cirrus is drawn per pixel over it: overhead, a 2048 × 512 texture is about 0.2° a texel,
+     some six times coarser than a 2560 × 1440 screen, and baked cirrus smeared.
 
-**Cost.** fxc compiles the Unity pixel shader to about 817 instruction slots (ps_5_0, counting every branch). A sky
-reads the noise at most 11 times: 6 with clouds and cirrus, 1 more for the moon and 4 for aurora. Branches skip
+**Cost.** fxc compiles the Unity pixel shader to about 861 instruction slots (ps_5_0, counting every branch; 824
+before the fibres). A sky reads the noise at most 15 times: 10 with clouds and cirrus, 1 more for the moon and 4 for aurora. Branches skip
 parts whose preset is off. It is one draw call over the background pixels, with no setup work. Measured on the page
 at 2560 × 1440 with the sky filling the screen, on an RX 7800 XT: 0.78–0.81 ms by day, 0.86 ms at night. The per-pixel
 air is most of that. `docs/volumetrics.md` draws the air into a small texture instead, at about 0.15 ms.

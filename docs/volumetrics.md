@@ -34,7 +34,9 @@ From the console:
    - Skylight is brighter higher up, there is a two-lobe phase, and far clouds fade into the air's haze.
    - Samples are skipped where there is no cloud, and the march stops once 98% of the light is blocked.
 3. **Screen sky.** Per pixel, the sky texture is read, then `skinnerBehind` adds the sharp parts: sun disc, stars,
-   Milky Way, moon and aurora, dimmed by the air and the clouds.
+   Milky Way, moon and aurora, dimmed by the air and the clouds. `skinnerCirrus` lays the cirrus over them (the sky
+   texture skips it with `SKINNER_SKIP_BEHIND`), under the clouds by the square of the texture's alpha: the texture
+   holds air and cloud light summed, so by the alpha itself a half-clear cloud would be half replaced by cirrus.
 4. **Fog ring.** A 64×1 texture holds the fog colour by azimuth: the sky texture 2–26° up, averaged round under a
    triangle weight reaching 54° to each side, read every 6° (51 reads). It includes the sun's glow and the clouds.
    - A sharp ring (one direction 3° up) showed through thin fog on the sky as spokes from the zenith.
@@ -124,7 +126,7 @@ frame.
   base, fog density, height and brightness, and exposure. The values are not saved. Copy values shows the changed keys
   as `presets.json` writes them, and Reset reloads the preset. While the panel is open, each whole frame is timed on the
   GPU (median of 60); the timing is only valid with the window in view.
-- **Sky.** A ball in the viewer's sky group reads the sky texture and adds `skinnerBehind`, through exposure, ACES and
+- **Sky.** A ball in the viewer's sky group reads the sky texture and adds `skinnerBehind` and `skinnerCirrus`, through exposure, ACES and
   2.2. The map's haze takes its colour from that sky, as before.
 - **Height fog.** With Fog on, sky and world are drawn into a target with a depth texture, then `SkinnerFog.cginc` puts
   them on screen. `fogBase` counts from the map's first viewpoint height. The world is already display colour, so the
