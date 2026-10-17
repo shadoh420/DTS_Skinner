@@ -728,19 +728,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     material: type === 'rain' ? new THREE.LineBasicMaterial({color: new THREE.Color().setScalar(identity * .5), transparent: true, opacity: .4})
       : new THREE.PointsMaterial({color: new THREE.Color().setScalar(identity * 1.5), size: length * Q3_UNIT, transparent: true, opacity: .8})});
   const STILL = [0, 0, 0];
+  // The Weather settings panel's live values: a share of each fall's own count (up to MOST times it) and, once moved,
+  // a wind (m/s east, north) in place of each fall's own sideways drift, borrowed wind included.
+  const MOST = 3, tuning = {intensity: 1, wind: null};
   function buildBox({rain, count, radius, step, streak, material}) {
-    const size = radius * 2, drops = Float32Array.from({length: count * 3}, () => Math.random() * size);
+    const most = Math.min(count * MOST, 12000), size = radius * 2, drops = Float32Array.from({length: most * 3}, () => Math.random() * size);
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * (rain ? 6 : 3)), 3));
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(most * (rain ? 6 : 3)), 3));
     const particles = rain ? new THREE.LineSegments(geometry, material) : new THREE.Points(geometry, material);
     particles.frustumCulled = false;
     weatherGroup.add(particles);
     // push: a borrowed wind's velocity (m/s) added to the fall.
-    return (delta, near, push = STILL) => {
+    return Object.assign((delta, near, push = STILL) => {
       particles.visible = near < radius;
       if (!particles.visible) return;
-      const positions = geometry.attributes.position.array, centre = camera.position.toArray(), view = ahead.toArray(), move = step.map((v, axis) => v + push[axis]);
-      for (let drop = 0; drop < count; drop++) {
+      const positions = geometry.attributes.position.array, centre = camera.position.toArray(), view = ahead.toArray();
+      const move = tuning.wind ? [tuning.wind[0], step[1] + push[1], -tuning.wind[1]] : step.map((v, axis) => v + push[axis]);
+      const shown = Math.min(most, Math.round(count * tuning.intensity));
+      for (let drop = 0; drop < shown; drop++) {
         let depth = 0;
         for (let axis = 0; axis < 3; axis++) {
           const index = drop * 3 + axis, offset = drops[index] + move[axis] * delta - centre[axis] + radius;
@@ -754,8 +759,10 @@ window.addEventListener('DOMContentLoaded', async () => {
           if (rain) positions[at + 3] = positions[at] - (depth < near ? 0 : move[axis] * streak);
         }
       }
+      geometry.setDrawRange(0, shown * (rain ? 2 : 1));
+      geometry.attributes.position.updateRange = {offset: 0, count: shown * (rain ? 6 : 3)};
       geometry.attributes.position.needsUpdate = true;
-    };
+    }, {wind: [step[0], -step[2]]});  // Its own drift, east and north.
   }
 
   // Tribes 2 precipitation, transcribed from the T2 page (map-client/environment.tsx Precipitation, after V12's
@@ -786,11 +793,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     const offsetSpeed = num(object, 'offsetSpeed', 0.25);
     const offset = truthy(sky.windEffectPrecipitation) && windLength > 0 ? [wind[0] / windLength * offsetSpeed, wind[1] / windLength * offsetSpeed, 1] : [0, 0, 1];
     const count = Math.round(maxDrops * percentage), sizeX = num(db, 'sizeX', 1), sizeY = num(db, 'sizeY', 1), divHeight = num(db, 'divHeightVal', 1.5) || 1.5;
-    const geometry = new THREE.BufferGeometry(), index = new Uint32Array(count * 6);
-    for (let i = 0; i < count; i++) index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
+    const most = Math.min(count * MOST, 6000), geometry = new THREE.BufferGeometry(), index = new Uint32Array(most * 6);
+    for (let i = 0; i < most; i++) index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
     geometry.setIndex(new THREE.BufferAttribute(index, 1));
     for (const [name, size] of [['position', 3], ['uv', 2], ['dropColor', 4]])
-      geometry.setAttribute(name, new THREE.BufferAttribute(new Float32Array(count * 4 * size), size).setUsage(THREE.DynamicDrawUsage));
+      geometry.setAttribute(name, new THREE.BufferAttribute(new Float32Array(most * 4 * size), size).setUsage(THREE.DynamicDrawUsage));
     const material = new THREE.ShaderMaterial({vertexShader: T2_VERTEX, fragmentShader: T2_FRAGMENT, uniforms: {map: {value: null}},
       transparent: true, depthWrite: false, blending: THREE.NormalBlending, side: THREE.DoubleSide});
     const mesh = new THREE.Mesh(geometry, material);
@@ -800,12 +807,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     weatherGroup.add(mesh);
     let ready = false;
     loadTexture(base + 'textures/' + atlas + '.png').then(texture => { material.uniforms.map.value = texture; ready = Boolean(texture); });
-    const drops = Array.from({length: count}, () => ({pos: [0, 0, 0], speed: 0, color: 0, tex: 0, startDiff: 1, valid: false}));
+    const drops = Array.from({length: most}, () => ({pos: [0, 0, 0], speed: 0, color: 0, tex: 0, startDiff: 1, valid: false}));
     const last = {camera: null, first: true}, right = new THREE.Vector3(), up = new THREE.Vector3(), z = new THREE.Vector3();
-    return (delta, near, push = STILL) => {
+    return Object.assign((delta, near, push = STILL) => {
       mesh.visible = ready && near < radius;
       if (!mesh.visible) return;
       const cam = toTorque(camera.position), view = ahead.toArray(), blown = [push[0], -push[2], push[1]].map(v => v * Math.min(delta, 0.25));
+      const shown = Math.min(most, Math.round(count * tuning.intensity)), drift = tuning.wind ? [0, 0, 1] : offset;
+      if (tuning.wind) { blown[0] = tuning.wind[0] * Math.min(delta, 0.25); blown[1] = tuning.wind[1] * Math.min(delta, 0.25); }
       const frames = Math.min(delta, 0.25) * T2_FRAME_RATE;
       // An observer camera has no player velocity: the box is the camera's, shifted upwind by the drift.
       const shift = last.camera && Math.hypot(...cam.map((v, i) => v - last.camera[i])) > radius / 2 ? cam.map((v, i) => v - last.camera[i]) : [0, 0, 0];
@@ -821,7 +830,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         : [c1.map((v, k) => v + offset[k] * sizeY * 2), c1, c2, c2.map((v, k) => v + offset[k] * sizeY * 2)];
       const p = geometry.attributes.position.array, t = geometry.attributes.uv.array, c = geometry.attributes.dropColor.array;
       drops.forEach((drop, i) => {
-        for (let k = 0; k < 3; k++) drop.pos[k] += shift[k] + blown[k] + (k < 2 ? offset[k] * drop.speed : drop.speed) * frames;
+        if (i >= shown) return;
+        for (let k = 0; k < 3; k++) drop.pos[k] += shift[k] + blown[k] + (k < 2 ? drift[k] * drop.speed : drop.speed) * frames;
         const inside = drop.pos.every((v, k) => v >= min[k] && v <= max[k]);
         if (!drop.valid || !inside) {
           const r1 = Math.random(), r2 = Math.random(), r3 = Math.random();
@@ -852,8 +862,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         for (let k = 0; k < 4; k++) { const q = (i * 4 + k) * 4; c[q] = color[0]; c[q + 1] = color[1]; c[q + 2] = color[2]; c[q + 3] = alpha; }
       });
       last.first = false;
-      geometry.attributes.position.needsUpdate = geometry.attributes.uv.needsUpdate = geometry.attributes.dropColor.needsUpdate = true;
-    };
+      geometry.setDrawRange(0, shown * 6);
+      for (const attribute of Object.values(geometry.attributes)) {
+        attribute.updateRange = {offset: 0, count: shown * 4 * attribute.itemSize};
+        attribute.needsUpdate = true;
+      }
+    }, {wind: [offset[0], offset[1]].map(v => v * -(minVelocity + maxVelocity) / 2 * T2_FRAME_RATE)});  // Its own mean drift.
   }
 
 
@@ -1212,6 +1226,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     weatherGroup.clear();
     weather = null;
     scene.fog?.color.copy(haze);  // A flash may be on.
+    Object.assign(tuning, {intensity: 1, wind: null});
     const chosen = weathers.find(entry => entry.id === id), found = chosen?.weather, steps = [], storms = [];
     if (chosen?.renderer === 't1') steps.push(buildBox(t1Box(found)));
     else if (chosen?.renderer === 'q3') steps.push(...found.specs.map(spec => buildBox(q3Box(spec, found.identity))));
@@ -1221,6 +1236,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (found?.storm?.lightning) storms.push(buildRavenLightning(found.storm.lightning, found.identity));
     if (found?.lightning) storms.push(buildT2Lightning(found.lightning, chosen.base));
     if (found?.fireballs) storms.push(buildFireballs(found.fireballs, chosen.base));
+    weatherPanel(steps[0]?.wind, Boolean(wind));
     if (!steps.length && !storms.length) return;
     for (const building of shelterQueue) addShelter(building);
     weather = delta => {
@@ -1228,6 +1244,42 @@ window.addEventListener('DOMContentLoaded', async () => {
       for (const step of steps) step(delta, near, push);
       for (const storm of storms) storm(delta, near);
     };
+  }
+
+  // Weather settings: the selected weather's intensity and wind, live, as the Skinner Sky panel tunes the sky. Reset
+  // shows the weather again with its own values; nothing is saved.
+  let weatherTune = null;
+  function weatherPanel(own, gusts) {
+    if (!weatherTune) {
+      weatherTune = Object.assign(document.createElement('details'), {id: 'weatherTune'});
+      weatherTune.append(Object.assign(document.createElement('summary'), {textContent: 'Weather settings'}));
+      const slider = (text, id, min, max, step, apply) => {
+        const label = document.createElement('label'), range = Object.assign(document.createElement('input'), {type: 'range', min, max, step, id}), shown = document.createElement('output');
+        range.addEventListener('input', () => { shown.textContent = range.value; apply(+range.value); });
+        range.addEventListener('change', () => range.blur());  // Back to WASD.
+        label.append(text, range, shown);
+        weatherTune.append(label);
+      };
+      slider('Intensity (% own)', 'weatherIntensity', 0, MOST * 100, 5, value => { tuning.intensity = value / 100; });
+      const wind = () => { tuning.wind = [+$('weatherEast').value, +$('weatherNorth').value]; };
+      slider('Wind east (m/s)', 'weatherEast', -100, 100, .1, wind);
+      slider('Wind north (m/s)', 'weatherNorth', -100, 100, .1, wind);
+      const reset = Object.assign(document.createElement('button'), {textContent: 'Reset'}), note = Object.assign(document.createElement('pre'), {id: 'weatherTuneNote'});
+      reset.addEventListener('click', () => { showWeather(settings.weather); reset.blur(); });
+      const buttons = document.createElement('div');
+      buttons.append(reset);
+      weatherTune.append(buttons, note);
+      canvas.parentElement.append(weatherTune);
+    }
+    weatherTune.hidden = !own;
+    if (!own) return;
+    const set = (id, value) => { $(id).value = value; $(id).nextSibling.textContent = $(id).value; };
+    set('weatherIntensity', 100);
+    const reach = Math.max(100, ...own.map(v => Math.ceil(Math.abs(v))));  // A Tribes 2 drift can pass 100 m/s.
+    for (const id of ['weatherEast', 'weatherNorth']) Object.assign($(id), {min: -reach, max: reach});
+    set('weatherEast', own[0].toFixed(1));
+    set('weatherNorth', own[1].toFixed(1));
+    $('weatherTuneNote').textContent = gusts ? 'Moving the wind replaces its gusts.' : '';
   }
 
   function applySettings() {
