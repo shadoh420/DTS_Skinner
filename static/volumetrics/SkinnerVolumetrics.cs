@@ -21,7 +21,7 @@ public class SkinnerVolumetrics : MonoBehaviour
     [Tooltip("Rewrite the sky texture over this many frames, a band of rows a frame.")]
     [Range(1, 16)] public int bands = 8;
 
-    RenderTexture pano, ring;
+    RenderTexture pano, ring, space;
     CommandBuffer commands;
     Material drawn;
     int row;
@@ -30,8 +30,9 @@ public class SkinnerVolumetrics : MonoBehaviour
     {
         if (pano) pano.Release();
         if (ring) ring.Release();
+        if (space) space.Release();
         commands?.Release();
-        pano = ring = null;
+        pano = ring = space = null;
         commands = null;
         drawn = null;
     }
@@ -59,6 +60,16 @@ public class SkinnerVolumetrics : MonoBehaviour
         int rows = whole ? pano.height : Mathf.CeilToInt(pano.height / (float)bands);
         if (whole) row = 0;
         commands.Clear();
+        // The space backdrop (pass 3), baked once per sky when it has one (or when the key is first raised): 2048 x 2048
+        // over the upper hemisphere, 32 MB.
+        if ((whole || !space) && sky.HasFloat("spaceIntensity") && sky.GetFloat("spaceIntensity") > 0)
+        {
+            if (!space) space = new RenderTexture(2048, 2048, 0, RenderTextureFormat.ARGBHalf) { name = "Skinner space", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            commands.SetGlobalVector("_SpaceSize", new Vector4(space.width, space.height));
+            commands.SetGlobalTexture("spaceMap", space);
+            commands.SetRenderTarget(space);
+            commands.DrawProcedural(Matrix4x4.identity, volumetrics, 3, MeshTopology.Triangles, 3);
+        }
         commands.SetGlobalVector("_PanoSize", new Vector4(pano.width, pano.height));
         commands.SetGlobalTexture("_SkinnerPano", pano);
         commands.SetGlobalTexture("_SkinnerRing", ring);
