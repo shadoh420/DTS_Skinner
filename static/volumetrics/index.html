@@ -137,7 +137,7 @@
     vertexShader: t1Skies.vertexShader, fragmentShader: header() + `varying vec3 vDir; void main() { vec3 d = normalize(vDir); ${body} }`});
   const skyLayer = skyMaterial('gl_FragColor = vec4(skinnerSky(d), 1.);'), skyPano = skyMaterial(`
     vec4 c = texture2D(pano, panoUV(d));
-    gl_FragColor = vec4(c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.)) + skinnerCloudsFlash(d, c.a), 1.);`);
+    gl_FragColor = vec4(c.rgb + skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) + skinnerCloudsFlash(d, c.a), 1.);`);
   const skyBall = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), skyPano);
   skyBall.frustumCulled = false;
   skyScene.add(skyBall);

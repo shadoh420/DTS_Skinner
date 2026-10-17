@@ -87,7 +87,7 @@ Shader "Skinner/Volumetric Sky"
             {
                 float3 d = normalize(i.dir).xzy;  // Unity is y up: the sky's z up is its y.
                 float4 c = tex2D(_SkinnerPano, panoUV(d));
-                float3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : float3(0., 0., 0.));
+                float3 s = c.rgb + skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a);
                 return float4(skinnerCirrus(d, s, c.rgb, c.a * c.a) + skinnerCloudsFlash(d, c.a), 1.);  // Cirrus under the clouds, per pixel, as skies.js.
             }
             ENDCG

@@ -49,12 +49,20 @@ vec3 skinnerFlash(vec3 d, float a, float shape) {
   return lightningColor.rgb * lightningIntensity * exp(lightningDir.w * (dot(d, lightningDir.xyz) - 1.)) * ((1. - a) * sqrt(max(a, .02)) * shape + .04);
 }
 
-// What lies behind the air, for d above the horizon: stars, the Milky Way glow, the moon, aurora and the sun's disc,
-// dimmed by the air's transmittance. air is the sky's light there: how dark it is fades stars and aurora in daylight.
-// Split out so a sky drawn from a texture (static/volumetrics) can add these sharp parts per pixel.
+// What lies behind the air: stars, the Milky Way glow, the moon, aurora and the sun's disc, dimmed by the air's
+// transmittance. air is the sky's light there: how dark it is fades stars and aurora in daylight. Below the horizon only
+// the space backdrop shows (seen through the air as at the same height above it). Split out so a sky drawn from a
+// texture (static/volumetrics) can add these sharp parts per pixel.
 vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
   vec3 sun = toward(sunAzimuth, sunElevation), moon = toward(moonAzimuth, moonElevation);
   float nu = dot(d, moon), night = exp(-dot(air, LUMA) * exposure * 25.);
+  // A sky with a space backdrop is airless: what lies behind goes on below the horizon, where the world stops short.
+  vec3 space = vec3(0., 0., 0.);
+  float airless = 0.;
+  #ifdef SKINNER_SPACE
+  if (spaceIntensity > 0.) { space = SAMPLE_PLAIN(spaceMap, spaceUV(d)).rgb * spaceIntensity; airless = 1.; }  // SkinnerSpace.cginc's bake.
+  #endif
+  if (d.z <= 0. && airless == 0.) return space;
   // One star per cell of a grid on the view direction (more along the Milky Way), its glow, or the moon.
   vec3 far = vec3(0., 0., 0.), sky = far;
   float across = dot(d, normalize(vec3(.35, -.6, .72))) / .22, band = exp(-across * across);
@@ -65,12 +73,12 @@ vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
     far += mix(vec3(1., .72, .5), vec3(.62, .75, 1.), h.y) * shine * clamp(1. - spot, 0., 1.) * starIntensity;
   }
   if (milkyWay > 0.) far += vec3(.75, .8, 1.) * band * milkyWay * .02 * (.25 + .5 * vnoise(d * 7.) + .5 * vnoise(d * 19.)) * (.5 + .5 * band);
-  #ifdef SKINNER_SPACE
-  if (spaceIntensity > 0.) far += SAMPLE_PLAIN(spaceMap, spaceUV(d)).rgb * spaceIntensity;  // SkinnerSpace.cginc's baked backdrop.
-  #endif
-  // Faded out over the last 3 degrees above the horizon: with no air to hide it (Deep space), the field would otherwise
-  // end in a ruler-straight line wherever the world stops short of the horizon.
-  far *= night * smoothstep(0., .05, d.z);
+  // Otherwise faded out over the last 3 degrees above the horizon, so that where the world stops short their edge is soft.
+  far = (far * max(smoothstep(0., .05, d.z), airless) + space) * night;
+  // Seen through the air as at the same height above the horizon: the caller's transmit there holds the planet's
+  // shadow, which would draw a dark seam along it.
+  vec3 through = d.z < .005 ? toLight(PLANET + .002, max(abs(d.z), .005)) : transmit;
+  if (d.z <= 0.) return far * through;
   float moonR = radians(moonSize * .5);
   if (nu > cos(moonR) && moonIntensity > 0.) {  // A ball lit by the sun: its phase follows the two directions.
     vec3 right = normalize(cross(moon, vec3(0., 0., 1.))), up = cross(right, moon);
@@ -79,7 +87,7 @@ vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
     float albedo = mix(.5, 1., smoothstep(.3, .7, texture2D(skyNoise, q * .3 + .5).r));
     far = mix(far, moonColor * moonIntensity * 4. * albedo * (max(dot(n, sun), 0.) + .015), 1. - smoothstep(.96, 1., dot(q, q)));
   }
-  sky += far * transmit;
+  sky += far * through;
   if (auroraIntensity > 0.) {  // Curtains: one level line of the cloud shapes, seen at four heights.
     vec3 glow = vec3(0., 0., 0.);
     UNROLL for (int k = 0; k < 4; k++) {
@@ -152,7 +160,7 @@ vec3 skinnerSky(vec3 d) {
   air = mix(air, lowered, smoothstep(0., .3, -d.z) * .9);
   vec3 sky = air;
   #ifndef SKINNER_SKIP_BEHIND
-  if (d.z > 0.) sky += skinnerBehind(d, air, transmit);
+  sky += skinnerBehind(d, air, transmit);
   sky = skinnerCirrus(d, sky, air, 1.);
   #endif
   float fade = smoothstep(-.01, .08, d.z), cover = 0.;

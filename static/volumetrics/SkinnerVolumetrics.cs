@@ -95,7 +95,7 @@ public class SkinnerVolumetrics : MonoBehaviour
         if (whole) row = 0;
         commands.Clear();
         // The space backdrop (pass 3), baked once per sky when it has one (or when the key is first raised): 2048 x 2048
-        // over the upper hemisphere, 32 MB.
+        // over the whole sphere, 32 MB.
         if ((whole || !space) && sky.HasFloat("spaceIntensity") && sky.GetFloat("spaceIntensity") > 0)
         {
             if (!space) space = new RenderTexture(2048, 2048, 0, RenderTextureFormat.ARGBHalf) { name = "Skinner space", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
