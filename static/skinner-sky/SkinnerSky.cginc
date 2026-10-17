@@ -68,7 +68,9 @@ vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
   #ifdef SKINNER_SPACE
   if (spaceIntensity > 0.) far += SAMPLE_PLAIN(spaceMap, spaceUV(d)).rgb * spaceIntensity;  // SkinnerSpace.cginc's baked backdrop.
   #endif
-  far *= night;
+  // Faded out over the last 3 degrees above the horizon: with no air to hide it (Deep space), the field would otherwise
+  // end in a ruler-straight line wherever the world stops short of the horizon.
+  far *= night * smoothstep(0., .05, d.z);
   float moonR = radians(moonSize * .5);
   if (nu > cos(moonR) && moonIntensity > 0.) {  // A ball lit by the sun: its phase follows the two directions.
     vec3 right = normalize(cross(moon, vec3(0., 0., 1.))), up = cross(right, moon);
