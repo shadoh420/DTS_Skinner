@@ -1228,6 +1228,12 @@ def import_maps(game_base, output, missions=None, replace=False, model_dir=ROOT 
         maps.append({'id': scene['id'], 'name': scene['mission'], 'type': scene['type'], 'warnings': len(scene['warnings'])})
     output.mkdir(parents=True, exist_ok=True)
     (output / 'index.json').write_text(json.dumps(sorted(maps, key=lambda item: item['name'].lower())), encoding='utf-8')
+    if report['imported'] or not (output / 'terrain-sets.json').is_file():
+        from t1_terrain_sets import build_sets  # The Terrain list: other worlds' and Tribes 2's tiles (~1 min).
+        try:
+            build_sets(install, output, output.parent / 't2-maps/base/textures/terrain')
+        except (ValueError, KeyError, OSError, struct.error, zipfile.BadZipFile) as error:
+            report['failed']['Terrain sets'] = str(error) or type(error).__name__
     return report
 
 
