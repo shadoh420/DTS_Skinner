@@ -5,6 +5,7 @@
 //   0  Sky texture: the air and the volumetric clouds over it, rgb, and how much of what is behind shows, a.
 //   1  Fog ring: the fog's colour by azimuth, the low sky round each direction averaged.
 //   2  Fog: closed-form height fog over the frame from the depth buffer, then exposure and (tonemap on) ACES.
+//   3  Space: SkinnerSpace.cginc's Star Nest backdrop over the upper hemisphere, baked once per sky.
 Shader "Hidden/Skinner Volumetrics"
 {
     Properties
@@ -49,6 +50,7 @@ Shader "Hidden/Skinner Volumetrics"
         fogHeight ("Fog height (metres to thin by e)", Float) = 40
         fogBase ("Fog base (metres)", Float) = 0
         fogBrightness ("Fog brightness", Float) = 1
+        spaceIntensity ("Space backdrop (Star Nest, baked)", Float) = 0
         fogColor ("Fog colour (sRGB, for RenderSettings)", Vector) = (0.9, 0.92, 0.93, 0)
         [ToggleUI] tonemap ("Exposure and ACES in the fog pass (off: HDR out, for a camera that tone-maps)", Float) = 1
     }
@@ -137,6 +139,23 @@ Shader "Hidden/Skinner Volumetrics"
                 return float4(shown <= .04045 ? shown / 12.92 : pow((shown + .055) / 1.055, 2.4), 1.);
             }
             ENDHLSL
+        }
+
+        Pass
+        {
+            Name "Space"
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.5
+            #include "UnityCG.cginc"
+            #include "SkinnerVolumetricsHLSL.cginc"
+            float4 _SpaceSize;
+
+            float4 vert(uint id : SV_VertexID) : SV_POSITION { return float4(float2((id << 1) & 2, id & 2) * 2. - 1., 0., 1.); }
+
+            float4 frag(float4 pos : SV_POSITION) : SV_Target { return float4(starNest(spaceDir(pos.xy / _SpaceSize.xy)), 1.); }
+            ENDCG
         }
     }
     Fallback Off

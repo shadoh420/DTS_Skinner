@@ -179,13 +179,15 @@ window.t1Skies = {
   // The target is multisampled 4x as the page's canvas is: +0.28 ms a frame at 2560x1440 (RX 7800 XT). The sky ball
   // stays in the viewer's sky group, drawn with the world; update() draws the sky texture's band and the ring first.
   // `ground`: the height the fog's fogBase is measured from (the map's start).
-  volumetricDefaults: {cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1},
+  // spaceIntensity > 0 adds SkinnerSpace.cginc's backdrop (Star Nest), baked once into a 2048x2048 texture on the first
+  // update() and read per pixel behind the stars.
+  volumetricDefaults: {cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1, spaceIntensity: 0},
   async skinner({entry, radius, group, loadTexture, time, ground = 0}) {
     const text = url => fetch(url).then(response => response.ok ? response.text() : null, () => null);
-    const [noise, core, clouds, fog] = await Promise.all([loadTexture(entry.base + 'SkinnerSkyNoise.png', true),
+    const [noise, space, core, clouds, fog] = await Promise.all([loadTexture(entry.base + 'SkinnerSkyNoise.png', true), text(entry.base + 'SkinnerSpace.cginc'),
       text(entry.base + 'SkinnerSky.cginc'), text('/static/volumetrics/SkinnerClouds.cginc'), text('/static/volumetrics/SkinnerFog.cginc')]);
-    if (!noise || !core || !clouds || !fog) return null;
-    const U = {skyNoise: {value: noise}, uTime: time, layerCoverage: {value: 0}, pano: {value: null}, ring: {value: null}}, declared = [];
+    if (!noise || !space || !core || !clouds || !fog) return null;
+    const U = {skyNoise: {value: noise}, uTime: time, layerCoverage: {value: 0}, pano: {value: null}, ring: {value: null}, spaceMap: {value: null}}, declared = [];
     for (const [key, fallback] of Object.entries({...this.skinnerDefaults, ...this.volumetricDefaults})) {
       // The type is the declaration's (the default's): a preset's number for a colour fills all three, a list for a number gives its first.
       const value = entry.sky[key] ?? fallback, vector = Array.isArray(fallback);
@@ -194,8 +196,9 @@ window.t1Skies = {
     }
     U.fogBase.value += ground;
     // The core's own 2.5D cloud layer reads layerCoverage (0): the volumetric clouds replace it.
-    const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring; uniform float uTime, layerCoverage; ${declared.join(' ')}
-      #define UNROLL\n#define SAMPLE_LOD(s, uv, lod) textureLod(s, uv, lod)\n${prefix}#define cloudCoverage layerCoverage\n${core}\n#undef cloudCoverage\n${clouds}\n${fog}
+    const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring, spaceMap; uniform float uTime, layerCoverage; ${declared.join(' ')}
+      #define UNROLL\n#define SAMPLE_LOD(s, uv, lod) textureLod(s, uv, lod)\n#define SAMPLE_PLAIN(s, uv) texture2D(s, uv)\n${prefix}${space}
+      #define cloudCoverage layerCoverage\n${core}\n#undef cloudCoverage\n${clouds}\n${fog}
       vec3 display(vec3 c) { return pow(aces(c * exposure), vec3(1. / 2.2)); }\n`;
     const quadVertex = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
     const flat = new THREE.Camera(), quad = (fragmentShader, uniforms = U) => new THREE.Scene().add(Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
@@ -237,7 +240,14 @@ window.t1Skies = {
         float through = fogThrough(eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz));
         gl_FragColor = vec4(mix(display(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb * fogBrightness), texture2D(sceneColor, vUv).rgb, through), 1.);
       }`, F);
-    let frame = null, row = 0, whole = true;
+    // The space backdrop, when the preset has one: 2048x2048 (0.04-0.09 degrees a texel), 32 MB, baked on the first update().
+    let spaceTarget = null, spaceScene = null;
+    if (U.spaceIntensity.value > 0) {
+      spaceTarget = new THREE.WebGLRenderTarget(2048, 2048, {...half, wrapS: THREE.ClampToEdgeWrapping});
+      spaceScene = quad(header() + 'void main() { gl_FragColor = vec4(starNest(spaceDir(gl_FragCoord.xy / 2048.)), 1.); }');
+      U.spaceMap.value = spaceTarget.texture;
+    }
+    let frame = null, row = 0, whole = true, baked = false;
     const size = new THREE.Vector2();
     return {
       uniforms: U,  // For checks (skinnerT1Maps.skyPass()) and the page's Skinner Sky panel.
@@ -254,7 +264,15 @@ window.t1Skies = {
         row = 0;
         whole = true;
       },
+      bakeSpace(renderer) {  // Also for timing it (docs/skinner-sky.md).
+        const current = renderer.getRenderTarget();
+        renderer.setRenderTarget(spaceTarget);
+        renderer.render(spaceScene, flat);
+        renderer.setRenderTarget(current);
+        baked = true;
+      },
       update(renderer) {
+        if (spaceTarget && !baked) this.bakeSpace(renderer);
         const current = renderer.getRenderTarget(), rows = whole ? Q.height : Math.ceil(Q.height / Q.rows);
         pano.scissor.set(0, whole ? 0 : row, Q.width, rows);
         renderer.setRenderTarget(pano);
@@ -284,8 +302,8 @@ window.t1Skies = {
         },
       },
       dispose() {
-        for (const object of [panoScene, ringScene, fogScene]) object.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });
-        for (const target of [pano, ring, frame]) { target?.depthTexture?.dispose(); target?.dispose(); }
+        for (const object of [panoScene, ringScene, fogScene, spaceScene]) object?.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });
+        for (const target of [pano, ring, frame, spaceTarget]) { target?.depthTexture?.dispose(); target?.dispose(); }
       },
     };
   },

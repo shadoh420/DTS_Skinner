@@ -4,10 +4,10 @@ Skinner's own sky format. It is made to look good, carry over to Unity unchanged
 preset of plain numbers, drawn by one shader on a sphere round the camera. The shader has no textures besides one
 512² noise image, no precomputed tables, no render targets and no extra passes.
 
-On the T1, Starsiege and Earthsiege Maps pages, the Sky list has a **Skinner Sky** group with twelve presets: Clear
+On the T1, Starsiege and Earthsiege Maps pages, the Sky list has a **Skinner Sky** group with thirteen presets: Clear
 afternoon, Golden hour, Stormfront, Blue hour, Moonlit night, Aurora and Alien dusk, plus Crisp afternoon, Crisp
 golden hour, Crisp moonlit night, Crisp alien dusk (sharper, darker-based clouds) and Fogbound storm (Stormfront in
-thick low fog). Those pages draw them with volumetric clouds and height fog ([volumetrics.md](volumetrics.md)), and the
+thick low fog), and Deep space (no air, a sunlit planet, and the space backdrop below). Those pages draw them with volumetric clouds and height fog ([volumetrics.md](volumetrics.md)), and the
 presets are tuned for that.
 
 ## Files (`static/skinner-sky`)
@@ -16,6 +16,7 @@ presets are tuned for that.
 |---|---|
 | `presets.json` | The presets: a list of flat objects of numbers and three-number lists, plus `id` and `name` |
 | `SkinnerSky.cginc` | The whole look, `skinnerSky(direction)`. The page and Unity both compile this same file |
+| `SkinnerSpace.cginc` | The space backdrop: Star Nest (MIT, Pablo Roman Andrioli), frozen to depend only on direction, and its hemi-octahedral texture layout |
 | `SkinnerSkyNoise.png` | The noise, as linear data: R cloud shapes (Perlin-Worley), G billows, B fine fBm. `tools/make_sky_noise.py` writes it (seeded) |
 | `SkinnerSky.shader` | Unity's skybox shader `Skinner/Sky`: properties, HLSL macros, then `#include "SkinnerSky.cginc"` |
 | `SkinnerSkyPresets.cs` | Unity editor menu: one material per preset, and "use as sky" |
@@ -61,6 +62,27 @@ The volumetric clouds and the height fog take five more keys (`skies.js` `volume
 Unity's `Skinner/Volumetric Sky` and `Hidden/Skinner Volumetrics`, which `Skinner/Sky` does not declare):
 `cloudThickness` (1.5 km, the slab above `cloudHeight`), `fogDensity` (.0012 per metre at the fog's base), `fogHeight`
 (40 m to thin by e), `fogBrightness` (1) and `fogBase` (0, counted from the map's start; presets leave it out).
+A sixth, `spaceIntensity` (0), adds the space backdrop below.
+
+## Space backdrop
+
+`spaceIntensity` above 0 puts a field of stars and nebulae behind the stars, moon and sun: Star Nest, a volumetric
+fractal from Shadertoy (MIT; the notice is in `SkinnerSpace.cginc`). It fades in daylight and dims through the air,
+as the stars do. Deep space uses it at 1, with no air (`rayleigh`, `ozone`, `mie` and `nightColor` at 0) and no fog.
+- Star Nest marches 20 steps of 17 iterations per pixel, too slow for every frame. Its eye and clock are frozen, so it
+  depends only on the view direction, and it is baked once per preset into a 2048 × 2048 half-float texture (32 MB).
+  The texture covers the upper hemisphere folded onto a square (hemi-octahedral): no poles and no seam, 0.04–0.09° a
+  texel. Below the horizon the backdrop is not drawn.
+- Colour: the original writes `v * .01` to the screen. The bake stores that decoded with 2.2, times 4.7, the inverse
+  of ACES's slope at black, so it shows about as on Shadertoy at exposure 1 and `spaceIntensity` 1.
+- The page bakes it on the first `update()` (`skies.js` `bakeSpace`). Unity bakes it in `Hidden/Skinner Volumetrics`
+  pass 3 when `SkinnerVolumetrics.cs` sees a new sky with the key above 0, into the global `spaceMap`.
+- `Skinner/Sky` has no bake, so it does not draw the backdrop.
+
+**Cost** (Unity 6000.3.11f1, URP, D3D11, RX 7800 XT, 2560 × 1440, VolCheck's method: n draws in one command buffer,
+median of 5): the bake costs 1.99–2.05 ms, once per preset. The screen sky costs 0.114–0.117 ms with the backdrop and
+0.108–0.112 ms with `spaceIntensity` 0, so about +0.007 ms a frame (one texture read). The page's cost was not timed:
+this session's browser pane was hidden, and hidden-pane timings are not usable ([volumetrics.md](volumetrics.md)).
 
 In the volumetric clouds two of the keys above work differently from the layer: `cloudSoftness` divides the density
 (higher is thinner, so you see into the clouds), and `cloudDarkness` sets the extinction (30 per km × darkness). At
@@ -137,6 +159,12 @@ with fog on (1280 × 720, two views each) and compared with `static/volumetrics/
 scene. Sky pixels differ by 0.2–2.5/255 on average, and 0–5% of them by more than 10, at cloud edges and in twinkling
 stars (aurora up). The scene itself is lit differently by design. Evidence:
 `C:\tmp\skinner-evidence\sky-volumetric-presets\unity`.
+
+**Space backdrop (2026-10-17).** In the same scratch project, all three shaders compiled with 0 messages (the
+volumetrics shader now has 4 passes), the menu made Deep space, and Use Selected set it up with the backdrop baked.
+Looking up (1280 × 720, 70°), Unity's frame and the T1 page's were compared in 32 × 18 blocks: 2.0/255 apart on
+average, correlation 0.988; flipped or mirrored, −0.1 to 0.06, so the texture is the right way round on both.
+Evidence: `C:\tmp\skinner-evidence\skinner-sky-space`.
 
 ## Limits
 
