@@ -166,9 +166,10 @@ vec3 skinnerSky(vec3 d) {
   float fade = smoothstep(-.01, .08, d.z), cover = 0.;
   if (cloudCoverage > 0. && fade > 0.) {  // A layer of heaped clouds, shaded by a second look toward the sun.
     float t = distanceTo(cloudHeight, d.z), edge = 1. - cloudCoverage;
-    vec2 uv = d.xy * t / cloudScale + fract(cloudSpeed.xy * uTime / cloudScale);
-    // Shapes, bumps on their edges, finer wisps that fray them, and the shapes again a step toward the sun.
-    float billow = (texture2D(skyNoise, uv * 2.1 + .37).g - .5) * .22 - texture2D(skyNoise, uv * 7.3 + .61).b * .06;
+    vec2 uv = d.xy * t / cloudScale + fract(cloudSpeed.xy * uTime / cloudScale), churn = fract(vec2(1., -.7) * cloudSpeed.z * uTime / cloudScale);
+    // Shapes, bumps on their edges, finer wisps that fray them (both sliding across the shapes at cloudSpeed.z, so the
+    // clouds churn), and the shapes again a step toward the sun.
+    float billow = (texture2D(skyNoise, uv * 2.1 + .37 + churn).g - .5) * .22 - texture2D(skyNoise, uv * 7.3 + .61 - churn * 1.6).b * .06;
     float thick = max(texture2D(skyNoise, uv).r + billow - edge, 0.) / cloudSoftness, density = min(thick, 1.);
     float shade = max(texture2D(skyNoise, uv + sun.xy * .03).r + billow - edge, 0.) / cloudSoftness;
     // Seen from below: light comes through the cloud (Beer on its thickness here and toward the sun), so cores are

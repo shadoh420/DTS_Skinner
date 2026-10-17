@@ -16,10 +16,12 @@ vec2 panoUV(vec3 d) { return vec2(atan(d.x, d.y) * .1591549 + 1., (asin(clamp(d.
 // Density at noise coordinate uv and height h (0 at the slab's base, 1 at its top): the layer clouds' shapes,
 // narrowing upward with rounded bases, with billows and fraying read at points that move with height. (The noise is
 // 2D: without that, an edge would be a wall the slab's height, and walls seen from below all point at the zenith.)
+// cloudSpeed.z (km/s) slides the billows and fraying across the shapes, so the clouds churn as they drift.
 float cloudDensity(vec2 uv, float h, float lod, bool detail) {
-  float base = SAMPLE_LOD(skyNoise, uv, lod).r + (SAMPLE_LOD(skyNoise, uv * 2.1 + vec2(h * .9, -h * .6), lod).g - .5) * .3
+  vec2 churn = fract(vec2(1., -.7) * cloudSpeed.z * uTime / cloudScale);
+  float base = SAMPLE_LOD(skyNoise, uv, lod).r + (SAMPLE_LOD(skyNoise, uv * 2.1 + vec2(h * .9, -h * .6) + churn, lod).g - .5) * .3
     - (1. - cloudCoverage) - .4 * h;
-  if (detail && base > 0.) base -= SAMPLE_LOD(skyNoise, uv * 5.3 + vec2(h * 1.7, h * 1.1), lod).b * .14;
+  if (detail && base > 0.) base -= SAMPLE_LOD(skyNoise, uv * 5.3 + vec2(h * 1.7, h * 1.1) - churn * 1.6, lod).b * .14;
   return max(base, 0.) * smoothstep(0., .1, h) * (1. - smoothstep(.6, 1., h)) / cloudSoftness;
 }
 

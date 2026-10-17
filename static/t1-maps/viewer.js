@@ -545,6 +545,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // skyPass: a sky drawn in its own pass behind the world (skies.js unreal: render), or one with work before each frame
   // and a height fog over it (skies.js skinner: update, fog).
   let skies = [], skySerial = 0, skyPass = null;
+  let hazeRange = [0, 1e5];  // The map's haze start and end (m), for a Skinner Sky's fog (applySettings).
   // A Sky or Weather list entry's label: its pack section, name, and the first map with it.
   const listText = entry => [entry.section, entry.name, entry.maps[0] + (entry.maps.length > 1 ? ` +${entry.maps.length - 1}` : '')].filter(Boolean).join(' · ');
   async function showSky(id) {
@@ -561,6 +562,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (serial !== skySerial) { pass?.dispose?.(); return drop(group); }  // A later choice is being built.
     skyPass?.dispose();
     skyPass = pass?.render || pass?.update ? pass : null;
+    applySettings();  // The map's haze is off under a Skinner Sky's fog.
     skyPanel(skyPass);
     skyPass?.update?.(renderer);  // Its whole sky texture, before the haze probe reads it.
     if (skyPass?.render) scene.background = null;  // Otherwise the haze set above, or the colour an untextured dome set.
@@ -752,6 +754,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   function buildBox({rain, count, radius, step, streak, material}) {
     const most = Math.min(count * MOST, 12000), size = radius * 2, drops = Float32Array.from({length: most * 3}, () => Math.random() * size);
     const geometry = new THREE.BufferGeometry();
+    // See-through drops write no depth: a Skinner Sky's fog pass would take a streak's depth for what lies behind it.
+    material.depthWrite = !material.transparent;
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(most * (rain ? 6 : 3)), 3));
     const particles = rain ? new THREE.LineSegments(geometry, material) : new THREE.Points(geometry, material);
     particles.frustumCulled = false;
@@ -1288,7 +1292,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Weather settings: the selected weather's intensity, wind and storm rates, live, as the Skinner Sky panel tunes the
   // sky; a row shows when the weather has what it tunes. Reset shows the weather again with its own values; each row's
-  // ↺ puts back that one. Nothing is saved.
+  // ↺ puts back that one, and a locked row keeps its value through Reset and another weather. Nothing is saved.
   let weatherTune = null;
   function weatherPanel(own, gusts, {lightning, fireballs}) {
     if (!weatherTune) {
@@ -1298,7 +1302,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const label = document.createElement('label'), range = Object.assign(document.createElement('input'), {type: 'range', min, max, step, id}), shown = document.createElement('output');
         range.addEventListener('input', () => { shown.textContent = range.value; apply(+range.value); });
         range.addEventListener('change', () => range.blur());  // Back to WASD.
-        label.append(text, range, shown, undoButton(range, 'input'));
+        label.append(text, range, shown, undoButton(range, 'input'), lockButton(range));
         weatherTune.append(label);
       };
       slider('Intensity (% own)', 'weatherIntensity', 0, MOST * 100, 5, value => { tuning.intensity = value / 100; });
@@ -1319,9 +1323,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     weatherTune.hidden = !own && !lightning && !fireballs;
     const set = (id, value, shown) => {
-      $(id).parentElement.style.display = shown ? '' : 'none';
-      $(id).value = value;
-      $(id).dataset.own = $(id).nextSibling.textContent = $(id).value;
+      const range = $(id), kept = locked(range);
+      range.parentElement.style.display = shown ? '' : 'none';
+      range.value = value;
+      range.dataset.own = range.nextSibling.textContent = range.value;
+      if (kept !== null && shown) range.value = kept;  // Applied below, once both winds are in.
     };
     const reach = Math.max(100, ...(own || []).map(v => Math.ceil(Math.abs(v))));  // A Tribes 2 drift can pass 100 m/s.
     for (const id of ['weatherEast', 'weatherNorth']) Object.assign($(id), {min: -reach, max: reach});
@@ -1330,6 +1336,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     set('weatherNorth', own ? own[1].toFixed(1) : 0, own);
     set('weatherStrikes', 100, lightning);
     set('weatherDrops', 100, fireballs);
+    for (const range of weatherTune.querySelectorAll('input[data-locked]')) if (range.parentElement.style.display !== 'none') range.dispatchEvent(new Event('input'));
     $('weatherTuneNote').textContent = own && gusts ? 'Moving the wind replaces its gusts.' : '';
   }
 
@@ -1346,7 +1353,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       // band when a mission sets h beyond v.
       const {visibleDistance: visible, hazeDistance: hazeAt} = map.terrain;
       const start = map.terrain.hazeModel === 'darkstar' ? Math.min(hazeAt * hazeAt / visible, visible * .75) : Math.min(hazeAt, visible - 1);
-      scene.fog = settings.fog ? new THREE.Fog(haze, start, visible) : null;
+      // A Skinner Sky's fog pass fades the world into its sky over the same range instead (skies.js skinner).
+      scene.fog = settings.fog && !skyPass?.fog ? new THREE.Fog(haze, start, visible) : null;
+      hazeRange = [start, visible];
       camera.far = settings.fog ? map.terrain.visibleDistance : (adapter ? 25000 : 9000);
     }
     camera.updateProjectionMatrix();
@@ -1396,15 +1405,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Skinner Sky settings: a panel over the map while a Skinner Sky preset is the sky (skies.js skinner), with the
   // volumetrics test page's controls (static/volumetrics/index.html). Changes are live and not saved; Copy values puts
   // the changed keys on the clipboard as presets.json writes them. While the panel is open each frame is timed on the GPU.
-  // Reset puts back every value, quality included; each row's ↺ puts back that one.
+  // Reset puts back every value, quality included; each row's ↺ puts back that one. A locked row keeps its value
+  // through Reset and another preset.
   const SKY_QUALITY = {width: 1024, height: 256, steps: 24, rows: 8}, skyQuality = {...SKY_QUALITY}, gl = renderer.getContext();
   const TUNED = [['Cloud coverage', 'cloudCoverage', 0, 1, .01], ['Cloud thickness km', 'cloudThickness', .2, 4, .1],
     ['Cloud darkness', 'cloudDarkness', 0, 3, .05], ['Cloud softness', 'cloudSoftness', .05, 1, .01], ['Cloud tile km', 'cloudScale', 5, 80, 1],
-    ['Cloud base km', 'cloudHeight', .5, 6, .1], ['Fog density /km', 'fogDensity', 0, 8, .05, 1000], ['Fog height m', 'fogHeight', 5, 400, 5],
-    ['Fog brightness', 'fogBrightness', .2, 2, .05], ['Exposure', 'exposure', .2, 15, .1],
+    ['Cloud base km', 'cloudHeight', .5, 6, .1], ['Cloud churn m/s', 'cloudSpeed.z', 0, 50, 1, 1000],
+    ['Fog density /km', 'fogDensity', 0, 8, .05, 1000], ['Fog height m', 'fogHeight', 5, 400, 5], ['Fog brightness', 'fogBrightness', .2, 2, .05],
+    ['Fog patches', 'fogPatches', 0, 1, .01], ['Fog patch tile m', 'fogScale', 50, 2000, 10], ['Fog drift east m/s', 'fogWind.x', -20, 20, .5],
+    ['Fog drift north m/s', 'fogWind.y', -20, 20, .5], ['Fog swirl °/s', 'fogWind.z', -60, 60, 1], ['Exposure', 'exposure', .2, 15, .1],
     ['Cirrus coverage', 'cirrusCoverage', 0, 1, .01], ['Cirrus tile km', 'cirrusScale', 20, 300, 5],
     ['Cirrus height km', 'cirrusHeight', 5, 15, .5], ['Cirrus fibres', 'cirrusFibres', 0, 2, .05], ['Cirrus fibre km', 'cirrusFibreScale', 4, 80, 1],
     ['Cirrus opacity', 'cirrusOpacity', 0, 2, .05]];
+  // A row's key may name one number of a three-number key ('fogWind.z'): these read and set it.
+  const tunedUniform = (uniforms, key) => { const [name, part] = key.split('.'); return [uniforms[name], part]; };
+  const tunedValue = (uniforms, key) => { const [uniform, part] = tunedUniform(uniforms, key); return part ? uniform.value[part] : uniform.value; };
   const timer = gl.getExtension('EXT_disjoint_timer_query_webgl2'), timings = {pending: [], ms: [], frames: 0};
   let tune = null, tuned = {};
   // A settings row's ↺: its control back to the value in its data-own, as if moved there by hand.
@@ -1413,11 +1428,23 @@ window.addEventListener('DOMContentLoaded', async () => {
     button.addEventListener('click', () => { control.value = control.dataset.own; control.dispatchEvent(new Event(event)); button.blur(); });
     return button;
   }
+  // A settings row's lock: while on, its panel's Reset and the next sky or weather leave the row's value as it is.
+  function lockButton(control) {
+    const button = Object.assign(document.createElement('button'), {textContent: '🔓', title: 'Lock: keep this value through Reset', type: 'button'});
+    button.addEventListener('click', () => {
+      const on = control.toggleAttribute('data-locked');
+      Object.assign(button, {textContent: on ? '🔒' : '🔓', title: on ? 'Locked: Reset keeps this value' : 'Lock: keep this value through Reset'});
+      button.setAttribute('aria-pressed', on);
+      button.blur();
+    });
+    return button;
+  }
+  function locked(control) { return control.hasAttribute('data-locked') ? control.value : null; }  // The value a locked row keeps.
   function skyPanel(pass) {
     if (!tune) {
       tune = Object.assign(document.createElement('details'), {id: 'skyTune'});
       tune.append(Object.assign(document.createElement('summary'), {textContent: 'Skinner Sky settings'}));
-      const row = (text, control, shown, event) => { const label = document.createElement('label'); label.append(text, control, shown, undoButton(control, event)); tune.append(label); };
+      const row = (text, control, shown, event) => { const label = document.createElement('label'); label.append(text, control, shown, undoButton(control, event), lockButton(control)); tune.append(label); };
       const choice = (text, options, key, apply) => {
         const select = Object.assign(document.createElement('select'), {id: 'tune-' + key});
         select.dataset.own = SKY_QUALITY[key];
@@ -1436,7 +1463,8 @@ window.addEventListener('DOMContentLoaded', async () => {
           if (range.value === range.dataset.own) delete tuned[key];  // Copy values lists only what differs from the preset.
           else tuned[key] = value;
           if (!skyPass?.uniforms) return;
-          skyPass.uniforms[key].value = value;
+          const [uniform, part] = tunedUniform(skyPass.uniforms, key);
+          if (part) uniform.value[part] = value; else uniform.value = value;
           if (/^c(loud|irrus)/.test(key)) skyPass.redraw();  // The clouds live in the sky texture; fog and exposure don't.
         });
         range.addEventListener('change', () => range.blur());  // Back to WASD.
@@ -1447,12 +1475,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       const note = Object.assign(document.createElement('pre'), {id: 'skyTuneTime', textContent: timer ? 'GPU time: waiting'
         : 'GPU time: this browser does not offer GPU timers (EXT_disjoint_timer_query_webgl2). Chrome and Edge do; in Firefox, set webgl.enable-privileged-extensions in about:config.'}), values = document.createElement('pre');
       copy.addEventListener('click', () => {  // Shown too, in case the browser refuses the clipboard.
-        values.textContent = Object.entries(tuned).map(([key, value]) => `"${key}": ${+value.toFixed(5)}`).join(', ') || '(nothing changed)';
+        const keys = Object.fromEntries(Object.keys(tuned).map(key => { const name = key.split('.')[0], value = skyPass.uniforms[name].value;
+          return [name, value.isVector3 ? `[${value.toArray().map(v => +v.toFixed(5)).join(', ')}]` : +value.toFixed(5)]; }));  // A three-number key whole.
+        values.textContent = Object.entries(keys).map(([key, value]) => `"${key}": ${value}`).join(', ') || '(nothing changed)';
         navigator.clipboard?.writeText(values.textContent).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy values'; }, 1500); }, () => {});
       });
-      reset.addEventListener('click', () => {  // The preset's own values and the default quality again.
-        Object.assign(skyQuality, SKY_QUALITY);
-        for (const key of ['width', 'rows', 'steps']) $('tune-' + key).value = SKY_QUALITY[key];
+      reset.addEventListener('click', () => {  // The preset's own values and the default quality again, but locked rows.
+        for (const key of ['width', 'rows', 'steps']) if (locked($('tune-' + key)) === null) $('tune-' + key).value = skyQuality[key] = SKY_QUALITY[key];
+        skyQuality.height = skyQuality.width / 4;
         showSky(settings.sky);
         reset.blur();
       });
@@ -1467,10 +1497,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     tuned = {};
     tune.querySelector('pre').textContent = '';
     for (const [, key, , , , scale = 1] of TUNED) {
-      const range = $('tune-' + key);
-      range.value = pass.uniforms[key].value * scale;
+      const range = $('tune-' + key), kept = locked(range);
+      range.value = tunedValue(pass.uniforms, key) * scale;
       range.dataset.own = range.value;  // As the range rounds it, so a ↺ or a drag back matches it.
       range.nextSibling.textContent = range.value;
+      if (kept !== null) { range.value = kept; range.dispatchEvent(new Event('input')); }  // Into the sky and Copy values.
     }
   }
   // GPU time of whole frames while the panel is open: one timer query a frame, the median of the last 60.
@@ -1501,7 +1532,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       renderer.render(scene, camera);
       renderer.autoClear = true;
     } else renderer.render(scene, camera);
-    if (fogged) skyPass.fog.draw(renderer, camera);
+    if (fogged) skyPass.fog.draw(renderer, camera, hazeRange);
     if (query) { gl.endQuery(timer.TIME_ELAPSED_EXT); timings.pending.push(query); }
     if (timer && timings.pending.length) readTimings();
   }

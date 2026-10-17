@@ -52,7 +52,7 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 | `starIntensity`, `starDensity` | 0, 250 | Stars, one per cell of a grid of that many cells per radian. Twinkle, coloured |
 | `milkyWay` | 0 | A band of glow, with denser stars along it |
 | `cloudCoverage`, `cloudSoftness` | .5, .15 | Heaped clouds: how much of the sky, and how soft their edges |
-| `cloudScale`, `cloudHeight`, `cloudSpeed` | 20, 2, (.02, .005, 0) | Noise tile size (km), layer height (km), wind (km/s) |
+| `cloudScale`, `cloudHeight`, `cloudSpeed` | 20, 2, (.02, .005, 0) | Noise tile size (km), layer height (km), wind (km/s); `cloudSpeed`'s third number slides the billows across the shapes (km/s), so the clouds churn |
 | `cloudColor`, `cloudDarkness`, `cloudOpacity` | (1, 1, 1), 1, 1 | Tint, how dark thick clouds get, overall opacity |
 | `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | 0, 150, (.04, .01, 0) | Fibrous streaks; off unless the preset sets coverage. Streak tile (km), wind (km/s) |
 | `cirrusHeight`, `cirrusFibres`, `cirrusFibreScale`, `cirrusOpacity` | 9, 1, 24, 1 | Layer height (km); fibre strength (0 smooth streaks, 2 stronger strands); fibre tile (km); optical thickness scale |
@@ -64,7 +64,9 @@ The volumetric clouds and the height fog take five more keys (`skies.js` `volume
 Unity's `Skinner/Volumetric Sky` and `Hidden/Skinner Volumetrics`, which `Skinner/Sky` does not declare):
 `cloudThickness` (1.5 km, the slab above `cloudHeight`), `fogDensity` (.0012 per metre at the fog's base), `fogHeight`
 (40 m to thin by e), `fogBrightness` (1) and `fogBase` (0, counted from the map's start; presets leave it out).
-A sixth, `spaceIntensity` (0), adds the space backdrop below.
+A sixth, `spaceIntensity` (0), adds the space backdrop below. Three more make the fog patchy and moving:
+`fogPatches` (0, off; 1 is strong), `fogScale` (400 m a patch tile) and `fogWind` ((4, 1.5, 10): the patches' drift in
+m/s east and north, and how fast the swirl that bends them turns, in degrees a second).
 
 ## Space backdrop
 

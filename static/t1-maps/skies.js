@@ -212,7 +212,8 @@ window.t1Skies = {
   },
   // spaceIntensity > 0 adds SkinnerSpace.cginc's backdrop (Star Nest), baked once into a 2048x2048 texture on the first
   // update() and read per pixel behind the stars.
-  volumetricDefaults: {cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1, spaceIntensity: 0},
+  volumetricDefaults: {cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1, spaceIntensity: 0,
+    fogPatches: 0, fogScale: 400, fogWind: [4, 1.5, 10]},
   async skinner({entry, radius, group, loadTexture, time, ground = 0}) {
     const text = url => fetch(url).then(response => response.ok ? response.text() : null, () => null);
     const [noise, space, core, clouds, fog] = await Promise.all([loadTexture(entry.base + 'SkinnerSkyNoise.png', true), text(entry.base + 'SkinnerSpace.cginc'),
@@ -266,16 +267,29 @@ window.t1Skies = {
         s = skinnerCirrus(d, s, c.rgb, c.a * c.a) + skinnerCloudsFlash(d, c.a);  // The flash is in the low clouds, in front.
         gl_FragColor = vec4(display(s) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
       }`}), radius, group);
-    const F = {...U, sceneColor: {value: null}, sceneDepth: {value: null}, projectionInverse: {value: null}, viewInverse: {value: null}, eyeZ: {value: 0}};
-    const fogScene = quad(header() + `uniform sampler2D sceneColor, sceneDepth; uniform mat4 projectionInverse, viewInverse; uniform float eyeZ; varying vec2 vUv;
+    // The map's own haze is off under this fog (viewer.js applySettings): instead, past the haze's start (haze.x, m)
+    // the world fades into the sky behind it (the ball's own sum), fogged as that sky is, by the haze's own curve t(2 - t), whole at its end
+    // (haze.y, the far plane) so the far plane's cut is never seen. (A flat haze colour there left objects as off-colour
+    // shapes against the sky until the far plane dropped them, which turning the view moves.)
+    const F = {...U, sceneColor: {value: null}, sceneDepth: {value: null}, projectionInverse: {value: null}, viewInverse: {value: null}, eye: {value: new THREE.Vector3()},
+      haze: {value: new THREE.Vector2(0, 1e5)}};
+    const fogScene = quad(header() + `uniform sampler2D sceneColor, sceneDepth; uniform mat4 projectionInverse, viewInverse; uniform vec3 eye; uniform vec2 haze; varying vec2 vUv;
       void main() {
         float z = texture2D(sceneDepth, vUv).r;
         vec4 v = projectionInverse * vec4(vUv * 2. - 1., z * 2. - 1., 1.);
         v /= v.w;
         vec3 w = normalize((viewInverse * vec4(v.xyz, 0.)).xyz), rd = vec3(w.x, -w.z, w.y);
-        float through = fogThrough(eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz));
+        float dist = z >= 1. ? 1e5 : length(v.xyz), t = clamp((dist - haze.x) / (haze.y - haze.x), 0., 1.);
         vec4 lit = skinnerFlashFog(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb);  // The ring, and the world, during a flash.
-        gl_FragColor = vec4(mix(display(lit.rgb * fogBrightness), texture2D(sceneColor, vUv).rgb * (z >= 1. ? 1. : lit.a), through), 1.);
+        vec3 air = display(lit.rgb * fogBrightness);
+        float skyThrough = fogThroughAt(eye, rd, 1e5);
+        vec3 c = mix(air, texture2D(sceneColor, vUv).rgb * (z >= 1. ? 1. : lit.a), z >= 1. ? skyThrough : fogThroughAt(eye, rd, dist));
+        if (z < 1. && t > 0.) {  // The sky as the ball draws it there: stars, moon, sun, space and cirrus too.
+          vec4 p = texture2D(pano, panoUV(rd));
+          vec3 sky = skinnerCirrus(rd, p.rgb + skinnerBehind(rd, p.rgb, toLight(PLANET + .002, rd.z) * p.a), p.rgb, p.a * p.a) + skinnerCloudsFlash(rd, p.a);
+          c = mix(c, mix(air, display(sky), skyThrough), t * (2. - t));
+        }
+        gl_FragColor = vec4(c, 1.);
       }`, F);
     // The space backdrop, when the preset has one: 2048x2048 over the whole sphere (0.06-0.13 degrees a texel), 32 MB, baked on the first update().
     let spaceTarget = null, spaceScene = null;
@@ -333,10 +347,11 @@ window.t1Skies = {
           }
           return frame;
         },
-        draw(renderer, camera) {
+        draw(renderer, camera, haze) {  // haze: the map's [start, end] (m).
+          F.haze.value.fromArray(haze);
           F.projectionInverse.value = camera.projectionMatrixInverse;
           F.viewInverse.value = camera.matrixWorld;
-          F.eyeZ.value = camera.position.y;
+          F.eye.value.set(camera.position.x, -camera.position.z, camera.position.y);  // z up, as the sky's directions.
           renderer.setRenderTarget(null);
           renderer.render(fogScene, flat);
         },
