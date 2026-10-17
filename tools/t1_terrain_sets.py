@@ -5,7 +5,7 @@ with their four corner base types, in the order the name letters run: top left, 
 (lCCFF is grass above, dirt below). Worlds differ in tile count and types, so a set is moved by role (ROLES): each corner
 type's role in the map's world, the source world's type for that role, then the source tile with those corners, turned
 or mirrored when only that fits. Tribes 2 terrains are blended layers without tiles, so their tiles are blended here from
-its material textures, corner by corner. A pack (ProConfig) replaces tiles by name, as the game reads them.
+its material textures, corner by corner.
 
 terrain-sets.json, beside the T1 pack's index: 'stock' maps each stock tile's stored PNG to its (world, tile), which
 is how the page finds a map's tiles; each set holds per world one stored PNG or null (the map's own) per tile.
@@ -15,10 +15,8 @@ import hashlib
 import io
 import json
 from pathlib import Path
-import re
 import struct
 import sys
-import zipfile
 
 import numpy as np
 from PIL import Image, ImageFilter
@@ -165,9 +163,8 @@ def image_bytes(array, kind='PNG'):
     return out.getvalue()
 
 
-def build_sets(install, output, t2_textures=None, packs=()):
-    """Write output/terrain-sets.json from the install's worlds, Tribes 2's terrain textures and packs ({name: zip}).
-    Sets of packs not given this time are kept from the last build. Returns the set names."""
+def build_sets(install, output, t2_textures=None):
+    """Write output/terrain-sets.json from the install's worlds and Tribes 2's terrain textures. Returns the set names."""
     output, everything = Path(output), install.everything()
 
     def store(data, suffix='.png'):
@@ -253,25 +250,8 @@ def build_sets(install, output, t2_textures=None, packs=()):
                 row.append(made[key])
             tiles[target] = row
         sets.append(dict(id='t2-' + name.lower(), group='Tribes 2', name=name, tiles=tiles))
-    for name, path in dict(packs).items():
-        with zipfile.ZipFile(path) as outer:
-            tiles = {}
-            for member in outer.namelist():
-                world = (re.search(r'(?i)(?:^|/)(\w+)dml\.zip$', member) or [None, None])[1]
-                if world and world.lower() in worlds:
-                    with zipfile.ZipFile(io.BytesIO(outer.read(member))) as inner:
-                        read = {Path(entry).name.lower(): (lambda entry=entry: inner.read(entry)) for entry in inner.namelist()}
-                        pngs = [tile_png(read, tile) for tile, _ in worlds[world.lower()][0]]
-                    tiles[world.lower()] = [store(png) if png else None for png in pngs]
-        if tiles:
-            sets.append(dict(id='pack-' + re.sub(r'[^a-z0-9]+', '-', name.lower()), group='Packs', name=name, tiles=tiles, pack=True))
     if not worlds:
         return []
-    try:  # Packs are imported by hand; a rebuild without them keeps their sets (their PNGs stay in textures/).
-        old = json.loads((output / 'terrain-sets.json').read_text(encoding='utf-8'))['sets']
-    except (OSError, ValueError, KeyError):
-        old = []
-    sets += [entry for entry in old if entry.get('pack') and entry['id'] not in {s['id'] for s in sets}]
     (output / 'terrain-sets.json').write_text(json.dumps({'stock': stock, 'sets': sets}, separators=(',', ':')), encoding='utf-8')
     return [entry['group'] + ' · ' + entry['name'] for entry in sets]
 
@@ -281,11 +261,8 @@ def main():
     parser.add_argument('game', help='Tribes folder (its base/ holds the worlds)')
     parser.add_argument('--output', default=str(LOCAL_DATA / 't1-maps'), help='T1 Maps pack folder')
     parser.add_argument('--t2', default=str(LOCAL_DATA / 't2-maps/base/textures/terrain'), help="Tribes 2's textures/terrain")
-    parser.add_argument('--pack', action='append', default=[], metavar='NAME=ZIP',
-                        help='a config whose <world>DML.zip files replace tiles by name (ProConfig)')
     args = parser.parse_args()
-    packs = dict(item.split('=', 1) for item in args.pack)
-    for line in build_sets(Install(args.game), args.output, args.t2, packs):
+    for line in build_sets(Install(args.game), args.output, args.t2):
         print(line)
 
 

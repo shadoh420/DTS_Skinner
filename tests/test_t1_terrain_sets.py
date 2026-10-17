@@ -86,15 +86,9 @@ class TerrainSetTests(unittest.TestCase):
             t2.mkdir()
             for name in ('lushworld.grassmixed', 'lushworld.rocklight', 'lushworld.dirtmossy'):
                 Image.new('RGB', (16, 16), (len(name) * 9 % 255, 80, 40)).save(t2 / (name + '.png'))
-            pack = root / 'pack.zip'
-            inner = io.BytesIO()
-            with zipfile.ZipFile(inner, 'w') as archive:
-                archive.writestr('lcccc.png', corner_png((7, 7, 7, 7)))
-            with zipfile.ZipFile(pack, 'w') as archive:
-                archive.writestr('Config/base/lushDML.zip', inner.getvalue())
             output = root / 'pack-out'
-            names = build_sets(Install(root / 'game'), output, t2, {'Uniform': pack})
-            self.assertEqual(names, ['Tribes · Lush', 'Tribes · Desert', 'Tribes 2 · Lush', 'Packs · Uniform'])
+            names = build_sets(Install(root / 'game'), output, t2)
+            self.assertEqual(names, ['Tribes · Lush', 'Tribes · Desert', 'Tribes 2 · Lush'])
 
             found = json.loads((output / 'terrain-sets.json').read_text())
             stock = {tuple(place): stored for stored, place in found['stock'].items()}
@@ -114,11 +108,6 @@ class TerrainSetTests(unittest.TestCase):
             t2_on_lush = sets['t2-lush']['tiles']['lush']
             self.assertTrue(all(t2_on_lush[i].endswith('.jpg') for i in (0, 1, 2, 4, 5)))
             self.assertIsNone(t2_on_lush[3])
-            self.assertEqual(sets['pack-uniform']['tiles']['lush'][1:], [None] * 5)  # By name: only lcccc is replaced.
-            self.assertEqual(quarters((output / 'textures' / sets['pack-uniform']['tiles']['lush'][0]).read_bytes())[0], COLOURS[7])
-
-            build_sets(Install(root / 'game'), output, t2)  # A rebuild without the pack keeps the pack's set.
-            self.assertIn('pack-uniform', [entry['id'] for entry in json.loads((output / 'terrain-sets.json').read_text())['sets']])
 
 
 if __name__ == '__main__':
