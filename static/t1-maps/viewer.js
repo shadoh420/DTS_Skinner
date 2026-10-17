@@ -688,7 +688,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Rain or snow: particles in a box around the camera that wrap as they or the camera leave it. Counts, box size
   // and fall speeds follow ArenaPrototype's precipitation. The Weather list (/t1-map-weather) swaps in another map's:
   // a T1-family mission's or a Quake III family map's through the same box, a Tribes 2 mission's as the T2 page draws it.
-  let weather = null, weathers = [];
+  let weather = null, weathers = [], stormStrikes = false;  // stormStrikes: the weather has lightning of its own.
   const weatherGroup = new THREE.Group();
   scene.add(weatherGroup);
   const shelters = [], shelterFiles = new Map(), shelterQueue = [];  // Buildings that keep it out, their files by name, and every placed one.
@@ -1003,6 +1003,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const hit = blockRay.intersectObjects(occluders.filter(mesh => mesh.visible), false)[0];  // Hidden NPCs too.
     return hit ? hit.point.toArray() : null;
   }
+  // A Skinner Sky's clouds light up over a strike at (x, z) (skies.js strike), at the same moment; `single`: one pulse.
+  const skyStrike = (x, z, single) => skyPass?.strike?.(x - camera.position.x, camera.position.z - z, single);
   // The terrain or a roof under (x, z), from height `top` down.
   const landing = (x, top, z) => blocked([x, top, z], [x, ground(x, z), z]) || [x, ground(x, z), z];
   function buildT2Lightning(objects, base) {
@@ -1024,6 +1026,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         setup.timer += dt * tuning.strikes;
         for (const every = 60 / Math.max(.01, setup.perMinute); setup.timer > every; setup.timer -= every) {
           const [x, floor, z] = strikePoint(setup.spread), top = floor + setup.height, end = landing(x, top, z);
+          skyStrike(x, z);
           strikes.push({age: 0, setup, bolts: [0, 1, 2].map(() => {
             const bolt = makeBolt([x + random(-setup.startRadius, setup.startRadius), top, z + random(-setup.startRadius, setup.startRadius)], end, setup.width, 10, 30, 4, 15);
             for (let i = 0; i < bolt.major.length - 1; i++) {
@@ -1098,9 +1101,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   function buildRavenLightning({color, delay, flicker, effect}, identity) {
     const flash = new THREE.Color(...color.map(v => Math.min(1, v * identity))), mesh = boltMesh(), bolts = [];
     const pick = (min, max) => Math.floor(random(min, max + 1)) / 1000;
-    let wait = pick(4000, 8000), count = 0, lit = false;
+    let wait = pick(4000, 8000), count = 0, lit = false, at = [0, 0];
     const light = on => {
       lit = on;
+      if (on) skyStrike(...at, true);  // Each flicker lights the clouds once, over this run's bolt.
       if (scene.fog) scene.fog.color.copy(on ? flash : haze);
     };
     const bolt = () => {
@@ -1118,6 +1122,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
         if (points.length > 1) bolts.push({points, age: 0, life: random(.3, .65), size: random(25, 30) * Q3_UNIT});
       }
+      return top;
     };
     return (delta, near) => {
       for (wait -= count ? delta : delta * tuning.strikes; wait <= 0;) {  // The rate speeds the waits between flashes.
@@ -1126,7 +1131,8 @@ window.addEventListener('DOMContentLoaded', async () => {
           if (count === 0 || count % 2 === 0) { light(false); wait += count === 0 ? pick(1000, 12000) : count === 2 ? pick(150, 450) : pick(50, 150); }
           else { light(true); wait += .05; }
         } else if (near < Infinity) {
-          if (Math.floor(random(1, effect + 1)) === 1) bolt();
+          const top = Math.floor(random(1, effect + 1)) === 1 ? bolt() : null;
+          at = top ? [top[0], top[2]] : [camera.position.x + crandom() * 1500, camera.position.z + crandom() * 1500];
           if (Math.floor(random(1, flicker + 1)) === 1) { count = Math.floor(random(1, 5)) * 2; wait += .05; light(true); }
           else wait += pick(1000, delay);
         } else wait += pick(1000, delay);
@@ -1261,6 +1267,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     scene.fog?.color.copy(haze);  // A flash may be on.
     Object.assign(tuning, {intensity: 1, wind: null, strikes: 1, drops: 1});
     const chosen = weathers.find(entry => entry.id === id), found = chosen?.weather, steps = [], storms = [];
+    stormStrikes = Boolean(found?.storm?.lightning || found?.lightning);
     if (chosen?.renderer === 't1') steps.push(buildBox(t1Box(found)));
     else if (chosen?.renderer === 'q3') steps.push(...found.specs.map(spec => buildBox(q3Box(spec, found.identity))));
     else if (chosen?.renderer === 't2' && found.object) steps.push(buildPrecipitation(found, chosen.base));
@@ -1269,7 +1276,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (found?.storm?.lightning) storms.push(buildRavenLightning(found.storm.lightning, found.identity));
     if (found?.lightning) storms.push(buildT2Lightning(found.lightning, chosen.base));
     if (found?.fireballs) storms.push(buildFireballs(found.fireballs, chosen.base));
-    weatherPanel(steps[0]?.wind, Boolean(wind), {lightning: Boolean(found?.storm?.lightning || found?.lightning), fireballs: Boolean(found?.fireballs)});
+    weatherPanel(steps[0]?.wind, Boolean(wind), {lightning: stormStrikes, fireballs: Boolean(found?.fireballs)});
     if (!steps.length && !storms.length) return;
     for (const building of shelterQueue) addShelter(building);
     weather = delta => {
@@ -1483,6 +1490,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const query = tune?.open && !tune.hidden && timer && gl.createQuery();
     if (query) gl.beginQuery(timer.TIME_ELAPSED_EXT, query);
     // A Skinner Sky's height fog: sky and world into its target, then through the fog onto the screen.
+    if (skyPass?.lightning) skyPass.lightning.weather = stormStrikes;  // Its clouds flash with the storm's strikes.
     skyPass?.update?.(renderer);
     const fogged = settings.fog && skyPass?.fog;
     if (fogged) renderer.setRenderTarget(skyPass.fog.target(renderer));

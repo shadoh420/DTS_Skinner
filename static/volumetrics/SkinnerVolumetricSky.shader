@@ -47,6 +47,8 @@ Shader "Skinner/Volumetric Sky"
         auroraIntensity ("Aurora", Float) = 0
         auroraColor ("Aurora low colour", Vector) = (0.1, 1, 0.4, 0)
         auroraColor2 ("Aurora high colour", Vector) = (0.6, 0.2, 1, 0)
+        lightningRate ("Lightning (flashes a minute, 0 off)", Float) = 0
+        lightningIntensity ("Lightning brightness", Float) = 1
         fogDensity ("Fog density (per metre at its base)", Float) = 0.0012
         fogHeight ("Fog height (metres to thin by e)", Float) = 40
         fogBase ("Fog base (metres)", Float) = 0
@@ -86,7 +88,7 @@ Shader "Skinner/Volumetric Sky"
                 float3 d = normalize(i.dir).xzy;  // Unity is y up: the sky's z up is its y.
                 float4 c = tex2D(_SkinnerPano, panoUV(d));
                 float3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : float3(0., 0., 0.));
-                return float4(skinnerCirrus(d, s, c.rgb, c.a * c.a), 1.);  // Under the clouds, per pixel, as skies.js.
+                return float4(skinnerCirrus(d, s, c.rgb, c.a * c.a) + skinnerCloudsFlash(d, c.a), 1.);  // Cirrus under the clouds, per pixel, as skies.js.
             }
             ENDCG
         }

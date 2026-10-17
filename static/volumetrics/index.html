@@ -77,13 +77,14 @@
     ...[query.get('core') ?? '/static/skinner-sky/SkinnerSky.cginc', 'SkinnerClouds.cginc', 'SkinnerFog.cginc'].map(url => fetch(url).then(response => response.text())),
     fetch('/static/skinner-sky/presets.json').then(response => response.json())]);
   Object.assign(noise, {flipY: false, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, needsUpdate: true});
-  const U = {skyNoise: {value: noise}, uTime: {value: 0}, layerCoverage: {value: 0}, usePano: {value: 1}, pano: {value: null}, ring: {value: null}};
+  const U = {skyNoise: {value: noise}, uTime: {value: 0}, layerCoverage: {value: 0}, usePano: {value: 1}, pano: {value: null}, ring: {value: null},
+    lightningDir: {value: new THREE.Vector4(0, 0, 1, 1)}, lightningColor: {value: new THREE.Vector4()}}, flash = {};  // Lightning: skies.js lightning.
   window.U = U;  // For checks from the console (and window.scene below).
   for (const [key, value] of Object.entries(defaults)) U[key] = {value: Array.isArray(value) ? new THREE.Vector3(...value) : value};
   const declared = Object.entries(defaults).map(([key, value]) => `uniform ${Array.isArray(value) ? 'vec3' : 'float'} ${key};`).join(' ');
   // The sky's own 2.5D cloud layer reads layerCoverage (0 when the volumetric clouds replace it); sunSize can be
   // swapped the same way, so the sky texture holds no blocky sun disc.
-  const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring; uniform float uTime, layerCoverage, usePano; ${declared}
+  const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring; uniform float uTime, layerCoverage, usePano; uniform vec4 lightningDir, lightningColor; ${declared}
     #define UNROLL\n#define SAMPLE_LOD(s, uv, lod) textureLod(s, uv, lod)\n${prefix}#define cloudCoverage layerCoverage\n${core}\n#undef cloudCoverage\n${clouds}\n${fog}\n`;
   const quadVertex = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
   const quad = material => Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material), {frustumCulled: false});
@@ -136,7 +137,7 @@
     vertexShader: t1Skies.vertexShader, fragmentShader: header() + `varying vec3 vDir; void main() { vec3 d = normalize(vDir); ${body} }`});
   const skyLayer = skyMaterial('gl_FragColor = vec4(skinnerSky(d), 1.);'), skyPano = skyMaterial(`
     vec4 c = texture2D(pano, panoUV(d));
-    gl_FragColor = vec4(c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.)), 1.);`);
+    gl_FragColor = vec4(c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.)) + skinnerCloudsFlash(d, c.a), 1.);`);
   const skyBall = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), skyPano);
   skyBall.frustumCulled = false;
   skyScene.add(skyBall);
@@ -174,7 +175,8 @@
           vec4 v = projectionInverse * vec4(vUv * 2. - 1., z * 2. - 1., 1.);
           v /= v.w;
           vec3 w = normalize((viewInverse * vec4(v.xyz, 0.)).xyz), rd = vec3(w.x, -w.z, w.y);
-          c = skinnerFog(c, eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz), texture2D(ring, vec2(panoUV(rd).x, .5)).rgb);
+          vec4 lit = skinnerFlashFog(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb);
+          c = skinnerFog(z >= 1. ? c : c * lit.a, eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz), lit.rgb);
         }
         gl_FragColor = vec4(pow(aces(c * exposure), vec3(1. / 2.2)) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
       }`});
@@ -249,6 +251,7 @@
     post.uniforms.eyeZ.value = camera.position.y;
     post.uniforms.fogOn.value = $('fog').checked ? 1 : 0;
     U.uTime.value = frozen ?? now / 1000;
+    t1Skies.lightning(U, U.uTime.value, flash);
     const pano = $('mode').value === 'pano';
     U.usePano.value = pano ? 1 : 0;
     skyBall.material = pano ? skyPano : skyLayer;

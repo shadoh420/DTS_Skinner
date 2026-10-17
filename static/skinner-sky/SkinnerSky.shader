@@ -45,6 +45,8 @@ Shader "Skinner/Sky"
         auroraIntensity ("Aurora", Float) = 0
         auroraColor ("Aurora low colour", Vector) = (0.1, 1, 0.4, 0)
         auroraColor2 ("Aurora high colour", Vector) = (0.6, 0.2, 1, 0)
+        lightningRate ("Lightning (flashes a minute, 0 off)", Float) = 0
+        lightningIntensity ("Lightning brightness", Float) = 1
         fogColor ("Fog colour (sRGB, for RenderSettings)", Vector) = (0.9, 0.92, 0.93, 0)
         [ToggleUI] tonemap ("Exposure and ACES here (off: HDR out, for a camera that tone-maps)", Float) = 1
     }
@@ -72,8 +74,10 @@ Shader "Skinner/Sky"
             sampler2D skyNoise;
             float sunAzimuth, sunElevation, sunIntensity, sunSize, moonAzimuth, moonElevation, moonIntensity, moonSize, ozone, mie, mieG,
                 exposure, starIntensity, starDensity, milkyWay, cloudCoverage, cloudSoftness, cloudScale, cloudHeight, cloudDarkness,
-                cloudOpacity, cirrusCoverage, cirrusScale, cirrusHeight, cirrusFibres, cirrusFibreScale, cirrusOpacity, auroraIntensity, tonemap;
+                cloudOpacity, cirrusCoverage, cirrusScale, cirrusHeight, cirrusFibres, cirrusFibreScale, cirrusOpacity, auroraIntensity,
+                lightningRate, lightningIntensity, tonemap;
             float3 sunColor, moonColor, rayleigh, groundColor, nightColor, cloudSpeed, cloudColor, cirrusSpeed, auroraColor, auroraColor2;
+            float4 lightningDir, lightningColor;  // Globals, set by SkinnerVolumetrics.cs while it runs (SkinnerSky.cginc skinnerFlash).
 
             #include "SkinnerSky.cginc"
 

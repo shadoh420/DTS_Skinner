@@ -27,8 +27,10 @@ sampler2D skyNoise, _SkinnerPano, _SkinnerRing, spaceMap;
 
 float sunAzimuth, sunElevation, sunIntensity, sunSize, moonAzimuth, moonElevation, moonIntensity, moonSize, ozone, mie, mieG,
     exposure, starIntensity, starDensity, milkyWay, cloudCoverage, cloudSoftness, cloudScale, cloudHeight, cloudThickness, cloudDarkness,
-    cloudOpacity, cirrusCoverage, cirrusScale, cirrusHeight, cirrusFibres, cirrusFibreScale, cirrusOpacity, auroraIntensity, fogDensity, fogHeight, fogBase, fogBrightness, tonemap, layerCoverage, spaceIntensity;
+    cloudOpacity, cirrusCoverage, cirrusScale, cirrusHeight, cirrusFibres, cirrusFibreScale, cirrusOpacity, auroraIntensity, lightningRate, lightningIntensity,
+    fogDensity, fogHeight, fogBase, fogBrightness, tonemap, layerCoverage, spaceIntensity;
 float3 sunColor, moonColor, rayleigh, groundColor, nightColor, cloudSpeed, cloudColor, cirrusSpeed, auroraColor, auroraColor2;
+float4 lightningDir, lightningColor;  // Globals, set by SkinnerVolumetrics.cs (SkinnerSky.cginc skinnerFlash).
 
 // The sky's own 2.5D cloud layer reads layerCoverage, never set (0): the volumetric clouds replace it.
 #include "../skinner-sky/SkinnerSpace.cginc"

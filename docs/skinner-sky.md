@@ -57,6 +57,7 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 | `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | 0, 150, (.04, .01, 0) | Fibrous streaks; off unless the preset sets coverage. Streak tile (km), wind (km/s) |
 | `cirrusHeight`, `cirrusFibres`, `cirrusFibreScale`, `cirrusOpacity` | 9, 1, 24, 1 | Layer height (km); fibre strength (0 smooth streaks, 2 stronger strands); fibre tile (km); optical thickness scale |
 | `auroraIntensity`, `auroraColor`, `auroraColor2` | 0, (.1, 1, .4), (.6, .2, 1) | Curtains 100 to 175 km up, low colour to high colour |
+| `lightningRate`, `lightningIntensity` | 0, 1 | Lightning flashes a minute (0 = none; both storm presets use 6), and their brightness. [volumetrics.md](volumetrics.md#lightning) |
 | `fogColor` | (.9, .92, .93) | Unity only: `RenderSettings.fogColor`. The page measures its own haze |
 
 The volumetric clouds and the height fog take five more keys (`skies.js` `volumetricDefaults`, and the properties of

@@ -50,6 +50,8 @@ Shader "Hidden/Skinner Volumetrics"
         auroraIntensity ("Aurora", Float) = 0
         auroraColor ("Aurora low colour", Vector) = (0.1, 1, 0.4, 0)
         auroraColor2 ("Aurora high colour", Vector) = (0.6, 0.2, 1, 0)
+        lightningRate ("Lightning (flashes a minute, 0 off)", Float) = 0
+        lightningIntensity ("Lightning brightness", Float) = 1
         fogDensity ("Fog density (per metre at its base)", Float) = 0.0012
         fogHeight ("Fog height (metres to thin by e)", Float) = 40
         fogBase ("Fog base (metres)", Float) = 0
@@ -135,7 +137,8 @@ Shader "Hidden/Skinner Volumetrics"
                 bool sky = raw >= 1.;
                 #endif
                 float3 rd = normalize(v).xzy;
-                c = skinnerFog(c, _WorldSpaceCameraPos.y, rd, sky ? 1e5 : length(v), SAMPLE_PLAIN(_SkinnerRing, float2(panoUV(rd).x, .5)).rgb) * exposure;
+                float4 lit = skinnerFlashFog(SAMPLE_PLAIN(_SkinnerRing, float2(panoUV(rd).x, .5)).rgb);  // The ring, and the world, during a flash.
+                c = skinnerFog(sky ? c : c * lit.a, _WorldSpaceCameraPos.y, rd, sky ? 1e5 : length(v), lit.rgb) * exposure;
                 if (tonemap < .5) return float4(c, 1.);
                 // As the page: ACES, the display's 2.2 and half a step of dither, then decoded with the sRGB curve, which
                 // the linear frame's output encodes again, so the frame holds the page's bytes.

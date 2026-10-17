@@ -170,7 +170,7 @@ window.t1Skies = {
     rayleigh: [1, 1, 1], ozone: 1, mie: 1, mieG: .8, groundColor: [.25, .24, .22], nightColor: [.0004, .0007, .0014], exposure: 1.5,
     starIntensity: 0, starDensity: 250, milkyWay: 0, cloudCoverage: .5, cloudSoftness: .15, cloudScale: 20, cloudHeight: 2,
     cloudSpeed: [.02, .005, 0], cloudColor: [1, 1, 1], cloudDarkness: 1, cloudOpacity: 1, cirrusCoverage: 0, cirrusScale: 150, cirrusHeight: 9, cirrusFibres: 1, cirrusFibreScale: 24, cirrusOpacity: 1,
-    cirrusSpeed: [.04, .01, 0], auroraIntensity: 0, auroraColor: [.1, 1, .4], auroraColor2: [.6, .2, 1]},
+    cirrusSpeed: [.04, .01, 0], auroraIntensity: 0, auroraColor: [.1, 1, .4], auroraColor2: [.6, .2, 1], lightningRate: 0, lightningIntensity: 1},
   // Drawn as docs/volumetrics.md: the air and volumetric clouds go into a 1024x256 sky texture, 1/8 of its rows a
   // frame (all of it on the first draw); the screen adds the sun, stars, moon and aurora per pixel. That costs about a
   // quarter of the per-pixel sky. Height fog (SkinnerFog.cginc, lit by the sky's horizon ring) is a pass over the
@@ -179,6 +179,37 @@ window.t1Skies = {
   // The target is multisampled 4x as the page's canvas is: +0.28 ms a frame at 2560x1440 (RX 7800 XT). The sky ball
   // stays in the viewer's sky group, drawn with the world; update() draws the sky texture's band and the ring first.
   // `ground`: the height the fog's fogBase is measured from (the map's start).
+  // Lightning for a preset with lightningRate (flashes a minute; 0 off): a random wait before each flash, which lands
+  // in the cloud layer 3-25 km off and flickers in 2 or 3 pulses over about 0.2 s. Sets U.lightningDir and
+  // U.lightningColor for SkinnerSky.cginc skinnerFlash; SkinnerVolumetrics.cs does the same in Unity. state: {} per
+  // sky; while state.weather is set, a Weather storm strikes instead (strike) and the wait stops.
+  lightning(U, seconds, state) {
+    const rate = U.lightningRate.value / 60, wait = () => -Math.log(1 - Math.random()) / rate;
+    if (!(rate > 0)) return void U.lightningColor.value.set(0, 0, 0, 0);
+    if (state.weather) state.next = undefined;
+    else {
+      if (state.next === undefined || seconds < state.at) state.next = seconds + wait();  // First, or the clock went back.
+      if (seconds >= state.next) {
+        this.strike(U, state.next, state);
+        state.next = state.at + .3 + wait();
+      }
+    }
+    const glow = (state.pulses || []).reduce((sum, [delay, size]) => sum + (seconds >= state.at + delay ? size * Math.exp((state.at + delay - seconds) * 30) : 0), 0);
+    U.lightningColor.value.set(.8, .85, 1, 0).multiplyScalar(glow * 5);
+  },
+  // A flash now in the cloud layer above a strike `east`, `north` metres from the eye (anywhere 3-25 km off when not
+  // given): 2 or 3 pulses, or one when `single` (a storm that flickers by itself).
+  strike(U, seconds, state, east, north, single = false) {
+    const given = east !== undefined, h = given ? Math.max(Math.hypot(east, north), 1) / 1000 : 3 + 22 * Math.sqrt(Math.random());
+    const around = given ? Math.atan2(east, north) : 2 * Math.PI * Math.random(), mid = U.cloudHeight.value + U.cloudThickness.value * .5;
+    const up = Math.atan2(mid, h), far = Math.hypot(h, mid);
+    U.lightningDir.value.set(Math.sin(around) * Math.cos(up), Math.cos(around) * Math.cos(up), Math.sin(up), far * far / 8);
+    state.at = seconds;
+    state.pulses = [[0, 1]];
+    if (single) return;
+    state.pulses.push([.05 + .05 * Math.random(), .4 + .6 * Math.random()]);
+    if (Math.random() < .5) state.pulses.push([.13 + .07 * Math.random(), .3 + .5 * Math.random()]);
+  },
   // spaceIntensity > 0 adds SkinnerSpace.cginc's backdrop (Star Nest), baked once into a 2048x2048 texture on the first
   // update() and read per pixel behind the stars.
   volumetricDefaults: {cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1, spaceIntensity: 0},
@@ -187,7 +218,8 @@ window.t1Skies = {
     const [noise, space, core, clouds, fog] = await Promise.all([loadTexture(entry.base + 'SkinnerSkyNoise.png', true), text(entry.base + 'SkinnerSpace.cginc'),
       text(entry.base + 'SkinnerSky.cginc'), text('/static/volumetrics/SkinnerClouds.cginc'), text('/static/volumetrics/SkinnerFog.cginc')]);
     if (!noise || !space || !core || !clouds || !fog) return null;
-    const U = {skyNoise: {value: noise}, uTime: time, layerCoverage: {value: 0}, pano: {value: null}, ring: {value: null}, spaceMap: {value: null}}, declared = [];
+    const U = {skyNoise: {value: noise}, uTime: time, layerCoverage: {value: 0}, pano: {value: null}, ring: {value: null}, spaceMap: {value: null},
+      lightningDir: {value: new THREE.Vector4(0, 0, 1, 1)}, lightningColor: {value: new THREE.Vector4()}}, declared = [], flash = {};
     for (const [key, fallback] of Object.entries({...this.skinnerDefaults, ...this.volumetricDefaults})) {
       // The type is the declaration's (the default's): a preset's number for a colour fills all three, a list for a number gives its first.
       const value = entry.sky[key] ?? fallback, vector = Array.isArray(fallback);
@@ -196,7 +228,7 @@ window.t1Skies = {
     }
     U.fogBase.value += ground;
     // The core's own 2.5D cloud layer reads layerCoverage (0): the volumetric clouds replace it.
-    const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring, spaceMap; uniform float uTime, layerCoverage; ${declared.join(' ')}
+    const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring, spaceMap; uniform float uTime, layerCoverage; uniform vec4 lightningDir, lightningColor; ${declared.join(' ')}
       #define UNROLL\n#define SAMPLE_LOD(s, uv, lod) textureLod(s, uv, lod)\n#define SAMPLE_PLAIN(s, uv) texture2D(s, uv)\n${prefix}${space}
       #define cloudCoverage layerCoverage\n${core}\n#undef cloudCoverage\n${clouds}\n${fog}
       vec3 display(vec3 c) { return pow(aces(c * exposure), vec3(1. / 2.2)); }\n`;
@@ -231,7 +263,7 @@ window.t1Skies = {
         // Under the clouds, per pixel (finer than the sky texture overhead). The texture keeps air and cloud light summed,
         // so laying cirrus over by alpha replaces some cloud light too; a² roughly halves that over thin cloud (exact needs
         // air and cloud light kept apart).
-        s = skinnerCirrus(d, s, c.rgb, c.a * c.a);
+        s = skinnerCirrus(d, s, c.rgb, c.a * c.a) + skinnerCloudsFlash(d, c.a);  // The flash is in the low clouds, in front.
         gl_FragColor = vec4(display(s) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
       }`}), radius, group);
     const F = {...U, sceneColor: {value: null}, sceneDepth: {value: null}, projectionInverse: {value: null}, viewInverse: {value: null}, eyeZ: {value: 0}};
@@ -242,7 +274,8 @@ window.t1Skies = {
         v /= v.w;
         vec3 w = normalize((viewInverse * vec4(v.xyz, 0.)).xyz), rd = vec3(w.x, -w.z, w.y);
         float through = fogThrough(eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz));
-        gl_FragColor = vec4(mix(display(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb * fogBrightness), texture2D(sceneColor, vUv).rgb, through), 1.);
+        vec4 lit = skinnerFlashFog(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb);  // The ring, and the world, during a flash.
+        gl_FragColor = vec4(mix(display(lit.rgb * fogBrightness), texture2D(sceneColor, vUv).rgb * (z >= 1. ? 1. : lit.a), through), 1.);
       }`, F);
     // The space backdrop, when the preset has one: 2048x2048 (0.04-0.09 degrees a texel), 32 MB, baked on the first update().
     let spaceTarget = null, spaceScene = null;
@@ -255,6 +288,8 @@ window.t1Skies = {
     const size = new THREE.Vector2();
     return {
       uniforms: U,  // For checks (skinnerT1Maps.skyPass()) and the page's Skinner Sky panel.
+      lightning: flash,  // weather: a Weather storm's strikes light the clouds (strike) in place of the preset's own wait.
+      strike(east, north, single) { window.t1Skies.strike(U, U.uTime.value, flash, east, north, single); },
       redraw() { whole = true; },  // The whole sky texture on the next frame, after a value changed.
       quality(q) {
         const steps = Q.steps;
@@ -277,6 +312,7 @@ window.t1Skies = {
       },
       update(renderer) {
         if (spaceTarget && !baked) this.bakeSpace(renderer);
+        window.t1Skies.lightning(U, U.uTime.value, flash);
         const current = renderer.getRenderTarget(), rows = whole ? Q.height : Math.ceil(Q.height / Q.rows);
         pano.scissor.set(0, whole ? 0 : row, Q.width, rows);
         renderer.setRenderTarget(pano);
