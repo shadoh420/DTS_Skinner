@@ -165,9 +165,9 @@
   let yaw = 0, pitch = .08;
   const target = new THREE.WebGLRenderTarget(width, height, {type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(width, height, THREE.UnsignedIntType)});
   const post = new THREE.ShaderMaterial({uniforms: {...U, sceneColor: {value: target.texture}, sceneDepth: {value: target.depthTexture},
-    projectionInverse: {value: camera.projectionMatrixInverse}, viewInverse: {value: camera.matrixWorld}, eyeZ: {value: 2}, fogOn: {value: 1}, showPano: {value: 0}, panoWindow: {value: new THREE.Vector4(0, 0, 1, 1)}},
+    projectionInverse: {value: camera.projectionMatrixInverse}, viewInverse: {value: camera.matrixWorld}, eye: {value: new THREE.Vector3(0, 0, 2)}, fogOn: {value: 1}, showPano: {value: 0}, panoWindow: {value: new THREE.Vector4(0, 0, 1, 1)}},
     vertexShader: quadVertex, depthTest: false, fragmentShader: header() + `uniform sampler2D sceneColor, sceneDepth; uniform mat4 projectionInverse, viewInverse; uniform vec4 panoWindow;
-      uniform float eyeZ, fogOn, showPano; varying vec2 vUv;
+      uniform vec3 eye; uniform float fogOn, showPano; varying vec2 vUv;
       void main() {
         vec3 c = showPano > .5 ? texture2D(pano, panoWindow.xy + vUv * panoWindow.zw).rgb : texture2D(sceneColor, vUv).rgb;  // showPano: the sky texture itself, for checks.
         if (fogOn > .5) {
@@ -176,7 +176,7 @@
           v /= v.w;
           vec3 w = normalize((viewInverse * vec4(v.xyz, 0.)).xyz), rd = vec3(w.x, -w.z, w.y);
           vec4 lit = skinnerFlashFog(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb);
-          c = skinnerFog(z >= 1. ? c : c * lit.a, eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz), lit.rgb);
+          c = skinnerFog(z >= 1. ? c : c * lit.a, eye, rd, z >= 1. ? 1e5 : length(v.xyz), lit.rgb);
         }
         gl_FragColor = vec4(pow(aces(c * exposure), vec3(1. / 2.2)) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
       }`});
@@ -248,7 +248,7 @@
     if (held.has('KeyQ')) camera.position.y -= step;
     camera.updateMatrixWorld();
     skyBall.position.copy(camera.position);
-    post.uniforms.eyeZ.value = camera.position.y;
+    post.uniforms.eye.value.set(camera.position.x, -camera.position.z, camera.position.y);
     post.uniforms.fogOn.value = $('fog').checked ? 1 : 0;
     U.uTime.value = frozen ?? now / 1000;
     t1Skies.lightning(U, U.uTime.value, flash);

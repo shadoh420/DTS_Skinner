@@ -124,14 +124,20 @@ The Sky list's Skinner Sky presets on the T1, Starsiege and Earthsiege Maps page
 frame.
 - **Skinner Sky settings panel.** While a preset is the sky, a panel over the map (`viewer.js` `skyPanel`) offers this
   page's controls live: sky texture size, rows per frame, steps, cloud coverage, thickness, darkness, softness, tile and
-  base, fog density, height and brightness, and exposure. The values are not saved. Copy values shows the changed keys
-  as `presets.json` writes them, and Reset reloads the preset. While the panel is open, each whole frame is timed on the
-  GPU (median of 60); the timing is only valid with the window in view.
+  base and churn, fog density, height, brightness, patches, patch tile, drift and swirl, exposure, and the cirrus keys.
+  The values are not saved. Copy values shows the changed keys as `presets.json` writes them, and Reset reloads the
+  preset. Each row's lock keeps its value through Reset and another preset (the Weather panel's rows too). While the
+  panel is open, each whole frame is timed on the GPU (median of 60); the timing is only valid with the window in view.
 - **Sky.** A ball in the viewer's sky group reads the sky texture and adds `skinnerBehind` and `skinnerCirrus`, through exposure, ACES and
   2.2. The map's haze takes its colour from that sky, as before.
 - **Height fog.** With Fog on, sky and world are drawn into a target with a depth texture, then `SkinnerFog.cginc` puts
   them on screen. `fogBase` counts from the map's first viewpoint height. The world is already display colour, so the
-  ring colour goes through the sky's tone map before the mix. The map's own linear haze stays on under it.
+  ring colour goes through the sky's tone map before the mix. The map's own haze is off under it: instead, from the
+  haze's start to its end (the far plane) the world fades into the sky behind it (the sky texture, fogged as the sky
+  is), along the haze's own t(2 − t), so nothing shows the far plane's cut. With the map's haze also on (until
+  2026-10-17), objects near the far plane faded to one flat colour and then the fog's colour went over that, so they
+  showed as off-colour shapes that dropped out when the far plane passed them, which turning the view moves.
+  See-through rain writes no depth, or the fade would take a streak's distance for the terrain's behind it.
 - **Cost**, measured 2026-10-17 on Raindance at 2560×1440 (RX 7800 XT, the Claude app's browser pane, in view), whole
   frames with the world drawn, median of 40, the same view (looking along the ground):
 
