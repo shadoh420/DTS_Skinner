@@ -210,7 +210,7 @@ def t1_map_data(filename):
 
 
 t1_sky_cache, t1_sky_lock = {}, threading.Lock()
-SKY_LIST_VERSION = 3  # Part of the cache stamp: bump it when the entries scene_skies or t2_mission_sky build change.
+SKY_LIST_VERSION = 5  # Part of the cache stamp: bump it when the entries scene_skies, scene_weather or the t2_mission_* readers build change.
 
 
 # Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it, its sections). 'dome' is
@@ -277,6 +277,62 @@ def scene_skies(kind, scene, row, game=None):
     return [(dict(name=scene['skybox'].get('name') or row['id'], stages=[], sky=box), {'power': power} if power else {})]
 
 
+def t2_mission_text(root, manifest, name, mission):
+    """A Tribes 2 mission's .mis text (None if unreadable) and the resources it sees: base/ and its mission pack's own."""
+    resources = (manifest.get('resources') or {}) | (((manifest.get('missionPacks') or {}).get(name) or {}).get('resources') or {})
+    found = resources.get((mission.get('resourcePath') or '').lower())
+    try:
+        return (root / 'base' / found[0]).read_text(encoding='latin1') if found else '', resources
+    except OSError:
+        return None, resources
+
+
+def mis_fields(text, kind):
+    """The quoted fields of a mission's first `new <kind>(...) {...};` object."""
+    block = re.search(r'new\s+' + kind + r'\s*\([^)]*\)\s*\{(.*?)\};', text, re.S | re.I)
+    return dict(re.findall(r'^\s*(\w+(?:\[\d+\])?)\s*=\s*"([^"]*)"', block.group(1), re.M)) if block else {}
+
+
+PRECIPITATION_FIELDS = {'dataBlock', 'percentage', 'color1', 'color2', 'color3', 'offsetSpeed', 'minVelocity', 'maxVelocity', 'maxNumDrops', 'maxRadius'}
+
+
+def t2_mission_weather(root, manifest, name, mission):
+    """A Tribes 2 mission's Precipitation as the T2 page reads it (map-client/environment.tsx): the object's fields,
+    its PrecipitationData datablock's from scripts/weather.cs, and the Sky's wind. None when it has no precipitation."""
+    text, resources = t2_mission_text(root, manifest, name, mission)
+    if not text or not re.search(r'new\s+Precipitation\s*\(', text, re.I):
+        return None
+    found, blocks = resources.get('scripts/weather.cs'), {}
+    try:
+        script = (root / 'base' / found[0]).read_text(encoding='latin1') if found else ''
+        blocks = {key.lower(): dict(re.findall(r'^\s*(\w+)\s*=\s*"?([^";]*)"?\s*;', body, re.M))
+                  for key, body in re.findall(r'datablock\s+PrecipitationData\s*\(\s*(\w+)\s*\)\s*\{(.*?)\};', script, re.S | re.I)}
+    except OSError:
+        pass
+    precipitation, sky = mis_fields(text, 'Precipitation'), mis_fields(text, 'Sky')
+    precipitation = {k: v for k, v in precipitation.items() if k in PRECIPITATION_FIELDS}  # Not its place: missions share it.
+    return dict(object=precipitation, datablock=blocks.get(precipitation.get('dataBlock', '').lower(), {}),
+                sky={k: sky[k] for k in ('windVelocity', 'windEffectPrecipitation') if k in sky})
+
+
+def scene_weather(kind, scene):
+    """The weather a map's scene holds for one SKY_PACKS kind, as (name, renderer, weather), or None: a T1-family
+    mission's rain or snow, a Quake III family map's (without RTCW's misc_snow columns, which belong to their spot),
+    or a Tribes 2 mission's Precipitation."""
+    weather = scene.get('weather')
+    if kind == 'dome' and isinstance(weather, dict) and isinstance(weather.get('wind'), list):
+        name = f"{'Rain' if weather.get('rain') else 'Snow'} {round(100 * weather.get('intensity', 1))}%"
+        return name + (' · wind {:g} {:g}'.format(*(round(v, 2) for v in weather['wind'][:2])) if any(weather['wind'][:2]) else ''), 't1', weather
+    if kind == 'q3' and isinstance(weather, list):
+        specs = [spec for spec in weather if isinstance(spec, dict) and spec.get('type') in ('rain', 'snow') and not spec.get('column')]
+        identity = (scene.get('lighting') or {}).get('identityLight', .5)
+        if specs:
+            return ' + '.join(spec['type'].title() for spec in specs), 'q3', dict(specs=specs, identity=identity)
+    if kind == 't2mis' and scene.get('t2weather'):
+        return scene['t2weather']['object'].get('dataBlock') or 'Precipitation', 't2', scene['t2weather']
+    return None
+
+
 def t2_mission_sky(root, manifest, name, mission):
     """A Tribes 2 mission's Sky object as a Q3 sky shader: its material list's first six names are the box faces
     (front, right, back, left, top, down: Quake's bk, rt, ft, lf, up, dn; the top a quarter turn round, the turn that
@@ -284,14 +340,10 @@ def t2_mission_sky(root, manifest, name, mission):
     its cloudHeightPer and scrolling at its cloudSpeed (t2-mapper's misToScene: speed per 32 ms). Files under base/;
     a mission pack's (IronSphere's) own files serve its mission only. A down face no file has (the TR2 mod's
     volcanic_starrynite_v5_DN never shipped) is null in the box, which the viewer fills with a plain colour."""
-    resources = (manifest.get('resources') or {}) | (((manifest.get('missionPacks') or {}).get(name) or {}).get('resources') or {})
-    found = resources.get((mission.get('resourcePath') or '').lower())
-    try:
-        text = (root / 'base' / found[0]).read_text(encoding='latin1') if found else ''
-    except OSError:
+    text, resources = t2_mission_text(root, manifest, name, mission)
+    if text is None:
         return None
-    block = re.search(r'new\s+Sky\s*\([^)]*\)\s*\{(.*?)\};', text, re.S | re.I)
-    fields = dict(re.findall(r'^\s*(\w+(?:\[\d+\])?)\s*=\s*"([^"]*)"', block.group(1), re.M)) if block else {}
+    fields = mis_fields(text, 'Sky')
     if fields.get('useSkyTextures', '1') == '0':  # A solid sky colour: the T1 viewer's untextured dome.
         rgb = [float(v) for v in fields.get('SkySolidColor', '0 0 0').split()[:3]]
         return dict(name='solid colour', color=[round(min(max(v, 0), 1) * 255) for v in rgb]) if len(rgb) == 3 else None
@@ -325,24 +377,35 @@ def t1_map_skies():
     return jsonify(t1_sky_list())
 
 
+@app.route('/t1-map-weather')
+def t1_map_weather():
+    """Weather the T1 Maps page can swap in (its Weather list), found by the same scan: each distinct rain or snow
+    once, with the maps that have it."""
+    return jsonify(t1_sky_scan()['weather'])
+
+
 def t1_sky_list():
-    """The Sky list, scanned again only when a pack's index changes. A full library takes about 15 s, so the list is
-    kept in the data folder for the next start too (t1-map-skies.json), and the app starts the scan as it starts."""
+    return t1_sky_scan()['skies']
+
+
+def t1_sky_scan():
+    """The Sky and Weather lists, scanned again only when a pack's index changes. A full library takes about 15 s, so
+    the lists are kept in the data folder for the next start too (t1-map-skies.json), and the app starts the scan as it starts."""
     roots = [(game, section, local_data_dir / f'{(entry[3:] or (game,))[0]}-maps' / section) for game, entry in SKY_PACKS.items() for section in entry[2]]
     listed = lambda root: root / ('manifest.json' if (root / 'manifest.json').is_file() else 'index.json')  # Tribes 2 lists missions in its manifest.
     stamp = [SKY_LIST_VERSION, str(local_data_dir), *(listed(root).stat().st_mtime_ns if listed(root).is_file() else 0 for *_, root in roots)]
     saved = local_data_dir / 't1-map-skies.json'
     with t1_sky_lock:  # A request waits for the scan the app started rather than running a second one.
         if t1_sky_cache.get('stamp') == stamp:
-            return t1_sky_cache['skies']
+            return t1_sky_cache
         try:
             kept = json.loads(saved.read_text(encoding='utf-8'))
-            if kept['stamp'] == stamp and isinstance(kept['skies'], list):
+            if kept['stamp'] == stamp and isinstance(kept['skies'], list) and isinstance(kept['weather'], list):
                 t1_sky_cache.update(kept)
-                return kept['skies']
+                return t1_sky_cache
         except (OSError, ValueError, KeyError, TypeError):
             pass  # None kept yet, or unreadable: scan.
-        skies = {}
+        skies, weathers = {}, {}
         for game, section, root in roots:
             group, kind, _, *pack = SKY_PACKS[game]
             try:
@@ -356,7 +419,8 @@ def t1_sky_list():
             for row in index if isinstance(index, list) else []:
                 try:
                     if kind == 't2mis':
-                        scene = {'t2sky': t2_mission_sky(root, manifest, row['id'], row['mission'])}
+                        scene = {'t2sky': t2_mission_sky(root, manifest, row['id'], row['mission']),
+                                 't2weather': t2_mission_weather(root, manifest, row['id'], row['mission'])}
                     else:
                         scene = json.loads((root / 'maps' / row['id'] / 'scene.json').read_text(encoding='utf-8'))
                 except (OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -375,13 +439,24 @@ def t1_sky_list():
                     elif skies[key]['section'] != row.get('group'):  # Noted only while every map with it shares it.
                         skies[key]['section'] = None
                     skies[key]['maps'].append(row.get('name', row['id']))
-        t1_sky_cache.update(stamp=stamp, skies=list(skies.values()))
+                found = scene_weather(kind, scene)
+                if found:
+                    name, renderer, weather = found
+                    key = game + json.dumps(weather, sort_keys=True)
+                    entry = weathers.setdefault(key, dict(id=game + '-' + hashlib.sha1(key.encode()).hexdigest()[:12], game=game, group=group,
+                                                          section=row.get('group') if row.get('group') not in (None, group) else None,
+                                                          name=name, renderer=renderer, weather=weather, maps=[],
+                                                          base=f'/{(pack or [game])[0]}-map-data/' + (section + '/' if section else '') + ('base/' if kind == 't2mis' else '')))
+                    if entry['maps'] and entry['section'] != row.get('group'):
+                        entry['section'] = None
+                    entry['maps'].append(row.get('name', row['id']))
+        t1_sky_cache.update(stamp=stamp, skies=list(skies.values()), weather=list(weathers.values()))
         try:
             saved.with_suffix('.tmp').write_text(json.dumps(t1_sky_cache), encoding='utf-8')
             os.replace(saved.with_suffix('.tmp'), saved)
         except OSError:
             pass  # No data folder yet: the list is simply scanned again next start.
-        return t1_sky_cache['skies']
+        return t1_sky_cache
 
 
 @app.route('/import_t1_maps', methods=['POST'])

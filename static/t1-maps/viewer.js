@@ -14,8 +14,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   const site = Object.assign({data: '/t1-map-data/', title: 'T1 Maps', storageKey: 'skinner.t1maps', importRoute: '/import_t1_maps',
     folder: 'Tribes', firstMap: 'raindance'}, window.skinnerT1MapConfig);
   const storageKey = adapter ? 'skinner.rb3dmaps' : site.storageKey;
-  const settings = {fov: 90, fog: true, weather: true, lights: true, invertX: false, invertY: false, sky: ''};
+  const settings = {fov: 90, fog: true, weather: '', lights: true, invertX: false, invertY: false, sky: ''};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
+  if (typeof settings.weather !== 'string') settings.weather = settings.weather === false ? 'none' : '';  // Saved by the old on/off box.
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
 
   const canvas = $('c');
@@ -393,14 +394,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     occluders.push(mesh);
     if (object.spin) spinners.push(mesh);
-    if (weather && object.shelter) try {
-      if (!shelterFiles.has(object.shelter)) shelterFiles.set(object.shelter, get(data + 'textures/' + object.shelter).then(response => response.arrayBuffer()));
-      // The layout is in the importer's pack_shelter: box, plane and node counts, planes, nodes, a byte per leaf.
-      const buffer = await shelterFiles.get(object.shelter), [planes, nodes] = new Int32Array(buffer, 24, 2);
-      shelters.push({inverse: matrix.clone().invert(), box: new Float32Array(buffer, 0, 6),
-        planes: new Float32Array(buffer, 32, planes * 4), nodes: new Int16Array(buffer, 32 + planes * 16, nodes * 3),
-        leaves: new Uint8Array(buffer, 32 + planes * 16 + nodes * 6)});
-    } catch (_) { /* Rain simply falls through this building. */ }
+    if (object.shelter) {  // Read once any weather shows, whichever the Weather list picks.
+      const building = {shelter: object.shelter, matrix};
+      shelterQueue.push(building);
+      if (weather) await addShelter(building);
+    }
   }
 
   // Sky: sixteen textured panels around the camera with flat caps above and below, drawn behind everything.
@@ -530,6 +528,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // skyPass: a sky drawn in its own pass behind the world (skies.js unreal: render), or one with work before each frame
   // and a height fog over it (skies.js skinner: update, fog).
   let skies = [], skySerial = 0, skyPass = null;
+  // A Sky or Weather list entry's label: its pack section, name, and the first map with it.
+  const listText = entry => [entry.section, entry.name, entry.maps[0] + (entry.maps.length > 1 ? ` +${entry.maps.length - 1}` : '')].filter(Boolean).join(' · ');
   async function showSky(id) {
     const chosen = skies.find(entry => entry.id === id), visible = chosen && chosen.visible || map.terrain.visibleDistance, radius = visible * 1.05;
     // Each entry names its renderer and its pack's data path (/t1-map-skies); a dome is a T1-style mission sky.
@@ -668,49 +668,75 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Rain or snow: particles in a box around the camera that wrap as they or the camera leave it. Counts, box size
-  // and fall speeds follow ArenaPrototype's precipitation.
-  let weather = null;
-  const shelters = [], shelterFiles = new Map();  // Placed buildings that keep it out, and their files by name.
-  function buildWeather({rain, intensity, wind}) {
-    const count = Math.floor(intensity * (rain ? 2048 : 1024)), radius = rain ? 110 : 200, size = radius * 2;
-    const step = [wind[0] * (rain ? 2 : 1), rain ? -150 : -35, -wind[1] * (rain ? 2 : 1)];
-    const drops = Float32Array.from({length: count * 3}, () => Math.random() * size);
+  // and fall speeds follow ArenaPrototype's precipitation. The Weather list (/t1-map-weather) swaps in another map's:
+  // a T1-family mission's or a Quake III family map's through the same box, a Tribes 2 mission's as the T2 page draws it.
+  let weather = null, weathers = [];
+  const weatherGroup = new THREE.Group();
+  scene.add(weatherGroup);
+  const shelters = [], shelterFiles = new Map(), shelterQueue = [];  // Buildings that keep it out, their files by name, and every placed one.
+  async function addShelter(building) {
+    if (building.read) return;
+    building.read = true;
+    try {
+      if (!shelterFiles.has(building.shelter)) shelterFiles.set(building.shelter, get(data + 'textures/' + building.shelter).then(response => response.arrayBuffer()));
+      // The layout is in the importer's pack_shelter: box, plane and node counts, planes, nodes, a byte per leaf.
+      const buffer = await shelterFiles.get(building.shelter), [planes, nodes] = new Int32Array(buffer, 24, 2);
+      shelters.push({inverse: building.matrix.clone().invert(), box: new Float32Array(buffer, 0, 6),
+        planes: new Float32Array(buffer, 32, planes * 4), nodes: new Int16Array(buffer, 32 + planes * 16, nodes * 3),
+        leaves: new Uint8Array(buffer, 32 + planes * 16 + nodes * 6)});
+    } catch (_) { /* Rain simply falls through this building. */ }
+  }
+  const local = new THREE.Vector3(), ahead = new THREE.Vector3();
+  function shelterNear() {
+    // Buildings keep it out as in the game (Snowfall::processQuery and InteriorShape::getWeatherDistance, which
+    // ArenaPrototype's TribesWeatherInterior ports): with the camera inside a building's box, nothing falls unless the
+    // BSP leaf it is in sees a face of the box, and then only from `near` ahead, the way out the camera looks toward.
+    let near = 2;
+    camera.getWorldDirection(ahead);
+    for (const {inverse, box, planes, nodes, leaves} of shelters) {
+      const [x, up, back] = local.copy(camera.position).applyMatrix4(inverse).toArray(), point = [x, -back, up];  // The building's own axes, z up.
+      if (point.some((value, axis) => value < box[axis] || value > box[axis + 3])) continue;
+      let node = nodes.length ? 0 : 1;
+      for (let visits = nodes.length; node >= 0 && visits; visits--) {
+        const plane = (nodes[node * 3] & 0xffff) * 4;
+        node = nodes[node * 3 + (planes[plane] * point[0] + planes[plane + 1] * point[1] + planes[plane + 2] * point[2] > -planes[plane + 3] ? 1 : 2)];
+      }
+      const faces = node < 0 && leaves[-node - 1];
+      if (!faces) return Infinity;
+      const [turnX, turnUp, turnBack] = local.copy(ahead).transformDirection(inverse).toArray(), facing = [turnX, -turnBack, turnUp];
+      // The game's own arithmetic, slips included: it measures from the box's minimum x on every axis.
+      let reach = -1;
+      for (let axis = 0; axis < 3; axis++) {
+        if (faces & 0x80 >> axis && facing[axis] <= 0 && point[axis] - box[axis] > reach) reach = point[axis] - box[0];
+        if (faces & 0x10 >> axis && facing[axis] >= 0 && box[axis] - point[axis] > reach) reach = box[axis + 3] - point[axis];
+      }
+      if (reach > 0) near = Math.max(near, reach);
+    }
+    return near;
+  }
+  // A T1 mission's weather as the box draws it: rain a short streak along its fall, snow a flake.
+  const t1Box = ({rain, intensity, wind}) => ({rain, count: Math.floor(intensity * (rain ? 2048 : 1024)), radius: rain ? 110 : 200,
+    step: [wind[0] * (rain ? 2 : 1), rain ? -150 : -35, -wind[1] * (rain ? 2 : 1)], streak: .03,
+    material: rain ? new THREE.LineBasicMaterial({color: 0xaaaaaa, transparent: true, opacity: .55}) : new THREE.PointsMaterial({color: 0xffffff, size: .5})});
+  // A Quake III family map's (q3-maps/viewer.js addWeather): its counts, speeds, streak lengths and colours, falling in
+  // the box rather than between its sky and ground. ponytail: one game unit taken as 1/32 m (a 56-unit player is
+  // about 1.8 m tall), and its 1000-unit reach as the box; a look, not parity.
+  const Q3_UNIT = 1 / 32;
+  const q3Box = ({type, count, speed, length, wind}, identity) => ({rain: type === 'rain', count: Math.min(count, 4000), radius: 1000 * Q3_UNIT,
+    step: [wind[0] * Q3_UNIT, -speed * Q3_UNIT, -wind[1] * Q3_UNIT], streak: length / speed,
+    material: type === 'rain' ? new THREE.LineBasicMaterial({color: new THREE.Color().setScalar(identity * .5), transparent: true, opacity: .4})
+      : new THREE.PointsMaterial({color: new THREE.Color().setScalar(identity * 1.5), size: length * Q3_UNIT, transparent: true, opacity: .8})});
+  function buildBox({rain, count, radius, step, streak, material}) {
+    const size = radius * 2, drops = Float32Array.from({length: count * 3}, () => Math.random() * size);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * (rain ? 6 : 3)), 3));
-    const particles = rain  // Rain is a short streak along its fall, snow a flake.
-      ? new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({color: 0xaaaaaa, transparent: true, opacity: .55}))
-      : new THREE.Points(geometry, new THREE.PointsMaterial({color: 0xffffff, size: .5}));
+    const particles = rain ? new THREE.LineSegments(geometry, material) : new THREE.Points(geometry, material);
     particles.frustumCulled = false;
-    scene.add(particles);
-    const local = new THREE.Vector3(), ahead = new THREE.Vector3();
-    weather = delta => {
-      // Buildings keep it out as in the game (Snowfall::processQuery and InteriorShape::getWeatherDistance, which
-      // ArenaPrototype's TribesWeatherInterior ports): with the camera inside a building's box, nothing falls unless the
-      // BSP leaf it is in sees a face of the box, and then only from `near` ahead, the way out the camera looks toward.
-      let near = 2;
-      const view = camera.getWorldDirection(ahead).toArray();
-      for (const {inverse, box, planes, nodes, leaves} of shelters) {
-        const [x, up, back] = local.copy(camera.position).applyMatrix4(inverse).toArray(), point = [x, -back, up];  // The building's own axes, z up.
-        if (point.some((value, axis) => value < box[axis] || value > box[axis + 3])) continue;
-        let node = nodes.length ? 0 : 1;
-        for (let visits = nodes.length; node >= 0 && visits; visits--) {
-          const plane = (nodes[node * 3] & 0xffff) * 4;
-          node = nodes[node * 3 + (planes[plane] * point[0] + planes[plane + 1] * point[1] + planes[plane + 2] * point[2] > -planes[plane + 3] ? 1 : 2)];
-        }
-        const faces = node < 0 && leaves[-node - 1];
-        if (!faces) { near = Infinity; break; }
-        const [turnX, turnUp, turnBack] = local.copy(ahead).transformDirection(inverse).toArray(), facing = [turnX, -turnBack, turnUp];
-        // The game's own arithmetic, slips included: it measures from the box's minimum x on every axis.
-        let reach = -1;
-        for (let axis = 0; axis < 3; axis++) {
-          if (faces & 0x80 >> axis && facing[axis] <= 0 && point[axis] - box[axis] > reach) reach = point[axis] - box[0];
-          if (faces & 0x10 >> axis && facing[axis] >= 0 && box[axis] - point[axis] > reach) reach = box[axis + 3] - point[axis];
-        }
-        if (reach > 0) near = Math.max(near, reach);
-      }
-      particles.visible = settings.weather && near < radius;
+    weatherGroup.add(particles);
+    return (delta, near) => {
+      particles.visible = near < radius;
       if (!particles.visible) return;
-      const positions = geometry.attributes.position.array, centre = camera.position.toArray();
+      const positions = geometry.attributes.position.array, centre = camera.position.toArray(), view = ahead.toArray();
       for (let drop = 0; drop < count; drop++) {
         let depth = 0;
         for (let axis = 0; axis < 3; axis++) {
@@ -722,15 +748,128 @@ window.addEventListener('DOMContentLoaded', async () => {
           // A drop nearer than that is not drawn: it is put behind the camera.
           const at = rain ? drop * 6 + axis : drop * 3 + axis;
           positions[at] = depth < near ? centre[axis] - view[axis] : drops[drop * 3 + axis];
-          if (rain) positions[at + 3] = positions[at] - (depth < near ? 0 : step[axis] * .03);
+          if (rain) positions[at + 3] = positions[at] - (depth < near ? 0 : step[axis] * streak);
         }
       }
       geometry.attributes.position.needsUpdate = true;
     };
   }
 
+  // Tribes 2 precipitation, transcribed from the T2 page (map-client/environment.tsx Precipitation, after V12's
+  // game/precipitation.cc renderPrecip for an observer camera): camera-facing quads from a 4x4 atlas of drops, in a box
+  // about the camera, each moved by its speed once per game frame. Torque and Tribes share axes and metres, so a
+  // Torque (x, y, z) here is Three (x, z, -y). The shelter test hides drops as it does the box's.
+  const T2_FRAME_RATE = 290;
+  const T2_VERTEX = `attribute vec4 dropColor; varying vec4 vColor; varying vec2 vUv;
+    void main() { vColor = dropColor; vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+  const T2_FRAGMENT = `uniform sampler2D map; varying vec4 vColor; varying vec2 vUv;
+    void main() { vec4 c = texture2D(map, vUv) * vColor; if (c.a <= 0.1) discard; gl_FragColor = c; }`;
+  function buildPrecipitation({object, datablock: db, sky}, base) {
+    const num = (obj, name, fallback) => { const value = parseFloat(obj?.[name]); return Number.isFinite(value) ? value : fallback; };
+    const truthy = value => value !== undefined && !/^(0|false|)$/i.test(String(value));
+    const vec = (text, fallback) => { const parts = String(text ?? '').trim().split(/\s+/).map(Number); return fallback.map((value, i) => Number.isFinite(parts[i]) ? parts[i] : value); };
+    const random = (min, max) => min + Math.random() * (max - min);
+    const toTorque = v => [v.x, -v.z, v.y];
+    const type = num(db, 'type', 0);
+    const colors = [1, 2, 3].map(i => vec(object['color' + i], [-1, 0, 0, 1])).filter((c, i, all) => all.slice(0, i + 1).every(item => item[0] >= 0));
+    if (!colors.length) colors.push(type === 0 ? [0.6, 0.6, 0.6, 1] : type === 1 ? [1, 1, 1, 1] : [0.9, 0.8, 0.5, 1]);
+    const maxDrops = Math.min(2000, Math.max(0, num(object, 'maxNumDrops', -1) < 0 ? 2000 : num(object, 'maxNumDrops', 2000)));
+    const percentage = Math.min(1, Math.max(0, num(object, 'percentage', 1)));
+    const minVelocity = num(object, 'minVelocity', -1) >= 0 ? num(object, 'minVelocity', 0) : type === 0 ? 1.25 : 0.25;
+    const maxVelocity = num(object, 'maxVelocity', -1) >= 0 ? num(object, 'maxVelocity', 0) : type === 0 ? 4 : type === 1 ? 1.5 : 1;
+    const radius = num(object, 'maxRadius', -1) >= 0 ? num(object, 'maxRadius', 0) : type === 1 ? 125 : 80;
+    const atlas = String(db.materialList ?? '').toLowerCase().startsWith('snow') ? 'precipitation/snowflakes' : 'precipitation/raindrops';
+    const wind = vec(sky.windVelocity, [0, 0, 0]), windLength = Math.hypot(wind[0], wind[1]);
+    const offsetSpeed = num(object, 'offsetSpeed', 0.25);
+    const offset = truthy(sky.windEffectPrecipitation) && windLength > 0 ? [wind[0] / windLength * offsetSpeed, wind[1] / windLength * offsetSpeed, 1] : [0, 0, 1];
+    const count = Math.round(maxDrops * percentage), sizeX = num(db, 'sizeX', 1), sizeY = num(db, 'sizeY', 1), divHeight = num(db, 'divHeightVal', 1.5) || 1.5;
+    const geometry = new THREE.BufferGeometry(), index = new Uint32Array(count * 6);
+    for (let i = 0; i < count; i++) index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
+    geometry.setIndex(new THREE.BufferAttribute(index, 1));
+    for (const [name, size] of [['position', 3], ['uv', 2], ['dropColor', 4]])
+      geometry.setAttribute(name, new THREE.BufferAttribute(new Float32Array(count * 4 * size), size).setUsage(THREE.DynamicDrawUsage));
+    const material = new THREE.ShaderMaterial({vertexShader: T2_VERTEX, fragmentShader: T2_FRAGMENT, uniforms: {map: {value: null}},
+      transparent: true, depthWrite: false, blending: THREE.NormalBlending, side: THREE.DoubleSide});
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 5;
+    mesh.visible = false;  // Until its atlas arrives.
+    weatherGroup.add(mesh);
+    let ready = false;
+    loadTexture(base + 'textures/' + atlas + '.png').then(texture => { material.uniforms.map.value = texture; ready = Boolean(texture); });
+    const drops = Array.from({length: count}, () => ({pos: [0, 0, 0], speed: 0, color: 0, tex: 0, startDiff: 1, valid: false}));
+    const last = {camera: null, first: true}, right = new THREE.Vector3(), up = new THREE.Vector3(), z = new THREE.Vector3();
+    return (delta, near) => {
+      mesh.visible = ready && near < radius;
+      if (!mesh.visible) return;
+      const cam = toTorque(camera.position), view = ahead.toArray();
+      const frames = Math.min(delta, 0.25) * T2_FRAME_RATE;
+      // An observer camera has no player velocity: the box is the camera's, shifted upwind by the drift.
+      const shift = last.camera && Math.hypot(...cam.map((v, i) => v - last.camera[i])) > radius / 2 ? cam.map((v, i) => v - last.camera[i]) : [0, 0, 0];
+      last.camera = cam;
+      const min = [cam[0] - radius, cam[1] - radius, cam[2] - radius / divHeight];
+      const max = [cam[0] + radius, cam[1] + radius, cam[2] + radius / divHeight];
+      const center = [offset[0] * radius, offset[1] * radius];
+      camera.matrixWorld.extractBasis(right, up, z);
+      const r = toTorque(right).map(v => v * sizeX), u = toTorque(up).map(v => v * sizeY);
+      // Quad corners around a drop: snow is a camera-facing square; a raindrop stretches 2 * sizeY along its fall.
+      const c1 = r.map((v, k) => v - u[k]), c2 = r.map((v, k) => -v - u[k]);
+      const corners = type === 1 ? [r.map((v, k) => v + u[k]), c1, c2, r.map((v, k) => -v + u[k])]
+        : [c1.map((v, k) => v + offset[k] * sizeY * 2), c1, c2, c2.map((v, k) => v + offset[k] * sizeY * 2)];
+      const p = geometry.attributes.position.array, t = geometry.attributes.uv.array, c = geometry.attributes.dropColor.array;
+      drops.forEach((drop, i) => {
+        for (let k = 0; k < 3; k++) drop.pos[k] += shift[k] + (k < 2 ? offset[k] * drop.speed : drop.speed) * frames;
+        const inside = drop.pos.every((v, k) => v >= min[k] && v <= max[k]);
+        if (!drop.valid || !inside) {
+          const r1 = Math.random(), r2 = Math.random(), r3 = Math.random();
+          const angle = Math.random() * 2 * Math.PI;
+          const along = radius * Math.min(1, Math.max(0.01, r2 < 0.2 ? r3 : r2));
+          drop.speed = -minVelocity - (maxVelocity - minVelocity) * r3;
+          // The first frame fills the whole box, as V12's mRandomHeight intends, rather than starting every drop at the top.
+          const height = last.first ? random(min[2], max[2] - 5) : max[2] - 5;
+          drop.pos = [cam[0] + center[0] + Math.cos(angle) * along, cam[1] + center[1] + Math.sin(angle) * along, height];
+          drop.startDiff = height - cam[2] + 20;
+          drop.color = Math.max(0, Math.ceil(colors.length * r1) - 1);
+          const pick = Math.random();
+          drop.tex = Math.max(0, Math.ceil(15 * (pick > 0.99995 && pick < 0.99999 ? 1.01 : pick)) - 1);
+          drop.valid = true;
+        }
+        // Torque (x, y, z) is written as Three (x, z, -y).
+        for (let k = 0; k < 4; k++) {
+          const o = (i * 4 + k) * 3;
+          p[o] = drop.pos[0] + corners[k][0]; p[o + 1] = drop.pos[2] + corners[k][2]; p[o + 2] = -(drop.pos[1] + corners[k][1]);
+        }
+        // loadTexture leaves flipY off, so v = 0 is the image's top row, as GL's t = 0 is.
+        const cx = (drop.tex % 4) * 0.25, cy = Math.floor(drop.tex / 4) * 0.25, o = i * 8;
+        t[o] = cx; t[o + 1] = cy; t[o + 2] = cx; t[o + 3] = cy + 0.25; t[o + 4] = cx + 0.25; t[o + 5] = cy + 0.25; t[o + 6] = cx + 0.25; t[o + 7] = cy;
+        const color = colors[drop.color];
+        // Nearer than the shelter's `near` along the view, not drawn.
+        const depth = (drop.pos[0] - cam[0]) * view[0] + (drop.pos[2] - cam[2]) * view[1] - (drop.pos[1] - cam[1]) * view[2];
+        const alpha = depth < near ? 0 : 1 - (drop.pos[2] - cam[2]) / drop.startDiff;
+        for (let k = 0; k < 4; k++) { const q = (i * 4 + k) * 4; c[q] = color[0]; c[q + 1] = color[1]; c[q + 2] = color[2]; c[q + 3] = alpha; }
+      });
+      last.first = false;
+      geometry.attributes.position.needsUpdate = geometry.attributes.uv.needsUpdate = geometry.attributes.dropColor.needsUpdate = true;
+    };
+  }
+
+  // The chosen weather: '' the map's own, 'none', or a Weather list entry's id.
+  function showWeather(id) {
+    for (const mesh of weatherGroup.children) { mesh.geometry.dispose(); mesh.material.dispose(); }  // Textures stay cached.
+    weatherGroup.clear();
+    weather = null;
+    const chosen = weathers.find(entry => entry.id === id), steps = [];
+    if (!id && map.weather) steps.push(buildBox(t1Box(map.weather)));
+    else if (chosen?.renderer === 't1') steps.push(buildBox(t1Box(chosen.weather)));
+    else if (chosen?.renderer === 'q3') steps.push(...chosen.weather.specs.map(spec => buildBox(q3Box(spec, chosen.weather.identity))));
+    else if (chosen?.renderer === 't2') steps.push(buildPrecipitation(chosen.weather, chosen.base));
+    if (!steps.length) return;
+    for (const building of shelterQueue) addShelter(building);
+    weather = delta => { const near = shelterNear(); for (const step of steps) step(delta, near); };
+  }
+
   function applySettings() {
-    for (const id of ['fog', 'weather', 'lights', 'invertX', 'invertY']) $(id).checked = settings[id];
+    for (const id of ['fog', 'lights', 'invertX', 'invertY']) $(id).checked = settings[id];
     $('fov').value = settings.fov;
     const main = canvas.parentElement, aspect = main.clientWidth / Math.max(main.clientHeight, 1);
     renderer.setSize(main.clientWidth, main.clientHeight, false);
@@ -756,7 +895,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   $('fov').addEventListener('change', event => { settings.fov = Math.max(30, Math.min(110, Number(event.target.value) || 90)); save(); applySettings(); });
-  for (const id of ['fog', 'weather', 'lights', 'invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
+  for (const id of ['fog', 'lights', 'invertX', 'invertY']) $(id).addEventListener('change', event => { settings[id] = event.target.checked; event.target.blur(); save(); applySettings(); });
   $('reset').addEventListener('click', () => { speed = 40; showViewpoint(0); if (ready) showReady(); });
   new ResizeObserver(applySettings).observe(canvas.parentElement);
 
@@ -903,8 +1042,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     Promise.all([get('/t1-map-skies').then(response => response.json()), own]).then(([found, presets]) => {
       const list = skies = [...found, ...presets];
       // One group per game, games and their skies in alphabetical order.
-      const more = maps => maps.length > 1 ? ` +${maps.length - 1}` : '';
-      const text = entry => [entry.section, entry.name, entry.maps[0] + more(entry.maps)].filter(Boolean).join(' · ');
       const groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
       // The game first, then its skies: one list of 900+ skies is slow to open and some browsers leave it half drawn.
       const game = $('skyGame') || $('sky').insertAdjacentElement('beforebegin', Object.assign(document.createElement('select'),
@@ -913,7 +1050,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       game.replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...groups.map(([group, entries]) => new Option(`${group} (${entries.length})`, group)));
       const fill = group => {
         const entries = groups.find(([name]) => name === group)?.[1] || [];
-        $('sky').replaceChildren(...entries.map(entry => [text(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
+        $('sky').replaceChildren(...entries.map(entry => [listText(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
         $('sky').hidden = !group;
       };
       game.addEventListener('change', () => {
@@ -949,8 +1086,40 @@ window.addEventListener('DOMContentLoaded', async () => {
     const sun = new THREE.DirectionalLight(new THREE.Color(...map.sun.intensity));
     sun.position.copy(toward(map.sun.azimuth, map.sun.incidence));  // Shades only what has no lightmap.
     scene.add(sun);
-    if (map.weather) buildWeather(map.weather);
-    $('weather').disabled = !map.weather;  // Most missions have no rain or snow to switch.
+    // Weather: the map's own (most missions have none) or the saved choice, then the list of other maps' and games'
+    // from the Sky list's scan, as two selects like the sky's: the game, then its weathers.
+    const weatherGame = $('weatherGame') || $('weather').insertAdjacentElement('beforebegin', Object.assign(document.createElement('select'),
+      {id: 'weatherGame', title: 'Game the weather comes from'}));
+    weatherGame.setAttribute('aria-label', 'Weather source game');
+    weatherGame.replaceChildren(new Option(`${map.mission}'s own (${map.weather ? map.weather.rain ? 'rain' : 'snow' : 'none'})`, ''), new Option('None', 'none'));
+    weatherGame.value = settings.weather === 'none' ? 'none' : '';
+    $('weather').hidden = true;
+    if (settings.weather === 'none' || !settings.weather) showWeather(settings.weather);
+    get('/t1-map-weather').then(response => response.json()).then(list => {
+      weathers = list;
+      const groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
+      weatherGame.append(...groups.map(([group, entries]) => new Option(`${group} (${entries.length})`, group)));
+      const fill = group => {
+        const entries = groups.find(([name]) => name === group)?.[1] || [];
+        $('weather').replaceChildren(...entries.map(entry => [listText(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
+        $('weather').hidden = !entries.length;
+      };
+      weatherGame.addEventListener('change', () => {
+        fill(weatherGame.value);
+        settings.weather = weatherGame.value === 'none' ? 'none' : weatherGame.value ? $('weather').value : '';  // A game's first, or the map's own.
+        weatherGame.blur();
+        save();
+        showWeather(settings.weather);
+      });
+      $('weather').addEventListener('change', event => { settings.weather = event.target.value; event.target.blur(); save(); showWeather(settings.weather); });
+      const saved = weathers.find(entry => entry.id === settings.weather);
+      if (saved) {
+        weatherGame.value = saved.group;
+        fill(saved.group);
+        $('weather').value = saved.id;
+        showWeather(saved.id);
+      } else if (settings.weather !== 'none' && settings.weather) showWeather('');  // No longer imported: the map's own.
+    }).catch(() => { if (settings.weather !== 'none' && settings.weather) showWeather(''); });
     applySettings();
     showViewpoint(0);
     showStatus('Loading terrain…');

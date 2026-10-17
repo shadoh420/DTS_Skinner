@@ -99,6 +99,35 @@ class SkyListTest(unittest.TestCase):
                                                   'tcMods': [['scroll', 0.001, 0.0]]}])  # Layer 1 only: c1 has no file.
         self.assertEqual((solid['renderer'], solid['sky']), ('dome', {'name': 'solid colour', 'color': [128, 255, 0]}))
 
+    def test_weather_list_one_entry_per_weather_grouped_by_game(self):
+        """/t1-map-weather: T1-family weather shared by maps listed once, Quake III family weather without RTCW's
+        misc_snow columns, and a Tribes 2 mission's Precipitation with its datablock and the Sky's wind."""
+        snow = {'rain': False, 'intensity': 1, 'wind': [20.0, 20.0, -35.0]}
+        column = {'type': 'snow', 'count': 32, 'speed': 50, 'length': 2, 'wind': [0, 0], 'column': {'min': [0, 0], 'max': [1, 1], 'top': 9}}
+        rain = {'type': 'rain', 'count': 2000, 'speed': 880, 'length': 150, 'wind': [50.0, 50.0]}
+        with tempfile.TemporaryDirectory() as directory, patch('app.local_data_dir', Path(directory)):
+            root = Path(directory)
+            pack(root, 't1-maps', {'cloakofnight': ({}, {'weather': snow}), 'avalanche': ({}, {'weather': snow}), 'dry': ({}, {})})
+            pack(root, 'et-maps', {'radar': ({}, {'weather': [rain], 'lighting': {'identityLight': 1}})})
+            pack(root, 'rtcw-maps', {'escape2': ({}, {'weather': [column]})})
+            base = root / 't2-maps' / 'base'
+            for name, text in {'missions/katabatic.mis': 'new Sky(Sky) {\n\twindVelocity = "1 0 0";\n\twindEffectPrecipitation = "1";\n};\n'
+                                                         'new Precipitation(Precipitation) {\n\tposition = "1 2 3";\n\tdataBlock = "Snow";\n\tmaxNumDrops = "2000";\n};',
+                               'scripts/weather.cs': 'datablock PrecipitationData(Snow)\n{\n   type = 1;\n   materialList = "snowflakes.dml";\n   sizeX = 0.20;\n};'}.items():
+                (base / name).parent.mkdir(parents=True, exist_ok=True)
+                (base / name).write_text(text)
+            (root / 't2-maps' / 'manifest.json').write_text(json.dumps({
+                'resources': {name: [name, ['']] for name in ('missions/katabatic.mis', 'scripts/weather.cs')},
+                'missions': {'Katabatic': {'resourcePath': 'missions/katabatic.mis'}}}))
+            weather = {entry['game']: entry for entry in app.test_client().get('/t1-map-weather').json}
+        self.assertEqual(sorted(weather), ['et', 't1', 't2'])  # The column-only RTCW map has none to lend.
+        self.assertEqual((weather['t1']['renderer'], weather['t1']['maps'], weather['t1']['name']), ('t1', ['cloakofnight', 'avalanche'], 'Snow 100% · wind 20 20'))
+        self.assertEqual((weather['et']['renderer'], weather['et']['weather']), ('q3', {'specs': [rain], 'identity': 1}))
+        self.assertEqual((weather['t2']['renderer'], weather['t2']['base'], weather['t2']['name']), ('t2', '/t2-map-data/base/', 'Snow'))
+        self.assertEqual(weather['t2']['weather'], {'object': {'dataBlock': 'Snow', 'maxNumDrops': '2000'},
+                                                    'datablock': {'type': '1', 'materialList': 'snowflakes.dml', 'sizeX': '0.20'},
+                                                    'sky': {'windVelocity': '1 0 0', 'windEffectPrecipitation': '1'}})
+
     def test_tribes_2_sky_missing_only_its_down_face(self):
         def build(root):
             base = root / 't2-maps' / 'base'
