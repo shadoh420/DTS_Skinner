@@ -1026,22 +1026,26 @@ window.addEventListener('DOMContentLoaded', async () => {
       meshes.set(texture, mesh);
       loadTexture(base + 'textures/' + texture + '.png').then(map => mesh.setMap(map));
     }
-    return delta => {
+    const strike = (setup, x, z, top, end) => {
+      skyStrike(x, z);
+      strikes.push({age: 0, setup, bolts: [0, 1, 2].map(() => {
+        const bolt = makeBolt([x + random(-setup.startRadius, setup.startRadius), top, z + random(-setup.startRadius, setup.startRadius)], end, setup.width, 10, 30, 4, 15);
+        for (let i = 0; i < bolt.major.length - 1; i++) {
+          if (Math.random() > .3) continue;
+          const a = bolt.major[i], seg = v3.sub(bolt.major[i + 1], a);
+          createSplit(bolt, a, v3.add(a, v3.scale(randomDir(seg, 20, 40), random(.5, 1.5) * Math.hypot(...seg))), 4, setup.width * .3);
+        }
+        return Object.assign(bolt, {started: false, renderTime: random(0, .25)});
+      })});
+    };
+    const step = delta => {
       const dt = Math.min(delta, .25);
-      for (const setup of setups) {
+      if (!step.following) for (const setup of setups) {
         setup.timer += dt * tuning.strikes;
         for (const every = 60 / Math.max(.01, setup.perMinute); setup.timer > every; setup.timer -= every) {
           const [x, floor, z] = strikePoint(setup.spread), top = floor + setup.height, end = landing(x, top, z);
-          skyStrike(x, z);
-          strikes.push({age: 0, setup, bolts: [0, 1, 2].map(() => {
-            const bolt = makeBolt([x + random(-setup.startRadius, setup.startRadius), top, z + random(-setup.startRadius, setup.startRadius)], end, setup.width, 10, 30, 4, 15);
-            for (let i = 0; i < bolt.major.length - 1; i++) {
-              if (Math.random() > .3) continue;
-              const a = bolt.major[i], seg = v3.sub(bolt.major[i + 1], a);
-              createSplit(bolt, a, v3.add(a, v3.scale(randomDir(seg, 20, 40), random(.5, 1.5) * Math.hypot(...seg))), 4, setup.width * .3);
-            }
-            return Object.assign(bolt, {started: false, renderTime: random(0, .25)});
-          })});
+          strike(setup, x, z, top, end);
+          step.emit?.(x, z, top, end);  // The other layers' lightning, here and now (showWeather).
         }
       }
       if (!strikes.length) { for (const mesh of meshes.values()) { mesh.begin(); mesh.end(); } return; }
@@ -1067,6 +1071,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       strikes.splice(0, strikes.length, ...strikes.filter(strike => strike.age <= 1.6));
       for (const mesh of meshes.values()) mesh.end();
     };
+    return Object.assign(step, {t2: true, strike: (x, z, top, end) => strike(setups[0], x, z, top, end)});
   }
 
   // JA and JK2 wind (tr_WorldEffects CWindZone): the zones' velocities summed each frame, at terminal speed through
@@ -1113,13 +1118,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (on) skyStrike(...at, true);  // Each flicker lights the clouds once, over this run's bolt.
       if (scene.fog) scene.fog.color.copy(on ? flash : haze);
     };
-    const bolt = () => {
-      const away = [crandom(), crandom()], top = v3.add(camera.position.toArray(), [away[0] * 400 * Q3_UNIT, random(600, 1000) * Q3_UNIT, away[1] * 400 * Q3_UNIT]);
-      const end = landing(...top);
+    // Its own: from above the camera, at most 2000 units long. Following another storm's strike: the whole way down.
+    const bolt = (top = v3.add(camera.position.toArray(), [crandom() * 400 * Q3_UNIT, random(600, 1000) * Q3_UNIT, crandom() * 400 * Q3_UNIT]),
+      end = landing(...top), reach = 2000 * Q3_UNIT) => {
       for (let n = Math.floor(random(1, 3)); n--;) {
         // DoBoltSeg: the line's offset wanders from (10, 10, 10) as it goes, pulled back to the end by the fraction done.
         const fwd = v3.norm(v3.sub(end, top)), rt = v3.norm(v3.cross(fwd, [1, 0, 0])), up = v3.cross(fwd, rt), chaos = random(5, 8);
-        const length = Math.min(Math.hypot(...v3.sub(end, top)), 2000 * Q3_UNIT), step = 16 * Q3_UNIT, points = [top];
+        const length = Math.min(Math.hypot(...v3.sub(end, top)), reach), step = 16 * Q3_UNIT, points = [top];
         let off = [10, 10, 10].map(v => v * Q3_UNIT);
         for (let i = step; i <= length; i += step) {
           const perc = i + step > length ? 1 : i / length;
@@ -1130,13 +1135,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       return top;
     };
-    return (delta, near) => {
+    const step = (delta, near) => {
       for (wait -= count ? delta : delta * tuning.strikes; wait <= 0;) {  // The rate speeds the waits between flashes.
         if (count) {
           count--;
           if (count === 0 || count % 2 === 0) { light(false); wait += count === 0 ? pick(1000, 12000) : count === 2 ? pick(150, 450) : pick(50, 150); }
           else { light(true); wait += .05; }
-        } else if (near < Infinity) {
+        } else if (step.following) wait = Infinity;  // Until the leading storm strikes (step.strike).
+        else if (near < Infinity) {
           const top = Math.floor(random(1, effect + 1)) === 1 ? bolt() : null;
           at = top ? [top[0], top[2]] : [camera.position.x + crandom() * 1500, camera.position.z + crandom() * 1500];
           if (Math.floor(random(1, flicker + 1)) === 1) { count = Math.floor(random(1, 5)) * 2; wait += .05; light(true); }
@@ -1153,6 +1159,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       bolts.splice(0, bolts.length, ...bolts.filter(item => item.age < item.life));
       mesh.end();
     };
+    // Another storm's strike from top (height) to end at (x, z): a bolt the whole way, and a flicker run from now.
+    step.strike = (x, z, top, end) => {
+      bolt([x, top, z], end, Infinity);
+      at = [x, z];
+      count = Math.floor(random(1, 5)) * 2;
+      wait = .05;
+      light(true);
+    };
+    return step;
   }
 
   // Tribes 2 meteor showers (environment.tsx ParticleObjects, V12 FireballAtmosphere::dropNewFireball): every
@@ -1292,6 +1307,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       fireballs ||= Boolean(found.fireballs);
     }
     if (id !== 'none' && !ownFall && map.weather) steps.unshift(buildBox(t1Box(map.weather)));  // The chosen one brings no fall: this map's.
+    // Layered lightning strikes together: a Tribes 2 storm leads (it places strikes over the map; JA's keeps to the
+    // camera), and each other storm's lightning draws its own bolt and flash at the same strike, at the same moment.
+    const lightnings = storms.filter(storm => storm.strike), leader = lightnings.find(storm => storm.t2);
+    if (leader) {
+      for (const storm of lightnings) storm.following = storm !== leader;
+      leader.emit = (...strike) => { for (const storm of lightnings) if (storm.following) storm.strike(...strike); };
+    }
     weatherPanel(steps[0]?.wind, Boolean(wind), {lightning: stormStrikes, fireballs});
     if (!steps.length && !storms.length) return;
     for (const building of shelterQueue) addShelter(building);
