@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const site = Object.assign({data: '/t1-map-data/', title: 'T1 Maps', storageKey: 'skinner.t1maps', importRoute: '/import_t1_maps',
     folder: 'Tribes', firstMap: 'raindance'}, window.skinnerT1MapConfig);
   const storageKey = adapter ? 'skinner.rb3dmaps' : site.storageKey;
-  const settings = {fov: 90, fog: true, weather: '', lights: true, invertX: false, invertY: false, sky: ''};
+  const settings = {fov: 90, fog: true, weather: '', lights: true, invertX: false, invertY: false, sky: '', terrain: ''};
   try { Object.assign(settings, JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch (_) { /* Defaults remain usable. */ }
   if (typeof settings.weather !== 'string') settings.weather = settings.weather === false ? 'none' : '';  // Saved by the old on/off box.
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch (_) { /* Storage may be unavailable. */ } };
@@ -122,7 +122,24 @@ window.addEventListener('DOMContentLoaded', async () => {
       const texture = terrain.textures[slot] && await loadTexture(data + 'textures/' + terrain.textures[slot]);
       materials[index].dispose();
       materials[index] = withPointLights(new THREE.MeshBasicMaterial(texture ? {map: texture, vertexColors: true} : {color: 0xcc00cc}));
+      terrainSlots[index] = {material: materials[index], own: texture, stored: terrain.textures[slot]};
     }));
+  }
+
+  // Terrain list (tools/t1_terrain_sets.py): a slot holding a stock tile, known by its stored texture, takes the
+  // chosen set's tile for it, else keeps its own. Only textures change, so the terrain draws at the same cost.
+  const terrainSlots = [];
+  let terrainSets = null, terrainShown = '';
+  async function showTerrain(id) {
+    terrainShown = id;
+    const set = terrainSets && terrainSets.sets.find(entry => entry.id === id);
+    const textures = await Promise.all(terrainSlots.map(slot => {
+      const [world, tile] = (set && terrainSets.stock[slot.stored]) || [];
+      const file = world && set.tiles[world]?.[tile];
+      return file ? loadTexture(data + 'textures/' + file) : slot.own;
+    }));
+    if (terrainShown !== id) return;  // Another choice came while these loaded.
+    terrainSlots.forEach((slot, index) => { if (slot.material.map && textures[index]) slot.material.map = textures[index]; });
   }
 
   const models = new Map();
@@ -1618,6 +1635,34 @@ window.addEventListener('DOMContentLoaded', async () => {
     showViewpoint(0);
     showStatus('Loading terrain…');
     await buildTerrain(map.terrain);
+    // Terrain sets as two selects like the sky's, on the T1 page only: each set lists if it has tiles for this map's
+    // worlds (a world's own set is not offered on its maps). The choice is kept for every map, as the sky's is.
+    if ($('terrain')) get(data + 'terrain-sets.json').then(response => response.json()).then(found => {
+      terrainSets = found;
+      const worlds = new Set(terrainSlots.map(slot => found.stock[slot.stored]?.[0]).filter(Boolean));
+      const groups = [...Map.groupBy(found.sets.filter(entry => [...worlds].some(world => entry.tiles[world])), entry => entry.group)];
+      const game = $('terrainGame') || $('terrain').insertAdjacentElement('beforebegin', Object.assign(document.createElement('select'),
+        {id: 'terrainGame', title: 'Game the terrain textures come from'}));
+      game.setAttribute('aria-label', 'Terrain source game');
+      game.replaceChildren(new Option(`${map.mission}'s own (default)`, ''), ...groups.map(([group, entries]) => new Option(`${group} (${entries.length})`, group)));
+      game.disabled = !groups.length;
+      const fill = group => {
+        $('terrain').replaceChildren(...(groups.find(([name]) => name === group)?.[1] || []).map(entry => new Option(entry.name, entry.id)));
+        $('terrain').hidden = !group;
+      };
+      game.addEventListener('change', () => {
+        fill(game.value);
+        settings.terrain = game.value ? $('terrain').value : '';  // A game's first set, or the map's own.
+        game.blur();
+        save();
+        showTerrain(settings.terrain);
+      });
+      $('terrain').addEventListener('change', event => { settings.terrain = event.target.value; event.target.blur(); save(); showTerrain(settings.terrain); });
+      const saved = groups.flatMap(([, entries]) => entries).find(entry => entry.id === settings.terrain);
+      game.value = saved ? saved.group : '';
+      fill(game.value);
+      if (saved) { $('terrain').value = saved.id; showTerrain(saved.id); }
+    }).catch(() => { /* No sets built: the map's own terrain only. */ });
     let loaded = 0;
     await Promise.all(map.objects.map(async object => { await addObject(object); showStatus(`Loading map objects ${++loaded}/${map.objects.length}`); }));
     if (npcToggle) npcToggle.setCount(npcIDs.size);
