@@ -22,29 +22,38 @@ vec4 skinnerFlashFog(vec3 ring) {
   return vec4(ring + add, 1. + .5 * dot(add, LUMA) / max(dot(ring, LUMA), 1e-4));
 }
 
-// The patches: what the fog's density along the ray is multiplied by, 1 on average. A noise in the ground plane drifts
-// with the wind, bent by a second, slower noise whose push turns with time (the swirl); read at three points along the
-// part of the ray the fog fills, each weighted by the fog's density at its height. Coarse noise levels (blurred), so a
-// tile holds a few broad banks rather than mottling.
+// The part of the ray the patches cover: where the fog fills it, at most 3 km.
+float fogReach(vec3 eye, vec3 rd, float dist) { return min(min(dist, 3000.), (fogHeight * 3. + max(eye.z - fogBase, 0.)) / max(abs(rd.z), .01)); }
+
+// The patches: what the fog's density over fogReach is multiplied by, 1 on average. A noise in the ground plane drifts
+// with the wind, bent by a second, slower noise whose push turns with time (the swirl); read at three points along that
+// part of the ray, each weighted by the fog's density at its height. Coarse noise levels (blurred), so a
+// tile holds a few broad banks rather than mottling; coarser still once a read stands for over a quarter of a tile of
+// the ray, so a long ray sees the patches' average. (Three point reads along a 3 km ray near the horizon gave every
+// elevation in an azimuth the same few values: a bright slit of sky wherever they fell in a gap.)
 float fogPatch(vec3 eye, vec3 rd, float dist) {
   if (fogPatches <= 0.) return 1.;
-  float reach = min(min(dist, 3000.), (fogHeight * 3. + max(eye.z - fogBase, 0.)) / max(abs(rd.z), .01)), turn = radians(fogWind.z) * uTime;
+  float reach = fogReach(eye, rd, dist), turn = radians(fogWind.z) * uTime, blur = max(log2(reach / 3. / (fogScale * .25)), 0.);
   vec2 drift = fract(fogWind.xy * uTime / fogScale), spin = vec2(cos(turn), sin(turn));
   float n = 0., weight = 1e-4;
   for (int i = 0; i < 3; i++) {
     vec3 p = eye + rd * (reach * (float(i) + .5) / 3.);
-    vec2 uv = p.xy / fogScale, bend = SAMPLE_LOD(skyNoise, uv * .37 - drift * .5, 4.).gb - .5;
+    vec2 uv = p.xy / fogScale, bend = SAMPLE_LOD(skyNoise, uv * .37 - drift * .5, 4. + blur).gb - .5;
     float w = exp(-max(p.z - fogBase, 0.) / fogHeight);
-    n += w * SAMPLE_LOD(skyNoise, uv + drift + vec2(bend.x * spin.x - bend.y * spin.y, bend.x * spin.y + bend.y * spin.x) * .8, 3.).r;
+    n += w * SAMPLE_LOD(skyNoise, uv + drift + vec2(bend.x * spin.x - bend.y * spin.y, bend.x * spin.y + bend.y * spin.x) * .8, 3. + blur).r;
     weight += w;
   }
   return max(1. + fogPatches * (n / weight - .5) * 6., 0.);
 }
 
-// fogThrough with the patches, from the eye at eye (metres, z up).
+// fogThrough with the patches, from the eye at eye (metres, z up). The patches scale only the fog within fogReach;
+// past it the fog is even. (Scaling the whole ray let a thin patch read in the first 3 km clear a 100 km ray along the
+// horizon, a bright slit of sky in each gap.)
 float fogThroughAt(vec3 eye, vec3 rd, float dist) {
   float through = fogThrough(eye.z, rd, dist);
-  return through > 0. ? pow(through, fogPatch(eye, rd, dist)) : 0.;
+  if (fogPatches <= 0. || through <= 0.) return through;
+  float near = fogThrough(eye.z, rd, fogReach(eye, rd, dist));
+  return through / near * pow(near, fogPatch(eye, rd, dist));
 }
 
 // The scene's colour c seen through the fog, with the horizon colour ring (linear light) in the ray's azimuth.
