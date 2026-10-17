@@ -268,7 +268,7 @@ window.t1Skies = {
         gl_FragColor = vec4(display(s) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
       }`}), radius, group);
     // The map's own haze is off under this fog (viewer.js applySettings): instead, past the haze's start (haze.x, m)
-    // the world fades into the sky behind it, fogged as that sky is, by the haze's own curve t(2 - t), whole at its end
+    // the world fades into the sky behind it (the ball's own sum), fogged as that sky is, by the haze's own curve t(2 - t), whole at its end
     // (haze.y, the far plane) so the far plane's cut is never seen. (A flat haze colour there left objects as off-colour
     // shapes against the sky until the far plane dropped them, which turning the view moves.)
     const F = {...U, sceneColor: {value: null}, sceneDepth: {value: null}, projectionInverse: {value: null}, viewInverse: {value: null}, eye: {value: new THREE.Vector3()},
@@ -284,7 +284,11 @@ window.t1Skies = {
         vec3 air = display(lit.rgb * fogBrightness);
         float skyThrough = fogThroughAt(eye, rd, 1e5);
         vec3 c = mix(air, texture2D(sceneColor, vUv).rgb * (z >= 1. ? 1. : lit.a), z >= 1. ? skyThrough : fogThroughAt(eye, rd, dist));
-        if (z < 1.) c = mix(c, mix(air, display(texture2D(pano, panoUV(rd)).rgb), skyThrough), t * (2. - t));
+        if (z < 1. && t > 0.) {  // The sky as the ball draws it there: stars, moon, sun, space and cirrus too.
+          vec4 p = texture2D(pano, panoUV(rd));
+          vec3 sky = skinnerCirrus(rd, p.rgb + skinnerBehind(rd, p.rgb, toLight(PLANET + .002, rd.z) * p.a), p.rgb, p.a * p.a) + skinnerCloudsFlash(rd, p.a);
+          c = mix(c, mix(air, display(sky), skyThrough), t * (2. - t));
+        }
         gl_FragColor = vec4(c, 1.);
       }`, F);
     // The space backdrop, when the preset has one: 2048x2048 over the whole sphere (0.06-0.13 degrees a texel), 32 MB, baked on the first update().
