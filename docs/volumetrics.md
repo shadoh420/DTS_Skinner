@@ -117,8 +117,13 @@ or the ground blows out.
 ## On the Maps pages
 
 The Sky list's Skinner Sky presets on the T1, Starsiege and Earthsiege Maps pages draw this way
-(`static/t1-maps/skies.js` `skinner`, shared by those pages). The default tier is fixed: 1024×256, 24 steps, 1/8 of
-the rows a frame.
+(`static/t1-maps/skies.js` `skinner`, shared by those pages). The default tier is 1024×256, 24 steps, 1/8 of the rows a
+frame.
+- **Skinner Sky settings panel.** While a preset is the sky, a panel over the map (`viewer.js` `skyPanel`) offers this
+  page's controls live: sky texture size, rows per frame, steps, cloud coverage, thickness, darkness, softness, tile and
+  base, fog density, height and brightness, and exposure. The values are not saved. Copy values shows the changed keys
+  as `presets.json` writes them, and Reset reloads the preset. While the panel is open, each whole frame is timed on the
+  GPU (median of 60); the timing is only valid with the window in view.
 - **Sky.** A ball in the viewer's sky group reads the sky texture and adds `skinnerBehind`, through exposure, ACES and
   2.2. The map's haze takes its colour from that sky, as before.
 - **Height fog.** With Fog on, sky and world are drawn into a target with a depth texture, then `SkinnerFog.cginc` puts

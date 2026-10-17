@@ -201,12 +201,17 @@ window.t1Skies = {
     const flat = new THREE.Camera(), quad = (fragmentShader, uniforms = U) => new THREE.Scene().add(Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
       new THREE.ShaderMaterial({uniforms, vertexShader: quadVertex, fragmentShader, depthTest: false, depthWrite: false})), {frustumCulled: false}));
     const half = {type: THREE.HalfFloatType, depthBuffer: false, wrapS: THREE.RepeatWrapping, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter};
-    const pano = new THREE.WebGLRenderTarget(1024, 256, half), ring = new THREE.WebGLRenderTarget(64, 1, half);
+    // The quality tier (the T1 Maps page's Skinner Sky panel can change it): sky texture size, march steps, and the
+    // share of the texture's rows rewritten a frame (1/rows).
+    const Q = {width: 1024, height: 256, steps: 24, rows: 8};
+    const pano = new THREE.WebGLRenderTarget(Q.width, Q.height, half), ring = new THREE.WebGLRenderTarget(64, 1, half);
     pano.scissorTest = true;
     U.pano.value = pano.texture;
     U.ring.value = ring.texture;
-    const panoScene = quad(header('#define CLOUD_STEPS 24\n#define SKINNER_SKIP_BEHIND\n') + `
-      void main() { vec3 d = panoDir(gl_FragCoord.xy / vec2(1024., 256.)), s = skinnerSky(d); vec4 c = skinnerClouds(d, s); gl_FragColor = vec4(s * c.a + c.rgb, c.a); }`);
+    U.panoSize = {value: new THREE.Vector2(Q.width, Q.height)};
+    const makePano = () => quad(header(`#define CLOUD_STEPS ${Q.steps}\n#define SKINNER_SKIP_BEHIND\n`) + `uniform vec2 panoSize;
+      void main() { vec3 d = panoDir(gl_FragCoord.xy / panoSize), s = skinnerSky(d); vec4 c = skinnerClouds(d, s); gl_FragColor = vec4(s * c.a + c.rgb, c.a); }`);
+    let panoScene = makePano();
     // The fog's colour by azimuth: the low sky 2-26 degrees up, averaged round under a triangle weight 54 degrees to
     // each side, read every 6 degrees (a sharp ring shows through thin fog as spokes; reads 12 degrees apart under
     // equal weights put a hard-edged bright band below a low sun). Same kernel as SkinnerVolumetrics.shader pass 1.
@@ -235,13 +240,26 @@ window.t1Skies = {
     let frame = null, row = 0, whole = true;
     const size = new THREE.Vector2();
     return {
-      uniforms: U,  // For checks (skinnerT1Maps.skyPass()).
+      uniforms: U,  // For checks (skinnerT1Maps.skyPass()) and the page's Skinner Sky panel.
+      redraw() { whole = true; },  // The whole sky texture on the next frame, after a value changed.
+      quality(q) {
+        const steps = Q.steps;
+        Object.assign(Q, q);
+        if (pano.width !== Q.width || pano.height !== Q.height) pano.setSize(Q.width, Q.height);
+        U.panoSize.value.set(Q.width, Q.height);
+        if (Q.steps !== steps) {
+          panoScene.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });
+          panoScene = makePano();
+        }
+        row = 0;
+        whole = true;
+      },
       update(renderer) {
-        const current = renderer.getRenderTarget(), rows = whole ? 256 : 32;
-        pano.scissor.set(0, whole ? 0 : row, 1024, rows);
+        const current = renderer.getRenderTarget(), rows = whole ? Q.height : Math.ceil(Q.height / Q.rows);
+        pano.scissor.set(0, whole ? 0 : row, Q.width, rows);
         renderer.setRenderTarget(pano);
         renderer.render(panoScene, flat);
-        if (whole) whole = false; else row = (row + rows) % 256;
+        if (whole) whole = false; else row = (row + rows) % Q.height;
         renderer.setRenderTarget(ring);
         renderer.render(ringScene, flat);
         renderer.setRenderTarget(current);

@@ -12,3 +12,8 @@ summary {cursor:pointer;}
 details[open]#importPanel, details[open]#decorPanel {flex-basis:100%;}
 .import {display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:8px;}
 .import input:not([type=checkbox]) {width:260px;}
+#skyTune {position:absolute;top:8px;left:8px;z-index:2;max-height:calc(100% - 16px);overflow:auto;padding:6px 10px;
+  background:#17222ae6;border:1px solid #40515b;border-radius:6px;font-size:13px;}
+#skyTune label {display:grid;grid-template-columns:125px 130px 38px;margin-top:4px;} #skyTune select, #skyTune button {padding:2px 5px;}
+#skyTune input[type=range] {width:130px;padding:0;} #skyTune output {width:38px;text-align:right;}
+#skyTune div {display:flex;gap:8px;margin-top:8px;} #skyTune pre {margin:8px 0 0;font-size:12px;white-space:pre-wrap;}
