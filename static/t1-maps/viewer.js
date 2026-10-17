@@ -1095,23 +1095,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     weatherGame.value = settings.weather === 'none' ? 'none' : '';
     $('weather').hidden = true;
     if (settings.weather === 'none' || !settings.weather) showWeather(settings.weather);
+    let groups = [];  // Own and None work before the list arrives, or without it.
+    const fill = group => {
+      const entries = groups.find(([name]) => name === group)?.[1] || [];
+      $('weather').replaceChildren(...entries.map(entry => [listText(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
+      $('weather').hidden = !entries.length;
+    };
+    weatherGame.addEventListener('change', () => {
+      fill(weatherGame.value);
+      settings.weather = weatherGame.value === 'none' ? 'none' : weatherGame.value ? $('weather').value : '';  // A game's first, or the map's own.
+      weatherGame.blur();
+      save();
+      showWeather(settings.weather);
+    });
+    $('weather').addEventListener('change', event => { settings.weather = event.target.value; event.target.blur(); save(); showWeather(settings.weather); });
     get('/t1-map-weather').then(response => response.json()).then(list => {
       weathers = list;
-      const groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
+      groups = [...Map.groupBy(list, entry => entry.group)].sort(([a], [b]) => a.localeCompare(b));
       weatherGame.append(...groups.map(([group, entries]) => new Option(`${group} (${entries.length})`, group)));
-      const fill = group => {
-        const entries = groups.find(([name]) => name === group)?.[1] || [];
-        $('weather').replaceChildren(...entries.map(entry => [listText(entry), entry.id]).sort(([a], [b]) => a.localeCompare(b)).map(([label, id]) => new Option(label, id)));
-        $('weather').hidden = !entries.length;
-      };
-      weatherGame.addEventListener('change', () => {
-        fill(weatherGame.value);
-        settings.weather = weatherGame.value === 'none' ? 'none' : weatherGame.value ? $('weather').value : '';  // A game's first, or the map's own.
-        weatherGame.blur();
-        save();
-        showWeather(settings.weather);
-      });
-      $('weather').addEventListener('change', event => { settings.weather = event.target.value; event.target.blur(); save(); showWeather(settings.weather); });
       const saved = weathers.find(entry => entry.id === settings.weather);
       if (saved) {
         weatherGame.value = saved.group;
