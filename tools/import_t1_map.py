@@ -1103,7 +1103,7 @@ def import_mission(install, mission_path, root, model_dir=ROOT / 'static/model_j
                 objects[-1]['light'] = light
             else:
                 unlit.add(shape.lower())
-            cover = weather and shelter(fields['filename'], shape)
+            cover = shelter(fields['filename'], shape)  # Every map: the page's Weather list can lend a dry one rain.
             if cover:
                 objects[-1]['shelter'] = cover
     warnings += ['No preview model for ' + item for item in sorted(missing)]

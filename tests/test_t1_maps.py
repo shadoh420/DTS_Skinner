@@ -356,7 +356,7 @@ class T1MapTests(unittest.TestCase):
                     for x, y, width, height in struct.iter_unpack('<4H', animation[8:8 + struct.unpack_from('<i', animation, 4)[0] * 8]):
                         self.assertTrue(0 < x and x + width < atlas.width and 0 < y and y + height < atlas.height)
             self.assertEqual((len(scene['sky']['textures']), scene['weather']['rain']), (16, True))
-            # It rains here, so every building carries what keeps the rain out: its box, its BSP and a byte per leaf.
+            # Every building carries what keeps rain out (here its own, elsewhere the Weather list's): its box, its BSP and a byte per leaf.
             for item in lit:
                 cover = (pack / 'textures' / item['shelter']).read_bytes()
                 planes, nodes = struct.unpack_from('<2i', cover, 24)

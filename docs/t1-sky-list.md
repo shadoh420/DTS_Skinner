@@ -76,3 +76,15 @@ Whiteout from 31.6 to 8.9 and Underhill from 13.7 to 1.5. Screenshots are in `C:
 - Not offered: Tribes: Ascend (excluded for now), Doom 3 (no sky drawn), Quake 4 (camera cubemaps and portal skies,
   not ported), Azrael's Tear (no sky).
 - A pack whose maps change without its index changing keeps the kept list until another index changes.
+
+## Weather list
+
+The Weather control works the same way: the game list ("(mission)'s own" by default, None, then one group per game),
+then that game's weathers. `/t1-map-weather` comes from the same scan and cache file (`scene_weather`,
+`t2_mission_weather`), and each distinct weather is listed once with its maps. Tribes, Starsiege and Earthsiege weather is
+drawn by the T1 box unchanged. Quake III family weather (Q3, RTCW, ET, JK2, JA) goes through the same box with its own
+counts, speeds, streak lengths and colours, at 1/32 m per game unit. RTCW's `misc_snow` columns are left out because they
+belong to one spot. Tribes 2 Precipitation (the object, its `weather.cs` datablock and the Sky's wind) is drawn by a
+plain-JS copy of `map-client/environment.tsx` Precipitation. Every kind is hidden inside buildings by the T1 shelter test.
+The importer stores shelters for every mission, so a dry map needs a re-import before borrowed weather stays out of its
+buildings. Not offered yet: Bloodlines' rain that follows the player (sm_hub_1, particles.js) and its trigger rain boxes.
