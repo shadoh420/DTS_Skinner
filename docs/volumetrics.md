@@ -117,22 +117,20 @@ the rows a frame.
 - **Height fog.** With Fog on, sky and world are drawn into a target with a depth texture, then `SkinnerFog.cginc` puts
   them on screen. `fogBase` counts from the map's first viewpoint height. The world is already display colour, so the
   ring colour goes through the sky's tone map before the mix. The map's own linear haze stays on under it.
-- **Cost**, measured 2026-10-17 on Raindance at 2560×1440 (RX 7800 XT, the Claude app's browser pane, hidden), with
-  the world hidden so only the sky is timed. These are indicative only: in one check the same timer read 0 ms for
-  the world's draw, and 0.06 ms is under the test page's 0.148 ms for the same sky pass.
+- **Cost**, measured 2026-10-17 on Raindance at 2560×1440 (RX 7800 XT, the Claude app's browser pane, in view), whole
+  frames with the world drawn, median of 40, the same view (looking along the ground):
 
-  | | Afternoon | Moonlit |
+  | | Main | This page |
   |---|---|---|
-  | Merged sky, per pixel (main) | 0.85–0.92 ms | 0.89–0.96 ms |
-  | Volumetric sky, fog off | 0.06 ms | 0.06 ms |
-  | Volumetric sky, fog on | 0.12 ms | not measured |
-  | Same, fog target multisampled 4× | 2.6–3.0 ms | 2.8–3.0 ms |
+  | The map's own sky | 0.18 ms | 0.18 ms |
+  | Skinner Sky, afternoon, Fog off | 0.97 ms | 0.36 ms |
+  | Skinner Sky, afternoon, Fog on | 0.97 ms (no height fog) | 0.67 ms |
+  | Skinner Sky, moonlit, Fog off | | 0.45 ms |
 
-  The fog target is therefore not multisampled: with Fog on and a Skinner Sky, the world has no antialiasing (untick Fog
-  to get it back). It is one constructor option (`samples`) if a reliable run shows a 4× target is cheap.
-- **Open:** the fog path's whole-frame cost. With the world drawn, alternating fog pass on and off over four rounds gave
-  +0.8 ms on average, ±1 ms, and whole frames swung 2.6–5.7 ms between runs. It needs a run in a pane someone is
-  watching (a hidden pane's timers and clocks are unreliable).
+  On main the per-pixel sky alone was 0.85 ms. The fog pass itself costs about 0.03 ms. Most of the Fog-on cost is the
+  fog target's 4× multisampling (+0.28 ms), kept so the world stays antialiased as the canvas is; without it the frame
+  was 0.39 ms.
+- Timings from a hidden browser pane are not usable: the same views read 2.6–5.7 ms there, and once 0 ms for the world.
 
 ## Limits
 

@@ -176,9 +176,8 @@ window.t1Skies = {
   // quarter of the per-pixel sky. Height fog (SkinnerFog.cginc, lit by the sky's horizon ring) is a pass over the
   // finished frame from its depth: fog.target() is where the viewer draws sky and world, fog.draw() puts them on screen.
   // The world is already display colour, so the fog's colour goes through the sky's exposure and ACES before the mix.
-  // The target is not multisampled: at 2560x1440 (RX 7800 XT) a 4x one cost 2.6 ms a frame against 0.12 ms for sky and
-  // fog without it, so with the fog on the world has no antialiasing. The sky ball stays in the viewer's sky group, drawn
-  // with the world; update() draws the sky texture's band and the ring before the frame.
+  // The target is multisampled 4x as the page's canvas is: +0.28 ms a frame at 2560x1440 (RX 7800 XT). The sky ball
+  // stays in the viewer's sky group, drawn with the world; update() draws the sky texture's band and the ring first.
   // `ground`: the height the fog's fogBase is measured from (the map's start).
   volumetricDefaults: {cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1},
   async skinner({entry, radius, group, loadTexture, time, ground = 0}) {
@@ -251,7 +250,7 @@ window.t1Skies = {
           renderer.getDrawingBufferSize(size);
           if (frame?.width !== size.x || frame?.height !== size.y) {
             frame?.dispose();
-            frame = new THREE.WebGLRenderTarget(size.x, size.y, {depthTexture: new THREE.DepthTexture(size.x, size.y)});
+            frame = new THREE.WebGLRenderTarget(size.x, size.y, {samples: renderer.capabilities.isWebGL2 ? 4 : 0, depthTexture: new THREE.DepthTexture(size.x, size.y)});
             F.sceneColor.value = frame.texture;
             F.sceneDepth.value = frame.depthTexture;
           }
