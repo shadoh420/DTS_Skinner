@@ -100,3 +100,8 @@ fx_snow) adds, and JA fx_rain's lightning. The wind pushes whatever falls at its
 stock maps: hoth2 (snow, constant + gusting), t1_rail (heavy rain, constant wind, lightning), t2_wedge (wind only),
 yavin_swamp (rain, wind). Neither JA/JK2 Maps page draws wind or lightning yet. Bolts and fireballs cost nothing between
 strikes: their buffers upload only the part in use.
+
+The Weather settings panel (top right, like the Skinner Sky one) tunes whatever falls, live: Intensity is a share of each
+fall's own count, up to 300% (room for that is allocated once; only the share is stepped and drawn), and Wind east/north
+(m/s) replaces each fall's own sideways drift, borrowed JA/JK2 wind and its gusts included. Reset shows the weather
+again with its own values; nothing is saved.
