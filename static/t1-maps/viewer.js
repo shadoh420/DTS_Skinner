@@ -727,6 +727,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     step: [wind[0] * Q3_UNIT, -speed * Q3_UNIT, -wind[1] * Q3_UNIT], streak: length / speed,
     material: type === 'rain' ? new THREE.LineBasicMaterial({color: new THREE.Color().setScalar(identity * .5), transparent: true, opacity: .4})
       : new THREE.PointsMaterial({color: new THREE.Color().setScalar(identity * 1.5), size: length * Q3_UNIT, transparent: true, opacity: .8})});
+  const STILL = [0, 0, 0];
   function buildBox({rain, count, radius, step, streak, material}) {
     const size = radius * 2, drops = Float32Array.from({length: count * 3}, () => Math.random() * size);
     const geometry = new THREE.BufferGeometry();
@@ -734,14 +735,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     const particles = rain ? new THREE.LineSegments(geometry, material) : new THREE.Points(geometry, material);
     particles.frustumCulled = false;
     weatherGroup.add(particles);
-    return (delta, near) => {
+    // push: a borrowed wind's velocity (m/s) added to the fall.
+    return (delta, near, push = STILL) => {
       particles.visible = near < radius;
       if (!particles.visible) return;
-      const positions = geometry.attributes.position.array, centre = camera.position.toArray(), view = ahead.toArray();
+      const positions = geometry.attributes.position.array, centre = camera.position.toArray(), view = ahead.toArray(), move = step.map((v, axis) => v + push[axis]);
       for (let drop = 0; drop < count; drop++) {
         let depth = 0;
         for (let axis = 0; axis < 3; axis++) {
-          const index = drop * 3 + axis, offset = drops[index] + step[axis] * delta - centre[axis] + radius;
+          const index = drop * 3 + axis, offset = drops[index] + move[axis] * delta - centre[axis] + radius;
           drops[index] = centre[axis] + (offset % size + size) % size - radius;
           depth += (drops[index] - centre[axis]) * view[axis];
         }
@@ -749,7 +751,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           // A drop nearer than that is not drawn: it is put behind the camera.
           const at = rain ? drop * 6 + axis : drop * 3 + axis;
           positions[at] = depth < near ? centre[axis] - view[axis] : drops[drop * 3 + axis];
-          if (rain) positions[at + 3] = positions[at] - (depth < near ? 0 : step[axis] * streak);
+          if (rain) positions[at + 3] = positions[at] - (depth < near ? 0 : move[axis] * streak);
         }
       }
       geometry.attributes.position.needsUpdate = true;
@@ -800,10 +802,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadTexture(base + 'textures/' + atlas + '.png').then(texture => { material.uniforms.map.value = texture; ready = Boolean(texture); });
     const drops = Array.from({length: count}, () => ({pos: [0, 0, 0], speed: 0, color: 0, tex: 0, startDiff: 1, valid: false}));
     const last = {camera: null, first: true}, right = new THREE.Vector3(), up = new THREE.Vector3(), z = new THREE.Vector3();
-    return (delta, near) => {
+    return (delta, near, push = STILL) => {
       mesh.visible = ready && near < radius;
       if (!mesh.visible) return;
-      const cam = toTorque(camera.position), view = ahead.toArray();
+      const cam = toTorque(camera.position), view = ahead.toArray(), blown = [push[0], -push[2], push[1]].map(v => v * Math.min(delta, 0.25));
       const frames = Math.min(delta, 0.25) * T2_FRAME_RATE;
       // An observer camera has no player velocity: the box is the camera's, shifted upwind by the drift.
       const shift = last.camera && Math.hypot(...cam.map((v, i) => v - last.camera[i])) > radius / 2 ? cam.map((v, i) => v - last.camera[i]) : [0, 0, 0];
@@ -819,7 +821,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         : [c1.map((v, k) => v + offset[k] * sizeY * 2), c1, c2, c2.map((v, k) => v + offset[k] * sizeY * 2)];
       const p = geometry.attributes.position.array, t = geometry.attributes.uv.array, c = geometry.attributes.dropColor.array;
       drops.forEach((drop, i) => {
-        for (let k = 0; k < 3; k++) drop.pos[k] += shift[k] + (k < 2 ? offset[k] * drop.speed : drop.speed) * frames;
+        for (let k = 0; k < 3; k++) drop.pos[k] += shift[k] + blown[k] + (k < 2 ? offset[k] * drop.speed : drop.speed) * frames;
         const inside = drop.pos.every((v, k) => v >= min[k] && v <= max[k]);
         if (!drop.valid || !inside) {
           const r1 = Math.random(), r2 = Math.random(), r3 = Math.random();
@@ -854,19 +856,378 @@ window.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  // The chosen weather: '' the map's own, 'none', or a Weather list entry's id.
+
+  // Storms the Weather list lends with or without rain: Tribes 2 Lightning and FireballAtmosphere (the T2 page's
+  // environment.tsx, after V12's game/lightning.cc and game/fireballAtmosphere.cc), and Jedi Academy / Jedi Outcast
+  // wind and lightning (tr_WorldEffects' wind zones and g_fx.cpp's fx_rain_think). Everything here is in Three's axes.
+  const v3 = {sub: (a, b) => a.map((v, i) => v - b[i]), add: (a, b) => a.map((v, i) => v + b[i]), scale: (a, s) => a.map(v => v * s),
+    norm: a => { const l = Math.hypot(...a) || 1; return a.map(v => v / l); },
+    cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]};
+  const random = (min, max) => min + Math.random() * (max - min), crandom = () => random(-1, 1);
+  const vecOf = (text, fallback) => { const parts = String(text ?? '').trim().split(/\s+/).map(Number); return fallback.map((value, i) => Number.isFinite(parts[i]) ? parts[i] : value); };
+  const fromTorque = ([x, y, z]) => [x, z, -y];
+  // MathUtils::randomDir: between minAngle and maxAngle degrees from axis, at a random azimuth.
+  function randomDir(axis, minAngle, maxAngle) {
+    const a = v3.norm(axis), x = v3.norm(v3.cross(a, Math.abs(a[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), y = v3.cross(a, x);
+    const theta = THREE.MathUtils.degToRad(random(minAngle, maxAngle)), phi = Math.random() * 2 * Math.PI;
+    return a.map((v, i) => v * Math.cos(theta) + (x[i] * Math.cos(phi) + y[i] * Math.sin(phi)) * Math.sin(theta));
+  }
+
+  // Bolts: camera-facing strips in one preallocated buffer, drawn additively and unfogged. With a texture (T2's
+  // special/skyLightning) it is sampled; without one (JA's gfx/misc/blueLine, not in its pack) a soft blue-white line.
+  // ponytail: past CAPACITY vertices a frame's later bolts are dropped.
+  const BOLT_CAPACITY = 16384;
+  function boltMesh() {
+    const geometry = new THREE.BufferGeometry(), index = new Uint32Array(BOLT_CAPACITY * 3);
+    for (const [name, size] of [['position', 3], ['uv', 2], ['boltColor', 4]])
+      geometry.setAttribute(name, new THREE.BufferAttribute(new Float32Array(BOLT_CAPACITY * size), size).setUsage(THREE.DynamicDrawUsage));
+    geometry.setIndex(new THREE.BufferAttribute(index, 1).setUsage(THREE.DynamicDrawUsage));
+    const material = new THREE.ShaderMaterial({uniforms: {map: {value: null}, textured: {value: false}},
+      vertexShader: `attribute vec4 boltColor; varying vec4 vColor; varying vec2 vUv;
+        void main() { vColor = boltColor; vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform sampler2D map; uniform bool textured; varying vec4 vColor; varying vec2 vUv;
+        void main() {
+          float edge = 1. - abs(2. * vUv.y - 1.);
+          gl_FragColor = textured ? texture2D(map, vUv) * vColor : vec4(mix(vec3(.3, .45, 1.), vec3(1.), edge * edge) * vColor.rgb, edge * vColor.a);
+        }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide});
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    weatherGroup.add(mesh);
+    let vertices = 0, indices = 0;
+    const {position: {array: p}, uv: {array: t}, boltColor: {array: c}} = geometry.attributes;
+    return {
+      setMap(map) { material.uniforms.map.value = map; material.uniforms.textured.value = Boolean(map); },
+      begin() { vertices = indices = 0; },
+      // points along the bolt; width(i) its full width there; rgba its colour.
+      strip(points, width, rgba) {
+        if (vertices + points.length * 2 > BOLT_CAPACITY) return;
+        const cam = camera.position.toArray(), base = vertices;
+        points.forEach((point, i) => {
+          const dir = v3.norm(i === points.length - 1 ? v3.sub(point, points[i - 1]) : v3.sub(points[i + 1], point));
+          const side = v3.scale(v3.norm(v3.cross(v3.sub(point, cam), dir)), width(i) / 2);
+          for (const [sign, v] of [[-1, 0], [1, 1]]) {
+            p.set(v3.add(point, v3.scale(side, sign)), vertices * 3);
+            t.set([i % 2, v], vertices * 2);
+            c.set(rgba, vertices * 4);
+            vertices++;
+          }
+        });
+        for (let i = base + 2; i < vertices; i++) { index.set([i - 2, i - 1, i], indices); indices += 3; }
+      },
+      end() {
+        mesh.visible = indices > 0;
+        geometry.setDrawRange(0, indices);
+        for (const attribute of [...Object.values(geometry.attributes), geometry.index]) {  // Only the part in use goes up.
+          attribute.updateRange = {offset: 0, count: attribute === geometry.index ? indices : vertices * attribute.itemSize};
+          attribute.needsUpdate = mesh.visible;
+        }
+      },
+    };
+  }
+
+  // Tribes 2 lightning (environment.tsx Lightning, V12 LightningBolt): three bolts a strike, each 10 major nodes
+  // within 30° of the line, each span 4 minor nodes within 15° redrawn every frame until it fades, with splits.
+  // A strike lands in the object's box (scale) centred on this map's camera, moved to between 100 m off and 80% of the
+  // view, down to the terrain.
+  // ponytail: buildings do not stop a strike; the box's own place on its mission means nothing on another map.
+  function generateNodes(start, end, count, maxAngle) {
+    const dist = Math.hypot(...v3.sub(end, start)), minStep = dist / (count - 1), maxStep = minStep / Math.cos(THREE.MathUtils.degToRad(maxAngle));
+    const nodes = [start];
+    for (let i = 1; i < count - 1; i++) nodes.push(v3.add(nodes[i - 1], v3.scale(randomDir(v3.sub(end, nodes[i - 1]), 0, maxAngle), random(minStep, maxStep))));
+    nodes.push(end);
+    return nodes;
+  }
+  function makeBolt(start, end, width, majorCount, majorAngle, minorCount, minorAngle) {
+    const bolt = {width, major: generateNodes(start, end, majorCount, majorAngle), minor: [], minorCount, minorAngle, splits: [], elapsed: 0, renderTime: 0, started: true, fading: false, fade: 0};
+    generateMinor(bolt);
+    return bolt;
+  }
+  function generateMinor(bolt) { bolt.minor = bolt.major.slice(0, -1).map((point, i) => generateNodes(point, bolt.major[i + 1], bolt.minorCount, bolt.minorAngle)); }
+  function createSplit(bolt, start, end, depth, width) {
+    if (depth === 0 || Math.random() > .7) return;
+    width = Math.max(width, .75);
+    const diff = v3.sub(end, start), length = Math.hypot(...diff);
+    bolt.splits.push(makeBolt(start, end, width, 3, 30, 3, 10));
+    for (let i = 0; i < 2; i++) createSplit(bolt, end, v3.add(end, v3.scale(randomDir(diff, 10, 45), random(.5, 1.5) * length)), depth - 1, width * .3);
+  }
+  function strikePoint(spread) {
+    const [x, , z] = camera.position.toArray();
+    let dx = crandom() * spread[0] / 2, dz = crandom() * spread[1] / 2;
+    const off = Math.hypot(dx, dz), reach = Math.min(Math.max(off, 100), camera.far * .8) / (off || 1);
+    if (!off) dx = 1;
+    return [x + dx * reach, ground(x + dx * reach, z + dz * reach), z + dz * reach];
+  }
+  function buildT2Lightning(objects, base) {
+    const strikes = [], setups = objects.map(object => {
+      const [sx, sy, sz] = vecOf(object.scale, [512, 512, 300]);
+      return {spread: [sx, sy], height: sz, perMinute: parseFloat(object.strikesPerMinute) || 12, width: parseFloat(object.strikeWidth) || 2.5,
+        startRadius: parseFloat(object.boltStartRadius) || 20, color: vecOf(object.color, [1, 1, 1, 1]), fadeColor: vecOf(object.fadeColor, [.1, .1, 1, 1]),
+        texture: object.texture || 'special/skylightning', timer: 0};
+    });
+    const meshes = new Map();  // One buffer per strike texture.
+    for (const {texture} of setups) if (!meshes.has(texture)) {
+      const mesh = boltMesh();
+      meshes.set(texture, mesh);
+      loadTexture(base + 'textures/' + texture + '.png').then(map => mesh.setMap(map));
+    }
+    return delta => {
+      const dt = Math.min(delta, .25);
+      for (const setup of setups) {
+        setup.timer += dt;
+        for (const every = 60 / Math.max(.01, setup.perMinute); setup.timer > every; setup.timer -= every) {
+          const ground = strikePoint(setup.spread), top = ground[1] + setup.height;
+          strikes.push({age: 0, setup, bolts: [0, 1, 2].map(() => {
+            const bolt = makeBolt([ground[0] + random(-setup.startRadius, setup.startRadius), top, ground[2] + random(-setup.startRadius, setup.startRadius)], ground, setup.width, 10, 30, 4, 15);
+            for (let i = 0; i < bolt.major.length - 1; i++) {
+              if (Math.random() > .3) continue;
+              const a = bolt.major[i], seg = v3.sub(bolt.major[i + 1], a);
+              createSplit(bolt, a, v3.add(a, v3.scale(randomDir(seg, 20, 40), random(.5, 1.5) * Math.hypot(...seg))), 4, setup.width * .3);
+            }
+            return Object.assign(bolt, {started: false, renderTime: random(0, .25)});
+          })});
+        }
+      }
+      if (!strikes.length) { for (const mesh of meshes.values()) { mesh.begin(); mesh.end(); } return; }
+      for (const mesh of meshes.values()) mesh.begin();
+      const render = (bolt, fading, setup, mesh) => {
+        if (!fading) generateMinor(bolt);
+        const rgba = fading ? [...setup.fadeColor.slice(0, 3), Math.max(0, 1 - bolt.fade)] : setup.color;
+        // Each span's points, the last node only at the bolt's very end.
+        mesh.strip(bolt.minor.flatMap((segment, s) => s === bolt.minor.length - 1 ? segment : segment.slice(0, -1)), () => bolt.width, rgba);
+        for (const split of bolt.splits) render(split, fading, setup, mesh);
+      };
+      for (const strike of strikes) {
+        strike.age += dt;
+        const mesh = meshes.get(strike.setup.texture);
+        for (const bolt of strike.bolts) {
+          // LightningBolt::update: a delayed start, then 0.2 s at full colour, then a fade over the lifetime of 1 s.
+          bolt.elapsed += dt;
+          if (bolt.elapsed > .2) { bolt.fading = true; bolt.fade = bolt.elapsed + .2; }
+          if (bolt.elapsed > bolt.renderTime && !bolt.started) { bolt.started = true; bolt.fading = false; bolt.elapsed = 0; }
+          if (bolt.started) { for (const split of bolt.splits) split.fade = bolt.fade; render(bolt, bolt.fading, strike.setup, mesh); }
+        }
+      }
+      strikes.splice(0, strikes.length, ...strikes.filter(strike => strike.age <= 1.6));
+      for (const mesh of meshes.values()) mesh.end();
+    };
+  }
+
+  // JA and JK2 wind (tr_WorldEffects CWindZone): the zones' velocities summed each frame, at terminal speed through
+  // the particle clouds' update (velocity += force / mass, then * 0.7: 7/3 force / mass) with the mean mass 7.5, at
+  // 1/32 m a unit, pushing whatever rain or snow falls. A zone eases toward a new random target 10 units a frame, for
+  // a random number of frames, or falls dead. ponytail: frames counted at JA's com_maxfps 85; one mass for every drop.
+  const RAVEN_FPS = 85, RAVEN_PUSH = 7 / 3 / 7.5 * Q3_UNIT;
+  const WIND_KINDS = {normal: {range: [1500, 10], duration: [1000, 2000], dead: .3, deadTime: [1000, 3000]},
+    gusting: {range: [3000, 100], duration: [1000, 3000], dead: .5, deadTime: [2000, 4000]}};
+  function buildWind(zones) {
+    const winds = zones.map(zone => ({...WIND_KINDS[zone.mode], current: zone.velocity ? [...zone.velocity] : [0, 0, 0], target: [0, 0, 0], left: zone.velocity ? -1 : 0}));
+    const push = [0, 0, 0];
+    let ticks = 0;
+    return delta => {
+      for (ticks += delta * RAVEN_FPS; ticks >= 1; ticks--) for (const wind of winds) {
+        if (wind.left === 0) {
+          const dead = Math.random() < wind.dead, [min, max] = dead ? wind.deadTime : wind.duration;
+          wind.left = Math.floor(random(min, max + 1));
+          wind.target = dead ? [0, 0, 0] : [crandom() * wind.range[0], crandom() * wind.range[0], crandom() * wind.range[1]];
+        } else if (wind.left !== -1) {
+          wind.left--;
+          const toward = v3.sub(wind.target, wind.current), length = Math.hypot(...toward);
+          if (length) wind.current = v3.add(wind.current, v3.scale(toward, Math.min(length, 10) / length));
+        }
+      }
+      const [x, y, z] = winds.reduce((sum, wind) => v3.add(sum, wind.current), [0, 0, 0]);
+      push[0] = x * RAVEN_PUSH; push[1] = z * RAVEN_PUSH; push[2] = -y * RAVEN_PUSH;  // Quake (x, y, z) is Three (x, z, -y).
+      return push;
+    };
+  }
+
+  // JA fx_rain's lightning (g_fx.cpp fx_rain_think) while the camera is outside: a fog flash of the flash colour
+  // (R_SetTempGlobalFogColor, its bytes clamped, so 200 200 200 flashes white) flickering on 50 ms and off 50-450 ms,
+  // 2-8 times, and env/huge_lightning: 1-2 Electricity bolts from 600-1000 units up, up to 566 out, traced down,
+  // 25-30 units wide narrowing to 4 after 80% of a 300-650 ms life as they fade (RB_SurfaceElectricity's DoBoltSeg:
+  // a node every 16 units drifting by chaos `bounce` 5-8). Times are the game's milliseconds.
+  // ponytail: the flash tints this map's haze, so a map with fog off shows none; thunder and the impact effect are not played.
+  function buildRavenLightning({color, delay, flicker, effect}, identity) {
+    const flash = new THREE.Color(...color.map(v => Math.min(1, v * identity))), mesh = boltMesh(), bolts = [];
+    const pick = (min, max) => Math.floor(random(min, max + 1)) / 1000;
+    let wait = pick(4000, 8000), count = 0, lit = false;
+    const light = on => {
+      lit = on;
+      if (scene.fog) scene.fog.color.copy(on ? flash : haze);
+    };
+    const bolt = () => {
+      const away = [crandom(), crandom()], top = v3.add(camera.position.toArray(), [away[0] * 400 * Q3_UNIT, random(600, 1000) * Q3_UNIT, away[1] * 400 * Q3_UNIT]);
+      const end = [top[0], ground(top[0], top[2]), top[2]];
+      for (let n = Math.floor(random(1, 3)); n--;) {
+        // DoBoltSeg: the line's offset wanders from (10, 10, 10) as it goes, pulled back to the end by the fraction done.
+        const fwd = v3.norm(v3.sub(end, top)), rt = v3.norm(v3.cross(fwd, [1, 0, 0])), up = v3.cross(fwd, rt), chaos = random(5, 8);
+        const length = Math.min(Math.hypot(...v3.sub(end, top)), 2000 * Q3_UNIT), step = 16 * Q3_UNIT, points = [top];
+        let off = [10, 10, 10].map(v => v * Q3_UNIT);
+        for (let i = step; i <= length; i += step) {
+          const perc = i + step > length ? 1 : i / length;
+          off = v3.add(off, v3.add(v3.scale(fwd, crandom() * 3 * Q3_UNIT), v3.add(v3.scale(rt, crandom() * 7 * chaos * Q3_UNIT), v3.scale(up, crandom() * 7 * chaos * Q3_UNIT))));
+          points.push(v3.add(v3.scale(v3.add(top, off), 1 - perc), v3.scale(v3.add(top, v3.scale(fwd, length)), perc)));
+        }
+        if (points.length > 1) bolts.push({points, age: 0, life: random(.3, .65), size: random(25, 30) * Q3_UNIT});
+      }
+    };
+    return (delta, near) => {
+      for (wait -= delta; wait <= 0;) {
+        if (count) {
+          count--;
+          if (count === 0 || count % 2 === 0) { light(false); wait += count === 0 ? pick(1000, 12000) : count === 2 ? pick(150, 450) : pick(50, 150); }
+          else { light(true); wait += .05; }
+        } else if (near < Infinity) {
+          if (Math.floor(random(1, effect + 1)) === 1) bolt();
+          if (Math.floor(random(1, flicker + 1)) === 1) { count = Math.floor(random(1, 5)) * 2; wait += .05; light(true); }
+          else wait += pick(1000, delay);
+        } else wait += pick(1000, delay);
+      }
+      if (lit && scene.fog && !scene.fog.color.equals(flash)) scene.fog.color.copy(flash);  // The Fog setting rebuilds the fog.
+      mesh.begin();
+      for (const item of bolts) {
+        item.age += delta;
+        const at = item.age / item.life, size = at < .8 ? item.size : item.size + (4 * Q3_UNIT - item.size) * (at - .8) / .2;
+        if (at < 1) mesh.strip(item.points, () => 2 * size, [1, 1, 1, 1 - at]);
+      }
+      bolts.splice(0, bolts.length, ...bolts.filter(item => item.age < item.life));
+      mesh.end();
+    };
+  }
+
+  // Tribes 2 meteor showers (environment.tsx ParticleObjects, V12 FireballAtmosphere::dropNewFireball): every
+  // 60 / dropsPerMinute s a fireball starts dropHeight above the ground under the camera, aimed within its angles of
+  // dropDir to come down within dropRadius, held to startVelocity as its terminal speed while gravity bends it. Its
+  // trail emitters and, where it meets the terrain, its explosion's burst and emitters are camera-facing particles
+  // with their datablocks' lives, colours, sizes, drag and gravity (each texture's first frame), added unless
+  // useInvAlpha. ponytail: buildings and water do not stop one; no sub-explosion shapes or camera shake; at most
+  // PARTICLE_CAPACITY particles a texture, the oldest dropped first.
+  const PARTICLE_CAPACITY = 1024;
+  function particlePool(texture) {
+    const geometry = new THREE.BufferGeometry(), index = new Uint32Array(PARTICLE_CAPACITY * 6);
+    for (let i = 0; i < PARTICLE_CAPACITY; i++) index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
+    geometry.setIndex(new THREE.BufferAttribute(index, 1));
+    for (const [name, size] of [['position', 3], ['uv', 2], ['dropColor', 4]])
+      geometry.setAttribute(name, new THREE.BufferAttribute(new Float32Array(PARTICLE_CAPACITY * 4 * size), size).setUsage(THREE.DynamicDrawUsage));
+    for (let i = 0; i < PARTICLE_CAPACITY; i++) geometry.attributes.uv.array.set([0, 0, 0, 1, 1, 1, 1, 0], i * 8);
+    const material = new THREE.ShaderMaterial({vertexShader: T2_VERTEX, fragmentShader: T2_FRAGMENT, uniforms: {map: {value: null}},
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide});
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    weatherGroup.add(mesh);
+    loadTexture(texture).then(map => { material.uniforms.map.value = map; });
+    const alive = [], right = new THREE.Vector3(), up = new THREE.Vector3(), z = new THREE.Vector3();
+    const corners = [[-1, 1], [-1, -1], [1, -1], [1, 1]];
+    return {
+      add(particle, pos, vel) {
+        if (alive.length >= PARTICLE_CAPACITY) alive.shift();
+        alive.push({particle, pos, vel, age: 0, life: Math.max(.01, particle.life + random(-particle.variance, particle.variance))});
+      },
+      update(dt) {
+        for (const item of alive) {
+          item.age += dt;
+          // ParticleEmitter::updateKeyData: drag against the velocity, gravity at its coefficient of 9.81.
+          item.vel = v3.add(item.vel, v3.scale(v3.add(v3.scale(item.vel, -item.particle.drag), [0, -9.81 * item.particle.gravity, 0]), dt));
+          item.pos = v3.add(item.pos, v3.scale(item.vel, dt));
+        }
+        alive.splice(0, alive.length, ...alive.filter(item => item.age < item.life));
+        mesh.visible = alive.length > 0 && Boolean(material.uniforms.map.value);
+        if (!mesh.visible) return;
+        camera.matrixWorld.extractBasis(right, up, z);
+        const p = geometry.attributes.position.array, c = geometry.attributes.dropColor.array;
+        alive.forEach((item, i) => {
+          const at = item.age / item.life, keys = item.particle.keys, k = Math.max(0, keys.findIndex(key => key[0] > at) - 1);
+          const [t0, ...a] = keys[k], [t1, ...b] = keys[Math.min(k + 1, keys.length - 1)], f = t1 > t0 ? Math.min(1, (at - t0) / (t1 - t0)) : 0;
+          const [r, g, bl, alpha, size] = a.map((v, n) => v + (b[n] - v) * f), half = size / 2;
+          corners.forEach(([sx, sy], n) => p.set([0, 1, 2].map(axis => item.pos[axis] + (right.getComponent(axis) * sx + up.getComponent(axis) * sy) * half), (i * 4 + n) * 3));
+          for (let n = 0; n < 4; n++) c.set([r, g, bl, alpha], (i * 4 + n) * 4);
+        });
+        geometry.setDrawRange(0, alive.length * 6);
+        for (const name of ['position', 'dropColor']) {
+          const attribute = geometry.attributes[name];
+          attribute.updateRange = {offset: 0, count: alive.length * 4 * attribute.itemSize};
+          attribute.needsUpdate = true;
+        }
+      },
+    };
+  }
+  function buildFireballs(atmospheres, base) {
+    const pools = new Map(), pool = particle => {
+      if (!pools.has(particle.texture)) pools.set(particle.texture, particlePool(base + 'textures/' + particle.texture + '.png'));
+      return pools.get(particle.texture);
+    };
+    // ParticleEmitter::addParticle: within its theta of the axis, at its speed, plus the inherited share of `carried`.
+    const emit = (emitter, pos, axis, carried) => pool(emitter.particle).add(emitter.particle, pos,
+      v3.add(v3.scale(randomDir(axis, ...emitter.theta), emitter.velocity + random(-emitter.variance, emitter.variance)), v3.scale(carried, emitter.particle.inherit)));
+    const setups = atmospheres.map(({object, ...rest}) => ({...rest, timer: 0, radius: parseFloat(object.dropRadius) || 600, perMinute: parseFloat(object.dropsPerMinute) || 3,
+      angles: [parseFloat(object.minDropAngle) || 0, parseFloat(object.maxDropAngle) || 30], speed: parseFloat(object.startVelocity) || 20,
+      height: parseFloat(object.dropHeight) || 500, dir: fromTorque(vecOf(object.dropDir, [.5, .5, -.5]))}));
+    const balls = [], bursts = [];
+    return delta => {
+      const dt = Math.min(delta, .25);
+      if (dt <= 0) return;
+      for (const setup of setups) {
+        setup.timer += dt;
+        for (const every = 60 / Math.max(.01, setup.perMinute); setup.timer > every; setup.timer -= every) {
+          // Launched back along its path from where it would land, so that it starts dropHeight up.
+          const vel = v3.scale(randomDir(setup.dir, ...setup.angles), setup.speed), turn = Math.random() * 2 * Math.PI, along = setup.radius * random(.1, 1);
+          const [x, , z] = camera.position.toArray(), landing = [x + Math.cos(turn) * along, ground(x, z), z + Math.sin(turn) * along];
+          if (vel[1] < 0) balls.push({setup, vel, pos: v3.add(landing, v3.scale(vel, setup.height / vel[1])), timers: setup.trails.map(() => 0)});
+        }
+      }
+      for (const ball of [...balls]) {
+        // Debris::computeNewState: gravity, then no faster than the terminal speed.
+        ball.vel[1] -= 9.81 * dt;
+        const speed = Math.hypot(...ball.vel);
+        if (speed > ball.setup.speed) ball.vel = v3.scale(ball.vel, ball.setup.speed / speed);
+        const next = v3.add(ball.pos, v3.scale(ball.vel, dt)), floor = ground(next[0], next[2]), hit = next[1] <= floor;
+        const end = hit ? [next[0], floor, next[2]] : next, back = v3.norm(v3.scale(ball.vel, -1));
+        ball.setup.trails.forEach((trail, i) => {  // emitPeriodic: one every period, spread along this frame's path.
+          for (ball.timers[i] += dt; ball.timers[i] >= trail.period; ball.timers[i] -= trail.period)
+            emit(trail, v3.add(ball.pos, v3.scale(v3.sub(end, ball.pos), 1 - ball.timers[i] / dt)), back, ball.vel);
+        });
+        ball.pos = end;
+        if (!hit) continue;
+        balls.splice(balls.indexOf(ball), 1);
+        const {burst, bursts: emitters, explosionLife} = ball.setup;
+        if (burst) for (let n = 0; n < burst.density; n++) emit(burst, v3.add(end, v3.scale(randomDir([0, 1, 0], 0, 180), random(0, burst.radius))), [0, 1, 0], [0, 0, 0]);
+        for (const emitter of emitters) bursts.push({emitter, pos: end, left: emitter.lifetime || explosionLife, timer: 0});
+      }
+      for (const burst of [...bursts]) {
+        for (burst.timer += dt; burst.timer >= burst.emitter.period; burst.timer -= burst.emitter.period) emit(burst.emitter, burst.pos, [0, 1, 0], [0, 0, 0]);
+        if ((burst.left -= dt) <= 0) bursts.splice(bursts.indexOf(burst), 1);
+      }
+      for (const item of pools.values()) item.update(dt);
+    };
+  }
+
+  // The chosen weather: '' the map's own, 'none', or a Weather list entry's id. An entry with no rain or snow of its
+  // own (wind, lightning, fireballs) brings its storm over this map's.
   function showWeather(id) {
     for (const mesh of weatherGroup.children) { mesh.geometry.dispose(); mesh.material.dispose(); }  // Textures stay cached.
     weatherGroup.clear();
     weather = null;
-    const chosen = weathers.find(entry => entry.id === id), steps = [];
-    if (!id && map.weather) steps.push(buildBox(t1Box(map.weather)));
-    else if (chosen?.renderer === 't1') steps.push(buildBox(t1Box(chosen.weather)));
-    else if (chosen?.renderer === 'q3') steps.push(...chosen.weather.specs.map(spec => buildBox(q3Box(spec, chosen.weather.identity))));
-    else if (chosen?.renderer === 't2') steps.push(buildPrecipitation(chosen.weather, chosen.base));
-    if (!steps.length) return;
+    scene.fog?.color.copy(haze);  // A flash may be on.
+    const chosen = weathers.find(entry => entry.id === id), found = chosen?.weather, steps = [], storms = [];
+    if (chosen?.renderer === 't1') steps.push(buildBox(t1Box(found)));
+    else if (chosen?.renderer === 'q3') steps.push(...found.specs.map(spec => buildBox(q3Box(spec, found.identity))));
+    else if (chosen?.renderer === 't2' && found.object) steps.push(buildPrecipitation(found, chosen.base));
+    if (id !== 'none' && !steps.length && map.weather) steps.push(buildBox(t1Box(map.weather)));
+    const wind = found?.storm?.wind?.length ? buildWind(found.storm.wind) : null;
+    if (found?.storm?.lightning) storms.push(buildRavenLightning(found.storm.lightning, found.identity));
+    if (found?.lightning) storms.push(buildT2Lightning(found.lightning, chosen.base));
+    if (found?.fireballs) storms.push(buildFireballs(found.fireballs, chosen.base));
+    if (!steps.length && !storms.length) return;
     for (const building of shelterQueue) addShelter(building);
-    weather = delta => { const near = shelterNear(); for (const step of steps) step(delta, near); };
+    weather = delta => {
+      const near = shelterNear(), push = wind ? wind(delta) : STILL;
+      for (const step of steps) step(delta, near, push);
+      for (const storm of storms) storm(delta, near);
+    };
   }
 
   function applySettings() {
@@ -1021,7 +1382,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (timer && timings.pending.length) readTimings();
   }
   // For checks in a script or a hidden page, as the other Maps pages have: draw a frame and pick a sky by id.
-  window.skinnerT1Maps = {renderer, scene, camera, drawFrame, showSky: id => showSky(id), skies: () => skies, skyPass: () => skyPass};
+  window.skinnerT1Maps = {renderer, scene, camera, drawFrame, showSky: id => showSky(id), skies: () => skies, skyPass: () => skyPass,
+    showWeather: id => showWeather(id), weathers: () => weathers, stepWeather: delta => weather?.(delta)};
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
     // The game steps building lights 67 ms at a time (InteriorShape::sm_minLightUpdateMS); switched off, they hold still.

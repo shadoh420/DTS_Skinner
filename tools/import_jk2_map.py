@@ -664,6 +664,32 @@ def efx_stage(game,name,textures):
     return dict(map=image,blend=['gl_src_alpha','gl_one_minus_src_alpha'],rgbGen=['vertex'],alphaGen=['vertex']),[]
 
 
+def storm(things,game_id):
+    """Raven wind and lightning, as g_fx.cpp hands them to tr_WorldEffects (R_WorldEffectCommand), or None. `wind` lists
+    the zones the renderer sums each frame: fx_wind's NORMAL (1) random light wind, CONSTANT (2) `speed` (500) along its
+    angles, GUSTING (4) gusts; a JA fx_rain with no type flag adds the normal wind, and JK2's fx_rain and fx_snow always do.
+    `lightning` is JA fx_rain's LIGHTNING (64, or HEAVY 4): fx_rain_think's fog flash and env/huge_lightning bolt.
+    ponytail: retail JK2's renderer is not public, so JA's zones stand in for its; SWIRLING (8) has no renderer
+    command; fx_wind_zone (local wind) is on no stock map; thunder and outside shake are not kept."""
+    wind,lightning=[],None
+    for e in things:
+        e={k.lower():v for k,v in e.items()};cls=e.get('classname','').lower();flags=int(number(e,'spawnflags'))
+        if cls=='fx_wind':
+            if flags&1:wind.append(dict(mode='normal'))
+            if flags&2:  # AngleVectors of its angles (a lone `angle` is the yaw).
+                pitch,yaw=(math.radians(float(v)) for v in (e.get('angles') or f"0 {e.get('angle',0)} 0").split()[:2])
+                speed=number(e,'speed',500)
+                wind.append(dict(mode='constant',velocity=[round(v*speed,3)+0. for v in (math.cos(pitch)*math.cos(yaw),math.cos(pitch)*math.sin(yaw),-math.sin(pitch))]))
+            if flags&4:wind.append(dict(mode='gusting'))
+        elif cls in ('fx_rain','fx_snow') and game_id=='jk2':wind.append(dict(mode='normal'))
+        elif cls=='fx_rain':
+            if not flags&15:wind.append(dict(mode='normal'))
+            if flags&68:
+                color=[float(v) for v in (e.get('flashcolor') or '200 200 200').split()[:3]]
+                lightning=dict(color=color,delay=int(number(e,'flashdelay',12000)),flicker=int(number(e,'chanceflicker',2)),effect=int(number(e,'chanceeffect',4)))
+    return dict(wind=wind,lightning=lightning) if wind or lightning else None
+
+
 def particles(game,things,audit,textures):
     """Running fx_runners (neither STARTOFF nor ONESHOT) re-fire their .efx every delay + random/2 ms
     (fx_runner_think; ponytail: the mean of its random wait). Each Particle primitive and shader is one emitter of
@@ -787,8 +813,11 @@ def import_maps(install,output,replace=False,*,rules=None):
                     metadata=config.scene_metadata(game,raw) if hasattr(config,'scene_metadata') else {}
                     game.light_grid=config.LightGrid(read_lumps(raw),game.lighting,section)
                     scene=base.import_map(game,name,ident,raw,source,output,textures,mt,rules=rules)
-                    fx,unresolved,notes=particles(game,qmap.entities(read_lumps(raw)[0].decode('latin1')),scene['entityResults'],textures)
+                    things=qmap.entities(read_lumps(raw)[0].decode('latin1'))
+                    fx,unresolved,notes=particles(game,things,scene['entityResults'],textures)
                     if fx:scene['particles']=fx
+                    weather=storm(things,game.game_id)
+                    if weather:scene['storm']=weather  # Drawn by the T1 Maps Weather list.
                     scene['unresolved']+=unresolved;scene['limits']+=notes
                     if game.light_grid.reason:scene['limits'].append(game.light_grid.reason)
                     scene.update(game=game.game_id,sourceFormat='RBSP 1',defaultGametype=game.default_gametype)
