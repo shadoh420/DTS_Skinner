@@ -229,7 +229,8 @@ window.t1Skies = {
         vec4 c = texture2D(pano, panoUV(d));
         vec3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.));
         // Under the clouds, per pixel (finer than the sky texture overhead). The texture keeps air and cloud light summed,
-        // so a half-clear cloud would be half replaced: cover a² hides the cirrus behind any real cloud instead.
+        // so laying cirrus over by alpha replaces some cloud light too; a² roughly halves that over thin cloud (exact needs
+        // air and cloud light kept apart).
         s = skinnerCirrus(d, s, c.rgb, c.a * c.a);
         gl_FragColor = vec4(display(s) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
       }`}), radius, group);

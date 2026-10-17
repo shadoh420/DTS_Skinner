@@ -36,7 +36,8 @@ From the console:
 3. **Screen sky.** Per pixel, the sky texture is read, then `skinnerBehind` adds the sharp parts: sun disc, stars,
    Milky Way, moon and aurora, dimmed by the air and the clouds. `skinnerCirrus` lays the cirrus over them (the sky
    texture skips it with `SKINNER_SKIP_BEHIND`), under the clouds by the square of the texture's alpha: the texture
-   holds air and cloud light summed, so by the alpha itself a half-clear cloud would be half replaced by cirrus.
+   holds air and cloud light summed, so laying cirrus over replaces some of a thin cloud's own light too; the square
+   roughly halves that (keeping air and cloud light apart would make it exact).
 4. **Fog ring.** A 64×1 texture holds the fog colour by azimuth: the sky texture 2–26° up, averaged round under a
    triangle weight reaching 54° to each side, read every 6° (51 reads). It includes the sun's glow and the clouds.
    - A sharp ring (one direction 3° up) showed through thin fog on the sky as spokes from the zenith.
