@@ -101,7 +101,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Shader time and the camera in the game's axes, shared by every stage material.
   const uniforms = {uTime: {value: 0}, uView: {value: new THREE.Vector3()}, uForward: {value: new THREE.Vector3(1, 0, 0)},
-    uViewLeft: {value: new THREE.Vector3(0, 1, 0)}, uViewUp: {value: new THREE.Vector3(0, 0, 1)}, uTanFov: {value: 1}};
+    uViewLeft: {value: new THREE.Vector3(0, 1, 0)}, uViewUp: {value: new THREE.Vector3(0, 0, 1)}, uTanFov: {value: 1},
+    uFogFlash: {value: new THREE.Vector4()}};  // A lightning flash's colour over the global fog's (addWeather), alpha 1 while lit.
   const number = value => { const text = String(Number(value) || 0), float = /[.e]/.test(text) ? text : text + '.0'; return value < 0 ? `(${float})` : float; };
   const WAVES = {sin: 0, triangle: 1, square: 2, sawtooth: 3, inversesawtooth: 4};
   const waveCall = ([func, base, amplitude, phase, frequency]) => `wave(${WAVES[func] || 0}, ${[base, amplitude, phase, frequency].map(number).join(', ')})`;
@@ -205,7 +206,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     const blend = String(stage.blend || '');
     return blend === 'gl_one,gl_one' ? 'vec3(0.)' : blend === 'gl_dst_color,gl_zero' || blend === 'gl_zero,gl_src_color' ? 'vec3(1.)' : fogColour(fog);
   };
-  const fogColour = fog => `vec3(${fog.color.map(value => number(value * (map.lighting ? map.lighting.identityLight : .5))).join(', ')})`;
+  const fogColour = fog => {
+    const own = `vec3(${fog.color.map(value => number(value * (map.lighting ? map.lighting.identityLight : .5))).join(', ')})`;
+    return fog.global ? `mix(${own}, uFogFlash.rgb, uFogFlash.a)` : own;
+  };
   const animated = [];
   function stageMaterial(shader, stage, texture, frames) {
     const sky = shader.sky, st = coordinates(stage, sky);
@@ -254,7 +258,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       fragmentShader: `${WAVE}
         ${foliage ? 'varying float vFoliage;' : ''}
         uniform sampler2D map; varying vec2 vSt; varying vec4 vColor; varying vec3 vDir;
-        ${fog ? 'varying float vFogS, vFogT;' : ''}
+        ${fog ? 'varying float vFogS, vFogT; uniform vec4 uFogFlash;' : ''}
         void main() {
           ${sky ? 'vec3 P = vDir, N = vec3(0., 0., 1.); ' + st : 'vec2 st = vSt;'}
           ${foliage ? 'if (vFoliage < .5) discard;' : ''}
@@ -556,8 +560,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // FinishShader gives an opaque shader (JA: up to see-through) a pass that matches its depth and a fog shader one
   // over what lies behind it; other shaders get none. The map's fog is GL fog: the pass stands in for it on opaque
   // shaders, the game's single multitextured pass, and blended stages are fogged themselves (mapFogged).
-  const fogStyle = fog => fog.global && config.glGlobalFog ? {color: fog.color, scale: 1 / fog.depth, curve: 'exp2'}
-    : {color: fog.color, scale: 1 / fog.depth, plane: fog.global ? null : fog.plane, curve: config.fogCurve || 'cnq3'};
+  const fogStyle = fog => fog.global && config.glGlobalFog ? {color: fog.color, scale: 1 / fog.depth, curve: 'exp2', global: true}
+    : {color: fog.color, scale: 1 / fog.depth, plane: fog.global ? null : fog.plane, curve: config.fogCurve || 'cnq3', global: Boolean(fog.global)};
   const mapFogStyle = fog => fog.linear ? {color: fog.color, scale: 1 / fog.end, radial: true, curve: 'linear'}
     : {color: fog.color, scale: fog.density, radial: true, curve: 'exp'};
   function fogPasses(shader, fogNum) {
@@ -799,11 +803,118 @@ window.addEventListener('DOMContentLoaded', async () => {
       return heights[at + 1] ? heights[at] : null;
     };
   }
-  function addWeather(specs, bounds) {
+  // JA and JK2 wind and lightning (the import's map.storm), as the T1 Maps page's Weather list lends them
+  // (t1-maps/viewer.js buildWind, buildRavenLightning), here in the game's units and axes.
+  // Wind (tr_WorldEffects CWindZone): the zones' velocities summed each frame, at terminal speed through the particle
+  // clouds' update (velocity += force / mass, then * 0.7: 7/3 force / mass) with the mean mass 7.5, pushing the rain
+  // and snow. A zone eases toward a new random target 10 units a frame, for a random number of frames, or falls dead.
+  // ponytail: frames counted at JA's com_maxfps 85; one mass for every drop.
+  const STILL = [0, 0, 0], RAVEN_FPS = 85, RAVEN_PUSH = 7 / 3 / 7.5;
+  const random = (min, max) => min + Math.random() * (max - min), crandom = () => random(-1, 1);
+  const WIND_KINDS = {normal: {range: [1500, 10], duration: [1000, 2000], dead: .3, deadTime: [1000, 3000]},
+    gusting: {range: [3000, 100], duration: [1000, 3000], dead: .5, deadTime: [2000, 4000]}};
+  function stormWind(zones) {
+    const winds = zones.map(zone => ({...WIND_KINDS[zone.mode], current: zone.velocity ? [...zone.velocity] : [0, 0, 0], target: [0, 0, 0], left: zone.velocity ? -1 : 0}));
+    let ticks = 0;
+    return delta => {
+      for (ticks += delta * RAVEN_FPS; ticks >= 1; ticks--) for (const wind of winds) {
+        if (wind.left === 0) {
+          const dead = Math.random() < wind.dead, [min, max] = dead ? wind.deadTime : wind.duration;
+          wind.left = Math.floor(random(min, max + 1));
+          wind.target = dead ? [0, 0, 0] : [crandom() * wind.range[0], crandom() * wind.range[0], crandom() * wind.range[1]];
+        } else if (wind.left !== -1) {
+          wind.left--;
+          const toward = wind.target.map((v, i) => v - wind.current[i]), length = Math.hypot(...toward);
+          if (length) wind.current = wind.current.map((v, i) => v + toward[i] * Math.min(length, 10) / length);
+        }
+      }
+      return [0, 1, 2].map(axis => winds.reduce((sum, wind) => sum + wind.current[axis], 0) * RAVEN_PUSH);
+    };
+  }
+  // JA fx_rain's lightning (g_fx.cpp fx_rain_think) while the eye is outside (open sky above, no floor over it): the
+  // global fog flashes the flash colour (R_SetTempGlobalFogColor, its bytes clamped, so 200 200 200 flashes white) on
+  // 50 ms and off 50-450 ms, 2-8 times, and env/huge_lightning draws 1-2 Electricity bolts from 600-1000 units up, up
+  // to 566 out, traced down, 25-30 units wide narrowing to 4 after 80% of a 300-650 ms life as they fade
+  // (RB_SurfaceElectricity's DoBoltSeg: a node every 16 units drifting by chaos `bounce` 5-8). Times are the game's ms.
+  // ponytail: a map without global fog flashes nothing; thunder and the impact effect are not played; the bolt is a
+  // soft blue-white line, gfx/misc/blueLine not being in the pack; its strip is rebuilt each frame one is lit.
+  function stormLightning({color, delay, flicker, effect}, ground, sky, identity) {
+    const flash = color.map(v => Math.min(1, v * identity)), eye = uniforms.uView.value, bolts = [];
+    const sub = (a, b) => a.map((v, i) => v - b[i]), add = (a, b) => a.map((v, i) => v + b[i]), scale = (a, s) => a.map(v => v * s);
+    const norm = a => scale(a, 1 / (Math.hypot(...a) || 1)), cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const geometry = new THREE.BufferGeometry(), mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
+      vertexShader: `attribute vec4 boltColor; varying vec4 vColor; varying vec2 vUv;
+        void main() { vColor = boltColor; vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `varying vec4 vColor; varying vec2 vUv;
+        void main() { float edge = 1. - abs(2. * vUv.y - 1.); gl_FragColor = vec4(mix(vec3(.3, .45, 1.), vec3(1.), edge * edge) * vColor.rgb, edge * vColor.a); }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide}));
+    Object.assign(mesh, {frustumCulled: false, renderOrder: 1e9 - 9, visible: false});
+    root.add(mesh);
+    const pick = (min, max) => Math.floor(random(min, max + 1)) / 1000;
+    let wait = pick(4000, 8000), count = 0;
+    const light = on => uniforms.uFogFlash.value.set(...flash, on ? 1 : 0);
+    const bolt = () => {
+      const top = [eye.x + crandom() * 400, eye.y + crandom() * 400, eye.z + random(600, 1000)], end = [top[0], top[1], ground(top[0], top[1]) ?? eye.z];
+      for (let n = Math.floor(random(1, 3)); n--;) {
+        // DoBoltSeg: the line's offset wanders from (10, 10, 10) as it goes, pulled back to the end by the fraction done.
+        const fwd = norm(sub(end, top)), rt = norm(cross(fwd, [1, 0, 0])), up = cross(fwd, rt), chaos = random(5, 8);
+        const length = Math.min(Math.hypot(...sub(end, top)), 2000), points = [top];
+        let off = [10, 10, 10];
+        for (let i = 16; i <= length; i += 16) {
+          const perc = i + 16 > length ? 1 : i / length;
+          off = add(off, add(scale(fwd, crandom() * 3), add(scale(rt, crandom() * 7 * chaos), scale(up, crandom() * 7 * chaos))));
+          points.push(add(scale(add(top, off), 1 - perc), scale(add(top, scale(fwd, length)), perc)));
+        }
+        if (points.length > 1) bolts.push({points, age: 0, life: random(.3, .65), size: random(25, 30)});
+      }
+    };
+    return delta => {
+      const roof = sky(eye.x, eye.y), outside = roof !== null && roof > eye.z && !((ground(eye.x, eye.y) ?? -Infinity) > eye.z);
+      for (wait -= delta; wait <= 0;) {
+        if (count) {
+          count--;
+          if (count === 0 || count % 2 === 0) { light(false); wait += count === 0 ? pick(1000, 12000) : count === 2 ? pick(150, 450) : pick(50, 150); }
+          else { light(true); wait += .05; }
+        } else if (outside) {
+          if (Math.floor(random(1, effect + 1)) === 1) bolt();
+          if (Math.floor(random(1, flicker + 1)) === 1) { count = Math.floor(random(1, 5)) * 2; wait += .05; light(true); }
+          else wait += pick(1000, delay);
+        } else wait += pick(1000, delay);
+      }
+      // Camera-facing strips: two vertices a point, its width across the line from the eye.
+      const position = [], uv = [], tint = [], index = [], from = eye.toArray();
+      for (const item of bolts) {
+        item.age += delta;
+        const at = item.age / item.life, size = at < .8 ? item.size : item.size + (4 - item.size) * (at - .8) / .2, base = position.length / 3;
+        if (at >= 1) continue;
+        item.points.forEach((point, i) => {
+          const dir = norm(i === item.points.length - 1 ? sub(point, item.points[i - 1]) : sub(item.points[i + 1], point));
+          const side = scale(norm(cross(sub(point, from), dir)), size);
+          for (const [sign, v] of [[-1, 0], [1, 1]]) { position.push(...add(point, scale(side, sign))); uv.push(i % 2, v); tint.push(1, 1, 1, 1 - at); }
+          if (i) index.push(base + 2 * i - 2, base + 2 * i - 1, base + 2 * i, base + 2 * i - 1, base + 2 * i + 1, base + 2 * i);
+        });
+      }
+      bolts.splice(0, bolts.length, ...bolts.filter(item => item.age < item.life));
+      mesh.visible = index.length > 0;
+      if (!mesh.visible) return;
+      geometry.dispose();  // The last frame's buffers.
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geometry.setAttribute('boltColor', new THREE.Float32BufferAttribute(tint, 4));
+      geometry.setIndex(index);
+    };
+  }
+  function addWeather(specs, bounds, storm) {
     const clear = renderer.getClearColor(new THREE.Color()), alpha = renderer.getClearAlpha();
     const ground = heightMap(floors.map(mesh => mesh.geometry), bounds, 512), sky = heightMap(skyGeometries, bounds, 512);
     renderer.setClearColor(clear, alpha);
     const identity = map.lighting ? map.lighting.identityLight : .5;
+    let push = STILL;  // The storm's wind, units/s.
+    if (storm?.wind?.length) {
+      const gusts = stormWind(storm.wind);
+      falls.push(delta => { push = gusts(delta); });  // First, so this frame's falls take it.
+    }
+    if (storm?.lightning) falls.push(stormLightning(storm.lightning, ground, sky, identity));
     for (const {type, count, speed, length, wind, column} of specs) {
       const rain = type === 'rain', drops = new Float32Array(Math.min(count, 4000) * 3), total = drops.length / 3;
       const geometry = new THREE.BufferGeometry(), eye = uniforms.uView.value;
@@ -837,13 +948,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       };
       for (let i = 0; i < total; i++) respawn(i, true);
       falls.push(delta => {
-        const positions = geometry.attributes.position.array, step = [wind[0] * delta, wind[1] * delta, -speed * delta];
+        const move = [wind[0] + push[0], wind[1] + push[1], push[2] - speed], positions = geometry.attributes.position.array;
         for (let i = 0; i < total; i++) {
-          for (let axis = 0; axis < 3; axis++) drops[i * 3 + axis] += step[axis];
+          for (let axis = 0; axis < 3; axis++) drops[i * 3 + axis] += move[axis] * delta;
           const x = drops[i * 3], y = drops[i * 3 + 1], z = drops[i * 3 + 2], floor = ground(x, y);
           if (z < -1e8 || floor !== null && z < floor || !column && Math.hypot(x - eye.x, y - eye.y) > 1020) respawn(i, false);
           positions.set(drops.subarray(i * 3, i * 3 + 3), i * (rain ? 6 : 3));
-          if (rain) positions.set([drops[i * 3] - wind[0] / speed * length, drops[i * 3 + 1] - wind[1] / speed * length, drops[i * 3 + 2] + length], i * 6 + 3);
+          // The streak back along its fall, `length` units up.
+          if (rain) positions.set([drops[i * 3] - move[0] / speed * length, drops[i * 3 + 1] - move[1] / speed * length, drops[i * 3 + 2] + length], i * 6 + 3);
         }
         geometry.attributes.position.needsUpdate = true;
       });
@@ -1130,7 +1242,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     let loaded = 0;
     await Promise.all(world.groups.map(async (group, serial) => { await addGroup(group, world, serial); showStatus(`Loading surfaces ${++loaded}/${world.groups.length}`); }));
     await Promise.all([addFlares(world.flares), addSun()]);
-    if ((map.weather || []).length) addWeather(map.weather, world.bounds);
+    if ((map.weather || []).length || map.storm) addWeather(map.weather || [], world.bounds, map.storm);
     if (map.particles && window.skinnerParticles) await addParticles(map.particles);
     showStatus('Placing pickups…');
     root.updateMatrixWorld(true);
