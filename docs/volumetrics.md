@@ -78,8 +78,8 @@ saving comes from moving the air (8 steps per pixel) into the sky texture.
 `static/volumetrics` also holds the Unity side. It uses the same `.cginc` files through a macro header,
 `SkinnerVolumetricsHLSL.cginc`.
 - **`Skinner/Volumetric Sky`.** The skybox. It reads the sky texture and adds the sun, stars, moon and aurora per pixel.
-- **`Hidden/Skinner Volumetrics`.** Three passes: pass 0 draws the sky texture, pass 1 the fog ring, and pass 2 the fog,
-  exposure and ACES over the frame. It declares the same properties as the sky, because Unity keeps only declared
+- **`Hidden/Skinner Volumetrics`.** Four passes: pass 0 draws the sky texture, pass 1 the fog ring, pass 2 the fog,
+  exposure and ACES over the frame, and pass 3 bakes the space backdrop ([skinner-sky.md](skinner-sky.md)). It declares the same properties as the sky, because Unity keeps only declared
   values on a material.
 - **`SkinnerVolumetrics.cs`.** Keeps the sky texture and ring up to date, one band of rows per frame. It copies the sky
   material's values onto the work material property by property. `CopyPropertiesFromMaterial` replaces the whole set

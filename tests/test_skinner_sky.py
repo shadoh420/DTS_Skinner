@@ -66,7 +66,8 @@ class SkinnerSkyTest(unittest.TestCase):
         core = (SKY / 'SkinnerSky.cginc').read_text(encoding='utf-8')
         for key in self.defaults:
             self.assertRegex(core, rf'\b{key}\b')
-        self.assertNotRegex(core, r'\bvec[23]\(\s*[-\d.]+\s*\)')  # One-number constructors are GLSL only.
+        for text in (core, (SKY / 'SkinnerSpace.cginc').read_text(encoding='utf-8')):
+            self.assertNotRegex(text, r'\bvec[234]\(\s*[-\w.]+\s*\)')  # One-number constructors are GLSL only.
 
 
 if __name__ == '__main__':

@@ -53,6 +53,9 @@ vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
     far += mix(vec3(1., .72, .5), vec3(.62, .75, 1.), h.y) * shine * clamp(1. - spot, 0., 1.) * starIntensity;
   }
   if (milkyWay > 0.) far += vec3(.75, .8, 1.) * band * milkyWay * .02 * (.25 + .5 * vnoise(d * 7.) + .5 * vnoise(d * 19.)) * (.5 + .5 * band);
+  #ifdef SKINNER_SPACE
+  if (spaceIntensity > 0.) far += SAMPLE_PLAIN(spaceMap, spaceUV(d)).rgb * spaceIntensity;  // SkinnerSpace.cginc's baked backdrop.
+  #endif
   far *= night;
   float moonR = radians(moonSize * .5);
   if (nu > cos(moonR) && moonIntensity > 0.) {  // A ball lit by the sun: its phase follows the two directions.

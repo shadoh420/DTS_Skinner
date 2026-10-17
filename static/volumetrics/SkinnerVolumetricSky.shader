@@ -47,6 +47,7 @@ Shader "Skinner/Volumetric Sky"
         fogHeight ("Fog height (metres to thin by e)", Float) = 40
         fogBase ("Fog base (metres)", Float) = 0
         fogBrightness ("Fog brightness", Float) = 1
+        spaceIntensity ("Space backdrop (Star Nest, baked)", Float) = 0
         fogColor ("Fog colour (sRGB, for RenderSettings)", Vector) = (0.9, 0.92, 0.93, 0)
         [ToggleUI] tonemap ("Exposure and ACES in the fog pass (off: HDR out, for a camera that tone-maps)", Float) = 1
     }

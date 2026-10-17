@@ -5,6 +5,7 @@
 
 // How much of what lies dist metres along rd from the eye at height eyeZ still shows.
 float fogThrough(float eyeZ, vec3 rd, float dist) {
+  if (fogDensity <= 0.) return 1.;  // Else a sky ray downward overflows f to infinity, and 0 x infinity is NaN (black).
   float x = rd.z * dist / fogHeight;
   float f = abs(x) < 1e-3 ? 1. - .5 * x : (1. - exp(-x)) / x;
   return exp(-fogDensity * exp(-(eyeZ - fogBase) / fogHeight) * dist * f);
