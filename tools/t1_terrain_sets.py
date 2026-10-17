@@ -34,10 +34,10 @@ ROLES = {
     'ice': ['ground', 'ground2', 'ground3', 'rock', 'rockmix', 'path'],
     'mars': ['ground', 'ground2', 'rockmix', 'rock', 'ground3', 'ground4'],
     'mud': ['ground', 'ground2', 'rock', 'ground3', 'rockmix'],
-    'alien': ['ground', 'ground2', 'ground3', 'ground4', 'path', 'path'],
+    'alien': ['ground', 'ground2', 'ground4', 'moss', 'pathmoss', 'path'],  # Its moss is its own: not other worlds' grass.
 }
 FALLBACK = {'ground4': 'ground3', 'ground3': 'ground2', 'ground2': 'ground', 'rockmix': 'rock', 'rock': 'ground3',
-            'path': 'ground2'}
+            'path': 'ground2', 'moss': 'ground3', 'pathmoss': 'path'}
 # Tribes 2 worlds' terrain materials (textures/terrain/<name>.png) by role.
 T2_WORLDS = {
     'Lush': {'ground': 'lushworld.grassmixed', 'ground2': 'lushworld.grasslight', 'ground3': 'lushworld.dirtmossy',
