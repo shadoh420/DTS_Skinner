@@ -163,6 +163,11 @@ brightness `lightningIntensity` (1). Written for this sky, not taken from a Shad
   two vectors, not preset keys: `lightningDir` (toward the flash, and in w how tightly its glow gathers: a far flash
   is small) and `lightningColor` (its light now, 0 between flashes). Unity sets them as globals, so a scene needs the
   `SkinnerVolumetrics` component for flashes, the merged `Skinner/Sky` too.
+- **With a storm from the Weather list** (T1/SS/ES Maps pages: Tribes 2 lightning, Jedi Academy's fog flash), the
+  preset's own wait stops and the clouds light over each of the storm's strikes, at the same moment (`viewer.js`
+  `skyStrike`, `skies.js` `strike`): T2 strikes give the 2-3 pulses, and each JA flicker one pulse over that run's
+  bolt. The storm's rate (the Weather panel's Lightning rate) is then the clouds' rate; a preset with `lightningRate`
+  0 still shows none.
 - **Sky** (`SkinnerSky.cginc` `skinnerFlash`, `SkinnerClouds.cginc` `skinnerCloudsFlash`). Added per pixel in the
   screen sky pass, never into the sky texture: that is rewritten a band of rows a frame, so a flash in it would tear.
   The glow falls off with angle from the flash, and is cloud lit from inside. Its strength follows the texture's alpha
@@ -173,6 +178,19 @@ brightness `lightningIntensity` (1). Written for this sky, not taken from a Shad
 - **Fog and world** (`SkinnerFog.cginc` `skinnerFlashFog`). The fog's light ring gains the flash's light averaged over
   the sky, and the world's colour under the fog is scaled up by half the flash's share of the light round it. No
   lights change. With Fog off on the Maps pages the world doesn't brighten.
+- **Cost**, measured 2026-10-17 in Unity (scratch URP project, D3D11, RX 7800 XT, 2560×1440, Stormfront, GPU ms a
+  draw as above, two interleaved rounds):
+
+  | | Volumetric sky | Fog pass | Merged `Skinner/Sky` |
+  |---|---|---|---|
+  | `lightningRate` 0 | 0.125, 0.116 | 0.069, 0.069 | 0.650, 0.666 |
+  | 6, between flashes | 0.113, 0.117 | 0.072, 0.083 | 0.650, 0.648 |
+  | A flash held on | 0.135, 0.126 | 0.065, 0.076 | 0.667, 0.665 |
+
+  Between flashes it costs nothing measurable. While a flash is lit (about 0.3 s of each, about 3% of frames at 6 a
+  minute) the sky takes about 0.01 ms more and the merged sky about 0.015 ms; the fog pass moves within its noise. The
+  page runs the same shader text; its own timing (browser pane, in view) is not done yet.
+- Evidence: `C:\tmp\skinner-evidence\lightning\unity` (flash off, far, mid and near frames; `timing.txt`; `unity.log`).
 
 ## Limits
 

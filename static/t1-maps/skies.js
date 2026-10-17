@@ -181,21 +181,34 @@ window.t1Skies = {
   // `ground`: the height the fog's fogBase is measured from (the map's start).
   // Lightning for a preset with lightningRate (flashes a minute; 0 off): a random wait before each flash, which lands
   // in the cloud layer 3-25 km off and flickers in 2 or 3 pulses over about 0.2 s. Sets U.lightningDir and
-  // U.lightningColor for SkinnerSky.cginc skinnerFlash; SkinnerVolumetrics.cs does the same in Unity. state: {} per sky.
+  // U.lightningColor for SkinnerSky.cginc skinnerFlash; SkinnerVolumetrics.cs does the same in Unity. state: {} per
+  // sky; while state.weather is set, a Weather storm strikes instead (strike) and the wait stops.
   lightning(U, seconds, state) {
     const rate = U.lightningRate.value / 60, wait = () => -Math.log(1 - Math.random()) / rate;
     if (!(rate > 0)) return void U.lightningColor.value.set(0, 0, 0, 0);
-    if (state.next === undefined || seconds < state.at) state.next = seconds + wait();  // First, or the clock went back.
-    if (seconds >= state.next) {
-      const far = 3 + 22 * Math.sqrt(Math.random()), up = Math.atan2(U.cloudHeight.value + U.cloudThickness.value * .5, far), around = 2 * Math.PI * Math.random();
-      U.lightningDir.value.set(Math.sin(around) * Math.cos(up), Math.cos(around) * Math.cos(up), Math.sin(up), far * far / 8);
-      state.at = state.next;
-      state.pulses = [[0, 1], [.05 + .05 * Math.random(), .4 + .6 * Math.random()]];
-      if (Math.random() < .5) state.pulses.push([.13 + .07 * Math.random(), .3 + .5 * Math.random()]);
-      state.next = state.at + .3 + wait();
+    if (state.weather) state.next = undefined;
+    else {
+      if (state.next === undefined || seconds < state.at) state.next = seconds + wait();  // First, or the clock went back.
+      if (seconds >= state.next) {
+        this.strike(U, state.next, state);
+        state.next = state.at + .3 + wait();
+      }
     }
     const glow = (state.pulses || []).reduce((sum, [delay, size]) => sum + (seconds >= state.at + delay ? size * Math.exp((state.at + delay - seconds) * 30) : 0), 0);
     U.lightningColor.value.set(.8, .85, 1, 0).multiplyScalar(glow * 5);
+  },
+  // A flash now in the cloud layer above a strike `east`, `north` metres from the eye (anywhere 3-25 km off when not
+  // given): 2 or 3 pulses, or one when `single` (a storm that flickers by itself).
+  strike(U, seconds, state, east, north, single = false) {
+    const given = east !== undefined, h = given ? Math.max(Math.hypot(east, north), 1) / 1000 : 3 + 22 * Math.sqrt(Math.random());
+    const around = given ? Math.atan2(east, north) : 2 * Math.PI * Math.random(), mid = U.cloudHeight.value + U.cloudThickness.value * .5;
+    const up = Math.atan2(mid, h), far = Math.hypot(h, mid);
+    U.lightningDir.value.set(Math.sin(around) * Math.cos(up), Math.cos(around) * Math.cos(up), Math.sin(up), far * far / 8);
+    state.at = seconds;
+    state.pulses = [[0, 1]];
+    if (single) return;
+    state.pulses.push([.05 + .05 * Math.random(), .4 + .6 * Math.random()]);
+    if (Math.random() < .5) state.pulses.push([.13 + .07 * Math.random(), .3 + .5 * Math.random()]);
   },
   // spaceIntensity > 0 adds SkinnerSpace.cginc's backdrop (Star Nest), baked once into a 2048x2048 texture on the first
   // update() and read per pixel behind the stars.
@@ -271,6 +284,8 @@ window.t1Skies = {
     const size = new THREE.Vector2();
     return {
       uniforms: U,  // For checks (skinnerT1Maps.skyPass()) and the page's Skinner Sky panel.
+      lightning: flash,  // weather: a Weather storm's strikes light the clouds (strike) in place of the preset's own wait.
+      strike(east, north, single) { window.t1Skies.strike(U, U.uTime.value, flash, east, north, single); },
       redraw() { whole = true; },  // The whole sky texture on the next frame, after a value changed.
       quality(q) {
         const steps = Q.steps;

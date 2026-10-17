@@ -58,8 +58,8 @@ public class SkinnerVolumetrics : MonoBehaviour
         if (float.IsNaN(nextStrike) || seconds < strikeAt) nextStrike = seconds + Wait();  // First, or the clock went back.
         if (seconds >= nextStrike)
         {
-            float far = 3f + 22f * Mathf.Sqrt(Random.value), around = 2f * Mathf.PI * Random.value;
-            float up = Mathf.Atan2(sky.GetFloat("cloudHeight") + sky.GetFloat("cloudThickness") * .5f, far);
+            float h = 3f + 22f * Mathf.Sqrt(Random.value), around = 2f * Mathf.PI * Random.value, mid = sky.GetFloat("cloudHeight") + sky.GetFloat("cloudThickness") * .5f;
+            float up = Mathf.Atan2(mid, h), far = Mathf.Sqrt(h * h + mid * mid);
             Shader.SetGlobalVector(lightningDir, new Vector4(Mathf.Sin(around) * Mathf.Cos(up), Mathf.Cos(around) * Mathf.Cos(up), Mathf.Sin(up), far * far / 8f));
             strikeAt = nextStrike;
             pulses.Clear();
