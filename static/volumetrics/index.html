@@ -24,7 +24,7 @@
   <label>Steps <select id="steps"><option>16</option><option selected>24</option><option>32</option><option>48</option></select></label>
   <label>Cloud thickness km <input id="cloudThickness" type="range" min="0.2" max="4" step="0.1" value="1.5"></label>
   <label><span><input id="fog" type="checkbox" checked> Height fog</span></label>
-  <label>Fog density /km <input id="fogDensity" type="range" min="0" max="5" step="0.05" value="1.2"></label>
+  <label>Fog density /km <input id="fogDensity" type="range" min="0" max="8" step="0.05" value="1.2"></label>
   <label>Fog height m <input id="fogHeight" type="range" min="5" max="400" step="5" value="40"></label>
   <label>Fog brightness <input id="fogBrightness" type="range" min="0.2" max="2" step="0.05" value="1"></label>
   <div id="times">GPU times: waiting</div>
@@ -196,9 +196,10 @@
   }
 
   function usePreset(preset) {
-    for (const [key, value] of Object.entries(defaults)) if (key in t1Skies.skinnerDefaults) {
+    for (const [key, value] of Object.entries(defaults)) {  // The presets carry the clouds' and fog's keys too.
       const chosen = preset[key] ?? value;
       if (Array.isArray(chosen)) U[key].value.set(...chosen); else U[key].value = chosen;
+      if (key in fogInputs) $(key).value = chosen / fogInputs[key];
     }
     lightScene();
     fullPano = 2;
