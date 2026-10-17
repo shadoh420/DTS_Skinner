@@ -80,8 +80,8 @@ as the stars do. Deep space uses it at 1, with no air (`rayleigh`, `ozone`, `mie
 - `Skinner/Sky` has no bake, so it does not draw the backdrop.
 
 **Cost** (Unity 6000.3.11f1, URP, D3D11, RX 7800 XT, 2560 × 1440, VolCheck's method: n draws in one command buffer,
-median of 5): the bake costs 1.99–2.05 ms, once per preset. The screen sky costs 0.114–0.117 ms with the backdrop and
-0.108–0.112 ms with `spaceIntensity` 0, so about +0.007 ms a frame (one texture read). The page's cost was not timed:
+median of 5, three runs): the bake costs 2.0 ms (1.99–2.05), once per preset. The screen sky costs 0.109–0.117 ms with the
+backdrop and 0.106–0.112 ms with `spaceIntensity` 0, so +0.003 to +0.008 ms a frame (one texture read). The page's cost was not timed:
 this session's browser pane was hidden, and hidden-pane timings are not usable ([volumetrics.md](volumetrics.md)).
 
 In the volumetric clouds two of the keys above work differently from the layer: `cloudSoftness` divides the density
