@@ -207,12 +207,13 @@ window.t1Skies = {
     U.ring.value = ring.texture;
     const panoScene = quad(header('#define CLOUD_STEPS 24\n#define SKINNER_SKIP_BEHIND\n') + `
       void main() { vec3 d = panoDir(gl_FragCoord.xy / vec2(1024., 256.)), s = skinnerSky(d); vec4 c = skinnerClouds(d, s); gl_FragColor = vec4(s * c.a + c.rgb, c.a); }`);
-    // The fog's colour by azimuth: the low sky averaged over 72 degrees round and 2-26 degrees up (a sharp ring shows
-    // through thin fog as spokes).
+    // The fog's colour by azimuth: the low sky 2-26 degrees up, averaged round under a triangle weight 54 degrees to
+    // each side, read every 6 degrees (a sharp ring shows through thin fog as spokes; reads 12 degrees apart under
+    // equal weights put a hard-edged bright band below a low sun). Same kernel as SkinnerVolumetrics.shader pass 1.
     const ringScene = quad(header() + `void main() {
       vec3 s = vec3(0., 0., 0.);
-      for (int i = -3; i <= 3; i++) for (int j = 0; j < 3; j++) s += texture2D(pano, panoUV(toward(gl_FragCoord.x / 64. * 360. + float(i) * 12., 2. + float(j * j) * 6.))).rgb;
-      gl_FragColor = vec4(s / 21., 1.);
+      for (int i = -8; i <= 8; i++) for (int j = 0; j < 3; j++) s += float(9 - abs(i)) * texture2D(pano, panoUV(toward(gl_FragCoord.x / 64. * 360. + float(i) * 6., 2. + float(j * j) * 6.))).rgb;
+      gl_FragColor = vec4(s / 243., 1.);
     }`);
     this.ball(new THREE.ShaderMaterial({uniforms: U, vertexShader: this.vertexShader, extensions: {derivatives: true}, blending: THREE.NoBlending, fragmentShader: header() + `varying vec3 vDir;
       void main() {

@@ -92,13 +92,14 @@ Shader "Hidden/Skinner Volumetrics"
 
             float4 vert(uint id : SV_VertexID) : SV_POSITION { return float4(float2((id << 1) & 2, id & 2) * 2. - 1., 0., 1.); }
 
-            // 72 degrees of azimuth and 2 to 26 degrees up: fog is lit by the sky round it, not by one cloud.
+            // 2 to 26 degrees up, a triangle weight 54 degrees of azimuth to each side read every 6: fog is lit by the
+            // sky round it, not by one cloud, and a low sun's glow fades in and out (the page's skies.js ringScene).
             float4 frag(float4 pos : SV_POSITION) : SV_Target
             {
                 float3 s = float3(0., 0., 0.);
-                for (int i = -3; i <= 3; i++) for (int j = 0; j < 3; j++)
-                    s += tex2D(_SkinnerPano, panoUV(toward(pos.x / 64. * 360. + float(i) * 12., 2. + float(j * j) * 6.))).rgb;
-                return float4(s / 21., 1.);
+                for (int i = -8; i <= 8; i++) for (int j = 0; j < 3; j++)
+                    s += float(9 - abs(i)) * tex2D(_SkinnerPano, panoUV(toward(pos.x / 64. * 360. + float(i) * 6., 2. + float(j * j) * 6.))).rgb;
+                return float4(s / 243., 1.);
             }
             ENDCG
         }

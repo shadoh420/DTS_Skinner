@@ -110,20 +110,21 @@
   }
   let fullPano = 0;
 
-  // The horizon ring, the fog's colour in 64 directions: the low sky round each, clouds included, averaged over 72
-  // degrees of azimuth and 2 to 26 degrees up. Fog is lit by the sky round it, not by one cloud; a sharp ring shows
-  // through thin fog on the sky as spokes from the zenith.
+  // The horizon ring, the fog's colour in 64 directions: the low sky round each, clouds included, 2 to 26 degrees up,
+  // averaged under a triangle weight 54 degrees of azimuth to each side, read every 6. Fog is lit by the sky round it,
+  // not by one cloud; a sharp ring shows through thin fog on the sky as spokes from the zenith, and reads 12 degrees
+  // apart under equal weights put a hard-edged bright band below a low sun.
   const ringTarget = new THREE.WebGLRenderTarget(64, 1, {type: THREE.HalfFloatType, depthBuffer: false, wrapS: THREE.RepeatWrapping});
   U.ring.value = ringTarget.texture;
   // Two materials, from the sky texture or from the merged sky: 64 pixels are one wave, so its time is its slowest path.
   const ringMaterial = sample => new THREE.ShaderMaterial({uniforms: U, vertexShader: quadVertex, depthTest: false, fragmentShader: header() + `
     void main() {
       vec3 s = vec3(0., 0., 0.);
-      for (int i = -3; i <= 3; i++) for (int j = 0; j < 3; j++) {
-        vec3 d = toward(gl_FragCoord.x / 64. * 360. + float(i) * 12., 2. + float(j * j) * 6.);
-        s += ${sample};
+      for (int i = -8; i <= 8; i++) for (int j = 0; j < 3; j++) {
+        vec3 d = toward(gl_FragCoord.x / 64. * 360. + float(i) * 6., 2. + float(j * j) * 6.);
+        s += float(9 - abs(i)) * ${sample};
       }
-      gl_FragColor = vec4(s / 21., 1.);
+      gl_FragColor = vec4(s / 243., 1.);
     }`});
   const ringPano = ringMaterial('texture2D(pano, panoUV(d)).rgb'), ringLayer = ringMaterial('skinnerSky(d)'), ring = quad(ringPano);
   const ringScene = new THREE.Scene().add(ring);
