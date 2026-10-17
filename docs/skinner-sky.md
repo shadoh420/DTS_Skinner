@@ -111,6 +111,10 @@ slabs of one colour. The presets use .4 and .3 (the Crisp ones .25 and .6), and 
      looks as it did before the fibres (2026-10-17). Where the air comes from a sky texture (the Maps pages and
      Unity's volumetric sky), cirrus is drawn per pixel over it: overhead, a 2048 × 512 texture is about 0.2° a texel,
      some six times coarser than a 2560 × 1440 screen, and baked cirrus smeared.
+   - Per-pixel cirrus costs the T1 Maps page 0.06 ms a frame looking up (whole frames 0.26 → 0.32 ms) and 0.14 ms
+     looking along the ground (0.43–0.49 → 0.57–0.63 ms). Measured 2026-10-17: Crisp alien dusk at coverage .45
+     against 0, Fog off, 2560 × 1347, RX 7800 XT, the browser pane in view, the panel's median of 60, two interleaved
+     rounds each. Skipping the fibre reads past 150 km changed neither number.
 
 **Cost.** fxc compiles the Unity pixel shader to about 861 instruction slots (ps_5_0, counting every branch; 824
 before the fibres). A sky reads the noise at most 15 times: 10 with clouds and cirrus, 1 more for the moon and 4 for aurora. Branches skip
