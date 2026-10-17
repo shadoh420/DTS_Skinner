@@ -207,8 +207,18 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
   `func_particle` spreads its children over the brush's box (inferred from C_EnvParticle's box callback). Emitters
   in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
 
+  Rain around the player (`attach_type` 11, `rain_follow_emitter`) follows the page's eye. client.dll's player-box
+  callback spawns its drops in a box of ± `spawnbounds` (default 512; `bounds` is not a key) about the player's feet,
+  from the feet up; the page puts the feet 64 units below its eye and stops the drops there. engine.dll kills a
+  `precipitation` definition's particles in BSP leaves whose contents lack 0x800, so the page draws the rain only
+  while its eye is in such a leaf (`map.particles.outdoors`, a collapsed leaf tree). Of the six entities only
+  sm_hub_1's two rain in game: its `rain_on_timer` turns them on (SetRateScale 1) after 3–5 minutes, and the page
+  draws them on. sm_beachhouse_1's has no such leaves (its visible rain is five active `Rain_Box_emitter` brushes);
+  the others stay at ramp_scale 0. The rain's 500-unit haze (`rainfog`) is not drawn.
+
   Not drawn, with counts in each scene's `effects.troika_outcomes`:
-  - triggered or player-following emitters (`attach_type` 11);
+  - triggered or parented emitters, among them sm_pier_1's rain boxes, which its `trigger_multiple` volumes turn on
+    while the player stands in them;
   - effects that play once at map start;
   - moving child emitters (moths, airplanes);
   - children of sprite particles;

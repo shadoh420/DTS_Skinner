@@ -18,6 +18,11 @@ FILES = {
     'particles/drip.txt': 'Particle { sprite "DropletFast" frames "20" movealign "1" elevation_speed "-275~-250" collide { } }',
     'particles/stars.txt': 'Particle { loop "0"\n spawn { particle "Star" burst "500" radius "1000" phi "100~180" } }',
     'particles/star.txt': 'Particle { loop "1" sprite "Ember" color "255~100,255~100" mask "0" }',
+    'particles/rain.txt': 'Particle { loop "1" precipitation "1"\n spawn { particle "Raindrop" rate "1000" }\n'
+                          ' spawn { particle "Haze" rate "70" radius "800" theta "0~360" } }',
+    'particles/raindrop.txt': 'Particle { sprite "DropletFast" frames "15" movealign "1" z_speed "-400~-600" size "3"'
+                              ' height "10" mask "0" precipitation "1" collide { } }',
+    'particles/haze.txt': 'Particle { sprite "Furball" frames "300" size "500" precipitation "1" }',
 }
 read = lambda name: FILES[name].encode() if name in FILES else None
 
@@ -55,8 +60,9 @@ class DefinitionsTest(unittest.TestCase):
 
 
 class EmittersTest(unittest.TestCase):
-    def run_emitters(self, *entities):
-        return vp.emitters(entities, read, lambda e: ([0, 0, 0], [100, 50, 20]), lambda origin: origin[2] - 64, lambda sprite: [.5, .5])
+    def run_emitters(self, *entities, **options):
+        return vp.emitters(entities, read, lambda e: ([0, 0, 0], [100, 50, 20]), lambda origin: origin[2] - 64, lambda sprite: [.5, .5],
+                           **options)
 
     def test_fire_rate_bursts_and_ramp(self):
         found, counts = self.run_emitters(dict(classname='env_particle', particle_definition='Fire', origin='10 20 30',
@@ -100,16 +106,44 @@ class EmittersTest(unittest.TestCase):
     def test_func_particle_box_and_skips(self):
         found, counts = self.run_emitters(
             dict(classname='func_particle', particle_definition='particles/Fire.txt', model='*1'),
-            dict(classname='env_particle', particle_definition='Fire', attach_type='11'),
+            dict(classname='env_particle', particle_definition='Fire', attach_type='5'),
             dict(classname='env_particle', particle_definition='Fire', active='0'),
             dict(classname='env_particle', particle_definition='Fire', parentname='npc'),
             dict(classname='env_particle', particle_definition='Fire', ramp_scale='0'))
         self.assertEqual(found[0][2]['origin'], [50., 25., 10.])
         self.assertEqual(found[0][1]['box'], [[-50., -25., -10.], [50., 25., 10.]])
-        self.assertEqual(counts['env_particle: attach_type 11 (follows the player)'], 1)
+        self.assertEqual(counts['env_particle: attach_type 5 (attached)'], 1)
         self.assertEqual(counts['env_particle: starts inactive (waits for a trigger)'], 1)
         self.assertEqual(counts['env_particle: follows a parent entity'], 1)
         self.assertEqual(counts['env_particle: ramp_scale 0 (nothing spawns until an input)'], 1)
+
+    def test_rain_around_the_player(self):
+        rain = dict(classname='env_particle', particle_definition='Rain', attach_type='11', targetname='Rain_Emitter',
+                    spawnbounds='256', origin='5 5 5')
+        (sprite, drop, emitter), = (found := self.run_emitters(rain))[0]
+        self.assertEqual(sprite, 'particles/dropletfast')
+        self.assertTrue(drop['follow'] and drop['outdoors'])
+        self.assertEqual(drop['box'], [[-256., -256., 0.], [256., 256., 256.]])  # attach 11: from the feet up
+        self.assertNotIn('floor', emitter)  # its floor is the page's feet
+        self.assertEqual((emitter['period'], drop['count']), (.01, 10))  # 1000 a second, in tens (particles.js's 0.01 s floor)
+        self.assertEqual(found[1]['haze around the player that the fill cap would thin below 1% (deferred)'], 1)
+        cube = self.run_emitters(dict(rain, attach_type='10', spawnbounds=''))[0][0][1]['box']
+        self.assertEqual(cube, [[-512., -512., -512.], [512., 512., 512.]])  # attach 10, the default spawnbounds
+        # sm_hub_1: ramp_scale 0 until an enabled logic_timer's SetRateScale; a map without rain leaves culls it all.
+        off = dict(rain, ramp_scale='0')
+        self.assertEqual(self.run_emitters(off)[1]['env_particle: ramp_scale 0 (nothing spawns until an input)'], 1)
+        self.assertEqual(len(self.run_emitters(off, rate_scales={'rain_emitter': 1.})[0]), 1)
+        culled = self.run_emitters(rain, rain_leaves=False)
+        self.assertEqual(culled[0], [])
+        self.assertEqual(culled[1]['env_particle: rain around the player in a map without rain leaves (the engine culls it)'], 1)
+
+    def test_rate_scales_from_enabled_timers(self):
+        from tools.import_vtmb_map import rate_scales
+        lump = (b'{\n"classname" "logic_timer"\n"StartDisabled" "0"\n"OnTimer" "rain_emitter,SetRateScale,1,0,-1,,"\n'
+                b'"OnTimer" "world,FadeGlobalWetness,1,10,-1,,"\n}\n'
+                b'{\n"classname" "logic_timer"\n"StartDisabled" "1"\n"OnTimer" "other,SetRateScale,1,0,-1,,"\n}\n'
+                b'{\n"classname" "logic_relay"\n"OnTrigger" "third,SetRateScale,1,0,-1,,"\n}\n')
+        self.assertEqual(rate_scales(lump), {'rain_emitter': 1.})
 
 
 if __name__ == '__main__':

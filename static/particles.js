@@ -124,12 +124,14 @@
   // in one stream (uKeys): a header, then per track its keys [start, end, low, high] over the normalised life, each key's
   // value drawn per particle. Tracks: 0-8 red green blue color mask width height size rotation, 9-15 radius theta phi
   // x y z elevation speeds (integrated), 16 the spawn rate over the parent's life (kept particles: rate / max rate).
-  const TROIKA_TRACKS = 17, TROIKA_HEADER = 13 + Math.ceil(TROIKA_TRACKS / 2), STREAM_WIDTH = 1024;
+  // `follow`: the emitter is at the page's feet (EYE_HEIGHT below the eye), its box about them, its floor theirs (rain
+  // around the player); `outdoors`: drawn only while the eye is in the import's rain leaves (options.outdoors).
+  const EYE_HEIGHT = 64, TROIKA_TRACKS = 17, TROIKA_HEADER = 13 + Math.ceil(TROIKA_TRACKS / 2), STREAM_WIDTH = 1024;
   function packTroika(t) {
     const header = new Float32Array(TROIKA_HEADER * 4), keys = [], set = (n, ...v) => header.set(v, n * 4), s = t.spawn || {};
     const r = (name, d) => pair(s[name] ?? d);
     set(0, ...pair(t.lifeRate), ...r('timescale', 1));
-    set(1, (t.loop ? 1 : 0) + (t.movealign ? 2 : 0) + (t.flat ? 4 : 0) + (t.collide ? 8 : 0) + (t.box ? 16 : 0), t.depthOffset || 0, ...(t.aspect || [.5, .5]));
+    set(1, (t.loop ? 1 : 0) + (t.movealign ? 2 : 0) + (t.flat ? 4 : 0) + (t.collide ? 8 : 0) + (t.box ? 16 : 0) + (t.follow ? 32 : 0) + (t.outdoors ? 64 : 0), t.depthOffset || 0, ...(t.aspect || [.5, .5]));
     set(2, ...r('radius', 0), ...r('theta', 0)); set(3, ...r('phi', 0), ...r('elevation', 0));
     set(4, ...r('x', 0), ...r('y', 0)); set(5, ...r('z', 0), ...r('rotation', 0));
     set(6, ...r('red', 255), ...r('green', 255)); set(7, ...r('blue', 255), ...r('color', 255));
@@ -148,7 +150,7 @@
   }
 
   const TROIKA_VERTEX = `precision highp float; precision highp int;
-    uniform sampler2D uKeys; uniform float uTime, uDensity, uDistance, uColorScale, uRgb, uAlpha, uSizeScale;
+    uniform sampler2D uKeys; uniform float uTime, uDensity, uDistance, uColorScale, uRgb, uAlpha, uSizeScale, uOutdoors;
     uniform mat3 uToWorld; uniform vec3 uUp, uEye;
     attribute vec2 corner; attribute vec4 iOrigin, iForward, iRight, iTime;
     varying vec2 vSt; varying vec4 vColor;
@@ -191,11 +193,12 @@
       vec4 h0 = K(0), h1 = K(1), h10 = K(10);
       int flags = int(h1.x);
       float lifeRate = pick(h0.xy) * pick(h0.zw), life = 1. / max(lifeRate, 1e-6), age = local - h10.z, p = age * lifeRate;
-      vec3 origin = iOrigin.xyz, toEye = origin - uEye;
-      if (age < 0. || (flags & 1) == 0 && p >= 1. || iTime.z >= uDensity || dot(toEye, toEye) > uDistance * uDistance) { hide(); return; }
+      vec3 origin = (flags & 32) != 0 ? uEye - uUp * ${EYE_HEIGHT}. : iOrigin.xyz, toEye = origin - uEye;
+      if (age < 0. || (flags & 1) == 0 && p >= 1. || iTime.z >= uDensity || dot(toEye, toEye) > uDistance * uDistance
+        || (flags & 64) != 0 && uOutdoors < .5) { hide(); return; }
       if (h10.y > 0.) {  // a spawn rate that changes over the parent's life: keep rate / max of the particles
         float born = uTime + iTime.x - age, parent = floor(born / h10.x);
-        uint parentSeed = hash(floatBitsToUint(origin.x) ^ floatBitsToUint(origin.y) * 3266489917u ^ floatBitsToUint(origin.z) * 668265263u ^ uint(int(parent) + 65536));
+        uint parentSeed = hash(floatBitsToUint(iOrigin.x) ^ floatBitsToUint(iOrigin.y) * 3266489917u ^ floatBitsToUint(iOrigin.z) * 668265263u ^ uint(int(parent) + 65536));
         if (rnd() * h10.y >= track(16, fract(born / h10.x), parentSeed).x) { hide(); return; }
       }
       float lives = (flags & 1) != 0 ? floor(p) : 0., u = p - lives;
@@ -212,7 +215,7 @@
       float ct = cos(radians(theta)), st = sin(radians(theta)), cp = cos(radians(phi)), sp = sin(radians(phi));
       vec3 D = cp * (ct * A + st * B) + sp * C;
       pos += r * D;
-      if ((flags & 8) != 0 && dot(pos, uUp) < iTime.w) { hide(); return; }  // collide: stopped by the floor below the emitter
+      if ((flags & 8) != 0 && dot(pos, uUp) < ((flags & 32) != 0 ? dot(origin, uUp) : iTime.w)) { hide(); return; }  // collide: stopped by the floor below the emitter
       float alpha = clamp(track(4, u, look).x * mm / 255., 0., 255.) / 255.;
       float shade = track(3, u, look).x * mc / 16581375.;
       vec3 rgb = clamp(vec3(track(0, u, look).x * mr, track(1, u, look).x * mg, track(2, u, look).x * mb) * shade, 0., 255.) / 255.;
@@ -242,7 +245,8 @@
 
   // emitters: [{origin, forward, right, template, period, batch, share: [i, n]}] where batch is a key into `batches`:
   //   {texture, blendSrc, blendDst (Three factors), rgb, alpha (use the particle's colour / alpha), colorScale, alphaTest, renderOrder}.
-  // options: {toWorld: 9 numbers (column-major, game -> page), up: game up, quality, maxSlots}.
+  // options: {toWorld: 9 numbers (column-major, game -> page), up: game up, quality, maxSlots, outdoors: {root, nodes} in game
+  //   axes (nodes [a, b, c, d, front, back], front where a*x + b*y + c*z >= d; a negative child -1 - v ends at v, 1 = outdoors)}.
   function create(THREE, templates, emitters, batches, options = {}) {
     const texels = new Float32Array(Math.max(1, templates.length) * ROW * 4);
     templates.forEach((t, i) => t.model !== 'troika' && texels.set(pack(t), i * ROW * 4));
@@ -278,7 +282,7 @@
     }
     const meshes = [], uniforms = {uTemplates: {value: table}, uKeys: {value: keys}, uTime: {value: 0}, uDensity: {value: 1}, uDistance: {value: 1e9},
       uEye: {value: new THREE.Vector3()}, uUp: {value: new THREE.Vector3(...(options.up || [0, 0, 1]))},
-      uToWorld: {value: new THREE.Matrix3().fromArray(options.toWorld || [1, 0, 0, 0, 1, 0, 0, 0, 1])}, uSizeScale: {value: 1}};
+      uToWorld: {value: new THREE.Matrix3().fromArray(options.toWorld || [1, 0, 0, 0, 1, 0, 0, 0, 1])}, uSizeScale: {value: 1}, uOutdoors: {value: 1}};
     uniforms.uSizeScale.value = Math.cbrt(Math.abs(uniforms.uToWorld.value.determinant())) || 1;
     const toGame = uniforms.uToWorld.value.clone().invert(), eye = new THREE.Vector3();
     const base = new THREE.InstancedBufferGeometry();
@@ -315,6 +319,12 @@
         uniforms.uTime.value = seconds;
         eye.set(...at);
         uniforms.uEye.value.copy(world ? eye.applyMatrix3(toGame) : eye);
+        const tree = options.outdoors;
+        if (tree) {
+          let node = tree.root;
+          while (node >= 0) { const q = tree.nodes[node]; node = q[0] * eye.x + q[1] * eye.y + q[2] * eye.z - q[3] >= 0 ? q[4] : q[5]; }
+          uniforms.uOutdoors.value = -1 - node;
+        }
       },
       dispose() { for (const mesh of meshes) { mesh.geometry.dispose(); mesh.material.dispose(); } table.dispose(); keys.dispose(); }};
     system.setQuality(options.quality || 'high');
@@ -350,7 +360,7 @@
   const FACTOR = {gl_one: 'OneFactor', gl_zero: 'ZeroFactor', gl_src_color: 'SrcColorFactor', gl_one_minus_src_color: 'OneMinusSrcColorFactor',
     gl_dst_color: 'DstColorFactor', gl_one_minus_dst_color: 'OneMinusDstColorFactor', gl_src_alpha: 'SrcAlphaFactor',
     gl_one_minus_src_alpha: 'OneMinusSrcAlphaFactor', gl_dst_alpha: 'DstAlphaFactor', gl_one_minus_dst_alpha: 'OneMinusDstAlphaFactor'};
-  async function mount(THREE, {templates, batches, emitters}, options) {
+  async function mount(THREE, {templates, batches, emitters, outdoors}, options) {
     const identity = options.identity ?? 1, made = {};
     let system = null;
     const ui = control(quality => system?.setQuality(quality));
@@ -361,7 +371,7 @@
         rgb: rgb === 'vertex' || rgb === 'exactvertex', alpha: alpha === 'vertex', colorScale: (stage.scale ?? 1) * (rgb === 'vertex' || rgb === 'identitylighting' ? identity : 1),
         alphaTest: {gt0: 1 / 255, ge128: .5}[String(stage.alphaFunc || '').toLowerCase()] || 0};
     }));
-    system = create(THREE, templates, emitters, made, {toWorld: options.toWorld, up: options.up, quality: ui.quality});
+    system = create(THREE, templates, emitters, made, {toWorld: options.toWorld, up: options.up, quality: ui.quality, outdoors});
     for (const mesh of system.meshes) options.add(mesh);
     ui.setCount(emitters.length);
     return system;

@@ -262,22 +262,26 @@ class Tree:
             fog = water_fog(texinfo) if texinfo >= 0 else None  # No surface texinfo (hw_warrens_2): no water material.
             if fog:
                 ids[i] = len(regions); regions.append(fog)
+        tree = self.collapse(lambda leaf: ids.get(leaf[4], 0), lambda q: [q[1], q[2], q[0], q[3]*SCALE]) if self.ok and ids else None
+        return (regions, tree) if tree and tree['root'] != -1 else (None, None)
+
+    def collapse(self, value, row):
+        """{root, nodes} for a point's value(leaf), an int: nodes [*row(plane), front, back], a negative child -1 - v ends at
+        value v; subtrees that end in one value collapse to it."""
         nodes = []
 
         def walk(node, depth):
             if node < 0:
-                return -1 - ids.get(indexed(self.leaves, -1-node, 'leaf')[4], 0)
+                return -1 - value(indexed(self.leaves, -1-node, 'leaf'))
             if depth > 4096:
                 raise ValueError('BSP too deep or cyclic')
             plane, front, back = indexed(self.nodes, node, 'node')
             front, back = walk(front, depth+1), walk(back, depth+1)
             if front == back and front < 0:
                 return front
-            q = indexed(self.planes, plane, 'plane')
-            nodes.append([q[1], q[2], q[0], q[3]*SCALE, front, back])
+            nodes.append([*row(indexed(self.planes, plane, 'plane')), front, back])
             return len(nodes) - 1
-        root = walk(self.head, 0) if self.ok and ids else -1
-        return (regions, dict(root=root, nodes=nodes)) if root != -1 else (None, None)
+        return dict(root=walk(self.head, 0), nodes=nodes)
 
 
 def fog_params(entity, scale=1):
@@ -537,7 +541,19 @@ def sprite_frames(files, record, images):
     return frames
 
 
-def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, files, lighting, in_sky):
+def rate_scales(lump):
+    """targetname -> the largest SetRateScale an enabled logic_timer (StartDisabled not 1) sends it, from the entity lump's
+    text: entities() keeps only the last of an entity's repeated outputs. sm_hub_1's rain_on_timer turns its rain on."""
+    found = {}
+    for block in re.findall(r'\{[^{}]*\}', lump.decode('latin1')):
+        if not re.search(r'"classname"\s+"logic_timer"', block, re.I) or re.search(r'"startdisabled"\s+"1"', block, re.I):
+            continue
+        for target, value in re.findall(r'"On\w+"\s+"([^,"]+),SetRateScale,([^,"]*)', block, re.I):
+            found[target.lower()] = max(found.get(target.lower(), 0.), atof(value))
+    return found
+
+
+def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, files, lighting, in_sky, tree):
     """Ropes, infodecals and sprites (tools/source_effects.py) into the map's geometry and sprite batches."""
     counts, batches = dict(ropes=0, decals=0, decal_pieces=0, sprites=0), {}
     gain = lighting['light_gain']
@@ -618,9 +634,13 @@ def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, 
         hit = sampler.trace(np.array(origin, float) + [0, 0, 1], np.array(origin, float) - [0, 0, 4096])
         return None if hit is None else origin[2] + 1 - 4097 * hit[0]
     read = lambda name: files[name].read() if name in files else None
-    troika, outcomes = vtmb_particles.emitters(ents, read, bounds, floor, lambda name: (sprite(name) or {}).get('aspect'))
-    # Emitters in the 3D sky area draw in the viewer's sky pass (batches of their own, flagged sky3d).
-    troika = [(name + '#sky' if in_sky(np.array(emitter['origin'])) else name, template, emitter) for name, template, emitter in troika]
+    rain = lambda leaf: 1 if leaf[0] & vtmb_particles.RAIN_CONTENTS else 0
+    troika, outcomes = vtmb_particles.emitters(ents, read, bounds, floor, lambda name: (sprite(name) or {}).get('aspect'),
+                                               rate_scales(bsp['lumps'][0]), tree.ok and any(map(rain, tree.leaves)))
+    # Emitters in the 3D sky area draw in the viewer's sky pass (batches of their own, flagged sky3d); rain around the
+    # player never does.
+    troika = [(name + '#sky' if not template.get('follow') and in_sky(np.array(emitter['origin'])) else name, template, emitter)
+              for name, template, emitter in troika]
     counts.update(troika_particles=len(troika), troika_outcomes=outcomes, troika_in_sky3d=sum(name.endswith('#sky') for name, _, _ in troika))
 
     def lookup(name):
@@ -628,7 +648,11 @@ def add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, 
             return material(name)
         found = sprites[name[len('particles/'):].removesuffix('#sky')]
         return dict(found, sky3d=True) if name.endswith('#sky') else found
-    return dict(counts=counts, sprites=list(batches.values()), particles=source_effects.particle_data(found + troika, lookup, 'missing_vtmb.png', SCALE))
+    particles = source_effects.particle_data(found + troika, lookup, 'missing_vtmb.png', SCALE)
+    if particles and any(t.get('outdoors') for t in particles['templates']):
+        # The rain leaves (map axes) for rain around the player: particles.js draws it while the eye is in one.
+        particles['outdoors'] = tree.collapse(rain, lambda q: [round(float(v), 4) for v in q[:4]])
+    return dict(counts=counts, sprites=list(batches.values()), particles=particles)
 
 
 def build_map(raw, name, files, lighting=None):
@@ -757,7 +781,7 @@ def build_map(raw, name, files, lighting=None):
     # Models are lit at their vertices as the engine lights them (tools/source_light.py), stored as vertex colours in
     # the lightmap atlas's encoding, so props and NPCs keep the walls' relative brightness.
     sampler = source_light.Sampler(bsp, lambda face: face_light(bsp, face, indexed(bsp['texinfo'], face['texinfo'], 'texinfo')[16]))
-    effects = add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, files, lighting, in_sky)
+    effects = add_effects(bsp, ents, material, append, face_tile, tiles, sampler, images, files, lighting, in_sky, tree)
     for record in models:
         try:
             model = vtmb.model_reference(record['model'])
