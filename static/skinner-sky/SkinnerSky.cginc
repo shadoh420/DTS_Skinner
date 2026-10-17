@@ -53,6 +53,9 @@ vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
     far += mix(vec3(1., .72, .5), vec3(.62, .75, 1.), h.y) * shine * clamp(1. - spot, 0., 1.) * starIntensity;
   }
   if (milkyWay > 0.) far += vec3(.75, .8, 1.) * band * milkyWay * .02 * (.25 + .5 * vnoise(d * 7.) + .5 * vnoise(d * 19.)) * (.5 + .5 * band);
+  #ifdef SKINNER_SPACE
+  if (spaceIntensity > 0.) far += SAMPLE_PLAIN(spaceMap, spaceUV(d)).rgb * spaceIntensity;  // SkinnerSpace.cginc's baked backdrop.
+  #endif
   far *= night;
   float moonR = radians(moonSize * .5);
   if (nu > cos(moonR) && moonIntensity > 0.) {  // A ball lit by the sun: its phase follows the two directions.
@@ -109,11 +112,7 @@ vec3 skinnerSky(vec3 d) {
   if (cirrusCoverage > 0. && fade > 0.) {  // Thin streaks 9 km up, stretched along x.
     float t = distanceTo(9., d.z);
     vec2 uv = d.xy * t / cirrusScale + fract(cirrusSpeed.xy * uTime / cirrusScale);
-    // Overhead the streaks are near and their noise is magnified into smears, so finer fibres along them cut them into
-    // strands there (eroding away from the noise's mid-level lines); they fade out with distance, where they would sparkle.
-    float close = 1. - smoothstep(12., 45., t), fibres = abs(texture2D(skyNoise, vec2(uv.x * 4., uv.y * 16.)).b - .5);
-    float wisp = smoothstep(1. - cirrusCoverage, 1.3 - cirrusCoverage, texture2D(skyNoise, vec2(uv.x * .5, uv.y * 1.5)).r * .6
-      + texture2D(skyNoise, vec2(uv.x * 1.3, uv.y * 4.)).b * .4 - fibres * .6 * close);
+    float wisp = smoothstep(1. - cirrusCoverage, 1.3 - cirrusCoverage, texture2D(skyNoise, vec2(uv.x * .5, uv.y * 1.5)).r * .6 + texture2D(skyNoise, vec2(uv.x * 1.3, uv.y * 4.)).b * .4);
     vec3 light = (sunLight * toLight(PLANET + 9., sun.z) * (.06 + .5 * phaseM(mu, .7)) + moonLight * toLight(PLANET + 9., moon.z) * .3 + air) * cloudColor;
     sky = mix(sky, mix(light, air, 1. - exp(-t / 300.)), wisp * .45 * fade);
   }
