@@ -39,6 +39,10 @@ Shader "Skinner/Volumetric Sky"
         cloudOpacity ("Cloud opacity", Float) = 1
         cirrusCoverage ("Cirrus coverage", Float) = 0
         cirrusScale ("Cirrus tile (km)", Float) = 150
+        cirrusHeight ("Cirrus height (km)", Float) = 9
+        cirrusFibres ("Cirrus fibres", Float) = 1
+        cirrusFibreScale ("Cirrus fibre tile (km)", Float) = 24
+        cirrusOpacity ("Cirrus opacity", Float) = 1
         cirrusSpeed ("Cirrus wind (km/s)", Vector) = (0.04, 0.01, 0, 0)
         auroraIntensity ("Aurora", Float) = 0
         auroraColor ("Aurora low colour", Vector) = (0.1, 1, 0.4, 0)

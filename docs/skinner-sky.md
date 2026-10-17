@@ -54,7 +54,8 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 | `cloudCoverage`, `cloudSoftness` | .5, .15 | Heaped clouds: how much of the sky, and how soft their edges |
 | `cloudScale`, `cloudHeight`, `cloudSpeed` | 20, 2, (.02, .005, 0) | Noise tile size (km), layer height (km), wind (km/s) |
 | `cloudColor`, `cloudDarkness`, `cloudOpacity` | (1, 1, 1), 1, 1 | Tint, how dark thick clouds get, overall opacity |
-| `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | 0, 150, (.04, .01, 0) | Fibrous streaks 9 km up; off unless the preset sets coverage |
+| `cirrusCoverage`, `cirrusScale`, `cirrusSpeed` | 0, 150, (.04, .01, 0) | Fibrous streaks; off unless the preset sets coverage. Streak tile (km), wind (km/s) |
+| `cirrusHeight`, `cirrusFibres`, `cirrusFibreScale`, `cirrusOpacity` | 9, 1, 24, 1 | Layer height (km); fibre strength (0 smooth streaks, 2 stronger strands); fibre tile (km); optical thickness scale |
 | `auroraIntensity`, `auroraColor`, `auroraColor2` | 0, (.1, 1, .4), (.6, .2, 1) | Curtains 100 to 175 km up, low colour to high colour |
 | `fogColor` | (.9, .92, .93) | Unity only: `RenderSettings.fogColor`. The page measures its own haze |
 
@@ -105,7 +106,7 @@ slabs of one colour. The presets use .4 and .3 (the Crisp ones .25 and .6), and 
    forward phase. Sunlight reaches them through the air at their height, so they turn orange and pink at sunset.
    Thick cloud also blocks skylight.
    - Cirrus (`skinnerCirrus`, six reads) is streaks along x, filled with fibres: the fine noise stretched 30:1 along
-     the wind at two sizes (24 and 4 km across a tile), bent together by one coarse read. The fibres fray the streaks'
+     the wind at two sizes (`cirrusFibreScale`, 24 km across a tile, and a sixth of it), bent together by one coarse read. The fibres fray the streaks'
      edges and set their optical thickness, so thin ice lets the sky through and strand cores hardly. A read of the
      streaks a step toward the sun shades the far side. Far off, mipmapping averages the fibres away, so the low sky
      looks as it did before the fibres (2026-10-17). Where the air comes from a sky texture (the Maps pages and

@@ -169,7 +169,7 @@ window.t1Skies = {
     moonAzimuth: 20, moonElevation: -30, moonColor: [.9, .92, 1], moonIntensity: 0, moonSize: 3.5,
     rayleigh: [1, 1, 1], ozone: 1, mie: 1, mieG: .8, groundColor: [.25, .24, .22], nightColor: [.0004, .0007, .0014], exposure: 1.5,
     starIntensity: 0, starDensity: 250, milkyWay: 0, cloudCoverage: .5, cloudSoftness: .15, cloudScale: 20, cloudHeight: 2,
-    cloudSpeed: [.02, .005, 0], cloudColor: [1, 1, 1], cloudDarkness: 1, cloudOpacity: 1, cirrusCoverage: 0, cirrusScale: 150,
+    cloudSpeed: [.02, .005, 0], cloudColor: [1, 1, 1], cloudDarkness: 1, cloudOpacity: 1, cirrusCoverage: 0, cirrusScale: 150, cirrusHeight: 9, cirrusFibres: 1, cirrusFibreScale: 24, cirrusOpacity: 1,
     cirrusSpeed: [.04, .01, 0], auroraIntensity: 0, auroraColor: [.1, 1, .4], auroraColor2: [.6, .2, 1]},
   // Drawn as docs/volumetrics.md: the air and volumetric clouds go into a 1024x256 sky texture, 1/8 of its rows a
   // frame (all of it on the first draw); the screen adds the sun, stars, moon and aurora per pixel. That costs about a
