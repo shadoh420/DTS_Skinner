@@ -147,8 +147,26 @@ class EmittersTest(unittest.TestCase):
         flame = found[0][1]
         self.assertEqual(flame['trigger'], [[-16., -16., -72.], [26., 36., 30.]])  # the feet: the hull overlaps the trigger
         self.assertEqual(flame['box'], [[-50., -25., -10.], [50., 25., 10.]])
-        self.assertEqual(flame['tracks'][16], [[0., 0., 6., 6.]])  # rate 40 x ramp_scale 0.15: no box-volume weight
+        # rate 40 x ramp_scale 0.15 x the size scalar (the box grown 1 unit a side, / 128^3)
+        self.assertAlmostEqual(flame['tracks'][16][0][2], 6 * 102 * 52 * 22 / 128 ** 3)
         self.assertNotIn('trigger', self.run_emitters(dict(box, active='1'))[0][0][1])
+
+    def test_func_particle_size_scalar(self):
+        # sm_pier_1's rain_emitter_volume_1 (BSP bounds 1135 x 1101 x 668): the game prints 400.664508 and clamps to 100.
+        self.assertEqual(vp.size_scalar([[2463, -1677, -688], [3598, -576, -20]]), 100.)
+        self.assertAlmostEqual(vp.size_scalar([[0, 0, 0], [766, 1150, 282]]) * 128 ** 3, 100 * 128 ** 3)  # 121.18 -> 100
+        self.assertEqual(vp.size_scalar([[0, 0, 0], [8, 8, 8]]), .01)
+        self.assertAlmostEqual(vp.size_scalar([[0, 0, 0], [126, 126, 126]]), 1.)
+        # A big rain box: 1000 x 0.01 x 502^3 / 128^3 = 603 drops a second, fired 7 at a time (particles.js's 0.01 s
+        # floor); its haze, thinned below 1% by the fill cap, is skipped.
+        found, counts = vp.emitters([dict(classname='func_particle', particle_definition='Rain', model='*1', ramp_scale='0.01')],
+                                    read, lambda e: ([0, 0, 0], [500, 500, 500]), lambda origin: None, lambda sprite: [.5, .5])
+        (sprite, drop, emitter), = found
+        rate = 10 * 502 ** 3 / 128 ** 3
+        self.assertNotIn('thin', drop)
+        self.assertEqual((sprite, drop['count']), ('particles/dropletfast', 7))
+        self.assertAlmostEqual(emitter['period'], 7 / rate)
+        self.assertEqual(counts['a spawn the fill cap would thin below 1% (deferred)'], 1)
 
     def test_touch_triggers_pair_start_and_end_touch(self):
         from tools.import_vtmb_map import touch_triggers

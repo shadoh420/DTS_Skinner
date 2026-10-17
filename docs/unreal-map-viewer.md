@@ -204,13 +204,19 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
 
   Drawn: emitters that start active, unparented, at a world place (`attach_type` 0, 1 or −1). Also timers' looping
   child emitters (WaterDrops_Timer). Also bursts of particles that loop or outlive the visit (stars, city lights).
-  `func_particle` spreads its children over the brush's box: client.dll's attach-9 callback (near 0x100b1fd0) puts
-  each child at a uniform point of the box, in 1% steps per axis, and passes the rate scale on. Its density is the
-  spawn's rate × `ramp_scale` (vampire.dll's datadesc maps `ramp_scale` to m_fRateScaleTarget, the rate multiplier);
-  the box weights client.dll sums near 0x100b0f04 only pick among a model's bone segments (attach types 1, 3 and 4),
-  so a rain box's size does not scale its rain (sm_beachhouse_1's boxes: 40 × 0.05 = 2 drops a second each).
-  Open: the 2026-10-16 game shot of sm_pier_1's start shows about 15 streaks where the page draws about one, a gap
-  near 20× that these rules don't explain. A game run in one trigger should settle it before any change.
+  `func_particle` spreads its children over the brush's box. vampire.dll's CFuncParticle spawn (near 0x100fcb50) sets
+  `m_nAttachType` 15 and `m_flSizeScalar` = the brush's volume / 128³, clamped to [0.01, 100]. It uses the engine's
+  submodel bounds, which are the BSP's grown 1 unit a side, and it prints "emitter's scale value(…) is out of range,
+  clamping!" when it clamps. client.dll's attach-15 callback (C_FuncParticle::FuncParticleCallback, 0x100b33d0) puts
+  each instance at a uniform point of the box, in 1% steps per axis. It also sets the instance's rate multiplier
+  (engine.dll inst+0x19c, which scales rates and bursts) to `m_flSizeScalar` × the current `ramp_scale` (vampire.dll's
+  datadesc maps `ramp_scale` to m_fRateScaleTarget). So a box's density is rate × `ramp_scale` × the size scalar:
+  sm_pier_1's big rain boxes give 40 × 0.15 × 100 = 600 drops a second, and the burning mansions' small firebrushes
+  0.01–0.5× their authored rates. Game-checked 2026-10-17: in sm_pier_1 the game prints 400.66 for
+  rain_emitter_volume_1 and 121.18 for volume_9, the bounds rule exactly (evidence `skinner-evidence\vtmb-rainbox\game`).
+  The attach-9 callback (0x100b1fd0) and the box weights near 0x100b0f04 are not func_particle's.
+  Any spawn that the fill cap would thin below 1% is skipped (the rain boxes' `rainfog`), and a rate over 100 a second
+  is fired in bunches, because particles.js fires an emitter at most every 0.01 s.
   Emitters in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
 
   Touch-triggered emitters: an inactive emitter that a `trigger_multiple` (not StartDisabled) turns on at

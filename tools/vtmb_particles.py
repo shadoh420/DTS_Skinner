@@ -230,12 +230,26 @@ RAIN_CONTENTS = 0x800
 # A trigger touches the player while their hull (Source's standing hull, 32 x 32 x 72 from the feet: inferred, not read)
 # overlaps the trigger's box: the feet are within these margins of it (mins side, maxs side).
 HULL = ([16., 16., 72.], [16., 16., 0.])
+
+
+def size_scalar(box):
+    """A func_particle's spawn multiplier: vampire.dll's CFuncParticle spawn (near 0x100fcb50) sets m_flSizeScalar to the
+    brush's volume / 128^3, clamped to [0.01, 100] ("emitter's scale value(%f) is out of range, clamping!"), from the
+    engine's submodel bounds (the BSP's, grown 1 unit a side: sm_pier_1's rain_emitter_volume_1 prints 400.66), and sets
+    attach_type 15. client.dll's attach-15 callback (C_FuncParticle::FuncParticleCallback, 0x100b33d0) gives every
+    instance it places the rate scale m_flSizeScalar x the current ramp_scale (engine.dll multiplies rates and bursts by it)."""
+    volume = 1.
+    for lo, hi in zip(*box):
+        volume *= abs(hi - lo) + 2
+    return min(100., max(.01, volume / 128 ** 3))
+
+
 FOREVER = 600.  # seconds: a particle living longer than this (city lights: 5000 frames at 1 fps) stays for the visit
 # Fill cap (units^2): a spawn whose particles alive x their largest sprite area exceeds it is thinned to it, each kept
 # particle brighter (rgb x gain) and more covering (1 - (1 - alpha)^gain) by the same factor. It mostly takes the
-# burning mansions' firebrush (2,000 flames and 100 glows of 200-400 units a second: 6.2 ms in la_malkavian_5
-# uncapped) and the ending sequences' fire; a few mists and smokes (hw_warrens, ch_temple_2, la_plaguebearer_sewer_1)
-# are thinned up to 5.5x and still read as soft mist.
+# burning mansions' larger firebrushes (2,000 flames and 100 glows of 200-400 units a second x their size scalar),
+# the ending sequences' fire and the rain boxes' drops; a few mists and smokes (hw_warrens, ch_temple_2,
+# la_plaguebearer_sewer_1) are thinned up to 5.5x and still read as soft mist.
 # ponytail: one cap for every view; a view-dependent budget would keep more of them from afar.
 FILL = 200000.
 
@@ -302,7 +316,7 @@ def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rai
 
     Drawn: env_particle that starts active, not parented (parentname), at a place in the world (WORLD_ATTACH: the
     unparented attach types the maps give fires, stars and drips; 10 and 11 are around the player, others are bones);
-    func_particle that starts active, its children spread over the brush's box (C_EnvParticle's box callback, client.dll);
+    func_particle that starts active, its children spread over the brush's box (C_FuncParticle's callback, client.dll);
     env_particle around the player (PLAYER_BOX: Santa Monica's rain), as a template that `follow`s the page's eye and, for a
     precipitation definition, draws only while the eye is in a rain leaf (`outdoors`; the map's import gives the leaves),
     skipped when the map has none (rain_leaves False: the engine culls all of it). Its spawns that the fill cap would
@@ -311,9 +325,11 @@ def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rai
     (sm_hub_1's rain comes on after 3-5 minutes; drawn as if it had).
     touch: targetname -> the box (mins, maxs) of the trigger_multiple that turns an inactive emitter on while the player
     touches it (sm_pier_1's rain boxes): drawn with a `trigger` box the page's feet must be in.
-    Density: a func_particle's children spawn at rate x ramp_scale, each at a uniform point of its box (client.dll's
-    attach-9 callback near 0x100b1fd0: three 1% steps; the rate scale m_fRateScaleTarget is ramp_scale, vampire.dll's
-    datadesc). The box weights summed near 0x100b0f04 only pick among a model's bone segments (attach types 1, 3, 4).
+    Density: a func_particle's children spawn at rate x ramp_scale x size_scalar(box), each at a uniform point of its
+    box (attach 15, C_FuncParticle::FuncParticleCallback: three 1% steps; the rate scale m_fRateScaleTarget is
+    ramp_scale, vampire.dll's datadesc). Game-checked in sm_pier_1 (2026-10-17): the game prints the clamped volumes.
+    Any spawn the fill cap would thin below 1% is skipped, and a rate over 100 a second comes in bunches (the 0.01 s
+    floor of particles.js).
     Axes: the entity's forward, left and up (inferred). A looping definition spawns its children at its rate (x
     ramp_scale, vampire.dll's rate scale) or its multi-key bursts every life. A definition that plays once (timers) only
     keeps what outlives it: looping children that do not move and themselves spawn (WaterDrops_Timer ->
@@ -358,6 +374,8 @@ def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rai
         if ramp <= 0:
             count(f'{cls}: ramp_scale 0 (nothing spawns until an input)')
             continue
+        if cls == 'func_particle':
+            ramp *= size_scalar(box)
         root = load(e.get('particle_definition', ''), read, cache)
         if root is None:
             count(f'{cls}: definition missing')
@@ -430,12 +448,13 @@ def emitters(entities, read, bounds, floor, sprite_aspect, rate_scales=None, rai
                         if gate is not None:
                             templates[ident]['trigger'] = gate
                     template = templates[ident]
-                    if follow and template.get('thin', 1) < .01:
-                        count('haze around the player that the fill cap would thin below 1% (deferred)')
+                    if template.get('thin', 1) < .01:
+                        count('haze around the player that the fill cap would thin below 1% (deferred)' if follow else
+                              'a spawn the fill cap would thin below 1% (deferred)')
                         continue
                     if burst_key is None:
                         period = 1 / ((template['rateMax'] or max(template['tracks'][16][0][2], 1e-6)) * template.get('thin', 1))
-                        if follow and period < .01:  # particles.js fires an emitter at most every 0.01 s: rain comes in tens
+                        if period < .01:  # particles.js fires an emitter at most every 0.01 s: rain comes in tens
                             template['count'] = math.ceil(.01 / period - 1e-9)
                             period *= template['count']
                     else:
