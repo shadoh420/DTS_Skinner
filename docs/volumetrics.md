@@ -132,8 +132,8 @@ the rows a frame.
   was 0.39 ms.
 - Timings from a hidden browser pane are not usable: the same views read 2.6–5.7 ms there, and once 0 ms for the world.
 - **Presets retuned for these clouds** (2026-10-17, [skinner-sky.md](skinner-sky.md)): the retune costs nothing.
-  Measured the same way from Raindance's start viewpoint (rain on, so this run's own sky read 0.40–0.43 ms), all
-  twelve presets took 0.54–0.64 ms with Fog off and 0.75–0.85 ms with Fog on. The old and new values of each preset
+  Measured the same way from Raindance's start viewpoint, this run's own sky read 0.40–0.43 ms, against 0.18 ms in the
+  table above, so compare only within the run. All twelve presets took 0.54–0.64 ms with Fog off and 0.75–0.85 ms with Fog on. The old and new values of each preset
   came within 0.05 ms of each other with Fog off. The fog pass is closed form, so preset values don't change its cost.
   A second run had every Fog-on frame jump to 2.5–3.0 ms partway through, old and new presets alike. It stayed after a
   page reload, while Fog-off frames stayed at 0.55 ms, so it was the machine's state at the time. It was not chased.
