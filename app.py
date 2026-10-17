@@ -210,7 +210,7 @@ def t1_map_data(filename):
 
 
 t1_sky_cache, t1_sky_lock = {}, threading.Lock()
-SKY_LIST_VERSION = 5  # Part of the cache stamp: bump it when the entries scene_skies, scene_weather or the t2_mission_* readers build change.
+SKY_LIST_VERSION = 6  # Part of the cache stamp: bump it when the entries scene_skies, scene_weather or the t2_mission_* readers build change.
 
 
 # Packs whose skies the T1 Maps page can draw, by game: (group label, how the pack stores it, its sections). 'dome' is
@@ -287,49 +287,122 @@ def t2_mission_text(root, manifest, name, mission):
         return None, resources
 
 
+def mis_objects(text, kind):
+    """The quoted fields of each of a mission's `new <kind>(...) {...};` objects."""
+    return [dict(re.findall(r'^\s*(\w+(?:\[\d+\])?)\s*=\s*"([^"]*)"', body, re.M))
+            for body in re.findall(r'new\s+' + kind + r'\s*\([^)]*\)\s*\{(.*?)\};', text, re.S | re.I)]
+
+
 def mis_fields(text, kind):
     """The quoted fields of a mission's first `new <kind>(...) {...};` object."""
-    block = re.search(r'new\s+' + kind + r'\s*\([^)]*\)\s*\{(.*?)\};', text, re.S | re.I)
-    return dict(re.findall(r'^\s*(\w+(?:\[\d+\])?)\s*=\s*"([^"]*)"', block.group(1), re.M)) if block else {}
+    return (mis_objects(text, kind) or [{}])[0]
 
 
 PRECIPITATION_FIELDS = {'dataBlock', 'percentage', 'color1', 'color2', 'color3', 'offsetSpeed', 'minVelocity', 'maxVelocity', 'maxNumDrops', 'maxRadius'}
+# Not their place (a borrowing map strikes and drops about its own camera): only how often, how wide and what colour.
+LIGHTNING_FIELDS = {'scale', 'strikesPerMinute', 'strikeWidth', 'boltStartRadius', 'color', 'fadeColor'}
+FIREBALL_FIELDS = {'dropRadius', 'dropsPerMinute', 'minDropAngle', 'maxDropAngle', 'startVelocity', 'dropHeight', 'dropDir'}
+
+
+def t2_datablocks(root, resources, *scripts):
+    """Each `datablock Kind(Name) {...};` in the scripts, by (kind, name) lowercased: its fields, an array field's
+    index joined to its name (emitters[0] is emitters0)."""
+    blocks = {}
+    for script in scripts:
+        found = resources.get(script)
+        try:
+            text = (root / 'base' / found[0]).read_text(encoding='latin1') if found else ''
+        except OSError:
+            continue
+        for kind, key, body in re.findall(r'datablock\s+(\w+)\s*\(\s*(\w+)\s*\)\s*\{(.*?)\};', text, re.S | re.I):
+            blocks[kind.lower(), key.lower()] = {name + (str(int(index)) if index else ''): value.strip()
+                                                 for name, index, value in re.findall(r'^\s*(\w+)(?:\[(\d+)\])?\s*=\s*"?([^";]*)"?\s*;', body, re.M)}
+    return blocks
+
+
+def t2_field(block, name, fallback=None):
+    """A datablock field by name, as Torque reads it: in any case."""
+    return next((value for key, value in block.items() if key.lower() == name.lower()), fallback)
+
+
+def t2_emitter(blocks, name):
+    """A ParticleEmitterData and its first ParticleData as the T2 page reads them (environment.tsx emitterData and
+    particleData, V12's defaults), in numbers; None when either is missing. A particle's keys are [time, r, g, b, a, size]."""
+    emitter = blocks.get(('particleemitterdata', str(name or '').lower()), {})
+    particle = next((blocks[key] for item in t2_field(emitter, 'particles', '').split() if (key := ('particledata', item.lower())) in blocks), None)
+    if not particle:
+        return None
+    number = lambda block, field, fallback: float(t2_field(block, field, fallback))
+    times = [0, number(particle, 'times1', 1), number(particle, 'times2', 2), number(particle, 'times3', 2)]
+    count = next((i for i in range(3) if times[i] >= 1), 3)
+    colour = lambda i: ([float(v) for v in t2_field(particle, f'colors{i}', '1 1 1 1').split()] + [1] * 4)[:4]
+    animated = t2_field(particle, 'animateTexture', '0').lower() not in ('0', 'false', '')
+    first, texture = t2_field(particle, 'animTexName0', ''), t2_field(particle, 'textureName', '')
+    return dict(period=max(1, number(emitter, 'ejectionPeriodMS', 100)) / 1000, velocity=number(emitter, 'ejectionVelocity', 2),
+                variance=number(emitter, 'velocityVariance', 1), theta=[number(emitter, 'thetaMin', 0), number(emitter, 'thetaMax', 90)],
+                lifetime=number(emitter, 'lifetimeMS', 0) / 1000,
+                particle=dict(life=number(particle, 'lifetimeMS', 1000) / 1000, variance=number(particle, 'lifetimeVarianceMS', 0) / 1000,
+                              inherit=number(particle, 'inheritedVelFactor', 0), gravity=number(particle, 'gravityCoefficient', 0),
+                              drag=number(particle, 'dragCoefficient', 0), texture=(first if animated and first else texture or first).lower(),
+                              keys=[[times[i], *colour(i), number(particle, f'sizes{i}', 1)] for i in range(count + 1)]))
 
 
 def t2_mission_weather(root, manifest, name, mission):
-    """A Tribes 2 mission's Precipitation as the T2 page reads it (map-client/environment.tsx): the object's fields,
-    its PrecipitationData datablock's from scripts/weather.cs, and the Sky's wind. None when it has no precipitation."""
+    """A Tribes 2 mission's weather as the T2 page reads it (map-client/environment.tsx), or None when it has none:
+    its Precipitation (the object's fields, its PrecipitationData datablock's from scripts/weather.cs, and the Sky's
+    wind; None without one), its Lightning objects with their LightningData's strike texture (scripts/lightning.cs)
+    and its FireballAtmosphere with the Debris, emitters and particles of its datablock chain, in numbers."""
     text, resources = t2_mission_text(root, manifest, name, mission)
-    if not text or not re.search(r'new\s+Precipitation\s*\(', text, re.I):
+    if not text or not re.search(r'new\s+(Precipitation|Lightning|FireballAtmosphere)\s*\(', text, re.I):
         return None
-    found, blocks = resources.get('scripts/weather.cs'), {}
-    try:
-        script = (root / 'base' / found[0]).read_text(encoding='latin1') if found else ''
-        blocks = {key.lower(): dict(re.findall(r'^\s*(\w+)\s*=\s*"?([^";]*)"?\s*;', body, re.M))
-                  for key, body in re.findall(r'datablock\s+PrecipitationData\s*\(\s*(\w+)\s*\)\s*\{(.*?)\};', script, re.S | re.I)}
-    except OSError:
-        pass
-    precipitation, sky = mis_fields(text, 'Precipitation'), mis_fields(text, 'Sky')
+    blocks = t2_datablocks(root, resources, 'scripts/weather.cs', 'scripts/lightning.cs')
+    falls, sky = re.search(r'new\s+Precipitation\s*\(', text, re.I), mis_fields(text, 'Sky')
+    precipitation = mis_fields(text, 'Precipitation')
     precipitation = {k: v for k, v in precipitation.items() if k in PRECIPITATION_FIELDS}  # Not its place: missions share it.
-    return dict(object=precipitation, datablock=blocks.get(precipitation.get('dataBlock', '').lower(), {}),
-                sky={k: sky[k] for k in ('windVelocity', 'windEffectPrecipitation') if k in sky})
+    lightning = []
+    for strike in mis_objects(text, 'Lightning'):
+        texture = t2_field(blocks.get(('lightningdata', strike.get('dataBlock', '').lower()), {}), 'strikeTextures0', 'special/skyLightning')
+        lightning.append({k: v for k, v in strike.items() if k in LIGHTNING_FIELDS} | {'texture': texture.lower()})
+    fireballs = []
+    for atmosphere in mis_objects(text, 'FireballAtmosphere'):
+        # V12's FireballAtmosphere::onAdd sets the Debris's terminal velocity to startVelocity.
+        debris = blocks.get(('debrisdata', t2_field(blocks.get(('fireballatmospheredata', atmosphere.get('dataBlock', '').lower()), {}), 'fireball', '').lower()))
+        if debris is None:
+            continue
+        explosion = blocks.get(('explosiondata', t2_field(debris, 'explosion', '').lower()), {})
+        burst = t2_emitter(blocks, t2_field(explosion, 'particleEmitter'))
+        fireballs.append(dict(object={k: v for k, v in atmosphere.items() if k in FIREBALL_FIELDS},
+                              trails=[found for i in range(4) if (found := t2_emitter(blocks, t2_field(debris, f'emitters{i}')))],
+                              burst=burst and burst | dict(density=float(t2_field(explosion, 'particleDensity', 10)), radius=float(t2_field(explosion, 'particleRadius', 1))),
+                              bursts=[found for i in range(4) if (found := t2_emitter(blocks, t2_field(explosion, f'emitter{i}')))],
+                              explosionLife=float(t2_field(explosion, 'lifetimeMS', 1000)) / 1000))
+    datablock = blocks.get(('precipitationdata', precipitation.get('dataBlock', '').lower()), {})
+    return dict(object=precipitation if falls else None, datablock=datablock, sky={k: sky[k] for k in ('windVelocity', 'windEffectPrecipitation') if k in sky and falls},
+                **({'lightning': lightning} if lightning else {}), **({'fireballs': fireballs} if fireballs else {}))
 
 
 def scene_weather(kind, scene):
     """The weather a map's scene holds for one SKY_PACKS kind, as (name, renderer, weather), or None: a T1-family
-    mission's rain or snow, a Quake III family map's (without RTCW's misc_snow columns, which belong to their spot),
-    or a Tribes 2 mission's Precipitation."""
+    mission's rain or snow, a Quake III family map's (without RTCW's misc_snow columns, which belong to their spot) with
+    a JA or JK2 map's wind and lightning, or a Tribes 2 mission's Precipitation, Lightning and FireballAtmosphere.
+    Weather with no rain or snow of its own blows or strikes over the borrowing map's own."""
     weather = scene.get('weather')
     if kind == 'dome' and isinstance(weather, dict) and isinstance(weather.get('wind'), list):
         name = f"{'Rain' if weather.get('rain') else 'Snow'} {round(100 * weather.get('intensity', 1))}%"
         return name + (' · wind {:g} {:g}'.format(*(round(v, 2) for v in weather['wind'][:2])) if any(weather['wind'][:2]) else ''), 't1', weather
-    if kind == 'q3' and isinstance(weather, list):
-        specs = [spec for spec in weather if isinstance(spec, dict) and spec.get('type') in ('rain', 'snow') and not spec.get('column')]
-        identity = (scene.get('lighting') or {}).get('identityLight', .5)
-        if specs:
-            return ' + '.join(spec['type'].title() for spec in specs), 'q3', dict(specs=specs, identity=identity)
+    if kind == 'q3' and isinstance(weather or [], list):
+        specs = [spec for spec in weather or [] if isinstance(spec, dict) and spec.get('type') in ('rain', 'snow') and not spec.get('column')]
+        identity, storm = (scene.get('lighting') or {}).get('identityLight', .5), scene.get('storm')
+        if specs or storm:  # JA and JK2 wind and lightning: import_jk2_map storm.
+            name = ' + '.join(spec['type'].title() for spec in specs)
+            name = ' · '.join(filter(None, [name, storm and storm.get('wind') and ('wind' if name else 'Wind'),
+                                            storm and storm.get('lightning') and ('lightning' if name or storm.get('wind') else 'Lightning')]))
+            return name, 'q3', dict(specs=specs, identity=identity) | ({'storm': storm} if storm else {})
     if kind == 't2mis' and scene.get('t2weather'):
-        return scene['t2weather']['object'].get('dataBlock') or 'Precipitation', 't2', scene['t2weather']
+        found = scene['t2weather']
+        name = ' · '.join(filter(None, [found['object'] is not None and (found['object'].get('dataBlock') or 'Precipitation'),
+                                        found.get('lightning') and 'lightning', found.get('fireballs') and 'fireballs']))
+        return name[:1].upper() + name[1:], 't2', found
     return None
 
 
@@ -379,8 +452,8 @@ def t1_map_skies():
 
 @app.route('/t1-map-weather')
 def t1_map_weather():
-    """Weather the T1 Maps page can swap in (its Weather list), found by the same scan: each distinct rain or snow
-    once, with the maps that have it."""
+    """Weather the T1 Maps page can swap in (its Weather list), found by the same scan: each distinct rain, snow or
+    storm (wind, lightning, fireballs) once, with the maps that have it."""
     return jsonify(t1_sky_scan()['weather'])
 
 

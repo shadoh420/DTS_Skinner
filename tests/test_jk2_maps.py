@@ -199,6 +199,18 @@ fogparms ( 0 0 0 ) 100
             game.described.clear()
             self.assertEqual(maps.base.describe(game,'textures/test/slime',textures)[0]['stages'],[])
 
+    def test_storm_wind_zones_and_rain_lightning(self):
+        """g_fx.cpp's spawn flags as the stock maps set them: hoth2's constant + gusting fx_wind, t1_rail's heavy rain
+        (lightning by itself), a plain JA fx_rain's normal wind, and JK2's rain and snow always bringing it."""
+        hoth=[{'classname':'fx_wind','spawnflags':'6','speed':'3000','angle':'180'},{'classname':'fx_snow'}]
+        self.assertEqual(maps.storm(hoth,'ja'),{'wind':[{'mode':'constant','velocity':[-3000.0,0.0,0.0]},{'mode':'gusting'}],'lightning':None})
+        rail=[{'classname':'fx_wind','spawnflags':'2','angles':'-90 0 0'},{'classname':'fx_rain','spawnflags':'20','flashdelay':'6000'}]
+        self.assertEqual(maps.storm(rail,'ja'),{'wind':[{'mode':'constant','velocity':[0.0,0.0,500.0]}],
+                                                 'lightning':{'color':[200.0,200.0,200.0],'delay':6000,'flicker':2,'effect':4}})
+        self.assertEqual(maps.storm([{'classname':'fx_rain'}],'ja')['wind'],[{'mode':'normal'}])
+        self.assertIsNone(maps.storm([{'classname':'fx_rain','spawnflags':'1'},{'classname':'fx_snow'},{'classname':'fx_wind','spawnflags':'8'}],'ja'))
+        self.assertEqual(maps.storm([{'classname':'fx_rain','spawnflags':'1'},{'classname':'fx_snow'}],'jk2')['wind'],[{'mode':'normal'}]*2)
+
     def test_routes_and_data_validation(self):
         from app import app
         client=app.test_client()

@@ -88,3 +88,15 @@ belong to one spot. Tribes 2 Precipitation (the object, its `weather.cs` datablo
 plain-JS copy of `map-client/environment.tsx` Precipitation. Every kind is hidden inside buildings by the T1 shelter test.
 The importer stores shelters for every mission, so a dry map needs a re-import before borrowed weather stays out of its
 buildings. Not offered yet: Bloodlines' rain that follows the player (sm_hub_1, particles.js) and its trigger rain boxes.
+
+Storms come in the same list, with or without rain or snow of their own; one without blows or strikes over the map's own.
+Tribes 2 Lightning objects (their rate, width, colours, box size and `lightning.cs` strike texture, not their place) are
+the T2 page's bolts, landing in the box centred on the camera, between 100 m off and 80% of the view. Tribes 2
+FireballAtmosphere entries carry their datablock chain (Debris, trail and explosion emitters, particles) as numbers; the
+fireballs fall about the camera and burst on the terrain. JA and JK2 maps carry `storm` from the importer
+(`import_jk2_map.storm`): fx_wind's normal, constant and gusting zones, the wind a plain fx_rain (and every JK2 fx_rain or
+fx_snow) adds, and JA fx_rain's lightning. The wind pushes whatever falls at its terminal speed (7/3 force / mean mass
+7.5, at 1/32 m a unit); JA lightning flickers the haze to the flash colour and draws the env/huge_lightning bolt. On the
+stock maps: hoth2 (snow, constant + gusting), t1_rail (heavy rain, constant wind, lightning), t2_wedge (wind only),
+yavin_swamp (rain, wind). Neither JA/JK2 Maps page draws wind or lightning yet. Bolts and fireballs cost nothing between
+strikes: their buffers upload only the part in use.

@@ -128,6 +128,49 @@ class SkyListTest(unittest.TestCase):
                                                     'datablock': {'type': '1', 'materialList': 'snowflakes.dml', 'sizeX': '0.20'},
                                                     'sky': {'windVelocity': '1 0 0', 'windEffectPrecipitation': '1'}})
 
+    def test_weather_list_storms_with_and_without_rain(self):
+        """Tribes 2 Lightning (every object, without its place) and FireballAtmosphere (its datablock chain resolved to
+        numbers), and JA/JK2 wind and lightning (the import's storm), listed with or without rain of their own."""
+        wind = {'wind': [{'mode': 'constant', 'velocity': [-3000.0, 0.0, 0.0]}, {'mode': 'gusting'}], 'lightning': None}
+        rain = {'type': 'rain', 'count': 1000, 'speed': 1000, 'length': 80, 'wind': [0, 0]}
+        lightning = {'wind': [], 'lightning': {'color': [200.0, 200.0, 200.0], 'delay': 12000, 'flicker': 2, 'effect': 4}}
+        strike = 'new Lightning() {\n\tposition = "@ 1 2";\n\tscale = "900 800 300";\n\tdataBlock = "DefaultStorm";\n\tstrikesPerMinute = "6";\n};\n'
+        scripts = {'scripts/lightning.cs': 'datablock LightningData(DefaultStorm)\n{\n   strikeTextures[0]  = "special/skyLightning";\n};',
+                   'scripts/weather.cs': '\n'.join([
+                       'datablock ParticleData(Trail)\n{', '   lifetimeMS = 1600;', '   inheritedVelFactor = 0.85;', '   animateTexture = true;',
+                       '   animTexName[00] = "special/Explosion/exp_0002";', '   colors[0] = "1.0 0.7 0.5 1.0";', '   colors[1] = "1.0 0.25 0.1 0.0";',
+                       '   sizes[0] = 10.0;', '   sizes[1] = 2.0;', '};',
+                       'datablock ParticleEmitterData(TrailEmitter)\n{', '   ejectionPeriodMS = 10;', '   particles = "Trail";', '};',
+                       'datablock ExplosionData(Boom)\n{', '   particleEmitter = TrailEmitter;', '   particleDensity = 250;', '};',
+                       'datablock DebrisData( Ball )\n{', '   emitters[0] = TrailEmitter;', '   explosion = Boom;', '};',
+                       'datablock FireballAtmosphereData(Fireball)\n{', '   fireball = Ball;', '};'])}
+        missions = {'missions/fracas.mis': strike.replace('@', '5'), 'missions/minotaur.mis': strike.replace('@', '3'),
+                    'missions/gehenna.mis': strike.replace('@', '9') * 2,
+                    'missions/firestorm.mis': 'new FireballAtmosphere(FireballAtmosphere) {\n\tposition = "1 2 3";\n\tdataBlock = "fireball";\n\tdropRadius = "900";\n};'}
+        with tempfile.TemporaryDirectory() as directory, patch('app.local_data_dir', Path(directory)):
+            root = Path(directory)
+            pack(root, 'ja-maps', {'t2_wedge': ({}, {'weather': [], 'storm': wind}), 't1_rail': ({}, {'weather': [rain], 'storm': lightning})})
+            base = root / 't2-maps' / 'base'
+            for name, text in (scripts | missions).items():
+                (base / name).parent.mkdir(parents=True, exist_ok=True)
+                (base / name).write_text(text)
+            (root / 't2-maps' / 'manifest.json').write_text(json.dumps({
+                'resources': {name: [name, ['']] for name in scripts | missions},
+                'missions': {Path(name).stem.title(): {'resourcePath': name} for name in missions}}))
+            weather = {entry['maps'][0]: entry for entry in app.test_client().get('/t1-map-weather').json}
+        self.assertEqual(sorted(weather), ['Firestorm', 'Fracas', 'Gehenna', 't1_rail', 't2_wedge'])  # Minotaur strikes as Fracas does.
+        self.assertEqual((weather['Fracas']['maps'], weather['Fracas']['name'], weather['Firestorm']['name']), (['Fracas', 'Minotaur'], 'Lightning', 'Fireballs'))
+        self.assertEqual((weather['t2_wedge']['name'], weather['t2_wedge']['weather']), ('Wind', {'specs': [], 'identity': .5, 'storm': wind}))
+        self.assertEqual((weather['t1_rail']['name'], weather['t1_rail']['weather']), ('Rain · lightning', {'specs': [rain], 'identity': .5, 'storm': lightning}))
+        self.assertEqual(weather['Fracas']['weather'], {'object': None, 'datablock': {}, 'sky': {},
+                                                        'lightning': [{'scale': '900 800 300', 'strikesPerMinute': '6', 'texture': 'special/skylightning'}]})
+        self.assertEqual(len(weather['Gehenna']['weather']['lightning']), 2)
+        trail = {'period': .01, 'velocity': 2, 'variance': 1, 'theta': [0, 90], 'lifetime': 0,
+                 'particle': {'life': 1.6, 'variance': 0, 'inherit': .85, 'gravity': 0, 'drag': 0, 'texture': 'special/explosion/exp_0002',
+                              'keys': [[0, 1, .7, .5, 1, 10], [1, 1, .25, .1, 0, 2]]}}
+        self.assertEqual(weather['Firestorm']['weather']['fireballs'], [{'object': {'dropRadius': '900'}, 'trails': [trail],
+                                                                         'burst': trail | {'density': 250, 'radius': 1}, 'bursts': [], 'explosionLife': 1}])
+
     def test_tribes_2_sky_missing_only_its_down_face(self):
         def build(root):
             base = root / 't2-maps' / 'base'
