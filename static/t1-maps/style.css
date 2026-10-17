@@ -15,6 +15,6 @@ details[open]#importPanel, details[open]#decorPanel {flex-basis:100%;}
 #skyTune, #weatherTune {position:absolute;top:8px;left:8px;z-index:2;max-height:calc(100% - 16px);overflow:auto;padding:6px 10px;
   background:#17222ae6;border:1px solid #40515b;border-radius:6px;font-size:13px;}
 #weatherTune {left:auto;right:8px;}
-:is(#skyTune, #weatherTune) label {display:grid;grid-template-columns:125px 130px 38px;margin-top:4px;} :is(#skyTune, #weatherTune) :is(select, button) {padding:2px 5px;}
+:is(#skyTune, #weatherTune) label {display:grid;grid-template-columns:125px 130px 38px 26px;gap:0 4px;margin-top:4px;} :is(#skyTune, #weatherTune) :is(select, button) {padding:2px 5px;}
 :is(#skyTune, #weatherTune) input[type=range] {width:130px;padding:0;} :is(#skyTune, #weatherTune) output {width:38px;text-align:right;}
 :is(#skyTune, #weatherTune) div {display:flex;gap:8px;margin-top:8px;} :is(#skyTune, #weatherTune) pre {margin:8px 0 0;font-size:12px;white-space:pre-wrap;}
