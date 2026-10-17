@@ -69,9 +69,14 @@ assert.deepEqual(at(1), [2 + 8, -2, .5, .25], 'movealign and collide bits, depth
 assert.deepEqual(at(2), [0, 5, 0, 0]);
 assert.deepEqual(at(6), [255, 255, 255, 255], 'spawn colour multipliers default to 255');
 assert.deepEqual(at(10), [1e9, 0, 0, 1], 'parent life, max rate, delay, gain (default 1)');
-assert.deepEqual(at(14).slice(2), [22, 2], 'track 3 starts after the 22-texel header and has 2 keys');
-assert.deepEqual(at(21), [22 + 2, 1, 0, 0], 'track 16 (the rate) follows');
-assert.deepEqual(at(23), [0, .3333, 20, 60]);
+assert.deepEqual(at(14).slice(2), [24, 2], 'track 3 starts after the 24-texel header and has 2 keys');
+assert.deepEqual(at(21), [24 + 2, 1, 0, 0], 'track 16 (the rate) follows');
+assert.deepEqual(at(25), [0, .3333, 20, 60]);
+// A touch trigger's box (sm_pier_1's rain boxes): bit 128 and texels 22-23; the shader hides it while the feet are outside.
+const gated = P.packTroika({...flame, trigger: [[1, 2, 3], [4, 5, 6]]});
+assert.equal(gated[4], 2 + 8 + 128);
+assert.deepEqual([...gated.slice(22 * 4, 24 * 4)], [1, 2, 3, 0, 4, 5, 6, 0]);
+assert.ok(P.create(THREE, [flame], [{...emitter, batch: 'b'}], {b: {texture}}).meshes[0].material.vertexShader.includes('K(22).xyz'));
 const mixed = P.create(THREE, [t, flame], [emitter, {...emitter, template: 1, batch: 'b', floor: -64}], {a: {texture}, b: {texture}});
 assert.equal(mixed.meshes.length, 2);
 assert.ok(!mixed.meshes[0].material.vertexShader.includes('uKeys') && mixed.meshes[1].material.vertexShader.includes('uKeys'));

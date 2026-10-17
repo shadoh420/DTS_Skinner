@@ -204,8 +204,26 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
 
   Drawn: emitters that start active, unparented, at a world place (`attach_type` 0, 1 or −1). Also timers' looping
   child emitters (WaterDrops_Timer). Also bursts of particles that loop or outlive the visit (stars, city lights).
-  `func_particle` spreads its children over the brush's box (inferred from C_EnvParticle's box callback). Emitters
-  in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
+  `func_particle` spreads its children over the brush's box. vampire.dll's CFuncParticle spawn (near 0x100fcb50) sets
+  `m_nAttachType` 15 and `m_flSizeScalar` = the brush's volume / 128³, clamped to [0.01, 100]. It uses the engine's
+  submodel bounds, which are the BSP's grown 1 unit a side, and it prints "emitter's scale value(…) is out of range,
+  clamping!" when it clamps. client.dll's attach-15 callback (C_FuncParticle::FuncParticleCallback, 0x100b33d0) puts
+  each instance at a uniform point of the box, in 1% steps per axis. It also sets the instance's rate multiplier
+  (engine.dll inst+0x19c, which scales rates and bursts) to `m_flSizeScalar` × the current `ramp_scale` (vampire.dll's
+  datadesc maps `ramp_scale` to m_fRateScaleTarget). So a box's density is rate × `ramp_scale` × the size scalar:
+  sm_pier_1's big rain boxes give 40 × 0.15 × 100 = 600 drops a second, and the burning mansions' small firebrushes
+  0.01–0.5× their authored rates. Game-checked 2026-10-17: in sm_pier_1 the game prints 400.66 for
+  rain_emitter_volume_1 and 121.18 for volume_9, the bounds rule exactly (evidence `skinner-evidence\vtmb-rainbox\game`).
+  The attach-9 callback (0x100b1fd0) and the box weights near 0x100b0f04 are not func_particle's.
+  Any spawn that the fill cap would thin below 1% is skipped (the rain boxes' `rainfog`), and a rate over 100 a second
+  is fired in bunches, because particles.js fires an emitter at most every 0.01 s.
+  Emitters in the 3D sky area draw in the sky pass. Colliding particles (drips) stop at the floor below their emitter.
+
+  Touch-triggered emitters: an inactive emitter that a `trigger_multiple` (not StartDisabled) turns on at
+  OnStartTouch and off at OnEndTouch draws while the page's feet (64 below the eye) are where the player's hull
+  (32 × 32 × 72, Source's standing hull, inferred) would touch the trigger's box. Only sm_pier_1's ten
+  `Rain_Box_emitter` brushes (nine names; two share `rain_emitter_volume_6`) use it; its player start is in
+  `rain_emitter_trigger_1`.
 
   Rain around the player (`attach_type` 11, `rain_follow_emitter`) follows the page's eye. client.dll's player-box
   callback spawns its drops in a box of ± `spawnbounds` (default 512; `bounds` is not a key) about the player's feet,
@@ -217,8 +235,7 @@ Read from SurrealEngine (format and behaviour reference only) and not compared w
   the others stay at ramp_scale 0. The rain's 500-unit haze (`rainfog`) is not drawn.
 
   Not drawn, with counts in each scene's `effects.troika_outcomes`:
-  - triggered or parented emitters, among them sm_pier_1's rain boxes, which its `trigger_multiple` volumes turn on
-    while the player stands in them;
+  - other triggered emitters (scripts, relays, one-way triggers) and parented ones;
   - effects that play once at map start;
   - moving child emitters (moths, airplanes);
   - children of sprite particles;
