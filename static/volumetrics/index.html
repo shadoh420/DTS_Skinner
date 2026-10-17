@@ -71,7 +71,7 @@
   window.gpuTimes = () => Object.fromEntries(Object.entries(passes).filter(([, pass]) => pass.used).map(([name, pass]) => [name, +median(pass.samples).toFixed(3)]));
 
   // Uniforms shared by every material: the preset's keys (Skinner Sky's defaults), the clouds' and fog's own keys.
-  const defaults = {...t1Skies.skinnerDefaults, cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1};
+  const defaults = {...t1Skies.skinnerDefaults, ...t1Skies.volumetricDefaults};
   const [noise, core, clouds, fog, presets] = await Promise.all([
     new THREE.TextureLoader().loadAsync('/static/skinner-sky/SkinnerSkyNoise.png'),
     ...[query.get('core') ?? '/static/skinner-sky/SkinnerSky.cginc', 'SkinnerClouds.cginc', 'SkinnerFog.cginc'].map(url => fetch(url).then(response => response.text())),

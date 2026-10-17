@@ -171,21 +171,105 @@ window.t1Skies = {
     starIntensity: 0, starDensity: 250, milkyWay: 0, cloudCoverage: .5, cloudSoftness: .15, cloudScale: 20, cloudHeight: 2,
     cloudSpeed: [.02, .005, 0], cloudColor: [1, 1, 1], cloudDarkness: 1, cloudOpacity: 1, cirrusCoverage: .3, cirrusScale: 150,
     cirrusSpeed: [.04, .01, 0], auroraIntensity: 0, auroraColor: [.1, 1, .4], auroraColor2: [.6, .2, 1]},
-  async skinner({entry, radius, group, loadTexture, time}) {
-    const [noise, core] = await Promise.all([loadTexture(entry.base + 'SkinnerSkyNoise.png', true),
-      fetch(entry.base + 'SkinnerSky.cginc').then(response => response.ok ? response.text() : null, () => null)]);
-    if (!noise || !core) return;
-    const uniforms = {skyNoise: {value: noise}, uTime: time}, declared = [];
-    for (const [key, fallback] of Object.entries(this.skinnerDefaults)) {
+  // Drawn as docs/volumetrics.md: the air and volumetric clouds go into a 1024x256 sky texture, 1/8 of its rows a
+  // frame (all of it on the first draw); the screen adds the sun, stars, moon and aurora per pixel. That costs about a
+  // quarter of the per-pixel sky. Height fog (SkinnerFog.cginc, lit by the sky's horizon ring) is a pass over the
+  // finished frame from its depth: fog.target() is where the viewer draws sky and world, fog.draw() puts them on screen.
+  // The world is already display colour, so the fog's colour goes through the sky's exposure and ACES before the mix.
+  // The target is not multisampled: at 2560x1440 (RX 7800 XT) a 4x one cost 2.6 ms a frame against 0.12 ms for sky and
+  // fog without it, so with the fog on the world has no antialiasing. The sky ball stays in the viewer's sky group, drawn
+  // with the world; update() draws the sky texture's band and the ring before the frame.
+  // `ground`: the height the fog's fogBase is measured from (the map's start).
+  volumetricDefaults: {cloudThickness: 1.5, fogDensity: .0012, fogHeight: 40, fogBase: 0, fogBrightness: 1},
+  async skinner({entry, radius, group, loadTexture, time, ground = 0}) {
+    const text = url => fetch(url).then(response => response.ok ? response.text() : null, () => null);
+    const [noise, core, clouds, fog] = await Promise.all([loadTexture(entry.base + 'SkinnerSkyNoise.png', true),
+      text(entry.base + 'SkinnerSky.cginc'), text('/static/volumetrics/SkinnerClouds.cginc'), text('/static/volumetrics/SkinnerFog.cginc')]);
+    if (!noise || !core || !clouds || !fog) return null;
+    const U = {skyNoise: {value: noise}, uTime: time, layerCoverage: {value: 0}, pano: {value: null}, ring: {value: null}}, declared = [];
+    for (const [key, fallback] of Object.entries({...this.skinnerDefaults, ...this.volumetricDefaults})) {
       // The type is the declaration's (the default's): a preset's number for a colour fills all three, a list for a number gives its first.
       const value = entry.sky[key] ?? fallback, vector = Array.isArray(fallback);
-      uniforms[key] = {value: vector ? new THREE.Vector3(...[].concat(value, value, value).slice(0, 3)) : [].concat(value)[0]};
+      U[key] = {value: vector ? new THREE.Vector3(...[].concat(value, value, value).slice(0, 3)) : [].concat(value)[0]};
       declared.push(`uniform ${vector ? 'vec3' : 'float'} ${key};`);
     }
-    const fragmentShader = `uniform sampler2D skyNoise; uniform float uTime; ${declared.join(' ')} varying vec3 vDir;\n#define UNROLL\n${core}
-      void main() { gl_FragColor = vec4(pow(aces(skinnerSky(normalize(vDir)) * exposure), vec3(1. / 2.2)) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.); }`;
-    this.ball(new THREE.ShaderMaterial({uniforms, vertexShader: this.vertexShader, fragmentShader,
-      extensions: {derivatives: true}, blending: THREE.NoBlending}), radius, group);
+    U.fogBase.value += ground;
+    // The core's own 2.5D cloud layer reads layerCoverage (0): the volumetric clouds replace it.
+    const header = (prefix = '') => `uniform sampler2D skyNoise, pano, ring; uniform float uTime, layerCoverage; ${declared.join(' ')}
+      #define UNROLL\n#define SAMPLE_LOD(s, uv, lod) textureLod(s, uv, lod)\n${prefix}#define cloudCoverage layerCoverage\n${core}\n#undef cloudCoverage\n${clouds}\n${fog}
+      vec3 display(vec3 c) { return pow(aces(c * exposure), vec3(1. / 2.2)); }\n`;
+    const quadVertex = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
+    const flat = new THREE.Camera(), quad = (fragmentShader, uniforms = U) => new THREE.Scene().add(Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
+      new THREE.ShaderMaterial({uniforms, vertexShader: quadVertex, fragmentShader, depthTest: false, depthWrite: false})), {frustumCulled: false}));
+    const half = {type: THREE.HalfFloatType, depthBuffer: false, wrapS: THREE.RepeatWrapping, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter};
+    const pano = new THREE.WebGLRenderTarget(1024, 256, half), ring = new THREE.WebGLRenderTarget(64, 1, half);
+    pano.scissorTest = true;
+    U.pano.value = pano.texture;
+    U.ring.value = ring.texture;
+    const panoScene = quad(header('#define CLOUD_STEPS 24\n#define SKINNER_SKIP_BEHIND\n') + `
+      void main() { vec3 d = panoDir(gl_FragCoord.xy / vec2(1024., 256.)), s = skinnerSky(d); vec4 c = skinnerClouds(d, s); gl_FragColor = vec4(s * c.a + c.rgb, c.a); }`);
+    // The fog's colour by azimuth: the low sky averaged over 72 degrees round and 2-26 degrees up (a sharp ring shows
+    // through thin fog as spokes).
+    const ringScene = quad(header() + `void main() {
+      vec3 s = vec3(0., 0., 0.);
+      for (int i = -3; i <= 3; i++) for (int j = 0; j < 3; j++) s += texture2D(pano, panoUV(toward(gl_FragCoord.x / 64. * 360. + float(i) * 12., 2. + float(j * j) * 6.))).rgb;
+      gl_FragColor = vec4(s / 21., 1.);
+    }`);
+    this.ball(new THREE.ShaderMaterial({uniforms: U, vertexShader: this.vertexShader, extensions: {derivatives: true}, blending: THREE.NoBlending, fragmentShader: header() + `varying vec3 vDir;
+      void main() {
+        vec3 d = normalize(vDir);
+        vec4 c = texture2D(pano, panoUV(d));
+        vec3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.));
+        gl_FragColor = vec4(display(s) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
+      }`}), radius, group);
+    const F = {...U, sceneColor: {value: null}, sceneDepth: {value: null}, projectionInverse: {value: null}, viewInverse: {value: null}, eyeZ: {value: 0}};
+    const fogScene = quad(header() + `uniform sampler2D sceneColor, sceneDepth; uniform mat4 projectionInverse, viewInverse; uniform float eyeZ; varying vec2 vUv;
+      void main() {
+        float z = texture2D(sceneDepth, vUv).r;
+        vec4 v = projectionInverse * vec4(vUv * 2. - 1., z * 2. - 1., 1.);
+        v /= v.w;
+        vec3 w = normalize((viewInverse * vec4(v.xyz, 0.)).xyz), rd = vec3(w.x, -w.z, w.y);
+        float through = fogThrough(eyeZ, rd, z >= 1. ? 1e5 : length(v.xyz));
+        gl_FragColor = vec4(mix(display(texture2D(ring, vec2(panoUV(rd).x, .5)).rgb * fogBrightness), texture2D(sceneColor, vUv).rgb, through), 1.);
+      }`, F);
+    let frame = null, row = 0, whole = true;
+    const size = new THREE.Vector2();
+    return {
+      uniforms: U,  // For checks (skinnerT1Maps.skyPass()).
+      update(renderer) {
+        const current = renderer.getRenderTarget(), rows = whole ? 256 : 32;
+        pano.scissor.set(0, whole ? 0 : row, 1024, rows);
+        renderer.setRenderTarget(pano);
+        renderer.render(panoScene, flat);
+        if (whole) whole = false; else row = (row + rows) % 256;
+        renderer.setRenderTarget(ring);
+        renderer.render(ringScene, flat);
+        renderer.setRenderTarget(current);
+      },
+      fog: {
+        target(renderer) {
+          renderer.getDrawingBufferSize(size);
+          if (frame?.width !== size.x || frame?.height !== size.y) {
+            frame?.dispose();
+            frame = new THREE.WebGLRenderTarget(size.x, size.y, {depthTexture: new THREE.DepthTexture(size.x, size.y)});
+            F.sceneColor.value = frame.texture;
+            F.sceneDepth.value = frame.depthTexture;
+          }
+          return frame;
+        },
+        draw(renderer, camera) {
+          F.projectionInverse.value = camera.projectionMatrixInverse;
+          F.viewInverse.value = camera.matrixWorld;
+          F.eyeZ.value = camera.position.y;
+          renderer.setRenderTarget(null);
+          renderer.render(fogScene, flat);
+        },
+      },
+      dispose() {
+        for (const object of [panoScene, ringScene, fogScene]) object.traverse(mesh => { mesh.geometry?.dispose(); mesh.material?.dispose(); });
+        for (const target of [pano, ring, frame]) { target?.depthTexture?.dispose(); target?.dispose(); }
+      },
+    };
   },
 
   // Quake: the sky texture's halves as two layers, front over back (index 0 clear), scrolling at 16 and 8 texels a

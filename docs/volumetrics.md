@@ -107,6 +107,30 @@ or the ground blows out.
 - Evidence: `C:\tmp\skinner-evidence\volumetrics\unity` holds the frames, `timing.txt`, `compare.txt` and `unity.log`.
   `unity-diag-run4` holds the run that found the zeroed values.
 
+## On the Maps pages
+
+The Sky list's Skinner Sky presets on the T1, Starsiege and Earthsiege Maps pages draw this way
+(`static/t1-maps/skies.js` `skinner`, shared by those pages). The default tier is fixed: 1024×256, 24 steps, 1/8 of
+the rows a frame.
+- **Sky.** A ball in the viewer's sky group reads the sky texture and adds `skinnerBehind`, through exposure, ACES and
+  2.2. The map's haze takes its colour from that sky, as before.
+- **Height fog.** With Fog on, sky and world are drawn into a target with a depth texture, then `SkinnerFog.cginc` puts
+  them on screen. `fogBase` counts from the map's first viewpoint height. The world is already display colour, so the
+  ring colour goes through the sky's tone map before the mix. The map's own linear haze stays on under it.
+- **Cost**, measured 2026-10-17 on Raindance at 2560×1440 (RX 7800 XT, the Claude app's browser pane, hidden), with
+  the world hidden so only the sky is timed:
+
+  | | Afternoon | Moonlit |
+  |---|---|---|
+  | Merged sky, per pixel (main) | 0.85–0.92 ms | 0.89–0.96 ms |
+  | Volumetric sky, fog off | 0.06 ms | 0.06 ms |
+  | Volumetric sky, fog on | 0.12 ms | not measured |
+  | Same, fog target multisampled 4× | 2.6–3.0 ms | 2.8–3.0 ms |
+
+  The fog target is therefore not multisampled: with Fog on and a Skinner Sky, the world has no antialiasing.
+  Whole frames with the world drawn swung 2.6–5.7 ms between runs in the hidden pane, both with and without the fog
+  pass, so the fog's whole-frame cost is not resolved beyond that.
+
 ## Limits
 
 - Clouds don't move with the player, and nothing can fly into them. They are kilometres up; the sky texture is drawn
@@ -117,7 +141,6 @@ or the ground blows out.
 - Fog has no light shafts: there is no shadow map in the march. A shaft tier (a low-resolution march of the shadow
   map) would be a separate, measured option.
 - The test scene's lighting is rough: the sun's colour comes from the same air model, and the fill light is a guess.
-- The T1 Maps pages still draw the merged sky; only the test page and the Unity files above use this.
-  The HLSL wrapper needs three macros beyond `Skinner/Sky`'s: `vec4`, `atan(y, x)` as `atan2`, and `SAMPLE_LOD` as
+- The HLSL wrapper needs three macros beyond `Skinner/Sky`'s: `vec4`, `atan(y, x)` as `atan2`, and `SAMPLE_LOD` as
   `tex2Dlod` with the v flip. The march loop must sample with an explicit level.
 - Evidence: `C:\tmp\skinner-evidence\volumetrics` holds the bench table, the screenshots and the fxc wrapper.
