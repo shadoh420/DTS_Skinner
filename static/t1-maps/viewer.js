@@ -746,8 +746,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       : new THREE.PointsMaterial({color: new THREE.Color().setScalar(identity * 1.5), size: length * Q3_UNIT, transparent: true, opacity: .8})});
   const STILL = [0, 0, 0];
   // The Weather settings panel's live values: a share of each fall's own count (up to MOST times it) and, once moved,
-  // a wind (m/s east, north) in place of each fall's own sideways drift, borrowed wind included.
-  const MOST = 3, tuning = {intensity: 1, wind: null};
+  // a wind (m/s east, north) in place of each fall's own sideways drift, borrowed wind included; and the storms' rates as
+  // a share of their own (their clocks between strikes or drops run that much faster).
+  const MOST = 3, tuning = {intensity: 1, wind: null, strikes: 1, drops: 1};
   function buildBox({rain, count, radius, step, streak, material}) {
     const most = Math.min(count * MOST, 12000), size = radius * 2, drops = Float32Array.from({length: most * 3}, () => Math.random() * size);
     const geometry = new THREE.BufferGeometry();
@@ -961,8 +962,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Tribes 2 lightning (environment.tsx Lightning, V12 LightningBolt): three bolts a strike, each 10 major nodes
   // within 30° of the line, each span 4 minor nodes within 15° redrawn every frame until it fades, with splits.
   // A strike lands in the object's box (scale) centred on this map's camera, moved to between 100 m off and 80% of the
-  // view, down to the terrain.
-  // ponytail: buildings do not stop a strike; the box's own place on its mission means nothing on another map.
+  // view, down to the terrain or a building's roof.
+  // ponytail: the box's own place on its mission means nothing on another map.
   function generateNodes(start, end, count, maxAngle) {
     const dist = Math.hypot(...v3.sub(end, start)), minStep = dist / (count - 1), maxStep = minStep / Math.cos(THREE.MathUtils.degToRad(maxAngle));
     const nodes = [start];
@@ -990,6 +991,20 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!off) dx = 1;
     return [x + dx * reach, ground(x + dx * reach, z + dz * reach), z + dz * reach];
   }
+  // Where the line from `from` to `to` first meets a placed object (the T1 pages draw no water), or null: bolts and
+  // fireballs stop on buildings as on the terrain. ponytail: Three's plain raycast (bounding spheres, then every
+  // triangle of a mesh they pass), fine for a few fireballs a frame; a BVH if high rates over big bases cost.
+  const blockRay = new THREE.Raycaster(), rayFrom = new THREE.Vector3(), rayDir = new THREE.Vector3();
+  function blocked(from, to) {
+    const far = Math.hypot(...v3.sub(to, from));
+    if (!far) return null;
+    blockRay.set(rayFrom.fromArray(from), rayDir.fromArray(v3.scale(v3.sub(to, from), 1 / far)));
+    blockRay.far = far;
+    const hit = blockRay.intersectObjects(occluders.filter(mesh => mesh.visible), false)[0];  // Hidden NPCs too.
+    return hit ? hit.point.toArray() : null;
+  }
+  // The terrain or a roof under (x, z), from height `top` down.
+  const landing = (x, top, z) => blocked([x, top, z], [x, ground(x, z), z]) || [x, ground(x, z), z];
   function buildT2Lightning(objects, base) {
     const strikes = [], setups = objects.map(object => {
       const [sx, sy, sz] = vecOf(object.scale, [512, 512, 300]);
@@ -1006,11 +1021,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     return delta => {
       const dt = Math.min(delta, .25);
       for (const setup of setups) {
-        setup.timer += dt;
+        setup.timer += dt * tuning.strikes;
         for (const every = 60 / Math.max(.01, setup.perMinute); setup.timer > every; setup.timer -= every) {
-          const ground = strikePoint(setup.spread), top = ground[1] + setup.height;
+          const [x, floor, z] = strikePoint(setup.spread), top = floor + setup.height, end = landing(x, top, z);
           strikes.push({age: 0, setup, bolts: [0, 1, 2].map(() => {
-            const bolt = makeBolt([ground[0] + random(-setup.startRadius, setup.startRadius), top, ground[2] + random(-setup.startRadius, setup.startRadius)], ground, setup.width, 10, 30, 4, 15);
+            const bolt = makeBolt([x + random(-setup.startRadius, setup.startRadius), top, z + random(-setup.startRadius, setup.startRadius)], end, setup.width, 10, 30, 4, 15);
             for (let i = 0; i < bolt.major.length - 1; i++) {
               if (Math.random() > .3) continue;
               const a = bolt.major[i], seg = v3.sub(bolt.major[i + 1], a);
@@ -1090,7 +1105,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     };
     const bolt = () => {
       const away = [crandom(), crandom()], top = v3.add(camera.position.toArray(), [away[0] * 400 * Q3_UNIT, random(600, 1000) * Q3_UNIT, away[1] * 400 * Q3_UNIT]);
-      const end = [top[0], ground(top[0], top[2]), top[2]];
+      const end = landing(...top);
       for (let n = Math.floor(random(1, 3)); n--;) {
         // DoBoltSeg: the line's offset wanders from (10, 10, 10) as it goes, pulled back to the end by the fraction done.
         const fwd = v3.norm(v3.sub(end, top)), rt = v3.norm(v3.cross(fwd, [1, 0, 0])), up = v3.cross(fwd, rt), chaos = random(5, 8);
@@ -1105,7 +1120,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     };
     return (delta, near) => {
-      for (wait -= delta; wait <= 0;) {
+      for (wait -= count ? delta : delta * tuning.strikes; wait <= 0;) {  // The rate speeds the waits between flashes.
         if (count) {
           count--;
           if (count === 0 || count % 2 === 0) { light(false); wait += count === 0 ? pick(1000, 12000) : count === 2 ? pick(150, 450) : pick(50, 150); }
@@ -1133,7 +1148,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // dropDir to come down within dropRadius, held to startVelocity as its terminal speed while gravity bends it. Its
   // trail emitters and, where it meets the terrain, its explosion's burst and emitters are camera-facing particles
   // with their datablocks' lives, colours, sizes, drag and gravity (each texture's first frame), added unless
-  // useInvAlpha. ponytail: buildings and water do not stop one; no sub-explosion shapes or camera shake; at most
+  // useInvAlpha; a building stops one as the terrain does. ponytail: no sub-explosion shapes or camera shake; at most
   // PARTICLE_CAPACITY particles a texture, the oldest dropped first.
   const PARTICLE_CAPACITY = 1024;
   function particlePool(texture) {
@@ -1202,7 +1217,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const dt = Math.min(delta, .25);
       if (dt <= 0) return;
       for (const setup of setups) {
-        setup.timer += dt;
+        setup.timer += dt * tuning.drops;
         for (const every = 60 / Math.max(.01, setup.perMinute); setup.timer > every; setup.timer -= every) {
           // Launched back along its path from where it would land, so that it starts dropHeight up.
           const vel = v3.scale(randomDir(setup.dir, ...setup.angles), setup.speed), turn = Math.random() * 2 * Math.PI, along = setup.radius * random(.1, 1);
@@ -1215,8 +1230,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         ball.vel[1] -= 9.81 * dt;
         const speed = Math.hypot(...ball.vel);
         if (speed > ball.setup.speed) ball.vel = v3.scale(ball.vel, ball.setup.speed / speed);
-        const next = v3.add(ball.pos, v3.scale(ball.vel, dt)), floor = ground(next[0], next[2]), hit = next[1] <= floor;
-        const end = hit ? [next[0], floor, next[2]] : next, back = v3.norm(v3.scale(ball.vel, -1));
+        const next = v3.add(ball.pos, v3.scale(ball.vel, dt)), floor = ground(next[0], next[2]), under = next[1] <= floor;
+        const toward = under ? [next[0], floor, next[2]] : next, struck = blocked(ball.pos, toward), hit = under || Boolean(struck);
+        const end = struck || toward, back = v3.norm(v3.scale(ball.vel, -1));
         ball.setup.trails.forEach((trail, i) => {  // emitPeriodic: one every period, spread along this frame's path.
           for (ball.timers[i] += dt; ball.timers[i] >= trail.period; ball.timers[i] -= trail.period)
             emit(trail, v3.add(ball.pos, v3.scale(v3.sub(end, ball.pos), 1 - ball.timers[i] / dt)), back, ball.vel);
@@ -1243,7 +1259,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     weatherGroup.clear();
     weather = null;
     scene.fog?.color.copy(haze);  // A flash may be on.
-    Object.assign(tuning, {intensity: 1, wind: null});
+    Object.assign(tuning, {intensity: 1, wind: null, strikes: 1, drops: 1});
     const chosen = weathers.find(entry => entry.id === id), found = chosen?.weather, steps = [], storms = [];
     if (chosen?.renderer === 't1') steps.push(buildBox(t1Box(found)));
     else if (chosen?.renderer === 'q3') steps.push(...found.specs.map(spec => buildBox(q3Box(spec, found.identity))));
@@ -1253,7 +1269,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (found?.storm?.lightning) storms.push(buildRavenLightning(found.storm.lightning, found.identity));
     if (found?.lightning) storms.push(buildT2Lightning(found.lightning, chosen.base));
     if (found?.fireballs) storms.push(buildFireballs(found.fireballs, chosen.base));
-    weatherPanel(steps[0]?.wind, Boolean(wind));
+    weatherPanel(steps[0]?.wind, Boolean(wind), {lightning: Boolean(found?.storm?.lightning || found?.lightning), fireballs: Boolean(found?.fireballs)});
     if (!steps.length && !storms.length) return;
     for (const building of shelterQueue) addShelter(building);
     weather = delta => {
@@ -1263,10 +1279,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  // Weather settings: the selected weather's intensity and wind, live, as the Skinner Sky panel tunes the sky. Reset
-  // shows the weather again with its own values; nothing is saved.
+  // Weather settings: the selected weather's intensity, wind and storm rates, live, as the Skinner Sky panel tunes the
+  // sky; a row shows when the weather has what it tunes. Reset shows the weather again with its own values; each row's
+  // ↺ puts back that one. Nothing is saved.
   let weatherTune = null;
-  function weatherPanel(own, gusts) {
+  function weatherPanel(own, gusts, {lightning, fireballs}) {
     if (!weatherTune) {
       weatherTune = Object.assign(document.createElement('details'), {id: 'weatherTune'});
       weatherTune.append(Object.assign(document.createElement('summary'), {textContent: 'Weather settings'}));
@@ -1274,13 +1291,18 @@ window.addEventListener('DOMContentLoaded', async () => {
         const label = document.createElement('label'), range = Object.assign(document.createElement('input'), {type: 'range', min, max, step, id}), shown = document.createElement('output');
         range.addEventListener('input', () => { shown.textContent = range.value; apply(+range.value); });
         range.addEventListener('change', () => range.blur());  // Back to WASD.
-        label.append(text, range, shown);
+        label.append(text, range, shown, undoButton(range, 'input'));
         weatherTune.append(label);
       };
       slider('Intensity (% own)', 'weatherIntensity', 0, MOST * 100, 5, value => { tuning.intensity = value / 100; });
-      const wind = () => { tuning.wind = [+$('weatherEast').value, +$('weatherNorth').value]; };
+      const wind = () => {  // Both back at their own: the fall's own drift and gusts again.
+        const [east, north] = [$('weatherEast'), $('weatherNorth')];
+        tuning.wind = east.value === east.dataset.own && north.value === north.dataset.own ? null : [+east.value, +north.value];
+      };
       slider('Wind east (m/s)', 'weatherEast', -100, 100, .1, wind);
       slider('Wind north (m/s)', 'weatherNorth', -100, 100, .1, wind);
+      slider('Lightning rate (% own)', 'weatherStrikes', 0, 1000, 5, value => { tuning.strikes = value / 100; });
+      slider('Fireball rate (% own)', 'weatherDrops', 0, 1000, 5, value => { tuning.drops = value / 100; });
       const reset = Object.assign(document.createElement('button'), {textContent: 'Reset'}), note = Object.assign(document.createElement('pre'), {id: 'weatherTuneNote'});
       reset.addEventListener('click', () => { showWeather(settings.weather); reset.blur(); });
       const buttons = document.createElement('div');
@@ -1288,15 +1310,20 @@ window.addEventListener('DOMContentLoaded', async () => {
       weatherTune.append(buttons, note);
       canvas.parentElement.append(weatherTune);
     }
-    weatherTune.hidden = !own;
-    if (!own) return;
-    const set = (id, value) => { $(id).value = value; $(id).nextSibling.textContent = $(id).value; };
-    set('weatherIntensity', 100);
-    const reach = Math.max(100, ...own.map(v => Math.ceil(Math.abs(v))));  // A Tribes 2 drift can pass 100 m/s.
+    weatherTune.hidden = !own && !lightning && !fireballs;
+    const set = (id, value, shown) => {
+      $(id).parentElement.style.display = shown ? '' : 'none';
+      $(id).value = value;
+      $(id).dataset.own = $(id).nextSibling.textContent = $(id).value;
+    };
+    const reach = Math.max(100, ...(own || []).map(v => Math.ceil(Math.abs(v))));  // A Tribes 2 drift can pass 100 m/s.
     for (const id of ['weatherEast', 'weatherNorth']) Object.assign($(id), {min: -reach, max: reach});
-    set('weatherEast', own[0].toFixed(1));
-    set('weatherNorth', own[1].toFixed(1));
-    $('weatherTuneNote').textContent = gusts ? 'Moving the wind replaces its gusts.' : '';
+    set('weatherIntensity', 100, own);
+    set('weatherEast', own ? own[0].toFixed(1) : 0, own);
+    set('weatherNorth', own ? own[1].toFixed(1) : 0, own);
+    set('weatherStrikes', 100, lightning);
+    set('weatherDrops', 100, fireballs);
+    $('weatherTuneNote').textContent = own && gusts ? 'Moving the wind replaces its gusts.' : '';
   }
 
   function applySettings() {
@@ -1362,47 +1389,63 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Skinner Sky settings: a panel over the map while a Skinner Sky preset is the sky (skies.js skinner), with the
   // volumetrics test page's controls (static/volumetrics/index.html). Changes are live and not saved; Copy values puts
   // the changed keys on the clipboard as presets.json writes them. While the panel is open each frame is timed on the GPU.
-  const skyQuality = {width: 1024, height: 256, steps: 24, rows: 8}, gl = renderer.getContext();
+  // Reset puts back every value, quality included; each row's ↺ puts back that one.
+  const SKY_QUALITY = {width: 1024, height: 256, steps: 24, rows: 8}, skyQuality = {...SKY_QUALITY}, gl = renderer.getContext();
   const TUNED = [['Cloud coverage', 'cloudCoverage', 0, 1, .01], ['Cloud thickness km', 'cloudThickness', .2, 4, .1],
     ['Cloud darkness', 'cloudDarkness', 0, 3, .05], ['Cloud softness', 'cloudSoftness', .05, 1, .01], ['Cloud tile km', 'cloudScale', 5, 80, 1],
     ['Cloud base km', 'cloudHeight', .5, 6, .1], ['Fog density /km', 'fogDensity', 0, 8, .05, 1000], ['Fog height m', 'fogHeight', 5, 400, 5],
     ['Fog brightness', 'fogBrightness', .2, 2, .05], ['Exposure', 'exposure', .2, 15, .1]];
   const timer = gl.getExtension('EXT_disjoint_timer_query_webgl2'), timings = {pending: [], ms: [], frames: 0};
   let tune = null, tuned = {};
+  // A settings row's ↺: its control back to the value in its data-own, as if moved there by hand.
+  function undoButton(control, event) {
+    const button = Object.assign(document.createElement('button'), {textContent: '↺', title: 'Back to its own value', type: 'button'});
+    button.addEventListener('click', () => { control.value = control.dataset.own; control.dispatchEvent(new Event(event)); button.blur(); });
+    return button;
+  }
   function skyPanel(pass) {
     if (!tune) {
       tune = Object.assign(document.createElement('details'), {id: 'skyTune'});
       tune.append(Object.assign(document.createElement('summary'), {textContent: 'Skinner Sky settings'}));
-      const row = (text, control, shown = null) => { const label = document.createElement('label'); label.append(text, control, ...(shown ? [shown] : [])); tune.append(label); };
-      const choice = (text, options, value, apply) => {
-        const select = document.createElement('select');
-        select.append(...options.map(([name, v]) => new Option(name, v, false, v === value)));
+      const row = (text, control, shown, event) => { const label = document.createElement('label'); label.append(text, control, shown, undoButton(control, event)); tune.append(label); };
+      const choice = (text, options, key, apply) => {
+        const select = Object.assign(document.createElement('select'), {id: 'tune-' + key});
+        select.dataset.own = SKY_QUALITY[key];
+        select.append(...options.map(([name, v]) => new Option(name, v, false, v === SKY_QUALITY[key])));
         select.addEventListener('change', () => { apply(+select.value); skyPass?.quality?.(skyQuality); select.blur(); });
-        row(text, select);
+        row(text, select, document.createElement('span'), 'change');
       };
-      choice('Sky texture', [['512×128', 512], ['1024×256', 1024], ['2048×512', 2048]], 1024, width => Object.assign(skyQuality, {width, height: width / 4}));
-      choice('Rows per frame', [['all', 1], ['1/4', 4], ['1/8', 8], ['1/16', 16]], 8, rows => { skyQuality.rows = rows; });
-      choice('Steps', [16, 24, 32, 48].map(n => [n, n]), 24, steps => { skyQuality.steps = steps; });
+      choice('Sky texture', [['512×128', 512], ['1024×256', 1024], ['2048×512', 2048]], 'width', width => Object.assign(skyQuality, {width, height: width / 4}));
+      choice('Rows per frame', [['all', 1], ['1/4', 4], ['1/8', 8], ['1/16', 16]], 'rows', rows => { skyQuality.rows = rows; });
+      choice('Steps', [16, 24, 32, 48].map(n => [n, n]), 'steps', steps => { skyQuality.steps = steps; });
       for (const [text, key, min, max, step, scale = 1] of TUNED) {
         const range = Object.assign(document.createElement('input'), {type: 'range', min, max, step, id: 'tune-' + key}), shown = document.createElement('output');
         range.addEventListener('input', () => {
           const value = +range.value / scale;
           shown.textContent = range.value;
-          tuned[key] = value;
+          if (range.value === range.dataset.own) delete tuned[key];  // Copy values lists only what differs from the preset.
+          else tuned[key] = value;
           if (!skyPass?.uniforms) return;
           skyPass.uniforms[key].value = value;
           if (key.startsWith('cloud')) skyPass.redraw();  // The clouds live in the sky texture; fog and exposure don't.
         });
         range.addEventListener('change', () => range.blur());  // Back to WASD.
-        row(text, range, shown);
+        row(text, range, shown, 'input');
       }
       const copy = Object.assign(document.createElement('button'), {textContent: 'Copy values'}), reset = Object.assign(document.createElement('button'), {textContent: 'Reset'});
-      const note = Object.assign(document.createElement('pre'), {id: 'skyTuneTime', textContent: 'GPU time: waiting'}), values = document.createElement('pre');
+      // Firefox keeps the timer extension behind about:config's webgl.enable-privileged-extensions.
+      const note = Object.assign(document.createElement('pre'), {id: 'skyTuneTime', textContent: timer ? 'GPU time: waiting'
+        : 'GPU time: this browser does not offer GPU timers (EXT_disjoint_timer_query_webgl2). Chrome and Edge do; in Firefox, set webgl.enable-privileged-extensions in about:config.'}), values = document.createElement('pre');
       copy.addEventListener('click', () => {  // Shown too, in case the browser refuses the clipboard.
         values.textContent = Object.entries(tuned).map(([key, value]) => `"${key}": ${+value.toFixed(5)}`).join(', ') || '(nothing changed)';
         navigator.clipboard?.writeText(values.textContent).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy values'; }, 1500); }, () => {});
       });
-      reset.addEventListener('click', () => showSky(settings.sky));  // The preset's own values again.
+      reset.addEventListener('click', () => {  // The preset's own values and the default quality again.
+        Object.assign(skyQuality, SKY_QUALITY);
+        for (const key of ['width', 'rows', 'steps']) $('tune-' + key).value = SKY_QUALITY[key];
+        showSky(settings.sky);
+        reset.blur();
+      });
       const buttons = document.createElement('div');
       buttons.append(copy, reset);
       tune.append(buttons, values, note);
@@ -1416,6 +1459,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     for (const [, key, , , , scale = 1] of TUNED) {
       const range = $('tune-' + key);
       range.value = pass.uniforms[key].value * scale;
+      range.dataset.own = range.value;  // As the range rounds it, so a ↺ or a drag back matches it.
       range.nextSibling.textContent = range.value;
     }
   }
