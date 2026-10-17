@@ -100,8 +100,7 @@ def variants(tiles):
 
 
 def match_t1(target, source, target_tiles, source_tiles):
-    """Per target tile: (source tile, turn) or None. Exact corners first, unturned before turned; else one corner off;
-    else None (build_sets blends one)."""
+    """Per target tile: (source tile, turn) or None (build_sets blends one). Unturned tiles before turned ones."""
     found = {}
     for k in range(8):
         for index, (_, corners) in enumerate(source_tiles):
@@ -114,8 +113,7 @@ def match_t1(target, source, target_tiles, source_tiles):
         if None in want:
             out.append(None)
             continue
-        key = want if want in found else min(found, key=lambda key: sum(a != b for a, b in zip(key, want)), default=None)
-        out.append(found[key][ordinal % len(found[key])] if key and sum(a != b for a, b in zip(key, want)) <= 1 else None)
+        out.append(found[want][ordinal % len(found[want])] if want in found else None)
     return out
 
 
