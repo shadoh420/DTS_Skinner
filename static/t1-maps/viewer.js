@@ -1444,10 +1444,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const SKY_QUALITY = {width: 1024, height: 256, steps: 24, rows: 8}, skyQuality = {...SKY_QUALITY}, gl = renderer.getContext();
   const TUNED = [['Cloud coverage', 'cloudCoverage', 0, 1, .01], ['Cloud thickness km', 'cloudThickness', .2, 4, .1],
     ['Cloud darkness', 'cloudDarkness', 0, 3, .05], ['Cloud softness', 'cloudSoftness', .05, 1, .01], ['Cloud tile km', 'cloudScale', 5, 80, 1],
-    ['Cloud base km', 'cloudHeight', .5, 6, .1], ['Cloud churn m/s', 'cloudSpeed.z', 0, 50, 1, 1000],
+    ['Cloud base km', 'cloudHeight', .5, 6, .1], ['Cloud wind east m/s', 'cloudSpeed.x', -1000, 1000, 5, 1000],
+    ['Cloud wind north m/s', 'cloudSpeed.y', -1000, 1000, 5, 1000], ['Cloud churn m/s', 'cloudSpeed.z', 0, 500, 5, 1000],
     ['Fog density /km', 'fogDensity', 0, 8, .05, 1000], ['Fog height m', 'fogHeight', 5, 400, 5], ['Fog brightness', 'fogBrightness', .2, 2, .05],
-    ['Fog patches', 'fogPatches', 0, 1, .01], ['Fog patch tile m', 'fogScale', 50, 2000, 10], ['Fog drift east m/s', 'fogWind.x', -20, 20, .5],
-    ['Fog drift north m/s', 'fogWind.y', -20, 20, .5], ['Fog swirl °/s', 'fogWind.z', -60, 60, 1], ['Exposure', 'exposure', .2, 15, .1],
+    ['Fog patches', 'fogPatches', 0, 1, .01], ['Fog patch tile m', 'fogScale', 50, 2000, 10], ['Fog drift east m/s', 'fogWind.x', -60, 60, .5],
+    ['Fog drift north m/s', 'fogWind.y', -60, 60, .5], ['Fog swirl °/s', 'fogWind.z', -180, 180, 1], ['Exposure', 'exposure', .2, 15, .1],
     ['Cirrus coverage', 'cirrusCoverage', 0, 1, .01], ['Cirrus tile km', 'cirrusScale', 20, 300, 5],
     ['Cirrus height km', 'cirrusHeight', 5, 15, .5], ['Cirrus fibres', 'cirrusFibres', 0, 2, .05], ['Cirrus fibre km', 'cirrusFibreScale', 4, 80, 1],
     ['Cirrus opacity', 'cirrusOpacity', 0, 2, .05]];
