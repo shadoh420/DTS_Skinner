@@ -41,7 +41,10 @@ From the console:
    - The first ring read every 12° under equal weights over 72° (21 reads). Its reads beat against the ring's 5.6°
      texels, and a low sun's glow stepped in and out at the window's edges: a hard-edged bright band in the fog below
      the sun (Fogbound storm, Stormfront). Read back on Raindance (Fogbound storm), the second difference between
-     neighbouring texels under the sun was up to 0.17; the triangle brings it to 0.03, the level of a dense 0.5° average.
+     neighbouring texels under the sun was 0.16–0.17. The triangle brings it to 0.03–0.04, close to a dense 0.5°
+     average, and makes the fog under the sun about 10% brighter.
+   - Cost, watched 2026-10-17 (test page, 2560×1440, RX 7800 XT, two interleaved runs each): 0.014 ms, up from
+     0.007 ms for the 21 reads.
 5. **Height fog** (`SkinnerFog.cginc`). Exponential in height, integrated along the view ray in closed form, with no
    march. It is applied after the scene from the depth buffer, together with exposure, ACES and dither.
    - Keys: `fogDensity` (per metre at `fogBase`), `fogHeight` (metres over which it thins by e) and `fogBrightness`.
@@ -60,7 +63,7 @@ frame, the median of 200 frames, with the clock frozen.
 |---|---|---|---|---|
 | Screen sky, day / night | 0.78–0.81 / 0.86 | 0.148 / 0.24 | **0.148 / 0.24** | 0.148 / 0.24 |
 | Clouds (1/8 of rows per frame) | — | 0.017–0.020 | **0.025–0.028** | 0.053–0.077 |
-| Fog ring | — | 0.006 | **0.006** | 0.006 |
+| Fog ring (21 reads; 51 now: 0.014) | — | 0.006 | **0.006** | 0.006 |
 | Height fog (over tone map alone) | — | +0.017 | **+0.017** | +0.017 |
 
 The default costs about **0.20 ms** by day and 0.29 ms at night, against 0.81 ms for the merged sky with no fog. The
