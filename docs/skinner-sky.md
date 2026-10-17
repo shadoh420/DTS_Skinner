@@ -4,8 +4,11 @@ Skinner's own sky format. It is made to look good, carry over to Unity unchanged
 preset of plain numbers, drawn by one shader on a sphere round the camera. The shader has no textures besides one
 512² noise image, no precomputed tables, no render targets and no extra passes.
 
-On the T1, Starsiege and Earthsiege Maps pages, the Sky list has a **Skinner Sky** group with seven presets: Clear
-afternoon, Golden hour, Stormfront, Blue hour, Moonlit night, Aurora and Alien dusk.
+On the T1, Starsiege and Earthsiege Maps pages, the Sky list has a **Skinner Sky** group with twelve presets: Clear
+afternoon, Golden hour, Stormfront, Blue hour, Moonlit night, Aurora and Alien dusk, plus Crisp afternoon, Crisp
+golden hour, Crisp moonlit night, Crisp alien dusk (sharper, darker-based clouds) and Fogbound storm (Stormfront in
+thick low fog). Those pages draw them with volumetric clouds and height fog ([volumetrics.md](volumetrics.md)), and the
+presets are tuned for that.
 
 ## Files (`static/skinner-sky`)
 
@@ -54,6 +57,17 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 | `auroraIntensity`, `auroraColor`, `auroraColor2` | 0, (.1, 1, .4), (.6, .2, 1) | Curtains 100 to 175 km up, low colour to high colour |
 | `fogColor` | (.9, .92, .93) | Unity only: `RenderSettings.fogColor`. The page measures its own haze |
 
+The volumetric clouds and the height fog take five more keys (`skies.js` `volumetricDefaults`, and the properties of
+Unity's `Skinner/Volumetric Sky` and `Hidden/Skinner Volumetrics`, which `Skinner/Sky` does not declare):
+`cloudThickness` (1.5 km, the slab above `cloudHeight`), `fogDensity` (.0012 per metre at the fog's base), `fogHeight`
+(40 m to thin by e), `fogBrightness` (1) and `fogBase` (0, counted from the map's start; presets leave it out).
+
+In the volumetric clouds two of the keys above work differently from the layer: `cloudSoftness` divides the density
+(higher is thinner, so you see into the clouds), and `cloudDarkness` sets the extinction (30 per km × darkness). At
+the old values (.15 and 1, Stormfront's 3) a ray goes opaque in one or two of the 24 steps, so cloud bases are flat
+slabs of one colour. The presets use .4 and .3 (the Crisp ones .25 and .6), and Stormfront takes its darkness from
+`cloudColor` instead.
+
 ## How it draws
 
 1. **Air**: single scattering of sun and moon light (Rayleigh, Mie and ozone, Earth's coefficients), along the view
@@ -77,13 +91,19 @@ air is most of that. `docs/volumetrics.md` draws the air into a small texture in
 
 ## Unity
 
-1. Copy `static/skinner-sky` into `Assets`. `SkinnerSkyPresets.cs` imports the noise as linear, repeating and
-   uncompressed.
-2. Choose **Tools > Skinner Sky > Make Materials From Presets**. This writes `Sky <name>.mat` beside `presets.json`.
-   Run it again after editing the presets; it updates the materials in place.
+1. Copy `static/skinner-sky` and `static/volumetrics` into `Assets`. `SkinnerSkyPresets.cs` imports the noise as
+   linear, repeating and uncompressed.
+2. Choose **Tools > Skinner Sky > Make Materials From Presets**. This writes `Sky <name>.mat` beside `presets.json`,
+   with the `Skinner/Volumetric Sky` shader, so a preset looks as it does on the Maps pages. Run it again after
+   editing the presets; it updates the materials in place, and turns older `Skinner/Sky` ones volumetric.
 3. Select a material, then choose **Tools > Skinner Sky > Use Selected Material As Sky**. This sets the skybox and the
-   fog colour, turns the Sun Source (or the first directional light) to the preset's sun, and updates the environment
-   lighting.
+   fog colour, turns the Sun Source (or the first directional light) to the preset's sun, sets up the volumetrics
+   (the work material, URP's fog pass and the `SkinnerVolumetrics` component; [volumetrics.md](volumetrics.md)) and
+   updates the environment lighting.
+
+`Skinner/Sky` stays as the reference shader for the core and as a skybox that needs no script or render pass. The
+menu no longer makes materials for it: it costs about 0.7 ms against 0.2 ms, and has no height fog. A material made by
+hand still works.
 
 The shader is a plain CG skybox, like Unity's own procedural sky, so it should also work in Built-in and in gamma
 colour space. The check below ran URP in linear colour space only. If the camera does
@@ -109,6 +129,14 @@ now decodes with the exact sRGB curve. After that fix, all seven presets match t
 channel). The only pixels more than 10/255 apart are stars on the night presets (0.5–0.7% of pixels), which should be
 twinkle: Unity's clock was at 0.36 s and the page's at 0.5 s. Not run: Built-in, gamma colour space, a camera with its
 own tone mapping, GPU timing.
+
+**Volumetric presets (2026-10-17).** In the same scratch project, the menu turned the old `Skinner/Sky` materials into
+`Skinner/Volumetric Sky` ones and made the five new presets. Use Selected set up the work material, the fog pass and
+the component, and the work material carried each preset's cloud and fog values. All twelve presets were rendered
+with fog on (1280 × 720, two views each) and compared with `static/volumetrics/index.html` drawing the same test
+scene. Sky pixels differ by 0.2–2.5/255 on average, and 0–5% of them by more than 10, at cloud edges and in twinkling
+stars (aurora up). The scene itself is lit differently by design. Evidence:
+`C:\tmp\skinner-evidence\sky-volumetric-presets\unity`.
 
 ## Limits
 

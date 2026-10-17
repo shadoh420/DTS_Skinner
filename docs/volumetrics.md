@@ -77,9 +77,9 @@ saving comes from moving the air (8 steps per pixel) into the sky texture.
 - **`SkinnerVolumetrics.cs`.** Keeps the sky texture and ring up to date, one band of rows per frame. It copies the sky
   material's values onto the work material property by property. `CopyPropertiesFromMaterial` replaces the whole set
   instead. That dropped the fog's keys, and the fog pass read zeros: NaN and black frames.
-- **Tools > Skinner Sky > Set Up Volumetrics.** Makes a volumetric copy of the current `Skinner/Sky` preset and the work
-  material, adds URP's Full Screen Pass feature for the fog (pass 2, before post-processing, with depth), and adds the
-  component to the scene.
+- **Tools > Skinner Sky.** Make Materials From Presets writes one `Skinner/Volumetric Sky` material per preset. Use
+  Selected Material As Sky makes one the skybox, makes the work material, adds URP's Full Screen Pass feature for the
+  fog (pass 2, before post-processing, with depth), and adds the component to the scene (`SkinnerVolumetrics.SetUp`).
 
 Checked 2026-10-15 in a scratch URP project, Unity 6000.3.11f1, D3D11, on an RX 7800 XT, at 2560×1440. GPU times per
 draw, from n draws in one command buffer synced by a 1-pixel readback: (t(220) − t(20)) / 200, median of 5.
@@ -131,6 +131,15 @@ the rows a frame.
   fog target's 4× multisampling (+0.28 ms), kept so the world stays antialiased as the canvas is; without it the frame
   was 0.39 ms.
 - Timings from a hidden browser pane are not usable: the same views read 2.6–5.7 ms there, and once 0 ms for the world.
+- **Presets retuned for these clouds** (2026-10-17, [skinner-sky.md](skinner-sky.md)): the retune costs nothing.
+  Measured the same way from Raindance's start viewpoint, this run's own sky read 0.40–0.43 ms, against 0.18 ms in the
+  table above, so compare only within the run. All twelve presets took 0.54–0.64 ms with Fog off and 0.75–0.85 ms with Fog on. The old and new values of each preset
+  came within 0.05 ms of each other with Fog off. The fog pass is closed form, so preset values don't change its cost.
+  A second run had every Fog-on frame jump to 2.5–3.0 ms partway through, old and new presets alike. It stayed after a
+  page reload, while Fog-off frames stayed at 0.55 ms, so it was the machine's state at the time. It was not chased.
+- The presets carry their own `cloudThickness`, `fogDensity`, `fogHeight` and `fogBrightness` where the defaults
+  looked wrong (Stormfront: thick low fog; the night presets: thin). On maps whose own haze is short (CloakOfNight ends
+  it at 250 m), that haze takes the sky's colour and whitens the valleys with any preset.
 
 ## Limits
 

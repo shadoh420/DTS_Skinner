@@ -1,6 +1,6 @@
 // Skinner Volumetrics for Unity (URP): keeps the volumetrics prototype's sky texture and fog ring up to date
 // (docs/volumetrics.md). The skybox is Skinner/Volumetric Sky. The fog is pass 2 of this component's material, drawn by
-// URP's Full Screen Pass renderer feature. Tools > Skinner Sky > Set Up Volumetrics sets up all three.
+// URP's Full Screen Pass renderer feature. Tools > Skinner Sky > Use Selected Material As Sky sets up all three.
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -92,22 +92,11 @@ public class SkinnerVolumetrics : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    // Makes the current Skinner/Sky skybox volumetric (a copy beside it, Skinner/Volumetric Sky, with the same values),
-    // the work material beside this shader, the fog's Full Screen Pass on the URP renderer, and this component in the
-    // scene. Run it again after changing the sky; it reuses what is there.
-    [MenuItem("Tools/Skinner Sky/Set Up Volumetrics")]
-    static void SetUp()
+    // For the current Skinner/Volumetric Sky skybox (Tools > Skinner Sky > Use Selected Material As Sky calls this): the
+    // work material beside this shader, the fog's Full Screen Pass on the URP renderer, and this component in the
+    // scene. It reuses what is there.
+    public static void SetUp()
     {
-        var sky = RenderSettings.skybox;
-        if (sky && sky.shader.name == "Skinner/Sky")
-        {
-            string path = AssetDatabase.GetAssetPath(sky).Replace(".mat", " (volumetric).mat");
-            var copy = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (!copy) AssetDatabase.CreateAsset(copy = new Material(Shader.Find("Skinner/Volumetric Sky")), path);
-            CopyValues(sky, copy);
-            EditorUtility.SetDirty(copy);
-            RenderSettings.skybox = copy;
-        }
         var shader = Shader.Find("Hidden/Skinner Volumetrics");
         string materialPath = Path.GetDirectoryName(AssetDatabase.GetAssetPath(shader)).Replace('\\', '/') + "/Skinner Volumetrics.mat";
         var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
