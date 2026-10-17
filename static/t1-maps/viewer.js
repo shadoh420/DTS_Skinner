@@ -1401,7 +1401,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   const TUNED = [['Cloud coverage', 'cloudCoverage', 0, 1, .01], ['Cloud thickness km', 'cloudThickness', .2, 4, .1],
     ['Cloud darkness', 'cloudDarkness', 0, 3, .05], ['Cloud softness', 'cloudSoftness', .05, 1, .01], ['Cloud tile km', 'cloudScale', 5, 80, 1],
     ['Cloud base km', 'cloudHeight', .5, 6, .1], ['Fog density /km', 'fogDensity', 0, 8, .05, 1000], ['Fog height m', 'fogHeight', 5, 400, 5],
-    ['Fog brightness', 'fogBrightness', .2, 2, .05], ['Exposure', 'exposure', .2, 15, .1]];
+    ['Fog brightness', 'fogBrightness', .2, 2, .05], ['Exposure', 'exposure', .2, 15, .1],
+    ['Cirrus coverage', 'cirrusCoverage', 0, 1, .01], ['Cirrus tile km', 'cirrusScale', 20, 300, 5],
+    ['Cirrus height km', 'cirrusHeight', 5, 15, .5], ['Cirrus fibres', 'cirrusFibres', 0, 2, .05], ['Cirrus fibre km', 'cirrusFibreScale', 4, 80, 1],
+    ['Cirrus opacity', 'cirrusOpacity', 0, 2, .05]];
   const timer = gl.getExtension('EXT_disjoint_timer_query_webgl2'), timings = {pending: [], ms: [], frames: 0};
   let tune = null, tuned = {};
   // A settings row's ↺: its control back to the value in its data-own, as if moved there by hand.
@@ -1434,7 +1437,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           else tuned[key] = value;
           if (!skyPass?.uniforms) return;
           skyPass.uniforms[key].value = value;
-          if (key.startsWith('cloud')) skyPass.redraw();  // The clouds live in the sky texture; fog and exposure don't.
+          if (/^c(loud|irrus)/.test(key)) skyPass.redraw();  // The clouds live in the sky texture; fog and exposure don't.
         });
         range.addEventListener('change', () => range.blur());  // Back to WASD.
         row(text, range, shown, 'input');

@@ -169,7 +169,7 @@ window.t1Skies = {
     moonAzimuth: 20, moonElevation: -30, moonColor: [.9, .92, 1], moonIntensity: 0, moonSize: 3.5,
     rayleigh: [1, 1, 1], ozone: 1, mie: 1, mieG: .8, groundColor: [.25, .24, .22], nightColor: [.0004, .0007, .0014], exposure: 1.5,
     starIntensity: 0, starDensity: 250, milkyWay: 0, cloudCoverage: .5, cloudSoftness: .15, cloudScale: 20, cloudHeight: 2,
-    cloudSpeed: [.02, .005, 0], cloudColor: [1, 1, 1], cloudDarkness: 1, cloudOpacity: 1, cirrusCoverage: .3, cirrusScale: 150,
+    cloudSpeed: [.02, .005, 0], cloudColor: [1, 1, 1], cloudDarkness: 1, cloudOpacity: 1, cirrusCoverage: 0, cirrusScale: 150, cirrusHeight: 9, cirrusFibres: 1, cirrusFibreScale: 24, cirrusOpacity: 1,
     cirrusSpeed: [.04, .01, 0], auroraIntensity: 0, auroraColor: [.1, 1, .4], auroraColor2: [.6, .2, 1], lightningRate: 0, lightningIntensity: 1},
   // Drawn as docs/volumetrics.md: the air and volumetric clouds go into a 1024x256 sky texture, 1/8 of its rows a
   // frame (all of it on the first draw); the screen adds the sun, stars, moon and aurora per pixel. That costs about a
@@ -259,7 +259,11 @@ window.t1Skies = {
       void main() {
         vec3 d = normalize(vDir);
         vec4 c = texture2D(pano, panoUV(d));
-        vec3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.)) + skinnerCloudsFlash(d, c.a);
+        vec3 s = c.rgb + (d.z > 0. ? skinnerBehind(d, c.rgb, toLight(PLANET + .002, d.z) * c.a) : vec3(0., 0., 0.));
+        // Under the clouds, per pixel (finer than the sky texture overhead). The texture keeps air and cloud light summed,
+        // so laying cirrus over by alpha replaces some cloud light too; a² roughly halves that over thin cloud (exact needs
+        // air and cloud light kept apart).
+        s = skinnerCirrus(d, s, c.rgb, c.a * c.a) + skinnerCloudsFlash(d, c.a);  // The flash is in the low clouds, in front.
         gl_FragColor = vec4(display(s) + (hash33(vec3(gl_FragCoord.xy, 7.)).x - .5) / 255., 1.);
       }`}), radius, group);
     const F = {...U, sceneColor: {value: null}, sceneDepth: {value: null}, projectionInverse: {value: null}, viewInverse: {value: null}, eyeZ: {value: 0}};

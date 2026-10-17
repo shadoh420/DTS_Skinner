@@ -35,8 +35,12 @@ Shader "Skinner/Sky"
         cloudColor ("Cloud colour", Vector) = (1, 1, 1, 0)
         cloudDarkness ("Cloud darkness", Float) = 1
         cloudOpacity ("Cloud opacity", Float) = 1
-        cirrusCoverage ("Cirrus coverage", Float) = 0.3
+        cirrusCoverage ("Cirrus coverage", Float) = 0
         cirrusScale ("Cirrus tile (km)", Float) = 150
+        cirrusHeight ("Cirrus height (km)", Float) = 9
+        cirrusFibres ("Cirrus fibres", Float) = 1
+        cirrusFibreScale ("Cirrus fibre tile (km)", Float) = 24
+        cirrusOpacity ("Cirrus opacity", Float) = 1
         cirrusSpeed ("Cirrus wind (km/s)", Vector) = (0.04, 0.01, 0, 0)
         auroraIntensity ("Aurora", Float) = 0
         auroraColor ("Aurora low colour", Vector) = (0.1, 1, 0.4, 0)
@@ -70,7 +74,8 @@ Shader "Skinner/Sky"
             sampler2D skyNoise;
             float sunAzimuth, sunElevation, sunIntensity, sunSize, moonAzimuth, moonElevation, moonIntensity, moonSize, ozone, mie, mieG,
                 exposure, starIntensity, starDensity, milkyWay, cloudCoverage, cloudSoftness, cloudScale, cloudHeight, cloudDarkness,
-                cloudOpacity, cirrusCoverage, cirrusScale, auroraIntensity, lightningRate, lightningIntensity, tonemap;
+                cloudOpacity, cirrusCoverage, cirrusScale, cirrusHeight, cirrusFibres, cirrusFibreScale, cirrusOpacity, auroraIntensity,
+                lightningRate, lightningIntensity, tonemap;
             float3 sunColor, moonColor, rayleigh, groundColor, nightColor, cloudSpeed, cloudColor, cirrusSpeed, auroraColor, auroraColor2;
             float4 lightningDir, lightningColor;  // Globals, set by SkinnerVolumetrics.cs while it runs (SkinnerSky.cginc skinnerFlash).
 
