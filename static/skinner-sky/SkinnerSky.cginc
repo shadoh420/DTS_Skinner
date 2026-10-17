@@ -37,6 +37,45 @@ float vnoise(vec3 p) {
 float distanceTo(float altitude, float c) { float b = PLANET * c, r = PLANET + altitude; return -b + sqrt(b * b + r * r - PLANET * PLANET); }
 vec3 aces(vec3 x) { return clamp(x * (2.51 * x + .03) / (x * (2.43 * x + .59) + .14), 0., 1.); }
 
+// What lies behind the air, for d above the horizon: stars, the Milky Way glow, the moon, aurora and the sun's disc,
+// dimmed by the air's transmittance. air is the sky's light there: how dark it is fades stars and aurora in daylight.
+// Split out so a sky drawn from a texture (static/volumetrics) can add these sharp parts per pixel.
+vec3 skinnerBehind(vec3 d, vec3 air, vec3 transmit) {
+  vec3 sun = toward(sunAzimuth, sunElevation), moon = toward(moonAzimuth, moonElevation);
+  float nu = dot(d, moon), night = exp(-dot(air, LUMA) * exposure * 25.);
+  // One star per cell of a grid on the view direction (more along the Milky Way), its glow, or the moon.
+  vec3 far = vec3(0., 0., 0.), sky = far;
+  float across = dot(d, normalize(vec3(.35, -.6, .72))) / .22, band = exp(-across * across);
+  if (starIntensity > 0.) {
+    vec3 q = d * starDensity, cell = floor(q), h = hash33(cell);
+    float spot = length(q - cell - .15 - .7 * h) / max(1.5 * length(fwidth(q)), 1e-4);
+    float shine = pow(h.x, mix(150., 50., band * min(milkyWay, 1.))) * (.7 + .3 * sin(uTime * (2. + 4. * h.z) + 40. * h.y));
+    far += mix(vec3(1., .72, .5), vec3(.62, .75, 1.), h.y) * shine * clamp(1. - spot, 0., 1.) * starIntensity;
+  }
+  if (milkyWay > 0.) far += vec3(.75, .8, 1.) * band * milkyWay * .02 * (.25 + .5 * vnoise(d * 7.) + .5 * vnoise(d * 19.)) * (.5 + .5 * band);
+  far *= night;
+  float moonR = radians(moonSize * .5);
+  if (nu > cos(moonR) && moonIntensity > 0.) {  // A ball lit by the sun: its phase follows the two directions.
+    vec3 right = normalize(cross(moon, vec3(0., 0., 1.))), up = cross(right, moon);
+    vec2 q = vec2(dot(d, right), dot(d, up)) / sin(moonR);
+    vec3 n = q.x * right + q.y * up - sqrt(max(1. - dot(q, q), 0.)) * moon;
+    float albedo = mix(.5, 1., smoothstep(.3, .7, texture2D(skyNoise, q * .3 + .5).r));
+    far = mix(far, moonColor * moonIntensity * 4. * albedo * (max(dot(n, sun), 0.) + .015), 1. - smoothstep(.96, 1., dot(q, q)));
+  }
+  sky += far * transmit;
+  if (auroraIntensity > 0.) {  // Curtains: one level line of the cloud shapes, seen at four heights.
+    vec3 glow = vec3(0., 0., 0.);
+    UNROLL for (int k = 0; k < 4; k++) {
+      vec2 uv = d.xy * distanceTo(100. + 25. * float(k), d.z) / 2500. + vec2(uTime * .0004, 0.);
+      glow += mix(auroraColor, auroraColor2, float(k) / 3.) * pow(max(1. - abs(texture2D(skyNoise, uv).r - .5) * 14., 0.), 2.) * (1. - float(k) * .2);
+    }
+    sky += glow * auroraIntensity * .01 * smoothstep(0., .15, d.z) * sqrt(night);
+  }
+  float sunR = radians(sunSize * .5), x = acos(clamp(dot(d, sun), -1., 1.)) / sunR;
+  if (x < 1.1) sky += sunColor * sunIntensity * transmit * 40. * (1. - .6 * (1. - sqrt(max(1. - x * x, 0.)))) * (1. - smoothstep(.95, 1.05, x));
+  return sky;
+}
+
 vec3 skinnerSky(vec3 d) {
   vec3 sun = toward(sunAzimuth, sunElevation), moon = toward(moonAzimuth, moonElevation);
   vec3 sunLight = sunColor * sunIntensity, moonLight = moonColor * moonIntensity * (.5 - .5 * dot(sun, moon));
@@ -63,39 +102,9 @@ vec3 skinnerSky(vec3 d) {
   vec3 lowered = groundColor * .318 * (sunLight * toLight(PLANET, sun.z) * max(sun.z, 0.) + moonLight * toLight(PLANET, moon.z) * max(moon.z, 0.) + air);
   air = mix(air, lowered, smoothstep(0., .3, -d.z) * .9);
   vec3 sky = air;
-  if (d.z > 0.) {
-    float night = exp(-dot(air, LUMA) * exposure * 25.);  // How dark the sky is: stars and aurora fade in daylight.
-    // Behind the air: one star per cell of a grid on the view direction (more along the Milky Way), its glow, or the moon.
-    vec3 far = vec3(0., 0., 0.);
-    float across = dot(d, normalize(vec3(.35, -.6, .72))) / .22, band = exp(-across * across);
-    if (starIntensity > 0.) {
-      vec3 q = d * starDensity, cell = floor(q), h = hash33(cell);
-      float spot = length(q - cell - .15 - .7 * h) / max(1.5 * length(fwidth(q)), 1e-4);
-      float shine = pow(h.x, mix(150., 50., band * min(milkyWay, 1.))) * (.7 + .3 * sin(uTime * (2. + 4. * h.z) + 40. * h.y));
-      far += mix(vec3(1., .72, .5), vec3(.62, .75, 1.), h.y) * shine * clamp(1. - spot, 0., 1.) * starIntensity;
-    }
-    if (milkyWay > 0.) far += vec3(.75, .8, 1.) * band * milkyWay * .02 * (.25 + .5 * vnoise(d * 7.) + .5 * vnoise(d * 19.)) * (.5 + .5 * band);
-    far *= night;
-    float moonR = radians(moonSize * .5);
-    if (nu > cos(moonR) && moonIntensity > 0.) {  // A ball lit by the sun: its phase follows the two directions.
-      vec3 right = normalize(cross(moon, vec3(0., 0., 1.))), up = cross(right, moon);
-      vec2 q = vec2(dot(d, right), dot(d, up)) / sin(moonR);
-      vec3 n = q.x * right + q.y * up - sqrt(max(1. - dot(q, q), 0.)) * moon;
-      float albedo = mix(.5, 1., smoothstep(.3, .7, texture2D(skyNoise, q * .3 + .5).r));
-      far = mix(far, moonColor * moonIntensity * 4. * albedo * (max(dot(n, sun), 0.) + .015), 1. - smoothstep(.96, 1., dot(q, q)));
-    }
-    sky += far * transmit;
-    if (auroraIntensity > 0.) {  // Curtains: one level line of the cloud shapes, seen at four heights.
-      vec3 glow = vec3(0., 0., 0.);
-      UNROLL for (int k = 0; k < 4; k++) {
-        vec2 uv = d.xy * distanceTo(100. + 25. * float(k), d.z) / 2500. + vec2(uTime * .0004, 0.);
-        glow += mix(auroraColor, auroraColor2, float(k) / 3.) * pow(max(1. - abs(texture2D(skyNoise, uv).r - .5) * 14., 0.), 2.) * (1. - float(k) * .2);
-      }
-      sky += glow * auroraIntensity * .01 * smoothstep(0., .15, d.z) * sqrt(night);
-    }
-    float sunR = radians(sunSize * .5), x = acos(clamp(dot(d, sun), -1., 1.)) / sunR;
-    if (x < 1.1) sky += sunLight * transmit * 40. * (1. - .6 * (1. - sqrt(max(1. - x * x, 0.)))) * (1. - smoothstep(.95, 1.05, x));
-  }
+  #ifndef SKINNER_SKIP_BEHIND
+  if (d.z > 0.) sky += skinnerBehind(d, air, transmit);
+  #endif
   float fade = smoothstep(-.01, .08, d.z);
   if (cirrusCoverage > 0. && fade > 0.) {  // Thin streaks 9 km up, stretched along x.
     float t = distanceTo(9., d.z);

@@ -71,8 +71,9 @@ the page's defaults, the Unity properties and HLSL uniforms, and the preset keys
 
 **Cost.** fxc compiles the Unity pixel shader to about 817 instruction slots (ps_5_0, counting every branch). A sky
 reads the noise at most 11 times: 6 with clouds and cirrus, 1 more for the moon and 4 for aurora. Branches skip
-parts whose preset is off. It is one draw call over the background pixels, with no setup work. At 1440p that should
-be well under a millisecond on a current GPU (estimated, not measured).
+parts whose preset is off. It is one draw call over the background pixels, with no setup work. Measured on the page
+at 2560 × 1440 with the sky filling the screen, on an RX 7800 XT: 0.78–0.81 ms by day, 0.86 ms at night. The per-pixel
+air is most of that. `docs/volumetrics.md` draws the air into a small texture instead, at about 0.15 ms.
 
 ## Unity
 

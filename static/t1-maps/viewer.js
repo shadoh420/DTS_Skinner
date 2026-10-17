@@ -520,14 +520,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       eye.rotation.set(THREE.MathUtils.degToRad(5), quarter * Math.PI / 2, 0, 'YXZ');
       eye.updateMatrixWorld();
       renderer.setRenderTarget(target);
-      if (skyPass) skyPass.render(renderer, eye, skyTime.value); else renderer.render(sky, eye);
+      if (skyPass?.render) skyPass.render(renderer, eye, skyTime.value); else renderer.render(sky, eye);
       renderer.readRenderTargetPixels(target, 0, 0, 96, 8, pixels);
       pixels.forEach((value, index) => { if (index % 4 < 3) sum[index % 4] += value; });
     }
     renderer.setRenderTarget(null);
     haze.setRGB(...sum.map(total => total / (4 * 96 * 8 * 255)));
   }
-  let skies = [], skySerial = 0, skyPass = null;  // skyPass: a sky drawn in its own pass behind the world (skies.js unreal).
+  // skyPass: a sky drawn in its own pass behind the world (skies.js unreal: render), or one with work before each frame
+  // and a height fog over it (skies.js skinner: update, fog).
+  let skies = [], skySerial = 0, skyPass = null;
   async function showSky(id) {
     const chosen = skies.find(entry => entry.id === id), visible = chosen && chosen.visible || map.terrain.visibleDistance, radius = visible * 1.05;
     // Each entry names its renderer and its pack's data path (/t1-map-skies); a dome is a T1-style mission sky.
@@ -536,12 +538,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     scene.background = haze.set(`rgb(${map.haze.join(',')})`);
     if (kind === 'q3') await buildQ3Sky(chosen.sky, radius, group, chosen.base, chosen.power || 1);
     else if (dome) await buildSky(dome, visible, group, chosen ? chosen.base || '/t1-map-data/' : data);  // Its own pack's textures.
-    const pass = window.t1Skies?.[kind] && !dome && kind !== 'q3' ? await window.t1Skies[kind]({entry: chosen, radius, group, loadTexture, time: skyTime}) : null;  // skies.js.
+    const pass = window.t1Skies?.[kind] && !dome && kind !== 'q3' ? await window.t1Skies[kind]({entry: chosen, radius, group, loadTexture, time: skyTime,
+      ground: map.viewpoints?.[0]?.[13] ?? 0}) : null;  // skies.js; ground: the start's height, for a Skinner Sky's height fog.
     const drop = old => old.traverse(mesh => { mesh.geometry?.dispose(); [].concat(mesh.material || []).forEach(material => material.dispose()); });  // Textures stay cached.
     if (serial !== skySerial) { pass?.dispose?.(); return drop(group); }  // A later choice is being built.
     skyPass?.dispose();
-    skyPass = pass?.render ? pass : null;
-    if (skyPass) scene.background = null;  // Otherwise the haze set above, or the colour an untextured dome set.
+    skyPass = pass?.render || pass?.update ? pass : null;
+    skyPass?.update?.(renderer);  // Its whole sky texture, before the haze probe reads it.
+    if (skyPass?.render) scene.background = null;  // Otherwise the haze set above, or the colour an untextured dome set.
     drop(panels);
     sky.remove(panels);
     sky.add(panels = group);
@@ -785,16 +789,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   const clock = new THREE.Clock(), forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   let lightTime = 0;
   function drawFrame() {
-    if (skyPass) {  // The other game's sky first, then the world over it without clearing.
+    // A Skinner Sky's height fog: sky and world into its target, then through the fog onto the screen.
+    skyPass?.update?.(renderer);
+    const fogged = settings.fog && skyPass?.fog;
+    if (fogged) renderer.setRenderTarget(skyPass.fog.target(renderer));
+    if (skyPass?.render) {  // The other game's sky first, then the world over it without clearing.
       skyPass.render(renderer, camera, skyTime.value);
       renderer.clearDepth();
       renderer.autoClear = false;
       renderer.render(scene, camera);
       renderer.autoClear = true;
     } else renderer.render(scene, camera);
+    if (fogged) skyPass.fog.draw(renderer, camera);
   }
   // For checks in a script or a hidden page, as the other Maps pages have: draw a frame and pick a sky by id.
-  window.skinnerT1Maps = {renderer, scene, camera, drawFrame, showSky: id => showSky(id), skies: () => skies};
+  window.skinnerT1Maps = {renderer, scene, camera, drawFrame, showSky: id => showSky(id), skies: () => skies, skyPass: () => skyPass};
   renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), .1), held = code => Number(keys.has(code));
     // The game steps building lights 67 ms at a time (InteriorShape::sm_minLightUpdateMS); switched off, they hold still.
