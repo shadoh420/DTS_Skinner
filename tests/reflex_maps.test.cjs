@@ -434,7 +434,9 @@ test('texture coordinates follow the axes, offsets and rotation measured in the 
   assert.deepEqual(at([0, 0, -1], [64, 32, 0], {u: 16, v: -32}), [33, 62]);
   assert.deepEqual(at([0, 0, -1], [64, 32, 0], {scaleU: 2, scaleV: -1}), [16, -64]);
   assert.deepEqual(at([0, 0, -1], [64, 32, 0], {u: 64, scaleU: 2, v: 64, scaleV: -1}), [18, -68]);
-  // Turned 46° from −z toward −x the nearest axis is x, and U flips from +y to −y, as in the game.
+  // U follows the face's first edge, so a box face turned any way keeps u growing up its side. (An earlier reading had
+  // U flip from +y to −y at 45° by the axis the normal is nearest; coplanar plates listed from different corners
+  // showed the first edge sets it, 2026-10-18, and the tilted test maps behind that reading are gone.)
   const uGrowsUp = degrees => {
     const t = degrees * Math.PI / 180, turn = ([x, y, z]) => [x * Math.cos(t) - z * Math.sin(t), y, x * Math.sin(t) + z * Math.cos(t)];
     const cube = B.box([-8, -8, -8], [8, 8, 8], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0}), brush = {vertices: cube.vertices.map(turn), faces: cube.faces};
@@ -442,7 +444,13 @@ test('texture coordinates follow the axes, offsets and rotation measured in the 
     const coords = B.texcoords(brush, face), ys = face.indices.map(i => brush.vertices[i][1]);
     return coords[ys.indexOf(Math.max(...ys))][0] > coords[ys.indexOf(Math.min(...ys))][0];
   };
-  assert.deepEqual([uGrowsUp(-44), uGrowsUp(-46), uGrowsUp(46)], [true, false, true]);
+  assert.deepEqual([uGrowsUp(-44), uGrowsUp(-46), uGrowsUp(46)], [true, true, true]);
+  // The −z face listed from its second corner starts along +x: u and v trade places, as on the game's seam pairs.
+  const shifted = {...box.faces[0], indices: [...box.faces[0].indices.slice(1), box.faces[0].indices[0]]};
+  B.texcoords(box, shifted).forEach(([u, v], k) => { const p = box.vertices[shifted.indices[k]]; near(u, p[0]); near(v, -p[1]); });
+  // Extruded side faces start along the extrusion, as B.box's walls start up them.
+  const prism = B.extrude([[0, 0, 0], [64, 0, 0], [0, 0, 64]], [0, 96, 0]);
+  for (const face of prism.faces.filter(f => f.indices.length === 4)) assert.deepEqual(B.normalize(B.firstEdge(face.indices.map(i => prism.vertices[i]))), [0, 1, 0]);
   const [u, v] = at([0, 0, -1], [64, 32, 0], {rotation: 90});
   near(u, 64); near(v, -32);
 });

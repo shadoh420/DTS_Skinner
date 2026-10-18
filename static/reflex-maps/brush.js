@@ -42,7 +42,8 @@
   }
   function area(points) { return length(newell(points)) / 2; }
 
-  // The planes of a brush, pointing out of it whichever way its faces are wound. Faces with no area are passed over.
+  // The planes of a brush, pointing out of it whichever way its faces are wound, each with its face's first edge
+  // (`edge`, which sets the face's texture axes). Faces with no area are passed over.
   function planesOf(brush) {
     const middle = centroid(brush.vertices);
     const planes = [];
@@ -51,7 +52,7 @@
       if (length(raw) < EPSILON) continue;
       let normal = normalize(raw), distance = dot(normal, centroid(points));
       if (dot(normal, middle) > distance) { normal = scale(normal, -1); distance = -distance; }
-      planes.push({normal, distance, face});
+      planes.push({normal, distance, face, edge: firstEdge(points)});
     }
     return planes;
   }
@@ -109,8 +110,14 @@
       }
       points = dedupe(points);
       if (points.length < 3 || area(points) < EPSILON) continue;
-      const indices = [];
+      let indices = [];
       for (const index of points.map(weld)) if (indices[indices.length - 1] !== index && indices[0] !== index) indices.push(index);
+      // A face that had a first edge starts along the way it ran, so the game keeps its texture axes.
+      if (plane.edge && indices.length >= 3) {
+        const along = normalize(plane.edge), runs = indices.map((index, k) => dot(normalize(sub(vertices[indices[(k + 1) % indices.length]], vertices[index])), along));
+        const first = runs.indexOf(Math.max(...runs));
+        indices = [...indices.slice(first), ...indices.slice(0, first)];
+      }
       if (indices.length >= 3) faces.push({...plane.face, indices});
     }
     const brush = {vertices, faces};
@@ -221,6 +228,7 @@
   }
 
   // The convex hull of points, with each face from the first plane that holds it (brute force; brushes are small).
+  // `planesFor(plane)` gives a face's fields, or a plane of planesOf whose face and first edge it takes.
   function hull(points, planesFor) {
     const unique = [];
     for (const p of points) if (!unique.some(q => length(sub(p, q)) <= WELD)) unique.push(p);
@@ -231,7 +239,8 @@
       const sides = unique.map(p => dot(plane.normal, p) - plane.distance);
       if (sides.every(s => s <= EPSILON)) { /* Faces out already. */ } else if (sides.every(s => s >= -EPSILON)) plane = flip(plane); else continue;
       if (planes.some(other => samePlane(other, plane))) continue;
-      plane.face = planesFor(plane);
+      const source = planesFor(plane);
+      if (source && source.normal) { plane.face = source.face; plane.edge = source.edge; } else plane.face = source;
       planes.push(plane);
     }
     return fromPlanes(planes);
@@ -239,7 +248,7 @@
   // One brush covering exactly a and b (Radiant's CSG Merge); null when their union is not convex.
   function merge(a, b) {
     const sources = [...planesOf(a), ...planesOf(b)];
-    const result = hull([...a.vertices, ...b.vertices], plane => (sources.find(source => samePlane(source, plane)) || sources[0]).face);
+    const result = hull([...a.vertices, ...b.vertices], plane => sources.find(source => samePlane(source, plane)) || sources[0].face);
     if (!result) return null;
     const shared = intersection(a, b), union = volume(a) + volume(b) - (shared ? volume(shared) : 0);
     return Math.abs(volume(result) - union) <= Math.max(MIN_VOLUME, union * 1e-6) ? result : null;
@@ -336,27 +345,38 @@
 
   /* Texture coordinates of a face's corners, [u, v] in world units, as the game maps them (measured in the game):
      u = (p · U + offset u / 16) / scaleU, the same for v, so the texture is anchored to the world and an offset of 16
-     moves it one unit toward −U whatever the scale. The frame comes from the face's outward normal n by the axis n is
-     nearest: U = (0, 0, 1) × n and V = n × U, except on faces looking mostly along z, where U = +x × n looking along −z
-     and +y × n along +z (U = +y, V = +x on a −z face; U = +x, V = +y on +z). So U flips where the nearest axis
-     changes (+y on a −z face turned 44° toward −x, −y at 46°), as it does in the game. `rotation` degrees turn both
-     right-handed about n. A scale of zero is taken as one.
+     moves it one unit toward −U whatever the scale. U is the way the face's first edge runs (its first corner to its
+     second, in the file's order) and V = n × U, n the face's outward normal: so the same face listed from another
+     corner has its texture turned (seen in the game on coplanar pairs, 2026-10-18). B.box's faces and those the game's
+     editor saves start along U = (0, 0, 1) × n on walls, U = +y on −z, +x on +z, −x on +y and +x on −y, as first
+     measured. `rotation` degrees turn both right-handed about n (+30 on a −z face tilts its u lines down to the right;
+     an offset is added after the turn: both seen in the game). A scale of zero is taken as one.
      `volume`: the frame the game's editor draws a volume's texture in, U = n × +y and V = n × U, so its labels stand
      upright and read left to right on every wall (measured on ±z and +x faces); on a floor or ceiling U = (0, 0, 1) × n
-     (not measured: the editor's eye never saw one). */
-  function texcoords(brush, face, volume = false) {
+     (not measured: the editor's eye never saw one). `edge` gives the first edge of the face the points are on when
+     they are not all of it (a piece of a face cut up). */
+  function texcoords(brush, face, volume = false, edge = null) {
     const points = polygonOf(brush, face);
-    return uvAt(face, normalize(newell(points)), points, volume);
+    return uvAt(face, normalize(newell(points)), points, volume, edge || firstEdge(points));
   }
-  // The texture coordinates `face`'s fields give `points` on a plane with outward unit normal n (see texcoords).
-  function uvAt(face, n, points, volume = false) {
-    const [U0, V0] = textureFrame(n, volume);
+  // The texture coordinates `face`'s fields give `points` on a plane with outward unit normal n, the face's first edge
+  // running along `edge` (see texcoords).
+  function uvAt(face, n, points, volume = false, edge = null) {
+    const [U0, V0] = textureFrame(n, volume, edge);
     const radians = (face.rotation || 0) * Math.PI / 180, c = Math.cos(radians), s = Math.sin(radians);
     const U = add(scale(U0, c), scale(V0, s)), V = add(scale(V0, c), scale(U0, -s));  // n × U0 = V0, n × V0 = −U0.
     return points.map(p => [(dot(p, U) + (face.u || 0) / 16) / (face.scaleU || 1), (dot(p, V) + (face.v || 0) / 16) / (face.scaleV || 1)]);
   }
-  // [U0, V0], the texture axes of a face with outward unit normal n before its rotation (see texcoords).
-  function textureFrame(n, volume = false) {
+  // The first edge of a polygon: from its first corner to the next one apart from it; null when there is none.
+  function firstEdge(points) {
+    for (let i = 1; i < points.length; i++) { const edge = sub(points[i], points[0]); if (length(edge) > WELD) return edge; }
+    return null;
+  }
+  // [U0, V0], the texture axes of a face with outward unit normal n and first edge `edge`, before its rotation (see
+  // texcoords). With no edge, or for a volume, the axes come from the axis n is nearest, as B.box's faces start.
+  function textureFrame(n, volume = false, edge = null) {
+    const along = !volume && edge && normalize(sub(edge, scale(n, dot(edge, n))));
+    if (along && length(along)) return [along, cross(n, along)];
     const reference = volume ? (Math.abs(n[1]) >= Math.abs(n[0]) && Math.abs(n[1]) >= Math.abs(n[2]) ? [0, 0, 1] : [0, -1, 0])
       : Math.abs(n[2]) >= Math.abs(n[0]) && Math.abs(n[2]) >= Math.abs(n[1]) ? (n[2] < 0 ? [1, 0, 0] : [0, 1, 0]) : [0, 0, 1];
     const U0 = normalize(cross(reference, n));
@@ -366,9 +386,10 @@
   /* Texture lock. A copy of `face`, on a plane with outward normal `normal`, with the offsets and rotation that put
      the texture coordinates `uvs` (as texcoords gives them) at `points`, its scale kept: the rigid fit in the face's
      plane (2D Procrustes). Exact when the face only moved or turned; the nearest fit when it was reshaped. With
-     q = (p · U0, p · V0) and w = (u × scaleU, v × scaleV), texcoords says w = [[c, s], [−s, c]] q + (offset u, offset v) / 16. */
-  function refit(face, normal, points, uvs, volume = false) {
-    const [U0, V0] = textureFrame(normalize(normal), volume), su = face.scaleU || 1, sv = face.scaleV || 1;
+     q = (p · U0, p · V0) and w = (u × scaleU, v × scaleV), texcoords says w = [[c, s], [−s, c]] q + (offset u, offset v) / 16.
+     `edge` is the face's first edge, which sets U0. */
+  function refit(face, normal, points, uvs, volume = false, edge = null) {
+    const [U0, V0] = textureFrame(normalize(normal), volume, edge), su = face.scaleU || 1, sv = face.scaleV || 1;
     const q = points.map(p => [dot(p, U0), dot(p, V0)]), w = uvs.map(([u, v]) => [u * su, v * sv]);
     const mean = list => [0, 1].map(k => list.reduce((sum, x) => sum + x[k], 0) / list.length), mq = mean(q), mw = mean(w);
     let along = 0, across = 0;
@@ -383,7 +404,8 @@
      where it was on `before` (texture lock). A face whose corners are all where they were is left as it is; where two or
      more stayed, the fit is to those, so a dragged corner leaves the rest of the face's texture pinned. Faces whose
      corners no longer match one for one (a corner welded onto another) keep their fields. Clips, splits and face
-     pushes need none of this: the faces they keep stay on their planes, where texture coordinates are fixed to the world. */
+     pushes need none of this: the faces they keep stay on their planes, and fromPlanes starts each kept face along the
+     way its first edge ran, so its texture stays (where the cut left an edge that way). */
   function lock(before, after, volume = false) {
     if (before.faces.length !== after.faces.length) return after;
     return {...after, faces: after.faces.map((face, i) => {
@@ -393,7 +415,7 @@
       const still = to.map((p, k) => length(sub(p, from[k])) <= WELD ? k : -1).filter(k => k >= 0);
       if (still.length === to.length) return face;
       const use = still.length >= 2 ? still : to.map((_, k) => k);
-      return refit(face, newell(to), use.map(k => to[k]), use.map(k => uvs[k]), volume);
+      return refit(face, newell(to), use.map(k => to[k]), use.map(k => uvs[k]), volume, firstEdge(to));
     })};
   }
 
@@ -426,7 +448,7 @@
       if (face.bevelOf === undefined) return face;
       const {bevelOf, ...fields} = face, from = added[bevelOf].from, points = polygonOf(result, face);
       const seam = points.filter(p => Math.abs(dot(from.normal, p) - from.distance) <= EPSILON * 10), use = seam.length >= 2 ? seam : points;
-      return refit(fields, added[bevelOf].normal, use, uvAt(from.face, from.normal, use, volume), volume);
+      return refit(fields, added[bevelOf].normal, use, uvAt(from.face, from.normal, use, volume, from.edge), volume, firstEdge(points));
     })};
   }
 
@@ -461,9 +483,9 @@
         }
         // The way on already taken from elsewhere ends the walk here, rather than turning onto the next best face.
         if (!best || done.has(best.id)) continue;
-        const {c, g, id} = best, {indices, ...look} = face;
+        const {c, g, id} = best, {indices, ...look} = face, edgeOf = (k, h) => firstEdge(polygonOf(brushes[k], brushes[k].faces[h]));
         done.add(id);
-        out[c].faces[g] = refit({...look, indices: out[c].faces[g].indices}, normals[c].get(brushes[c].faces[g]), [p, q], uvAt(face, n, [p, q], volume), volume);
+        out[c].faces[g] = refit({...look, indices: out[c].faces[g].indices}, normals[c].get(brushes[c].faces[g]), [p, q], uvAt(face, n, [p, q], volume, edgeOf(b, f)), volume, edgeOf(c, g));
         queue.push([c, g]);
       }
     }
@@ -473,11 +495,12 @@
   /* ---- Shapes: groups of convex brushes made from a few numbers (the parameters an editor keeps to remake them), in
      their own frame with y up as Reflex and Unity have it: x across, z along. Every face takes `fields`. Each returns
      the brushes, or null when the numbers make none. Geometry only: no texture assumptions. ---- */
-  // The brush between a convex polygon `points` (either winding) and the same moved by `along`; null when flat.
+  // The brush between a convex polygon `points` (either winding) and the same moved by `along`; null when flat. Its
+  // side faces start along `along`, so their textures run that way in the game (up the walls of a vertical one).
   function extrude(points, along, fields = {}) {
     const n = points.length, ring = [...Array(n).keys()];
     const faces = [{...fields, indices: ring}, {...fields, indices: ring.map(i => i + n)}];
-    for (let i = 0; i < n; i++) faces.push({...fields, indices: [i, (i + 1) % n, (i + 1) % n + n, i + n]});
+    for (let i = 0; i < n; i++) faces.push({...fields, indices: [i, i + n, (i + 1) % n + n, (i + 1) % n]});
     const brush = orient({vertices: [...points, ...points.map(p => add(p, along))].map(p => p.map(tidy)), faces});
     return n >= 3 && volume(brush) > MIN_VOLUME ? brush : null;
   }
@@ -612,7 +635,7 @@
   exports.ReflexBrush = {
     EPSILON, planesOf, planeFromPoints, fromPlanes, rebuild, volume, bounds, check, convex, box, translate, clone, offset,
     split, clip, intersection, intersects, subtract, hollow, hull, merge, mergeAll, triangles, raycast, newell, normalize,
-    orient, bridge, texcoords, uvAt, textureFrame, refit, lock, bevel, exposed, buried, validate, FATAL, wrap,
+    orient, bridge, texcoords, uvAt, firstEdge, textureFrame, refit, lock, bevel, exposed, buried, validate, FATAL, wrap,
     extrude, ring, stairs, arch, doorArch, hallway, radial,
   };
 })(typeof module !== 'undefined' ? module.exports : window);

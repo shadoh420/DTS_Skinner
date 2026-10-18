@@ -3054,8 +3054,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       if (current !== materials.get(key)) { current = materials.get(key); obj.push(`usemtl ${current}`); }
       const repeat = (mapped && texture.repeat) || 128;
+      // The pieces of a face cut up keep its texture axes, which its own first edge sets.
+      const edge = B.firstEdge(face.indices.map(index => entry.brush.vertices[index]));
       for (const piece of pieces) {
-        const coords = B.texcoords({vertices: piece}, {...face, indices: piece.map((_, k) => k)});
+        const coords = B.texcoords({vertices: piece}, {...face, indices: piece.map((_, k) => k)}, false, edge);
         piece.forEach((p, k) => obj.push(`v ${number(p[0])} ${number(p[1])} ${number(-p[2])}`, `vt ${number(coords[k][0] / repeat)} ${number(-coords[k][1] / repeat)}`));
         // Turning z round turns the winding: reversed, the faces still face out.
         obj.push('f ' + piece.map((_, k) => `${corners + piece.length - k}/${corners + piece.length - k}`).join(' '));
