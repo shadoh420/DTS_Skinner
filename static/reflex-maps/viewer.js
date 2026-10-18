@@ -121,6 +121,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   };
   // Faces the game does not draw: the editor's clip materials (player, weapon and full clip).
   const isClip = face => /^internal\/editor\/textures\/editor_.*clip/.test(face.material || '');
+  /* What Hide buried puts on the faces solid brushes bury. Reflex has no no-draw material: its stock maps leave buried
+     faces as they are and never mix clip faces with drawn ones; the editor_nolight the game knows (reflex.exe 0x14007ab7b)
+     only changes lighting, and a material it lacks is drawn as structural/dev/dev_grey128. The clip materials are the
+     faces it does not draw, and full clip blocks what a solid face does (reflex.exe 0x1401da870 gives it surface flag 8,
+     player clip 0x10, weapon clip 0x100). */
+  const NODRAW = 'internal/editor/textures/editor_fullclip';
+  // A brush that hides what is behind its faces: none of them see-through, and not all of them clip (a brush whose
+  // buried faces were hidden still hides).
+  const hides = brush => !brush.faces.some(isSeeThrough) && !brush.faces.every(isClip);
 
   // ---- Drawing brushes ----
   // ---- Light ----
@@ -1464,6 +1473,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Faces Shift-click picked, {item, index} (Ctrl+Shift-click adds and removes): the texture keys and Shift+M work on
   // them, and B bridges from the last.
   let picked = [];
+  // Edges Alt-click picked, {item, a, b} with a and b the corners (Ctrl+Alt-click adds and removes), on any brushes;
+  // Bevel cuts them back by `bevelWidth` (the grid when not set) in `bevelSteps` steps.
+  let edges = [], bevelWidth = 0, bevelSteps = 1;
   const bridgeFace = () => { const last = picked[picked.length - 1]; return last ? pickFace({entry: {source: last.item}, face: last.item.faces[last.index]}) : null; };
   // Fields new faces take: those K picked up, else plain concrete.
   let template = {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0, colour: '0x00000000', material: 'common/materials/stone/concrete'};
@@ -1537,6 +1549,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const ghost = new THREE.Group();
   root.add(ghost);
   const pickedOutline = new THREE.LineBasicMaterial({color: 0x3fc8ff, depthTest: false, transparent: true});
+  const pickedEdge = new THREE.LineBasicMaterial({color: 0xff8a3d, depthTest: false, transparent: true});
   const dotMaterial = new THREE.PointsMaterial({color: 0xf0c674, size: 9, sizeAttenuation: false, depthTest: false, transparent: true});
   const hoverMaterial = new THREE.PointsMaterial({color: 0xffffff, size: 14, sizeAttenuation: false, depthTest: false, transparent: true});
   const hoverDot = new THREE.Points(new THREE.BufferGeometry(), hoverMaterial);
@@ -1611,6 +1624,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       outline.renderOrder = 4;
       selection.add(outline);
     }
+    edges = edges.filter(edge => items.has(edge.item));
+    if (edges.length) {
+      const lines = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(edges.flatMap(edge => [...edge.a, ...edge.b]), 3)), pickedEdge);
+      lines.renderOrder = 4;
+      selection.add(lines);
+    }
     if (dots.length) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(dots.flatMap(dot => dot.position), 3));
@@ -1635,6 +1654,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('hollow').disabled = brushes.length !== 1 || !convex;
     $('merge').disabled = brushes.length < 2 || !convex;
     $('split').disabled = !convex || !lastPoint;
+    $('bevel').disabled = !edges.length;
+    $('bevel').textContent = edges.length ? `Bevel ${edges.length}` : 'Bevel';
     $('clipButton').classList.toggle('on', clipMode);
     $('lockButton').classList.toggle('on', textureLock);
     $('rotateInc').disabled = $('rotateDec').disabled = $('mirror').disabled = !count;
@@ -1702,7 +1723,32 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!plane) return null;
     return {item, face: hit.face, points: hit.face.indices.map(i => item.vertices[i]), normal: plane.normal};
   }
+  // The edge of the face under the mouse nearest to where it points, {item, a, b}; brushes prefabs place have none.
+  function pickEdge(event) {
+    const hit = pick(event, false);
+    if (!hit || hit.entry.path.length) return null;
+    const item = hit.entry.source, corners = hit.face.indices.map(i => item.vertices[i]);
+    const away = (a, b) => {
+      const ab = [0, 1, 2].map(k => b[k] - a[k]), ap = [0, 1, 2].map(k => hit.point[k] - a[k]);
+      const t = Math.max(0, Math.min(1, (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2 || 1)));
+      return Math.hypot(...ap.map((x, k) => x - ab[k] * t));
+    };
+    let best = null;
+    corners.forEach((a, n) => { const b = corners[(n + 1) % corners.length], d = away(a, b); if (!best || d < best.d) best = {item, a, b, d}; });
+    return best && {item, a: best.a, b: best.b};
+  }
+  const samePoint = (p, q) => p.every((x, k) => Math.abs(x - q[k]) < 1e-6);
+  const sameEdge = (e, f) => e.item === f.item && ((samePoint(e.a, f.a) && samePoint(e.b, f.b)) || (samePoint(e.a, f.b) && samePoint(e.b, f.a)));
   function select(event) {
+    if (event.altKey && !event.shiftKey) {
+      const edge = pickEdge(event);
+      if (!edge) return;
+      const at = edges.findIndex(other => sameEdge(other, edge));
+      if (adding(event)) { if (at >= 0) edges.splice(at, 1); else edges.push(edge); } else edges = [edge];
+      showSelection();
+      say(edges.length ? `${edges.length} edge${edges.length > 1 ? 's' : ''} picked · Bevel (or bevel <width> <steps> in the console) cuts them back · Ctrl+Alt-click adds · Esc drops` : '');
+      return;
+    }
     if (event.shiftKey) {
       const hit = pick(event, false);
       if (hit && !hit.entry.path.length) {
@@ -1889,7 +1935,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (plane) drag = {kind: 'face', item, plane, point: hit.point, offset: 0, result: item};
       return;
     }
-    if (adding(event)) return;
+    if (adding(event) || (event.altKey && !selected.has(item))) return;  // Alt-click picks an edge.
     if (!selected.has(item)) { selected.clear(); selected.add(item); showSelection(); }
     drag = {kind: 'move', point: hit.point, offset: [0, 0, 0]};
   }
@@ -2116,11 +2162,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     panel.hidden = !panelOpen || !editing;
     if (panel.hidden || !flat) return;
     const body = $('propsBody'), target = panelTarget();
-    $('propsTitle').textContent = panelView === 'prefabs' ? 'Prefabs' : panelView === 'materials' ? 'Materials' : 'Properties';
+    $('propsTitle').textContent = {prefabs: 'Prefabs', materials: 'Materials', checks: 'Brush checks'}[panelView] || 'Properties';
     if (panelView === 'materials') { showMaterials(body); return; }
     shownMaterials = '';
     body.replaceChildren();
     if (panelView === 'prefabs') { showPrefabList(body); return; }
+    if (panelView === 'checks') { showChecks(body); return; }
     if (!target) { body.textContent = 'This map has no WorldSpawn.'; return; }
     if (target.many) { body.textContent = `${target.many} selected: select one entity to see its properties.`; return; }
     if (target.brush) {
@@ -2179,6 +2226,33 @@ window.addEventListener('DOMContentLoaded', async () => {
           showSelection();
           say(`${selected.size} placement${selected.size === 1 ? '' : 's'} of ${prefab} in the map selected`);
         }, 'Select its placements in the map'))))));
+  }
+
+  // ---- Brush checks (brush.js validate), before saving ----
+  const ISSUE = {'too-few-faces': 'fewer than four faces', 'zero-normal': 'a face with no area, so no normal',
+    'duplicate-plane': 'two faces on one plane', 'encloses-nothing': 'faces that enclose nothing'};
+  // Every brush of every group the file writes (the map's and its prefabs') with issues, each {group, item, issues, fatal}.
+  function brushIssues() {
+    const out = [];
+    for (const group of map.groups) for (const item of group.items) {
+      if (!isBrush(item)) continue;
+      const issues = B.validate(item);
+      if (issues.length) out.push({group, item, issues, fatal: issues.some(issue => B.FATAL.has(issue.code))});
+    }
+    return out;
+  }
+  function showChecks(body) {
+    const list = brushIssues(), fatal = list.filter(entry => entry.fatal).length;
+    body.append(element('p', {textContent: !list.length ? 'Every brush is sound.' : fatal
+      ? `${fatal} brush${fatal > 1 ? 'es' : ''} would load as nothing: Save .map refuses until they are fixed or deleted.${list.length > fatal ? ' The rest are warnings.' : ''}`
+      : 'Only warnings: the game loads these brushes, and saving is allowed.'}));
+    body.append(element('table', {className: 'prefabs'}, ...list.slice(0, 200).map(({group, item, issues, fatal: broken}) => element('tr', {},
+      element('td', {textContent: broken ? 'Error' : 'Warning', className: broken ? 'hint' : ''}),
+      element('td', {style: 'text-align:left', textContent: issues.map(issue => `${issue.code}${issue.face >= 0 ? ` (face ${issue.face})` : ''}`).join(', '), title: issues.map(issue => ISSUE[issue.code]).join('; ')}),
+      element('td', {}, group === globalGroup()
+        ? element('button', {type: 'button', textContent: 'Select', onclick: () => { selected.clear(); selected.add(item); showSelection(); say(`Brush with ${issues.map(issue => ISSUE[issue.code]).join(', ')}`); }})
+        : `prefab ${group.name}`)))));
+    if (list.length > 200) body.append(element('p', {textContent: `And ${list.length - 200} more.`}));
   }
 
   // ---- The material browser (the game's me_activematerial) ----
@@ -2602,6 +2676,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     me_activematerial: name => { if (name) chooseMaterial(name, false); else showMaterialBrowser(); },
     editortoggleclipmode: () => setClipMode(!clipMode),
     editortogglevertexmode: () => setVertexMode(!vertexMode),
+    // Not the game's: Skinner's bevel, hide buried faces and brush checks.
+    bevel: (width = '', steps = '') => {
+      if (width !== '') { if (!(Number(width) > 0)) { say('bevel <width> <steps>: width in units (0 = the grid), steps 1 to 32'); return; } bevelWidth = Number(width); }
+      if (steps !== '') bevelSteps = Math.max(1, Math.min(32, Math.round(Number(steps)) || 1));
+      if (edges.length) actions.bevel(); else say(`Bevel ${bevelWidth || `grid (${settings.grid})`} in ${bevelSteps} step${bevelSteps > 1 ? 's' : ''}: Alt-click edges, then Bevel`);
+    },
+    hideburied: () => actions.hideBuried(),
+    checks: () => actions.checks(),
     help: () => say(`Commands: ${Object.keys(COMMANDS).join(', ')}`),
   };
   function run(line) {
@@ -2629,8 +2711,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       say(`New ${size}-unit box`);
     },
     subtract() {
-      const cutters = selectedBrushes(), changes = new Map();
-      for (const item of others(cutters)) for (const cutter of cutters) {
+      // A cutter of several brushes that together make one convex brush (a cylinder of wedges, a block stacked in
+      // layers) cuts as that one brush: each piece's planes would otherwise cut what the others carve again.
+      const cutters = selectedBrushes(), cutWith = B.mergeAll(cutters, false), changes = new Map();
+      for (const item of others(cutters)) for (const cutter of cutWith) {
         const current = changes.get(item) || [item];
         const pieces = current.flatMap(piece => B.subtract(piece, cutter));
         if (pieces.length !== current.length || pieces.some((piece, index) => piece !== current[index])) changes.set(item, pieces);
@@ -2641,8 +2725,39 @@ window.addEventListener('DOMContentLoaded', async () => {
       for (const [item, pieces] of changes) { const joined = B.mergeAll(pieces); before += pieces.length; after += joined.length; changes.set(item, joined); }
       const cut = changes.size;
       replace(changes, [], cutters);
-      say(`Carved ${cut} brushes into ${after} pieces${before > after ? ` (${before} before merging)` : ''}`);
+      say(`Carved ${cut} brushes into ${after} pieces${before > after ? ` (${before} before merging)` : ''}${cutWith.length < cutters.length ? `; the ${cutters.length} cutters cut as ${cutWith.length}` : ''}`);
     },
+    bevel() {
+      const width = bevelWidth || settings.grid, byItem = new Map(), changes = new Map();
+      for (const edge of edges) byItem.set(edge.item, [...(byItem.get(edge.item) || []), [edge.a, edge.b]]);
+      let failed = 0;
+      for (const [item, list] of byItem) {
+        const result = B.convex(item) ? B.bevel(item, list, width, bevelSteps, M.isVolume(ownerOf(item))) : null;
+        if (result) changes.set(item, [result]); else failed++;
+      }
+      if (!changes.size) { say(`Cannot bevel ${failed > 1 ? 'these edges' : 'that edge'} by ${width}: too wide for the faces, or the brush is not convex`); return; }
+      edges = [];
+      replace(changes, [], 'changed');
+      say(`Bevelled ${changes.size} brush${changes.size > 1 ? 'es' : ''} by ${width} in ${bevelSteps} step${bevelSteps > 1 ? 's' : ''}${failed ? `; ${failed} could not be` : ''}`);
+    },
+    // Faces solid brushes bury wholly (or press flat against) take the no-draw material: of the selected brushes, or
+    // of the whole map with none selected. Faces only partly buried stay as they are.
+    hideBuried() {
+      const entries = flat.brushes.filter(entry => !M.isVolume(entry.owner)), items = new Set(globalGroup().items), chosen = new Set(selectedBrushes());
+      const editable = new Set(entries.flatMap((entry, i) => !entry.path.length && items.has(entry.source) && hides(entry.brush) && (!chosen.size || chosen.has(entry.source)) ? [i] : []));
+      const lists = B.buried(entries.map(entry => entry.brush), entries.map(entry => hides(entry.brush)), editable), changes = new Map();
+      let count = 0;
+      lists.forEach((list, i) => {
+        const item = entries[i].source, hide = new Set(list.filter(f => !isClip(item.faces[f])));
+        if (!hide.size) return;
+        count += hide.size;
+        changes.set(item, [{...item, faces: item.faces.map((face, f) => hide.has(f) ? {...face, material: NODRAW} : face)}]);
+      });
+      if (!changes.size) { say(`No wholly buried faces ${chosen.size ? 'on the selection' : 'in the map'}`); return; }
+      replace(changes, [], chosen.size ? 'changed' : null);
+      say(`${count} buried faces of ${changes.size} brushes now ${NODRAW.split('/').pop()}, which the game does not draw`);
+    },
+    checks() { panelOpen = !(panelOpen && panelView === 'checks'); panelView = 'checks'; showPanel(); },
     hollow() {
       const [item] = selectedBrushes(), walls = B.hollow(item, settings.grid);
       if (walls.length === 1 && walls[0] === item) { say(`Too small to hollow with ${settings.grid}-unit walls`); return; }
@@ -2707,7 +2822,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     },
     undo() { restore(undoStack, redoStack); },
     redo() { restore(redoStack, undoStack); },
-    save() { download(new Blob([M.write(map)], {type: 'text/plain'}), /\.map$/i.test(mapName) ? mapName : `${mapName || 'untitled'}.map`); },
+    save() {
+      const broken = brushIssues().filter(entry => entry.fatal);
+      if (broken.length) {
+        panelOpen = true; panelView = 'checks'; showPanel();
+        say(`Not saved: ${broken.length} brush${broken.length > 1 ? 'es' : ''} would load as nothing (${[...new Set(broken.flatMap(entry => entry.issues.filter(issue => B.FATAL.has(issue.code)).map(issue => ISSUE[issue.code])))].join('; ')}). Click one in Checks to select it, then fix or delete it`);
+        return;
+      }
+      download(new Blob([M.write(map)], {type: 'text/plain'}), /\.map$/i.test(mapName) ? mapName : `${mapName || 'untitled'}.map`); },
     exportObj() { exportObj().catch(error => say(`Export OBJ failed: ${error.message}`)); },
   };
   function download(blob, name) {
@@ -2729,7 +2851,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const entries = flat.brushes.filter(entry => !M.isVolume(entry.owner));
     const sky = face => /\/skies\//.test(face.material || '') || /^internal\/shaders\/sky/.test((packColours[face.material || ''] || {}).shader || '');
     const water = face => /liquids\/water/.test(face.material || '') || addedFluid(packColours[face.material || ''] || {}, face.material || '');
-    const parts = B.exposed(entries.map(entry => entry.brush), entries.map(entry => entry.brush.faces.every(face => !isClip(face) && !isSeeThrough(face))));
+    const parts = B.exposed(entries.map(entry => entry.brush), entries.map(entry => hides(entry.brush)));
     const base = (mapName.replace(/\.map$/i, '') || 'untitled').replace(/[^\w.-]+/g, '_');
     // The textures first: their width sets the repeat of the library's.
     const textures = new Map();
@@ -2961,6 +3083,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (clipMode) { if (clipPoints.length) { clipPoints = []; showClip(); say(''); } else setClipMode(false); return; }
         if (bridging) { stopBridge(); return; }
         if (picked.length) { picked = []; showSelection(); say(''); return; }
+        if (edges.length) { edges = []; showSelection(); say(''); return; }
         if (createType) { setCreate(createType); return; }
         if (vertexMode) { setVertexMode(false); return; }
         if (texturePreview) { texturePreview = null; showSelection(); say(''); return; }

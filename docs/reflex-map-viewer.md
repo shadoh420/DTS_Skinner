@@ -734,6 +734,9 @@ and holds what the game's editor did not have:
 | Properties | N | Opens the property panel |
 | Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap, then joins the pieces again wherever two make one convex brush that looks the same; one step of undo; the selection stays |
 | Hollow | H | Turns the selected brush into walls one grid step thick that do not overlap |
+| Bevel | Alt+click | Alt-click picks the edge nearest the click on the face under the mouse (Ctrl+Alt-click adds and removes, on any brushes); Bevel cuts the picked edges back one grid step along both faces, or by `bevel <width> <steps>` from the console, rounded in that many flat steps |
+| Hide buried | | Puts `editor_fullclip` on the faces solid brushes bury wholly or press flat against (of the selection, or of the whole map with nothing selected); faces only partly buried stay; `hideburied` |
+| Checks | | Lists brushes with too few faces, a face with no normal, two faces on one plane or faces enclosing nothing; Select selects one; `checks` |
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
 | Split | | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
 | Clip | C | Clip mode, as below |
@@ -742,7 +745,7 @@ and holds what the game's editor did not have:
 | Prefabs | | The map's prefabs, with how many placements each has: make one from the selection, break the selected placements, edit one in place, update a prefab from the selection, place one or select its placements |
 | Console | ` | Runs editor commands, below |
 | Nudge | Shift+arrows, Shift+PgUp/PgDn | Moves the selection one grid step along the horizontal axis nearest the view, or up and down (without Shift, as in the game, these keys move a face's texture) |
-| Save .map | Ctrl+S | Downloads the map as a Reflex map file |
+| Save .map | Ctrl+S | Downloads the map as a Reflex map file; refuses, saying why and opening Checks, while a brush would load as nothing |
 | Export OBJ | | Downloads the brushes as they stand (edits and prefabs' brushes too) as a ZIP of OBJ, MTL and textures, less the faces solid brushes bury |
 
 Every edit is one step of undo (the last 100), and undoing brings back the
@@ -1098,6 +1101,37 @@ volumes hide nothing; clip faces, volumes and the sky are not written. A brush
 that covers none of a face leaves it whole. SkyTemples: 49,377 faces, 17,164
 buried wholly, 87,441 polygons written, about 10 s; no exported polygon has its
 centre inside a solid brush (16,975 of the unhidden faces did).
+
+Hide buried uses the same cut (`buried` in `brush.js`). Reflex has no no-draw
+material: its stock maps leave buried faces textured and never mix clip faces
+with drawn ones, and `editor_nolight`, which reflex.exe names (0x14007ab7b),
+only changes lighting. The faces the game does not draw are the clip
+materials, and `editor_fullclip` blocks what a solid face does (reflex.exe
+0x1401da870 gives it surface flag 8; player clip 0x10, weapon clip 0x100,
+other faces 1). A brush with some full clip faces still hides what is behind
+it. Ruin: 2714 faces of 1228 brushes, 0.3 s; in the game it looks as before
+(mean difference 0.8/255, the rest flames and particles) and a player stands
+on a full clip face. Checked in the game with `skinner_anvil_room`.
+
+Bevel adds planes to the brush's set, so it works on any convex brush and on
+several edges at once: for an edge between faces with normals at angle α, the
+steps' corners lie on the arc of radius width / tan(α/2) tangent to both faces
+`width` from the edge; one step is the chamfer through those two lines. Each
+new face takes the fields of the face it leans toward and is refit (`refit`)
+so its texture runs on from that face, exactly along their seam.
+
+Subtract first joins the cutters wherever two make one convex brush, their
+faces' fields aside (`mergeAll(cutters, false)`): a cutter in layers through a
+wall cuts once instead of by each layer's inner faces. Cutters with different
+texture offsets, through a 32-thick wall: a door in 3 layers 7 pieces → 3, a
+16-sided cylinder in 2 layers 30 → 16, in 4 layers of 4 wedges 64 → 16. A
+convex cutter through a wall already leaves the fewest convex pieces (an
+n-sided hole needs n), so no 2D partition of the wall was added; two windows
+of 8 wedges each leave 15 pieces instead of 14.
+
+Checks (`validate`) gives fixed codes: `too-few-faces`, `zero-normal`,
+`duplicate-plane`, `encloses-nothing`. Only the first and last block saving:
+ironguard ships three faces with no area, and the game loads it.
 
 ## Limits and what comes next
 
