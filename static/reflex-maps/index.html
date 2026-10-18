@@ -48,6 +48,10 @@
     <button id="merge" title="Join the selected brushes into one when their union is convex (Ctrl+M)">Merge</button>
     <button id="split" title="Cut the selected brushes along the grid plane facing the camera through the point clicked last">Split</button>
     <button id="bevel" title="Cut the edges Alt-click picked (Ctrl+Alt-click adds) back by the grid, or as the console's bevel &lt;width&gt; &lt;steps&gt; last set">Bevel</button>
+    <select id="shape" title="Make a shape that keeps its numbers (stairs, arch, door arch, curved hallway) in front of the camera, or a radial array of the selection; the panel (N) changes its numbers until Convert to brushes (shape &lt;kind&gt;)">
+      <option value="">Shape…</option><option value="stairs">Stairs</option><option value="arch">Arch</option><option value="doorArch">Door arch</option><option value="hallway">Curved hallway</option><option value="radial">Radial array of selection</option>
+    </select>
+    <button id="wrap" title="Carry the texture of the face Shift-click picked on round the faces beside it (a pillar's sides, an arch's underside), over its brush and the selected ones; with more faces picked (Ctrl+Shift-click), onto those only (wrap)">Wrap</button>
     <button id="hideBuried" title="Put the no-draw material (editor_fullclip, as the game does not draw clip faces) on faces solid brushes bury wholly: of the selection, or of the whole map with nothing selected (hideburied)">Hide buried</button>
     <button id="checks" title="Brush checks: brushes with too few faces, a face with no normal, faces on one plane, or faces enclosing nothing; Save .map refuses while any would load as nothing (checks)">Checks</button>
     <button id="clipButton" title="Clip mode: click two or three points of a plane, Enter cuts the selection with it (C)">Clip</button>

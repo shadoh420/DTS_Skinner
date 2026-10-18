@@ -430,6 +430,116 @@
     })};
   }
 
+  /* Texture wrap: the texture of face `start` ({brush, face}, indices into `brushes`) carried on to the faces beside it,
+     and on from each of those, so it runs on unbroken round a pillar or along an arch. A face reached takes the whole
+     look of the face it is reached from (material, scale, colour) and the offsets and turn that unroll it about their
+     shared edge into that face's plane: the fit to the edge's two corners, which fixes a turn and an offset exactly.
+     Faces meet where two of their corners are at the same places, so the faces of separate brushes (an arch's
+     segments) join as one brush's do. Across each edge the walk goes on to the one face that turns least from the
+     face it comes from, and only when that turn is less than a right angle (so it stays on a pillar's sides, off its
+     caps); with `only` (a list of {brush, face}) it goes onto those faces at any angle. It is breadth first, so on a
+     closed loop the walks round either way meet opposite the start, where any seam is. Returns `brushes` with the
+     brushes it changed replaced. */
+  function wrap(brushes, start, only = null, volume = false) {
+    // ponytail: corners a hair either side of a rounding step miss each other; generated and grid brushes do not.
+    const key = p => p.map(x => Math.round(x / WELD)).join(), edgeKey = (p, q) => [key(p), key(q)].sort().join('|');
+    const normals = brushes.map(brush => new Map(planesOf(brush).map(plane => [plane.face, plane.normal])));
+    const byEdge = new Map(), corners = (brush, face) => face.indices.map((index, k) => [brush.vertices[index], brush.vertices[face.indices[(k + 1) % face.indices.length]]]);
+    brushes.forEach((brush, b) => brush.faces.forEach((face, f) => {
+      if (normals[b].has(face)) for (const [p, q] of corners(brush, face)) { const edge = edgeKey(p, q); byEdge.set(edge, [...(byEdge.get(edge) || []), [b, f]]); }
+    }));
+    const allowed = only && new Set(only.map(({brush, face}) => `${brush}:${face}`));
+    const out = brushes.map(brush => ({...brush, faces: [...brush.faces]})), done = new Set([`${start.brush}:${start.face}`]), queue = [[start.brush, start.face]];
+    while (queue.length) {
+      const [b, f] = queue.shift(), face = out[b].faces[f], n = normals[b].get(brushes[b].faces[f]);
+      for (const [p, q] of corners(brushes[b], brushes[b].faces[f])) {
+        let best = null;
+        for (const [c, g] of byEdge.get(edgeKey(p, q)) || []) {
+          const id = `${c}:${g}`, turn = dot(n, normals[c].get(brushes[c].faces[g]));
+          if ((c === b && g === f) || (allowed ? !allowed.has(id) : turn <= EPSILON)) continue;
+          if (!best || turn > best.turn) best = {c, g, id, turn};
+        }
+        // The way on already taken from elsewhere ends the walk here, rather than turning onto the next best face.
+        if (!best || done.has(best.id)) continue;
+        const {c, g, id} = best, {indices, ...look} = face;
+        done.add(id);
+        out[c].faces[g] = refit({...look, indices: out[c].faces[g].indices}, normals[c].get(brushes[c].faces[g]), [p, q], uvAt(face, n, [p, q], volume), volume);
+        queue.push([c, g]);
+      }
+    }
+    return out.map((brush, b) => brush.faces.every((face, f) => face === brushes[b].faces[f]) ? brushes[b] : brush);
+  }
+
+  /* ---- Shapes: groups of convex brushes made from a few numbers (the parameters an editor keeps to remake them), in
+     their own frame with y up as Reflex and Unity have it: x across, z along. Every face takes `fields`. Each returns
+     the brushes, or null when the numbers make none. Geometry only: no texture assumptions. ---- */
+  // The brush between a convex polygon `points` (either winding) and the same moved by `along`; null when flat.
+  function extrude(points, along, fields = {}) {
+    const n = points.length, ring = [...Array(n).keys()];
+    const faces = [{...fields, indices: ring}, {...fields, indices: ring.map(i => i + n)}];
+    for (let i = 0; i < n; i++) faces.push({...fields, indices: [i, (i + 1) % n, (i + 1) % n + n, i + n]});
+    const brush = orient({vertices: [...points, ...points.map(p => add(p, along))].map(p => p.map(tidy)), faces});
+    return n >= 3 && volume(brush) > MIN_VOLUME ? brush : null;
+  }
+  const every = list => list.every(Boolean) ? list : null;
+  /* `sides` pieces of a ring round axis `axis` (0 x, 1 y, 2 z) through the origin, between radii `inner` (0: wedges
+     meeting on the axis) and `outer`, from `from` to `to` along the axis, sweeping `degrees` from `start`. Angle 0 is
+     along the next axis round (z for y, x for z) and 90 along the one after, so round y, +z turns toward +x as a yaw
+     does. Each piece is the quad of the chords at its two angles; neighbours share those corners exactly. */
+  function ring({axis, inner, outer, from, to, sides, degrees, start = 0}, fields = {}) {
+    if (!(inner >= 0 && outer > inner && to > from && sides >= 1 && sides <= 256 && degrees > 0 && degrees <= 360 && degrees / sides < 180)) return null;
+    const point = (radius, k) => {
+      const angle = (start + degrees * k / sides) * Math.PI / 180, p = [0, 0, 0];
+      p[(axis + 1) % 3] = radius * Math.cos(angle); p[(axis + 2) % 3] = radius * Math.sin(angle); p[axis] = from;
+      return p;
+    };
+    const along = [0, 0, 0], pieces = [];
+    along[axis] = to - from;
+    for (let k = 0; k < sides; k++) pieces.push(extrude(inner > 0 ? [point(outer, k), point(outer, k + 1), point(inner, k + 1), point(inner, k)] : [point(outer, k), point(outer, k + 1), point(0, k)], along, fields));
+    return every(pieces);
+  }
+  // Solid stairs: `steps` boxes `width` wide, centred on x, each `run` deep along +z and reaching `rise` higher than the
+  // one before, from the floor (y 0) up.
+  function stairs({steps, rise, run, width}, fields = {}) {
+    if (!(steps >= 1 && steps <= 256 && rise > 0 && run > 0 && width > 0)) return null;
+    return [...Array(Math.round(steps)).keys()].map(i => box([-width / 2, 0, i * run], [width / 2, (i + 1) * rise, (i + 1) * run], fields));
+  }
+  // An arch across x: `segments` pieces of a band `thickness` deep inside an outer `span`, `depth` along z (centred), its
+  // springing line on y 0, sweeping `degrees` (180 a half circle, 360 a ring) centred on the top.
+  function arch({span, thickness, depth, segments, degrees = 180}, fields = {}) {
+    return ring({axis: 2, inner: span / 2 - thickness, outer: span / 2, from: -depth / 2, to: depth / 2, sides: segments, degrees, start: 90 - degrees / 2}, fields);
+  }
+  // A doorway frame: two legs `thickness` wide and a half-circle arch on them, `width` across outside, `height` to the
+  // top of the arch, `depth` along z (centred), standing on y 0.
+  function doorArch({width, height, thickness, depth, segments}, fields = {}) {
+    const r = width / 2, leg = height - r;
+    const top = leg >= 0 && thickness < r ? arch({span: width, thickness, depth, segments}, fields) : null;
+    if (!top) return null;
+    const legs = leg > 0 ? [box([-r, 0, -depth / 2], [-r + thickness, leg, depth / 2], fields), box([r - thickness, 0, -depth / 2], [r, leg, depth / 2], fields)] : [];
+    return [...legs, ...top.map(brush => translate(brush, [0, leg, 0]))];
+  }
+  // A hallway curving round the y axis, sweeping `degrees` from +z toward +x in `segments` pieces: its walk `width`
+  // wide from `radius` out, a floor and a ceiling `floor` thick over the walk, walls `wall` thick either side,
+  // `height` from the floor's underside to the ceiling's top. Four rings, sharing their radial planes.
+  function hallway({radius, width, wall, floor, height, segments, degrees}, fields = {}) {
+    if (!(radius - wall >= 0 && width > 0 && wall > 0 && floor > 0 && height > 2 * floor)) return null;
+    const part = (inner, outer, from, to) => ring({axis: 1, inner, outer, from, to, sides: segments, degrees}, fields);
+    const parts = [part(radius, radius + width, 0, floor), part(radius, radius + width, height - floor, height),
+      part(radius - wall, radius, 0, height), part(radius + width, radius + width + wall, 0, height)];
+    return parts.every(Boolean) ? parts.flat() : null;
+  }
+  // Radial array: copies of `brushes` turned about the vertical through `centre`, `count` in all with the originals
+  // (which are not returned), each `angle` degrees on from the one before, +z toward +x (as a yaw turns).
+  function radial(brushes, centre, count, angle) {
+    const copies = [];
+    for (let k = 1; k < count; k++) {
+      const a = k * angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+      const turn = ([x, y, z]) => [centre[0] + (x - centre[0]) * c + (z - centre[2]) * s, y, centre[2] - (x - centre[0]) * s + (z - centre[2]) * c].map(tidy);
+      for (const brush of brushes) copies.push({vertices: brush.vertices.map(turn), faces: brush.faces.map(face => ({...face, indices: [...face.indices]}))});
+    }
+    return copies;
+  }
+
   // Two faces look the same when every field but their corners is the same.
   const sameLook = (f, g) => [...new Set([...Object.keys(f), ...Object.keys(g)])].every(key => key === 'indices' || f[key] === g[key]);
   // Brushes joined pairwise wherever two together are convex and their faces on a shared plane look the same (the
@@ -502,6 +612,7 @@
   exports.ReflexBrush = {
     EPSILON, planesOf, planeFromPoints, fromPlanes, rebuild, volume, bounds, check, convex, box, translate, clone, offset,
     split, clip, intersection, intersects, subtract, hollow, hull, merge, mergeAll, triangles, raycast, newell, normalize,
-    orient, bridge, texcoords, uvAt, textureFrame, refit, lock, bevel, exposed, buried, validate, FATAL,
+    orient, bridge, texcoords, uvAt, textureFrame, refit, lock, bevel, exposed, buried, validate, FATAL, wrap,
+    extrude, ring, stairs, arch, doorArch, hallway, radial,
   };
 })(typeof module !== 'undefined' ? module.exports : window);
