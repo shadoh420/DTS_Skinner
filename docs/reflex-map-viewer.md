@@ -732,16 +732,18 @@ and holds what the game's editor did not have:
 | Mirror | | Mirrors the selection left to right as the camera sees it (across x or z, whichever is nearer the view's right), about its middle; Shift+click, upside down; `me_mirror x\|y\|z` |
 | New box | | A box 8 grid steps wide, 256 units in front of the camera, on the grid, with the picked material (1 and a drag on a surface makes one where wanted) |
 | Properties | N | Opens the property panel |
-| Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap; the selection stays |
+| Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap, then joins the pieces again wherever two make one convex brush that looks the same; one step of undo; the selection stays |
 | Hollow | H | Turns the selected brush into walls one grid step thick that do not overlap |
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
 | Split | | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
 | Clip | C | Clip mode, as below |
+| Lock | L | Texture lock (as the Novakin editor's L): moving, nudging, cloning, turning and dragging corners keep each face's texture where it was on the face; off to start with |
 | Materials | | The material browser: the game's materials (with their thumbnails) and the textures of Skinner's libraries, with a search; a click chooses what M puts on, a double click also puts it on the selection |
 | Prefabs | | The map's prefabs, with how many placements each has: make one from the selection, break the selected placements, edit one in place, update a prefab from the selection, place one or select its placements |
 | Console | ` | Runs editor commands, below |
 | Nudge | Shift+arrows, Shift+PgUp/PgDn | Moves the selection one grid step along the horizontal axis nearest the view, or up and down (without Shift, as in the game, these keys move a face's texture) |
 | Save .map | Ctrl+S | Downloads the map as a Reflex map file |
+| Export OBJ | | Downloads the brushes as they stand (edits and prefabs' brushes too) as a ZIP of OBJ, MTL and textures, less the faces solid brushes bury |
 
 Every edit is one step of undo (the last 100), and undoing brings back the
 selection with it. While dragging, the yellow outline shows where the
@@ -1069,7 +1071,33 @@ fields. Hollow is the brush less itself shrunk by the wall thickness, so the
 walls do not overlap. Merge takes the convex hull of both and keeps it only
 when its volume is the volume of the union. Node tests check each, and that
 subtract conserves volume (the pieces and the overlap add up to the brush) for
-random convex brushes.
+random convex brushes. After a subtract, `mergeAll` joins the pieces pairwise
+(as the Novakin editor's merge loop) wherever their union is convex and the
+faces they have on a shared plane carry the same fields: two overlapping
+cutters through a slab leave 7 pieces instead of 11.
+
+Texture lock is `refit` and `lock` in `brush.js`, the reference the Novakin
+editors port. Texture coordinates are anchored to the world (`texcoords`), so
+a face that stays on its plane keeps its texture by itself: clips, splits and
+face pushes need nothing. When a face moves or turns, `lock(before, after)`
+fits each face of the new brush, at its own scale, to the texture coordinates
+its corners had: in the face's frame q = (p · U0, p · V0), texcoords says
+w = (u × scaleU, v × scaleV) = [[c, s], [−s, c]] q + (offset u, offset v) / 16,
+so the rotation and offsets come from a 2D rigid (Procrustes) fit. It is exact
+for moves and turns (the frame jumping where a face's nearest axis changes
+included) and the nearest fit for a dragged corner, which is fitted to the
+corners that stayed. A mirror cannot be locked by rotation and offsets alone
+and is left as it was. Checked in the game: a grid box turned 22.5° with the
+lock on shows its grid along its turned edges.
+
+Export OBJ cuts each face by every other solid brush near it and drops what is
+inside (`exposed`, as qbsp's CSG): a point on a plane counts as inside, so
+faces pressed together go from both brushes, and of two faces on one plane
+facing one way the later brush's is kept. Glass, water, clip brushes and
+volumes hide nothing; clip faces, volumes and the sky are not written. A brush
+that covers none of a face leaves it whole. SkyTemples: 49,377 faces, 17,164
+buried wholly, 87,441 polygons written, about 10 s; no exported polygon has its
+centre inside a solid brush (16,975 of the unhidden faces did).
 
 ## Limits and what comes next
 
