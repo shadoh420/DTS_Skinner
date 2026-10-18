@@ -2678,7 +2678,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     editortogglevertexmode: () => setVertexMode(!vertexMode),
     // Not the game's: Skinner's bevel, hide buried faces and brush checks.
     bevel: (width = '', steps = '') => {
-      if (width !== '') { if (!(Number(width) > 0)) { say('bevel <width> <steps>: width in units (0 = the grid), steps 1 to 32'); return; } bevelWidth = Number(width); }
+      if (width !== '') { if (!(Number(width) >= 0)) { say('bevel <width> <steps>: width in units (0 = the grid), steps 1 to 32'); return; } bevelWidth = Number(width); }
       if (steps !== '') bevelSteps = Math.max(1, Math.min(32, Math.round(Number(steps)) || 1));
       if (edges.length) actions.bevel(); else say(`Bevel ${bevelWidth || `grid (${settings.grid})`} in ${bevelSteps} step${bevelSteps > 1 ? 's' : ''}: Alt-click edges, then Bevel`);
     },
@@ -3166,7 +3166,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('help').textContent = helpText();
   }
   const helpText = () => editing
-    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · C clip · L texture lock · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
+    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · Alt-click edge, Bevel · 1–8 create · V vertices · C clip · L texture lock · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
     : walking ? '0 edit · Click to capture / drag to look · WASD walk · Space jump · F fly · Esc release · 1–9 viewpoints'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · F walk · Esc release · 1–9 viewpoints';
 
