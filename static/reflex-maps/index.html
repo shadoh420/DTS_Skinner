@@ -48,6 +48,7 @@
     <button id="merge" title="Join the selected brushes into one when their union is convex (Ctrl+M)">Merge</button>
     <button id="split" title="Cut the selected brushes along the grid plane facing the camera through the point clicked last">Split</button>
     <button id="clipButton" title="Clip mode: click two or three points of a plane, Enter cuts the selection with it (C)">Clip</button>
+    <button id="lockButton" title="Texture lock: moving, turning and reshaping brushes keeps their textures where they are on the faces (L)">Lock</button>
     <button id="duplicate" title="Copy the selected brushes one grid step along x (G)">Clone</button>
     <button id="delete" title="Delete the selected brushes (Backspace)">Delete</button>
     <button id="undo" title="Undo (Z)">Undo</button>
@@ -56,6 +57,7 @@
     <button id="prefabsButton" title="The map's prefabs: make one from the selection, break, update and place them (me_listprefabs)">Prefabs</button>
     <input id="console" placeholder="Console (`): me_createprefab name…" aria-label="Editor console" spellcheck="false" autocomplete="off">
     <button id="save" title="Download the edited map as a Reflex .map file (Ctrl+S)">Save .map</button>
+    <button id="exportObj" title="Download the brushes as they stand as OBJ + MTL with their textures (a ZIP), less the faces solid brushes bury">Export OBJ</button>
     <button id="materialsButton" title="Browse the game's materials and Skinner's texture libraries for M to put on (me_activematerial)">Materials</button>
     <span class="active" title="K picks up the material and colour of the face under the cursor; M puts them on the selected brushes, Shift+M on the face under the cursor"><span id="swatch"></span><span id="material"></span></span>
   </nav>

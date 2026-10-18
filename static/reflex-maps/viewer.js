@@ -17,7 +17,8 @@
    (me_showproperties). Numpad + and − turn the selection (me_rotate_inc/dec, by the angle step, me_snapangle); the
    arrows, Home/End/Insert/Delete, PgUp/PgDn and , and . move, scale, flip and turn the texture of the face under the
    cursor (me_texcoords_*), and Shift with the arrows nudges the selection instead. C is clip mode: two or three points
-   make a plane, Enter clips and Shift+Enter splits. A click on anything a prefab places selects its Prefab entity;
+   make a plane, Enter clips and Shift+Enter splits. L is texture lock (as the Novakin editor's L): moves, turns,
+   clones and corner drags keep each face's texture where it was on the face. A click on anything a prefab places selects its Prefab entity;
    the console (`) breaks, updates, makes and lists prefabs (me_breakprefab, me_updateprefab, me_createprefab,
    me_listprefabs), and a double click on a placement edits its prefab in place. Ctrl+Shift-click picks more faces;
    Mirror mirrors the selection. Faces are textured from the game's materials or any of Skinner's texture libraries
@@ -1456,6 +1457,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const selected = new Set(), undoStack = [], redoStack = [];
   const snap = value => Math.round(value / settings.grid) * settings.grid;
   let lastPoint = null, lastNormal = null, createType = 0, vertexMode = false;
+  // Texture lock (L): moving, turning or reshaping a brush keeps its textures where they were on its faces (brush.js lock).
+  let textureLock = false;
   // The bridge tool: the face Shift-click picked, whether B is aiming from it, the steps, and what a click would make.
   let bridging = false, segments = 4, bridgePreview = null;
   // Faces Shift-click picked, {item, index} (Ctrl+Shift-click adds and removes): the texture keys and Shift+M work on
@@ -1472,6 +1475,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const ownerOf = item => ownerOfItem.get(item) || null;
   const isWorldBrush = item => isBrush(item) && !M.isVolume(ownerOf(item));
   const positionOf = entity => M.property(entity, 'position');
+  const locked = (before, after) => textureLock && isBrush(before) ? B.lock(before, after, M.isVolume(ownerOf(before))) : after;
   const withPosition = (entity, position) => ({...entity, properties: entity.properties.map(p => p.name === 'position' ? {...p, value: position.map(v => Math.round(v * 1e6) / 1e6 + 0)} : p)});
 
   // A step of undo is the lists of every group (the map's and its prefabs') and what was selected, so undoing brings
@@ -1632,13 +1636,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('merge').disabled = brushes.length < 2 || !convex;
     $('split').disabled = !convex || !lastPoint;
     $('clipButton').classList.toggle('on', clipMode);
+    $('lockButton').classList.toggle('on', textureLock);
     $('rotateInc').disabled = $('rotateDec').disabled = $('mirror').disabled = !count;
     $('duplicate').disabled = $('delete').disabled = !count;
     $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length;
     $('mode').title = $('mode').textContent = (bridging ? `Bridge (B): aim at a face · wheel ${segments} step${segments > 1 ? 's' : ''} · click makes · Esc stops`
       : clipMode ? `Clip (C): ${clipPoints.length} of 3 points · Enter clips · Shift+Enter splits · wheel flips · Esc`
       : createType ? `Create ${createLabel()}${createType <= 8 ? ` (${createType})` : ''}: ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
-      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode') + (openPrefab ? ` · prefab ${openPrefab.name} open (Esc with nothing selected closes)` : '');
+      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode') + (textureLock ? ' · texture lock (L)' : '') + (openPrefab ? ` · prefab ${openPrefab.name} open (Esc with nothing selected closes)` : '');
     showPanel();
     $('material').textContent = `${template.material || 'no material'}${template.colour && M.colourOf(template) ? ` · ${template.colour}` : ''}`;
     $('swatch').style.background = '#' + new THREE.Color(...faceShade(template).diffuse.map(c => Math.pow(c, 1 / 2.2))).getHexString();
@@ -1950,7 +1955,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     selection.position.set(0, 0, 0);
     ghost.clear();
     if (done.kind === 'move' && done.offset.some(Boolean)) {
-      replace(new Map([...selected].map(item => [item, [isBrush(item) ? B.translate(item, done.offset) : withPosition(item, positionOf(item).map((v, i) => v + done.offset[i]))]])), [], 'changed');
+      replace(new Map([...selected].map(item => [item, [isBrush(item) ? locked(item, B.translate(item, done.offset)) : withPosition(item, positionOf(item).map((v, i) => v + done.offset[i]))]])), [], 'changed');
       say(`Moved ${done.offset.join(' ')}`);
       return true;
     }
@@ -1961,7 +1966,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     if (done.kind === 'corner' && done.result) {
       const kept = [...selected].filter(item => item !== done.item);
-      replace(new Map([[done.item, [done.result]]]), [], 'changed');
+      replace(new Map([[done.item, [locked(done.item, done.result)]]]), [], 'changed');
       kept.forEach(item => selected.add(item));
       showSelection();
       say(`Corner moved${B.check(done.result).length ? ` · the brush now ${problemText(B.check(done.result))}` : ''}`);
@@ -2340,7 +2345,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       for (const axis of [0, 2]) if (onGrid(before.min[axis]) && !onGrid(after.min[axis])) shift[axis] = snap(after.min[axis]) - after.min[axis];
       transform = transform.map((row, i) => [row[0], row[1], row[2], row[3] + shift[i]]);
     }
-    const turned = items.map(item => M.moveItem(item, transform, degrees));
+    const turned = items.map(item => locked(item, M.moveItem(item, transform, degrees)));
     replace(new Map(items.map((item, i) => [item, [turned[i]]])), [], turned.filter((_, i) => selected.has(items[i])));
     say(`Turned ${degrees > 0 ? '+' : ''}${degrees}° about ${Math.round(centre[0] * 1000) / 1000} ${Math.round(centre[2] * 1000) / 1000}`);
   }
@@ -2631,9 +2636,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (pieces.length !== current.length || pieces.some((piece, index) => piece !== current[index])) changes.set(item, pieces);
       }
       if (!changes.size) { say('The selection touches no other brush'); return; }
+      // What is left of each brush, joined again wherever pieces make one convex brush that looks the same.
+      let before = 0, after = 0;
+      for (const [item, pieces] of changes) { const joined = B.mergeAll(pieces); before += pieces.length; after += joined.length; changes.set(item, joined); }
       const cut = changes.size;
       replace(changes, [], cutters);
-      say(`Carved ${cut} brushes`);
+      say(`Carved ${cut} brushes into ${after} pieces${before > after ? ` (${before} before merging)` : ''}`);
     },
     hollow() {
       const [item] = selectedBrushes(), walls = B.hollow(item, settings.grid);
@@ -2672,8 +2680,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       for (const item of selected) {
         if (isBrush(item)) {
           const owner = ownerOf(item);
-          if (M.isVolume(owner)) inserts.push({at: 'end', things: [{...owner, properties: owner.properties.map(p => ({...p}))}, B.translate(item, step)]});
-          else inserts.push({at: item, things: [B.translate(item, step)]});
+          if (M.isVolume(owner)) inserts.push({at: 'end', things: [{...owner, properties: owner.properties.map(p => ({...p}))}, locked(item, B.translate(item, step))]});
+          else inserts.push({at: item, things: [locked(item, B.translate(item, step))]});
         } else if (!M.VOLUMES.has(item.type)) {
           const position = positionOf(item);
           inserts.push({at: item, things: [position ? withPosition(item, position.map((v, i) => v + step[i])) : {...item}]});
@@ -2699,16 +2707,106 @@ window.addEventListener('DOMContentLoaded', async () => {
     },
     undo() { restore(undoStack, redoStack); },
     redo() { restore(redoStack, undoStack); },
-    save() {
-      const blob = new Blob([M.write(map)], {type: 'text/plain'}), link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = /\.map$/i.test(mapName) ? mapName : `${mapName || 'untitled'}.map`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-    },
+    save() { download(new Blob([M.write(map)], {type: 'text/plain'}), /\.map$/i.test(mapName) ? mapName : `${mapName || 'untitled'}.map`); },
+    exportObj() { exportObj().catch(error => say(`Export OBJ failed: ${error.message}`)); },
   };
+  function download(blob, name) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  // ---- Export OBJ: the brushes as they stand, unsaved edits and prefabs' brushes too ----
+  /* A ZIP of NAME.obj, NAME.mtl and the textures, as tools/map_obj_exporter.py writes for the other Maps pages: the
+     game's units, z turned round as the page shows it (so a right-handed y-up program sees the map as the game does),
+     readable material names, no light. What solid brushes bury is left out (brush.js exposed); glass, water, clip
+     brushes and volumes hide nothing. Clip faces, volumes and the sky are not written; glass and water are half
+     see-through (d 0.5) and water's materials are named water_…. */
+  async function exportObj() {
+    if (!flat) return;
+    const entries = flat.brushes.filter(entry => !M.isVolume(entry.owner));
+    const sky = face => /\/skies\//.test(face.material || '') || /^internal\/shaders\/sky/.test((packColours[face.material || ''] || {}).shader || '');
+    const water = face => /liquids\/water/.test(face.material || '') || addedFluid(packColours[face.material || ''] || {}, face.material || '');
+    const parts = B.exposed(entries.map(entry => entry.brush), entries.map(entry => entry.brush.faces.every(face => !isClip(face) && !isSeeThrough(face))));
+    const base = (mapName.replace(/\.map$/i, '') || 'untitled').replace(/[^\w.-]+/g, '_');
+    // The textures first: their width sets the repeat of the library's.
+    const textures = new Map();
+    for (const entry of entries) for (const face of entry.brush.faces) {
+      const source = !isClip(face) && !sky(face) && textureSource(face);
+      if (!source || textures.has(source.url)) continue;
+      const [path, game] = source.url.split('?game=');
+      textures.set(source.url, {source, file: `textures/${game ? game + '_' : ''}${decodeURIComponent(path.split('/').pop())}`.replace(/[^\w.~/-]+/g, '_')});
+    }
+    await Promise.all([...textures.values()].map(async texture => {
+      const response = await fetch(texture.source.url).catch(() => null);
+      if (!response || !response.ok) return;
+      texture.bytes = new Uint8Array(await response.arrayBuffer());
+      const png = texture.bytes.length > 24 && texture.bytes[1] === 0x50 ? new DataView(texture.bytes.buffer).getUint32(16) : 0;
+      texture.repeat = texture.source.repeat || (png ? png / 2 : 128);
+    }));
+    const number = value => String(Math.round(value * 1e4) / 1e4 + 0);
+    const obj = [], mtl = [], materials = new Map(), names = new Set();
+    let faces = 0, buried = 0, polygons = 0, corners = 0, current = null;
+    entries.forEach((entry, i) => entry.brush.faces.forEach((face, f) => {
+      if (isClip(face) || sky(face)) return;
+      faces++;
+      const pieces = parts[i][f];
+      if (!pieces.length) { buried++; return; }
+      const source = textureSource(face), texture = source && textures.get(source.url), mapped = texture && texture.bytes;
+      const kd = faceShade(face).diffuse.map(c => number(Math.min(1, Math.pow(c, 1 / 2.2)))).join(' '), see = isSeeThrough(face);
+      const key = [face.material, kd, see, mapped && texture.file].join('|');
+      if (!materials.has(key)) {
+        const plain = `${water(face) ? 'water_' : ''}${face.material || 'no_material'}`.replace(/[\s#]+/g, '_');
+        let name = plain;
+        for (let n = 2; names.has(name); n++) name = `${plain}_${n}`;
+        names.add(name);
+        materials.set(key, name);
+        mtl.push(`newmtl ${name}`, `Kd ${kd}`, ...(see ? ['d 0.5'] : []), ...(mapped ? [`map_Kd ${texture.file}`] : []), '');
+      }
+      if (current !== materials.get(key)) { current = materials.get(key); obj.push(`usemtl ${current}`); }
+      const repeat = (mapped && texture.repeat) || 128;
+      for (const piece of pieces) {
+        const coords = B.texcoords({vertices: piece}, {...face, indices: piece.map((_, k) => k)});
+        piece.forEach((p, k) => obj.push(`v ${number(p[0])} ${number(p[1])} ${number(-p[2])}`, `vt ${number(coords[k][0] / repeat)} ${number(-coords[k][1] / repeat)}`));
+        // Turning z round turns the winding: reversed, the faces still face out.
+        obj.push('f ' + piece.map((_, k) => `${corners + piece.length - k}/${corners + piece.length - k}`).join(' '));
+        corners += piece.length; polygons++;
+      }
+    }));
+    const summary = `${faces} faces drawn, ${buried} buried wholly and left out; ${polygons} polygons after cutting away what solid brushes hide`;
+    const header = [`# ${base}: Reflex map exported by DTS Skinner's Reflex Maps page`, `# ${summary}`, `mtllib ${base}.mtl`];
+    const text = lines => new TextEncoder().encode(lines.join('\n') + '\n');
+    const files = [{name: `${base}.obj`, bytes: text([...header, ...obj])}, {name: `${base}.mtl`, bytes: text(mtl)},
+      ...[...textures.values()].filter(texture => texture.bytes).map(texture => ({name: texture.file, bytes: texture.bytes}))];
+    download(zip(files), `${base}-obj.zip`);
+    say(`Exported ${base}.obj: ${summary}`);
+  }
+  // A ZIP of `files` ({name, bytes}), stored uncompressed.
+  function zip(files) {
+    const table = Array.from({length: 256}, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ n >>> 1 : n >>> 1; return n >>> 0; });
+    const u16 = (view, at, value) => view.setUint16(at, value, true), u32 = (view, at, value) => view.setUint32(at, value, true);
+    const out = [], central = [];
+    let at = 0;
+    for (const {name, bytes} of files) {
+      let crc = ~0;
+      for (let i = 0; i < bytes.length; i++) crc = table[(crc ^ bytes[i]) & 255] ^ crc >>> 8;
+      crc = ~crc >>> 0;
+      const path = new TextEncoder().encode(name), local = new DataView(new ArrayBuffer(30)), entry = new DataView(new ArrayBuffer(46));
+      // Version 2.0, UTF-8 names, stored, dated 1980-01-01.
+      u32(local, 0, 0x04034b50); u16(local, 4, 20); u16(local, 6, 0x800); u16(local, 12, 0x21); u32(local, 14, crc); u32(local, 18, bytes.length); u32(local, 22, bytes.length); u16(local, 26, path.length);
+      u32(entry, 0, 0x02014b50); u16(entry, 4, 20); u16(entry, 6, 20); u16(entry, 8, 0x800); u16(entry, 14, 0x21); u32(entry, 16, crc); u32(entry, 20, bytes.length); u32(entry, 24, bytes.length); u16(entry, 28, path.length); u32(entry, 42, at);
+      out.push(local, path, bytes);
+      central.push(entry, path);
+      at += 30 + path.length + bytes.length;
+    }
+    const size = central.reduce((sum, part) => sum + part.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+    u32(end, 0, 0x06054b50); u16(end, 8, files.length); u16(end, 10, files.length); u32(end, 12, size); u32(end, 16, at);
+    return new Blob([...out, ...central, end], {type: 'application/zip'});
+  }
   function move(offset) {
-    if (selected.size) replace(new Map([...selected].map(item => [item, [isBrush(item) ? B.translate(item, offset) : withPosition(item, (positionOf(item) || [0, 0, 0]).map((v, i) => v + offset[i]))]])), [], 'changed');
+    if (selected.size) replace(new Map([...selected].map(item => [item, [isBrush(item) ? locked(item, B.translate(item, offset)) : withPosition(item, (positionOf(item) || [0, 0, 0]).map((v, i) => v + offset[i]))]])), [], 'changed');
   }
   for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', event => { action(); event.target.blur(); });
   $('propsButton').addEventListener('click', event => { togglePanel(); event.target.blur(); });
@@ -2718,6 +2816,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('mirror').addEventListener('click', event => { mirrorSelection(event.shiftKey ? 1 : undefined); event.target.blur(); });
   $('rotateDec').addEventListener('click', event => { rotateSelection(-1); event.target.blur(); });
   $('clipButton').addEventListener('click', event => { setClipMode(!clipMode); event.target.blur(); });
+  $('lockButton').addEventListener('click', event => { setTextureLock(!textureLock); event.target.blur(); });
+  function setTextureLock(on) { textureLock = on; updateTools(); say(`Texture lock ${on ? 'on: moved, turned and reshaped brushes keep their textures' : 'off'}`); }
   $('angle').addEventListener('change', event => { settings.angle = Number(event.target.value); event.target.blur(); save(); updateTools(); });
   $('propsClose').addEventListener('click', () => { panelOpen = false; showPanel(); });
 
@@ -2851,6 +2951,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!ctrl && event.code === 'KeyN') { togglePanel(); return; }
       if (!ctrl && key === 'h' && !$('hollow').disabled) { actions.hollow(); return; }
       if (!ctrl && event.code === 'KeyC') { setClipMode(!clipMode); return; }
+      if (!ctrl && event.code === 'KeyL') { setTextureLock(!textureLock); return; }
       if (event.code === 'Backquote') { event.preventDefault(); $('console').focus(); return; }
       if (clipMode && (event.code === 'Enter' || event.code === 'NumpadEnter')) { event.preventDefault(); if (ctrl) flipClip(); else applyClip(event.shiftKey); return; }
       if (event.code === 'NumpadAdd' || event.code === 'NumpadSubtract') { event.preventDefault(); rotateSelection(event.code === 'NumpadAdd' ? 1 : -1); return; }
@@ -2942,7 +3043,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('help').textContent = helpText();
   }
   const helpText = () => editing
-    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · C clip · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
+    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · 1–8 create · V vertices · C clip · L texture lock · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
     : walking ? '0 edit · Click to capture / drag to look · WASD walk · Space jump · F fly · Esc release · 1–9 viewpoints'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · F walk · Esc release · 1–9 viewpoints';
 

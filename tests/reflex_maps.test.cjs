@@ -715,3 +715,105 @@ test("a model's animation block gives each part it moves its weights, bones and 
   assert.equal(parts[1].moving, undefined);
   assert.equal(Motion.readAnimation(new ArrayBuffer(8), 0, parts), null);
 });
+
+// ---- Texture lock, subtract's merge and the hidden faces an OBJ export drops ----
+const textured = {u: 12, v: -40, scaleU: .5, scaleV: 2, rotation: 15, material: 'wall'};
+// p' = R p + t, R the turn by `degrees` about the unit `axis` (Rodrigues).
+function turned(brush, axis, degrees, about = [0, 0, 0]) {
+  const k = axis.map(x => x / Math.hypot(...axis)), a = degrees * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  const turn = p => {
+    const kp = k[0] * p[0] + k[1] * p[1] + k[2] * p[2], cr = [k[1] * p[2] - k[2] * p[1], k[2] * p[0] - k[0] * p[2], k[0] * p[1] - k[1] * p[0]];
+    return p.map((x, i) => x * c + cr[i] * s + k[i] * kp * (1 - c));
+  };
+  return {vertices: brush.vertices.map(v => turn(v.map((x, i) => x - about[i])).map((x, i) => x + about[i])), faces: brush.faces.map(f => ({...f, indices: [...f.indices]}))};
+}
+function assertSameTexcoords(before, after, message) {
+  before.faces.forEach((face, f) => B.texcoords(before, face).forEach(([u, v], k) => {
+    const [u2, v2] = B.texcoords(after, after.faces[f])[k];
+    near(u2, u, `${message} face ${f} corner ${k} u`); near(v2, v, `${message} face ${f} corner ${k} v`);
+  }));
+}
+
+test('texture lock keeps every face texture where it was as a brush moves and turns', () => {
+  const box = B.box([-24, 8, 40], [40, 72, 96], textured);
+  const moves = [
+    ['moved', B.translate(box, [37, 5, -11])],
+    ['yawed 90°', turned(box, [0, 1, 0], 90, [8, 40, 68])],  // The nearest axis of each wall changes: U0 jumps.
+    ['yawed 30°', turned(box, [0, 1, 0], 30, [100, 0, -50])],
+    ['turned 50° about a slant axis', turned(B.translate(box, [3, 3, 3]), [1, 2, 3], 50)],
+  ];
+  for (const [label, after] of moves) {
+    assert.ok(B.texcoords(after, after.faces[0]).some(([u], k) => Math.abs(u - B.texcoords(box, box.faces[0])[k][0]) > 1), `${label}: unlocked swims`);
+    const locked = B.lock(box, after);
+    assertSameTexcoords(box, locked, label);
+    for (const face of locked.faces) assert.ok(face.scaleU === .5 && face.scaleV === 2 && face.rotation >= 0 && face.rotation < 360, label);
+  }
+});
+
+test('texture lock: a clip keeps the texture of the faces it keeps, and a dragged corner pins the rest of the face', () => {
+  const box = B.box([0, 0, 0], [64, 64, 64], textured);
+  const [clipped] = B.clip(box, [0, 48, 0], [64, 48, 0], [0, 32, 64], textured);
+  // Each corner the clipped brush shares with the box has the texture coordinates it had on the box's face on that plane.
+  const key = plane => plane.normal.map(n => Math.round(n * 1e6)).join();
+  const onBox = new Map(B.planesOf(box).map(plane => [key(plane), plane.face]));
+  let shared = 0;
+  for (const plane of B.planesOf(clipped)) {
+    const original = onBox.get(key(plane));
+    if (!original) continue;  // The cut face.
+    const now = B.texcoords(clipped, plane.face), before = B.texcoords(box, original);
+    plane.face.indices.forEach((index, k) => {
+      const at = original.indices.findIndex(i => box.vertices[i].every((x, n) => x === clipped.vertices[index][n]));
+      if (at >= 0) { shared++; near(now[k][0], before[at][0]); near(now[k][1], before[at][1]); }
+    });
+  }
+  assert.ok(shared >= 12, `${shared} shared corners`);
+  // Corner 6 (64, 64, 64) up 16: the faces round it bend; their other corners keep their texture coordinates, to the
+  // foreshortening of the bend (a fraction of a unit).
+  const after = {vertices: box.vertices.map((v, i) => i === 6 ? [64, 80, 64] : v), faces: box.faces};
+  const locked = B.lock(box, after), close = (a, b, message) => assert.ok(Math.abs(a - b) < .5, `${message} ${a} ≠ ${b}`);
+  box.faces.forEach((face, f) => {
+    const before = B.texcoords(box, face), now = B.texcoords(locked, locked.faces[f]);
+    face.indices.forEach((index, k) => { if (index !== 6) { close(now[k][0], before[k][0], `face ${f} u`); close(now[k][1], before[k][1], `face ${f} v`); } });
+    if (!face.indices.includes(6)) assert.equal(locked.faces[f], after.faces[f]);
+  });
+});
+
+test('mergeAll joins the pieces subtract leaves where they make one convex brush that looks the same', () => {
+  const block = B.box([0, 0, 0], [128, 64, 64], wall);
+  let pieces = [block];
+  // Two cutters, the second wider: it cuts each strip the first left into three, and the pieces at the far end join again.
+  for (const cut of [B.box([16, 16, 48], [64, 48, 80], cutter), B.box([48, 8, 48], [112, 56, 80], cutter)]) pieces = pieces.flatMap(p => B.subtract(p, cut));
+  const merged = B.mergeAll(pieces);
+  assert.deepEqual([pieces.length, merged.length], [9, 7]);
+  near(totalVolume(merged), totalVolume(pieces));
+  merged.forEach(assertConvexSolid);
+  assertDisjoint(merged);
+  // Side by side: one brush, unless the faces on the shared top differ.
+  assert.equal(B.mergeAll([B.box([0, 0, 0], [32, 32, 32], wall), B.box([32, 0, 0], [64, 32, 32], wall)]).length, 1);
+  const other = B.box([32, 0, 0], [64, 32, 32], wall);
+  other.faces[1] = {...other.faces[1], material: 'other'};
+  assert.equal(B.mergeAll([B.box([0, 0, 0], [32, 32, 32], wall), other]).length, 2);
+});
+
+test('exposed drops what solid brushes bury: faces pressed together, the earlier of two flush faces, all of a brush inside', () => {
+  const faceArea = pieces => pieces.reduce((sum, p) => sum + Math.hypot(...B.newell(p)) / 2, 0);
+  const areas = (brushes, solid = brushes.map(() => true)) => B.exposed(brushes, solid).map(faces => faces.map(faceArea));
+  const below = B.box([0, 0, 0], [64, 64, 32], wall);  // Face 1 is its top (z = 32), face 0 its bottom.
+  // Stacked exactly: the top of one and the bottom of the other go.
+  let result = areas([below, B.box([0, 0, 32], [64, 64, 64], wall)]);
+  near(result[0][1], 0); near(result[1][0], 0); near(result[0][0], 64 * 64); near(result[0][2], 64 * 32);
+  // Overhang: the lower top keeps its ring.
+  result = areas([below, B.box([16, 16, 32], [48, 48, 64], wall)]);
+  near(result[0][1], 64 * 64 - 32 * 32); near(result[1][0], 0);
+  // Overlapping with flush tops: the overlap's top is drawn once, by the later brush.
+  result = areas([below, B.box([32, 0, 0], [96, 64, 32], wall)]);
+  near(result[0][1] + result[1][1], 96 * 64); near(result[1][1], 64 * 64);
+  // Side by side: the faces pressed together go, and the tops a neighbour only touches stay one polygon each.
+  const pieces = B.exposed([below, B.box([64, 0, 0], [128, 64, 32], wall)], [true, true]);
+  assert.deepEqual(pieces.map(faces => faces[1].length), [1, 1]);
+  assert.equal(pieces[0][4].length + pieces[1][5].length, 0);
+  // A box inside a box is gone; a glass (not solid) box hides nothing.
+  const inner = B.box([16, 16, 8], [48, 48, 24], wall);
+  assert.ok(areas([below, inner])[1].every(a => a < 1e-6));
+  near(areas([below, inner], [true, false])[0].reduce((a, b) => a + b, 0), 2 * 64 * 64 + 4 * 64 * 32);
+});

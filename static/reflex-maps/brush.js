@@ -328,18 +328,115 @@
      upright and read left to right on every wall (measured on ±z and +x faces); on a floor or ceiling U = (0, 0, 1) × n
      (not measured: the editor's eye never saw one). */
   function texcoords(brush, face, volume = false) {
-    const points = polygonOf(brush, face), n = normalize(newell(points));
-    const reference = volume ? (Math.abs(n[1]) >= Math.abs(n[0]) && Math.abs(n[1]) >= Math.abs(n[2]) ? [0, 0, 1] : [0, -1, 0])
-      : Math.abs(n[2]) >= Math.abs(n[0]) && Math.abs(n[2]) >= Math.abs(n[1]) ? (n[2] < 0 ? [1, 0, 0] : [0, 1, 0]) : [0, 0, 1];
-    const U0 = normalize(cross(reference, n)), V0 = cross(n, U0);
+    const points = polygonOf(brush, face), [U0, V0] = textureFrame(normalize(newell(points)), volume);
     const radians = (face.rotation || 0) * Math.PI / 180, c = Math.cos(radians), s = Math.sin(radians);
     const U = add(scale(U0, c), scale(V0, s)), V = add(scale(V0, c), scale(U0, -s));  // n × U0 = V0, n × V0 = −U0.
     return points.map(p => [(dot(p, U) + (face.u || 0) / 16) / (face.scaleU || 1), (dot(p, V) + (face.v || 0) / 16) / (face.scaleV || 1)]);
   }
+  // [U0, V0], the texture axes of a face with outward unit normal n before its rotation (see texcoords).
+  function textureFrame(n, volume = false) {
+    const reference = volume ? (Math.abs(n[1]) >= Math.abs(n[0]) && Math.abs(n[1]) >= Math.abs(n[2]) ? [0, 0, 1] : [0, -1, 0])
+      : Math.abs(n[2]) >= Math.abs(n[0]) && Math.abs(n[2]) >= Math.abs(n[1]) ? (n[2] < 0 ? [1, 0, 0] : [0, 1, 0]) : [0, 0, 1];
+    const U0 = normalize(cross(reference, n));
+    return [U0, cross(n, U0)];
+  }
+
+  /* Texture lock. A copy of `face`, on a plane with outward normal `normal`, with the offsets and rotation that put
+     the texture coordinates `uvs` (as texcoords gives them) at `points`, its scale kept: the rigid fit in the face's
+     plane (2D Procrustes). Exact when the face only moved or turned; the nearest fit when it was reshaped. With
+     q = (p · U0, p · V0) and w = (u × scaleU, v × scaleV), texcoords says w = [[c, s], [−s, c]] q + (offset u, offset v) / 16. */
+  function refit(face, normal, points, uvs, volume = false) {
+    const [U0, V0] = textureFrame(normalize(normal), volume), su = face.scaleU || 1, sv = face.scaleV || 1;
+    const q = points.map(p => [dot(p, U0), dot(p, V0)]), w = uvs.map(([u, v]) => [u * su, v * sv]);
+    const mean = list => [0, 1].map(k => list.reduce((sum, x) => sum + x[k], 0) / list.length), mq = mean(q), mw = mean(w);
+    let along = 0, across = 0;
+    for (let i = 0; i < q.length; i++) {
+      const qx = q[i][0] - mq[0], qy = q[i][1] - mq[1], wu = w[i][0] - mw[0], wv = w[i][1] - mw[1];
+      along += wu * qx + wv * qy; across += wu * qy - wv * qx;
+    }
+    const theta = Math.atan2(across, along), c = Math.cos(theta), s = Math.sin(theta), degrees = tidy((theta * 180 / Math.PI + 360) % 360);
+    return {...face, u: tidy(16 * (mw[0] - c * mq[0] - s * mq[1])), v: tidy(16 * (mw[1] + s * mq[0] - c * mq[1])), rotation: degrees >= 360 ? 0 : degrees};
+  }
+  /* `after`, the brush `before` became by a move, turn or reshape, face for face, with each face's texture put back
+     where it was on `before` (texture lock). A face whose corners are all where they were is left as it is; where two or
+     more stayed, the fit is to those, so a dragged corner leaves the rest of the face's texture pinned. Faces whose
+     corners no longer match one for one (a corner welded onto another) keep their fields. Clips, splits and face
+     pushes need none of this: the faces they keep stay on their planes, where texture coordinates are fixed to the world. */
+  function lock(before, after, volume = false) {
+    if (before.faces.length !== after.faces.length) return after;
+    return {...after, faces: after.faces.map((face, i) => {
+      const old = before.faces[i];
+      if (old.indices.length !== face.indices.length) return face;
+      const from = polygonOf(before, old), to = polygonOf(after, face), uvs = texcoords(before, old, volume);
+      const still = to.map((p, k) => length(sub(p, from[k])) <= WELD ? k : -1).filter(k => k >= 0);
+      if (still.length === to.length) return face;
+      const use = still.length >= 2 ? still : to.map((_, k) => k);
+      return refit(face, newell(to), use.map(k => to[k]), use.map(k => uvs[k]), volume);
+    })};
+  }
+
+  // Two faces look the same when every field but their corners is the same.
+  const sameLook = (f, g) => [...new Set([...Object.keys(f), ...Object.keys(g)])].every(key => key === 'indices' || f[key] === g[key]);
+  // Brushes joined pairwise wherever two together are convex and their faces on a shared plane look the same (the
+  // pieces subtract leaves, put back together where they can be).
+  function mergeAll(brushes) {
+    const left = [...brushes];
+    for (let merged = true; merged;) {
+      merged = false;
+      for (let i = 0; i < left.length && !merged; i++) for (let j = i + 1; j < left.length && !merged; j++) {
+        const a = planesOf(left[i]), b = planesOf(left[j]);
+        if (a.some(pa => b.some(pb => samePlane(pa, pb) && !sameLook(pa.face, pb.face)))) continue;
+        const one = merge(left[i], left[j]);
+        if (one) { left[i] = one; left.splice(j, 1); merged = true; }
+      }
+    }
+    return left;
+  }
+
+  // The convex pieces of a convex polygon outside the convex brush `planes` bound; a point on a plane counts as inside.
+  function outside(points, planes) {
+    // A brush that covers none of the polygon leaves it whole rather than cut along its planes.
+    let inside = points;
+    for (const plane of planes) if ((inside = dedupe(clipPolygon(inside, plane))).length < 3) break;
+    if (inside.length < 3 || area(inside) < EPSILON) return [points];
+    const out = [];
+    let rest = points;
+    for (const plane of planes) {
+      const sides = rest.map(p => dot(plane.normal, p) - plane.distance);
+      if (Math.max(...sides) <= EPSILON) continue;
+      if (Math.min(...sides) >= -EPSILON) { out.push(rest); break; }
+      out.push(dedupe(clipPolygon(rest, flip(plane))));
+      rest = dedupe(clipPolygon(rest, plane));
+      if (rest.length < 3) break;
+    }
+    return out.filter(piece => piece.length >= 3 && area(piece) >= EPSILON);
+  }
+  /* What of each face no solid brush hides, for a map exported as a mesh (as qbsp's CSG drops what brushes bury): for
+     brush i and face f, exposed(…)[i][f] lists convex polygons, each face cut by every other solid brush whose bounds
+     reach it and what is inside dropped. Inside takes in points on a plane, so where two brushes press faces together
+     both faces go. Of two faces on one plane facing one way the later brush's is kept. `solid[i]` says whether brush i
+     hides what is in it (not glass, clip or a volume); a brush that is not convex hides nothing and is not cut. */
+  function exposed(brushes, solid) {
+    const boxes = brushes.map(bounds), sound = brushes.map(convex), planes = brushes.map(brush => planesOf(brush));
+    const reach = (a, b) => [0, 1, 2].every(k => a.min[k] <= b.max[k] + EPSILON && b.min[k] <= a.max[k] + EPSILON);
+    return brushes.map((brush, i) => {
+      const near = sound[i] ? brushes.map((_, j) => j).filter(j => j !== i && solid[j] && sound[j] && reach(boxes[i], boxes[j])) : [];
+      return brush.faces.map(face => {
+        const own = planes[i].find(plane => plane.face === face);
+        let pieces = [polygonOf(brush, face)];
+        if (own) for (const j of near) {
+          if (j < i && planes[j].some(plane => samePlane(plane, own))) continue;
+          pieces = pieces.flatMap(piece => outside(piece, planes[j]));
+          if (!pieces.length) break;
+        }
+        return pieces;
+      });
+    });
+  }
 
   exports.ReflexBrush = {
     EPSILON, planesOf, planeFromPoints, fromPlanes, rebuild, volume, bounds, check, convex, box, translate, clone, offset,
-    split, clip, intersection, intersects, subtract, hollow, hull, merge, triangles, raycast, newell, normalize, orient, bridge,
-    texcoords,
+    split, clip, intersection, intersects, subtract, hollow, hull, merge, mergeAll, triangles, raycast, newell, normalize,
+    orient, bridge, texcoords, textureFrame, refit, lock, exposed,
   };
 })(typeof module !== 'undefined' ? module.exports : window);
