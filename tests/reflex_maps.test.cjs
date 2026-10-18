@@ -817,3 +817,88 @@ test('exposed drops what solid brushes bury: faces pressed together, the earlier
   assert.ok(areas([below, inner])[1].every(a => a < 1e-6));
   near(areas([below, inner], [true, false])[0].reduce((a, b) => a + b, 0), 2 * 64 * 64 + 4 * 64 * 32);
 });
+
+test('buried lists the faces solid brushes bury wholly, not those they only partly cover', () => {
+  const floor = B.box([0, 0, 0], [128, 128, 16], wall), crate = B.box([32, 32, 16], [64, 64, 48], wall), beside = B.box([64, 32, 16], [96, 64, 48], wall);
+  // The crates' bottoms lie on the floor and their shared sides press together; the floor's top is only partly covered.
+  assert.deepEqual(B.buried([floor, crate, beside], [true, true, true]), [[], [0, 4], [0, 5]]);
+  // Glass hides nothing; `only` leaves the other brushes uncut but still hiding.
+  assert.deepEqual(B.buried([floor, crate, beside], [true, true, false]), [[], [0], [0, 5]]);
+  assert.deepEqual(B.buried([floor, crate, beside], [true, true, true], new Set([2])), [[], [], [0, 5]]);
+});
+
+test('validate gives fixed codes: too few faces, a face with no normal, duplicate planes, planes enclosing nothing', () => {
+  const box = B.box([0, 0, 0], [64, 64, 64], wall), codes = brush => B.validate(brush).map(issue => issue.code);
+  assert.deepEqual(B.validate(box), []);
+  assert.deepEqual(B.validate({...box, faces: [...box.faces, {...box.faces[1]}]}), [{code: 'duplicate-plane', face: 6}]);
+  assert.deepEqual(B.validate({...box, faces: box.faces.map((face, i) => i === 2 ? {...face, indices: face.indices.slice(0, 2)} : face)}), [{code: 'zero-normal', face: 2}]);
+  assert.deepEqual(codes({...box, faces: box.faces.slice(0, 3)}), ['too-few-faces']);
+  // Two squares crossing at the middle, each face both ways round: x ≤ 0, x ≥ 0, y ≤ 0, y ≥ 0 bound only a line.
+  const cross = {vertices: [[0, -1, -1], [0, 1, -1], [0, 1, 1], [0, -1, 1], [-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1]],
+    faces: [[0, 1, 2, 3], [3, 2, 1, 0], [4, 5, 6, 7], [7, 6, 5, 4]].map(indices => ({...wall, indices}))};
+  assert.deepEqual(codes(cross), ['encloses-nothing']);
+  assert.ok(B.FATAL.has('encloses-nothing') && B.FATAL.has('too-few-faces') && !B.FATAL.has('duplicate-plane') && !B.FATAL.has('zero-normal'));
+});
+
+test('bevel cuts an edge back by the width along both faces, in flat steps on the arc between them', () => {
+  const box = B.box([0, 0, 0], [64, 64, 64], textured), edge = [[64, 0, 64], [64, 64, 64]];  // Where +x meets +z.
+  const chamfer = B.bevel(box, [edge], 16);
+  assertConvexSolid(chamfer);
+  assert.equal(chamfer.faces.length, 7);
+  near(B.volume(chamfer), 64 ** 3 - 64 * 16 * 16 / 2);
+  // Four steps: the corner square less the polygon on the quarter circle of radius 16.
+  const round = B.bevel(box, [edge], 16, 4);
+  assertConvexSolid(round);
+  assert.equal(round.faces.length, 10);
+  near(B.volume(round), 64 ** 3 - 64 * (256 - 2 * 256 * Math.sin(Math.PI / 8)));
+  // Two edges at once, across a corner; an edge the brush does not have, or no width, gives null.
+  assertConvexSolid(B.bevel(box, [edge, [[0, 0, 64], [64, 0, 64]]], 8, 2));
+  assert.equal(B.bevel(box, [[[0, 0, 0], [64, 64, 64]]], 8), null);
+  assert.equal(B.bevel(box, [edge], 0), null);
+});
+
+test('bevel works on a slanted edge, and the new faces take the texture on from the faces they meet', () => {
+  // A wedge: its slope meets the floor at 30°.
+  const wedge = B.hull([[0, 0, 0], [96, 0, 0], [0, 64, 0], [96, 64, 0], [0, 0, 96 * Math.tan(Math.PI / 6)], [0, 64, 96 * Math.tan(Math.PI / 6)]], () => textured);
+  const edge = [[96, 0, 0], [96, 64, 0]], result = B.bevel(wedge, [edge], 12, 3);
+  assertConvexSolid(result);
+  assert.equal(result.faces.length, wedge.faces.length + 3);
+  // Nothing within 12 of the edge along the floor or along the slope is left.
+  const sx = Math.cos(Math.PI / 6);
+  assert.ok(result.vertices.every(v => v[0] <= 96 - 12 + 1e-3 || v[2] > 1e-3), 'floor cut back 12');
+  near(Math.max(...result.vertices.filter(v => v[2] < 1e-3).map(v => v[0])), 84, 'floor ends 12 short');
+  near(Math.min(...result.vertices.filter(v => v[2] > 1e-3 && Math.abs(v[2] - (96 - v[0]) * Math.tan(Math.PI / 6)) < 1e-3).map(v => (96 - v[0]) / sx)), 12, 'slope ends 12 short');
+  // Every corner a new face shares with the floor or the slope has the texture coordinates it has on that face (the
+  // end faces, square to the seam, are not continued).
+  const kept = result.faces.filter(face => B.planesOf(wedge).some(p => face.indices.every(i => Math.abs(p.normal.reduce((s, n, k) => s + n * result.vertices[i][k], 0) - p.distance) < 1e-3)));
+  const fresh = result.faces.filter(face => !kept.includes(face));
+  assert.equal(fresh.length, 3);
+  const ends = new Set(B.planesOf(result).filter(p => Math.abs(p.normal[1]) > .5).map(p => p.face));
+  let seams = 0;
+  for (const face of fresh) {
+    const uv = B.texcoords(result, face);
+    for (const old of kept.filter(old => !ends.has(old))) {
+      const olduv = B.texcoords(result, old);
+      face.indices.forEach((index, k) => {
+        const at = old.indices.indexOf(index);
+        if (at >= 0) { seams++; near(uv[k][0], olduv[at][0], 'u at the seam'); near(uv[k][1], olduv[at][1], 'v at the seam'); }
+      });
+    }
+  }
+  assert.ok(seams >= 4, `${seams} seam corners`);
+});
+
+test('mergeAll without looks joins a cutter of several brushes into the one convex brush they make', () => {
+  const left = B.box([0, 0, 0], [32, 32, 32], wall), right = B.box([32, 0, 0], [64, 32, 32], {...wall, u: 8});
+  assert.equal(B.mergeAll([left, right]).length, 2);
+  const [one] = B.mergeAll([left, right], false);
+  near(B.volume(one), 64 * 32 * 32);
+  assert.equal(B.mergeAll([left, B.box([40, 0, 0], [64, 32, 32], wall)], false).length, 2, 'a gap is not filled');
+  // A door cutter in three layers through a wall, each with its own texture offset: carved layer by layer the inner
+  // layers' faces cut the wall and the pieces cannot be merged back (7); joined first, a door's 3.
+  const slab = B.box([-256, -16, 0], [256, 16, 384], wall);
+  const layers = [[-32, -4], [-4, 4], [4, 32]].map(([a, b], i) => B.box([-48, a, -16], [48, b, 192], {...cutter, u: i * 3}));
+  const carve = cutters => B.mergeAll(cutters.reduce((pieces, c) => pieces.flatMap(p => B.subtract(p, c)), [slab]));
+  assert.deepEqual([carve(layers).length, carve(B.mergeAll(layers, false)).length], [7, 3]);
+  near(totalVolume(carve(B.mergeAll(layers, false))), B.volume(slab) - 96 * 32 * 192);
+});

@@ -147,6 +147,23 @@
     return problems;
   }
   const convex = brush => !check(brush).length;
+  /* What would stop a brush from being a brush, as fixed codes for the editor's checks before saving: 'too-few-faces'
+     (fewer than four faces with area), 'zero-normal' (a face whose corners make no direction: no area, or fewer than
+     three), 'duplicate-plane' (two faces on one plane facing one way: harmless, fromPlanes keeps one) and
+     'encloses-nothing' (the face planes bound no volume: empty, flat or turned inside out). Bent and concave brushes
+     are left to check(): the game draws them. Each issue is {code, face} with the index of the face it is about, or -1. */
+  function validate(brush) {
+    const issues = [], planes = planesOf(brush), index = plane => brush.faces.indexOf(plane.face);
+    brush.faces.forEach((face, i) => { if (!planes.some(plane => plane.face === face)) issues.push({code: 'zero-normal', face: i}); });
+    let distinct = 0;
+    planes.forEach((plane, i) => { if (planes.slice(0, i).some(other => samePlane(other, plane))) issues.push({code: 'duplicate-plane', face: index(plane)}); else distinct++; });
+    if (distinct < 4) issues.push({code: 'too-few-faces', face: -1});
+    else if (!fromPlanes(planes)) issues.push({code: 'encloses-nothing', face: -1});
+    return issues;
+  }
+  // The issues that leave no brush. A face with no area in a brush that is otherwise sound is not one: the game ships
+  // three in ironguard and loads it.
+  const FATAL = new Set(['too-few-faces', 'encloses-nothing']);
 
   // Rebuilds a brush from its own planes: welds its vertices, drops faces with no area, winds faces outward.
   const rebuild = brush => fromPlanes(planesOf(brush));
@@ -328,7 +345,12 @@
      upright and read left to right on every wall (measured on ±z and +x faces); on a floor or ceiling U = (0, 0, 1) × n
      (not measured: the editor's eye never saw one). */
   function texcoords(brush, face, volume = false) {
-    const points = polygonOf(brush, face), [U0, V0] = textureFrame(normalize(newell(points)), volume);
+    const points = polygonOf(brush, face);
+    return uvAt(face, normalize(newell(points)), points, volume);
+  }
+  // The texture coordinates `face`'s fields give `points` on a plane with outward unit normal n (see texcoords).
+  function uvAt(face, n, points, volume = false) {
+    const [U0, V0] = textureFrame(n, volume);
     const radians = (face.rotation || 0) * Math.PI / 180, c = Math.cos(radians), s = Math.sin(radians);
     const U = add(scale(U0, c), scale(V0, s)), V = add(scale(V0, c), scale(U0, -s));  // n × U0 = V0, n × V0 = −U0.
     return points.map(p => [(dot(p, U) + (face.u || 0) / 16) / (face.scaleU || 1), (dot(p, V) + (face.v || 0) / 16) / (face.scaleV || 1)]);
@@ -375,17 +397,51 @@
     })};
   }
 
+  /* Edges bevelled: each edge [a, b] (two corners where two faces meet) cut back `width` along both faces and rounded
+     in `segments` flat steps, as new planes in the brush's set, so it works on any convex brush and on several edges
+     at once. The steps' corners lie on the arc tangent to both faces at `width` from the edge: of radius
+     width / tan(α / 2), α the angle between the faces' normals. One step is the chamfer through those two lines. A new
+     face takes the fields of the face it leans nearer to, its texture refit to run on from that face across the seam
+     (exactly along the seam where it meets that face). Null when an edge is not one of the brush's or nothing is left. */
+  function bevel(brush, edges, width, segments = 1, volume = false) {
+    if (!(width > 0) || !(segments >= 1)) return null;
+    const planes = planesOf(brush), added = [];
+    for (const [a, b] of edges) {
+      const on = planes.filter(plane => [a, b].every(p => Math.abs(dot(plane.normal, p) - plane.distance) <= EPSILON * 10));
+      const sides = on.filter((plane, i) => !on.slice(0, i).some(other => samePlane(other, plane)));
+      if (length(sub(a, b)) <= WELD || sides.length !== 2) return null;
+      const [one, two] = sides, c = dot(one.normal, two.normal);
+      if (Math.abs(c) > 1 - 1e-6) return null;
+      const alpha = Math.acos(c), radius = width / Math.tan(alpha / 2);
+      const centre = sub(a, scale(add(one.normal, two.normal), radius / (1 + c))), across = normalize(sub(two.normal, scale(one.normal, c)));
+      for (let i = 0; i < segments; i++) {
+        const turn = alpha * (i + .5) / segments, normal = add(scale(one.normal, Math.cos(turn)), scale(across, Math.sin(turn)));
+        const from = 2 * i + 1 < segments ? one : two;
+        added.push({normal, distance: dot(normal, centre) + radius * Math.cos(alpha / (2 * segments)), face: {...from.face, bevelOf: added.length}, from});
+      }
+    }
+    const result = fromPlanes([...planes, ...added]);
+    if (!result) return null;
+    return {...result, faces: result.faces.map(face => {
+      if (face.bevelOf === undefined) return face;
+      const {bevelOf, ...fields} = face, from = added[bevelOf].from, points = polygonOf(result, face);
+      const seam = points.filter(p => Math.abs(dot(from.normal, p) - from.distance) <= EPSILON * 10), use = seam.length >= 2 ? seam : points;
+      return refit(fields, added[bevelOf].normal, use, uvAt(from.face, from.normal, use, volume), volume);
+    })};
+  }
+
   // Two faces look the same when every field but their corners is the same.
   const sameLook = (f, g) => [...new Set([...Object.keys(f), ...Object.keys(g)])].every(key => key === 'indices' || f[key] === g[key]);
   // Brushes joined pairwise wherever two together are convex and their faces on a shared plane look the same (the
-  // pieces subtract leaves, put back together where they can be).
-  function mergeAll(brushes) {
+  // pieces subtract leaves, put back together where they can be). With `looks` false, faces need not look the same:
+  // a cutter of several brushes joined into the one convex brush they make, where they make one, before carving.
+  function mergeAll(brushes, looks = true) {
     const left = [...brushes];
     for (let merged = true; merged;) {
       merged = false;
       for (let i = 0; i < left.length && !merged; i++) for (let j = i + 1; j < left.length && !merged; j++) {
         const a = planesOf(left[i]), b = planesOf(left[j]);
-        if (a.some(pa => b.some(pb => samePlane(pa, pb) && !sameLook(pa.face, pb.face)))) continue;
+        if (looks && a.some(pa => b.some(pb => samePlane(pa, pb) && !sameLook(pa.face, pb.face)))) continue;
         const one = merge(left[i], left[j]);
         if (one) { left[i] = one; left.splice(j, 1); merged = true; }
       }
@@ -415,11 +471,13 @@
      brush i and face f, exposed(…)[i][f] lists convex polygons, each face cut by every other solid brush whose bounds
      reach it and what is inside dropped. Inside takes in points on a plane, so where two brushes press faces together
      both faces go. Of two faces on one plane facing one way the later brush's is kept. `solid[i]` says whether brush i
-     hides what is in it (not glass, clip or a volume); a brush that is not convex hides nothing and is not cut. */
-  function exposed(brushes, solid) {
+     hides what is in it (not glass, clip or a volume); a brush that is not convex hides nothing and is not cut. With
+     `only` (a Set of indices), brushes not in it are hidden by but not cut themselves, and come out null. */
+  function exposed(brushes, solid, only = null) {
     const boxes = brushes.map(bounds), sound = brushes.map(convex), planes = brushes.map(brush => planesOf(brush));
     const reach = (a, b) => [0, 1, 2].every(k => a.min[k] <= b.max[k] + EPSILON && b.min[k] <= a.max[k] + EPSILON);
     return brushes.map((brush, i) => {
+      if (only && !only.has(i)) return null;
       const near = sound[i] ? brushes.map((_, j) => j).filter(j => j !== i && solid[j] && sound[j] && reach(boxes[i], boxes[j])) : [];
       return brush.faces.map(face => {
         const own = planes[i].find(plane => plane.face === face);
@@ -434,9 +492,16 @@
     });
   }
 
+  // For each brush, the indices of its faces solid brushes bury wholly (exposed leaves nothing of them), or [] for a
+  // brush in `only` (a Set of indices) left out; faces only partly buried are not listed.
+  function buried(brushes, solid, only = null) {
+    const parts = exposed(brushes, solid, only);
+    return parts.map(faces => faces ? faces.flatMap((pieces, f) => pieces.length ? [] : [f]) : []);
+  }
+
   exports.ReflexBrush = {
     EPSILON, planesOf, planeFromPoints, fromPlanes, rebuild, volume, bounds, check, convex, box, translate, clone, offset,
     split, clip, intersection, intersects, subtract, hollow, hull, merge, mergeAll, triangles, raycast, newell, normalize,
-    orient, bridge, texcoords, textureFrame, refit, lock, exposed,
+    orient, bridge, texcoords, uvAt, textureFrame, refit, lock, bevel, exposed, buried, validate, FATAL,
   };
 })(typeof module !== 'undefined' ? module.exports : window);
