@@ -175,7 +175,25 @@ this rule gives 1 : 2.8 : 7.5. Close up, the page gives 1.15–1.18 times the
 face for the 16-unit lines (the rule 1.19) and about 2.5 for the 64-unit ones
 (2.43, plus the groove's light). (Earlier imports divided the albedo by the meta's
 blue, which clipped the 64-unit lines at white and left the others 2–4 times
-too faint; import again with "Re-import existing maps" ticked.) A diffuse
+too faint; import again with "Re-import existing maps" ticked.)
+
+The meta's alpha is the surface's occlusion. The G-buffer shader writes it beside
+the normal, and the ambient pass (`gbuffer_light_fullscreen_AO`) multiplies the
+probe light and the reflections by min(SSAO, it). The spot lights' shader
+doesn't read it. On the dev grid it is about 0.92 on the face and dips to
+0.55–0.6 across the 64-unit lines and their edges, 0.75 on the 32-unit ones and
+0.85 on the 16-unit ones. No texture unit is left for the meta, so the import
+writes its alpha into the normal map's blue (z, about 1 in the game's normal
+maps). That file is named `<normals>__<meta>.png`, so any import makes it
+without the Re-import tick. The page takes z as 1 and the blue as the occlusion.
+On aerodev4's spawn view of an Aerowalk pillar, it brought the 64-unit lines
+from +35 and +39 /255 above the face to +17 and +27 (the game: +16 and +24).
+The normal map's grooves and the meta's per-texel roughness change them by 2 at
+most. The page still spreads each line over 3–4 pixels there, where the game
+draws it 1–1.5 pixels wide. The 32-unit lines carry the same light as in the
+game, but their peak is half the game's.
+
+A diffuse
 texture keeps its alpha (ivy is alpha-keyed); an albedoSpec's alpha is its
 specular level and is left out. Thumbnails go to `thumbs`, 128 pixels. The
 page draws a textured face in its texture times its colour (the material's

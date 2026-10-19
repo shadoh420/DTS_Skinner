@@ -198,7 +198,7 @@ def textureset(name, images):
     table, blobs, offset = b'', b'', 2636
     for image_name, (fmt, image) in images.items():
         output = io.BytesIO()
-        image.save(output, 'DDS', pixel_format='DXT1')
+        image.save(output, 'DDS', pixel_format='DXT5' if fmt in (77, 78) else 'DXT1')
         data = output.getvalue()[128:]
         table += pad(image_name.encode(), 128) + struct.pack('<7I', offset, 0xffffffff, 0xffffffff, 1, 0, *image.size)
         blob = struct.pack('<11I', *image.size, 1, 1, fmt, 1, 0, 1, 8, 0, 0) + data
@@ -245,16 +245,16 @@ class ReflexTexturesTest(unittest.TestCase):
             (game / 'maps').mkdir(parents=True)
             (game / 'maps/Test Walk.map').write_text(MAP, newline='')
             # The albedo is a flat grey and the meta texture's blue channel is 0.6 along a line, as the dev grid's: the
-            # tint covers that line less, so the game draws it lighter.
+            # tint covers that line less, so the game draws it lighter; its alpha (occlusion) is 0.6 there too.
             meta = Image.new('RGBA', (8, 8), (161, 0, 255, 255))
-            for y in range(8): meta.putpixel((0, y), (255, 0, 153, 255))
+            for y in range(8): meta.putpixel((0, y), (255, 0, 153, 153))
             (game / 'base').mkdir()
             with zipfile.ZipFile(game / 'base/structural.pak', 'w') as pak:
                 pak.writestr('structural/dev/dev_grey128.material', material('internal/shaders/deferredPbr_TEXTUREALBEDOSPEC_TEXTUREMETA_TEXTURENORMALS_TINTED',
                     (4, 'textureAlbedoSpec', b'dev_grid16_albedospec'), (4, 'textureMeta', b'dev_grid16_meta'), (4, 'textureNormals', b'dev_grid16_normals'),
                     (2, 'tintColor', struct.pack('<3f', .5, .5, .5))))
                 pak.writestr('structural/dev/dev_grid16.textureset', textureset('structural/dev/dev_grid16', {
-                    'structural/dev/dev_grid16_albedoSpec': (72, Image.new('RGBA', (8, 8), (200, 200, 200, 255))), 'structural/dev/dev_grid16_meta': (71, meta),
+                    'structural/dev/dev_grid16_albedoSpec': (72, Image.new('RGBA', (8, 8), (200, 200, 200, 255))), 'structural/dev/dev_grid16_meta': (77, meta),
                     'structural/dev/dev_grid16_normals': (71, Image.new('RGBA', (8, 8), (255, 128, 255, 128)))}))
                 pak.writestr('structural/dev/dev_unused.material', CONCRETE)
             with zipfile.ZipFile(game / 'base/thumbs_material.pak', 'w') as pak:
@@ -274,13 +274,15 @@ class ReflexTexturesTest(unittest.TestCase):
             self.assertTrue(all(abs(channel - 200) < 10 for channel in baked.getpixel((0, 4))[:3]), baked.getpixel((0, 4)))
             self.assertGreater(baked.getpixel((4, 4))[3], 245)
             self.assertLess(abs(baked.getpixel((0, 4))[3] - 153), 10)
-            # Its normal map, kept as its bytes are with their alpha (x is alpha × red; the made-up one is BC1, so alpha 1).
-            self.assertEqual(entry['normals'], 'dev_grid16_normals.png')
-            # Its roughness: the meta texture's mean red (7 columns of 161, one of 255; BC1 keeps it within a level or two).
+            # Its normal map, kept as its bytes are with their alpha (x is alpha × red; the made-up one is BC1, so alpha
+            # 1), but for blue, which is the meta's alpha: the occlusion, 0.6 on the line.
+            self.assertEqual(entry['normals'], 'dev_grid16_normals__dev_grid16_meta.png')
+            # Its roughness: the meta texture's mean red (7 columns of 161, one of 255; BC keeps it within a level or two).
             self.assertAlmostEqual(entry['roughness'], (7 * 161 + 255) / 8 / 255, delta=.02)
             normals = Image.open(pack / 'textures' / entry['normals'])
             self.assertEqual(normals.mode, 'RGBA')
-            self.assertTrue(all(abs(a - b) < 6 for a, b in zip(normals.getpixel((4, 4))[:3], (255, 128, 255))), normals.getpixel((4, 4)))
+            self.assertTrue(all(abs(a - b) < 6 for a, b in zip(normals.getpixel((4, 4)), (255, 128, 255, 255))), normals.getpixel((4, 4)))
+            self.assertLess(normals.getpixel((0, 4))[2], 190)  # Pillow's BC3 encoder keeps 153 as 173
             self.assertEqual(Image.open(pack / 'thumbs' / entry['thumb']).size, (128, 128))
             # Every material of the game is listed for the browser, also those no map names.
             self.assertIn('structural/dev/dev_unused', colours)

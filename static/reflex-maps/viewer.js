@@ -289,13 +289,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       return sum;
     }
-    vec3 shade(vec3 diffuse, vec3 f0, float rough, vec3 p, vec3 n, float s) {
+    // occ: the surface's occlusion, which (as in gbuffer_light_fullscreen_AO) darkens the probe light and reflections
+    // only; the point and spot lights' shaders don't read it.
+    vec3 shade(vec3 diffuse, vec3 f0, float rough, vec3 p, vec3 n, float s, float occ) {
       vec3 v = normalize(uEye - p); float nv = dot(n, v);
       vec4 k = rough * vec4(-1., -.0275, -.572, .022) + vec4(1., .0425, 1.04, -.04);
       float a004 = min(k.x * k.x, exp2(-9.28 * clamp(nv, 0., 1.))) * k.x + k.y;
       vec2 ab = vec2(-1.04, 1.04) * a004 + k.zw;
       vec3 spec = reflected(p, 2. * nv * n - v, rough) * (f0 * ab.x + ab.y);
-      return (1. - dot(f0, vec3(.299, .587, .114))) * diffuse * probeLight(p, n) + spec + dynamicLight(p, n, v, diffuse, f0, rough, s) + sunLight(p, n, v, diffuse, f0, rough, s);
+      return occ * ((1. - dot(f0, vec3(.299, .587, .114))) * diffuse * probeLight(p, n) + spec) + dynamicLight(p, n, v, diffuse, f0, rough, s) + sunLight(p, n, v, diffuse, f0, rough, s);
     }`;
   const brushMaterial = new THREE.ShaderMaterial({
     uniforms,
@@ -330,19 +332,22 @@ window.addEventListener('DOMContentLoaded', async () => {
         albedo *= texLinear;
         #endif
         #endif
+        float occ = 1.;
         #ifdef USE_NORMALS
-        // The normal map as the game's …TEXTURENORMALS shaders read it: (r × a, g, b) × 2 − 1, then x along the
-        // texture's u, −y along its v, z out of the face (n = x T − y B + z N, B = (N × T) × the tangent's sign). The
+        // The normal map as the game's …TEXTURENORMALS shaders read it: (r × a, g) × 2 − 1, z 1 (its blue, ~1 in the
+        // game's maps, is where the import keeps the meta's alpha, the occlusion), then x along the texture's u, −y
+        // along its v, z out of the face (n = x T − y B + z N, B = (N × T) × the tangent's sign). The
         // face's u and v directions come from the screen derivatives of its position and texture coordinates.
         vec4 bump = texture2D(uNormals, vTex / uRepeat);
-        vec3 tn = vec3(bump.r * bump.a, bump.g, bump.b) * 2. - 1.;
+        vec3 tn = vec3(vec2(bump.r * bump.a, bump.g) * 2. - 1., 1.);
+        occ = bump.b;
         vec3 dp1 = dFdx(vPos), dp2 = dFdy(vPos); vec2 duv1 = dFdx(vTex), duv2 = dFdy(vTex);
         vec3 across2 = cross(dp2, n), across1 = cross(n, dp1);
         vec3 tu = across2 * duv1.x + across1 * duv2.x, tv = across2 * duv1.y + across1 * duv2.y;
         float scale = inversesqrt(max(max(dot(tu, tu), dot(tv, tv)), 1e-20));
         n = normalize(tn.x * tu * scale - tn.y * tv * scale + tn.z * n);
         #endif
-        vec3 c = vEmit > .5 ? albedo : shade(albedo, vSpecular, vRough, vPos, n, max(-vEmit, 0.) * vColor.r);
+        vec3 c = vEmit > .5 ? albedo : shade(albedo, vSpecular, vRough, vPos, n, max(-vEmit, 0.) * vColor.r, occ);
         if (uGrid > 0.) {
           vec3 p = vPos / uGrid, w = fwidth(p) + 1e-5;
           vec3 g = abs(fract(p - .5) - .5) / w + abs(n) * 1e3;
