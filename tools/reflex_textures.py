@@ -107,7 +107,7 @@ def bake(albedo, meta=None, size=1024, alpha=False):
     With `alpha`, the albedo's own (a diffuse texture's alpha is how see-through it is; an albedoSpec's is its specular
     level and is left out). Otherwise the meta texture's blue channel where it is below 1: how much of the material's
     tint a texel takes. The …_TINTED shaders (the dev materials) draw albedo × lerp(1, tint, meta blue) (their G-buffer
-    pixel shader); only the dev grid's meta has blue below 1 (0.6, 0.85 and 0.945 on the 64-, 32- and 16-unit lines),
+    pixel shader); only the dev grid's meta has blue below 1 (0.6, 0.85 and 0.945 on the 32-, 16- and 8-unit lines),
     so dev_grey128's 0.5 grey tint darkens its face fully and its lines less. Scaled down to `size` at most."""
     from PIL import Image
     colour = albedo.convert('RGB')

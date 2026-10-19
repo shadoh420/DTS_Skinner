@@ -166,40 +166,48 @@ For each textured material the import writes one picture into
 channel as its alpha where that is below 1. The dev materials' shaders
 (`…_TINTED`) draw albedo × lerp(1, tint, meta blue) (their G-buffer pixel
 shader; the meta is BC1/BC7 unorm, so blue is taken as it is). Only the dev
-grid's meta has blue below 1: 0.6 on the 64-unit lines, 0.85 on the 32-unit
-ones and 0.945 on the 16-unit ones, so `dev_grey128`'s 0.5 grey tint darkens
+grid's meta has blue below 1: 0.6 on the 32-unit lines, 0.85 on the 16-unit
+ones and 0.945 on the 8-unit ones, so `dev_grey128`'s 0.5 grey tint darkens
 the face fully and the lines less. The page does the same with that alpha.
 Measured in the game on Aerowalk (a dev-grid pillar), the lines' brightness
-above the face goes up about 1 : 2.9 : 6.9 from the 16- to the 64-unit lines;
+above the face goes up about 1 : 2.9 : 6.9 from the 8- to the 32-unit lines;
 this rule gives 1 : 2.8 : 7.5. Close up, the page gives 1.15–1.18 times the
-face for the 16-unit lines (the rule 1.19) and about 2.5 for the 64-unit ones
+face for the 8-unit lines (the rule 1.19) and about 2.5 for the 32-unit ones
 (2.43, plus the groove's light). (Earlier imports divided the albedo by the meta's
-blue, which clipped the 64-unit lines at white and left the others 2–4 times
+blue, which clipped the 32-unit lines at white and left the others 2–4 times
 too faint; import again with "Re-import existing maps" ticked.)
 
 The meta's alpha is the surface's occlusion. The G-buffer shader writes it beside
 the normal, and the ambient pass (`gbuffer_light_fullscreen_AO`) multiplies the
 probe light and the reflections by min(SSAO, it). The spot lights' shader
 doesn't read it. On the dev grid it is about 0.92 on the face and dips to
-0.55–0.6 across the 64-unit lines and their edges, 0.75 on the 32-unit ones and
-0.85 on the 16-unit ones. No texture unit is left for the meta, so the import
+0.55–0.6 across the 32-unit lines and their edges, 0.75 on the 16-unit ones and
+0.85 on the 8-unit ones. No texture unit is left for the meta, so the import
 writes its alpha into the normal map's blue (z, about 1 in the game's normal
 maps). That file is named `<normals>__<meta>.png`, so any import makes it
 without the Re-import tick. The page takes z as 1 and the blue as the occlusion.
-On aerodev4's spawn view of an Aerowalk pillar, it brought the 64-unit lines
+On aerodev4's spawn view of an Aerowalk pillar, it brought the 32-unit lines
 from +35 and +39 /255 above the face to +17 and +27 (the game: +16 and +24).
 The normal map's grooves and the meta's per-texel roughness change them by 2 at
-most. The page still spreads each line over 3–4 pixels there, where the game
-draws it 1–1.5 pixels wide. The 32-unit lines carry the same light as in the
-game, but their peak is half the game's.
+most. Those lines were still 3–4 pixels wide where the game draws them 1–1.5,
+and the 8-unit lines were missing: the page drew the texture twice too large
+(see the repeat below). At the game's repeat the lines there are +18.5, +9.8
+and +22.6 /255 (the game: +15.9, +11.5 and +23.9), 1–2 pixels wide, and the
+8-unit lines +5.3 (the game: +4.0).
 
 A diffuse
 texture keeps its alpha (ivy is alpha-keyed); an albedoSpec's alpha is its
 specular level and is left out. Thumbnails go to `thumbs`, 128 pixels. The
 page draws a textured face in its texture times its colour (the material's
-tint, or the face's own colour), repeating every 128 units at scale 1 for the
-game's textures, as in the game: the dev grid's eight cells across are 16
-units, as `dev_grid16` says.
+tint, or the face's own colour), at 16 pixels to a unit at scale 1 for the
+game's textures, as in the game: the dev grid's 1,024 pixels repeat every 64
+units (its eight cells across are 8 units, with lighter lines every 16 and
+32), and a volume's 256-pixel texture every 16. The game on Aerowalk shows the
+8-, 16- and 32-unit lines at 4, 12 and 16–24 /255 above the face. (Pages before
+this drew 128 units to a repeat, from an earlier check that took the finest
+lines it could see, the 16-unit ones, for the texture's finest; that check's
+own "two strengths of line, 32 and 16 units, where the page shows 64, 32 and
+16" was this scale.)
 
 **Skinner's texture libraries.** The textures the import decodes are a
 fourth library beside the T1, T2 and Q3 ones: on the model page, *Reflex
@@ -855,8 +863,9 @@ red along u and green along v, chequered every 16.
 
 Those coordinates follow the game's mapping as measured on test maps in the
 game (`texcoords` in `brush.js`): u = (p · U + offset u / 16) / scale u in
-world units, the same for v, so the texture is anchored to the world, one
-repeat is 128 units at scale 1 and an offset of 16 moves it one unit toward
+world units, the same for v, so the texture is anchored to the world, a
+texture covers 16 of its pixels to a unit at scale 1 (an offset is one pixel)
+and an offset of 16 moves it one unit toward
 −U whatever the scale (64 moved it 4 units at scales 2, 0.5 and −1). U runs
 along the face's first edge, from its first corner to its second in the map
 file's order, and V = n × U, n the face's outward normal. The same face listed
