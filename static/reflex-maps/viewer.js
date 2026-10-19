@@ -449,17 +449,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ---- Textures ----
-  // A face's texture: one of the game's, which the import decoded from its material (repeating every 128 units at
-  // scale 1, as in the game: the dev grid's lines are 16 units apart), or one of Skinner's texture
-  // libraries, which a material named skinner/<library>/<file> takes (repeating every half its size in pixels, as
-  // Quake 3's default scale of 0.5 has it).
+  // A face's texture: one of the game's, which the import decoded from its material (16 pixels to a unit at scale 1,
+  // as in the game: the dev grid's 1,024 repeat every 64 units, its lines 8, 16 and 32 apart; a volume's 256 every
+  // 16), or one of Skinner's texture libraries, which a material named skinner/<library>/<file> takes (2 pixels to a
+  // unit, as Quake 3's default scale of 0.5 has it).
   const LIBRARY = /^skinner\/(t1|t2|q3|reflex)\/(.+)$/;
   function textureSource(face) {
     const name = face.material || '', library = LIBRARY.exec(name);
-    if (library) return {key: name.toLowerCase(), url: `/texture/${encodeURIComponent(library[2] + '.png')}?game=${library[1]}`, repeat: null};
+    if (library) return {key: name.toLowerCase(), url: `/texture/${encodeURIComponent(library[2] + '.png')}?game=${library[1]}`, perUnit: 2};
     const read = packColours[name];
     const tint = /_TINTED/.test(read && read.shader || '');
-    return read && read.texture ? {key: 'reflex:' + read.texture + (read.normals ? ':' + read.normals : '') + (tint ? ':tint' : ''), url: `${data}textures/${encodeURIComponent(read.texture)}`, repeat: 128,
+    return read && read.texture ? {key: 'reflex:' + read.texture + (read.normals ? ':' + read.normals : '') + (tint ? ':tint' : ''), url: `${data}textures/${encodeURIComponent(read.texture)}`, perUnit: 16,
       normals: read.normals && `${data}textures/${encodeURIComponent(read.normals)}`, tint} : null;
   }
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
@@ -487,7 +487,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
       texture.needsUpdate = true;
       material.uniforms.uMap.value = texture;
-      if (!source.repeat) material.uniforms.uRepeat.value.set(texture.image.width / 2, texture.image.height / 2);
+      if (!source.repeat) material.uniforms.uRepeat.value.set(texture.image.width / source.perUnit, texture.image.height / source.perUnit);
       sunStale = true;  // its cut-out shadow, from the next frame
     }, undefined, () => { textureFailures.add(source.key); showNotes(); });
     return material;
@@ -3229,7 +3229,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const water = face => /liquids\/water/.test(face.material || '') || addedFluid(packColours[face.material || ''] || {}, face.material || '');
     const parts = B.exposed(entries.map(entry => entry.brush), entries.map(entry => hides(entry.brush)));
     const base = (mapName.replace(/\.map$/i, '') || 'untitled').replace(/[^\w.-]+/g, '_');
-    // The textures first: their width sets the repeat of the library's.
+    // The textures first: their width sets the repeat.
     const textures = new Map();
     for (const entry of entries) for (const face of entry.brush.faces) {
       const source = !isClip(face) && !sky(face) && textureSource(face);
@@ -3242,7 +3242,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!response || !response.ok) return;
       texture.bytes = new Uint8Array(await response.arrayBuffer());
       const png = texture.bytes.length > 24 && texture.bytes[1] === 0x50 ? new DataView(texture.bytes.buffer).getUint32(16) : 0;
-      texture.repeat = texture.source.repeat || (png ? png / 2 : 128);
+      texture.repeat = texture.source.repeat || (png ? png / texture.source.perUnit : 128);
     }));
     const number = value => String(Math.round(value * 1e4) / 1e4 + 0);
     const obj = [], mtl = [], materials = new Map(), names = new Set();
