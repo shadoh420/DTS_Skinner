@@ -244,8 +244,8 @@ class ReflexTexturesTest(unittest.TestCase):
             game = Path(directory) / 'Reflex Arena'
             (game / 'maps').mkdir(parents=True)
             (game / 'maps/Test Walk.map').write_text(MAP, newline='')
-            # The albedo is a flat grey and the meta texture's blue channel is 0.6 along a line, as the dev grid's: the game
-            # draws that line lighter.
+            # The albedo is a flat grey and the meta texture's blue channel is 0.6 along a line, as the dev grid's: the
+            # tint covers that line less, so the game draws it lighter.
             meta = Image.new('RGBA', (8, 8), (161, 0, 255, 255))
             for y in range(8): meta.putpixel((0, y), (255, 0, 153, 255))
             (game / 'base').mkdir()
@@ -267,10 +267,13 @@ class ReflexTexturesTest(unittest.TestCase):
             entry = colours['structural/dev/dev_grey128']
             self.assertEqual((entry['texture'], entry['thumb']), ('dev_grid16_albedospec__dev_grid16_meta.png', 'structural~dev~dev_grey128.png'))
             baked = Image.open(pack / 'textures' / entry['texture'])
-            # BC1 keeps colours to within a few levels.
-            self.assertEqual(baked.mode, 'RGB')
-            self.assertTrue(all(abs(channel - 200) < 10 for channel in baked.getpixel((4, 4))), baked.getpixel((4, 4)))
-            self.assertGreater(baked.getpixel((0, 4))[0], 240)
+            # The albedo as it is (BC1 keeps colours to within a few levels), with the meta's blue as alpha: how much
+            # of the tint each texel takes (the line 0.6).
+            self.assertEqual(baked.mode, 'RGBA')
+            self.assertTrue(all(abs(channel - 200) < 10 for channel in baked.getpixel((4, 4))[:3]), baked.getpixel((4, 4)))
+            self.assertTrue(all(abs(channel - 200) < 10 for channel in baked.getpixel((0, 4))[:3]), baked.getpixel((0, 4)))
+            self.assertGreater(baked.getpixel((4, 4))[3], 245)
+            self.assertLess(abs(baked.getpixel((0, 4))[3] - 153), 10)
             # Its normal map, kept as its bytes are with their alpha (x is alpha × red; the made-up one is BC1, so alpha 1).
             self.assertEqual(entry['normals'], 'dev_grid16_normals.png')
             # Its roughness: the meta texture's mean red (7 columns of 161, one of 255; BC1 keeps it within a level or two).

@@ -162,13 +162,20 @@ dev materials, on 221 faces. The theme packs (`ancient_japan`, `gothic`, `indust
 …) were not available to check and may hold more.
 
 For each textured material the import writes one picture into
-`local-data/reflex-maps/textures`: the albedo, divided by the meta texture's
-blue channel where there is one. Only the dev grid's meta has that channel
-below 1 (0.6 along the grid lines), and in the game those lines are lighter
-than the face, almost white; the dev albedo is a flat light grey, so the
-page's lines are lighter but clip at white. (Imports from before this change
-darkened the lines; import again with "Re-import existing maps" ticked to
-bake them anew.) A diffuse
+`local-data/reflex-maps/textures`: the albedo, with the meta texture's blue
+channel as its alpha where that is below 1. The dev materials' shaders
+(`…_TINTED`) draw albedo × lerp(1, tint, meta blue) (their G-buffer pixel
+shader; the meta is BC1/BC7 unorm, so blue is taken as it is). Only the dev
+grid's meta has blue below 1: 0.6 on the 64-unit lines, 0.85 on the 32-unit
+ones and 0.945 on the 16-unit ones, so `dev_grey128`'s 0.5 grey tint darkens
+the face fully and the lines less. The page does the same with that alpha.
+Measured in the game on Aerowalk (a dev-grid pillar), the lines' brightness
+above the face goes up about 1 : 2.9 : 6.9 from the 16- to the 64-unit lines;
+this rule gives 1 : 2.8 : 7.5. Close up, the page gives 1.15–1.18 times the
+face for the 16-unit lines (the rule 1.19) and about 2.5 for the 64-unit ones
+(2.43, plus the groove's light). (Earlier imports divided the albedo by the meta's
+blue, which clipped the 64-unit lines at white and left the others 2–4 times
+too faint; import again with "Re-import existing maps" ticked.) A diffuse
 texture keeps its alpha (ivy is alpha-keyed); an albedoSpec's alpha is its
 specular level and is left out. Thumbnails go to `thumbs`, 128 pixels. The
 page draws a textured face in its texture times its colour (the material's
@@ -735,7 +742,7 @@ and holds what the game's editor did not have:
 | Subtract | Ctrl+Shift+S | Carves the selected brushes out of every other brush of the map they overlap, then joins the pieces again wherever two make one convex brush that looks the same; one step of undo; the selection stays |
 | Hollow | H | Turns the selected brush into walls one grid step thick that do not overlap |
 | Bevel | Alt+click | Alt-click picks the edge nearest the click on the face under the mouse (Ctrl+Alt-click adds and removes, on any brushes); Bevel cuts the picked edges back one grid step along both faces, or by `bevel <width> <steps>` from the console, rounded in that many flat steps |
-| Hide buried | | Puts `editor_fullclip` on the faces solid brushes bury wholly or press flat against (of the selection, or of the whole map with nothing selected); faces only partly buried stay; `hideburied` |
+| Hide buried | | Puts `editor_fullclip` on the faces solid brushes bury wholly or press flat against (of the selection, or of the whole map with nothing selected); faces only partly buried stay; `hideburied`. Keep the map's `.light`, or rebake before hiding (a later rebake lights faces next to hidden ones differently) |
 | Shape… | | Stairs, Arch, Door arch or Curved hallway on the surface in the middle of the view, facing away; or a Radial array of the selection round a centre beside it. The panel (N) shows its numbers; a new number makes its pieces again as one step of undo, until Convert to brushes; `shape <kind>` |
 | Wrap | | Carries the texture of the face Shift-click picked first on round the faces beside it, over its brush and the selected ones; with more faces picked, onto those only, round any angle; `wrap` |
 | Checks | | Lists brushes with too few faces, a face with no normal, two faces on one plane or faces enclosing nothing; Select selects one; `checks` |
@@ -1121,10 +1128,18 @@ with drawn ones, and `editor_nolight`, which reflex.exe names (0x14007ab7b),
 only changes lighting. The faces the game does not draw are the clip
 materials, and `editor_fullclip` blocks what a solid face does (reflex.exe
 0x1401da870 gives it surface flag 8; player clip 0x10, weapon clip 0x100,
-other faces 1). A brush with some full clip faces still hides what is behind
-it. Ruin: 2714 faces of 1228 brushes, 0.3 s; in the game it looks as before
+other faces 1), but does not block light in a rebake (below). A brush with
+some full clip faces still hides what is behind it. Ruin: 2714 faces of 1228 brushes, 0.3 s; in the game it looks as before
 (mean difference 0.8/255, the rest flames and particles) and a player stands
 on a full clip face. Checked in the game with `skinner_anvil_room`.
+
+Keep the map's existing `.light`, or rebake before hiding: a rebake after
+Hide buried can light faces next to hidden ones differently. Full clip faces
+do not block light in the game's bake (`r_lm_build`), and its 64-unit light
+probes that sit inside or on walls then see past them. On Ruin, after Hide
+buried and a rebake, 3.1 % of the drawn faces change light by more than 0.05
+(0.35 % for a plain rebake), and the window bay at (200, 312, 540) is visibly
+different (mean 6.3/255). A map that keeps its `.light` is unaffected.
 
 Bevel adds planes to the brush's set, so it works on any convex brush and on
 several edges at once: for an edge between faces with normals at angle α, the
