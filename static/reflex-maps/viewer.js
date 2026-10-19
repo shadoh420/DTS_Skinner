@@ -3483,6 +3483,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function buildPlayWorld() {
     const solid = [], volume = [];
     for (const entry of flat.brushes) {
+      if (hiddenEntries.has(entry)) continue;  // Playing a cordon or Isolate plays what shows.
       if (M.isVolume(entry.owner)) { volume.push({brush: entry.brush, tag: entry.owner}); continue; }
       const faces = entry.brush.faces;
       if (faces.some(face => LIQUID.test(face.material || '')) || faces.every(face => /editor_weaponclip$/.test(face.material || ''))) continue;
