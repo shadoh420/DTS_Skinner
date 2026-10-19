@@ -22,11 +22,13 @@
    the console (`) breaks, updates, makes and lists prefabs (me_breakprefab, me_updateprefab, me_createprefab,
    me_listprefabs), and a double click on a placement edits its prefab in place. Ctrl+Shift-click picks more faces;
    Mirror mirrors the selection. Faces are textured from the game's materials or any of Skinner's texture libraries
-   (the material browser). 0 plays: a player walks through the map (movement.js); F flies instead. */
+   (the material browser). 0 plays: a player walks through the map (movement.js); F flies instead. A double click
+   picks a loop of faces (Shift) or edges (Alt), or selects the brushes along one; R measures; Cordon and Isolate show
+   part of the map to work on; Recover restores one of the snapshots taken every minute (recovery.js). */
 'use strict';
 window.addEventListener('DOMContentLoaded', async () => {
   const $ = id => document.getElementById(id);
-  const B = window.ReflexBrush, M = window.ReflexMap, L = window.ReflexLight, Motion = window.ReflexMotion;
+  const B = window.ReflexBrush, M = window.ReflexMap, L = window.ReflexLight, Motion = window.ReflexMotion, Recovery = window.ReflexRecovery;
   const storageKey = 'skinner.reflexmaps';
   // The game's me_snapdistance is 16; its me_snapangle default is not known, and 45 is the step most stock angles are on.
   const settings = {fov: 110, invertX: false, invertY: false, grid: 16, angle: 45};
@@ -592,7 +594,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     markers.length = 0;
     const byKind = new Map();
     for (const entry of flat.entities) {
-      const marker = entry.position && markerOf(entry.entity);
+      const marker = entry.position && !hiddenEntities.has(entry) && markerOf(entry.entity);
       if (!marker) continue;
       const key = marker.join('|');
       if (!byKind.has(key)) byKind.set(key, {marker, entries: []});
@@ -714,7 +716,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Each model to draw: {effect, matrix (3 × 4 rows, the map's coordinates), entity, editorOnly}.
   function modelInstances() {
     const placed = [];
-    for (const {entity, transform} of flat.entities) {
+    for (const entry of flat.entities) {
+      const {entity, transform} = entry;
       const name = entity.type === 'Effect' ? M.property(entity, 'effectName') : entity.type === 'Pickup' ? packEffects.pickups[M.property(entity, 'pickupType') ?? 0]
         : (packEffects.entities || {})[entity.type];
       const effect = name && packEffects.effects[name];
@@ -728,24 +731,24 @@ window.addEventListener('DOMContentLoaded', async () => {
       // A pickup with a pad (health, armour, powerups, weapons) floats above it: 30 units, measured (the game bobs
       // and turns it); ammunition lies on the floor.
       const pad = entity.type === 'Pickup' && packEffects.effects[name.replace(/_pickup$/, '') + '_pad'];
-      if (pad) placed.push({effect: pad, matrix: at(), entity, editorOnly: false});
-      placed.push({effect, matrix: at(pad ? 30 : 0), entity, editorOnly: EDITOR_ONLY.test(name) || entity.type === 'ReflectionProbe', spin: Boolean(pad)});
+      if (pad) placed.push({effect: pad, matrix: at(), entity, entry, editorOnly: false});
+      placed.push({effect, matrix: at(pad ? 30 : 0), entity, entry, editorOnly: EDITOR_ONLY.test(name) || entity.type === 'ReflectionProbe', spin: Boolean(pad)});
     }
     // While editing, what the game's editor shows for an entity (effects.json's editor list): a spawn, target, point
     // light, screenshot camera or nav link its model, an effect with no model of its own a red "!", and a reflection
     // probe a mirror sphere 16 in radius (the game draws one; measured on screen).
     const shown = packEffects.editor || {};
-    for (const {entity, transform} of flat.entities) {
-      const position = M.property(entity, 'position');
+    for (const entry of flat.entities) {
+      const {entity, transform} = entry, position = M.property(entity, 'position');
       if (!position) continue;
       const placeAt = scale => { const local = M.compose(position, M.property(entity, 'angles') || [0, 0, 0]).map(row => row.map((v, k) => k < 3 ? v * scale : v)); return transform ? M.multiply(transform, local) : local; };
       const effectName = entity.type === 'Effect' && M.property(entity, 'effectName');
-      if (entity.type === 'ReflectionProbe' || EDITOR_ONLY.test(effectName || '')) { placed.push({effect: PROBE_SPHERE, matrix: placeAt(1), entity, editorOnly: true}); continue; }
+      if (entity.type === 'ReflectionProbe' || EDITOR_ONLY.test(effectName || '')) { placed.push({effect: PROBE_SPHERE, matrix: placeAt(1), entity, entry, editorOnly: true}); continue; }
       const own = effectName && packEffects.effects[effectName];
       if (own && own.meshes.length) continue;
       const end = entity.type === 'NavLink' && [0, false].includes(M.property(entity, 'isStart'));
       const effect = packEffects.effects[shown[end ? 'NavLinkEnd' : entity.type]];
-      if (effect) placed.push({effect, matrix: placeAt(1), entity, editorOnly: true});
+      if (effect) placed.push({effect, matrix: placeAt(1), entity, entry, editorOnly: true});
     }
     return placed;
   }
@@ -760,9 +763,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   const ATTRIBUTES = {position: 3, normal: 3, color: 3, specular: 3, roughness: 1, emit: 1, texcoord: 2};
   let modelsDrawn = '';  // what the model geometry was last built from
   function buildModels() {
-    const build = ++modelBuild, placed = modelInstances();
+    // What a cordon or Isolate hides is not drawn, but its lights still light what shows.
+    const build = ++modelBuild, all = modelInstances(), placed = all.filter(item => !hiddenEntities.has(item.entry));
     const wanted = [...new Set(placed.flatMap(({effect}) => effect.meshes.map(record => record.file)))].filter(file => !meshes.has(file));
-    buildLights(placed.filter(item => !item.editorOnly));
+    buildLights(all.filter(item => !item.editorOnly));
     buildParticles(placed.filter(item => !item.editorOnly));
     if (wanted.length) {
       Promise.all(wanted.map(file => fetch(`${data}models/${encodeURIComponent(file)}`).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null)
@@ -1156,9 +1160,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (openPrefab && !globalGroup().items.some(item => brokenFrom.get(item) === openPrefab.from)) openPrefab = null;
     ownerOfItem = new Map(flat.brushes.filter(entry => !entry.path.length).map(entry => [entry.source, entry.owner]));
     for (const mesh of [world, clips, glass, volumes]) mesh.geometry.dispose();
-    const volume = entry => M.isVolume(entry.owner);
-    world.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle, true, world.material);
-    glass.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle,
+    hideOutside();
+    // What a cordon or Isolate hides is left out of every mesh, so it is neither drawn nor picked.
+    const volume = entry => M.isVolume(entry.owner) && !hiddenEntries.has(entry), solid = entry => !M.isVolume(entry.owner) && !hiddenEntries.has(entry);
+    world.geometry = buildMesh(flat.brushes, (face, entry) => solid(entry) && !isClip(face) && !isSeeThrough(face), entryOfTriangle, true, world.material);
+    glass.geometry = buildMesh(flat.brushes, (face, entry) => solid(entry) && !isClip(face) && isSeeThrough(face), glassEntryOfTriangle,
       face => {
         const read = packColours[face.material || ''] || {};
         return /alphaFresnel/.test(read.shader || '') ? {key: 'fresnel:' + (read.fresnel || [.1, 4, .075]), fresnel: read.fresnel || [.1, 4, .075]}
@@ -1168,7 +1174,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       },
       glass.material, source => source === faint ? faintMaterial : source && source.fresnel ? fresnelMaterial(source.fresnel)
         : source && source.glass ? glassReflection(source.glass, source.colour) : source && source.simple ? simpleMaterial(source.simple) : source ? glassBoth : glassMaterial);
-    clips.geometry = buildMesh(flat.brushes, (face, entry) => !volume(entry) && isClip(face), clipEntryOfTriangle);
+    clips.geometry = buildMesh(flat.brushes, (face, entry) => solid(entry) && isClip(face), clipEntryOfTriangle);
     volumes.geometry = buildMesh(flat.brushes, (face, entry) => volume(entry), volumeEntryOfTriangle, volumeSource, volumes.material, volumeMaterial);
     volumes.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(volumes.geometry.attributes.texcoord.array.map(v => v / 16), 2));
     volumeOutlines.geometry.dispose();
@@ -1445,10 +1451,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   function load(text, name) {
-    useLight(null);
     const parsed = M.parse(text);
+    autosave();  // The map being left, if it changed since its last snapshot.
+    useLight(null);
     if (!M.global(parsed)) parsed.groups.push({kind: 'global', name: '', items: []});
     map = parsed; mapName = name; selected.clear(); undoStack.length = 0; redoStack.length = 0;
+    cordon = isolated = null; savedEdits = edits;
     rebuild();
     showViewpoint(0);
     showNotes();
@@ -1492,17 +1500,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // A step of undo is the lists of every group (the map's and its prefabs') and what was selected, so undoing brings
   // back both.
-  const snapshot = () => ({groups: map.groups.map(group => ({...group, items: group.items.slice()})), selected: [...selected]});
+  // The map's name rides along, as Recover can put another map's snapshot in place.
+  const snapshot = () => ({groups: map.groups.map(group => ({...group, items: group.items.slice()})), selected: [...selected], name: mapName});
   function remember() {
     undoStack.push(snapshot());
     if (undoStack.length > 100) undoStack.shift();
     redoStack.length = 0;
+    edits++;
   }
   function restore(from, to) {
     if (!from.length) return;
     to.push(snapshot());
     const step = from.pop();
     map.groups = step.groups;
+    mapName = step.name;
+    edits++;
     selected.clear();
     const items = globalGroup().items;
     for (const item of step.selected) if (items.includes(item)) selected.add(item);
@@ -1526,6 +1538,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (instead.length === 1 && instead[0].kind === 'brush' && instead[0].faces.length === (item.faces || []).length) for (const face of picked) if (face.item === item) face.item = instead[0];
       if (instead.length === 1) carryShape(item, instead[0], carried);
       if (brokenFrom.has(item)) for (const next of instead) if (!brokenFrom.has(next)) brokenFrom.set(next, brokenFrom.get(item));
+      if (isolated && isolated.has(item)) for (const next of instead) isolated.add(next);
       items.push(...instead);
       changed.push(...instead);
     }
@@ -1537,6 +1550,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const index = at === 'world' ? M.worldInsertAt({items}) : at === 'end' ? items.length : (items.indexOf(at) + 1 || items.length);
       items.splice(index, 0, ...fresh);
       added.push(...fresh);
+      if (isolated) for (const next of fresh) isolated.add(next);  // What is made while isolated shows.
     }
     if (openPrefab) syncPrefab(items);
     globalGroup().items = items;
@@ -1544,6 +1558,88 @@ window.addEventListener('DOMContentLoaded', async () => {
     selection.position.set(0, 0, 0);
     for (const item of select === 'added' ? added : select === 'changed' ? changed : select || []) if (items.includes(item)) selected.add(item);
     rebuild(); showReady();
+  }
+
+  // ---- Working on part of the map: the cordon and Isolate ----
+  // A cordon {min, max} shows only the brushes reaching into it (brush.js touches) and the entities in it; Isolate
+  // only what was selected (and what stands in its place or is made since). Hidden things are left out of the meshes,
+  // so they cannot be picked, and the operations that reach past the selection (Subtract, Hide buried, loops) pass
+  // them over. Nothing is cut or moved: Save writes the whole map. The models of hidden entities go too, but their
+  // lights stay, so what shows is lit as before (hidden brushes cast no sun shadow, though).
+  let cordon = null, isolated = null, cordoning = false;
+  let hiddenEntries = new Set(), hiddenEntities = new Set(), hiddenItems = new Set();
+  const inBox = (p, box) => [0, 1, 2].every(k => p[k] >= box.min[k] - B.EPSILON && p[k] <= box.max[k] + B.EPSILON);
+  function hideOutside() {
+    hiddenEntries = new Set(); hiddenEntities = new Set(); hiddenItems = new Set();
+    if (!cordon && !isolated) return;
+    for (const entry of flat.brushes) {
+      if ((isolated && !isolated.has(entry.path.length ? entry.path[0] : entry.source)) || (cordon && !B.touches(entry.brush, cordon.min, cordon.max))) hiddenEntries.add(entry);
+      if (!entry.path.length && hiddenEntries.has(entry)) hiddenItems.add(entry.source);
+    }
+    // A prefab's placement shows while any brush it places does.
+    const placing = new Set(flat.brushes.filter(entry => entry.path.length && !hiddenEntries.has(entry)).map(entry => entry.path[0]));
+    for (const entry of flat.entities) {
+      const item = entry.path.length ? entry.path[0] : entry.entity;
+      if ((isolated && !isolated.has(item)) || (cordon && !(entry.position && inBox(entry.position, cordon)))) hiddenEntities.add(entry);
+      if (!entry.path.length && hiddenEntities.has(entry) && !placing.has(item)) hiddenItems.add(item);
+    }
+  }
+  const brushCount = () => `${flat.brushes.length - hiddenEntries.size} of ${flat.brushes.length} brushes`;
+  function setCordon(box) {
+    cordon = box; cordoning = false;
+    ghost.clear();
+    rebuild(); showReady();
+    say(box ? `Cordon ${box.min.join(' ')} to ${box.max.join(' ')}: ${brushCount()} show · Cordon again clears` : 'Cordon cleared: the whole map shows');
+  }
+  function setIsolated(items) {
+    isolated = items && new WeakSet(withVolumes(items));
+    rebuild(); showReady();
+    say(isolated ? `Isolated: ${brushCount()} show · Isolate again shows everything` : 'Everything shows');
+  }
+  // A drawn cordon: the rectangle dragged on a surface, reaching through the whole map across it.
+  function cordonBox(drag) {
+    const {min, max, empty} = drawnBox(drag);
+    let low = Infinity, high = -Infinity;
+    for (const entry of flat.brushes) for (const v of entry.brush.vertices) { low = Math.min(low, v[drag.axis]); high = Math.max(high, v[drag.axis]); }
+    min[drag.axis] = Math.floor(Math.min(low, drag.level) / settings.grid) * settings.grid;
+    max[drag.axis] = Math.ceil(Math.max(high, drag.level) / settings.grid) * settings.grid;
+    return {min, max, empty};
+  }
+
+  // ---- Autosave and Recover (recovery.js) ----
+  // Every minute, and when the page is hidden, the map as Save writes it goes into the browser's store while it has
+  // changed since the last snapshot (each step of undo, or undoing one, is a change). A map just loaded is not taken.
+  let edits = 0, savedEdits = 0, recoverList = null;
+  function autosave() {
+    if (!flat || edits === savedEdits) return;
+    savedEdits = edits;
+    const time = Date.now(), brushes = globalGroup().items.filter(isBrush).length;
+    try { Recovery.save({id: time, name: mapName, time, brushes, text: M.write(map)}); } catch (_) { /* No store: nothing kept. */ }
+  }
+  setInterval(autosave, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') autosave(); });
+  function showRecover(body) {
+    if (!recoverList) { body.textContent = 'Reading the snapshots…'; return; }
+    body.append(element('p', {textContent: recoverList.length
+      ? `Snapshots taken every minute while a map changes (the last ${Recovery.KEEP}), kept in this browser only. Restore puts one in place of the map as one step of undo.`
+      : 'No snapshots yet: one is taken every minute while a map changes, where the browser keeps site data.'}));
+    body.append(element('table', {className: 'prefabs'}, ...recoverList.map(snapshot => element('tr', {},
+      element('td', {style: 'text-align:left', textContent: snapshot.name}),
+      element('td', {textContent: new Date(snapshot.time).toLocaleString()}),
+      element('td', {textContent: `${snapshot.brushes} brushes`}),
+      element('td', {}, element('button', {type: 'button', textContent: 'Restore', onclick: () => restoreSnapshot(snapshot)}))))));
+  }
+  function restoreSnapshot(snapshot) {
+    let read;
+    try { read = M.parse(snapshot.text); } catch (error) { say(`Cannot restore that snapshot: ${error.message}`); return; }
+    if (!M.global(read)) read.groups.push({kind: 'global', name: '', items: []});
+    remember();
+    // Another map's light would light this one wrongly.
+    if (snapshot.name !== mapName) useLight(null);
+    map.groups = read.groups; map.version = read.version; map.crlf = read.crlf; mapName = snapshot.name;
+    selected.clear(); picked = []; edges = [];
+    rebuild(); showReady(); showNotes();
+    say(`Restored ${snapshot.name} as it was at ${new Date(snapshot.time).toLocaleTimeString()} (${snapshot.brushes} brushes) · Z undoes it`);
   }
 
   // ---- Selection overlay, vertex dots and the shape being drawn ----
@@ -1597,6 +1693,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     selection.clear();
     dots = [];
     if (!flat) return;
+    for (const item of selected) if (hiddenItems.has(item)) selected.delete(item);  // What a cordon or Isolate hides is not edited.
     // The selected brushes, and those a selected Prefab entity places, in one mesh and one set of lines.
     const shown = [];
     for (const entry of flat.brushes) {
@@ -1620,7 +1717,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       box.material.depthTest = false;
       selection.add(box);
     }
-    const items = new Set(globalGroup().items);
+    const items = new Set(globalGroup().items.filter(item => !hiddenItems.has(item)));
     picked = picked.filter(face => items.has(face.item) && face.item.faces[face.index]);
     if (!picked.length) bridging = false;
     for (const {item, index} of picked) {
@@ -1663,13 +1760,20 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('bevel').textContent = edges.length ? `Bevel ${edges.length}` : 'Bevel';
     $('clipButton').classList.toggle('on', clipMode);
     $('lockButton').classList.toggle('on', textureLock);
+    $('cordon').classList.toggle('on', !!cordon || cordoning);
+    $('isolate').classList.toggle('on', !!isolated);
+    $('ruler').classList.toggle('on', measuring);
+    $('recover').classList.toggle('on', panelOpen && panelView === 'recover');
     $('rotateInc').disabled = $('rotateDec').disabled = $('mirror').disabled = !count;
     $('duplicate').disabled = $('delete').disabled = !count;
     $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length;
     $('mode').title = $('mode').textContent = (bridging ? `Bridge (B): aim at a face · wheel ${segments} step${segments > 1 ? 's' : ''} · click makes · Esc stops`
+      : measuring ? 'Ruler (R): click two points · Esc stops'
+      : cordoning ? 'Cordon: drag a rectangle on a surface · Esc stops'
       : clipMode ? `Clip (C): ${clipPoints.length} of 3 points · Enter clips · Shift+Enter splits · wheel flips · Esc`
       : createType ? `Create ${createLabel()}${createType <= 8 ? ` (${createType})` : ''}: ${createType <= 3 ? 'drag on a surface' : 'click to place'} · Esc stops`
-      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode') + (textureLock ? ' · texture lock (L)' : '') + (openPrefab ? ` · prefab ${openPrefab.name} open (Esc with nothing selected closes)` : '');
+      : vertexMode ? 'Vertex mode (V): drag a corner · Esc stops' : 'Edit mode') + (textureLock ? ' · texture lock (L)' : '')
+      + (cordon ? ' · cordon' : '') + (isolated ? ' · isolated' : '') + (cordon || isolated ? `: ${brushCount()} show` : '') + (openPrefab ? ` · prefab ${openPrefab.name} open (Esc with nothing selected closes)` : '');
     showPanel();
     $('material').textContent = `${template.material || 'no material'}${template.colour && M.colourOf(template) ? ` · ${template.colour}` : ''}`;
     $('swatch').style.background = '#' + new THREE.Color(...faceShade(template).diffuse.map(c => Math.pow(c, 1 / 2.2))).getHexString();
@@ -1774,6 +1878,31 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (adding(event)) { if (selected.has(item)) selected.delete(item); else selected.add(item); } else { selected.clear(); selected.add(item); }
     showSelection();
     say(`${selected.size} selected · ${describe(item, hit.entity || hit.entry)}`);
+  }
+  // A double click on a brush of the world (brush.js faceLoop and edgeLoop, over the convex world brushes that show):
+  // with Shift, the faces in a strip with the face, picked as Shift-click picks them, crossing the edge nearest the
+  // cursor; with Alt, the edges in a line with that edge, picked for Bevel; plain, the brushes the face strip crosses.
+  function selectLoop(event, hit) {
+    const item = hit.entry.source, edge = pickEdge(event);
+    if (!isWorldBrush(item) || !B.convex(item) || !edge) return;
+    // ponytail: every shown convex world brush, each double click; keep a list across clicks if large maps lag.
+    const brushes = globalGroup().items.filter(other => isWorldBrush(other) && !hiddenItems.has(other) && B.convex(other));
+    if (event.altKey) {
+      edges = B.edgeLoop(brushes, edge.a, edge.b).map(({brush, a, b}) => ({item: brushes[brush], a, b}));
+      showSelection();
+      say(`${edges.length} edge${edges.length > 1 ? 's' : ''} in a loop picked · Bevel cuts them back · Esc drops`);
+      return;
+    }
+    const loop = B.faceLoop(brushes, {brush: brushes.indexOf(item), face: item.faces.indexOf(hit.face)}, [edge.a, edge.b]);
+    if (event.shiftKey) {
+      picked = loop.map(({brush, face}) => ({item: brushes[brush], index: face}));
+      say(`${picked.length} faces in a loop picked · Wrap, the texture keys and Shift+M work on them`);
+    } else {
+      selected.clear();
+      for (const {brush} of loop) selected.add(brushes[brush]);
+      say(`${selected.size} brush${selected.size > 1 ? 'es' : ''} along a loop of ${loop.length} faces selected`);
+    }
+    showSelection();
   }
   // What a click on a hit selects: the brush or entity, or for one a prefab places, the Prefab entity of the map that
   // places it (as the game selects a prefab as one thing).
@@ -1910,6 +2039,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   let drag = null;
   function startDrag(event) {
     if (bridging) { makeBridge(); drag = {kind: 'done'}; return; }  // The click is the bridge's, not a selection.
+    if (measuring) {
+      const at = surfaceAt(event);
+      if (at) { if (rulerPoints.length >= 2) rulerPoints = []; rulerPoints.push(at.snapped); showRuler(); }
+      drag = {kind: 'done'};
+      return;
+    }
+    if (cordoning) {
+      const at = surfaceAt(event);
+      drag = at ? {kind: 'cordon', axis: at.axis, sign: at.sign, level: at.level, start: at.snapped, end: at.snapped} : {kind: 'done'};
+      return;
+    }
     if (clipMode) {
       // A click near a point takes it to drag; elsewhere it adds one (a fourth starts the plane again), which the drag
       // then moves.
@@ -1974,17 +2114,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       say(`Corner to ${position.map(v => Math.round(v * 1000) / 1000).join(' ')}`);
       return;
     }
-    if (drag.kind === 'create') {
+    if (drag.kind === 'create' || drag.kind === 'cordon') {
       const at = onPlane(ray(event), drag.axis, drag.level);
       if (!at) return;
       drag.end = at.map((p, i) => i === drag.axis ? drag.level : snap(p));
-      const {min, max, empty} = drawnBox(drag);
+      const {min, max, empty} = drag.kind === 'cordon' ? cordonBox(drag) : drawnBox(drag);
       ghost.clear();
       if (!empty) {
-        const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(...min), new THREE.Vector3(...max)), 0xf0c674);
+        const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(...min), new THREE.Vector3(...max)), drag.kind === 'cordon' ? 0x7ee787 : 0xf0c674);
         box.material.depthTest = false;
         ghost.add(box);
-        say(`${CREATE[createType].label}: ${max.map((v, i) => Math.round((v - min[i]) * 1000) / 1000).join(' × ')}`);
+        say(`${drag.kind === 'cordon' ? 'cordon' : CREATE[createType].label}: ${max.map((v, i) => Math.round((v - min[i]) * 1000) / 1000).join(' × ')}`);
       }
       return;
     }
@@ -2006,6 +2146,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (done.kind === 'done' || done.kind === 'clippoint') return true;
     selection.position.set(0, 0, 0);
     ghost.clear();
+    if (done.kind === 'cordon') {
+      const {min, max, empty} = cordonBox(done);
+      if (!empty) setCordon({min, max});
+      return true;
+    }
     if (done.kind === 'move' && done.offset.some(Boolean)) {
       replace(new Map([...selected].map(item => [item, [isBrush(item) ? locked(item, B.translate(item, done.offset)) : withPosition(item, positionOf(item).map((v, i) => v + done.offset[i]))]])), [], 'changed');
       say(`Moved ${done.offset.join(' ')}`);
@@ -2049,10 +2194,33 @@ window.addEventListener('DOMContentLoaded', async () => {
     return false;
   }
 
+  // ---- The ruler (R): two points on surfaces, on the grid, and the distance between them ----
+  let measuring = false, rulerPoints = [];
+  const rulerLine = new THREE.LineBasicMaterial({color: 0x7ee787, depthTest: false, transparent: true});
+  function setRuler(on) {
+    measuring = on; rulerPoints = [];
+    if (on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; cordoning = false; }
+    ghost.clear(); showHover(null); showSelection();
+    say(on ? 'Ruler: click two points on surfaces' : '');
+  }
+  function showRuler() {
+    ghost.clear();
+    const points = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(rulerPoints.flat(), 3)), dotMaterial);
+    points.renderOrder = 5;
+    ghost.add(points);
+    if (rulerPoints.length < 2) { say(`Ruler from ${rulerPoints[0].map(round).join(' ')}: click the second point`); return; }
+    const line = new THREE.Line(points.geometry, rulerLine);
+    line.renderOrder = 5;
+    ghost.add(line);
+    const [a, b] = rulerPoints, d = b.map((v, i) => v - a[i]);
+    say(`Distance ${round(Math.hypot(...d))} units · x ${round(d[0])} y ${round(d[1])} z ${round(d[2])} · on the level ${round(Math.hypot(d[0], d[2]))} · click again for a new one`);
+  }
+  const round = value => Math.round(value * 1000) / 1000 + 0;
+
   // ---- The bridge tool ----
   function startBridge() {
     if (!picked.length) { say('Shift-click a face first; B then bridges it to the face you aim at'); return; }
-    bridging = true; createType = 0; vertexMode = false; clipMode = false; clipPoints = []; ghost.clear();
+    bridging = true; createType = 0; vertexMode = false; clipMode = false; clipPoints = []; measuring = false; cordoning = false; ghost.clear();
     showHover(null);
     updateTools();
     say('Aim at the face to bridge to; the wheel sets the steps');
@@ -2297,12 +2465,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     panel.hidden = !panelOpen || !editing;
     if (panel.hidden || !flat) return;
     const body = $('propsBody'), target = panelTarget();
-    $('propsTitle').textContent = {prefabs: 'Prefabs', materials: 'Materials', checks: 'Brush checks'}[panelView] || 'Properties';
+    $('propsTitle').textContent = {prefabs: 'Prefabs', materials: 'Materials', checks: 'Brush checks', recover: 'Recover'}[panelView] || 'Properties';
     if (panelView === 'materials') { showMaterials(body); return; }
     shownMaterials = '';
     body.replaceChildren();
     if (panelView === 'prefabs') { showPrefabList(body); return; }
     if (panelView === 'checks') { showChecks(body); return; }
+    if (panelView === 'recover') { showRecover(body); return; }
     const shape = selectedShape();
     if (shape) { showShape(body, shape); return; }
     if (!target) { body.textContent = 'This map has no WorldSpawn.'; return; }
@@ -2723,7 +2892,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const clipFields = item => M.isVolume(ownerOf(item)) ? fieldsOf(item.faces[0]) : template;
   function setClipMode(on) {
     clipMode = on; clipPoints = []; clipPlane = null;
-    if (on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; }
+    if (on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; measuring = false; cordoning = false; ghost.clear(); }
     showHover(null);
     showClip();
     showSelection();
@@ -2813,7 +2982,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     me_activematerial: name => { if (name) chooseMaterial(name, false); else showMaterialBrowser(); },
     editortoggleclipmode: () => setClipMode(!clipMode),
     editortogglevertexmode: () => setVertexMode(!vertexMode),
-    // Not the game's: Skinner's bevel, hide buried faces and brush checks.
+    // Not the game's: Skinner's bevel, hide buried faces, brush checks, cordon, isolate, ruler and recover.
     bevel: (width = '', steps = '') => {
       if (width !== '') { if (!(Number(width) >= 0)) { say('bevel <width> <steps>: width in units (0 = the grid), steps 1 to 32'); return; } bevelWidth = Number(width); }
       if (steps !== '') bevelSteps = Math.max(1, Math.min(32, Math.round(Number(steps)) || 1));
@@ -2821,6 +2990,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     },
     hideburied: () => actions.hideBuried(),
     checks: () => actions.checks(),
+    cordon: (...numbers) => {
+      if (!numbers.length) { actions.cordon(); return; }
+      const values = numbers.map(Number);
+      if (values.length !== 6 || !values.every(Number.isFinite)) { say('cordon x0 y0 z0 x1 y1 z1: the box\'s corners; cordon alone clears it, or sets it round the selection'); return; }
+      setCordon({min: [0, 1, 2].map(k => Math.min(values[k], values[k + 3])), max: [0, 1, 2].map(k => Math.max(values[k], values[k + 3]))});
+    },
+    isolate: () => actions.isolate(),
+    measure: () => setRuler(!measuring),
+    recover: () => actions.recover(),
     wrap: () => actions.wrap(),
     shape: (kind = '') => {
       const name = Object.keys(SHAPES).find(key => key.toLowerCase() === kind.toLowerCase());
@@ -2842,7 +3020,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 
   // The toolbar's operations, each one step of undo. CSG works on brushes of the world, not on volumes.
-  function others(of) { return globalGroup().items.filter(item => isWorldBrush(item) && !of.includes(item) && B.convex(item)); }
+  function others(of) { return globalGroup().items.filter(item => isWorldBrush(item) && !of.includes(item) && !hiddenItems.has(item) && B.convex(item)); }
   const actions = {
     newBrush() {
       const forward = new THREE.Vector3();
@@ -2886,7 +3064,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     // of the whole map with none selected. Faces only partly buried stay as they are.
     hideBuried() {
       const entries = flat.brushes.filter(entry => !M.isVolume(entry.owner)), items = new Set(globalGroup().items), chosen = new Set(selectedBrushes());
-      const editable = new Set(entries.flatMap((entry, i) => !entry.path.length && items.has(entry.source) && hides(entry.brush) && (!chosen.size || chosen.has(entry.source)) ? [i] : []));
+      // Hidden brushes still bury what they press on, but keep their own faces.
+      const editable = new Set(entries.flatMap((entry, i) => !entry.path.length && items.has(entry.source) && !hiddenEntries.has(entry) && hides(entry.brush) && (!chosen.size || chosen.has(entry.source)) ? [i] : []));
       const lists = B.buried(entries.map(entry => entry.brush), entries.map(entry => hides(entry.brush)), editable), changes = new Map();
       let count = 0;
       lists.forEach((list, i) => {
@@ -2900,6 +3079,27 @@ window.addEventListener('DOMContentLoaded', async () => {
       say(`${count} buried faces of ${changes.size} brushes now ${NODRAW.split('/').pop()}, which the game does not draw`);
     },
     checks() { panelOpen = !(panelOpen && panelView === 'checks'); panelView = 'checks'; showPanel(); },
+    // Clears a cordon; else sets one round the selection (out to the grid), or with nothing selected starts drawing one.
+    cordon() {
+      if (cordon || cordoning) { setCordon(null); return; }
+      const box = selected.size && extent(withVolumes([...selected]), true), grid = settings.grid;
+      if (box) { setCordon({min: box.min.map(v => Math.floor(v / grid) * grid), max: box.max.map(v => Math.ceil(v / grid) * grid)}); return; }
+      createType = 0; vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; measuring = false; rulerPoints = []; ghost.clear();
+      cordoning = true;
+      updateTools();
+      say('Drag a rectangle on a surface for the cordon; it reaches through the whole map across that surface');
+    },
+    isolate() {
+      if (isolated) setIsolated(null);
+      else if (selected.size) setIsolated([...selected]);
+      else say('Select what to work on, then Isolate');
+    },
+    ruler() { setRuler(!measuring); },
+    recover() {
+      if (panelOpen && panelView === 'recover') { panelOpen = false; updateTools(); return; }
+      panelOpen = true; panelView = 'recover'; recoverList = null; updateTools();
+      Recovery.list().then(list => { recoverList = list; showPanel(); });
+    },
     // Texture wrap (brush.js wrap): the first picked face's texture carried on round the faces beside it, over its
     // brush and the selected ones; with more faces picked, onto those only, round any angle.
     wrap() {
@@ -3113,14 +3313,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   function setCreate(type) {
     createType = createType === type ? 0 : type;
-    if (createType) { vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; ghost.clear(); }
+    if (createType) { vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; measuring = false; cordoning = false; ghost.clear(); }
     showHover(null);
     updateTools();
     say(createType ? `${createLabel()}: ${createType <= 3 ? 'drag a rectangle on a surface' : 'click where it goes'}` : '');
   }
   function setVertexMode(on) {
     vertexMode = on;
-    if (on) { createType = 0; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; ghost.clear(); }
+    if (on) { createType = 0; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; measuring = false; cordoning = false; ghost.clear(); }
     showHover(null);
     showSelection();
     say(on ? (selectedBrushes().length ? 'Drag a corner; Alt drags it up and down' : 'Select a brush to see its corners') : '');
@@ -3133,7 +3333,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     editorModels.visible = on;
     uniforms.uGrid.value = on ? settings.grid : 0;
     $('crosshair').hidden = on;
-    if (!on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; texturePreview = null; showHover(null); ghost.clear(); }
+    if (!on) { createType = 0; vertexMode = false; bridging = false; bridgePreview = null; clipMode = false; clipPoints = []; measuring = false; cordoning = false; texturePreview = null; showHover(null); ghost.clear(); }
     if (on && document.pointerLockElement === canvas) document.exitPointerLock();
     // Playing starts where the camera is, as the game's play mode starts where the editor's camera was.
     player = null;
@@ -3167,9 +3367,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   let looking = false, downAt = null;
   canvas.addEventListener('contextmenu', event => event.preventDefault());
   canvas.addEventListener('dblclick', event => {
-    if (!editing || !flat || createType || clipMode || bridging || vertexMode) return;
-    const hit = pick(event);
+    if (!editing || !flat || createType || clipMode || bridging || vertexMode || measuring || cordoning) return;
+    const hit = pick(event, !event.shiftKey && !event.altKey);
     const entry = hit && (hit.entity || hit.entry);
+    if (entry && !entry.path.length && !hit.entity) { selectLoop(event, hit); return; }
     if (!entry || !entry.path.length) return;
     selected.clear(); selected.add(entry.path[0]);
     editPrefabInPlace();
@@ -3242,6 +3443,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!ctrl && key === 'h' && !$('hollow').disabled) { actions.hollow(); return; }
       if (!ctrl && event.code === 'KeyC') { setClipMode(!clipMode); return; }
       if (!ctrl && event.code === 'KeyL') { setTextureLock(!textureLock); return; }
+      if (!ctrl && event.code === 'KeyR') { setRuler(!measuring); return; }
       if (event.code === 'Backquote') { event.preventDefault(); $('console').focus(); return; }
       if (clipMode && (event.code === 'Enter' || event.code === 'NumpadEnter')) { event.preventDefault(); if (ctrl) flipClip(); else applyClip(event.shiftKey); return; }
       if (event.code === 'NumpadAdd' || event.code === 'NumpadSubtract') { event.preventDefault(); rotateSelection(event.code === 'NumpadAdd' ? 1 : -1); return; }
@@ -3250,6 +3452,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (drag) { drag = null; selection.position.set(0, 0, 0); ghost.clear(); showSelection(); if (clipMode) showClip(); return; }
         if (clipMode) { if (clipPoints.length) { clipPoints = []; showClip(); say(''); } else setClipMode(false); return; }
         if (bridging) { stopBridge(); return; }
+        if (measuring) { if (rulerPoints.length) { rulerPoints = []; ghost.clear(); say(''); } else setRuler(false); return; }
+        if (cordoning) { cordoning = false; ghost.clear(); updateTools(); say(''); return; }
         if (picked.length) { picked = []; showSelection(); say(''); return; }
         if (edges.length) { edges = []; showSelection(); say(''); return; }
         if (createType) { setCreate(createType); return; }
@@ -3334,7 +3538,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('help').textContent = helpText();
   }
   const helpText = () => editing
-    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge, Wrap · Alt-click edge, Bevel · Shape menu · 1–8 create · V vertices · C clip · L texture lock · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
+    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge, Wrap · Alt-click edge, Bevel · Double-click loop (Shift faces, Alt edges) · R ruler · Shape menu · 1–8 create · V vertices · C clip · L texture lock · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
     : walking ? '0 edit · Click to capture / drag to look · WASD walk · Space jump · F fly · Esc release · 1–9 viewpoints'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · F walk · Esc release · 1–9 viewpoints';
 
