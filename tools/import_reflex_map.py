@@ -311,10 +311,9 @@ def material_textures(game, colours, output, replace=False):
                     image = textures.image(normals).convert('RGBA')
                     if max(image.size) > 1024:
                         image = image.resize((min(image.width, 1024), min(image.height, 1024)))
-                    if meta:
-                        red, green, _, alpha = image.split()
-                        occlusion = textures.image(meta).convert('RGBA').getchannel('A').resize(image.size, Image.Resampling.BILINEAR)
-                        image = Image.merge('RGBA', (red, green, occlusion, alpha))
+                    red, green, _, alpha = image.split()
+                    occlusion = textures.image(meta).convert('RGBA').getchannel('A').resize(image.size, Image.Resampling.BILINEAR) if meta else Image.new('L', image.size, 255)
+                    image = Image.merge('RGBA', (red, green, occlusion, alpha))
                     image.save(output / 'textures' / file)
                 entry['normals'] = file
             except (KeyError, OSError, ValueError, struct.error, zipfile.BadZipFile) as exc:
