@@ -1040,3 +1040,88 @@ test('wrap goes round right angles only onto the faces it is given', () => {
   for (const [a, b] of list.find(seam => !continuous(seam))) near(Math.hypot((a[0] - b[0]) * .5, (a[1] - b[1]) * 2), 2 * (96 + 40));
   assert.equal(wrapped.faces[2], box.faces[2]);
 });
+
+// ---- Loops (double click) and the cordon ----
+const pillarOf = sides => B.extrude([...Array(sides).keys()].map(k => [80 * Math.cos(k * 2 * Math.PI / sides), 0, 80 * Math.sin(k * 2 * Math.PI / sides)]), [0, 200, 0], {material: 'wall'});
+const cornersOf = (brush, face) => face.indices.map(i => brush.vertices[i]);
+const upright = (brush, face) => { const p = cornersOf(brush, face); return p.findIndex((a, k) => { const b = p[(k + 1) % p.length]; return Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[2] - b[2]) < 1e-6; }); };
+
+test('a face loop goes round a pillar\'s sides over an upright edge, and over its caps over a level one', () => {
+  const pillar = pillarOf(16), side = pillar.faces.findIndex(face => face.indices.length === 4), points = cornersOf(pillar, pillar.faces[side]);
+  const k = upright(pillar, pillar.faces[side]), round = B.faceLoop([pillar], {brush: 0, face: side}, [points[k], points[(k + 1) % 4]]);
+  assert.equal(round.length, 16);
+  assert.ok(round.every(({face}) => pillar.faces[face].indices.length === 4), 'only the sides');
+  assert.equal(new Set(round.map(({face}) => face)).size, 16);
+  const level = (k + 1) % 4, over = B.faceLoop([pillar], {brush: 0, face: side}, [points[level], points[(level + 1) % 4]]);
+  assert.equal(over.length, 4, 'a side, a cap, the side across and the other cap');
+  assert.equal(over.filter(({face}) => pillar.faces[face].indices.length === 16).length, 2);
+  const box = B.box([0, 0, 0], [64, 32, 16], wall), front = cornersOf(box, box.faces[0]);
+  assert.equal(B.faceLoop([box], {brush: 0, face: 0}, [front[0], front[1]]).length, 4, 'round a box');
+});
+
+test('a face loop runs along an arch\'s underside from piece to piece, not onto the faces between them', () => {
+  const arch = B.arch({span: 256, thickness: 32, depth: 24, segments: 8}, {material: 'wall'}), under = onRadius(96, [0, 1]);
+  const at = arch[3].faces.findIndex(face => under(arch[3], face)), points = cornersOf(arch[3], arch[3].faces[at]);
+  const k = points.findIndex((a, n) => Math.abs(a[2] - points[(n + 1) % 4][2]) > 1);  // An edge along the depth.
+  const strip = B.faceLoop(arch, {brush: 3, face: at}, [points[k], points[(k + 1) % 4]]);
+  assert.equal(strip.length, 8);
+  assert.deepEqual(strip.map(({brush}) => brush).sort(), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.ok(strip.every(({brush, face}) => under(arch[brush], arch[brush].faces[face])));
+  // Two boxes side by side: the strip goes on from one's top onto the other's, not onto the faces pressed together.
+  const left = B.box([0, 0, 0], [64, 32, 32], wall), right = B.box([64, 0, 0], [128, 32, 32], wall);
+  const top = left.faces.findIndex(face => cornersOf(left, face).every(p => p[1] === 32)), corners = cornersOf(left, left.faces[top]);
+  const edge = corners.findIndex((a, n) => a[0] === 64 && corners[(n + 1) % 4][0] === 64);
+  const pair = B.faceLoop([left, right], {brush: 0, face: top}, [corners[edge], corners[(edge + 1) % 4]]);
+  assert.ok(pair.some(({brush, face}) => brush === 1 && cornersOf(right, right.faces[face]).every(p => p[1] === 32)), 'onto the other top');
+  assert.ok(!pair.some(({brush, face}) => cornersOf([left, right][brush], [left, right][brush].faces[face]).every(p => p[0] === 64)), 'not onto the faces between');
+  assert.equal(pair.length, 2, 'and stops where the row ends, as the top folds down');
+});
+
+test('an edge loop goes round a pillar\'s top and a hexagon\'s, along an arch, and stops at a box\'s corner', () => {
+  const ringOf = sides => {
+    const pillar = pillarOf(sides), cap = pillar.faces.findIndex(face => face.indices.length === sides && cornersOf(pillar, face)[0][1] === 200), p = cornersOf(pillar, pillar.faces[cap]);
+    return B.edgeLoop([pillar], p[0], p[1]);
+  };
+  for (const sides of [16, 8, 6]) {
+    const ring = ringOf(sides);
+    assert.equal(ring.length, sides, `${sides} sides`);
+    assert.ok(ring.every(edge => edge.a[1] === 200 && edge.b[1] === 200));
+  }
+  assert.equal(ringOf(4).length, 1, 'a square turns a right angle');
+  const arch = B.arch({span: 256, thickness: 32, depth: 24, segments: 8}, {material: 'wall'});
+  const front = arch[3].faces.find(face => cornersOf(arch[3], face).every(p => p[2] === -12)), p = cornersOf(arch[3], front);
+  const k = p.findIndex((a, n) => Math.abs(Math.hypot(a[0], a[1]) - 96) < 1e-3 && Math.abs(Math.hypot(p[(n + 1) % 4][0], p[(n + 1) % 4][1]) - 96) < 1e-3);
+  const curve = B.edgeLoop(arch, p[k], p[(k + 1) % 4]);
+  assert.equal(curve.length, 8, 'the inner curve of the front, over every piece');
+  assert.equal(new Set(curve.map(edge => edge.brush)).size, 8);
+});
+
+test('a cordon takes in the brushes that reach into it, flush ones too', () => {
+  const box = B.box([0, 0, 0], [64, 64, 64], wall);
+  assert.equal(B.touches(box, [32, 32, 32], [128, 128, 128]), true);
+  assert.equal(B.touches(box, [64, 0, 0], [128, 64, 64]), true, 'flush');
+  assert.equal(B.touches(box, [65, 0, 0], [128, 64, 64]), false);
+  assert.equal(B.touches(box, [-10, -10, -10], [100, 100, 100]), true, 'inside');
+});
+
+test('autosave keeps the last five snapshots, newest first, and not the same text twice', () => {
+  const {ReflexRecovery: R} = require(path.join(__dirname, '../static/reflex-maps/recovery.js'));
+  let list = [];
+  const take = (id, text, name = 'Ruin.map') => { const out = R.rotate(list, {id, name, time: id, brushes: 1, text}); list = out.list; return out.dropped; };
+  for (let id = 1; id <= 5; id++) assert.deepEqual(take(id, `edit ${id}`), []);
+  assert.deepEqual(take(6, 'edit 6'), [1]);
+  assert.deepEqual(list.map(s => s.id), [6, 5, 4, 3, 2]);
+  const before = list;
+  assert.deepEqual(take(7, 'edit 6'), []);
+  assert.equal(list, before, 'unchanged: no new snapshot');
+  assert.deepEqual(take(8, 'edit 6', 'Aerowalk.map'), [2], 'the same text of another map is kept');
+  assert.equal(R.rotate([], {id: 1, text: ''}, 2).list.length, 1);
+  assert.equal(R.KEEP, 5);
+});
+
+test('without IndexedDB (Node here, a private window there) autosave keeps nothing and lists nothing, without throwing', async () => {
+  const {ReflexRecovery: R} = require(path.join(__dirname, '../static/reflex-maps/recovery.js'));
+  assert.equal(typeof indexedDB, 'undefined');
+  assert.deepEqual(await R.list(), []);
+  assert.equal(await R.save({id: 1, name: 'Ruin.map', time: 1, brushes: 1, text: 'x'}), false);
+});

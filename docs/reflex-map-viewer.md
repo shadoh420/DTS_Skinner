@@ -739,6 +739,11 @@ and holds what the game's editor did not have:
 | Shape… | | Stairs, Arch, Door arch or Curved hallway on the surface in the middle of the view, facing away; or a Radial array of the selection round a centre beside it. The panel (N) shows its numbers; a new number makes its pieces again as one step of undo, until Convert to brushes; `shape <kind>` |
 | Wrap | | Carries the texture of the face Shift-click picked first on round the faces beside it, over its brush and the selected ones; with more faces picked, onto those only, round any angle; `wrap` |
 | Checks | | Lists brushes with too few faces, a face with no normal, two faces on one plane or faces enclosing nothing; Select selects one; `checks` |
+| Cordon | | Shows only the brushes reaching into a box, and the entities in it; nothing is cut, and hidden brushes can't be picked or cut. The box is round the selection (out to the grid), or with nothing selected a rectangle dragged on a surface, reaching through the whole map across it; again clears; `cordon [x0 y0 z0 x1 y1 z1]` |
+| Isolate | | Shows only the selection (and what stands in its place or is made while it is on); again shows everything; `isolate` |
+| Ruler | R | Two clicks on surfaces, on the grid: the distance between them, its x, y and z, and its length on the level; a third click starts again; `measure` |
+| Recover | | Lists the snapshots autosave took (map, time, brushes); Restore puts one in place of the map as one step of undo; `recover` |
+| Loops | Double-click | Shift: the faces in a strip with the face, crossing the edge nearest the cursor (round a pillar, along an arch's underside, round a box); Alt: the edges in a line with that edge, for Bevel; plain: selects the brushes the face strip crosses |
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
 | Split | | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
 | Clip | C | Clip mode, as below |
@@ -1144,6 +1149,40 @@ a right angle. Each face it reaches takes the look of the face it came from and
 the offsets and rotation that unroll it about their shared edge (`refit` to the
 edge's two corners). The walk is breadth first, so a closed loop's one seam is
 opposite the start: a 16-sided pillar is unbroken across 15 of its 16 edges.
+
+Loops (`faceLoop`, `edgeLoop` in `brush.js`) work on the convex brushes of the
+world that show, joining brushes where corners meet, as Wrap does. A face loop
+crosses an edge onto the face that carries the surface on straightest, then
+leaves that face by its edge across from the one it came in by (n/2 on for an
+even n, else the most nearly parallel one that shares no corner). It never
+folds back past a right angle (a face pressed against it), nor folds much more
+than its first step did (0.3 in cosine), so it goes round a box but runs along
+an arch's underside or a row of floor tiles and stops at their ends. An edge
+loop goes on through each corner along the straightest edge while it turns 60°
+or less: a hexagon's ring yes, a box's corner no. About 30 ms a double-click on
+Ruin.
+
+Cordon and Isolate leave what they hide out of every mesh, the markers and the
+models (the lights stay, so what shows is lit as before, but hidden brushes
+cast no sun shadow); play mode collides with what shows. A brush is in a cordon
+when its bounds reach into the box, flush ones too. Subtract, Hide buried and
+loops pass hidden brushes over (they still bury what they press on). Save
+writes the whole map.
+
+Autosave (`recovery.js`) keeps the last 5 snapshots in the browser's IndexedDB
+(database `skinner-reflex-maps`, store `snapshots`, records `{id, name, time,
+brushes, text}`, `text` being what Save writes). One is taken every minute and
+when the page is hidden or another map is loaded, only when the map changed
+since the last (a step of undo, or undoing one, is a change); the same text of
+the same map as the newest is not kept again. Every store call settles without
+throwing, so without storage (a private window, blocked site data) nothing is
+kept and Recover lists nothing. Restoring is one step of undo; another map's
+snapshot drops the loaded map's light, and shapes come back as plain brushes.
+
+Decals were looked at and left out: Reflex's map format has none. No stock map
+has a decal entity or face field; the signs and paint splats are Effect
+entities placing meshes; reflex.exe's `EffectDecal` is a part inside compiled
+.effect files (with `r_decals`), which a map can only name, not make.
 
 Subtract first joins the cutters wherever two make one convex brush, their
 faces' fields aside (`mergeAll(cutters, false)`): a cutter in layers through a

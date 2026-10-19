@@ -462,9 +462,10 @@
      caps); with `only` (a list of {brush, face}) it goes onto those faces at any angle. It is breadth first, so on a
      closed loop the walks round either way meet opposite the start, where any seam is. Returns `brushes` with the
      brushes it changed replaced. */
+  // A corner and an edge as keys, so faces of separate brushes meet where their corners are at the same places.
+  // ponytail: corners a hair either side of a rounding step miss each other; generated and grid brushes do not.
+  const pointKey = p => p.map(x => Math.round(x / WELD)).join(), edgeKey = (p, q) => [pointKey(p), pointKey(q)].sort().join('|');
   function wrap(brushes, start, only = null, volume = false) {
-    // ponytail: corners a hair either side of a rounding step miss each other; generated and grid brushes do not.
-    const key = p => p.map(x => Math.round(x / WELD)).join(), edgeKey = (p, q) => [key(p), key(q)].sort().join('|');
     const normals = brushes.map(brush => new Map(planesOf(brush).map(plane => [plane.face, plane.normal])));
     const byEdge = new Map(), corners = (brush, face) => face.indices.map((index, k) => [brush.vertices[index], brush.vertices[face.indices[(k + 1) % face.indices.length]]]);
     brushes.forEach((brush, b) => brush.faces.forEach((face, f) => {
@@ -490,6 +491,104 @@
       }
     }
     return out.map((brush, b) => brush.faces.every((face, f) => face === brushes[b].faces[f]) ? brushes[b] : brush);
+  }
+
+  /* ---- Loops, for a double click: faces in a strip and edges in a line, across brushes where corners meet ---- */
+  const STRAIGHT = .499;  // An edge loop goes on through a corner turning up to 60° (a hexagon's), not round a box's.
+  // The edge of `points` across from edge k: k + n/2 when n is even, else the one most nearly parallel to it that
+  // shares no corner with it; -1 when none is (a triangle).
+  function across(points, k) {
+    const n = points.length, edge = j => [points[j], points[(j + 1) % n]], touches = j => j === k || (j + 1) % n === k || (k + 1) % n === j;
+    if (n % 2 === 0 && n >= 4) return (k + n / 2) % n;
+    const [a, b] = edge(k), along = normalize(sub(b, a));
+    let best = -1, most = STRAIGHT;
+    for (let j = 0; j < n; j++) {
+      if (touches(j)) continue;
+      const [p, q] = edge(j), parallel = Math.abs(dot(along, normalize(sub(q, p))));
+      if (parallel > most) { most = parallel; best = j; }
+    }
+    return best;
+  }
+  // The direction square to edge p → q in the plane of `points`, from the edge toward the polygon's middle.
+  const inward = (points, p, q) => { const e = normalize(sub(q, p)), w = sub(centroid(points), p); return normalize(sub(w, scale(e, dot(w, e)))); };
+  /* A face loop: from face `start` ({brush, face}, indices into `brushes`) over its edge p → q onto the face beside it,
+     on over that face's edge across from the one it came in by, and so on; and the other way from the edge across
+     from p → q. It goes round a pillar's sides when p → q is upright, and round a box. Across each edge it takes the
+     face that carries the surface on most nearly straight (of a brush's own faces and those of brushes whose corners
+     meet it there), never one that folds back more than a right angle (a face pressed against it), nor one that folds
+     much more than its first step did: so it runs along an arch's underside and a row of floor tiles and stops at
+     their ends, where the surface folds onto the next side. Ends there, or when it comes round to the start or meets
+     a face it has. Returns [{brush, face}], the start first. */
+  function faceLoop(brushes, start, [p, q]) {
+    const byEdge = new Map(), polygons = brushes.map(brush => brush.faces.map(face => polygonOf(brush, face)));
+    brushes.forEach((brush, b) => brush.faces.forEach((face, f) => {
+      const points = polygons[b][f];
+      if (area(points) < EPSILON) return;
+      points.forEach((point, k) => { const key = edgeKey(point, points[(k + 1) % points.length]); byEdge.set(key, [...(byEdge.get(key) || []), [b, f, k]]); });
+    }));
+    const id = (b, f) => `${b}:${f}`, found = [start], seen = new Set([id(start.brush, start.face)]);
+    const first = polygons[start.brush][start.face], k0 = first.findIndex((point, k) => edgeKey(point, first[(k + 1) % first.length]) === edgeKey(p, q));
+    if (k0 < 0) return found;
+    let limit = null;  // How straight on a step must be, which the first step sets for both ways.
+    const walk = (b, f, k) => {
+      while (k >= 0) {
+        const points = polygons[b][f], a = points[k], c = points[(k + 1) % points.length], out = scale(inward(points, a, c), -1);
+        let best = null;
+        for (const [g, h, j] of byEdge.get(edgeKey(a, c)) || []) {
+          if (g === b && h === f) continue;
+          const straight = dot(out, inward(polygons[g][h], a, c));
+          if (straight > (limit ?? -EPSILON) && (!best || straight > best.straight)) best = {g, h, j, straight};
+        }
+        if (!best || seen.has(id(best.g, best.h))) return;
+        // ponytail: a fixed margin in cosine (from a flat first step, folds past about 45° stop it); tune if it misjudges.
+        limit ??= Math.max(-EPSILON, best.straight - .3);
+        seen.add(id(best.g, best.h));
+        found.push({brush: best.g, face: best.h});
+        [b, f, k] = [best.g, best.h, across(polygons[best.g][best.h], best.j)];
+      }
+    };
+    walk(start.brush, start.face, k0);
+    walk(start.brush, start.face, across(first, k0));
+    return found;
+  }
+  /* An edge loop: edge a → b and on from each end through the edge that carries straightest on, while it turns less
+     than STRAIGHT allows: a pillar's ring of top edges, an arch's curve. Edges of separate brushes join where their
+     corners meet. Returns [{brush, a, b}], each edge as one brush that has it has its corners. */
+  function edgeLoop(brushes, a, b) {
+    const edges = new Map(), atCorner = new Map();
+    brushes.forEach((brush, n) => brush.faces.forEach(face => face.indices.forEach((index, k) => {
+      const p = brush.vertices[index], q = brush.vertices[face.indices[(k + 1) % face.indices.length]], key = edgeKey(p, q);
+      if (edges.has(key) || pointKey(p) === pointKey(q)) return;
+      edges.set(key, {brush: n, a: p, b: q});
+      for (const corner of [p, q]) atCorner.set(pointKey(corner), [...(atCorner.get(pointKey(corner)) || []), key]);
+    })));
+    const startKey = edgeKey(a, b);
+    if (!edges.has(startKey)) return [];
+    const found = [edges.get(startKey)], seen = new Set([startKey]);
+    const walk = (from, to) => {
+      for (;;) {
+        const heading = normalize(sub(to, from));
+        let best = null, most = STRAIGHT;
+        for (const key of atCorner.get(pointKey(to)) || []) {
+          if (seen.has(key)) continue;
+          const edge = edges.get(key), next = pointKey(edge.a) === pointKey(to) ? edge.b : edge.a, straight = dot(heading, normalize(sub(next, to)));
+          if (straight > most) { most = straight; best = {key, next}; }
+        }
+        if (!best) return;
+        seen.add(best.key);
+        found.push(edges.get(best.key));
+        [from, to] = [to, best.next];
+      }
+    };
+    walk(a, b);
+    walk(b, a);
+    return found;
+  }
+  // Whether a brush reaches into the box min–max (a cordon): by its bounds, so a brush flush against the box counts.
+  // ponytail: bounds, not the brush itself; a slanted brush whose corner box reaches in but whose faces do not counts too.
+  function touches(brush, min, max) {
+    const box = bounds(brush);
+    return [0, 1, 2].every(k => box.min[k] <= max[k] + EPSILON && min[k] <= box.max[k] + EPSILON);
   }
 
   /* ---- Shapes: groups of convex brushes made from a few numbers (the parameters an editor keeps to remake them), in
@@ -636,6 +735,6 @@
     EPSILON, planesOf, planeFromPoints, fromPlanes, rebuild, volume, bounds, check, convex, box, translate, clone, offset,
     split, clip, intersection, intersects, subtract, hollow, hull, merge, mergeAll, triangles, raycast, newell, normalize,
     orient, bridge, texcoords, uvAt, firstEdge, textureFrame, refit, lock, bevel, exposed, buried, validate, FATAL, wrap,
-    extrude, ring, stairs, arch, doorArch, hallway, radial,
+    extrude, ring, stairs, arch, doorArch, hallway, radial, faceLoop, edgeLoop, touches,
   };
 })(typeof module !== 'undefined' ? module.exports : window);
