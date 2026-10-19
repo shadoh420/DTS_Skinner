@@ -296,15 +296,25 @@ def material_textures(game, colours, output, replace=False):
                         roughness[wanted[1]] = None
                 if roughness[wanted[1]] is not None:
                     entry['roughness'] = roughness[wanted[1]]
-        # A normal map as its bytes are (the game's: x in alpha times red, y in green, z in blue), as normals.
+        # A normal map as its bytes are (the game's: x in alpha times red, y in green, z in blue), as normals. With a
+        # meta texture, its blue becomes the meta's alpha, the surface's occlusion: the G-buffer shader writes it beside
+        # the normal and the ambient pass (gbuffer_light_fullscreen_AO) multiplies the probe light and reflections by
+        # min(SSAO, it), so the dev grid's lines and their edges are darker; the page has no sampler to spare for it.
+        # Blue is ~1 in the game's normal maps (z, which the page takes as 1).
         normals = entry.pop('normalsTexture', None)
         if normals:
-            file = normals.lower().rsplit('/', 1)[-1] + '.png'
+            meta = wanted[1] if wanted and len(wanted) > 1 else None
+            file = texture_file([normals, meta] if meta else [normals])
             try:
                 if replace or not (output / 'textures' / file).is_file():
+                    from PIL import Image
                     image = textures.image(normals).convert('RGBA')
                     if max(image.size) > 1024:
                         image = image.resize((min(image.width, 1024), min(image.height, 1024)))
+                    if meta:
+                        red, green, _, alpha = image.split()
+                        occlusion = textures.image(meta).convert('RGBA').getchannel('A').resize(image.size, Image.Resampling.BILINEAR)
+                        image = Image.merge('RGBA', (red, green, occlusion, alpha))
                     image.save(output / 'textures' / file)
                 entry['normals'] = file
             except (KeyError, OSError, ValueError, struct.error, zipfile.BadZipFile) as exc:
