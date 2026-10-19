@@ -322,8 +322,13 @@ window.addEventListener('DOMContentLoaded', async () => {
         vec3 albedo = vColor;
         #ifdef USE_MAP
         vec4 texel = texture2D(uMap, vTex / uRepeat);
+        vec3 texLinear = mix(texel.rgb / 12.92, pow((texel.rgb + .055) / 1.055, vec3(2.4)), step(.04045, texel.rgb));  // the sRGB curve: its DDS are BC1/BC7 sRGB
+        #ifdef USE_TINT
+        albedo = texLinear * mix(vec3(1.), vColor, texel.a);  // …_TINTED: alpha is the meta's blue, how much tint a texel takes
+        #else
         if (texel.a < .5) discard;  // Alpha-keyed, as the game's ALPHAKEYED shaders are.
-        albedo *= mix(texel.rgb / 12.92, pow((texel.rgb + .055) / 1.055, vec3(2.4)), step(.04045, texel.rgb));  // the sRGB curve: its DDS are BC1/BC7 sRGB
+        albedo *= texLinear;
+        #endif
         #endif
         #ifdef USE_NORMALS
         // The normal map as the game's …TEXTURENORMALS shaders read it: (r × a, g, b) × 2 − 1, then x along the
@@ -448,8 +453,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     const name = face.material || '', library = LIBRARY.exec(name);
     if (library) return {key: name.toLowerCase(), url: `/texture/${encodeURIComponent(library[2] + '.png')}?game=${library[1]}`, repeat: null};
     const read = packColours[name];
-    return read && read.texture ? {key: 'reflex:' + read.texture + (read.normals ? ':' + read.normals : ''), url: `${data}textures/${encodeURIComponent(read.texture)}`, repeat: 128,
-      normals: read.normals && `${data}textures/${encodeURIComponent(read.normals)}`} : null;
+    const tint = /_TINTED/.test(read && read.shader || '');
+    return read && read.texture ? {key: 'reflex:' + read.texture + (read.normals ? ':' + read.normals : '') + (tint ? ':tint' : ''), url: `${data}textures/${encodeURIComponent(read.texture)}`, repeat: 128,
+      normals: read.normals && `${data}textures/${encodeURIComponent(read.normals)}`, tint} : null;
   }
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   white.needsUpdate = true;
@@ -462,7 +468,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (texturedMaterials.has(source.key)) return texturedMaterials.get(source.key);
     const material = new THREE.ShaderMaterial({
       uniforms: {...uniforms, uMap: {value: white}, uRepeat: {value: new THREE.Vector2(source.repeat || 128, source.repeat || 128)}, uNormals: {value: flatNormal}},
-      defines: source.normals ? {USE_MAP: '', USE_NORMALS: ''} : {USE_MAP: ''}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
+      defines: {USE_MAP: '', ...source.normals ? {USE_NORMALS: ''} : {}, ...source.tint ? {USE_TINT: ''} : {}}, extensions: {derivatives: true}, vertexShader: brushMaterial.vertexShader, fragmentShader: brushMaterial.fragmentShader,
     });
     if (source.normals) new THREE.TextureLoader().load(source.normals, texture => {
       Object.assign(texture, {wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, flipY: false, anisotropy: renderer.capabilities.getMaxAnisotropy(), needsUpdate: true});
@@ -828,9 +834,9 @@ window.addEventListener('DOMContentLoaded', async () => {
           let out = editorOnly ? editor : null;
           const moves = !editorOnly && (part.moving || spin) ? {spin} : null;
           if (!out) {
-            const texture = !kind && read.texture, sides = shines && bothSides(read) ? 2 : 1;
-            const key = rays ? 'godrays:' + name : kind || (texture ? (shines ? `shine${sides}:` : 'model:') + texture : shines && sides === 2 ? 'both' : null), into = moves ? (shines ? shineMoving : litMoving) : shines ? shine : lit;
-            if (!into.has(key)) into.set(key, {source: kind || !texture ? null : {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines, both: sides === 2},
+            const texture = !kind && read.texture, tint = !shines && /_TINTED/.test(shader), sides = shines && bothSides(read) ? 2 : 1;
+            const key = rays ? 'godrays:' + name : kind || (texture ? (shines ? `shine${sides}:` : 'model:') + texture + (tint ? ':tint' : '') : shines && sides === 2 ? 'both' : null), into = moves ? (shines ? shineMoving : litMoving) : shines ? shine : lit;
+            if (!into.has(key)) into.set(key, {source: kind || !texture ? null : {key, url: `${data}textures/${encodeURIComponent(texture)}`, repeat: 1, shine: shines, both: sides === 2, tint},
               material: rays ? godrayMaterial(name, read) : kind ? FORWARD_SHADES[kind] : key === 'both' ? shineBoth : null, plans: [], count: 0});
             out = into.get(key);
           }
@@ -3076,7 +3082,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       });
       if (!changes.size) { say(`No wholly buried faces ${chosen.size ? 'on the selection' : 'in the map'}`); return; }
       replace(changes, [], chosen.size ? 'changed' : null);
-      say(`${count} buried faces of ${changes.size} brushes now ${NODRAW.split('/').pop()}, which the game does not draw`);
+      say(`${count} buried faces of ${changes.size} brushes now ${NODRAW.split('/').pop()}, which the game does not draw; keep the map's .light (a rebake now lights faces next to them differently)`);
     },
     checks() { panelOpen = !(panelOpen && panelView === 'checks'); panelView = 'checks'; showPanel(); },
     // Clears a cordon; else sets one round the selection (out to the grid), or with nothing selected starts drawing one.

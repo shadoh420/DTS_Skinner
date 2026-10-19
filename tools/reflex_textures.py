@@ -103,21 +103,18 @@ def decode_dds_cube(raw, size=256):
 
 
 def bake(albedo, meta=None, size=1024, alpha=False):
-    """The colour of a surface as the page draws it: the albedo's colour (its alpha, the specular level of an
-    albedoSpec texture, left out unless `alpha`: a diffuse texture's alpha is how see-through it is), divided by the
-    meta texture's blue channel where there is one. Only the dev grid's meta has that channel below 1 (0.6 along the
-    grid lines), and the game draws those lines about 1/0.6 times lighter than the face (in linear light); the dev
-    albedo is a flat 0.9, so here they clip at white. Scaled down to `size` at most."""
-    import numpy as np
+    """The colour of a surface as the page draws it: the albedo's colour, with an alpha only where it says something.
+    With `alpha`, the albedo's own (a diffuse texture's alpha is how see-through it is; an albedoSpec's is its specular
+    level and is left out). Otherwise the meta texture's blue channel where it is below 1: how much of the material's
+    tint a texel takes. The …_TINTED shaders (the dev materials) draw albedo × lerp(1, tint, meta blue) (their G-buffer
+    pixel shader); only the dev grid's meta has blue below 1 (0.6, 0.85 and 0.945 on the 64-, 32- and 16-unit lines),
+    so dev_grey128's 0.5 grey tint darkens its face fully and its lines less. Scaled down to `size` at most."""
     from PIL import Image
     colour = albedo.convert('RGB')
-    if meta is not None:
-        shade = np.asarray(meta.getchannel('B').resize(colour.size, Image.Resampling.BILINEAR), dtype=np.float32) / 255
-        lit = np.asarray(colour, dtype=np.float32) / np.maximum(shade, 1 / 255)[..., None] ** (1 / 2.2)
-        colour = Image.fromarray(np.clip(np.rint(lit), 0, 255).astype(np.uint8), 'RGB')
     if max(colour.size) > size:
         scale = size / max(colour.size)
         colour = colour.resize((max(1, round(colour.width * scale)), max(1, round(colour.height * scale))), Image.Resampling.LANCZOS)
-    if alpha and albedo.getchannel('A').getextrema()[0] < 255:
-        colour.putalpha(albedo.getchannel('A').resize(colour.size, Image.Resampling.BILINEAR))
+    mask = albedo.getchannel('A') if alpha else meta.getchannel('B') if meta is not None else None
+    if mask is not None and mask.getextrema()[0] < 255:
+        colour.putalpha(mask.resize(colour.size, Image.Resampling.BILINEAR))
     return colour
