@@ -434,7 +434,9 @@ test('texture coordinates follow the axes, offsets and rotation measured in the 
   assert.deepEqual(at([0, 0, -1], [64, 32, 0], {u: 16, v: -32}), [33, 62]);
   assert.deepEqual(at([0, 0, -1], [64, 32, 0], {scaleU: 2, scaleV: -1}), [16, -64]);
   assert.deepEqual(at([0, 0, -1], [64, 32, 0], {u: 64, scaleU: 2, v: 64, scaleV: -1}), [18, -68]);
-  // Turned 46° from −z toward −x the nearest axis is x, and U flips from +y to −y, as in the game.
+  // U follows the face's first edge, so a box face turned any way keeps u growing up its side. (An earlier reading had
+  // U flip from +y to −y at 45° by the axis the normal is nearest; coplanar plates listed from different corners
+  // showed the first edge sets it, 2026-10-18, and the tilted test maps behind that reading are gone.)
   const uGrowsUp = degrees => {
     const t = degrees * Math.PI / 180, turn = ([x, y, z]) => [x * Math.cos(t) - z * Math.sin(t), y, x * Math.sin(t) + z * Math.cos(t)];
     const cube = B.box([-8, -8, -8], [8, 8, 8], {u: 0, v: 0, scaleU: 1, scaleV: 1, rotation: 0}), brush = {vertices: cube.vertices.map(turn), faces: cube.faces};
@@ -442,7 +444,13 @@ test('texture coordinates follow the axes, offsets and rotation measured in the 
     const coords = B.texcoords(brush, face), ys = face.indices.map(i => brush.vertices[i][1]);
     return coords[ys.indexOf(Math.max(...ys))][0] > coords[ys.indexOf(Math.min(...ys))][0];
   };
-  assert.deepEqual([uGrowsUp(-44), uGrowsUp(-46), uGrowsUp(46)], [true, false, true]);
+  assert.deepEqual([uGrowsUp(-44), uGrowsUp(-46), uGrowsUp(46)], [true, true, true]);
+  // The −z face listed from its second corner starts along +x: u and v trade places, as on the game's seam pairs.
+  const shifted = {...box.faces[0], indices: [...box.faces[0].indices.slice(1), box.faces[0].indices[0]]};
+  B.texcoords(box, shifted).forEach(([u, v], k) => { const p = box.vertices[shifted.indices[k]]; near(u, p[0]); near(v, -p[1]); });
+  // Extruded side faces start along the extrusion, as B.box's walls start up them.
+  const prism = B.extrude([[0, 0, 0], [64, 0, 0], [0, 0, 64]], [0, 96, 0]);
+  for (const face of prism.faces.filter(f => f.indices.length === 4)) assert.deepEqual(B.normalize(B.firstEdge(face.indices.map(i => prism.vertices[i]))), [0, 1, 0]);
   const [u, v] = at([0, 0, -1], [64, 32, 0], {rotation: 90});
   near(u, 64); near(v, -32);
 });
@@ -901,4 +909,134 @@ test('mergeAll without looks joins a cutter of several brushes into the one conv
   const carve = cutters => B.mergeAll(cutters.reduce((pieces, c) => pieces.flatMap(p => B.subtract(p, c)), [slab]));
   assert.deepEqual([carve(layers).length, carve(B.mergeAll(layers, false)).length], [7, 3]);
   near(totalVolume(carve(B.mergeAll(layers, false))), B.volume(slab) - 96 * 32 * 192);
+});
+
+// ---- Shapes that remember their numbers, and texture wrap ----
+function assertSoundShape(brushes, count) {
+  assert.ok(brushes, 'made');
+  assert.equal(brushes.length, count);
+  for (const brush of brushes) {
+    assertConvexSolid(brush);
+    assert.ok(B.validate(brush).every(issue => !B.FATAL.has(issue.code)), 'no fatal issue');
+  }
+  assertDisjoint(brushes);
+}
+const extentOf = brushes => {
+  const all = brushes.map(B.bounds);
+  return {min: [0, 1, 2].map(k => Math.min(...all.map(b => b.min[k]))), max: [0, 1, 2].map(k => Math.max(...all.map(b => b.max[k])))};
+};
+const sharedCorners = (a, b) => a.vertices.filter(v => b.vertices.some(w => w.every((x, k) => x === v[k]))).length;
+
+test('stairs are one solid box per step, each a rise higher and a run further on', () => {
+  const steps = B.stairs({steps: 6, rise: 16, run: 32, width: 128}, wall);
+  assertSoundShape(steps, 6);
+  near(totalVolume(steps), 128 * 32 * 16 * 6 * 7 / 2);
+  assert.deepEqual(extentOf(steps), {min: [-64, 0, 0], max: [64, 96, 192]});
+  steps.forEach((step, i) => assert.deepEqual(B.bounds(step), {min: [-64, 0, 32 * i], max: [64, 16 * (i + 1), 32 * (i + 1)]}));
+  assert.equal(B.stairs({steps: 0, rise: 16, run: 32, width: 128}), null);
+});
+
+test('an arch and a ring of wedges are convex pieces sharing their corners, of the volume their chords bound', () => {
+  const arch = B.arch({span: 256, thickness: 32, depth: 24, segments: 8}, wall);
+  assertSoundShape(arch, 8);
+  near(totalVolume(arch) / 1e3, 8 * .5 * (128 ** 2 - 96 ** 2) * Math.sin(Math.PI / 8) * 24 / 1e3);
+  assert.deepEqual(extentOf(arch), {min: [-128, 0, -12], max: [128, 128, 12]});
+  for (let i = 0; i + 1 < arch.length; i++) assert.equal(sharedCorners(arch[i], arch[i + 1]), 4, `pieces ${i} and ${i + 1} meet face to face`);
+  // A full ring of wedges meeting on the axis is a round pillar.
+  const pillar = B.ring({axis: 1, inner: 0, outer: 64, from: 0, to: 128, sides: 16, degrees: 360}, wall);
+  assertSoundShape(pillar, 16);
+  near(totalVolume(pillar) / 1e3, 16 * .5 * 64 ** 2 * Math.sin(Math.PI / 8) * 128 / 1e3, 'corners kept to six places');
+  assert.equal(sharedCorners(pillar[15], pillar[0]), 4, 'the ring closes');
+  assert.equal(B.arch({span: 64, thickness: 40, depth: 8, segments: 4}), null, 'thicker than the radius');
+  assert.equal(B.arch({span: 64, thickness: 8, depth: 8, segments: 1}), null, 'a half turn in one piece is not convex');
+});
+
+test('a door arch is two legs and a half circle on them, filling its box but the doorway', () => {
+  const door = B.doorArch({width: 128, height: 192, thickness: 16, depth: 32, segments: 8}, wall);
+  assertSoundShape(door, 10);
+  assert.deepEqual(extentOf(door), {min: [-64, 0, -16], max: [64, 192, 16]});
+  near(totalVolume(door), 2 * 16 * 128 * 32 + 8 * .5 * (64 ** 2 - 48 ** 2) * Math.sin(Math.PI / 8) * 32);
+  assert.equal(sharedCorners(door[1], door[2]), 4, 'a leg carries the end piece of the arch');
+  assert.equal(B.doorArch({width: 128, height: 32, thickness: 16, depth: 32, segments: 8}), null, 'lower than its half width');
+});
+
+test('a curved hallway is a floor, a ceiling and two walls per segment, none overlapping', () => {
+  const hall = B.hallway({radius: 256, width: 128, wall: 16, floor: 16, height: 160, segments: 6, degrees: 90}, wall);
+  assertSoundShape(hall, 24);
+  const e = extentOf(hall);
+  assert.deepEqual([e.min[1], e.max[1]], [0, 160]);
+  near(e.max[0], 400); near(e.max[2], 400);  // The outer wall's outside, 256 + 128 + 16 out along +x and +z.
+  assert.equal(B.hallway({radius: 256, width: 128, wall: 16, floor: 80, height: 160, segments: 6, degrees: 90}), null, 'floor and ceiling meet');
+});
+
+test('a radial array turns copies about the vertical as a yaw does, the originals counted but not returned', () => {
+  const pillar = B.box([100, 0, -16], [132, 32, 16], wall), copies = B.radial([pillar], [0, 0, 0], 4, 90);
+  assert.equal(copies.length, 3);
+  assert.deepEqual(B.bounds(copies[0]), {min: [-16, 0, -132], max: [16, 32, -100]});
+  assert.deepEqual(copies[0].vertices, M.moveItem({kind: 'brush', ...pillar}, M.compose([0, 0, 0], [90, 0, 0])).vertices);
+  for (const copy of copies) { assertConvexSolid(copy); near(B.volume(copy), B.volume(pillar)); }
+  assert.deepEqual(B.bounds(B.radial([pillar], [100, 0, 0], 2, 180)[0]), {min: [68, 0, -16], max: [100, 32, 16]});
+});
+
+// Every two faces `wanted` picks that meet along an edge (two corners at the same places), as the pairs of texture
+// coordinates the two faces give their shared corners.
+function seams(brushes, wanted) {
+  const faces = [];
+  brushes.forEach(brush => brush.faces.forEach(face => { if (wanted(brush, face)) faces.push({points: face.indices.map(i => brush.vertices[i]), uv: B.texcoords(brush, face)}); }));
+  const out = [];
+  for (let i = 0; i < faces.length; i++) for (let j = i + 1; j < faces.length; j++) {
+    const shared = [];
+    faces[i].points.forEach((p, k) => { const at = faces[j].points.findIndex(q => q.every((x, n) => Math.abs(x - p[n]) < 1e-6)); if (at >= 0) shared.push([faces[i].uv[k], faces[j].uv[at]]); });
+    if (shared.length >= 2) out.push(shared);
+  }
+  return out;
+}
+const continuous = seam => seam.every(([a, b]) => Math.abs(a[0] - b[0]) < 1e-3 && Math.abs(a[1] - b[1]) < 1e-3);
+const onRadius = (radius, axes) => (brush, face) => face.indices.every(i => Math.abs(Math.hypot(...axes.map(k => brush.vertices[i][k])) - radius) < 1e-3);
+
+test('wrap runs a texture round a 16-sided pillar with one seam, where the loop closes, and leaves its caps', () => {
+  const sides = [...Array(16).keys()].map(k => [80 * Math.cos(k * Math.PI / 8), 0, 80 * Math.sin(k * Math.PI / 8)]);
+  const pillar = B.extrude(sides, [0, 200, 0], {material: 'wall'});
+  const start = pillar.faces.findIndex(face => face.indices.length === 4);
+  pillar.faces[start] = {...pillar.faces[start], ...textured};
+  const [wrapped] = B.wrap([pillar], {brush: 0, face: start});
+  const side = (brush, face) => face.indices.length === 4, list = seams([wrapped], side);
+  assert.equal(list.length, 16);
+  assert.equal(list.filter(continuous).length, 15, 'unbroken across 15 of the 16 edges');
+  // Where the walks round either way meet, the texture is a whole perimeter apart (in texture units, scale undone).
+  const [open] = list.filter(seam => !continuous(seam)), perimeter = 16 * 2 * 80 * Math.sin(Math.PI / 16);
+  for (const [a, b] of open) near(Math.hypot((a[0] - b[0]) * textured.scaleU, (a[1] - b[1]) * textured.scaleV), perimeter, 'the seam is the perimeter');
+  wrapped.faces.forEach((face, f) => {
+    if (side(wrapped, face)) assert.ok(face.material === 'wall' && face.scaleU === .5 && face.scaleV === 2, 'the look carried');
+    else assert.equal(face, pillar.faces[f], 'caps untouched');
+  });
+  // Unwrapped, every edge is a seam.
+  assert.equal(seams([pillar], side).filter(continuous).length, 0);
+});
+
+test('wrap crosses from brush to brush along the outside of a wedge pillar and the underside of an arch', () => {
+  const wedges = B.ring({axis: 1, inner: 0, outer: 64, from: 0, to: 128, sides: 16, degrees: 360}, {material: 'wall'});
+  const outside = onRadius(64, [0, 2]), first = wedges[0].faces.findIndex(face => outside(wedges[0], face));
+  wedges[0] = {...wedges[0], faces: wedges[0].faces.map((face, f) => f === first ? {...face, ...textured} : face)};
+  const wrapped = B.wrap(wedges, {brush: 0, face: first});
+  assert.equal(seams(wrapped, outside).filter(continuous).length, 15);
+  // Only the outside changes: the faces between the wedges are not the way on.
+  wrapped.forEach((brush, b) => brush.faces.forEach((face, f) => { if (!outside(brush, face)) assert.equal(face, wedges[b].faces[f]); }));
+  const arch = B.arch({span: 256, thickness: 32, depth: 24, segments: 8}, {material: 'wall'}), under = onRadius(96, [0, 1]);
+  const at = arch[3].faces.findIndex(face => under(arch[3], face));
+  arch[3] = {...arch[3], faces: arch[3].faces.map((face, f) => f === at ? {...face, ...textured} : face)};
+  const done = B.wrap(arch, {brush: 3, face: at}), list = seams(done, under);
+  assert.equal(list.length, 7);
+  assert.ok(list.every(continuous), 'an open strip has no seam');
+});
+
+test('wrap goes round right angles only onto the faces it is given', () => {
+  const box = B.box([0, 0, 0], [96, 64, 40], {material: 'wall'});
+  box.faces[0] = {...box.faces[0], ...textured};
+  assert.equal(B.wrap([box], {brush: 0, face: 0})[0], box, 'no face turns less than a right angle');
+  const around = [0, 1, 4, 5].map(face => ({brush: 0, face})), [wrapped] = B.wrap([box], {brush: 0, face: 0}, around);
+  const side = (brush, face) => [0, 1, 4, 5].includes(brush.faces.indexOf(face)), list = seams([wrapped], side);
+  assert.equal(list.filter(continuous).length, 3);
+  for (const [a, b] of list.find(seam => !continuous(seam))) near(Math.hypot((a[0] - b[0]) * .5, (a[1] - b[1]) * 2), 2 * (96 + 40));
+  assert.equal(wrapped.faces[2], box.faces[2]);
 });

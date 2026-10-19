@@ -736,6 +736,8 @@ and holds what the game's editor did not have:
 | Hollow | H | Turns the selected brush into walls one grid step thick that do not overlap |
 | Bevel | Alt+click | Alt-click picks the edge nearest the click on the face under the mouse (Ctrl+Alt-click adds and removes, on any brushes); Bevel cuts the picked edges back one grid step along both faces, or by `bevel <width> <steps>` from the console, rounded in that many flat steps |
 | Hide buried | | Puts `editor_fullclip` on the faces solid brushes bury wholly or press flat against (of the selection, or of the whole map with nothing selected); faces only partly buried stay; `hideburied` |
+| Shape… | | Stairs, Arch, Door arch or Curved hallway on the surface in the middle of the view, facing away; or a Radial array of the selection round a centre beside it. The panel (N) shows its numbers; a new number makes its pieces again as one step of undo, until Convert to brushes; `shape <kind>` |
+| Wrap | | Carries the texture of the face Shift-click picked first on round the faces beside it, over its brush and the selected ones; with more faces picked, onto those only, round any angle; `wrap` |
 | Checks | | Lists brushes with too few faces, a face with no normal, two faces on one plane or faces enclosing nothing; Select selects one; `checks` |
 | Merge | Ctrl+M | Joins the selected brushes into one, when together they make a convex brush |
 | Split | | Cuts the selected brushes on the grid plane through the point clicked last, across the axis the camera faces most |
@@ -825,8 +827,13 @@ Those coordinates follow the game's mapping as measured on test maps in the
 game (`texcoords` in `brush.js`): u = (p · U + offset u / 16) / scale u in
 world units, the same for v, so the texture is anchored to the world, one
 repeat is 128 units at scale 1 and an offset of 16 moves it one unit toward
-−U whatever the scale (64 moved it 4 units at scales 2, 0.5 and −1). U and V
-come from the face's outward normal n (in the map file's coordinates):
+−U whatever the scale (64 moved it 4 units at scales 2, 0.5 and −1). U runs
+along the face's first edge, from its first corner to its second in the map
+file's order, and V = n × U, n the face's outward normal. The same face listed
+from another corner has its texture turned: two coplanar plates side by side,
+one listed from its second corner, have u and v traded (checked in the game,
+2026-10-18). Boxes made by the page and by the game's editor start their faces
+like this (in the map file's coordinates):
 
 | Face looks along | u grows toward | v grows toward |
 | --- | --- | --- |
@@ -837,15 +844,16 @@ come from the face's outward normal n (in the map file's coordinates):
 | +y (a floor) | −x | +z |
 | −y (a ceiling) | +x | +z |
 
-In general U and V come from the axis n is nearest: U = (0, 0, 1) × n and
-V = n × U, except when n is nearest ±z, where U = (1, 0, 0) × n looking
-along −z and (0, 1, 0) × n along +z. So slopes keep square cells, and u flips
-where the nearest axis changes: a face turned 44° from −z toward −x has u
-growing up, at 46° down. That was checked in the game on 30 tilted faces
-(walls turned up to 46°, slopes of 25 to 60°, floors and ceilings tilted
-toward each side, both sides of each 45° boundary), by the way an offset moved
-the texture across the seam with a plain twin. A rotation turns U and V
-right-handed about n (+90 on a face looking along −z turns u from +y to +x). The
+An earlier reading took U from the axis n is nearest (U = (0, 0, 1) × n, or
+(1, 0, 0) × n and (0, 1, 0) × n when n is nearest −z and +z), with u flipping
+where that axis changes. It matches the boxes above but not faces listed from
+another corner, and about two thirds of the stock maps' faces start along
+neither; the page now follows the first edge everywhere. The clipper, CSG and
+bevel start each face they keep along the way its first edge ran, so its
+texture stays where an edge that way is left. A rotation turns U and V
+right-handed about n (+90 on a face looking along −z turns u from +y to +x;
++30 tilts its u lines down to the right in the game) and the offset is added
+after the turn (checked with a plate turned 90 beside a plain one). The
 arrows step as the game's do (Right adds 256 with a Snap Distance of 16). Two
 things differ on purpose: the game's `,` and `.` turn by 90 whatever the
 Angle, and its keys change every face of the selected brush; the page keeps
@@ -1119,6 +1127,23 @@ steps' corners lie on the arc of radius width / tan(α/2) tangent to both faces
 `width` from the edge; one step is the chamfer through those two lines. Each
 new face takes the fields of the face it leans toward and is refit (`refit`)
 so its texture runs on from that face, exactly along their seam.
+
+Shapes are brush.js generators (`stairs`, `arch`, `doorArch`, `hallway`,
+`radial`, built on `extrude` and `ring`), geometry only, in a frame with y up,
+so the Novakin editor can use them too. Every piece is convex and passes
+`validate`. The page keeps a shape's numbers for the session only: a .map
+keeps none, so Save writes plain brushes. Pieces moved together (drag, nudge)
+or retextured stay in their shape and it moves with them. Turned, mirrored,
+cut, reshaped or deleted pieces leave it, and a shape missing pieces can only
+be converted. Remaking keeps each face's material, colour and scale.
+
+Wrap (`wrap`) walks from the picked face across shared edges, faces meeting
+where two corners are at the same places, so an arch's separate segments join.
+Across each edge it goes on to the face that turns least, if that turn is under
+a right angle. Each face it reaches takes the look of the face it came from and
+the offsets and rotation that unroll it about their shared edge (`refit` to the
+edge's two corners). The walk is breadth first, so a closed loop's one seam is
+opposite the start: a 16-sided pillar is unbroken across 15 of its 16 edges.
 
 Subtract first joins the cutters wherever two make one convex brush, their
 faces' fields aside (`mergeAll(cutters, false)`): a cutter in layers through a

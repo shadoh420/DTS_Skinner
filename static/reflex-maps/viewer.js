@@ -1519,11 +1519,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   function replace(changes, inserts = [], select = null, alter = null) {
     remember();
     if (alter) alter();
-    const items = [], changed = [], added = [];
+    const items = [], changed = [], added = [], carried = new Map();
     for (const item of globalGroup().items) {
       if (!changes.has(item)) { items.push(item); continue; }
       const instead = changes.get(item).map(asItem);
       if (instead.length === 1 && instead[0].kind === 'brush' && instead[0].faces.length === (item.faces || []).length) for (const face of picked) if (face.item === item) face.item = instead[0];
+      if (instead.length === 1) carryShape(item, instead[0], carried);
       if (brokenFrom.has(item)) for (const next of instead) if (!brokenFrom.has(next)) brokenFrom.set(next, brokenFrom.get(item));
       items.push(...instead);
       changed.push(...instead);
@@ -1606,9 +1607,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     if (shown.length) selection.add(new THREE.Mesh(buildMesh(shown, () => true, []), selectedFill), edgesOf(...shown.map(entry => entry.brush)));
     // A face whose material has no texture shows its texture coordinates as a pattern; a textured one shows itself.
+    // `also` lists more faces to show with it, {item, index}: those Wrap carried the texture onto.
     if (texturePreview && globalGroup().items.includes(texturePreview.item)) {
-      const face = texturePreview.item.faces[texturePreview.index];
-      if (!textureSource(face)) selection.add(textureMesh(texturePreview.item, face));
+      for (const {item, index} of [texturePreview, ...(texturePreview.also || [])]) {
+        const face = item.faces[index];
+        if (face && !textureSource(face) && globalGroup().items.includes(item)) selection.add(textureMesh(item, face));
+      }
     } else texturePreview = null;
     for (const entry of flat.entities) {
       if (!selected.has(entry.entity) || entry.path.length || !entry.position) continue;
@@ -1655,6 +1659,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('merge').disabled = brushes.length < 2 || !convex;
     $('split').disabled = !convex || !lastPoint;
     $('bevel').disabled = !edges.length;
+    $('wrap').disabled = !picked.length;
     $('bevel').textContent = edges.length ? `Bevel ${edges.length}` : 'Bevel';
     $('clipButton').classList.toggle('on', clipMode);
     $('lockButton').classList.toggle('on', textureLock);
@@ -1713,8 +1718,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       const placed = item.type === 'Prefab' ? ` · ${flat.brushes.filter(e => e.path[0] === item).length} brushes; me_breakprefab breaks it into the map` : '';
       return `${item.type}${name !== undefined && name !== '' ? ` ${name}` : ''}${placed}`;
     }
-    const owner = entry.owner, problems = B.check(item);
-    const what = M.isVolume(owner) ? `${owner.type} volume${M.property(owner, 'target') ? ` to ${M.property(owner, 'target')}` : ''}` : 'brush';
+    const owner = entry.owner, problems = B.check(item), shaped = shapeOf.get(item);
+    const what = M.isVolume(owner) ? `${owner.type} volume${M.property(owner, 'target') ? ` to ${M.property(owner, 'target')}` : ''}`
+      : shaped ? `${SHAPES[shaped.shape.kind].label} piece ${shaped.index + 1} of ${shaped.shape.size} (N shows its numbers)` : 'brush';
     return `${what}${problems.length ? ` · it ${problemText(problems)}, so CSG and dragging its faces leave it alone` : ''}`;
   }
   // The face a Shift-click picked: its brush, the face, its corners and outward normal, for the bridge tool.
@@ -2078,6 +2084,135 @@ window.addEventListener('DOMContentLoaded', async () => {
     say(`Bridged with ${brushes.length} brush${brushes.length > 1 ? 'es' : ''}`);
   }
 
+  // ---- Shapes that remember their numbers (stairs, arches, a curved hallway, a radial array) ----
+  // A shape is {kind, params, origin, fields, size} (an array: {kind, params, sources, size}), never changed: new numbers
+  // make a new one. Each brush or entity a shape made maps to {shape, index}, for this session only: a Reflex .map keeps
+  // no numbers, so saving writes plain brushes. Pieces moved together or retextured stay in their shape; turned,
+  // mirrored, cut, reshaped or deleted ones leave it, and a shape missing pieces cannot be remade.
+  const shapeOf = new WeakMap();
+  const SHAPES = {
+    stairs: {label: 'Stairs', params: {steps: 8, rise: 16, run: 32, width: 128, yaw: 0}},
+    arch: {label: 'Arch', params: {span: 256, thickness: 32, depth: 32, segments: 8, degrees: 180, yaw: 0}},
+    doorArch: {label: 'Door arch', params: {width: 128, height: 192, thickness: 16, depth: 32, segments: 8, yaw: 0}},
+    hallway: {label: 'Curved hallway', params: {radius: 256, width: 128, wall: 16, floor: 16, height: 192, segments: 8, degrees: 90, yaw: 0}},
+    radial: {label: 'Radial array', params: {count: 8, angle: 45, x: 0, z: 0}},
+  };
+  const WHOLE = new Set(['steps', 'segments', 'count']);
+  const shapeParts = shape => globalGroup().items.filter(item => (shapeOf.get(item) || {}).shape === shape);
+  // The brushes and entities a shape makes, in the map's axes: brush.js's generators turned by yaw about their origin,
+  // or an array's copies (brushes with their textures locked, so each copy looks like its original).
+  function shapeItems(shape) {
+    const {kind, params} = shape;
+    if (kind === 'radial') {
+      const centre = [params.x, 0, params.z], brushes = shape.sources.filter(isBrush), out = [];
+      B.radial(brushes, centre, params.count, params.angle).forEach((copy, i) => out.push({kind: 'brush', ...B.lock(brushes[i % brushes.length], copy)}));
+      for (let k = 1; k < params.count; k++) {
+        const turn = M.compose([0, 0, 0], [k * params.angle, 0, 0]);
+        const about = turn.map((row, i) => [row[0], row[1], row[2], centre[i] - (row[0] * centre[0] + row[1] * centre[1] + row[2] * centre[2])]);
+        for (const source of shape.sources) if (!isBrush(source)) out.push(M.moveItem(source, about, k * params.angle));
+      }
+      return out;
+    }
+    const made = B[kind](params, shape.fields);
+    return made && made.map(brush => M.moveItem(asItem(brush), M.compose(shape.origin, [params.yaw || 0, 0, 0])));
+  }
+  // Brushes into the world's run, entities after everything (so no brush comes to belong to them).
+  const placeShape = items => [{at: 'world', things: items.filter(isBrush)}, {at: 'end', things: items.filter(item => !isBrush(item))}].filter(insert => insert.things.length);
+  // Shape menu and the console's shape <kind>: a new shape in front of the camera, facing away from it, or an array of
+  // the selection round a centre beside it.
+  function makeShape(kind) {
+    let shape;
+    if (kind === 'radial') {
+      const sources = [...selected].filter(item => isBrush(item) ? isWorldBrush(item) : !M.VOLUMES.has(item.type) && item.type !== 'WorldSpawn');
+      if (!sources.length) { say('Radial array: select the brushes or entities to copy first'); return; }
+      const box = extent(sources), size = Math.max(box.max[0] - box.min[0], box.max[2] - box.min[2], settings.grid * 8);
+      shape = {kind, params: {...SHAPES.radial.params, x: snap((box.min[0] + box.max[0]) / 2 - 2 * size), z: snap((box.min[2] + box.max[2]) / 2)}, sources};
+    } else {
+      const forward = new THREE.Vector3();
+      camera.getWorldDirection(forward);
+      // On the surface at the middle of the view, else 384 units ahead.
+      const rect = canvas.getBoundingClientRect(), hit = pick({clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2}, false);
+      const ahead = camera.position.clone().addScaledVector(forward, 384), at = hit ? hit.point : [ahead.x, ahead.y, -ahead.z];
+      const yaw = ((Math.round(Math.atan2(forward.x, -forward.z) * 180 / Math.PI / settings.angle) * settings.angle) % 360 + 360) % 360;
+      shape = {kind, params: {...SHAPES[kind].params, yaw}, origin: at.map(snap), fields: {...template}};
+    }
+    const made = shapeItems(shape);
+    if (!made || !made.length) { say(`${SHAPES[kind].label}: nothing to make`); return; }
+    shape.size = made.length;
+    made.forEach((item, index) => shapeOf.set(item, {shape, index}));
+    panelOpen = true; panelView = 'properties';
+    replace(new Map(), placeShape(made), 'added');
+    say(`${SHAPES[kind].label}: ${made.length} pieces · change its numbers in the panel until Convert to brushes; saving writes plain brushes`);
+  }
+  // New numbers for a shape: its pieces made again in their place, as one step of undo. Each face keeps the material,
+  // colour and scale of the face it replaces (the same face of the same piece), so a painted shape stays painted.
+  function remake(shape, params) {
+    const parts = shapeParts(shape), next = {...shape, params}, made = shapeItems(next);
+    if (parts.length !== shape.size) return;
+    if (!made || !made.length) { say(`${SHAPES[shape.kind].label}: these numbers make no brush`); showPanel(); return; }
+    const was = new Map(parts.map(item => [shapeOf.get(item).index, item]));
+    const looked = made.map((item, i) => {
+      const old = shape.kind !== 'radial' && was.get(i);
+      return old && isBrush(item) ? {...item, faces: item.faces.map((face, f) => {
+        const from = old.faces[f], look = {...face};
+        if (from) for (const key of ['material', 'colour', 'scaleU', 'scaleV']) if (key in from) look[key] = from[key];
+        return look;
+      })} : item;
+    });
+    next.size = looked.length;
+    looked.forEach((item, index) => shapeOf.set(item, {shape: next, index}));
+    replace(new Map(parts.map(item => [item, []])), placeShape(looked), 'added');
+    say(`${SHAPES[shape.kind].label} remade: ${looked.length} pieces`);
+  }
+  function convertShape(shape) {
+    const parts = shapeParts(shape), plain = parts.map(item => ({...item}));
+    replace(new Map(parts.map((item, i) => [item, [plain[i]]])), [], plain);
+    for (const item of plain) shapeOf.delete(item);
+    showPanel();
+    say(`${parts.length} plain brushes${plain.some(item => !isBrush(item)) ? ' and entities' : ''}: the ${SHAPES[shape.kind].label.toLowerCase()} forgot its numbers (undo brings them back)`);
+  }
+  // What stands in a shape piece's place stays in the shape when it is the piece moved (every corner, or its position,
+  // by one offset) or only retextured; the shape then moves too, once for all its pieces moved alike (`carried`).
+  function carryShape(item, next, carried) {
+    const was = shapeOf.get(item);
+    if (!was || shapeOf.has(next) || isBrush(item) !== isBrush(next) || (isBrush(item) && item.faces.length !== next.faces.length)) return;
+    const from = isBrush(item) ? item.vertices : [positionOf(item) || [0, 0, 0]], to = isBrush(next) ? next.vertices : [positionOf(next) || [0, 0, 0]];
+    if (from.length !== to.length) return;
+    const offset = to[0].map((x, k) => x - from[0][k]);
+    if (!from.every((p, i) => p.every((x, k) => Math.abs(to[i][k] - x - offset[k]) < 1e-4))) return;
+    let shape = was.shape;
+    if (offset.some(x => Math.abs(x) > 1e-6)) {
+      const byOffset = carried.get(shape) || new Map(), id = offset.map(x => x.toFixed(4)).join();
+      carried.set(shape, byOffset);
+      if (!byOffset.has(id)) byOffset.set(id, shape.kind === 'radial'
+        ? {...shape, params: {...shape.params, x: shape.params.x + offset[0], z: shape.params.z + offset[2]}, sources: shape.sources.map(source => M.moveItem(source, translation(offset)))}
+        : {...shape, origin: shape.origin.map((x, k) => x + offset[k])});
+      shape = byOffset.get(id);
+    }
+    shapeOf.set(next, {shape, index: was.index});
+  }
+  // The shape every selected thing belongs to, when they all belong to one.
+  function selectedShape() {
+    const shapes = new Set([...selected].map(item => (shapeOf.get(item) || {}).shape)), [shape] = shapes;
+    return shapes.size === 1 && shape ? shape : null;
+  }
+  function showShape(body, shape) {
+    const parts = shapeParts(shape), whole = parts.length === shape.size, button = (textContent, onclick, title) => element('button', {type: 'button', textContent, onclick, title});
+    body.append(element('h3', {textContent: SHAPES[shape.kind].label}));
+    if (whole) body.append(element('div', {className: 'rows'}, ...Object.entries(shape.params).map(([name, value]) => element('label', {},
+      element('span', {textContent: name}),
+      element('input', {type: 'number', step: WHOLE.has(name) ? 1 : 'any', value: String(Math.round(value * 1e6) / 1e6), onchange: event => {
+        const read = WHOLE.has(name) ? Math.round(Number(event.target.value)) : Number(event.target.value);
+        if (Number.isFinite(read) && read !== value) remake(shape, {...shape.params, [name]: read});
+      }}), element('span')))));
+    body.append(element('p', {textContent: whole
+      ? `${parts.length} pieces. A new number makes them again (one undo step). Saving writes plain brushes: a .map keeps no numbers, so they last this session.`
+      : `${parts.length} of its ${shape.size} pieces are as it made them; the rest were turned, cut, reshaped or deleted, so its numbers cannot remake it. Convert keeps what is there.`}));
+    body.append(element('div', {className: 'actions'},
+      button('Select all of it', () => { selected.clear(); for (const item of parts) selected.add(item); showSelection(); say(`${parts.length} pieces of the ${SHAPES[shape.kind].label.toLowerCase()} selected`); }, 'Select every piece, to move it as one'),
+      button('Convert to brushes', () => convertShape(shape), 'Plain brushes from here on: the numbers are forgotten')));
+  }
+
   // ---- The property panel (N, the game's me_showproperties) ----
   // What the stock maps give each type, for adding: [type, name, default]. Names an entity of the map has are added too.
   const SCHEMA = {
@@ -2168,6 +2303,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     body.replaceChildren();
     if (panelView === 'prefabs') { showPrefabList(body); return; }
     if (panelView === 'checks') { showChecks(body); return; }
+    const shape = selectedShape();
+    if (shape) { showShape(body, shape); return; }
     if (!target) { body.textContent = 'This map has no WorldSpawn.'; return; }
     if (target.many) { body.textContent = `${target.many} selected: select one entity to see its properties.`; return; }
     if (target.brush) {
@@ -2684,6 +2821,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     },
     hideburied: () => actions.hideBuried(),
     checks: () => actions.checks(),
+    wrap: () => actions.wrap(),
+    shape: (kind = '') => {
+      const name = Object.keys(SHAPES).find(key => key.toLowerCase() === kind.toLowerCase());
+      if (name) makeShape(name); else say(`shape ${Object.keys(SHAPES).join('|')}`);
+    },
     help: () => say(`Commands: ${Object.keys(COMMANDS).join(', ')}`),
   };
   function run(line) {
@@ -2758,6 +2900,29 @@ window.addEventListener('DOMContentLoaded', async () => {
       say(`${count} buried faces of ${changes.size} brushes now ${NODRAW.split('/').pop()}, which the game does not draw`);
     },
     checks() { panelOpen = !(panelOpen && panelView === 'checks'); panelView = 'checks'; showPanel(); },
+    // Texture wrap (brush.js wrap): the first picked face's texture carried on round the faces beside it, over its
+    // brush and the selected ones; with more faces picked, onto those only, round any angle.
+    wrap() {
+      const [source] = picked;
+      if (!source) { say('Shift-click the face whose texture to wrap first'); return; }
+      const items = [...new Set([source.item, ...selectedBrushes(), ...picked.map(face => face.item)])].filter(item => isWorldBrush(item) && B.convex(item));
+      if (!items.includes(source.item)) { say('Wrap works on convex brushes of the world'); return; }
+      const index = new Map(items.map((item, i) => [item, i]));
+      const only = picked.length > 1 ? picked.filter(face => index.has(face.item)).map(face => ({brush: index.get(face.item), face: face.index})) : null;
+      const out = B.wrap(items, {brush: index.get(source.item), face: source.index}, only), changes = new Map();
+      let count = 0;
+      out.forEach((brush, i) => {
+        if (brush === items[i]) return;
+        changes.set(items[i], [brush]);
+        count += brush.faces.filter((face, f) => face !== items[i].faces[f]).length;
+      });
+      if (!changes.size) { say(only ? 'None of the other picked faces meets the first along an edge' : 'No face beside this one turns less than a right angle: Ctrl+Shift-click the faces to wrap onto, then Wrap'); return; }
+      replace(changes, [], [...selected].map(item => changes.has(item) ? changes.get(item)[0] : item));
+      // An untextured material shows the texture coordinates as a pattern on every face it reached.
+      texturePreview = {...picked[0], also: [...changes].flatMap(([item, [brush]]) => brush.faces.flatMap((face, index) => face !== item.faces[index] ? [{item: brush, index}] : []))};
+      showSelection();
+      say(`Wrapped the texture onto ${count} face${count > 1 ? 's' : ''} of ${changes.size} brush${changes.size > 1 ? 'es' : ''}${only ? '' : ' · select more brushes to carry it further'}`);
+    },
     hollow() {
       const [item] = selectedBrushes(), walls = B.hollow(item, settings.grid);
       if (walls.length === 1 && walls[0] === item) { say(`Too small to hollow with ${settings.grid}-unit walls`); return; }
@@ -2889,8 +3054,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       if (current !== materials.get(key)) { current = materials.get(key); obj.push(`usemtl ${current}`); }
       const repeat = (mapped && texture.repeat) || 128;
+      // The pieces of a face cut up keep its texture axes, which its own first edge sets.
+      const edge = B.firstEdge(face.indices.map(index => entry.brush.vertices[index]));
       for (const piece of pieces) {
-        const coords = B.texcoords({vertices: piece}, {...face, indices: piece.map((_, k) => k)});
+        const coords = B.texcoords({vertices: piece}, {...face, indices: piece.map((_, k) => k)}, false, edge);
         piece.forEach((p, k) => obj.push(`v ${number(p[0])} ${number(p[1])} ${number(-p[2])}`, `vt ${number(coords[k][0] / repeat)} ${number(-coords[k][1] / repeat)}`));
         // Turning z round turns the winding: reversed, the faces still face out.
         obj.push('f ' + piece.map((_, k) => `${corners + piece.length - k}/${corners + piece.length - k}`).join(' '));
@@ -2939,6 +3106,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('rotateDec').addEventListener('click', event => { rotateSelection(-1); event.target.blur(); });
   $('clipButton').addEventListener('click', event => { setClipMode(!clipMode); event.target.blur(); });
   $('lockButton').addEventListener('click', event => { setTextureLock(!textureLock); event.target.blur(); });
+  $('shape').addEventListener('change', event => { const kind = event.target.value; event.target.value = ''; event.target.blur(); if (kind && flat) makeShape(kind); });
   function setTextureLock(on) { textureLock = on; updateTools(); say(`Texture lock ${on ? 'on: moved, turned and reshaped brushes keep their textures' : 'off'}`); }
   $('angle').addEventListener('change', event => { settings.angle = Number(event.target.value); event.target.blur(); save(); updateTools(); });
   $('propsClose').addEventListener('click', () => { panelOpen = false; showPanel(); });
@@ -3166,7 +3334,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     $('help').textContent = helpText();
   }
   const helpText = () => editing
-    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge · Alt-click edge, Bevel · 1–8 create · V vertices · C clip · L texture lock · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
+    ? '0 play · Click select (Ctrl adds) · Drag move (Alt up/down) · Shift-drag face · Shift-click face, B bridge, Wrap · Alt-click edge, Bevel · Shape menu · 1–8 create · V vertices · C clip · L texture lock · Numpad +/− turn · Arrows, Home/End/Ins/Del, PgUp/PgDn, , . texture · Shift+arrows nudge · N properties · ` console · Right-drag look · WASD QE · G clone · Backspace delete · Z/X undo/redo · K/M material'
     : walking ? '0 edit · Click to capture / drag to look · WASD walk · Space jump · F fly · Esc release · 1–9 viewpoints'
       : '0 edit · Click to capture / drag to look · WASD move · Space up · Shift down · Wheel speed · F walk · Esc release · 1–9 viewpoints';
 
