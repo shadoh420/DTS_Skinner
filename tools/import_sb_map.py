@@ -26,8 +26,7 @@ from tools.ue4_mesh import mesh as ue4_mesh
 from tools.ue4_package import Library, Reader
 
 INSTANCED = ('InstancedStaticMeshComponent', 'HierarchicalInstancedStaticMeshComponent', 'FoliageInstancedStaticMeshComponent')
-SKIPPED_COMPONENTS = {'SplineMeshComponent': 'Spline-deformed mesh (not bent at import)',
-                      'XInstancedSplineMeshComponent': 'Spline-deformed instances (not bent at import)'}
+SKIPPED_COMPONENTS = {'XInstancedSplineMeshComponent': 'Spline-deformed instances (custom component, no mesh reference)'}
 SKIPPED_ACTORS = {'LODActor': 'Hierarchical LOD proxy (the full-detail meshes are drawn)'}
 TERRAIN_STEP = 4  # ponytail: one landscape vertex per 4 quads (1.86 m on Hollowmere); full 5081^2 is ~26 M vertices.
 LAYER_LIMIT = 5
@@ -150,6 +149,35 @@ def instance_matrices(r):
             if np.allclose(m[:, :, 3], (0, 0, 0, 1)):
                 return np.transpose(m, (0, 2, 1))  # row-vector FMatrix -> column-vector matrices
     return np.zeros((0, 4, 4))
+
+
+def spline_segments(segments, bounds, axis=None, up=None):
+    """Native matrices taking a spline mesh's [min, max] along its forward axis onto each segment's chord.
+
+    ponytail: straight chords, no bending, roll, offset or end scaling; curved walls and cracks show as
+    straight pieces between their authored points. Bending at import would need one geometry per piece.
+    """
+    forward = {'ESplineMeshAxis::Y': 1, 'ESplineMeshAxis::Z': 2}.get(axis, 0)
+    low, high = np.asarray(bounds, dtype=float)
+    native_low, native_high = (np.array((v[2], -v[0], v[1]))*52.5 for v in (low, high))  # viewer -> native
+    start, length = min(native_low[forward], native_high[forward]), abs(native_high[forward]-native_low[forward])
+    up = np.asarray(up or (0, 0, 1), dtype=float)
+    result = []
+    for s in segments:
+        a, b = np.asarray(s.get('StartPos') or (0, 0, 0), float), np.asarray(s.get('EndPos') or (100, 0, 0), float)
+        chord = b-a; distance = np.linalg.norm(chord)
+        if distance < 1e-3 or length < 1e-3:
+            continue
+        x = chord/distance
+        y = np.cross(up, x); y = y/np.linalg.norm(y) if np.linalg.norm(y) > 1e-6 else np.array((0., 1, 0))
+        z = np.cross(x, y)
+        scale = np.ones(3); scale[0] = distance/length
+        axes = np.stack((x, y, z), axis=1)@np.diag(scale)  # local forward, side, up -> world
+        swap = np.roll(np.eye(3), -forward, axis=0)  # mesh's forward axis first
+        m = np.eye(4); m[:3, :3] = axes@swap
+        m[:3, 3] = a-m[:3, :3]@(np.eye(3)[forward]*start)
+        result.append(m)
+    return result
 
 
 def tile_offset(p):
@@ -376,7 +404,7 @@ def build_map(path, library, models, materials):
                                           height_falloff=pr.get('FogHeightFalloff', .2), FogMaxOpacity=pr.get('FogMaxOpacity', 1)))
                 except (ValueError, OSError, struct.error):
                     pass
-            mesh_class = cls in INSTANCED or cls in ('StaticMeshComponent', 'SkeletalMeshComponent') or cls in SKIPPED_COMPONENTS
+            mesh_class = cls in INSTANCED or cls in ('StaticMeshComponent', 'SkeletalMeshComponent', 'SplineMeshComponent') or cls in SKIPPED_COMPONENTS
             if not mesh_class:
                 if cls.endswith('Actor') or cls.endswith('_C'):
                     actors += 1
@@ -400,6 +428,11 @@ def build_map(path, library, models, materials):
                     _, r = p.properties(ref)
                     matrices = [m@i for i in instance_matrices(r)]
                     record['foliage'] = cls.startswith('Foliage')
+                elif cls == 'SplineMeshComponent':
+                    _, model = models.get(source, 'StaticMesh', tuple(pr.get('OverrideMaterials') or ()))
+                    segments = pr.get('SplineInstanceDataList') or [pr.get('SplineParams') or {}]
+                    matrices = [m@s for s in spline_segments(segments, model['bounds'], pr.get('ForwardAxis'), pr.get('SplineUpDir'))]
+                    record['spline_approximation'] = 'straight segment from start to end point'
                 else:
                     matrices = [m]
                 record['skeletal'] = cls == 'SkeletalMeshComponent'
@@ -419,7 +452,7 @@ def build_map(path, library, models, materials):
     for t in terrains:
         span = max(span, t['width']*t['native']['step']*t['native']['scale'][0]/52.5)
     placements = sum(d['count'] for d in decorations)
-    scene = dict(game='sb', name=path.stem, title=path.stem.replace('_', ' '), format='ue4.22', actors=actors, preview_extent=span,
+    scene = dict(game='sb', name=path.stem, title='Hollowmere' if path.stem == 'Alpha_Resculpt' else path.stem.replace('_', ' '), format='ue4.22', actors=actors, preview_extent=span,
                  vertices=0, indices=0, groups=[], model_library=model_library, instances=instances, decorations=decorations,
                  terrain=terrains, viewpoints=views[:9], sky=None, zones=zones, sun=sun, speedtrees=0, npcs=0, placements=placements,
                  streamed_packages=[f for f, _ in packages], lightmap_references=[], omitted=omitted, model_failures=failures,
@@ -428,7 +461,8 @@ def build_map(path, library, models, materials):
                  coordinate_system='Unreal 4 (x,y,z) cm -> viewer (-y,z,x), units /52.5',
                  gaps=['Lighting is approximate: no baked lightmaps or the toon post-process',
                        f'Landscape drawn at one vertex per {TERRAIN_STEP} quads with up to {LAYER_LIMIT} textured layers over a baked colour map',
-                       'Spline-deformed meshes, HLOD proxies, effects, decals, water and gameplay actors are omitted'])
+                       'Spline meshes (walls, cracks) are straight pieces between their points, not bent',
+                       'HLOD proxies, effects, decals, water and gameplay actors are omitted'])
     blobs = dict(geometry=b'', terrain=b''.join(chunks), lighting=b'', decorations=b''.join(deco_chunks))
     models.cache.clear(); models.variants.clear()
     return scene, blobs

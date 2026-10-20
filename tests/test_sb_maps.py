@@ -63,6 +63,14 @@ class SpellbreakMaps(unittest.TestCase):
         self.assertEqual(tile_offset(FakePackage([], header, 8)).tolist(), [-47244, 23622, 0])
         self.assertEqual(tile_offset(FakePackage([])).tolist(), [0, 0, 0])
 
+    def test_spline_mesh_spans_its_chord(self):
+        # Native box x 0..100, y -10..10, z 0..5, as viewer bounds (-y, z, x) / 52.5.
+        bounds = [[-10/52.5, 0, 0], [10/52.5, 5/52.5, 100/52.5]]
+        m, = sbmap.spline_segments([dict(StartPos=[0, 0, 0], EndPos=[0, 200, 0])], bounds)
+        self.assertTrue(np.allclose(m@(100, 0, 0, 1), (0, 200, 0, 1)))
+        self.assertTrue(np.allclose(m@(0, 0, 5, 1), (0, 0, 5, 1)))  # up stays up
+        self.assertEqual(sbmap.spline_segments([dict(StartPos=[1, 1, 1], EndPos=[1, 1, 1])], bounds), [])
+
     def test_viewer_matrix_matches_point_basis(self):
         native = np.eye(4); native[:3, 3] = (100, 200, 300)
         m = np.asarray(to_viewer(native)).reshape(4, 4).T

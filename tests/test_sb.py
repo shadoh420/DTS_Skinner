@@ -147,7 +147,8 @@ class SpellbreakModels(unittest.TestCase):
         self.assertEqual(mounted('g3/Content/Maps/X.umap'), '/Game/Maps/X')
         self.assertEqual(mounted('Engine/Content/BasicShapes/Cube.uasset'), '/Engine/BasicShapes/Cube')
         self.assertEqual(mounted('g3/Plugins/ImpostorBaker/Content/M.uasset'), '/ImpostorBaker/M')
-        self.assertEqual(category('/Game/Characters/Human/Hats/H.H'), 'Characters / Human / Hats')
+        self.assertEqual(category('/Game/Characters/Human/Sam/H.H'), 'Characters / Human / Sam')
+        self.assertEqual(category('/Game/Environment/Temperate/Deco/R.R'), 'Environment / Temperate')
 
     def test_pak_round_trip_imports_mesh_and_texture(self):
         with tempfile.TemporaryDirectory() as tmp:

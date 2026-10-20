@@ -24,19 +24,22 @@ GAME = 'sb'
 
 
 def category(source):
-    """Content folders: '/Game/Characters/Human/Hats/X.X' -> 'Characters / Human / Hats'."""
+    """Content folders, two deep ('Environment / Temperate'); characters by name ('Characters / Human / Sam')."""
     parts = source.split('.', 1)[0].split('/')[1:-1]
     if parts and parts[0] == 'Game':
         parts = parts[1:]
     else:
         parts = ['Plugins']+parts
-    return ' / '.join(p.replace('_', ' ') for p in parts[:3]) or 'Other'
+    depth = 3 if parts[:2] == ['Characters', 'Human'] else 2
+    return ' / '.join(p.replace('_', ' ').strip() for p in parts[:depth]) or 'Other'
 
 
 def exclusion(source):
     name = source.rsplit('.', 1)[-1].lower()
     if source.lower().startswith(('/engine/', '/game/editor/', '/game/developers/')):
         return 'Engine/editor content'
+    if '/hlod/' in source.lower():
+        return 'Hierarchical LOD proxy (merged distant copy of map meshes)'
     if name.startswith(('ucx_', 'ubx_', 'usp_', 'ucp_')):
         return 'Collision-only mesh'
     return None
