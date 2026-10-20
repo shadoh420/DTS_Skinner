@@ -56,6 +56,7 @@ from tools.import_vtmb import import_catalog as import_vtmb_catalog
 from tools.import_eye import import_catalog as import_eye_catalog
 from tools.import_tas import import_catalog as import_tas_catalog
 from tools.import_nos import import_catalog as import_nos_catalog
+from tools.import_fab import import_catalog as import_fab_catalog
 from tools.import_tvg import import_catalog as import_tvg_catalog
 from tools.import_eye_map import import_maps as import_eye_maps
 from tools.import_tvg_map import import_maps as import_tvg_maps
@@ -111,7 +112,7 @@ q3_dir = local_data_dir / 'q3'
 diabotical_dir = local_data_dir / 'diabotical'
 reflex_models_dir = local_data_dir / 'reflex-models'
 # Conversion packs and mods, each its own game: model_json, textures, catalog.json (and dts) in local-data/<game>.
-pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'ge', 'doom3', 'quake4')}
+pack_dirs = {game: local_data_dir / game for game in ('ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'ge', 'doom3', 'quake4', 'fab')}
 # The Tribes 1 mods' import names them so (tools/import_t1_mod.py); IronSphere comes from tools/import_t2.py --game t2rpg.
 T1_MODS = {'trpg': 'T1 RPG mod', 'sw': 'Star Wars mods', 'rm': 'RedMoon RPG mod'}
 import_lock = threading.Lock()
@@ -1627,6 +1628,7 @@ def import_reflex():
 @app.route('/import_doom3', methods=['POST'])
 @app.route('/import_quake4', methods=['POST'])
 @app.route('/import_nos', methods=['POST'])
+@app.route('/import_fab', methods=['POST'])
 @app.route('/import_tas', methods=['POST'])
 @app.route('/import_tvg', methods=['POST'])
 @app.route('/import_eye', methods=['POST'])
@@ -1661,6 +1663,8 @@ def import_conversion_pack():
             return jsonify(import_doom3_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'nos':
             return jsonify(import_nos_catalog(payload['path'].strip(), pack_dirs[game]))
+        if game == 'fab':
+            return jsonify(import_fab_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'tas':
             return jsonify(import_tas_catalog(payload['path'].strip(), pack_dirs[game]))
         if game == 'tvg':
@@ -1768,7 +1772,7 @@ def export_glb(model_name):
                 data = load_animated_model(source.stem, source, preview)  # The stem marks player armors.
             except ValueError as exc:  # The armors' sequences are too big to bake.
                 data = dict(preview, animation_clips=[], animation_status=f'static: {exc}')
-        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'ge', 'doom3', 'quake4'):
+        elif game in ('diabotical', 'reflex', 't2rpg', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'ge', 'doom3', 'quake4', 'fab'):
             # Props and pickups do not animate; IronSphere's sequences stay in its scripts' DSQs, not imported.
             data = dict(preview, animation_clips=[], animation_status='static')
         else:

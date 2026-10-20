@@ -42,6 +42,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Unreal, Unreal Tournament | ✓ | ✓ | Unreal Gold / 227 and UT 469, see [Unreal maps](docs/unreal-map-viewer.md) |
 | Deus Ex | ✓ | ✓ | Stock GOTY models with class skins; [maps](docs/unreal-map-viewer.md#deus-ex) with props and pickups, without NPCs |
 | Daikatana, Anachronox, SiN | ✓ | ✓ | |
+| Fab characters (Unreal Engine 5) | ✓ | | Characters from a UE5 project, exported by `tools/ue5_export.py` in Unreal's editor; reference pose, material colours baked per skin |
 | Azrael's Tear | ✓ | ✓ | Models export with their animation clips; Maps' NPC toggle shows first-arrival creatures in resting poses where portal routes agree |
 | Diabotical | ✓ | ✓ | Editpad props and your own maps, see [Diabotical maps](docs/diabotical-map-viewer.md) |
 | Reflex Arena | ✓ | ✓ | Brush editor, see [Reflex maps](docs/reflex-map-viewer.md) |
