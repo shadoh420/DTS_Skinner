@@ -19,6 +19,8 @@ DIFFUSE_PARAMETERS = ('diffusetexture', 'albedo', 'basecolor', 'base color', 'pr
                       'maintexture', 'main texture', 'tex')
 NOT_DIFFUSE = re.compile(r'normal|_n$|_nm$|_nrm|rod|rso|orm|mask|noise|erosion|erode|gradient|displace|ramp|rough|'
                          r'_ao|aomap|height|flow|distort|packed|detail|grunge|opacity|alpha|lut|_mra|metal|spec', re.I)
+DIFFUSE_NAME = re.compile(r'albedo|base ?colou?r|diffuse', re.I)
+SECONDARY_LAYER = re.compile(r'far|normal|mask|detail|moss|dust|grunge|snow|ramp', re.I)
 BLOCK = {'PF_DXT1': ('DXT1', 8), 'PF_DXT5': ('DXT5', 16), 'PF_DXT3': ('DXT3', 16)}
 DX10 = {'PF_BC4': (80, 8), 'PF_BC5': (83, 16), 'PF_BC7': (98, 16)}  # DXGI formats Pillow decodes
 MAX_PNG = 2048
@@ -140,6 +142,10 @@ class Materials:
                 params = {((v.get('ParameterInfo') or {}).get('Name') or '').lower(): v.get('ParameterValue')
                           for v in props.get('TextureParameterValues') or [] if isinstance(v, dict)}
                 diffuse = next((params[n] for n in DIFFUSE_PARAMETERS if params.get(n)), None)
+                if not diffuse:  # 'VillageTilingPristine Basecolor', 'Primary Basecolor': a layer's own colour map
+                    named = sorted((n for n in params if params[n] and DIFFUSE_NAME.search(n) and not SECONDARY_LAYER.search(n)),
+                                   key=lambda n: ('primary' not in n and 'pristine' not in n, n))
+                    diffuse = params[named[0]] if named else None
                 if diffuse:
                     row['parameter'] = 'instance'
                     break

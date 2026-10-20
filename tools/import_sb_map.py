@@ -30,6 +30,8 @@ SKIPPED_COMPONENTS = {'XInstancedSplineMeshComponent': 'Spline-deformed instance
 SKIPPED_ACTORS = {'LODActor': 'Hierarchical LOD proxy (the full-detail meshes are drawn)'}
 TERRAIN_STEP = 4  # ponytail: one landscape vertex per 4 quads (1.86 m on Hollowmere); full 5081^2 is ~26 M vertices.
 LAYER_LIMIT = 5
+# Instanced batch cell (viewer units) for placed meshes, foliage: bigger cells mean fewer draw calls but coarser culling.
+BATCH_CELL = {False: 2048, True: 512}
 
 
 class MapLibrary(Library):
@@ -338,10 +340,12 @@ def build_map(path, library, models, materials):
             look, model = models.get(source, 'StaticMesh' if not record.get('skeletal') else 'SkeletalMesh', overrides)
         except (ValueError, OSError, KeyError) as exc:
             failures.append(dict(record, source=source, reason=str(exc))); return
+        if any('/VolumetricFog/' in (g.get('material_source') or '') for g in model['groups']) or 'FogVolume' in record['classname']:
+            omitted.append(dict(record, source=source, category='render_helper', reason='Volumetric fog volume (shader-only effect mesh)')); return
         model_library[look] = model
         if model.get('sky'):  # drawn first through the page's sky path, not as an instanced batch
             instances.extend(dict(record, look=look, matrix=to_viewer(m)) for m in matrices); return
-        cell = 512 if not record.get('foliage') else 128
+        cell = BATCH_CELL[bool(record.get('foliage'))]
         for m in matrices:
             v = to_viewer(m)
             batches[(look, tuple(np.floor(np.asarray(v)[12:15:2]/cell).astype(int)), record.get('foliage', False), fade)].append((v, record))
@@ -390,7 +394,8 @@ def build_map(path, library, models, materials):
                 try:
                     pr = props(ref); m = level@world(ref)
                     color = pr.get('LightColor') or (255, 255, 255, 255)
-                    sun = dict(direction=(BASIS@m[:3, :3]@np.array((-1., 0, 0))).tolist(),
+                    direction = BASIS@m[:3, :3]@np.array((-1., 0, 0))
+                    sun = dict(direction=(direction/np.linalg.norm(direction)).tolist(),
                                color=[color[2]/255, color[1]/255, color[0]/255], brightness=pr.get('Intensity', 3.14)/3.14)
                 except (ValueError, OSError, struct.error):
                     pass
@@ -399,8 +404,9 @@ def build_map(path, library, models, materials):
                     pr = props(ref)
                     if pr.get('bVisible', True):
                         color = pr.get('FogInscatteringColor') or [.45, .5, .6, 1]
+                        place_at = (level@world(ref))[:3, 3]
                         zones.append(dict(kind=cls, color=[c*255 for c in color[2::-1]]+[255], density=pr.get('FogDensity', .02),
-                                          start=pr.get('StartDistance', 0), height=(level@world(ref))[2, 3],
+                                          start=pr.get('StartDistance', 0), height=place_at[2], origin=place_at.tolist(),
                                           height_falloff=pr.get('FogHeightFalloff', .2), FogMaxOpacity=pr.get('FogMaxOpacity', 1)))
                 except (ValueError, OSError, struct.error):
                     pass
@@ -446,6 +452,15 @@ def build_map(path, library, models, materials):
         decorations.append(dict(look=look, entity=rows[0][1]['entity'], offset=sum(map(len, deco_chunks)), count=len(rows), npc=False, placed=not foliage,
                                 decorationType=('Foliage / '+name) if foliage else 'Placed meshes', **({'fade': [0, fade]} if fade > 0 else {})))
         deco_chunks.append(np.asarray([v for v, _ in rows], '<f4').tobytes())
+    if terrains:  # an overview first, then the player starts nearest the landscape's middle
+        t = terrains[0]; c = np.asarray(t['to_world'])
+        middle = viewer(c[3:].reshape(3, 3)@(np.array((t['width']/2, t['height']/2, 32768))-c[:3]))
+        span_units = t['width']*t['native']['step']*t['native']['scale'][0]/52.5
+        views.sort(key=lambda v: np.linalg.norm(np.asarray(v['origin'])[[0, 2]]-middle[[0, 2]]))
+        # Hollowmere has one height fog per biome (gameplay switches them); the page uses the first, so the
+        # fog placed nearest the landscape's middle leads instead of the lobby island's sky fog.
+        zones.sort(key=lambda z: np.linalg.norm(viewer(np.asarray(z['origin']))[[0, 2]]-middle[[0, 2]]))
+        views.insert(0, dict(origin=[middle[0], middle[1]+span_units*.12, middle[2]+span_units*.45], yaw=180, pitch=-30))
     if not views:
         views = [dict(origin=[0, 150, 0], yaw=0, pitch=-20)]
     span = 3000.

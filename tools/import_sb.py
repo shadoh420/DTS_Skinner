@@ -9,6 +9,7 @@ from collections import Counter
 import fnmatch
 import json
 from pathlib import Path
+import re
 import time
 
 from tools.import_tas import key
@@ -21,6 +22,7 @@ from tools.ue4_mesh import mesh
 from tools.ue4_package import Library
 
 GAME = 'sb'
+IMPOSTOR = re.compile(r'impost[eo]r', re.I)
 
 
 def category(source):
@@ -74,6 +76,12 @@ def import_catalog(install, output, model_paths=None):
                 if not data['groups']:
                     raise ValueError('Mesh has no drawable sections')
                 materials = [mats.material(ref) for ref in data.pop('material_refs')]
+                # Trees carry a far-distance impostor card in LOD0 that the game fades in only far away.
+                kept = [g for g in data['groups'] if not IMPOSTOR.search(materials[g['materialIndex']].get('source') or '')
+                        and not IMPOSTOR.search(materials[g['materialIndex']].get('base_material') or '')]
+                if kept and len(kept) < len(data['groups']):
+                    data['metadata']['dropped_sections'] = 'impostor billboard card'
+                    data['groups'] = kept
                 data['metadata'].update(source=source, source_class=cls, package=obj['file'], materials=materials, skin='Default')
                 ident = key(cls+':'+source)
                 payload = dict(data, game=GAME, material_textures=[m['texture'] for m in materials],
