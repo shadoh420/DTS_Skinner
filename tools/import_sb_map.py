@@ -443,7 +443,7 @@ def build_map(path, library, models, materials):
     deco_chunks = []
     for (look, cell, foliage, fade), rows in batches.items():
         name = model_library[look]['source'].rsplit('.', 1)[-1]
-        decorations.append(dict(look=look, entity=rows[0][1]['entity'], offset=sum(map(len, deco_chunks)), count=len(rows), npc=False,
+        decorations.append(dict(look=look, entity=rows[0][1]['entity'], offset=sum(map(len, deco_chunks)), count=len(rows), npc=False, placed=not foliage,
                                 decorationType=('Foliage / '+name) if foliage else 'Placed meshes', **({'fade': [0, fade]} if fade > 0 else {})))
         deco_chunks.append(np.asarray([v for v, _ in rows], '<f4').tobytes())
     if not views:

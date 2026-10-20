@@ -5,6 +5,7 @@ README. Positions stay in the pack's units and axes (Three's Y-up frame; metres 
 Sky, sky holes and sprite billboards are left out; water surfaces become half-transparent water_* materials so the volume
 shows; lightmaps and vertex colours are dropped. Quake's index textures are coloured through the pack's colormap.
 """
+import gzip
 import io
 import json
 from pathlib import Path
@@ -15,6 +16,7 @@ import numpy as np
 from PIL import Image
 
 SKY_HOLE = 0x80  # Unreal PF_FakeBackdrop: a hole onto the sky zone.
+MAX_PLACED_BATCH_INSTANCES = 20000  # Text OBJ beyond this is gigabytes; Spellbreak's Hollowmere has ~100,000.
 COLORMAP_ROW = 32  # The colormap row equal to the palette (0 is twice as bright, 63 black); checked against gfx/palette.lmp.
 
 
@@ -39,7 +41,15 @@ def placed_meshes(folder, scene, stores):
     as static/tvg-maps/materials.js builds them: library buffers through each instance's column-major matrix, terrain
     heights through to_world. NPCs and sky meshes are left out; so is decoration scatter."""
     library, buffers = scene.get('model_library') or {}, {}
-    for item in scene.get('instances') or []:
+    # Spellbreak keeps every placed mesh in instanced batches; those marked placed are props, not scatter.
+    placed = [d for d in scene.get('decorations') or [] if d.get('placed')]
+    if sum(d['count'] for d in placed) > MAX_PLACED_BATCH_INSTANCES:
+        raise ValueError(f"{sum(d['count'] for d in placed):,} placed meshes are too many for an OBJ export "
+                         f'(limit {MAX_PLACED_BATCH_INSTANCES:,})')
+    matrices = np.frombuffer(gzip.decompress((Path(folder) / 'decorations.bin.gz').read_bytes()), '<f4') if placed else None
+    batched = [dict(look=d['look'], matrix=matrices[d['offset'] // 4 + i * 16:d['offset'] // 4 + i * 16 + 16])
+               for d in placed for i in range(d['count'])]
+    for item in (scene.get('instances') or []) + batched:
         model = library.get(item.get('look'))
         if not model or item.get('npc') or model.get('sky'):
             continue

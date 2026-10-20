@@ -111,6 +111,28 @@ class SpellbreakMaps(unittest.TestCase):
             self.assertTrue(np.allclose(world, (1000+3*50, 0, 130)))
             self.assertTrue((Path(tmp)/row['textures']['MacroTexture']).is_file())
 
+    def test_obj_export_includes_placed_batches_not_scatter(self):
+        import gzip
+        from tools import map_obj_exporter
+        with tempfile.TemporaryDirectory() as tmp:
+            folder, store = Path(tmp)/'maps'/'m', Path(tmp)/'store'
+            folder.mkdir(parents=True); store.mkdir()
+            vertices, uvs, indices = np.array((0, 0, 0, 1, 0, 0, 0, 1, 0), '<f4'), np.zeros(6, '<f4'), np.array((0, 1, 2), '<u4')
+            name = 'c'*64+'.bin'; (store/name).write_bytes(vertices.tobytes()+uvs.tobytes()+indices.tobytes())
+            geometry = dict(file=name, arrays=dict(vertices=dict(offset=0, count=9, dtype='<f4'), uvs=dict(offset=36, count=6, dtype='<f4'),
+                                                   indices=dict(offset=60, count=3, dtype='<u4')))
+            model = dict(geometry=geometry, store='models', groups=[dict(start=0, count=3, texture='t.dds')])
+            moved = np.eye(4, dtype='<f4'); moved[3, :3] = (10, 0, 0)  # column-major translation
+            (folder/'decorations.bin.gz').write_bytes(gzip.compress(np.stack((moved, np.eye(4, dtype='<f4'))).tobytes()))
+            scene = dict(model_library=dict(rock=model), instances=[],
+                         decorations=[dict(look='rock', offset=0, count=1, placed=True), dict(look='rock', offset=64, count=1, placed=False)])
+            meshes = list(map_obj_exporter.placed_meshes(folder, scene, dict(models=store, **{'map-models': store})))
+            self.assertEqual(len(meshes), 1)
+            self.assertEqual(meshes[0][0][1].tolist(), [11, 0, 0])
+            scene['decorations'][0]['count'] = map_obj_exporter.MAX_PLACED_BATCH_INSTANCES+1
+            with self.assertRaises(ValueError):
+                list(map_obj_exporter.placed_meshes(folder, scene, dict(models=store)))
+
     @unittest.skipUnless((INSTALL/'g3/Content/Paks/g3-WindowsNoEditor.pak').is_file(), 'Spellbreak client not extracted')
     def test_real_practice_map(self):
         with tempfile.TemporaryDirectory() as tmp:
