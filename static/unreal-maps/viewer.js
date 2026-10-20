@@ -72,8 +72,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   const showStatus = text => { $('status').textContent = text; };
   const showReady = () => showStatus(`${missing ? `Map loaded with ${missing} missing textures` : 'Map ready'} · speed ${speed.toFixed(1)} ${azrael ? 'units/s' : 'm/s'}`);
 
+  // At most 32 requests in flight: a big instanced map (Spellbreak's Hollowmere asks for ~3,500 buffers and
+  // textures at once) otherwise runs the browser out of request slots and loads fail with "Failed to fetch".
+  let active = 0;
+  const waiting = [];
+  async function limited(task) {
+    if (active >= 32) await new Promise(resolve => waiting.push(resolve));
+    active++;
+    try { return await task(); } finally { active--; if (waiting.length) waiting.shift()(); }
+  }
   async function get(url) {
-    const response = await fetch(url);
+    const response = await limited(() => fetch(url));
     if (!response.ok) throw new Error(`${url} (${response.status})`);
     return response;
   }
@@ -92,8 +101,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       };
       const failed = () => { missing++; resolve(null); };
       const url = data + 'textures/' + file;
-      if (file.toLowerCase().endsWith('.dds') && window.skinnerDDS) window.skinnerDDS.load(url).then(loaded, failed);
-      else loader.load(url, loaded, undefined, failed);
+      if (file.toLowerCase().endsWith('.dds') && window.skinnerDDS) limited(() => window.skinnerDDS.load(url)).then(loaded, failed);
+      else limited(() => new Promise((done, error) => loader.load(url, done, undefined, error))).then(loaded, failed);
     }));
     return textures.get(file);
   }

@@ -25,6 +25,7 @@ Nothing is shipped from the games except the stock Tribes 1 and 2 content in the
 | Nosgoth | ✓ | ✓ | Retail/community models and streamed maps; tutorial spawn previews; approximate lighting; key read from your own Nosgoth.exe (Windows) |
 | Tribes: Ascend | ✓ | ✓ | Retail and community maps/models; streamed terrain, shared props and NPC toggle; approximate lighting and tree stand-ins |
 | Tribes: Vengeance | ✓ | ✓ | Stock and community models and maps; compact terrain, shared props and NPC toggle; approximate lighting |
+| Spellbreak (Community Version) | ✓ | ✓ | Characters, cosmetics, gauntlets and props in reference pose; Hollowmere's 100 tiles with its landscape and foliage, plus the lobby and menu scenes; approximate lighting |
 | Tribes conversions and mods | ✓ | | TA and TV conversion packs, TRPG, Star Wars, RedMoon; GoldenEye 007 mod (below) |
 | Starsiege, Earthsiege 1 and 2 | ✓ | | |
 | Red Baron 3D | ✓ | ✓ | Maps are experimental, see [Red Baron 3D maps](docs/redbaron-maps.md) |

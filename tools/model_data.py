@@ -49,7 +49,7 @@ def t1_default_families(model_dir):
     return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
 
 
-MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'ge', 'doom3', 'quake4')
+MODEL_GAMES = ('t1', 't2', 'q3', 'diabotical', 'reflex', 'ta', 'tv', 'trpg', 'sw', 'rm', 't2rpg', 'ss', 'es1', 'es2', 'rb3d', 'unreal', 'ut', 'dx', 'quake', 'quake2', 'daikatana', 'anachronox', 'sin', 'rtcw', 'et', 'jk2', 'ja', 'azrael', 'vtmb', 'eye', 'tvg', 'tas', 'nos', 'sb', 'ge', 'doom3', 'quake4')
 _families_lock = threading.Lock()
 
 

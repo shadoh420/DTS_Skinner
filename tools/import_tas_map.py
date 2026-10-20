@@ -126,7 +126,7 @@ class Models:
                 else:
                     reason=exclusion(dict(source=source,cls=cls))
                     if reason:raise ValueError(reason)
-                    p,ref=self.library.object(source,{cls});data=mesh(p,ref)
+                    p,ref=self.library.object(source,{cls});data=getattr(self.library,'mesh',mesh)(p,ref)
                     refs=data.pop('material_refs');materials=[self.materials.material(s) for s in refs]
                 data.update(game=getattr(self.library,'game','tas'),material_textures=[m['texture'] for m in materials],material_settings=[m['settings'] for m in materials])
                 data['metadata'].update(source=source,source_class=cls,materials=materials)
