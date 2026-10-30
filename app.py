@@ -1750,7 +1750,8 @@ def export_glb(model_name):
         preview = load_model_data(path, request.args.get('texture'), overrides)
         # Azrael bakes its clips at import, beside the models.
         cache = (pack_dirs[game] / 'animations' if game == 'azrael' else app_local_data_dir / 'animations' / game) / (model_name+'.json.gz')
-        if cache.is_file() and game not in ('t2', 'dx', 'vtmb', 'eye', 'tvg', 'tas', 'nos'):
+        if (cache.is_file() and game not in ('t2', 'dx', 'vtmb', 'eye', 'tvg', 'tas', 'nos')
+                and not (game == 't1' and preview.get('interior_uv_version') == 2)):
             with gzip.open(cache, 'rt', encoding='utf-8') as stream:
                 data = json.load(stream)
             data = dict(preview, **data)

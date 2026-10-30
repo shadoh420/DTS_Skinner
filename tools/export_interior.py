@@ -31,6 +31,12 @@ def scale_offset_uv(point, scale, offset):
     return (offset[0] + (point[0] * scale[0]),
             offset[1] + (point[1] * scale[1]))
 
+
+def surface_uv(point, surface, highest_mip, size):
+    """Native DIG surface rectangle to top-down bitmap coordinates."""
+    return ((point[0] * ((surface.tsx + 1) << highest_mip) + surface.tox) / size[0],
+            (point[1] * ((surface.tsy + 1) << highest_mip) + surface.toy) / size[1])
+
 def transform_vertex_by_matrix(matrix, vertex):
     x,y,z=vertex
     res_x = matrix[0][0]*x + matrix[0][1]*y + matrix[0][2]*z + matrix[0][3]
@@ -205,11 +211,10 @@ def main(dis_file_path_str, output_json_dir_str, interior_source_dir_str, textur
         else:
             tex_width, tex_height = texture_dimensions_map.get(surface_texture_name, (256,256))
 
-        uv_scale_from_dis_loader = (-(surface.tsx + 1.0) / tex_width, 
-                                    -(surface.tsy + 1.0) / tex_height)
-        uv_offset_from_dis_loader = (-(surface.tox + 1.0) / tex_width, 
-                                     -(surface.toy + 1.0) / tex_height)
-
+        # DIG coordinates address a surface texture rectangle. DarkStar's
+        # ITRRender expands size-minus-one by highestMipLevel; RegisterTexture
+        # applies positive size / bitmap dimensions and offset / dimensions.
+        # PNG rows and the viewer's flipY=false already have the native origin.
         group_start_index_ptr = len(all_indices_flat)
         num_triangles_in_surface = 0
         temp_vertices_for_surface = []
@@ -224,12 +229,8 @@ def main(dis_file_path_str, output_json_dir_str, interior_source_dir_str, textur
             transformed_vertex = transform_vertex_by_matrix(root_transform_matrix, raw_vertex)
             temp_vertices_for_surface.append(transformed_vertex)
 
-            raw_u, raw_v = dig_obj.points2f[tex_coord_idx]
-            
-            final_u = uv_offset_from_dis_loader[0] + (raw_u * uv_scale_from_dis_loader[0])
-            final_v = uv_offset_from_dis_loader[1] + (raw_v * uv_scale_from_dis_loader[1])
-            
-            temp_uvs_for_surface.append((final_u, final_v))
+            temp_uvs_for_surface.append(surface_uv(dig_obj.points2f[tex_coord_idx], surface,
+                                                   dig_obj.highest_mip, (tex_width, tex_height)))
 
         if surface.num_verts >= 3:
             for i in range(1, surface.num_verts - 1):
@@ -263,6 +264,7 @@ def main(dis_file_path_str, output_json_dir_str, interior_source_dir_str, textur
             "groups": material_groups
         }
 
+    json_data['interior_uv_version'] = 2
     with open(output_json_path, "w") as fp:
         json.dump(json_data, fp)
     

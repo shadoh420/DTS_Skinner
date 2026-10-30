@@ -71,6 +71,63 @@ def mission(folder, name, members, placed, colour=(12, 34, 56)):
 
 
 class BuildingTests(unittest.TestCase):
+    def test_native_uv_rectangle_mip_offset_and_independent_corner_indices(self):
+        members = interior('house', 'wall.png')
+        raw = bytearray(members['house.dig'])
+        surface_at = 26 + struct.calcsize('<If6f9I')
+        struct.pack_into('<4B', raw, surface_at + 2, 3, 1, 2, 3)
+        struct.pack_into('<6H', raw, surface_at + 20, 0, 1, 1, 2, 2, 0)
+        struct.pack_into('<I', raw, len(raw) - 8, 2)
+        members['house.dig'] = bytes(raw)
+        image = io.BytesIO()
+        Image.new('RGB', (8, 4)).save(image, 'PNG')
+        model = export_mounted_interior('house', members['house.dis'], members.__getitem__, lambda _: image.getvalue())
+        # Native pixel coordinates: UV * ((size-minus-one + 1) << mip) + offset.
+        # UV indices deliberately differ from position indices; neither axis is negated.
+        self.assertEqual(model['uvs'], [18 / 8, 3 / 4, 2 / 8, 11 / 4, 2 / 8, 3 / 4])
+        self.assertEqual(model['indices'], [0, 1, 2])
+        self.assertEqual(model['interior_uv_version'], 2)
+        with patch('tools.animate_t1._source', side_effect=AssertionError('Static interior sought a DTS')):
+            self.assertEqual(load_animated_model('house', None, model)['uvs'], model['uvs'])
+
+    def test_uv_repair_requires_source_match_and_is_idempotent(self):
+        from tools.repair_t1_interior_uvs import repair
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, static = root / 'source', root / 'static'
+            source.mkdir()
+            catalog = static / 'model_json'
+            catalog.mkdir(parents=True)
+            (static / 'textures').mkdir()
+            (static / 'textures/wall.png').write_bytes(png('red'))
+            members = interior('house', 'wall.png')
+            for name, raw in members.items():
+                (source / name).write_bytes(raw)
+            model = export_mounted_interior('house', members['house.dis'], members.__getitem__, lambda _: png('red'))
+            model.pop('interior_uv_version')
+            model.update(uvs=[-.5, -.5, -1.5, -.5, -.5, -1.5], metadata=dict(source_format='dis'))
+            path = catalog / 'house.json'
+            path.write_bytes(encoded(model))
+            original = path.read_bytes()
+            unrelated = catalog / 'shape.json'
+            unrelated.write_text('{}')
+            self.assertEqual(len(repair(catalog, [source])), 1)
+            self.assertEqual(path.read_bytes(), original)
+            bad = catalog / 'missing.json'
+            bad.write_bytes(original)
+            self.assertTrue(any('error' in row for row in repair(catalog, [source], write=True)))
+            self.assertEqual(path.read_bytes(), original)  # Failed batch must not partly update the catalog.
+            bad.unlink()
+            repair(catalog, [source], write=True)
+            fixed = json.loads(path.read_text())
+            self.assertEqual(fixed['uvs'], [0., 0., 1., 0., 0., 1.])
+            self.assertEqual(fixed['interior_uv_version'], 2)
+            for key in model.keys() - {'uvs'}:
+                self.assertEqual(fixed[key], model[key])
+            self.assertEqual(repair(catalog, [source], write=True), [])
+            self.assertEqual(unrelated.read_text(), '{}')
+            self.assertEqual({p.name: p.read_bytes() for p in source.iterdir()}, members)
+
     def test_real_readers_palette_collision_pairs_and_idempotence(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -109,7 +166,8 @@ class BuildingTests(unittest.TestCase):
             self.assertEqual(t1_catalog_names(static / 'model_json'), ['hilde_be', 'hilde_ds', 'rig', 'stock'])
             model = load_model_data(static / 'model_json/rig.json')
             self.assertEqual(model['indices'], [0, 1, 2])
-            self.assertEqual(model['uvs'], [-.5, -.5, -1.5, -.5, -.5, -1.5])
+            self.assertEqual(model['uvs'], [0., 0., 1., 0., 0., 1.])
+            self.assertEqual(model['interior_uv_version'], 2)
             with patch('tools.animate_t1._source', side_effect=AssertionError('Static interior sought retail source')):
                 self.assertEqual(load_animated_model('rig', None, model)['animation_clips'], [])
             snapshot = {p: p.read_bytes() for p in static.rglob('*') if p.is_file()}
@@ -255,6 +313,8 @@ class BuildingTests(unittest.TestCase):
 
     def test_family_override_restore_static_exports_and_release_membership(self):
         from app import app
+        import gzip
+        from tests.test_glb_export import read_glb, read_accessor
         from tools.split_release import DATA
         self.assertTrue('_internal/static/t1-buildings/a.json'.startswith(DATA))
         with tempfile.TemporaryDirectory() as directory:
@@ -262,7 +322,7 @@ class BuildingTests(unittest.TestCase):
             path = mission(root / 'maps', 'One', dict(interior('house', 'wall.png'), **{'wall.png': png('red')}), ['house'])
             add_buildings(root, [path], root / 'static')
             with patch('app.model_json_dir', root / 'static/model_json'), patch('app.textures_dir', root / 'static/textures'), \
-                 patch('app.local_data_dir', root / 'local'):
+                 patch('app.local_data_dir', root / 'local'), patch('app.app_local_data_dir', root / 'local'):
                 client = app.test_client()
                 self.assertEqual(client.get('/list_models').json[0]['category'], 'Custom map buildings')
                 client.post('/model_families', json=dict(models=['house'], family='My bases'))
@@ -273,6 +333,15 @@ class BuildingTests(unittest.TestCase):
                 for route in ('/model_json/house', '/export_obj/house', '/export_glb/house'):
                     with client.get(route) as response:
                         self.assertEqual(response.status_code, 200, (route, response.get_data()[:200]))
+                # Old release animation caches contain static interior UVs too.
+                # They must not overwrite the repaired catalog on GLB export.
+                cache = root / 'local/animations/t1/house.json.gz'
+                cache.parent.mkdir(parents=True)
+                with gzip.open(cache, 'wt', encoding='utf-8') as stream:
+                    json.dump(dict(uvs=[-9.] * 6), stream)
+                document, binary = read_glb(client.get('/export_glb/house').data)
+                uv = document['meshes'][0]['primitives'][0]['attributes']['TEXCOORD_0']
+                self.assertEqual(read_accessor(document, binary, uv), [0., 0., 1., 0., 0., 1.])
                 # Exercise the standalone packaged checker against synthetic Flask responses,
                 # without a server/browser, including additions beyond the legacy stock list.
                 import contextlib

@@ -99,10 +99,10 @@ def load_animated_model(name, source_path, preview_data, only=None):
     A clip whose sequence has IFL subsequences carries `ifl`: per subsequence, its cel keys as (time, material slot,
     replacement slot), which TS::ShapeInstance::Thread applies with setMaterialRemap at the key at or before the time.
     """
-    if preview_data.get('metadata', {}).get('source_format') == 'dis':
+    if preview_data.get('interior_uv_version') == 2 or preview_data.get('metadata', {}).get('source_format') == 'dis':
         result = copy.deepcopy(preview_data)
         result['animation_clips'] = []
-        result['metadata']['animation_status'] = 'Static DIS interior; no DTS model sequences'
+        result.setdefault('metadata', {})['animation_status'] = 'Static DIS interior; no DTS model sequences'
         return result
     path = _source(name, source_path)
     result = copy.deepcopy(preview_data)

@@ -138,7 +138,7 @@ def save_tags(path, game, filename, tags):
     return tags
 
 
-def write_json_atomic(path, data):
+def write_json_atomic(path, data, *, indent=2):
     """Replace a user data file in one step, so a crash never leaves half a file."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -146,7 +146,7 @@ def write_json_atomic(path, data):
     try:
         with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as stream:
             temporary = stream.name
-            json.dump(data, stream, indent=2, ensure_ascii=False)
+            json.dump(data, stream, indent=indent, ensure_ascii=False)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
