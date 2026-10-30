@@ -51,7 +51,8 @@ class MapUVRefreshTests(unittest.TestCase):
             path.write_bytes(original)
             replace = Path.replace
             def fail_second_scene(temporary, target):
-                if target == second:
+                # The Windows runner's TEMP may use an 8.3 alias; activation resolves it.
+                if target == second.resolve():
                     raise OSError('Simulated scene write failure')
                 return replace(temporary, target)
             with patch.object(Path, 'replace', fail_second_scene):
