@@ -47,8 +47,8 @@ def corrected_uvs(model, dig, sizes):
     return fixed
 
 
-def repair(catalog, sources, write=False):
-    catalog = Path(catalog)
+def source_resources(sources):
+    """Index competing source versions without extracting or changing installs."""
     # Keep competing versions: the first file with a matching name may be another model.
     resources = defaultdict(list)
     for folder in map(Path, sources):
@@ -65,6 +65,12 @@ def repair(catalog, sources, write=False):
                         resources[name].append((str(path), read))
             elif path.suffix.lower() in ('.dis', '.dig'):
                 resources[path.name.lower()].append((str(path), path.read_bytes))
+    return resources
+
+
+def repair(catalog, sources, write=False):
+    catalog = Path(catalog)
+    resources = source_resources(sources)
     aliases = {}
     for path in (catalog.parent / 't1-buildings').glob('*.json'):
         aliases.update({name: item['source'] for name, item in json.loads(path.read_text())['models'].items()})
