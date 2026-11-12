@@ -6,3 +6,6 @@ build/
 dist/
 local-data/
 ZEDTools-complete/
+
+# Claude Code per-user permissions (may hold approved commands)
+**/.claude/settings.local.json
